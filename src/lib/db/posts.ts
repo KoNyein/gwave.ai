@@ -23,7 +23,9 @@ const POST_SELECT = `
     *,
     author:profiles!posts_author_id_fkey(${AUTHOR_SELECT}),
     media:post_media(*)
-  )
+  ),
+  group:groups!posts_group_id_fkey(id, name, slug),
+  page:pages!posts_page_id_fkey(id, name, slug, avatar_url)
 `;
 
 function sortMedia(post: FeedPost): FeedPost {
@@ -110,7 +112,10 @@ export async function getFeed(
   return toPage(data ?? [], limit);
 }
 
-/** Cursor-paginated timeline for a single profile. RLS enforces visibility. */
+/**
+ * Cursor-paginated timeline for a single profile (personal posts only —
+ * group and page posts stay in their own feeds). RLS enforces visibility.
+ */
 export async function getProfilePosts(
   profileId: string,
   viewerId: string,
@@ -123,6 +128,8 @@ export async function getProfilePosts(
     .from("posts")
     .select(POST_SELECT)
     .eq("author_id", profileId)
+    .is("group_id", null)
+    .is("page_id", null)
     .eq("my_reaction.user_id", viewerId);
   query = applyCursor(query, cursor);
 
@@ -133,6 +140,58 @@ export async function getProfilePosts(
     .returns<FeedPost[]>();
 
   if (error) throw new Error(`Failed to load posts: ${error.message}`);
+  return toPage(data ?? [], limit);
+}
+
+/** Cursor-paginated posts inside a group. RLS enforces group privacy. */
+export async function getGroupPosts(
+  groupId: string,
+  viewerId: string,
+  cursor: string | null = null,
+  limit = FEED_PAGE_SIZE,
+): Promise<FeedPage> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("posts")
+    .select(POST_SELECT)
+    .eq("group_id", groupId)
+    .eq("my_reaction.user_id", viewerId);
+  query = applyCursor(query, cursor);
+
+  const { data, error } = await query
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(limit + 1)
+    .returns<FeedPost[]>();
+
+  if (error) throw new Error(`Failed to load group posts: ${error.message}`);
+  return toPage(data ?? [], limit);
+}
+
+/** Cursor-paginated posts published by a page. */
+export async function getPagePosts(
+  pageId: string,
+  viewerId: string,
+  cursor: string | null = null,
+  limit = FEED_PAGE_SIZE,
+): Promise<FeedPage> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("posts")
+    .select(POST_SELECT)
+    .eq("page_id", pageId)
+    .eq("my_reaction.user_id", viewerId);
+  query = applyCursor(query, cursor);
+
+  const { data, error } = await query
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(limit + 1)
+    .returns<FeedPost[]>();
+
+  if (error) throw new Error(`Failed to load page posts: ${error.message}`);
   return toPage(data ?? [], limit);
 }
 

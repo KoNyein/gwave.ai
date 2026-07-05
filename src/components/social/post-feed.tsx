@@ -9,23 +9,31 @@ import { PostComposer } from "@/components/social/post-composer";
 import { Card, CardContent } from "@/components/ui/card";
 import type { AuthorSummary, FeedPage, FeedPost } from "@/types/social";
 
+type FeedScope = "feed" | "profile" | "group" | "page";
+
 interface PostFeedProps {
   initialPage: FeedPage;
   currentUser: AuthorSummary;
-  scope: "feed" | "profile";
-  /** Required when scope is "profile". */
-  authorId?: string;
-  /** Show the composer above the feed (feed + own profile). */
+  scope: FeedScope;
+  /** Profile id / group id / page id, depending on scope. */
+  contextId?: string;
+  /** Show the composer above the feed (feed, own profile, joined group…). */
   showComposer?: boolean;
+  /** Where the composer publishes to (group/page feeds). */
+  composerContext?: { groupId?: string; pageId?: string };
 }
 
 function buildUrl(
-  scope: "feed" | "profile",
-  authorId: string | undefined,
+  scope: FeedScope,
+  contextId: string | undefined,
   cursor: string | null,
 ): string {
   const params = new URLSearchParams({ scope });
-  if (authorId) params.set("author", authorId);
+  if (contextId) {
+    const key =
+      scope === "profile" ? "author" : scope === "group" ? "group" : "page";
+    params.set(key, contextId);
+  }
   if (cursor) params.set("cursor", cursor);
   return `/api/posts?${params.toString()}`;
 }
@@ -34,8 +42,9 @@ export function PostFeed({
   initialPage,
   currentUser,
   scope,
-  authorId,
+  contextId,
   showComposer = false,
+  composerContext,
 }: PostFeedProps) {
   const t = useTranslations("feed");
   const [posts, setPosts] = React.useState<FeedPost[]>(initialPage.posts);
@@ -51,7 +60,7 @@ export function PostFeed({
     loadingRef.current = true;
     setLoadingMore(true);
     try {
-      const response = await fetch(buildUrl(scope, authorId, nextCursor));
+      const response = await fetch(buildUrl(scope, contextId, nextCursor));
       if (!response.ok) return;
       const page: FeedPage = await response.json();
       setPosts((previous) => {
@@ -63,16 +72,16 @@ export function PostFeed({
       loadingRef.current = false;
       setLoadingMore(false);
     }
-  }, [nextCursor, scope, authorId]);
+  }, [nextCursor, scope, contextId]);
 
   // Refetch the first page (after creating or sharing a post).
   const refresh = React.useCallback(async () => {
-    const response = await fetch(buildUrl(scope, authorId, null));
+    const response = await fetch(buildUrl(scope, contextId, null));
     if (!response.ok) return;
     const page: FeedPage = await response.json();
     setPosts(page.posts);
     setNextCursor(page.nextCursor);
-  }, [scope, authorId]);
+  }, [scope, contextId]);
 
   React.useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -90,7 +99,11 @@ export function PostFeed({
   return (
     <div className="space-y-4">
       {showComposer ? (
-        <PostComposer currentUser={currentUser} onCreated={refresh} />
+        <PostComposer
+          currentUser={currentUser}
+          onCreated={refresh}
+          context={composerContext}
+        />
       ) : null}
 
       {posts.map((post) => (

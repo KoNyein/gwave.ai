@@ -114,6 +114,28 @@ export function PostCard({
                 {t("sharedAPost")}
               </span>
             ) : null}
+            {post.group ? (
+              <span className="text-sm text-muted-foreground">
+                {" ▸ "}
+                <Link
+                  href={`/groups/${post.group.slug}`}
+                  className="font-semibold text-foreground hover:underline"
+                >
+                  {post.group.name}
+                </Link>
+              </span>
+            ) : null}
+            {post.page ? (
+              <span className="text-sm text-muted-foreground">
+                {" ▸ "}
+                <Link
+                  href={`/pages/${post.page.slug}`}
+                  className="font-semibold text-foreground hover:underline"
+                >
+                  {post.page.name}
+                </Link>
+              </span>
+            ) : null}
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <span>{timeAgo(post.created_at)}</span>
               <span>·</span>

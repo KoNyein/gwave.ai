@@ -74,8 +74,16 @@ export function Navbar({ profile }: { profile: Profile | null }) {
         {/* Right: actions */}
         <div className="flex items-center gap-1">
           <LocaleSwitcher />
-          <Button variant="ghost" size="icon" className="rounded-full" aria-label={t("messages")}>
-            <MessageCircle className="h-5 w-5" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-full"
+            aria-label={t("messages")}
+            asChild
+          >
+            <Link href="/messages">
+              <MessageCircle className="h-5 w-5" />
+            </Link>
           </Button>
           {profile ? <NotificationsButton userId={profile.id} /> : null}
           <ProfileMenu profile={profile} />

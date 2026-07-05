@@ -109,7 +109,7 @@ export default async function ProfilePage({
             initialPage={initialPage}
             currentUser={currentUser}
             scope="profile"
-            authorId={profile.id}
+            contextId={profile.id}
             showComposer={isSelf}
           />
         }

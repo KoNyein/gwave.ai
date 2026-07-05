@@ -46,10 +46,14 @@ interface SelectedFile {
 export function PostComposer({
   currentUser,
   onCreated,
+  context,
 }: {
   currentUser: AuthorSummary;
   onCreated: () => void;
+  /** When set, the post publishes into a group or as a page. */
+  context?: { groupId?: string; pageId?: string };
 }) {
+  const hasContext = Boolean(context?.groupId || context?.pageId);
   const t = useTranslations("composer");
   const [open, setOpen] = React.useState(false);
   const [content, setContent] = React.useState("");
@@ -120,7 +124,13 @@ export function PostComposer({
       for (const selected of files) {
         media.push(await uploadMedia(currentUser.id, selected.file));
       }
-      const result = await createPost({ content, visibility, media });
+      const result = await createPost({
+        content,
+        visibility,
+        media,
+        groupId: context?.groupId ?? null,
+        pageId: context?.pageId ?? null,
+      });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -167,31 +177,38 @@ export function PostComposer({
                 <p className="text-sm font-semibold">
                   {displayName(currentUser)}
                 </p>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-secondary"
-                    >
-                      <VisibilityIcon className="h-3 w-3" />
-                      {t(activeVisibility.labelKey)}
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {VISIBILITY_OPTIONS.map((option) => {
-                      const Icon = option.icon;
-                      return (
-                        <DropdownMenuItem
-                          key={option.value}
-                          onSelect={() => setVisibility(option.value)}
-                        >
-                          <Icon className="mr-2 h-4 w-4" />
-                          {t(option.labelKey)}
-                        </DropdownMenuItem>
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {hasContext ? (
+                  <span className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    <Users className="h-3 w-3" />
+                    {context?.groupId ? t("toGroup") : t("asPage")}
+                  </span>
+                ) : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-secondary"
+                      >
+                        <VisibilityIcon className="h-3 w-3" />
+                        {t(activeVisibility.labelKey)}
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {VISIBILITY_OPTIONS.map((option) => {
+                        const Icon = option.icon;
+                        return (
+                          <DropdownMenuItem
+                            key={option.value}
+                            onSelect={() => setVisibility(option.value)}
+                          >
+                            <Icon className="mr-2 h-4 w-4" />
+                            {t(option.labelKey)}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             </div>
 

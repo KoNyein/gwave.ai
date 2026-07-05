@@ -21,6 +21,12 @@ export type NotificationType =
   | "post_share"
   | "new_follower";
 
+export type GroupPrivacy = "public" | "private";
+
+export type GroupMemberRole = "member" | "moderator" | "admin";
+
+export type GroupMemberStatus = "pending" | "active";
+
 export interface Profile {
   id: string;
   username: string | null;
@@ -39,11 +45,96 @@ export interface Post {
   content: string;
   visibility: PostVisibility;
   shared_post_id: string | null;
+  group_id: string | null;
+  page_id: string | null;
   reaction_count: number;
   comment_count: number;
   share_count: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  privacy: GroupPrivacy;
+  cover_url: string | null;
+  owner_id: string;
+  member_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GroupMember {
+  group_id: string;
+  user_id: string;
+  role: GroupMemberRole;
+  status: GroupMemberStatus;
+  created_at: string;
+}
+
+export interface Page {
+  id: string;
+  name: string;
+  slug: string;
+  category: string | null;
+  description: string | null;
+  avatar_url: string | null;
+  cover_url: string | null;
+  owner_id: string;
+  follower_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PageFollower {
+  page_id: string;
+  user_id: string;
+  created_at: string;
+}
+
+export interface Conversation {
+  id: string;
+  is_group: boolean;
+  title: string | null;
+  direct_key: string | null;
+  created_by: string | null;
+  created_at: string;
+  last_message_at: string;
+}
+
+export interface ConversationParticipant {
+  conversation_id: string;
+  user_id: string;
+  joined_at: string;
+  last_read_at: string;
+}
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  image_path: string | null;
+  created_at: string;
+}
+
+export interface Story {
+  id: string;
+  author_id: string;
+  media_path: string;
+  media_type: "image" | "video";
+  text_overlay: string | null;
+  created_at: string;
+  expires_at: string;
+}
+
+export interface StoryView {
+  story_id: string;
+  viewer_id: string;
+  viewed_at: string;
 }
 
 export interface PostMedia {
@@ -149,6 +240,8 @@ export type Database = {
           content?: string;
           visibility?: PostVisibility;
           shared_post_id?: string | null;
+          group_id?: string | null;
+          page_id?: string | null;
           reaction_count?: number;
           comment_count?: number;
           share_count?: number;
@@ -161,6 +254,8 @@ export type Database = {
           content?: string;
           visibility?: PostVisibility;
           shared_post_id?: string | null;
+          group_id?: string | null;
+          page_id?: string | null;
           reaction_count?: number;
           comment_count?: number;
           share_count?: number;
@@ -463,6 +558,232 @@ export type Database = {
           },
         ];
       };
+      groups: {
+        Row: Group;
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          description?: string | null;
+          privacy?: GroupPrivacy;
+          cover_url?: string | null;
+          owner_id: string;
+          member_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Group>;
+        Relationships: [
+          {
+            foreignKeyName: "groups_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      group_members: {
+        Row: GroupMember;
+        Insert: {
+          group_id: string;
+          user_id: string;
+          role?: GroupMemberRole;
+          status?: GroupMemberStatus;
+          created_at?: string;
+        };
+        Update: Partial<GroupMember>;
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey";
+            columns: ["group_id"];
+            isOneToOne: false;
+            referencedRelation: "groups";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "group_members_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      pages: {
+        Row: Page;
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          category?: string | null;
+          description?: string | null;
+          avatar_url?: string | null;
+          cover_url?: string | null;
+          owner_id: string;
+          follower_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Page>;
+        Relationships: [
+          {
+            foreignKeyName: "pages_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      page_followers: {
+        Row: PageFollower;
+        Insert: {
+          page_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: Partial<PageFollower>;
+        Relationships: [
+          {
+            foreignKeyName: "page_followers_page_id_fkey";
+            columns: ["page_id"];
+            isOneToOne: false;
+            referencedRelation: "pages";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "page_followers_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      conversations: {
+        Row: Conversation;
+        Insert: {
+          id?: string;
+          is_group?: boolean;
+          title?: string | null;
+          direct_key?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          last_message_at?: string;
+        };
+        Update: Partial<Conversation>;
+        Relationships: [
+          {
+            foreignKeyName: "conversations_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      conversation_participants: {
+        Row: ConversationParticipant;
+        Insert: {
+          conversation_id: string;
+          user_id: string;
+          joined_at?: string;
+          last_read_at?: string;
+        };
+        Update: Partial<ConversationParticipant>;
+        Relationships: [
+          {
+            foreignKeyName: "conversation_participants_conversation_id_fkey";
+            columns: ["conversation_id"];
+            isOneToOne: false;
+            referencedRelation: "conversations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "conversation_participants_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      messages: {
+        Row: Message;
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          sender_id: string;
+          content?: string;
+          image_path?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Message>;
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey";
+            columns: ["conversation_id"];
+            isOneToOne: false;
+            referencedRelation: "conversations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey";
+            columns: ["sender_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      stories: {
+        Row: Story;
+        Insert: {
+          id?: string;
+          author_id: string;
+          media_path: string;
+          media_type?: "image" | "video";
+          text_overlay?: string | null;
+          created_at?: string;
+          expires_at?: string;
+        };
+        Update: Partial<Story>;
+        Relationships: [
+          {
+            foreignKeyName: "stories_author_id_fkey";
+            columns: ["author_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      story_views: {
+        Row: StoryView;
+        Insert: {
+          story_id: string;
+          viewer_id: string;
+          viewed_at?: string;
+        };
+        Update: Partial<StoryView>;
+        Relationships: [
+          {
+            foreignKeyName: "story_views_story_id_fkey";
+            columns: ["story_id"];
+            isOneToOne: false;
+            referencedRelation: "stories";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "story_views_viewer_id_fkey";
+            columns: ["viewer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -476,6 +797,35 @@ export type Database = {
         Args: { post_author: string; post_vis: PostVisibility };
         Returns: boolean;
       };
+      can_view_post_id: {
+        Args: { pid: string };
+        Returns: boolean;
+      };
+      is_group_member: {
+        Args: { gid: string };
+        Returns: boolean;
+      };
+      is_group_admin: {
+        Args: { gid: string };
+        Returns: boolean;
+      };
+      is_conversation_participant: {
+        Args: { cid: string };
+        Returns: boolean;
+      };
+      get_or_create_direct_conversation: {
+        Args: { other_user: string };
+        Returns: string;
+      };
+      create_group_with_owner: {
+        Args: {
+          group_name: string;
+          group_slug: string;
+          group_description: string | null;
+          group_privacy: GroupPrivacy;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       user_role: UserRole;
@@ -483,6 +833,9 @@ export type Database = {
       reaction_type: ReactionType;
       friendship_status: FriendshipStatus;
       notification_type: NotificationType;
+      group_privacy: GroupPrivacy;
+      group_member_role: GroupMemberRole;
+      group_member_status: GroupMemberStatus;
     };
     CompositeTypes: {
       [_ in never]: never;

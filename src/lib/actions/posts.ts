@@ -27,6 +27,11 @@ const createPostSchema = z
     content: z.string().max(10000),
     visibility: z.enum(["public", "friends", "only_me"]),
     media: z.array(mediaItemSchema).max(10),
+    groupId: z.string().uuid().nullish(),
+    pageId: z.string().uuid().nullish(),
+  })
+  .refine((input) => !(input.groupId && input.pageId), {
+    message: "A post cannot belong to both a group and a page.",
   })
   .refine(
     (input) => input.content.trim().length > 0 || input.media.length > 0,
@@ -73,7 +78,14 @@ export async function createPost(
     .insert({
       author_id: userId,
       content: parsed.data.content.trim(),
-      visibility: parsed.data.visibility,
+      // Group/page posts don't carry personal visibility; the group's
+      // privacy (or the page being public) governs who sees them.
+      visibility:
+        parsed.data.groupId || parsed.data.pageId
+          ? "public"
+          : parsed.data.visibility,
+      group_id: parsed.data.groupId ?? null,
+      page_id: parsed.data.pageId ?? null,
     })
     .select("id")
     .single();

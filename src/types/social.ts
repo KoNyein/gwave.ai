@@ -1,10 +1,13 @@
 import type {
   Comment,
+  Conversation,
+  Message,
   Notification,
   Post,
   PostMedia,
   Profile,
   ReactionType,
+  Story,
 } from "@/types/database";
 
 /** Minimal author info embedded in posts, comments and notifications. */
@@ -23,6 +26,10 @@ export interface FeedPost extends Post {
   shared_post:
     | (Post & { author: AuthorSummary; media: PostMedia[] })
     | null;
+  /** Group context when the post lives in a group. */
+  group: { id: string; name: string; slug: string } | null;
+  /** Page context when the post was published as a page. */
+  page: { id: string; name: string; slug: string; avatar_url: string | null } | null;
 }
 
 export interface CommentWithAuthor extends Comment {
@@ -48,6 +55,31 @@ export type FriendState =
   | { kind: "request_received"; friendshipId: string }
   | { kind: "friends"; friendshipId: string }
   | { kind: "blocked"; friendshipId: string };
+
+/** A conversation as listed in the messenger sidebar. */
+export interface ConversationSummary extends Conversation {
+  participants: {
+    user_id: string;
+    last_read_at: string;
+    profile: AuthorSummary;
+  }[];
+  last_message: Pick<
+    Message,
+    "id" | "sender_id" | "content" | "image_path" | "created_at"
+  > | null;
+  unread: boolean;
+}
+
+export interface MessageWithSender extends Message {
+  sender: AuthorSummary;
+}
+
+/** All active stories of one author, grouped for the story bar/viewer. */
+export interface StoryGroup {
+  author: AuthorSummary;
+  stories: (Story & { viewed: boolean })[];
+  allViewed: boolean;
+}
 
 /** Serialized keyset cursor: "<created_at ISO>|<post id>". */
 export function encodeCursor(createdAt: string, id: string): string {
