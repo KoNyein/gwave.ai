@@ -1,0 +1,62 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { z } from "zod";
+
+import { createClient } from "@/lib/supabase/server";
+
+const profileSchema = z.object({
+  username: z
+    .string()
+    .min(3, "Username must be at least 3 characters.")
+    .max(30)
+    .regex(/^[a-zA-Z0-9_]+$/, "Use letters, numbers and underscores only."),
+  full_name: z.string().max(80).optional().or(z.literal("")),
+  bio: z.string().max(280).optional().or(z.literal("")),
+  avatar_url: z.string().url().optional().or(z.literal("")),
+});
+
+export type OnboardingState = { error: string } | null;
+
+export async function saveProfile(
+  _prevState: OnboardingState,
+  formData: FormData,
+): Promise<OnboardingState> {
+  const parsed = profileSchema.safeParse({
+    username: formData.get("username"),
+    full_name: formData.get("full_name"),
+    bio: formData.get("bio"),
+    avatar_url: formData.get("avatar_url"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Invalid input." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { error } = await supabase.from("profiles").upsert({
+    id: user.id,
+    username: parsed.data.username,
+    full_name: parsed.data.full_name || null,
+    bio: parsed.data.bio || null,
+    avatar_url: parsed.data.avatar_url || null,
+    updated_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    if (error.code === "23505") {
+      return { error: "That username is already taken." };
+    }
+    return { error: error.message };
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/feed");
+}

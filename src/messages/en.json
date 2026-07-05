@@ -1,0 +1,52 @@
+{
+  "app": {
+    "name": "gwave.ai",
+    "tagline": "The social super-app for growers"
+  },
+  "nav": {
+    "search": "Search gwave.ai",
+    "home": "Home",
+    "friends": "Friends",
+    "groups": "Groups",
+    "marketplace": "Marketplace",
+    "tools": "Tools",
+    "farm": "Farm",
+    "pos": "POS",
+    "notifications": "Notifications",
+    "messages": "Messages",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Log out"
+  },
+  "auth": {
+    "login": "Log in",
+    "register": "Sign up",
+    "email": "Email",
+    "password": "Password",
+    "loginTitle": "Log in to gwave.ai",
+    "registerTitle": "Create your account",
+    "continueWithGoogle": "Continue with Google",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "loggingIn": "Logging in...",
+    "registering": "Creating account..."
+  },
+  "onboarding": {
+    "title": "Set up your profile",
+    "subtitle": "Tell the community a little about yourself.",
+    "username": "Username",
+    "fullName": "Full name",
+    "bio": "Bio",
+    "avatarUrl": "Avatar URL",
+    "save": "Save and continue",
+    "saving": "Saving..."
+  },
+  "feed": {
+    "empty": "Your feed is empty. Follow growers and groups to see posts here.",
+    "createPost": "What's growing?"
+  },
+  "rightbar": {
+    "contacts": "Contacts",
+    "suggestions": "Suggested for you"
+  }
+}
