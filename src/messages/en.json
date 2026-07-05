@@ -45,6 +45,95 @@
     "empty": "Your feed is empty. Follow growers and groups to see posts here.",
     "createPost": "What's growing?"
   },
+  "composer": {
+    "title": "Create post",
+    "placeholder": "What's growing?",
+    "public": "Public",
+    "friends": "Friends",
+    "onlyMe": "Only me",
+    "addToPost": "Add to your post",
+    "addPhotos": "Add photos or a video",
+    "removeMedia": "Remove",
+    "imageLimit": "You can attach up to 10 images.",
+    "videoLimit": "A post can have a single video with no other media.",
+    "uploadFailed": "Upload failed. Please try again.",
+    "post": "Post",
+    "posting": "Posting..."
+  },
+  "post": {
+    "comment": "Comment",
+    "share": "Share",
+    "delete": "Delete post",
+    "postMenu": "Post options",
+    "sharedAPost": "shared a post",
+    "originalUnavailable": "The original post is no longer available.",
+    "commentCount": "{count, plural, one {# comment} other {# comments}}",
+    "shareCount": "{count, plural, one {# share} other {# shares}}"
+  },
+  "comments": {
+    "placeholder": "Write a comment...",
+    "like": "Like",
+    "reply": "Reply",
+    "delete": "Delete comment",
+    "cancel": "Cancel",
+    "replyingTo": "Replying to {name}"
+  },
+  "share": {
+    "title": "Share post",
+    "placeholder": "Say something about this...",
+    "mediaPost": "Media post",
+    "shareNow": "Share now",
+    "sharing": "Sharing...",
+    "sharedToast": "Post shared."
+  },
+  "friends": {
+    "title": "Friends",
+    "addFriend": "Add friend",
+    "cancelRequest": "Cancel request",
+    "accept": "Confirm",
+    "decline": "Decline",
+    "friends": "Friends",
+    "unfriend": "Unfriend",
+    "follow": "Follow",
+    "following": "Following",
+    "requestsReceived": "Friend requests ({count})",
+    "requestsSent": "Sent requests",
+    "allFriends": "All friends ({count})",
+    "noFriendsYet": "No friends yet. Send a request to get started!",
+    "suggestions": "People you may know"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "seeAll": "See all",
+    "empty": "No notifications yet.",
+    "markAllRead": "Mark all as read",
+    "someone": "Someone",
+    "friendRequest": "{name} sent you a friend request.",
+    "friendAccepted": "{name} accepted your friend request.",
+    "postReaction": "{name} reacted to your post.",
+    "postComment": "{name} commented on your post.",
+    "commentReply": "{name} replied to your comment.",
+    "postShare": "{name} shared your post.",
+    "newFollower": "{name} started following you."
+  },
+  "profile": {
+    "tabPosts": "Posts",
+    "tabAbout": "About",
+    "tabFriends": "Friends",
+    "friendCount": "{count, plural, one {# friend} other {# friends}}",
+    "aboutBio": "Bio",
+    "aboutEmpty": "Nothing here yet.",
+    "aboutJoined": "Joined",
+    "noFriends": "No friends to show."
+  },
+  "search": {
+    "title": "Search",
+    "hint": "Type at least 2 characters in the search bar to find people and posts.",
+    "resultsFor": "Results for \"{query}\"",
+    "people": "People",
+    "posts": "Posts",
+    "noResults": "No results found."
+  },
   "rightbar": {
     "contacts": "Contacts",
     "suggestions": "Suggested for you"

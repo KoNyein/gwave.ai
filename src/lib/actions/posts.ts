@@ -1,0 +1,253 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+import { createClient } from "@/lib/supabase/server";
+import type { ReactionType } from "@/types/database";
+
+const REACTION_TYPES = [
+  "like",
+  "love",
+  "haha",
+  "wow",
+  "sad",
+  "angry",
+] as const;
+
+const mediaItemSchema = z.object({
+  storage_path: z.string().min(1).max(500),
+  media_type: z.enum(["image", "video"]),
+  width: z.number().int().positive().nullable(),
+  height: z.number().int().positive().nullable(),
+});
+
+const createPostSchema = z
+  .object({
+    content: z.string().max(10000),
+    visibility: z.enum(["public", "friends", "only_me"]),
+    media: z.array(mediaItemSchema).max(10),
+  })
+  .refine(
+    (input) => input.content.trim().length > 0 || input.media.length > 0,
+    { message: "A post needs text or media." },
+  )
+  .refine(
+    (input) =>
+      input.media.filter((m) => m.media_type === "video").length === 0 ||
+      input.media.length === 1,
+    { message: "A post can have up to 10 images or a single video." },
+  );
+
+export type CreatePostInput = z.infer<typeof createPostSchema>;
+
+export type ActionResult<T = undefined> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };
+
+async function getUserId(): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
+
+export async function createPost(
+  input: CreatePostInput,
+): Promise<ActionResult<{ postId: string }>> {
+  const parsed = createPostSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.errors[0]?.message ?? "Invalid post.",
+    };
+  }
+
+  const supabase = await createClient();
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not authenticated." };
+
+  const { data: post, error } = await supabase
+    .from("posts")
+    .insert({
+      author_id: userId,
+      content: parsed.data.content.trim(),
+      visibility: parsed.data.visibility,
+    })
+    .select("id")
+    .single();
+  if (error || !post) {
+    return { ok: false, error: error?.message ?? "Failed to create post." };
+  }
+
+  if (parsed.data.media.length > 0) {
+    const { error: mediaError } = await supabase.from("post_media").insert(
+      parsed.data.media.map((m, index) => ({
+        post_id: post.id,
+        media_type: m.media_type,
+        storage_path: m.storage_path,
+        width: m.width,
+        height: m.height,
+        position: index,
+      })),
+    );
+    if (mediaError) {
+      await supabase.from("posts").delete().eq("id", post.id);
+      return { ok: false, error: mediaError.message };
+    }
+  }
+
+  revalidatePath("/feed");
+  return { ok: true, data: { postId: post.id } };
+}
+
+export async function deletePost(postId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("posts").delete().eq("id", postId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/feed");
+  return { ok: true, data: undefined };
+}
+
+const sharePostSchema = z.object({
+  postId: z.string().uuid(),
+  content: z.string().max(10000),
+  visibility: z.enum(["public", "friends", "only_me"]),
+});
+
+export async function sharePost(
+  input: z.infer<typeof sharePostSchema>,
+): Promise<ActionResult<{ postId: string }>> {
+  const parsed = sharePostSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid share." };
+
+  const supabase = await createClient();
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not authenticated." };
+
+  // Sharing a share re-shares the original post.
+  const { data: target } = await supabase
+    .from("posts")
+    .select("id, shared_post_id")
+    .eq("id", parsed.data.postId)
+    .maybeSingle();
+  if (!target) return { ok: false, error: "Post not found." };
+
+  const { data: post, error } = await supabase
+    .from("posts")
+    .insert({
+      author_id: userId,
+      content: parsed.data.content.trim(),
+      visibility: parsed.data.visibility,
+      shared_post_id: target.shared_post_id ?? target.id,
+    })
+    .select("id")
+    .single();
+  if (error || !post) {
+    return { ok: false, error: error?.message ?? "Failed to share post." };
+  }
+
+  revalidatePath("/feed");
+  return { ok: true, data: { postId: post.id } };
+}
+
+/**
+ * Sets, changes or clears the viewer's reaction on a post or comment.
+ * Passing null removes the reaction.
+ */
+export async function setReaction(
+  target: { postId: string } | { commentId: string },
+  type: ReactionType | null,
+): Promise<ActionResult> {
+  if (type !== null && !REACTION_TYPES.includes(type)) {
+    return { ok: false, error: "Invalid reaction." };
+  }
+
+  const supabase = await createClient();
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not authenticated." };
+
+  const column = "postId" in target ? "post_id" : "comment_id";
+  const targetId = "postId" in target ? target.postId : target.commentId;
+  if (!z.string().uuid().safeParse(targetId).success) {
+    return { ok: false, error: "Invalid target." };
+  }
+
+  if (type === null) {
+    const { error } = await supabase
+      .from("reactions")
+      .delete()
+      .eq("user_id", userId)
+      .eq(column, targetId);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, data: undefined };
+  }
+
+  const { data: existing } = await supabase
+    .from("reactions")
+    .select("id, type")
+    .eq("user_id", userId)
+    .eq(column, targetId)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.type === type) return { ok: true, data: undefined };
+    const { error } = await supabase
+      .from("reactions")
+      .update({ type })
+      .eq("id", existing.id);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, data: undefined };
+  }
+
+  const { error } = await supabase.from("reactions").insert({
+    user_id: userId,
+    [column]: targetId,
+    type,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: undefined };
+}
+
+const addCommentSchema = z.object({
+  postId: z.string().uuid(),
+  content: z.string().min(1).max(4000),
+  parentId: z.string().uuid().nullable(),
+});
+
+export async function addComment(
+  input: z.infer<typeof addCommentSchema>,
+): Promise<ActionResult<{ commentId: string }>> {
+  const parsed = addCommentSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid comment." };
+
+  const supabase = await createClient();
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not authenticated." };
+
+  const { data: comment, error } = await supabase
+    .from("comments")
+    .insert({
+      post_id: parsed.data.postId,
+      author_id: userId,
+      parent_id: parsed.data.parentId,
+      content: parsed.data.content.trim(),
+    })
+    .select("id")
+    .single();
+  if (error || !comment) {
+    return { ok: false, error: error?.message ?? "Failed to comment." };
+  }
+  return { ok: true, data: { commentId: comment.id } };
+}
+
+export async function deleteComment(commentId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("comments")
+    .delete()
+    .eq("id", commentId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: undefined };
+}
