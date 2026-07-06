@@ -36,7 +36,16 @@ export type NotificationType =
   | "post_comment"
   | "comment_reply"
   | "post_share"
-  | "new_follower";
+  | "new_follower"
+  | "device_alert";
+
+export type DeviceType = "sensor" | "switch" | "camera" | "controller";
+
+export type DeviceProtocol = "mqtt" | "http";
+
+export type AlertSeverity = "info" | "warning" | "critical";
+
+export type CommandStatus = "pending" | "sent" | "acked" | "failed";
 
 export type GroupPrivacy = "public" | "private";
 
@@ -229,6 +238,91 @@ export interface Invoice {
   currency: string;
   description: string | null;
   issued_at: string;
+}
+
+export interface Device {
+  id: string;
+  owner_id: string;
+  name: string;
+  type: DeviceType;
+  protocol: DeviceProtocol;
+  zone: string;
+  topic: string;
+  secret: string;
+  config: Record<string, unknown>;
+  state: Record<string, unknown>;
+  online: boolean;
+  last_seen: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SensorReading {
+  id: number;
+  device_id: string;
+  metric: string;
+  value: number;
+  ts: string;
+}
+
+export interface AutomationRule {
+  id: string;
+  owner_id: string;
+  name: string;
+  trigger_device_id: string;
+  metric: string;
+  comparator: "gt" | "gte" | "lt" | "lte";
+  threshold: number;
+  action_device_id: string | null;
+  action: Record<string, unknown>;
+  time_start: string | null;
+  time_end: string | null;
+  severity: AlertSeverity;
+  cooldown_minutes: number;
+  enabled: boolean;
+  last_triggered_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Alert {
+  id: string;
+  owner_id: string;
+  device_id: string | null;
+  rule_id: string | null;
+  severity: AlertSeverity;
+  message: string;
+  acknowledged: boolean;
+  created_at: string;
+}
+
+export interface Scene {
+  id: string;
+  owner_id: string;
+  name: string;
+  actions: { device_id: string; command: Record<string, unknown> }[];
+  created_at: string;
+}
+
+export interface SceneSchedule {
+  id: string;
+  owner_id: string;
+  scene_id: string;
+  run_at: string;
+  days_of_week: number[];
+  enabled: boolean;
+  last_run_at: string | null;
+  created_at: string;
+}
+
+export interface DeviceCommand {
+  id: string;
+  device_id: string;
+  issued_by: string | null;
+  command: Record<string, unknown>;
+  status: CommandStatus;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CurrencyRate {
@@ -900,6 +994,217 @@ export type Database = {
           },
         ];
       };
+      devices: {
+        Row: Device;
+        Insert: {
+          id?: string;
+          owner_id: string;
+          name: string;
+          type: DeviceType;
+          protocol?: DeviceProtocol;
+          zone?: string;
+          topic: string;
+          secret: string;
+          config?: Record<string, unknown>;
+          state?: Record<string, unknown>;
+          online?: boolean;
+          last_seen?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Device>;
+        Relationships: [
+          {
+            foreignKeyName: "devices_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      sensor_readings: {
+        Row: SensorReading;
+        Insert: {
+          id?: number;
+          device_id: string;
+          metric: string;
+          value: number;
+          ts?: string;
+        };
+        Update: Partial<SensorReading>;
+        Relationships: [
+          {
+            foreignKeyName: "sensor_readings_device_id_fkey";
+            columns: ["device_id"];
+            isOneToOne: false;
+            referencedRelation: "devices";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      automation_rules: {
+        Row: AutomationRule;
+        Insert: {
+          id?: string;
+          owner_id: string;
+          name: string;
+          trigger_device_id: string;
+          metric: string;
+          comparator: "gt" | "gte" | "lt" | "lte";
+          threshold: number;
+          action_device_id?: string | null;
+          action?: Record<string, unknown>;
+          time_start?: string | null;
+          time_end?: string | null;
+          severity?: AlertSeverity;
+          cooldown_minutes?: number;
+          enabled?: boolean;
+          last_triggered_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<AutomationRule>;
+        Relationships: [
+          {
+            foreignKeyName: "automation_rules_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "automation_rules_trigger_device_id_fkey";
+            columns: ["trigger_device_id"];
+            isOneToOne: false;
+            referencedRelation: "devices";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "automation_rules_action_device_id_fkey";
+            columns: ["action_device_id"];
+            isOneToOne: false;
+            referencedRelation: "devices";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      alerts: {
+        Row: Alert;
+        Insert: {
+          id?: string;
+          owner_id: string;
+          device_id?: string | null;
+          rule_id?: string | null;
+          severity?: AlertSeverity;
+          message: string;
+          acknowledged?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Alert>;
+        Relationships: [
+          {
+            foreignKeyName: "alerts_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "alerts_device_id_fkey";
+            columns: ["device_id"];
+            isOneToOne: false;
+            referencedRelation: "devices";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "alerts_rule_id_fkey";
+            columns: ["rule_id"];
+            isOneToOne: false;
+            referencedRelation: "automation_rules";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      scenes: {
+        Row: Scene;
+        Insert: {
+          id?: string;
+          owner_id: string;
+          name: string;
+          actions?: { device_id: string; command: Record<string, unknown> }[];
+          created_at?: string;
+        };
+        Update: Partial<Scene>;
+        Relationships: [
+          {
+            foreignKeyName: "scenes_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      scene_schedules: {
+        Row: SceneSchedule;
+        Insert: {
+          id?: string;
+          owner_id: string;
+          scene_id: string;
+          run_at: string;
+          days_of_week?: number[];
+          enabled?: boolean;
+          last_run_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<SceneSchedule>;
+        Relationships: [
+          {
+            foreignKeyName: "scene_schedules_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "scene_schedules_scene_id_fkey";
+            columns: ["scene_id"];
+            isOneToOne: false;
+            referencedRelation: "scenes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      device_commands: {
+        Row: DeviceCommand;
+        Insert: {
+          id?: string;
+          device_id: string;
+          issued_by?: string | null;
+          command: Record<string, unknown>;
+          status?: CommandStatus;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<DeviceCommand>;
+        Relationships: [
+          {
+            foreignKeyName: "device_commands_device_id_fkey";
+            columns: ["device_id"];
+            isOneToOne: false;
+            referencedRelation: "devices";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "device_commands_issued_by_fkey";
+            columns: ["issued_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       currency_rates: {
         Row: CurrencyRate;
         Insert: {
@@ -1111,6 +1416,15 @@ export type Database = {
         Args: { uid: string };
         Returns: boolean;
       };
+      latest_sensor_readings: {
+        Args: Record<string, never>;
+        Returns: {
+          device_id: string;
+          metric: string;
+          value: number;
+          ts: string;
+        }[];
+      };
       create_group_with_owner: {
         Args: {
           group_name: string;
@@ -1134,6 +1448,10 @@ export type Database = {
       subscription_status: SubscriptionStatus;
       payment_provider: PaymentProvider;
       payment_status: PaymentStatus;
+      device_type: DeviceType;
+      device_protocol: DeviceProtocol;
+      alert_severity: AlertSeverity;
+      command_status: CommandStatus;
     };
     CompositeTypes: {
       [_ in never]: never;
