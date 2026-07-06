@@ -23,6 +23,8 @@ export type NotificationType =
 
 export type GroupPrivacy = "public" | "private";
 
+export type StrainType = "indica" | "sativa" | "hybrid";
+
 export type GroupMemberRole = "member" | "moderator" | "admin";
 
 export type GroupMemberStatus = "pending" | "active";
@@ -135,6 +137,42 @@ export interface StoryView {
   story_id: string;
   viewer_id: string;
   viewed_at: string;
+}
+
+export interface Strain {
+  id: string;
+  name: string;
+  slug: string;
+  type: StrainType;
+  thc: number | null;
+  cbd: number | null;
+  effects: string[];
+  flavors: string[];
+  terpenes: string[];
+  grow_difficulty: "easy" | "moderate" | "hard" | null;
+  flowering_weeks: number | null;
+  yield_indoor: string | null;
+  yield_outdoor: string | null;
+  description: string | null;
+  image_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Mineral {
+  id: string;
+  name: string;
+  slug: string;
+  symbol: string | null;
+  category: string;
+  hardness_mohs: number | null;
+  density: number | null;
+  properties: Record<string, string>;
+  uses: string[];
+  description: string | null;
+  image_url: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface PostMedia {
@@ -784,6 +822,50 @@ export type Database = {
           },
         ];
       };
+      strains: {
+        Row: Strain;
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          type: StrainType;
+          thc?: number | null;
+          cbd?: number | null;
+          effects?: string[];
+          flavors?: string[];
+          terpenes?: string[];
+          grow_difficulty?: "easy" | "moderate" | "hard" | null;
+          flowering_weeks?: number | null;
+          yield_indoor?: string | null;
+          yield_outdoor?: string | null;
+          description?: string | null;
+          image_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Strain>;
+        Relationships: [];
+      };
+      minerals: {
+        Row: Mineral;
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          symbol?: string | null;
+          category: string;
+          hardness_mohs?: number | null;
+          density?: number | null;
+          properties?: Record<string, string>;
+          uses?: string[];
+          description?: string | null;
+          image_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Mineral>;
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -817,6 +899,10 @@ export type Database = {
         Args: { other_user: string };
         Returns: string;
       };
+      is_admin: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
       create_group_with_owner: {
         Args: {
           group_name: string;
@@ -836,6 +922,7 @@ export type Database = {
       group_privacy: GroupPrivacy;
       group_member_role: GroupMemberRole;
       group_member_status: GroupMemberStatus;
+      strain_type: StrainType;
     };
     CompositeTypes: {
       [_ in never]: never;

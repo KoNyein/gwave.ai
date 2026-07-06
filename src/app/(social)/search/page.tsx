@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Gem, Leaf } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { UserAvatar } from "@/components/social/user-avatar";
@@ -10,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
+import { quickSearchKnowledge } from "@/lib/db/knowledge";
 import { displayName, timeAgo } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import type { AuthorSummary } from "@/types/social";
@@ -34,8 +36,13 @@ export default async function SearchPage({
 
   let users: AuthorSummary[] = [];
   let posts: PostResult[] = [];
+  let knowledge: Awaited<ReturnType<typeof quickSearchKnowledge>> = {
+    strains: [],
+    minerals: [],
+  };
 
   if (query.length >= 2) {
+    knowledge = await quickSearchKnowledge(query, 6);
     const supabase = await createClient();
     // Escape LIKE wildcards so user input is matched literally.
     const escaped = query.replace(/[%_\\]/g, "\\$&");
@@ -76,6 +83,52 @@ export default async function SearchPage({
         </Card>
       ) : (
         <>
+          {knowledge.strains.length > 0 || knowledge.minerals.length > 0 ? (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">{t("knowledge")}</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-2 sm:grid-cols-2">
+                {knowledge.strains.map((strain) => (
+                  <Link
+                    key={strain.slug}
+                    href={`/strains/${strain.slug}`}
+                    className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted"
+                  >
+                    <Leaf className="h-5 w-5 shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {strain.name}
+                      </p>
+                      <p className="text-xs capitalize text-muted-foreground">
+                        {strain.type}
+                        {strain.thc ? ` · THC ${strain.thc}%` : ""}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+                {knowledge.minerals.map((mineral) => (
+                  <Link
+                    key={mineral.slug}
+                    href={`/minerals/${mineral.slug}`}
+                    className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted"
+                  >
+                    <Gem className="h-5 w-5 shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {mineral.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {mineral.category}
+                        {mineral.symbol ? ` · ${mineral.symbol}` : ""}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </CardContent>
+            </Card>
+          ) : null}
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{t("people")}</CardTitle>
