@@ -12,9 +12,15 @@ import type { ActionResult } from "@/lib/actions/posts";
 const uuid = z.string().uuid();
 const planId = z.enum(["pro", "business"]);
 
-/** Fixed USD→THB display rate for PromptPay amounts (admin-editable later). */
+/** USD→THB rate from the admin-editable currency table (fallback 36). */
 export async function getThbRate(): Promise<number> {
-  return 36;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("currency_rates")
+    .select("rate_per_usd")
+    .eq("code", "THB")
+    .maybeSingle();
+  return data ? Number(data.rate_per_usd) : 36;
 }
 
 async function requireUserId(): Promise<string | null> {

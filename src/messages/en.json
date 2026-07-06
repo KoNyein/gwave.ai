@@ -225,6 +225,123 @@
     "seeAllResults": "See all results for \"{query}\"",
     "noResults": "No results found."
   },
+  "tools": {
+    "title": "Grower tools",
+    "subtitle": "Calculators and converters for your grow and your shop.",
+    "searchPlaceholder": "Search tools...",
+    "noResults": "No tools match this search.",
+    "memberOnly": "Members",
+    "backToTools": "All tools",
+    "shareAsPost": "Share as post",
+    "shared": "Shared to your feed!",
+    "viewFeed": "View feed",
+    "items": {
+      "ec": {
+        "name": "EC ↔ PPM converter",
+        "description": "Convert between EC (mS/cm) and PPM on the 500 and 700 scales."
+      },
+      "vpd": {
+        "name": "VPD calculator",
+        "description": "Air temp, leaf offset and humidity → vapor pressure deficit with per-stage target ranges."
+      },
+      "nutrient": {
+        "name": "Nutrient mixing calculator",
+        "description": "Reservoir volume, target EC and N-P-K ratio → grams for parts A and B."
+      },
+      "yield": {
+        "name": "Yield estimator",
+        "description": "Estimate harvest weight from light wattage, plant count and growing method."
+      },
+      "units": {
+        "name": "Unit converters",
+        "description": "Weight, area and temperature conversions."
+      },
+      "currency": {
+        "name": "Currency converter",
+        "description": "THB / USD / MMK with a manual rate table (admin editable)."
+      },
+      "profit": {
+        "name": "Profit & break-even",
+        "description": "Margin, markup and monthly break-even for shop products."
+      }
+    },
+    "ec": {
+      "ec": "EC (mS/cm)",
+      "ppm500": "PPM (500 scale)",
+      "ppm700": "PPM (700 scale)",
+      "invalid": "Enter an EC between 0 and 20.",
+      "note": "500 scale (Hanna): ppm = EC × 500. 700 scale (Truncheon): ppm = EC × 700. Always check which scale your meter uses."
+    },
+    "vpd": {
+      "airTemp": "Air temp (°C)",
+      "leafOffset": "Leaf offset (−°C)",
+      "humidity": "Relative humidity (%)",
+      "invalid": "Check your inputs — temp 5–45°C, offset −5–10°C, RH 5–100%.",
+      "stages": {
+        "clone": "Clone",
+        "veg": "Veg",
+        "flower": "Flower"
+      }
+    },
+    "nutrient": {
+      "reservoir": "Reservoir volume (L)",
+      "targetEc": "Target EC (mS/cm)",
+      "npkRatio": "N-P-K ratio",
+      "partA": "Part A (grow/cal-nit)",
+      "partB": "Part B (bloom/macro)",
+      "invalid": "Check your inputs — volume, EC (0.1–5) and at least one NPK value.",
+      "disclaimer": "Estimate based on ≈0.65 g/L per EC unit for two-part salts. Always follow your fertilizer manufacturer's feeding chart and verify with a calibrated EC meter."
+    },
+    "yield": {
+      "watts": "Light power (W)",
+      "plants": "Plant count",
+      "method": "Growing method",
+      "methods": {
+        "soil": "Soil",
+        "hydro": "Hydroponics",
+        "scrog": "Hydro + SCROG"
+      },
+      "estimate": "Estimated harvest (dry)",
+      "perPlant": "≈ {low}–{high} g per plant",
+      "invalid": "Check your inputs — 50–10,000 W and 1–1,000 plants.",
+      "disclaimer": "A rough planning estimate from typical grams-per-watt ranges, capped at 500 g/plant. Genetics, environment and skill dominate real results."
+    },
+    "units": {
+      "categories": {
+        "weight": "Weight",
+        "area": "Area",
+        "temperature": "Temperature"
+      },
+      "value": "Value",
+      "from": "From",
+      "to": "To",
+      "enterValue": "Enter a value to convert."
+    },
+    "currency": {
+      "amount": "Amount",
+      "from": "From currency",
+      "to": "To currency",
+      "converted": "Converted",
+      "swap": "Swap currencies",
+      "rateTable": "Rate table (per 1 USD)",
+      "perUsd": "per USD",
+      "updated": "updated",
+      "invalidRate": "Enter a positive number.",
+      "save": "Save"
+    },
+    "profit": {
+      "unitCost": "Cost per unit ($)",
+      "sellPrice": "Sell price ($)",
+      "fixedCosts": "Fixed costs / month ($)",
+      "profitPerUnit": "Profit per unit",
+      "margin": "Margin",
+      "markup": "Markup",
+      "breakEven": "Break-even",
+      "breakEvenUnits": "{count} units/month",
+      "noProfit": "No profit at this price",
+      "invalid": "Check your inputs — price must be above zero."
+    }
+  },
   "membership": {
     "title": "Membership",
     "subtitle": "Choose the plan that fits your grow.",
