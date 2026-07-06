@@ -1,82 +1,101 @@
-# Phase 0 — Foundation
+# Phase 1 — Social Core
 
-This phase scaffolds the gwave.ai super-app and delivers authentication, the
-profiles data model, the Facebook-style app shell, and the deployment/CI
-pipeline.
+Builds the Facebook-style social core on the Phase 0 foundation: posts with
+media, a cursor-paginated news feed, 6-type reactions, nested comments,
+shares, the friend/follow system, user profiles and realtime notifications.
+(The Phase 0 report is preserved in git history.)
 
 ## What was built
 
-### Project scaffold
+### Data layer
 
-- Next.js 14 App Router with TypeScript **strict mode** (`noUncheckedIndexedAccess`
-  enabled) and the `@/*` path alias.
-- Tailwind CSS with brand design tokens exposed as CSS variables and Tailwind
-  colors:
-  - primary `#3B6D11`, accent `#639922`, tint `#EAF3DE`, text `#173404`.
-- shadcn/ui primitives (`button`, `input`, `textarea`, `label`, `avatar`, `card`,
-  `dropdown-menu`) in `src/components/ui`.
-- Zustand, `next-intl`, ESLint (next config) and Prettier (+ tailwind plugin)
-  configured. pnpm as the package manager.
-- Route groups created: `(auth)`, `(social)`; plus `onboarding` and the OAuth
-  `auth/callback` route handler. `(tools)`, `(farm)`, `(pos)`, `(admin)`, `(dev)`
-  are reserved for later phases.
+- **Migration** `supabase/migrations/20260705120000_social_core.sql`:
+  - `profiles.cover_url` column (profile cover photo).
+  - Enums: `post_visibility` (public/friends/only_me), `reaction_type`
+    (like/love/haha/wow/sad/angry), `friendship_status`, `notification_type`.
+  - Tables: `posts` (with denormalized `reaction_count`/`comment_count`/
+    `share_count`), `post_media`, `comments` (one-level nesting via
+    `parent_id`, enforced by trigger), `reactions` (unique per user per
+    target via partial unique indexes), `shares` (populated by trigger when a
+    post with `shared_post_id` is created), `friendships` (one row per pair
+    regardless of direction via `least/greatest` unique index), `follows`,
+    `notifications`.
+  - **RLS everywhere**: posts respect visibility through a
+    `can_view_post()` helper (`friends` visibility checks an accepted
+    friendship via `are_friends()`); only authors edit/delete their posts;
+    comments/reactions readable exactly where the parent post is readable;
+    friendships visible only to the two parties (requester inserts pending,
+    addressee accepts, either deletes); notifications recipient-only, with
+    inserts happening exclusively through SECURITY DEFINER triggers.
+  - Counter triggers keep the denormalized counts correct on
+    insert/delete of reactions, comments and shares.
+  - Notification triggers: post reaction, post comment, comment reply,
+    friend request, friend accepted, post shared, new follower — all skip
+    self-notifications.
+  - `notifications` added to the `supabase_realtime` publication.
+  - Public `media` storage bucket with per-user folder policies
+    (`<user_id>/...` — users write/delete only inside their own folder).
 
-### Supabase integration
+- **Types**: `src/types/database.ts` extended for all new tables/enums;
+  `src/types/social.ts` adds composed view types (`FeedPost`,
+  `CommentWithAuthor`, `NotificationWithActor`, `FriendState`) and the
+  keyset cursor codec.
 
-- Three clients, each with a clear trust boundary:
-  - `src/lib/supabase/client.ts` — browser (anon key, RLS applies).
-  - `src/lib/supabase/server.ts` — server components / actions / routes.
-  - `src/lib/supabase/admin.ts` — **service role, bypasses RLS**, `server-only`.
-- `src/lib/env.ts` validates public env vars with Zod; the service role key is
-  read lazily via `getServiceRoleKey()` and throws if used where absent.
-- Session refresh + route protection in `src/middleware.ts` /
-  `src/lib/supabase/middleware.ts`.
+- **Query layer** (`src/lib/db/`): `posts.ts` (`getFeed`, `getProfilePosts`,
+  `getPost`, `getComments` — keyset pagination on `(created_at, id)`),
+  `friends.ts` (friend state machine, requests, suggestions, counts),
+  `notifications.ts`.
 
-### Auth flow
+- **Server actions** (`src/lib/actions/`): `createPost`, `sharePost`,
+  `deletePost`, `setReaction` (insert/change/clear), `addComment`,
+  `deleteComment`; friend request send/accept/remove, follow/unfollow;
+  mark notification(s) read. All inputs validated with Zod; all writes go
+  through the RLS-scoped server client.
 
-- Email/password sign-up and login, and Google OAuth, via server actions in
-  `src/app/(auth)/actions.ts`.
-- `auth/callback` exchanges the OAuth code and routes new users to onboarding.
-- Profile onboarding (username, full name, avatar URL, bio) with Zod validation
-  and a friendly duplicate-username error.
-- `requireUser()` / `requireRole()` / `hasRole()` helpers in `src/lib/auth.ts`
-  with a hierarchical role ranking.
+### Features
 
-### App shell (Facebook-style, responsive)
+1. **Post composer** — dialog with text (10k chars), visibility selector
+   (public/friends/only me), up to 10 images or 1 video. Images are
+   compressed client-side (canvas → JPEG, max 2048px) before upload to
+   Supabase Storage under the user's folder.
+2. **News feed** `/feed` — posts from friends + follows + self,
+   cursor-based infinite scroll (IntersectionObserver + `/api/posts`),
+   optimistic reactions and comments.
+3. **Post card** — Facebook layout: author header with timestamp +
+   visibility icon, content, media grid (1–4 tiles with "+N" overflow),
+   video player, reaction bar with hover picker (6 types), expandable
+   comment thread (one nested level, reply targeting, comment likes,
+   delete own), share dialog (re-shares always point at the original
+   post), shared-post embed, delete menu for authors.
+4. **Profile page** `/u/[username]` — cover (image or brand gradient),
+   avatar, bio, friend count, Add Friend/Respond/Friends + Follow buttons,
+   tabs: Posts (timeline with composer on own profile) / About / Friends.
+5. **Friend system** `/friends` — incoming requests (confirm/decline),
+   sent requests (cancel), all friends, "people you may know" suggestions.
+6. **Notifications** — navbar bell with unread badge, live updates via
+   Supabase Realtime (`postgres_changes` INSERT on `notifications`),
+   dropdown with recent items (opening marks all read), full
+   `/notifications` page. Notification click routes to the post (`/p/[id]`)
+   or the actor's profile.
+7. **Basic search** `/search?q=` — navbar search box; finds people
+   (username/full name) and posts (content, RLS-filtered), LIKE wildcards
+   escaped.
+8. **Post permalink** `/p/[id]` — single-post page used by notifications
+   and search results.
 
-- Sticky top navbar: logo, global search input, primary nav icons, messages &
-  notifications, language switcher, and a profile dropdown (profile / settings /
-  logout).
-- Left sidebar (profile + full nav) shown on `lg+`.
-- Center feed column with a post composer placeholder and empty state.
-- Right sidebar (suggestions + contacts) shown on `xl+`.
-- Mobile bottom nav for small screens.
+### API routes
 
-### i18n
+- `GET /api/posts?scope=feed|profile&author=&cursor=` — paginated feed.
+- `GET /api/comments?post=` — comments for a visible post.
+- `GET /api/notifications` — recent notifications + unread count.
 
-- `next-intl` without a locale URL prefix; locale stored in a cookie and
-  switchable from the navbar.
-- `en` (default) and `my` (Burmese) message catalogs in `src/messages`.
+## Seed data
 
-### Deployment & CI
-
-- Multi-stage `Dockerfile` emitting Next.js **standalone** output; runs as a
-  non-root user.
-- `docker-compose.yml` for local container runs.
-- `.env.example` documenting all variables.
-- GitHub Actions workflow (`.github/workflows/ci.yml`) running lint, typecheck
-  and build on push/PR.
-
-## Migrations added
-
-- `supabase/migrations/20260705000000_init_profiles.sql`
-  - `user_role` enum (`user` … `super_admin`).
-  - `profiles` table (FK to `auth.users`, unique username, role default `user`).
-  - `updated_at` trigger and a `handle_new_user()` trigger that auto-creates a
-    profile row on signup.
-  - RLS enabled with policies: authenticated users can read all profiles; a user
-    may insert/update only their own row and **cannot escalate their own role**.
-- `supabase/seed/seed.sql` — idempotent demo profiles.
+`supabase/seed/seed.sql` (idempotent, local stacks only): 5 demo users
+(`demo1@gwave.ai` … `demo5@gwave.ai`, password `password123`), profiles,
+4 accepted friendships + 1 pending request, 3 follows, 30 posts with
+distinct timestamps (exercises pagination), comments incl. one nested
+reply, 6 reactions, and 1 share.
 
 ## Quality gates
 
@@ -85,27 +104,40 @@ All pass locally:
 ```bash
 pnpm typecheck   # tsc --noEmit — OK
 pnpm lint        # next lint — no warnings or errors
-pnpm build       # next build — compiled successfully (standalone)
+pnpm build       # next build — compiled successfully
 ```
 
 ## How to test manually
 
-1. `pnpm install`, then `cp .env.example .env.local` and fill in Supabase values.
-2. Apply the migration to your Supabase project (`supabase db push` or run the
-   SQL file), and enable the Google provider in Supabase Auth if testing OAuth.
-   Add `http://localhost:3000/auth/callback` to the allowed redirect URLs.
-3. `pnpm dev`, open http://localhost:3000 → redirected to `/login`.
-4. Register with email/password → redirected to `/onboarding` → set a username →
-   land on `/feed` inside the app shell.
-5. Verify: navbar search + icons, left/right sidebars on wide screens, mobile
-   bottom nav on narrow screens, language toggle (EN/မြန်မာ), and logout from the
-   profile menu.
-6. Confirm protected routes: visiting `/feed` while logged out redirects to
-   `/login?redirectTo=/feed`.
+1. Apply the migration: `supabase db push` (hosted) or
+   `supabase db reset` (local — also runs the seed).
+2. `pnpm dev`, log in as `demo1@gwave.ai` / `password123` (local seed) or
+   register a fresh account.
+3. **Feed**: create a text post; create a post with several images
+   (watch them compress/upload); switch visibility to Friends/Only me and
+   verify other accounts see/don't see it accordingly.
+4. **Reactions**: hover the Like button for the 6-reaction picker; counts
+   update optimistically; re-click to clear.
+5. **Comments**: expand a post, comment, reply to a comment (one level),
+   like and delete your own comments.
+6. **Share**: share a post with a caption; the share appears in the feed
+   embedding the original; the original's share count increments.
+7. **Friends**: from a profile or /friends send a request; as the other
+   user accept it (bell shows a realtime notification); confirm
+   friends-only posts become visible.
+8. **Notifications**: react/comment as user B on user A's post; user A's
+   bell badge updates live without a refresh; opening the dropdown marks
+   items read.
+9. **Search & profile**: search a username from the navbar; open the
+   profile; check tabs, cover gradient, friend count.
+10. **Pagination**: with the seed's 30 posts, scroll the feed and verify
+    pages of 10 load seamlessly.
 
-## Notes / follow-ups for later phases
+## Notes / follow-ups
 
-- Reserved route groups `(tools)`, `(farm)`, `(pos)`, `(admin)`, `(dev)` are not
-  yet populated.
-- Global search is a UI input only; wiring it to the knowledge search is Phase 2.
-- Storage buckets for avatars are not yet provisioned (avatar is a URL for now).
+- Infinite scroll pages come from `/api/posts` route handlers; feed order
+  is reverse-chronological (ranking is out of scope for Phase 1).
+- Avatar/cover uploads still use URL fields from onboarding; the `media`
+  bucket is ready for a proper upload flow in a later phase.
+- Video uploads are passed through without transcoding (100 MB cap).
+- Groups/Pages/Messenger/Stories are Phase 2.
