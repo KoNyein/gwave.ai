@@ -231,6 +231,12 @@ export interface Invoice {
   issued_at: string;
 }
 
+export interface CurrencyRate {
+  code: string;
+  rate_per_usd: number;
+  updated_at: string;
+}
+
 export interface Mineral {
   id: string;
   name: string;
@@ -893,6 +899,16 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      currency_rates: {
+        Row: CurrencyRate;
+        Insert: {
+          code: string;
+          rate_per_usd: number;
+          updated_at?: string;
+        };
+        Update: Partial<CurrencyRate>;
+        Relationships: [];
       };
       membership_plans: {
         Row: MembershipPlan;
