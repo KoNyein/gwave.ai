@@ -71,3 +71,18 @@ export async function requireRole(minRole: UserRole): Promise<Profile> {
 export function hasRole(role: UserRole, minRole: UserRole): boolean {
   return ROLE_RANK[role] >= ROLE_RANK[minRole];
 }
+
+/**
+ * Ensures the current user has an active membership (member role or above),
+ * redirecting non-members to the pricing page.
+ */
+export async function requireMembership(): Promise<Profile> {
+  const profile = await getCurrentProfile();
+  if (!profile) {
+    redirect("/login");
+  }
+  if (ROLE_RANK[profile.role] < ROLE_RANK.member) {
+    redirect("/membership");
+  }
+  return profile;
+}

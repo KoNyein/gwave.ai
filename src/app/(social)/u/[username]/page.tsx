@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 
 import { FollowButton } from "@/components/social/follow-button";
 import { FriendButton } from "@/components/social/friend-button";
+import { MemberBadge } from "@/components/social/member-badge";
 import { PostFeed } from "@/components/social/post-feed";
 import { ProfileTabs } from "@/components/social/profile-tabs";
 import { UserAvatar } from "@/components/social/user-avatar";
@@ -83,7 +84,10 @@ export default async function ProfilePage({
                 </AvatarFallback>
               </Avatar>
               <div className="pb-1">
-                <h1 className="text-2xl font-bold">{displayName(profile)}</h1>
+                <h1 className="flex items-center gap-2 text-2xl font-bold">
+                  {displayName(profile)}
+                  <MemberBadge role={profile.role} />
+                </h1>
                 <p className="text-sm text-muted-foreground">
                   @{profile.username} · {t("friendCount", { count: friendCount })}
                 </p>
