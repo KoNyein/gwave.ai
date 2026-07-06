@@ -1,10 +1,10 @@
 import {
   Calculator,
+  Flag,
   Home,
   LayoutGrid,
   ShoppingCart,
   Sprout,
-  Store,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -19,7 +19,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/feed", labelKey: "home", icon: Home },
   { href: "/friends", labelKey: "friends", icon: Users },
   { href: "/groups", labelKey: "groups", icon: LayoutGrid },
-  { href: "/marketplace", labelKey: "marketplace", icon: Store },
+  { href: "/pages", labelKey: "pages", icon: Flag },
 ];
 
 export const TOOL_NAV: NavItem[] = [
