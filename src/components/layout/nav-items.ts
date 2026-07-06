@@ -6,6 +6,7 @@ import {
   Home,
   LayoutGrid,
   Leaf,
+  Lightbulb,
   ShoppingCart,
   Sprout,
   Users,
@@ -31,5 +32,6 @@ export const TOOL_NAV: NavItem[] = [
   { href: "/minerals", labelKey: "minerals", icon: Gem },
   { href: "/tools", labelKey: "tools", icon: Calculator },
   { href: "/farm", labelKey: "farm", icon: Sprout },
+  { href: "/home", labelKey: "smartHome", icon: Lightbulb },
   { href: "/pos", labelKey: "pos", icon: ShoppingCart },
 ];
