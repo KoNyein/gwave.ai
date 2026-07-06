@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Globe, Loader2, Lock, Users } from "lucide-react";
+import { BadgeCheck, Globe, Loader2, Lock, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { UserAvatar } from "@/components/social/user-avatar";
@@ -28,6 +28,7 @@ const VISIBILITY_ICONS: Record<PostVisibility, typeof Globe> = {
   public: Globe,
   friends: Users,
   only_me: Lock,
+  members: BadgeCheck,
 };
 
 export function ShareDialog({
@@ -56,6 +57,7 @@ export function ShareDialog({
     public: tComposer("public"),
     friends: tComposer("friends"),
     only_me: tComposer("onlyMe"),
+    members: tComposer("members"),
   }[visibility];
 
   async function handleShare() {

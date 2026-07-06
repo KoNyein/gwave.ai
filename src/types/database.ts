@@ -6,7 +6,24 @@ export type UserRole =
   | "admin"
   | "super_admin";
 
-export type PostVisibility = "public" | "friends" | "only_me";
+export type PostVisibility = "public" | "friends" | "only_me" | "members";
+
+export type SubscriptionStatus =
+  | "pending"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "expired";
+
+export type PaymentProvider = "stripe" | "promptpay" | "manual";
+
+export type PaymentStatus =
+  | "awaiting_review"
+  | "pending"
+  | "succeeded"
+  | "failed"
+  | "rejected"
+  | "refunded";
 
 export type ReactionType = "like" | "love" | "haha" | "wow" | "sad" | "angry";
 
@@ -157,6 +174,61 @@ export interface Strain {
   image_url: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface MembershipPlan {
+  id: string;
+  name: string;
+  description: string | null;
+  price_monthly: number;
+  currency: string;
+  features: Record<string, boolean | number | string>;
+  stripe_price_id: string | null;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  status: SubscriptionStatus;
+  provider: PaymentProvider;
+  current_period_start: string;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  stripe_subscription_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Payment {
+  id: string;
+  user_id: string;
+  subscription_id: string | null;
+  provider: PaymentProvider;
+  status: PaymentStatus;
+  amount: number;
+  currency: string;
+  slip_path: string | null;
+  stripe_payment_id: string | null;
+  note: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
+export interface Invoice {
+  id: string;
+  number: string;
+  user_id: string;
+  payment_id: string | null;
+  amount: number;
+  currency: string;
+  description: string | null;
+  issued_at: string;
 }
 
 export interface Mineral {
@@ -822,6 +894,122 @@ export type Database = {
           },
         ];
       };
+      membership_plans: {
+        Row: MembershipPlan;
+        Insert: {
+          id: string;
+          name: string;
+          description?: string | null;
+          price_monthly?: number;
+          currency?: string;
+          features?: Record<string, boolean | number | string>;
+          stripe_price_id?: string | null;
+          sort_order?: number;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<MembershipPlan>;
+        Relationships: [];
+      };
+      subscriptions: {
+        Row: Subscription;
+        Insert: {
+          id?: string;
+          user_id: string;
+          plan_id: string;
+          status?: SubscriptionStatus;
+          provider: PaymentProvider;
+          current_period_start?: string;
+          current_period_end?: string | null;
+          cancel_at_period_end?: boolean;
+          stripe_subscription_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Subscription>;
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey";
+            columns: ["plan_id"];
+            isOneToOne: false;
+            referencedRelation: "membership_plans";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      payments: {
+        Row: Payment;
+        Insert: {
+          id?: string;
+          user_id: string;
+          subscription_id?: string | null;
+          provider: PaymentProvider;
+          status?: PaymentStatus;
+          amount: number;
+          currency?: string;
+          slip_path?: string | null;
+          stripe_payment_id?: string | null;
+          note?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Payment>;
+        Relationships: [
+          {
+            foreignKeyName: "payments_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_subscription_id_fkey";
+            columns: ["subscription_id"];
+            isOneToOne: false;
+            referencedRelation: "subscriptions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      invoices: {
+        Row: Invoice;
+        Insert: {
+          id?: string;
+          number: string;
+          user_id: string;
+          payment_id?: string | null;
+          amount: number;
+          currency?: string;
+          description?: string | null;
+          issued_at?: string;
+        };
+        Update: Partial<Invoice>;
+        Relationships: [
+          {
+            foreignKeyName: "invoices_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "invoices_payment_id_fkey";
+            columns: ["payment_id"];
+            isOneToOne: false;
+            referencedRelation: "payments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       strains: {
         Row: Strain;
         Insert: {
@@ -903,6 +1091,10 @@ export type Database = {
         Args: Record<string, never>;
         Returns: boolean;
       };
+      is_member_user: {
+        Args: { uid: string };
+        Returns: boolean;
+      };
       create_group_with_owner: {
         Args: {
           group_name: string;
@@ -923,6 +1115,9 @@ export type Database = {
       group_member_role: GroupMemberRole;
       group_member_status: GroupMemberStatus;
       strain_type: StrainType;
+      subscription_status: SubscriptionStatus;
+      payment_provider: PaymentProvider;
+      payment_status: PaymentStatus;
     };
     CompositeTypes: {
       [_ in never]: never;

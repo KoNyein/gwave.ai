@@ -14,7 +14,10 @@ import type {
 export type AuthorSummary = Pick<
   Profile,
   "id" | "username" | "full_name" | "avatar_url"
->;
+> & {
+  /** Present where the member badge is rendered (posts, comments). */
+  role?: Profile["role"];
+};
 
 /** A post as rendered in the feed, with everything the card needs. */
 export interface FeedPost extends Post {

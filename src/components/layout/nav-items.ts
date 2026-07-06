@@ -1,4 +1,5 @@
 import {
+  BadgeCheck,
   Calculator,
   Flag,
   Gem,
@@ -25,6 +26,7 @@ export const PRIMARY_NAV: NavItem[] = [
 ];
 
 export const TOOL_NAV: NavItem[] = [
+  { href: "/membership", labelKey: "membership", icon: BadgeCheck },
   { href: "/strains", labelKey: "strains", icon: Leaf },
   { href: "/minerals", labelKey: "minerals", icon: Gem },
   { href: "/tools", labelKey: "tools", icon: Calculator },
