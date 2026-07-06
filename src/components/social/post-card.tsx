@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import {
+  BadgeCheck,
   Globe,
   Lock,
   MessageCircle,
@@ -15,6 +16,7 @@ import { useTranslations } from "next-intl";
 
 import { CommentSection } from "@/components/social/comment-section";
 import { MediaGrid } from "@/components/social/media-grid";
+import { MemberBadge } from "@/components/social/member-badge";
 import { ReactionButton } from "@/components/social/reaction-button";
 import { REACTIONS } from "@/components/social/reactions";
 import { ShareDialog } from "@/components/social/share-dialog";
@@ -36,6 +38,7 @@ const VISIBILITY_ICONS: Record<PostVisibility, typeof Globe> = {
   public: Globe,
   friends: Users,
   only_me: Lock,
+  members: BadgeCheck,
 };
 
 export function PostCard({
@@ -107,7 +110,8 @@ export function PostCard({
               <span className="text-sm font-semibold">
                 {displayName(post.author)}
               </span>
-            )}
+            )}{" "}
+            <MemberBadge role={post.author.role} />
             {post.shared_post ? (
               <span className="text-sm text-muted-foreground">
                 {" "}

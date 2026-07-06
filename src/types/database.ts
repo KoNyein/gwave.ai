@@ -6,7 +6,24 @@ export type UserRole =
   | "admin"
   | "super_admin";
 
-export type PostVisibility = "public" | "friends" | "only_me";
+export type PostVisibility = "public" | "friends" | "only_me" | "members";
+
+export type SubscriptionStatus =
+  | "pending"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "expired";
+
+export type PaymentProvider = "stripe" | "promptpay" | "manual";
+
+export type PaymentStatus =
+  | "awaiting_review"
+  | "pending"
+  | "succeeded"
+  | "failed"
+  | "rejected"
+  | "refunded";
 
 export type ReactionType = "like" | "love" | "haha" | "wow" | "sad" | "angry";
 
@@ -19,9 +36,20 @@ export type NotificationType =
   | "post_comment"
   | "comment_reply"
   | "post_share"
-  | "new_follower";
+  | "new_follower"
+  | "device_alert";
+
+export type DeviceType = "sensor" | "switch" | "camera" | "controller";
+
+export type DeviceProtocol = "mqtt" | "http";
+
+export type AlertSeverity = "info" | "warning" | "critical";
+
+export type CommandStatus = "pending" | "sent" | "acked" | "failed";
 
 export type GroupPrivacy = "public" | "private";
+
+export type StrainType = "indica" | "sativa" | "hybrid";
 
 export type GroupMemberRole = "member" | "moderator" | "admin";
 
@@ -135,6 +163,188 @@ export interface StoryView {
   story_id: string;
   viewer_id: string;
   viewed_at: string;
+}
+
+export interface Strain {
+  id: string;
+  name: string;
+  slug: string;
+  type: StrainType;
+  thc: number | null;
+  cbd: number | null;
+  effects: string[];
+  flavors: string[];
+  terpenes: string[];
+  grow_difficulty: "easy" | "moderate" | "hard" | null;
+  flowering_weeks: number | null;
+  yield_indoor: string | null;
+  yield_outdoor: string | null;
+  description: string | null;
+  image_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MembershipPlan {
+  id: string;
+  name: string;
+  description: string | null;
+  price_monthly: number;
+  currency: string;
+  features: Record<string, boolean | number | string>;
+  stripe_price_id: string | null;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  status: SubscriptionStatus;
+  provider: PaymentProvider;
+  current_period_start: string;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  stripe_subscription_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Payment {
+  id: string;
+  user_id: string;
+  subscription_id: string | null;
+  provider: PaymentProvider;
+  status: PaymentStatus;
+  amount: number;
+  currency: string;
+  slip_path: string | null;
+  stripe_payment_id: string | null;
+  note: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
+export interface Invoice {
+  id: string;
+  number: string;
+  user_id: string;
+  payment_id: string | null;
+  amount: number;
+  currency: string;
+  description: string | null;
+  issued_at: string;
+}
+
+export interface Device {
+  id: string;
+  owner_id: string;
+  name: string;
+  type: DeviceType;
+  protocol: DeviceProtocol;
+  zone: string;
+  topic: string;
+  secret: string;
+  config: Record<string, unknown>;
+  state: Record<string, unknown>;
+  online: boolean;
+  last_seen: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SensorReading {
+  id: number;
+  device_id: string;
+  metric: string;
+  value: number;
+  ts: string;
+}
+
+export interface AutomationRule {
+  id: string;
+  owner_id: string;
+  name: string;
+  trigger_device_id: string;
+  metric: string;
+  comparator: "gt" | "gte" | "lt" | "lte";
+  threshold: number;
+  action_device_id: string | null;
+  action: Record<string, unknown>;
+  time_start: string | null;
+  time_end: string | null;
+  severity: AlertSeverity;
+  cooldown_minutes: number;
+  enabled: boolean;
+  last_triggered_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Alert {
+  id: string;
+  owner_id: string;
+  device_id: string | null;
+  rule_id: string | null;
+  severity: AlertSeverity;
+  message: string;
+  acknowledged: boolean;
+  created_at: string;
+}
+
+export interface Scene {
+  id: string;
+  owner_id: string;
+  name: string;
+  actions: { device_id: string; command: Record<string, unknown> }[];
+  created_at: string;
+}
+
+export interface SceneSchedule {
+  id: string;
+  owner_id: string;
+  scene_id: string;
+  run_at: string;
+  days_of_week: number[];
+  enabled: boolean;
+  last_run_at: string | null;
+  created_at: string;
+}
+
+export interface DeviceCommand {
+  id: string;
+  device_id: string;
+  issued_by: string | null;
+  command: Record<string, unknown>;
+  status: CommandStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CurrencyRate {
+  code: string;
+  rate_per_usd: number;
+  updated_at: string;
+}
+
+export interface Mineral {
+  id: string;
+  name: string;
+  slug: string;
+  symbol: string | null;
+  category: string;
+  hardness_mohs: number | null;
+  density: number | null;
+  properties: Record<string, string>;
+  uses: string[];
+  description: string | null;
+  image_url: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface PostMedia {
@@ -784,6 +994,387 @@ export type Database = {
           },
         ];
       };
+      devices: {
+        Row: Device;
+        Insert: {
+          id?: string;
+          owner_id: string;
+          name: string;
+          type: DeviceType;
+          protocol?: DeviceProtocol;
+          zone?: string;
+          topic: string;
+          secret: string;
+          config?: Record<string, unknown>;
+          state?: Record<string, unknown>;
+          online?: boolean;
+          last_seen?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Device>;
+        Relationships: [
+          {
+            foreignKeyName: "devices_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      sensor_readings: {
+        Row: SensorReading;
+        Insert: {
+          id?: number;
+          device_id: string;
+          metric: string;
+          value: number;
+          ts?: string;
+        };
+        Update: Partial<SensorReading>;
+        Relationships: [
+          {
+            foreignKeyName: "sensor_readings_device_id_fkey";
+            columns: ["device_id"];
+            isOneToOne: false;
+            referencedRelation: "devices";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      automation_rules: {
+        Row: AutomationRule;
+        Insert: {
+          id?: string;
+          owner_id: string;
+          name: string;
+          trigger_device_id: string;
+          metric: string;
+          comparator: "gt" | "gte" | "lt" | "lte";
+          threshold: number;
+          action_device_id?: string | null;
+          action?: Record<string, unknown>;
+          time_start?: string | null;
+          time_end?: string | null;
+          severity?: AlertSeverity;
+          cooldown_minutes?: number;
+          enabled?: boolean;
+          last_triggered_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<AutomationRule>;
+        Relationships: [
+          {
+            foreignKeyName: "automation_rules_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "automation_rules_trigger_device_id_fkey";
+            columns: ["trigger_device_id"];
+            isOneToOne: false;
+            referencedRelation: "devices";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "automation_rules_action_device_id_fkey";
+            columns: ["action_device_id"];
+            isOneToOne: false;
+            referencedRelation: "devices";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      alerts: {
+        Row: Alert;
+        Insert: {
+          id?: string;
+          owner_id: string;
+          device_id?: string | null;
+          rule_id?: string | null;
+          severity?: AlertSeverity;
+          message: string;
+          acknowledged?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Alert>;
+        Relationships: [
+          {
+            foreignKeyName: "alerts_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "alerts_device_id_fkey";
+            columns: ["device_id"];
+            isOneToOne: false;
+            referencedRelation: "devices";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "alerts_rule_id_fkey";
+            columns: ["rule_id"];
+            isOneToOne: false;
+            referencedRelation: "automation_rules";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      scenes: {
+        Row: Scene;
+        Insert: {
+          id?: string;
+          owner_id: string;
+          name: string;
+          actions?: { device_id: string; command: Record<string, unknown> }[];
+          created_at?: string;
+        };
+        Update: Partial<Scene>;
+        Relationships: [
+          {
+            foreignKeyName: "scenes_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      scene_schedules: {
+        Row: SceneSchedule;
+        Insert: {
+          id?: string;
+          owner_id: string;
+          scene_id: string;
+          run_at: string;
+          days_of_week?: number[];
+          enabled?: boolean;
+          last_run_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<SceneSchedule>;
+        Relationships: [
+          {
+            foreignKeyName: "scene_schedules_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "scene_schedules_scene_id_fkey";
+            columns: ["scene_id"];
+            isOneToOne: false;
+            referencedRelation: "scenes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      device_commands: {
+        Row: DeviceCommand;
+        Insert: {
+          id?: string;
+          device_id: string;
+          issued_by?: string | null;
+          command: Record<string, unknown>;
+          status?: CommandStatus;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<DeviceCommand>;
+        Relationships: [
+          {
+            foreignKeyName: "device_commands_device_id_fkey";
+            columns: ["device_id"];
+            isOneToOne: false;
+            referencedRelation: "devices";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "device_commands_issued_by_fkey";
+            columns: ["issued_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      currency_rates: {
+        Row: CurrencyRate;
+        Insert: {
+          code: string;
+          rate_per_usd: number;
+          updated_at?: string;
+        };
+        Update: Partial<CurrencyRate>;
+        Relationships: [];
+      };
+      membership_plans: {
+        Row: MembershipPlan;
+        Insert: {
+          id: string;
+          name: string;
+          description?: string | null;
+          price_monthly?: number;
+          currency?: string;
+          features?: Record<string, boolean | number | string>;
+          stripe_price_id?: string | null;
+          sort_order?: number;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<MembershipPlan>;
+        Relationships: [];
+      };
+      subscriptions: {
+        Row: Subscription;
+        Insert: {
+          id?: string;
+          user_id: string;
+          plan_id: string;
+          status?: SubscriptionStatus;
+          provider: PaymentProvider;
+          current_period_start?: string;
+          current_period_end?: string | null;
+          cancel_at_period_end?: boolean;
+          stripe_subscription_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Subscription>;
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey";
+            columns: ["plan_id"];
+            isOneToOne: false;
+            referencedRelation: "membership_plans";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      payments: {
+        Row: Payment;
+        Insert: {
+          id?: string;
+          user_id: string;
+          subscription_id?: string | null;
+          provider: PaymentProvider;
+          status?: PaymentStatus;
+          amount: number;
+          currency?: string;
+          slip_path?: string | null;
+          stripe_payment_id?: string | null;
+          note?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Payment>;
+        Relationships: [
+          {
+            foreignKeyName: "payments_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_subscription_id_fkey";
+            columns: ["subscription_id"];
+            isOneToOne: false;
+            referencedRelation: "subscriptions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      invoices: {
+        Row: Invoice;
+        Insert: {
+          id?: string;
+          number: string;
+          user_id: string;
+          payment_id?: string | null;
+          amount: number;
+          currency?: string;
+          description?: string | null;
+          issued_at?: string;
+        };
+        Update: Partial<Invoice>;
+        Relationships: [
+          {
+            foreignKeyName: "invoices_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "invoices_payment_id_fkey";
+            columns: ["payment_id"];
+            isOneToOne: false;
+            referencedRelation: "payments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      strains: {
+        Row: Strain;
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          type: StrainType;
+          thc?: number | null;
+          cbd?: number | null;
+          effects?: string[];
+          flavors?: string[];
+          terpenes?: string[];
+          grow_difficulty?: "easy" | "moderate" | "hard" | null;
+          flowering_weeks?: number | null;
+          yield_indoor?: string | null;
+          yield_outdoor?: string | null;
+          description?: string | null;
+          image_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Strain>;
+        Relationships: [];
+      };
+      minerals: {
+        Row: Mineral;
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          symbol?: string | null;
+          category: string;
+          hardness_mohs?: number | null;
+          density?: number | null;
+          properties?: Record<string, string>;
+          uses?: string[];
+          description?: string | null;
+          image_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Mineral>;
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -817,6 +1408,23 @@ export type Database = {
         Args: { other_user: string };
         Returns: string;
       };
+      is_admin: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      is_member_user: {
+        Args: { uid: string };
+        Returns: boolean;
+      };
+      latest_sensor_readings: {
+        Args: Record<string, never>;
+        Returns: {
+          device_id: string;
+          metric: string;
+          value: number;
+          ts: string;
+        }[];
+      };
       create_group_with_owner: {
         Args: {
           group_name: string;
@@ -836,6 +1444,14 @@ export type Database = {
       group_privacy: GroupPrivacy;
       group_member_role: GroupMemberRole;
       group_member_status: GroupMemberStatus;
+      strain_type: StrainType;
+      subscription_status: SubscriptionStatus;
+      payment_provider: PaymentProvider;
+      payment_status: PaymentStatus;
+      device_type: DeviceType;
+      device_protocol: DeviceProtocol;
+      alert_severity: AlertSeverity;
+      command_status: CommandStatus;
     };
     CompositeTypes: {
       [_ in never]: never;

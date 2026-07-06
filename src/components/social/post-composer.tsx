@@ -1,7 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { Globe, ImagePlus, Loader2, Lock, Users, X } from "lucide-react";
+import {
+  BadgeCheck,
+  Globe,
+  ImagePlus,
+  Loader2,
+  Lock,
+  Users,
+  X,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { UserAvatar } from "@/components/social/user-avatar";
@@ -30,10 +38,11 @@ import type { AuthorSummary } from "@/types/social";
 const VISIBILITY_OPTIONS: {
   value: PostVisibility;
   icon: typeof Globe;
-  labelKey: "public" | "friends" | "onlyMe";
+  labelKey: "public" | "friends" | "onlyMe" | "members";
 }[] = [
   { value: "public", icon: Globe, labelKey: "public" },
   { value: "friends", icon: Users, labelKey: "friends" },
+  { value: "members", icon: BadgeCheck, labelKey: "members" },
   { value: "only_me", icon: Lock, labelKey: "onlyMe" },
 ];
 

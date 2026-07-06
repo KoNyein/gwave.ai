@@ -1,23 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Leaf, MessageCircle, Search } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Leaf, MessageCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { GlobalSearch } from "@/components/layout/global-search";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { NotificationsButton } from "@/components/layout/notifications-button";
 import { PRIMARY_NAV } from "@/components/layout/nav-items";
 import { ProfileMenu } from "@/components/layout/profile-menu";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/types/database";
 
 export function Navbar({ profile }: { profile: Profile | null }) {
   const t = useTranslations("nav");
   const pathname = usePathname();
-  const router = useRouter();
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background">
@@ -28,25 +27,7 @@ export function Navbar({ profile }: { profile: Profile | null }) {
             <Leaf className="h-8 w-8" />
             <span className="hidden text-lg font-bold sm:inline">gwave.ai</span>
           </Link>
-          <form
-            className="relative hidden md:block"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const query = new FormData(event.currentTarget).get("q");
-              if (typeof query === "string" && query.trim()) {
-                router.push(`/search?q=${encodeURIComponent(query.trim())}`);
-              }
-            }}
-          >
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              name="q"
-              placeholder={t("search")}
-              aria-label={t("search")}
-              className="w-56 rounded-full bg-muted pl-9 lg:w-72"
-            />
-          </form>
+          <GlobalSearch />
         </div>
 
         {/* Center: primary nav */}
