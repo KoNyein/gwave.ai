@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { redirect } from "next/navigation";
 
 import {
@@ -20,33 +22,36 @@ const ROLE_RANK: Record<UserRole, number> = {
 
 /**
  * Returns the current authenticated user, or null. Never throws.
+ * Deduplicated per request via React cache() — layouts, pages and nested
+ * components share one auth lookup instead of each hitting Supabase.
  */
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async function getCurrentUser() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   return user;
-}
+});
 
 /**
  * Returns the current user's profile row, or null when unauthenticated.
+ * Deduplicated per request via React cache().
  */
-export async function getCurrentProfile(): Promise<Profile | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+export const getCurrentProfile = cache(
+  async function getCurrentProfile(): Promise<Profile | null> {
+    const user = await getCurrentUser();
+    if (!user) return null;
 
-  const { data } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle();
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
 
-  return data;
-}
+    return data;
+  },
+);
 
 /**
  * Ensures a user is authenticated, redirecting to /login otherwise.
