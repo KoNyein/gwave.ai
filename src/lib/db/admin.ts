@@ -88,6 +88,7 @@ export interface ReportWithContext extends Report {
   reporter: AuthorSummary;
   post: { id: string; content: string; author: AuthorSummary } | null;
   comment: { id: string; content: string; author: AuthorSummary } | null;
+  profile: AuthorSummary | null;
 }
 
 export async function getPendingReports(): Promise<ReportWithContext[]> {
@@ -98,7 +99,8 @@ export async function getPendingReports(): Promise<ReportWithContext[]> {
       `*,
        reporter:profiles!reports_reporter_id_fkey(id, username, full_name, avatar_url),
        post:posts!reports_post_id_fkey(id, content, author:profiles!posts_author_id_fkey(id, username, full_name, avatar_url)),
-       comment:comments!reports_comment_id_fkey(id, content, author:profiles!comments_author_id_fkey(id, username, full_name, avatar_url))`,
+       comment:comments!reports_comment_id_fkey(id, content, author:profiles!comments_author_id_fkey(id, username, full_name, avatar_url)),
+       profile:profiles!reports_profile_id_fkey(id, username, full_name, avatar_url)`,
     )
     .eq("status", "pending")
     .order("created_at", { ascending: true })

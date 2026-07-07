@@ -2,19 +2,16 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { Navbar } from "@/components/layout/navbar";
-import { getCurrentProfile, requireUser } from "@/lib/auth";
+import { requireAdult } from "@/lib/auth";
 
-/** Smart-farm layout with a small sub-nav. Login enforced by middleware. */
+/** Smart-farm layout with a small sub-nav. Adults (18+) only. */
 export default async function FarmLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  await requireUser();
-  const [profile, t] = await Promise.all([
-    getCurrentProfile(),
-    getTranslations("farm"),
-  ]);
+  const profile = await requireAdult();
+  const t = await getTranslations("farm");
 
   return (
     <div className="min-h-screen bg-muted">

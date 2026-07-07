@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { requireAdult } from "@/lib/auth";
 import { getStrainBySlug } from "@/lib/db/knowledge";
 
 function Meter({
@@ -48,6 +49,8 @@ export default async function StrainDetailPage({
 }: {
   params: { slug: string };
 }) {
+  // Cannabis content — verified adults (18+) only.
+  await requireAdult();
   const t = await getTranslations("strains");
   const strain = await getStrainBySlug(params.slug);
   if (!strain) notFound();

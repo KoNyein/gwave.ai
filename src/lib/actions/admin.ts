@@ -183,12 +183,17 @@ export async function unsuspendUser(userId: string): Promise<ActionResult> {
 // Moderation
 // ---------------------------------------------------------------------------
 
-/** Anyone: report a post or comment. */
+/** Anyone: report a post, comment, or user profile. */
 export async function reportContent(
-  target: { postId: string } | { commentId: string },
+  target: { postId: string } | { commentId: string } | { profileId: string },
   reason: string,
 ): Promise<ActionResult> {
-  const targetId = "postId" in target ? target.postId : target.commentId;
+  const targetId =
+    "postId" in target
+      ? target.postId
+      : "commentId" in target
+        ? target.commentId
+        : target.profileId;
   if (!uuid.safeParse(targetId).success || reason.trim().length < 3) {
     return { ok: false, error: "Please describe the problem (3+ chars)." };
   }
@@ -197,11 +202,15 @@ export async function reportContent(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not authenticated." };
+  if ("profileId" in target && target.profileId === user.id) {
+    return { ok: false, error: "You can't report yourself." };
+  }
 
   const { error } = await supabase.from("reports").insert({
     reporter_id: user.id,
     post_id: "postId" in target ? target.postId : null,
     comment_id: "commentId" in target ? target.commentId : null,
+    profile_id: "profileId" in target ? target.profileId : null,
     reason: reason.trim().slice(0, 500),
   });
   if (error) return { ok: false, error: error.message };
@@ -229,10 +238,30 @@ export async function resolveReport(
   if (!report) return { ok: false, error: "Report not found." };
 
   if (action === "remove") {
+    const stamp = new Date().toISOString();
     if (report.post_id) {
-      await admin.from("posts").delete().eq("id", report.post_id);
+      // Soft removal: hidden from everyone but the author and moderators
+      // (via can_view_post_id), reversible and auditable.
+      await admin
+        .from("posts")
+        .update({ removed_at: stamp })
+        .eq("id", report.post_id);
     } else if (report.comment_id) {
-      await admin.from("comments").delete().eq("id", report.comment_id);
+      await admin
+        .from("comments")
+        .update({ removed_at: stamp })
+        .eq("id", report.comment_id);
+    } else if (report.profile_id) {
+      // "Remove" on a profile report = 7-day suspension.
+      await admin
+        .from("profiles")
+        .update({
+          suspended_until: new Date(
+            Date.now() + 7 * 24 * 60 * 60 * 1000,
+          ).toISOString(),
+          suspend_reason: `Report upheld: ${report.reason}`.slice(0, 500),
+        })
+        .eq("id", report.profile_id);
     }
   }
 
@@ -249,8 +278,8 @@ export async function resolveReport(
   await audit(
     moderatorId,
     action === "remove" ? "moderation.content_removed" : "moderation.dismissed",
-    report.post_id ? "post" : "comment",
-    report.post_id ?? report.comment_id ?? "",
+    report.post_id ? "post" : report.comment_id ? "comment" : "profile",
+    report.post_id ?? report.comment_id ?? report.profile_id ?? "",
     { report_id: reportId, reason: report.reason },
   );
   revalidatePath("/admin/moderation");

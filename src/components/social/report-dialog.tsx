@@ -15,11 +15,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { reportContent } from "@/lib/actions/admin";
 
 export function ReportDialog({
-  postId,
+  target,
   open,
   onOpenChange,
 }: {
-  postId: string;
+  target: { postId: string } | { commentId: string } | { profileId: string };
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -31,7 +31,7 @@ export function ReportDialog({
 
   function submit() {
     startTransition(async () => {
-      const result = await reportContent({ postId }, reason);
+      const result = await reportContent(target, reason);
       if (!result.ok) {
         setError(result.error);
         return;

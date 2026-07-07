@@ -12,12 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { locales, type Locale } from "@/i18n/config";
-
-const LABELS: Record<Locale, string> = {
-  en: "English",
-  my: "မြန်မာ",
-};
+import { LOCALE_LABELS, locales } from "@/i18n/config";
 
 export function LocaleSwitcher() {
   const locale = useLocale();
@@ -37,7 +32,7 @@ export function LocaleSwitcher() {
             onClick={() => startTransition(() => setLocale(l))}
             className={l === locale ? "font-semibold" : ""}
           >
-            {LABELS[l]}
+            {LOCALE_LABELS[l]}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

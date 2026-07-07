@@ -4,15 +4,24 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { PRIMARY_NAV, TOOL_NAV } from "@/components/layout/nav-items";
+import {
+  PRIMARY_NAV,
+  TOOL_NAV,
+  visibleNav,
+} from "@/components/layout/nav-items";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ageBandOf } from "@/lib/age";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/types/database";
 
 export function LeftSidebar({ profile }: { profile: Profile | null }) {
   const t = useTranslations("nav");
   const pathname = usePathname();
-  const items = [...PRIMARY_NAV, ...TOOL_NAV];
+  const isAdult = ageBandOf(profile?.birth_date ?? null) === "adult";
+  const items = [
+    ...visibleNav(PRIMARY_NAV, isAdult),
+    ...visibleNav(TOOL_NAV, isAdult),
+  ];
   const initials = (profile?.username ?? "U").slice(0, 2).toUpperCase();
 
   return (

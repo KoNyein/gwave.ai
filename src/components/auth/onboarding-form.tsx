@@ -61,6 +61,20 @@ export function OnboardingForm({ profile }: { profile: Profile | null }) {
             />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="birth_date">{t("birthDate")}</Label>
+            <Input
+              id="birth_date"
+              name="birth_date"
+              type="date"
+              required
+              max={new Date().toISOString().split("T")[0]}
+              defaultValue={profile?.birth_date ?? ""}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("birthDateHint")}
+            </p>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="avatar_url">{t("avatarUrl")}</Label>
             <Input
               id="avatar_url"
@@ -73,6 +87,21 @@ export function OnboardingForm({ profile }: { profile: Profile | null }) {
           <div className="space-y-2">
             <Label htmlFor="bio">{t("bio")}</Label>
             <Textarea id="bio" name="bio" defaultValue={profile?.bio ?? ""} rows={3} />
+          </div>
+          <div className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3">
+            <input
+              id="accept_terms"
+              name="accept_terms"
+              type="checkbox"
+              required
+              className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]"
+            />
+            <Label
+              htmlFor="accept_terms"
+              className="text-xs font-normal leading-relaxed text-muted-foreground"
+            >
+              {t("acceptTerms")}
+            </Label>
           </div>
           {state?.error ? (
             <p className="text-sm text-destructive" role="alert">

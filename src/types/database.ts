@@ -70,6 +70,10 @@ export type GroupMemberRole = "member" | "moderator" | "admin";
 
 export type GroupMemberStatus = "pending" | "active";
 
+export type AgeBandDb = "child" | "preteen" | "teen" | "adult" | "unknown";
+
+export type WellnessKind = "dhamma" | "meditation" | "radio" | "health";
+
 export interface Profile {
   id: string;
   username: string | null;
@@ -80,6 +84,10 @@ export interface Profile {
   role: UserRole;
   suspended_until: string | null;
   suspend_reason: string | null;
+  birth_date: string | null;
+  terms_accepted_version: string | null;
+  privacy_accepted_version: string | null;
+  terms_accepted_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -89,10 +97,46 @@ export interface Report {
   reporter_id: string;
   post_id: string | null;
   comment_id: string | null;
+  profile_id: string | null;
   reason: string;
   status: ReportStatus;
   reviewed_by: string | null;
   reviewed_at: string | null;
+  created_at: string;
+}
+
+export interface Block {
+  blocker_id: string;
+  blocked_id: string;
+  created_at: string;
+}
+
+export interface Consent {
+  id: string;
+  user_id: string;
+  terms_version: string;
+  privacy_version: string;
+  guardian_email: string | null;
+  guardian_consent: boolean;
+  accepted_at: string;
+  ip_note: string | null;
+}
+
+export interface DeletionRequest {
+  user_id: string;
+  reason: string | null;
+  requested_at: string;
+  status: "pending" | "processed" | "cancelled";
+}
+
+export interface WellnessItem {
+  id: string;
+  kind: WellnessKind;
+  title: string;
+  body: string | null;
+  url: string | null;
+  duration_minutes: number | null;
+  position: number;
   created_at: string;
 }
 
@@ -175,6 +219,7 @@ export interface Post {
   reaction_count: number;
   comment_count: number;
   share_count: number;
+  removed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -580,6 +625,7 @@ export interface Comment {
   content: string;
   reaction_count: number;
   reply_count: number;
+  removed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -640,6 +686,10 @@ export type Database = {
           cover_url?: string | null;
           bio?: string | null;
           role?: UserRole;
+          birth_date?: string | null;
+          terms_accepted_version?: string | null;
+          privacy_accepted_version?: string | null;
+          terms_accepted_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -653,6 +703,10 @@ export type Database = {
           role?: UserRole;
           suspended_until?: string | null;
           suspend_reason?: string | null;
+          birth_date?: string | null;
+          terms_accepted_version?: string | null;
+          privacy_accepted_version?: string | null;
+          terms_accepted_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -665,6 +719,7 @@ export type Database = {
           reporter_id: string;
           post_id?: string | null;
           comment_id?: string | null;
+          profile_id?: string | null;
           reason: string;
           status?: ReportStatus;
           reviewed_by?: string | null;
@@ -695,6 +750,88 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      blocks: {
+        Row: Block;
+        Insert: {
+          blocker_id: string;
+          blocked_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Block>;
+        Relationships: [
+          {
+            foreignKeyName: "blocks_blocker_id_fkey";
+            columns: ["blocker_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "blocks_blocked_id_fkey";
+            columns: ["blocked_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      consents: {
+        Row: Consent;
+        Insert: {
+          id?: string;
+          user_id: string;
+          terms_version: string;
+          privacy_version: string;
+          guardian_email?: string | null;
+          guardian_consent?: boolean;
+          accepted_at?: string;
+          ip_note?: string | null;
+        };
+        Update: Partial<Consent>;
+        Relationships: [
+          {
+            foreignKeyName: "consents_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      deletion_requests: {
+        Row: DeletionRequest;
+        Insert: {
+          user_id: string;
+          reason?: string | null;
+          requested_at?: string;
+          status?: "pending" | "processed" | "cancelled";
+        };
+        Update: Partial<DeletionRequest>;
+        Relationships: [
+          {
+            foreignKeyName: "deletion_requests_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      wellness_items: {
+        Row: WellnessItem;
+        Insert: {
+          id?: string;
+          kind: WellnessKind;
+          title: string;
+          body?: string | null;
+          url?: string | null;
+          duration_minutes?: number | null;
+          position?: number;
+          created_at?: string;
+        };
+        Update: Partial<WellnessItem>;
+        Relationships: [];
       };
       audit_logs: {
         Row: AuditLog;
@@ -859,6 +996,7 @@ export type Database = {
           reaction_count?: number;
           comment_count?: number;
           share_count?: number;
+          removed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -932,6 +1070,7 @@ export type Database = {
           content?: string;
           reaction_count?: number;
           reply_count?: number;
+          removed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -2160,6 +2299,26 @@ export type Database = {
         };
         Returns: string;
       };
+      is_blocked: {
+        Args: { a: string; b: string };
+        Returns: boolean;
+      };
+      age_band_of: {
+        Args: { bd: string | null };
+        Returns: AgeBandDb;
+      };
+      is_adult: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      is_minor: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      my_age_band: {
+        Args: Record<string, never>;
+        Returns: AgeBandDb;
+      };
     };
     Enums: {
       user_role: UserRole;
@@ -2184,6 +2343,8 @@ export type Database = {
       stock_reason: StockReason;
       report_status: ReportStatus;
       webhook_event: WebhookEvent;
+      age_band: AgeBandDb;
+      wellness_kind: WellnessKind;
     };
     CompositeTypes: {
       [_ in never]: never;
