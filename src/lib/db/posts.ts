@@ -19,9 +19,9 @@ const POST_SELECT = `
   author:profiles!posts_author_id_fkey(${AUTHOR_SELECT}),
   media:post_media(*),
   my_reaction:reactions(type),
-  shared_post:posts!posts_shared_post_id_fkey(
-    *,
-    author:profiles!posts_author_id_fkey(${AUTHOR_SELECT}),
+  shared_post:posts!shared_post_id(
+      *,
+      author:profiles!posts_author_id_fkey(${AUTHOR_SELECT}),
     media:post_media(*)
   ),
   group:groups!posts_group_id_fkey(id, name, slug),
