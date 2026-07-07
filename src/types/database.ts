@@ -55,6 +55,13 @@ export type SaleStatus = "completed" | "refunded";
 
 export type StockReason = "sale" | "refund" | "adjustment" | "purchase";
 
+export type ReportStatus = "pending" | "removed" | "dismissed";
+
+export type WebhookEvent =
+  | "post.created"
+  | "sale.completed"
+  | "alert.triggered";
+
 export type GroupPrivacy = "public" | "private";
 
 export type StrainType = "indica" | "sativa" | "hybrid";
@@ -71,8 +78,90 @@ export interface Profile {
   cover_url: string | null;
   bio: string | null;
   role: UserRole;
+  suspended_until: string | null;
+  suspend_reason: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Report {
+  id: string;
+  reporter_id: string;
+  post_id: string | null;
+  comment_id: string | null;
+  reason: string;
+  status: ReportStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
+export interface AuditLog {
+  id: number;
+  actor_id: string | null;
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  detail: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface SiteSetting {
+  key: string;
+  value: Record<string, unknown>;
+  updated_at: string;
+}
+
+export interface FeatureFlag {
+  key: string;
+  enabled: boolean;
+  description: string | null;
+  updated_at: string;
+}
+
+export interface ApiKey {
+  id: string;
+  owner_id: string;
+  name: string;
+  prefix: string;
+  key_hash: string;
+  scopes: string[];
+  rate_limit: number;
+  last_used_at: string | null;
+  revoked: boolean;
+  created_at: string;
+}
+
+export interface ApiLog {
+  id: number;
+  api_key_id: string;
+  endpoint: string;
+  method: string;
+  status: number;
+  latency_ms: number | null;
+  created_at: string;
+}
+
+export interface Webhook {
+  id: string;
+  owner_id: string;
+  url: string;
+  events: WebhookEvent[];
+  secret: string;
+  active: boolean;
+  created_at: string;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  webhook_id: string;
+  event: WebhookEvent;
+  payload: Record<string, unknown>;
+  attempts: number;
+  last_status: number | null;
+  delivered_at: string | null;
+  next_attempt_at: string;
+  created_at: string;
 }
 
 export interface Post {
@@ -562,10 +651,186 @@ export type Database = {
           cover_url?: string | null;
           bio?: string | null;
           role?: UserRole;
+          suspended_until?: string | null;
+          suspend_reason?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Relationships: [];
+      };
+      reports: {
+        Row: Report;
+        Insert: {
+          id?: string;
+          reporter_id: string;
+          post_id?: string | null;
+          comment_id?: string | null;
+          reason: string;
+          status?: ReportStatus;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Report>;
+        Relationships: [
+          {
+            foreignKeyName: "reports_reporter_id_fkey";
+            columns: ["reporter_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "reports_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "posts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "reports_comment_id_fkey";
+            columns: ["comment_id"];
+            isOneToOne: false;
+            referencedRelation: "comments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      audit_logs: {
+        Row: AuditLog;
+        Insert: {
+          id?: number;
+          actor_id?: string | null;
+          action: string;
+          target_type?: string | null;
+          target_id?: string | null;
+          detail?: Record<string, unknown>;
+          created_at?: string;
+        };
+        Update: Partial<AuditLog>;
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_actor_id_fkey";
+            columns: ["actor_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      site_settings: {
+        Row: SiteSetting;
+        Insert: {
+          key: string;
+          value?: Record<string, unknown>;
+          updated_at?: string;
+        };
+        Update: Partial<SiteSetting>;
+        Relationships: [];
+      };
+      feature_flags: {
+        Row: FeatureFlag;
+        Insert: {
+          key: string;
+          enabled?: boolean;
+          description?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<FeatureFlag>;
+        Relationships: [];
+      };
+      api_keys: {
+        Row: ApiKey;
+        Insert: {
+          id?: string;
+          owner_id: string;
+          name: string;
+          prefix: string;
+          key_hash: string;
+          scopes?: string[];
+          rate_limit?: number;
+          last_used_at?: string | null;
+          revoked?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<ApiKey>;
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      api_logs: {
+        Row: ApiLog;
+        Insert: {
+          id?: number;
+          api_key_id: string;
+          endpoint: string;
+          method: string;
+          status: number;
+          latency_ms?: number | null;
+          created_at?: string;
+        };
+        Update: Partial<ApiLog>;
+        Relationships: [
+          {
+            foreignKeyName: "api_logs_api_key_id_fkey";
+            columns: ["api_key_id"];
+            isOneToOne: false;
+            referencedRelation: "api_keys";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      webhooks: {
+        Row: Webhook;
+        Insert: {
+          id?: string;
+          owner_id: string;
+          url: string;
+          events?: WebhookEvent[];
+          secret: string;
+          active?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Webhook>;
+        Relationships: [
+          {
+            foreignKeyName: "webhooks_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      webhook_deliveries: {
+        Row: WebhookDelivery;
+        Insert: {
+          id?: string;
+          webhook_id: string;
+          event: WebhookEvent;
+          payload: Record<string, unknown>;
+          attempts?: number;
+          last_status?: number | null;
+          delivered_at?: string | null;
+          next_attempt_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<WebhookDelivery>;
+        Relationships: [
+          {
+            foreignKeyName: "webhook_deliveries_webhook_id_fkey";
+            columns: ["webhook_id"];
+            isOneToOne: false;
+            referencedRelation: "webhooks";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       posts: {
         Row: Post;
@@ -1843,6 +2108,22 @@ export type Database = {
         Args: { sid: string };
         Returns: boolean;
       };
+      is_moderator: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      is_developer: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      is_suspended: {
+        Args: { uid: string };
+        Returns: boolean;
+      };
+      enqueue_webhook: {
+        Args: { p_event: WebhookEvent; p_owner: string; p_payload: unknown };
+        Returns: undefined;
+      };
       is_store_manager: {
         Args: { sid: string };
         Returns: boolean;
@@ -1901,6 +2182,8 @@ export type Database = {
       payment_method: PaymentMethod;
       sale_status: SaleStatus;
       stock_reason: StockReason;
+      report_status: ReportStatus;
+      webhook_event: WebhookEvent;
     };
     CompositeTypes: {
       [_ in never]: never;
