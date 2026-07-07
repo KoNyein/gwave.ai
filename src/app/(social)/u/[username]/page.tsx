@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { FollowButton } from "@/components/social/follow-button";
 import { FriendButton } from "@/components/social/friend-button";
 import { MemberBadge } from "@/components/social/member-badge";
+import { ProfileActions } from "@/components/social/profile-actions";
 import { PostFeed } from "@/components/social/post-feed";
 import { ProfileTabs } from "@/components/social/profile-tabs";
 import { UserAvatar } from "@/components/social/user-avatar";
@@ -40,14 +41,22 @@ export default async function ProfilePage({
   if (!profile) notFound();
 
   const isSelf = viewer.id === profile.id;
-  const [friendState, following, friendCount, friends, initialPage] =
+  const [friendState, following, friendCount, friends, initialPage, blockRow] =
     await Promise.all([
       getFriendState(viewer.id, profile.id),
       isSelf ? Promise.resolve(false) : isFollowing(viewer.id, profile.id),
       getFriendCount(profile.id),
       getFriends(profile.id),
       getProfilePosts(profile.id, viewer.id),
+      isSelf
+        ? Promise.resolve(null)
+        : supabase
+            .from("blocks")
+            .select("blocked_id")
+            .match({ blocker_id: viewer.id, blocked_id: profile.id })
+            .maybeSingle(),
     ]);
+  const initiallyBlocked = Boolean(blockRow && "data" in blockRow && blockRow.data);
 
   const currentUser = {
     id: viewer.id,
@@ -97,6 +106,10 @@ export default async function ProfilePage({
               <div className="flex gap-2 pb-1">
                 <FriendButton profileId={profile.id} state={friendState} />
                 <FollowButton profileId={profile.id} following={following} />
+                <ProfileActions
+                  profileId={profile.id}
+                  initiallyBlocked={initiallyBlocked}
+                />
               </div>
             ) : null}
           </div>

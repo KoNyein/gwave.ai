@@ -1,7 +1,9 @@
 import {
   BadgeCheck,
+  BookOpen,
   Calculator,
   Flag,
+  Flower2,
   Gem,
   Home,
   LayoutGrid,
@@ -17,6 +19,8 @@ export interface NavItem {
   href: string;
   labelKey: string;
   icon: LucideIcon;
+  /** Only shown to verified adults (18+). Hidden from minors/unknown DOB. */
+  adultOnly?: boolean;
 }
 
 export const PRIMARY_NAV: NavItem[] = [
@@ -28,10 +32,22 @@ export const PRIMARY_NAV: NavItem[] = [
 
 export const TOOL_NAV: NavItem[] = [
   { href: "/membership", labelKey: "membership", icon: BadgeCheck },
-  { href: "/strains", labelKey: "strains", icon: Leaf },
+  { href: "/learn", labelKey: "learn", icon: BookOpen },
+  { href: "/wellness", labelKey: "wellness", icon: Flower2 },
+  // Strain database covers cannabis → verified adults only.
+  { href: "/strains", labelKey: "strains", icon: Leaf, adultOnly: true },
   { href: "/minerals", labelKey: "minerals", icon: Gem },
   { href: "/tools", labelKey: "tools", icon: Calculator },
-  { href: "/farm", labelKey: "farm", icon: Sprout },
+  // Grow-operation monitoring → verified adults only.
+  { href: "/farm", labelKey: "farm", icon: Sprout, adultOnly: true },
   { href: "/home", labelKey: "smartHome", icon: Lightbulb },
   { href: "/pos", labelKey: "pos", icon: ShoppingCart },
 ];
+
+/** Routes that require a verified adult (18+). Enforced by requireAdult(). */
+export const ADULT_ONLY_ROUTES = ["/strains", "/farm"];
+
+/** Filter nav items by the viewer's adult status. */
+export function visibleNav(items: NavItem[], isAdult: boolean): NavItem[] {
+  return items.filter((item) => !(item.adultOnly && !isAdult));
+}

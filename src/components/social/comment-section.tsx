@@ -57,6 +57,7 @@ export function CommentSection({
       content: trimmed,
       reaction_count: 0,
       reply_count: 0,
+      removed_at: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       author: currentUser,

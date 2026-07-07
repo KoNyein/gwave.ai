@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   BadgeCheck,
+  Ban,
   Flag,
   Globe,
   Lock,
@@ -31,6 +33,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { blockUser } from "@/lib/actions/moderation";
 import { deletePost, setReaction } from "@/lib/actions/posts";
 import { displayName, timeAgo } from "@/lib/format";
 import type { PostVisibility, ReactionType } from "@/types/database";
@@ -55,6 +58,8 @@ export function PostCard({
   onShared: () => void;
 }) {
   const t = useTranslations("post");
+  const router = useRouter();
+  const [, startBlock] = React.useTransition();
   const [myReaction, setMyReaction] = React.useState<ReactionType | null>(
     post.my_reaction[0]?.type ?? null,
   );
@@ -171,10 +176,24 @@ export function PostCard({
                 {t("delete")}
               </DropdownMenuItem>
             ) : (
-              <DropdownMenuItem onSelect={() => setReportOpen(true)}>
-                <Flag className="mr-2 h-4 w-4" />
-                {t("report")}
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuItem onSelect={() => setReportOpen(true)}>
+                  <Flag className="mr-2 h-4 w-4" />
+                  {t("report")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onSelect={() => {
+                    startBlock(async () => {
+                      await blockUser(post.author.id);
+                      router.refresh();
+                    });
+                  }}
+                >
+                  <Ban className="mr-2 h-4 w-4" />
+                  {t("block")}
+                </DropdownMenuItem>
+              </>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -301,7 +320,7 @@ export function PostCard({
         onShared={onShared}
       />
       <ReportDialog
-        postId={post.id}
+        target={{ postId: post.id }}
         open={reportOpen}
         onOpenChange={setReportOpen}
       />

@@ -6,10 +6,15 @@ production traffic.
 ## 1. Database & security
 
 - [ ] Apply all migrations to the production Supabase project:
-      `supabase db push` (chain 0001 → 0009).
+      `supabase db push` (chain 0001 → 0010).
 - [ ] Run the knowledge seed once:
       `psql "$PROD_DB_URL" -f supabase/seed/knowledge_seed.sql`.
       Do **NOT** run `supabase/seed/seed.sql` (demo users) in production.
+- [ ] Run the wellness seed once:
+      `psql "$PROD_DB_URL" -f supabase/seed/wellness_seed.sql`
+      (replace the placeholder radio URLs with licensed streams).
+- [ ] Publish real Terms of Service + Privacy Policy documents and bump
+      the versions in `src/lib/consent.ts` when they change.
 - [ ] Run the RLS audit against a staging copy:
       `psql "$DB_URL" -v ON_ERROR_STOP=1 -f scripts/rls-audit.sql`
       — must end with "RLS audit passed".

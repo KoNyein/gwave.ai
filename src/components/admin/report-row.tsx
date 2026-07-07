@@ -40,7 +40,11 @@ export function ReportRow({ report }: { report: ReportWithContext }) {
             </span>{" "}
             {t("reported")}{" "}
             <span className="font-medium">
-              {report.post_id ? t("aPost") : t("aComment")}
+              {report.post_id
+                ? t("aPost")
+                : report.comment_id
+                  ? t("aComment")
+                  : t("aProfile")}
             </span>
             <span className="text-muted-foreground">
               {" "}
@@ -83,6 +87,18 @@ export function ReportRow({ report }: { report: ReportWithContext }) {
           <p className="line-clamp-4 whitespace-pre-wrap text-sm">
             {content.content || t("mediaOnly")}
           </p>
+        </div>
+      ) : report.profile ? (
+        <div className="flex items-center gap-2 rounded-lg border p-3 text-sm">
+          <UserAvatar
+            profile={report.profile}
+            linked={false}
+            className="h-7 w-7"
+          />
+          <span className="font-medium">{displayName(report.profile)}</span>
+          <span className="text-xs text-muted-foreground">
+            {t("profileReportHint")}
+          </span>
         </div>
       ) : (
         <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
