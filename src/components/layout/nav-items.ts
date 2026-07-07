@@ -1,6 +1,9 @@
 import {
   BadgeCheck,
-
+  BookOpen,
+  Calculator,
+  Flag,
+  Flower2,
   Gem,
   Home,
   LayoutGrid,
@@ -29,7 +32,14 @@ export const PRIMARY_NAV: NavItem[] = [
 
 export const TOOL_NAV: NavItem[] = [
   { href: "/membership", labelKey: "membership", icon: BadgeCheck },
-
+  { href: "/learn", labelKey: "learn", icon: BookOpen },
+  { href: "/wellness", labelKey: "wellness", icon: Flower2 },
+  // Strain database covers cannabis → verified adults only.
+  { href: "/strains", labelKey: "strains", icon: Leaf, adultOnly: true },
+  { href: "/minerals", labelKey: "minerals", icon: Gem },
+  { href: "/tools", labelKey: "tools", icon: Calculator },
+  // Grow-operation monitoring → verified adults only.
+  { href: "/farm", labelKey: "farm", icon: Sprout, adultOnly: true },
   { href: "/home", labelKey: "smartHome", icon: Lightbulb },
   { href: "/pos", labelKey: "pos", icon: ShoppingCart },
 ];

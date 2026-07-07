@@ -47,6 +47,20 @@ export type AlertSeverity = "info" | "warning" | "critical";
 
 export type CommandStatus = "pending" | "sent" | "acked" | "failed";
 
+export type StoreRole = "staff" | "manager";
+
+export type PaymentMethod = "cash" | "card" | "qr";
+
+export type SaleStatus = "completed" | "refunded";
+
+export type StockReason = "sale" | "refund" | "adjustment" | "purchase";
+
+export type ReportStatus = "pending" | "removed" | "dismissed";
+
+export type WebhookEvent =
+  | "post.created"
+  | "sale.completed"
+  | "alert.triggered";
 
 export type GroupPrivacy = "public" | "private";
 
@@ -453,6 +467,122 @@ export interface DeviceCommand {
   updated_at: string;
 }
 
+export interface Store {
+  id: string;
+  owner_id: string;
+  name: string;
+  currency: string;
+  receipt_footer: string | null;
+  next_receipt_number: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreMember {
+  store_id: string;
+  user_id: string;
+  role: StoreRole;
+  created_at: string;
+}
+
+export interface PosCategory {
+  id: string;
+  store_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface PosProduct {
+  id: string;
+  store_id: string;
+  category_id: string | null;
+  name: string;
+  sku: string | null;
+  barcode: string | null;
+  price: number;
+  cost: number | null;
+  image_path: string | null;
+  track_stock: boolean;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Inventory {
+  product_id: string;
+  quantity: number;
+  low_stock_threshold: number;
+  updated_at: string;
+}
+
+export interface StockMovement {
+  id: string;
+  product_id: string;
+  delta: number;
+  reason: StockReason;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface PosCustomer {
+  id: string;
+  store_id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+export interface Shift {
+  id: string;
+  store_id: string;
+  opened_by: string;
+  opened_at: string;
+  float_amount: number;
+  cash_in: number;
+  cash_out: number;
+  closed_at: string | null;
+  closed_by: string | null;
+  expected_cash: number | null;
+  actual_cash: number | null;
+  note: string | null;
+}
+
+export interface Sale {
+  id: string;
+  store_id: string;
+  shift_id: string | null;
+  cashier_id: string | null;
+  customer_id: string | null;
+  receipt_number: number;
+  subtotal: number;
+  discount: number;
+  total: number;
+  status: SaleStatus;
+  refunded_at: string | null;
+  created_at: string;
+}
+
+export interface SaleItem {
+  id: string;
+  sale_id: string;
+  product_id: string | null;
+  name: string;
+  price: number;
+  quantity: number;
+  discount: number;
+  total: number;
+}
+
+export interface SalePayment {
+  id: string;
+  sale_id: string;
+  method: PaymentMethod;
+  amount: number;
+}
 
 export interface CurrencyRate {
   code: string;
@@ -1421,7 +1551,6 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
-
       };
       sensor_readings: {
         Row: SensorReading;
@@ -2114,7 +2243,44 @@ export type Database = {
         Args: { uid: string };
         Returns: boolean;
       };
-
+      is_store_member: {
+        Args: { sid: string };
+        Returns: boolean;
+      };
+      is_moderator: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      is_developer: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      is_suspended: {
+        Args: { uid: string };
+        Returns: boolean;
+      };
+      enqueue_webhook: {
+        Args: { p_event: WebhookEvent; p_owner: string; p_payload: unknown };
+        Returns: undefined;
+      };
+      is_store_manager: {
+        Args: { sid: string };
+        Returns: boolean;
+      };
+      create_sale: {
+        Args: {
+          p_store_id: string;
+          p_items: unknown;
+          p_payments: unknown;
+          p_cart_discount?: number;
+          p_customer_id?: string | null;
+        };
+        Returns: { sale_id: string; receipt_number: number }[];
+      };
+      refund_sale: {
+        Args: { p_sale_id: string };
+        Returns: undefined;
+      };
       latest_sensor_readings: {
         Args: Record<string, never>;
         Returns: {
@@ -2171,7 +2337,14 @@ export type Database = {
       device_protocol: DeviceProtocol;
       alert_severity: AlertSeverity;
       command_status: CommandStatus;
-
+      store_role: StoreRole;
+      payment_method: PaymentMethod;
+      sale_status: SaleStatus;
+      stock_reason: StockReason;
+      report_status: ReportStatus;
+      webhook_event: WebhookEvent;
+      age_band: AgeBandDb;
+      wellness_kind: WellnessKind;
     };
     CompositeTypes: {
       [_ in never]: never;
