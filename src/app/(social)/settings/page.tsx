@@ -15,11 +15,19 @@ export default async function SettingsPage() {
   if (!profile) redirect("/login");
 
   const supabase = await createClient();
-  const { data: deletion } = await supabase
-    .from("deletion_requests")
-    .select("status")
-    .eq("user_id", profile.id)
-    .maybeSingle();
+  const [{ data: deletion }, { data: invoices }] = await Promise.all([
+    supabase
+      .from("deletion_requests")
+      .select("status")
+      .eq("user_id", profile.id)
+      .maybeSingle(),
+    supabase
+      .from("invoices")
+      .select("id, number, amount, currency, description, issued_at")
+      .eq("user_id", profile.id)
+      .order("issued_at", { ascending: false })
+      .limit(24),
+  ]);
 
   return (
     <div className="space-y-4">
@@ -41,6 +49,37 @@ export default async function SettingsPage() {
             </p>
           ) : (
             <p>{t("consentMissing")}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t("billingTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!invoices || invoices.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("noInvoices")}</p>
+          ) : (
+            <div className="divide-y">
+              {invoices.map((invoice) => (
+                <div
+                  key={invoice.id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+                >
+                  <div>
+                    <p className="font-medium">{invoice.number}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {invoice.description ?? "—"} ·{" "}
+                      {new Date(invoice.issued_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span className="font-semibold tabular-nums">
+                    {Number(invoice.amount).toFixed(2)} {invoice.currency}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>

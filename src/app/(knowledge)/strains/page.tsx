@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { StrainCard } from "@/components/knowledge/strain-card";
 import { Card, CardContent } from "@/components/ui/card";
-
+import { requireAdult } from "@/lib/auth";
 import { listStrains } from "@/lib/db/knowledge";
 import { cn } from "@/lib/utils";
 import type { StrainType } from "@/types/database";
@@ -49,7 +49,8 @@ export default async function StrainsPage({
 }: {
   searchParams: SearchParams;
 }) {
-
+  // Cannabis content — verified adults (18+) only.
+  await requireAdult();
   const t = await getTranslations("strains");
 
   const type = TYPES.includes(searchParams.type as StrainType)

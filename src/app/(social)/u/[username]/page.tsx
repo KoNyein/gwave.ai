@@ -5,7 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { FollowButton } from "@/components/social/follow-button";
 import { FriendButton } from "@/components/social/friend-button";
 import { MemberBadge } from "@/components/social/member-badge";
-
+import { ProfileActions } from "@/components/social/profile-actions";
 import { PostFeed } from "@/components/social/post-feed";
 import { ProfileTabs } from "@/components/social/profile-tabs";
 import { UserAvatar } from "@/components/social/user-avatar";
