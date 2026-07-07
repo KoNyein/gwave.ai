@@ -98,34 +98,3 @@ export async function requireMembership(): Promise<Profile> {
   return profile;
 }
 
-/** Only verified adults (18+, DOB present) may see age-restricted content. */
-export function isAdultProfile(profile: Profile | null): boolean {
-  return isAdultBirthDate(profile?.birth_date ?? null);
-}
-
-/** Any known minor (DOB present, under 18). Unknown DOB is NOT a minor. */
-export function isMinorProfile(profile: Profile | null): boolean {
-  return isMinorBirthDate(profile?.birth_date ?? null);
-}
-
-/**
- * Guards a route to verified adults (18+). Minors are redirected to a
- * friendly "restricted" page; users without a DOB are sent to onboarding
- * to provide one.
- */
-export async function requireAdult(): Promise<Profile> {
-  const profile = await getCurrentProfile();
-  if (!profile) {
-    redirect("/login");
-  }
-  if (!profile.birth_date) {
-    redirect("/onboarding");
-  }
-  if (!isAdultProfile(profile)) {
-    redirect("/restricted");
-  }
-  return profile;
-}
-
-export { ageBandOf };
-export type { AgeBand };

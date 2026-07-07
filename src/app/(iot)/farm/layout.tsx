@@ -2,16 +2,13 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { Navbar } from "@/components/layout/navbar";
-import { requireAdult } from "@/lib/auth";
 
-/** Smart-farm layout with a small sub-nav. Adults (18+) only. */
 export default async function FarmLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const profile = await requireAdult();
-  const t = await getTranslations("farm");
+
 
   return (
     <div className="min-h-screen bg-muted">

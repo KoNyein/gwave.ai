@@ -7,7 +7,7 @@ import {
   Droplets,
   FlaskConical,
   Lock,
-  QrCode,
+
   Ruler,
   Scale,
   Search,
@@ -36,7 +36,7 @@ const TOOLS = [
   { id: "units", href: "/tools/converters", icon: Ruler, memberOnly: false },
   { id: "currency", href: "/tools/currency", icon: Banknote, memberOnly: false },
   { id: "profit", href: "/tools/profit", icon: TrendingUp, memberOnly: false },
-  { id: "qr", href: "/tools/qr", icon: QrCode, memberOnly: false },
+
 ] as const;
 
 export function ToolsIndex({ isMember }: { isMember: boolean }) {
