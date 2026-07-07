@@ -3,6 +3,14 @@
 Work through this top-to-bottom before pointing `social.gwave.cc` at
 production traffic.
 
+> **Shortcut:** `scripts/deploy-production.sh` automates §1's migrations +
+> seeds and §3's Edge Functions in one command, then verifies `/api/health`:
+>
+> ```bash
+> SUPABASE_PROJECT_REF=<ref> PROD_DB_URL='postgresql://...' \
+>   ./scripts/deploy-production.sh
+> ```
+
 ## 1. Database & security
 
 - [ ] Apply all migrations to the production Supabase project:
