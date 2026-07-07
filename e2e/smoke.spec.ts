@@ -66,3 +66,35 @@ test("health endpoint responds", async ({ request }) => {
   const body = await response.json();
   expect(body.status).toMatch(/ok|degraded/);
 });
+
+test("social-shell pages require login", async ({ page }) => {
+  // These redirect via the shell layout / their own auth check rather than
+  // the middleware prefix list. /restricted is only shown to signed-in
+  // minors, so anonymous visitors bounce to /login too.
+  for (const path of [
+    "/learn",
+    "/wellness",
+    "/settings",
+    "/profile",
+    "/restricted",
+  ]) {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/login/);
+  }
+});
+
+test("dashboards and tools sub-pages are guarded", async ({ page }) => {
+  for (const path of [
+    "/tools/qr",
+    "/tools/vpd",
+    "/farm/devices",
+    "/farm/rules",
+    "/admin/moderation",
+    "/admin/users",
+    "/dev",
+    "/pos/inventory",
+  ]) {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/login/);
+  }
+});

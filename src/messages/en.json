@@ -830,6 +830,8 @@
     "deletionPendingTitle": "Deletion requested",
     "deletionPendingHint": "Your account is queued for deletion. You can cancel while it is pending.",
     "requestDeletion": "Request deletion",
-    "cancelDeletion": "Cancel request"
+    "cancelDeletion": "Cancel request",
+    "billingTitle": "Billing history",
+    "noInvoices": "No invoices yet — they appear here after your first membership payment."
   }
 }
