@@ -47,6 +47,14 @@ export type AlertSeverity = "info" | "warning" | "critical";
 
 export type CommandStatus = "pending" | "sent" | "acked" | "failed";
 
+export type StoreRole = "staff" | "manager";
+
+export type PaymentMethod = "cash" | "card" | "qr";
+
+export type SaleStatus = "completed" | "refunded";
+
+export type StockReason = "sale" | "refund" | "adjustment" | "purchase";
+
 export type GroupPrivacy = "public" | "private";
 
 export type StrainType = "indica" | "sativa" | "hybrid";
@@ -323,6 +331,123 @@ export interface DeviceCommand {
   status: CommandStatus;
   created_at: string;
   updated_at: string;
+}
+
+export interface Store {
+  id: string;
+  owner_id: string;
+  name: string;
+  currency: string;
+  receipt_footer: string | null;
+  next_receipt_number: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreMember {
+  store_id: string;
+  user_id: string;
+  role: StoreRole;
+  created_at: string;
+}
+
+export interface PosCategory {
+  id: string;
+  store_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface PosProduct {
+  id: string;
+  store_id: string;
+  category_id: string | null;
+  name: string;
+  sku: string | null;
+  barcode: string | null;
+  price: number;
+  cost: number | null;
+  image_path: string | null;
+  track_stock: boolean;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Inventory {
+  product_id: string;
+  quantity: number;
+  low_stock_threshold: number;
+  updated_at: string;
+}
+
+export interface StockMovement {
+  id: string;
+  product_id: string;
+  delta: number;
+  reason: StockReason;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface PosCustomer {
+  id: string;
+  store_id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+export interface Shift {
+  id: string;
+  store_id: string;
+  opened_by: string;
+  opened_at: string;
+  float_amount: number;
+  cash_in: number;
+  cash_out: number;
+  closed_at: string | null;
+  closed_by: string | null;
+  expected_cash: number | null;
+  actual_cash: number | null;
+  note: string | null;
+}
+
+export interface Sale {
+  id: string;
+  store_id: string;
+  shift_id: string | null;
+  cashier_id: string | null;
+  customer_id: string | null;
+  receipt_number: number;
+  subtotal: number;
+  discount: number;
+  total: number;
+  status: SaleStatus;
+  refunded_at: string | null;
+  created_at: string;
+}
+
+export interface SaleItem {
+  id: string;
+  sale_id: string;
+  product_id: string | null;
+  name: string;
+  price: number;
+  quantity: number;
+  discount: number;
+  total: number;
+}
+
+export interface SalePayment {
+  id: string;
+  sale_id: string;
+  method: PaymentMethod;
+  amount: number;
 }
 
 export interface CurrencyRate {
@@ -1205,6 +1330,304 @@ export type Database = {
           },
         ];
       };
+      stores: {
+        Row: Store;
+        Insert: {
+          id?: string;
+          owner_id: string;
+          name: string;
+          currency?: string;
+          receipt_footer?: string | null;
+          next_receipt_number?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Store>;
+        Relationships: [
+          {
+            foreignKeyName: "stores_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      store_members: {
+        Row: StoreMember;
+        Insert: {
+          store_id: string;
+          user_id: string;
+          role?: StoreRole;
+          created_at?: string;
+        };
+        Update: Partial<StoreMember>;
+        Relationships: [
+          {
+            foreignKeyName: "store_members_store_id_fkey";
+            columns: ["store_id"];
+            isOneToOne: false;
+            referencedRelation: "stores";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "store_members_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      pos_categories: {
+        Row: PosCategory;
+        Insert: {
+          id?: string;
+          store_id: string;
+          name: string;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: Partial<PosCategory>;
+        Relationships: [
+          {
+            foreignKeyName: "pos_categories_store_id_fkey";
+            columns: ["store_id"];
+            isOneToOne: false;
+            referencedRelation: "stores";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      pos_products: {
+        Row: PosProduct;
+        Insert: {
+          id?: string;
+          store_id: string;
+          category_id?: string | null;
+          name: string;
+          sku?: string | null;
+          barcode?: string | null;
+          price: number;
+          cost?: number | null;
+          image_path?: string | null;
+          track_stock?: boolean;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<PosProduct>;
+        Relationships: [
+          {
+            foreignKeyName: "pos_products_store_id_fkey";
+            columns: ["store_id"];
+            isOneToOne: false;
+            referencedRelation: "stores";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pos_products_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "pos_categories";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      inventory: {
+        Row: Inventory;
+        Insert: {
+          product_id: string;
+          quantity?: number;
+          low_stock_threshold?: number;
+          updated_at?: string;
+        };
+        Update: Partial<Inventory>;
+        Relationships: [
+          {
+            foreignKeyName: "inventory_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: true;
+            referencedRelation: "pos_products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      stock_movements: {
+        Row: StockMovement;
+        Insert: {
+          id?: string;
+          product_id: string;
+          delta: number;
+          reason: StockReason;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<StockMovement>;
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "pos_products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      pos_customers: {
+        Row: PosCustomer;
+        Insert: {
+          id?: string;
+          store_id: string;
+          name: string;
+          phone?: string | null;
+          email?: string | null;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<PosCustomer>;
+        Relationships: [
+          {
+            foreignKeyName: "pos_customers_store_id_fkey";
+            columns: ["store_id"];
+            isOneToOne: false;
+            referencedRelation: "stores";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      shifts: {
+        Row: Shift;
+        Insert: {
+          id?: string;
+          store_id: string;
+          opened_by: string;
+          opened_at?: string;
+          float_amount?: number;
+          cash_in?: number;
+          cash_out?: number;
+          closed_at?: string | null;
+          closed_by?: string | null;
+          expected_cash?: number | null;
+          actual_cash?: number | null;
+          note?: string | null;
+        };
+        Update: Partial<Shift>;
+        Relationships: [
+          {
+            foreignKeyName: "shifts_store_id_fkey";
+            columns: ["store_id"];
+            isOneToOne: false;
+            referencedRelation: "stores";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "shifts_opened_by_fkey";
+            columns: ["opened_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      sales: {
+        Row: Sale;
+        Insert: {
+          id?: string;
+          store_id: string;
+          shift_id?: string | null;
+          cashier_id?: string | null;
+          customer_id?: string | null;
+          receipt_number: number;
+          subtotal: number;
+          discount?: number;
+          total: number;
+          status?: SaleStatus;
+          refunded_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Sale>;
+        Relationships: [
+          {
+            foreignKeyName: "sales_store_id_fkey";
+            columns: ["store_id"];
+            isOneToOne: false;
+            referencedRelation: "stores";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_shift_id_fkey";
+            columns: ["shift_id"];
+            isOneToOne: false;
+            referencedRelation: "shifts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_cashier_id_fkey";
+            columns: ["cashier_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "pos_customers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      sale_items: {
+        Row: SaleItem;
+        Insert: {
+          id?: string;
+          sale_id: string;
+          product_id?: string | null;
+          name: string;
+          price: number;
+          quantity: number;
+          discount?: number;
+          total: number;
+        };
+        Update: Partial<SaleItem>;
+        Relationships: [
+          {
+            foreignKeyName: "sale_items_sale_id_fkey";
+            columns: ["sale_id"];
+            isOneToOne: false;
+            referencedRelation: "sales";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sale_items_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "pos_products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      sale_payments: {
+        Row: SalePayment;
+        Insert: {
+          id?: string;
+          sale_id: string;
+          method: PaymentMethod;
+          amount: number;
+        };
+        Update: Partial<SalePayment>;
+        Relationships: [
+          {
+            foreignKeyName: "sale_payments_sale_id_fkey";
+            columns: ["sale_id"];
+            isOneToOne: false;
+            referencedRelation: "sales";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       currency_rates: {
         Row: CurrencyRate;
         Insert: {
@@ -1416,6 +1839,28 @@ export type Database = {
         Args: { uid: string };
         Returns: boolean;
       };
+      is_store_member: {
+        Args: { sid: string };
+        Returns: boolean;
+      };
+      is_store_manager: {
+        Args: { sid: string };
+        Returns: boolean;
+      };
+      create_sale: {
+        Args: {
+          p_store_id: string;
+          p_items: unknown;
+          p_payments: unknown;
+          p_cart_discount?: number;
+          p_customer_id?: string | null;
+        };
+        Returns: { sale_id: string; receipt_number: number }[];
+      };
+      refund_sale: {
+        Args: { p_sale_id: string };
+        Returns: undefined;
+      };
       latest_sensor_readings: {
         Args: Record<string, never>;
         Returns: {
@@ -1452,6 +1897,10 @@ export type Database = {
       device_protocol: DeviceProtocol;
       alert_severity: AlertSeverity;
       command_status: CommandStatus;
+      store_role: StoreRole;
+      payment_method: PaymentMethod;
+      sale_status: SaleStatus;
+      stock_reason: StockReason;
     };
     CompositeTypes: {
       [_ in never]: never;
