@@ -10,6 +10,7 @@ import type { NotificationWithActor } from "@/types/social";
 
 /** Where clicking the notification takes the user. */
 export function notificationHref(notification: NotificationWithActor): string {
+  if (notification.type === "device_alert") return "/farm/rules";
   if (notification.post_id) return `/p/${notification.post_id}`;
   if (notification.actor?.username) return `/u/${notification.actor.username}`;
   return "/notifications";
@@ -35,6 +36,7 @@ export function NotificationItem({
     comment_reply: t("commentReply", { name: actorName }),
     post_share: t("postShare", { name: actorName }),
     new_follower: t("newFollower", { name: actorName }),
+    device_alert: t("deviceAlert"),
   }[notification.type];
 
   return (

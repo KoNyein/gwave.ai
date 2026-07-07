@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { publicEnv } from "@/lib/env";
+import { checkAuthRateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 const credentialsSchema = z.object({
@@ -24,6 +25,9 @@ export async function login(
   });
   if (!parsed.success) {
     return { error: parsed.error.errors[0]?.message ?? "Invalid input." };
+  }
+  if (!(await checkAuthRateLimit("login", 10))) {
+    return { error: "Too many attempts. Please wait a minute." };
   }
 
   const supabase = await createClient();
@@ -47,6 +51,9 @@ export async function register(
   });
   if (!parsed.success) {
     return { error: parsed.error.errors[0]?.message ?? "Invalid input." };
+  }
+  if (!(await checkAuthRateLimit("register", 5))) {
+    return { error: "Too many attempts. Please wait a minute." };
   }
 
   const supabase = await createClient();

@@ -11,7 +11,7 @@ import {
 
 export const FEED_PAGE_SIZE = 10;
 
-const AUTHOR_SELECT = "id, username, full_name, avatar_url";
+const AUTHOR_SELECT = "id, username, full_name, avatar_url, role";
 
 /** Everything a post card needs, in a single query. */
 const POST_SELECT = `

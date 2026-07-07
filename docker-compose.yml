@@ -16,3 +16,26 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
     restart: unless-stopped
+
+  # MQTT broker for smart farm / smart home devices (Phase 6).
+  emqx:
+    image: emqx/emqx:5
+    ports:
+      - "1883:1883" # MQTT
+      - "18083:18083" # dashboard (admin/public by default — change it!)
+    environment:
+      EMQX_ALLOW_ANONYMOUS: "true" # local dev only; disable in production
+    restart: unless-stopped
+
+  # Relays MQTT telemetry into Supabase and publishes queued commands.
+  iot-bridge:
+    build:
+      context: ./services/iot-bridge
+    depends_on:
+      - emqx
+    environment:
+      SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      MQTT_URL: mqtt://emqx:1883
+      TZ: ${TZ:-Asia/Bangkok}
+    restart: unless-stopped

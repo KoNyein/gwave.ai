@@ -25,7 +25,7 @@ const mediaItemSchema = z.object({
 const createPostSchema = z
   .object({
     content: z.string().max(10000),
-    visibility: z.enum(["public", "friends", "only_me"]),
+    visibility: z.enum(["public", "friends", "only_me", "members"]),
     media: z.array(mediaItemSchema).max(10),
     groupId: z.string().uuid().nullish(),
     pageId: z.string().uuid().nullish(),
@@ -125,7 +125,7 @@ export async function deletePost(postId: string): Promise<ActionResult> {
 const sharePostSchema = z.object({
   postId: z.string().uuid(),
   content: z.string().max(10000),
-  visibility: z.enum(["public", "friends", "only_me"]),
+  visibility: z.enum(["public", "friends", "only_me", "members"]),
 });
 
 export async function sharePost(

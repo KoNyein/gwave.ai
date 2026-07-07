@@ -3,6 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import {
+  BadgeCheck,
+  Flag,
   Globe,
   Lock,
   MessageCircle,
@@ -15,8 +17,10 @@ import { useTranslations } from "next-intl";
 
 import { CommentSection } from "@/components/social/comment-section";
 import { MediaGrid } from "@/components/social/media-grid";
+import { MemberBadge } from "@/components/social/member-badge";
 import { ReactionButton } from "@/components/social/reaction-button";
 import { REACTIONS } from "@/components/social/reactions";
+import { ReportDialog } from "@/components/social/report-dialog";
 import { ShareDialog } from "@/components/social/share-dialog";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -36,6 +40,7 @@ const VISIBILITY_ICONS: Record<PostVisibility, typeof Globe> = {
   public: Globe,
   friends: Users,
   only_me: Lock,
+  members: BadgeCheck,
 };
 
 export function PostCard({
@@ -59,6 +64,7 @@ export function PostCard({
   const [commentCount, setCommentCount] = React.useState(post.comment_count);
   const [commentsOpen, setCommentsOpen] = React.useState(false);
   const [shareOpen, setShareOpen] = React.useState(false);
+  const [reportOpen, setReportOpen] = React.useState(false);
 
   const VisibilityIcon = VISIBILITY_ICONS[post.visibility];
   const isOwn = post.author_id === currentUser.id;
@@ -107,7 +113,8 @@ export function PostCard({
               <span className="text-sm font-semibold">
                 {displayName(post.author)}
               </span>
-            )}
+            )}{" "}
+            <MemberBadge role={post.author.role} />
             {post.shared_post ? (
               <span className="text-sm text-muted-foreground">
                 {" "}
@@ -143,19 +150,19 @@ export function PostCard({
             </div>
           </div>
         </div>
-        {isOwn ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-full"
-                aria-label={t("postMenu")}
-              >
-                <MoreHorizontal className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              aria-label={t("postMenu")}
+            >
+              <MoreHorizontal className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {isOwn ? (
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onSelect={handleDelete}
@@ -163,9 +170,14 @@ export function PostCard({
                 <Trash2 className="mr-2 h-4 w-4" />
                 {t("delete")}
               </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : null}
+            ) : (
+              <DropdownMenuItem onSelect={() => setReportOpen(true)}>
+                <Flag className="mr-2 h-4 w-4" />
+                {t("report")}
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Content */}
@@ -287,6 +299,11 @@ export function PostCard({
         open={shareOpen}
         onOpenChange={setShareOpen}
         onShared={onShared}
+      />
+      <ReportDialog
+        postId={post.id}
+        open={reportOpen}
+        onOpenChange={setReportOpen}
       />
     </Card>
   );
