@@ -5,6 +5,9 @@ import { getLocale, getMessages } from "next-intl/server";
 
 import "./globals.css";
 
+import { getSiteTheme } from "@/lib/db/admin";
+import { DEFAULT_THEME } from "@/lib/theme";
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -17,11 +20,18 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = await getLocale();
-  const messages = await getMessages();
+  const [locale, messages, theme] = await Promise.all([
+    getLocale(),
+    getMessages(),
+    getSiteTheme(),
+  ]);
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html
+      lang={locale}
+      data-theme={theme === DEFAULT_THEME ? undefined : theme}
+      suppressHydrationWarning
+    >
       <body className={inter.className}>
         <NextIntlClientProvider messages={messages}>
           {children}

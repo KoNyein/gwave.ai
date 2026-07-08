@@ -1,6 +1,8 @@
 import "server-only";
 
+import { createAnonClient } from "@/lib/supabase/anon";
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_THEME, isSiteTheme, type SiteTheme } from "@/lib/theme";
 import type { AuditLog, Profile, Report } from "@/types/database";
 import type { AuthorSummary } from "@/types/social";
 
@@ -122,6 +124,27 @@ export async function getAuditLogs(limit = 100): Promise<
     .limit(limit)
     .returns<(AuditLog & { actor: AuthorSummary | null })[]>();
   return data ?? [];
+}
+
+/**
+ * The active site template. Uses the cookie-less anon client so the root
+ * layout can call it anywhere (site_settings is publicly readable), and
+ * falls back to the default theme when the database is unreachable
+ * (e.g. during builds with placeholder env).
+ */
+export async function getSiteTheme(): Promise<SiteTheme> {
+  try {
+    const supabase = createAnonClient();
+    const { data } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "appearance")
+      .maybeSingle();
+    const theme = (data?.value as { theme?: string })?.theme;
+    return isSiteTheme(theme) ? theme : DEFAULT_THEME;
+  } catch {
+    return DEFAULT_THEME;
+  }
 }
 
 export async function getSiteName(): Promise<string> {
