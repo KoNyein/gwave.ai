@@ -23,7 +23,8 @@
     "settings": "设置",
     "logout": "退出登录",
     "learn": "Learn",
-    "wellness": "Wellness"
+    "wellness": "Wellness",
+    "live": "Live"
   },
   "auth": {
     "login": "登录",
@@ -243,7 +244,8 @@
     "moreActions": "More actions",
     "reportUser": "Report user",
     "blockUser": "Block user",
-    "unblockUser": "Unblock user"
+    "unblockUser": "Unblock user",
+    "myProjects": "My Projects"
   },
   "groups": {
     "title": "群组",

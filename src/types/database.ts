@@ -72,6 +72,77 @@ export type GroupMemberStatus = "pending" | "active";
 
 export type AgeBandDb = "child" | "preteen" | "teen" | "adult" | "unknown";
 
+export type LessonStatus = "in_progress" | "completed";
+
+export type LiveStreamStatus = "idle" | "live" | "ended";
+
+export const LIVE_REACTION_EMOJIS = [
+  "❤️",
+  "👍",
+  "😂",
+  "😮",
+  "👏",
+  "🔥",
+] as const;
+export type LiveReactionEmoji = (typeof LIVE_REACTION_EMOJIS)[number];
+
+export interface LiveStream {
+  id: string;
+  host_id: string;
+  title: string;
+  description: string | null;
+  status: LiveStreamStatus;
+  mux_stream_id: string;
+  mux_playback_id: string | null;
+  viewer_count: number;
+  started_at: string | null;
+  ended_at: string | null;
+  created_at: string;
+}
+
+export interface LiveStreamKey {
+  stream_id: string;
+  stream_key: string;
+}
+
+export interface LiveChatMessage {
+  id: string;
+  stream_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+}
+
+export interface LiveReaction {
+  id: number;
+  stream_id: string;
+  user_id: string;
+  emoji: LiveReactionEmoji;
+  created_at: string;
+}
+
+export interface LessonProgress {
+  user_id: string;
+  track_slug: string;
+  lesson_slug: string;
+  status: LessonStatus;
+  progress_pct: number;
+  score: number | null;
+  last_viewed_at: string;
+  completed_at: string | null;
+}
+
+export interface MemberProject {
+  id: string;
+  user_id: string;
+  track_slug: string;
+  lesson_slug: string;
+  kind: string;
+  title: string;
+  data: Record<string, unknown>;
+  updated_at: string;
+}
+
 export type WellnessKind = "dhamma" | "meditation" | "radio" | "health";
 
 export interface Profile {
@@ -747,6 +818,146 @@ export type Database = {
             columns: ["comment_id"];
             isOneToOne: false;
             referencedRelation: "comments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      live_streams: {
+        Row: LiveStream;
+        Insert: {
+          id?: string;
+          host_id: string;
+          title: string;
+          description?: string | null;
+          status?: LiveStreamStatus;
+          mux_stream_id: string;
+          mux_playback_id?: string | null;
+          viewer_count?: number;
+          started_at?: string | null;
+          ended_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<LiveStream>;
+        Relationships: [
+          {
+            foreignKeyName: "live_streams_host_id_fkey";
+            columns: ["host_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      live_stream_keys: {
+        Row: LiveStreamKey;
+        Insert: LiveStreamKey;
+        Update: Partial<LiveStreamKey>;
+        Relationships: [
+          {
+            foreignKeyName: "live_stream_keys_stream_id_fkey";
+            columns: ["stream_id"];
+            isOneToOne: true;
+            referencedRelation: "live_streams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      live_chat_messages: {
+        Row: LiveChatMessage;
+        Insert: {
+          id?: string;
+          stream_id: string;
+          user_id: string;
+          content: string;
+          created_at?: string;
+        };
+        Update: Partial<LiveChatMessage>;
+        Relationships: [
+          {
+            foreignKeyName: "live_chat_messages_stream_id_fkey";
+            columns: ["stream_id"];
+            isOneToOne: false;
+            referencedRelation: "live_streams";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "live_chat_messages_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      live_reactions: {
+        Row: LiveReaction;
+        Insert: {
+          id?: number;
+          stream_id: string;
+          user_id: string;
+          emoji: LiveReactionEmoji;
+          created_at?: string;
+        };
+        Update: Partial<LiveReaction>;
+        Relationships: [
+          {
+            foreignKeyName: "live_reactions_stream_id_fkey";
+            columns: ["stream_id"];
+            isOneToOne: false;
+            referencedRelation: "live_streams";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "live_reactions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      lesson_progress: {
+        Row: LessonProgress;
+        Insert: {
+          user_id: string;
+          track_slug: string;
+          lesson_slug: string;
+          status?: LessonStatus;
+          progress_pct?: number;
+          score?: number | null;
+          last_viewed_at?: string;
+          completed_at?: string | null;
+        };
+        Update: Partial<LessonProgress>;
+        Relationships: [
+          {
+            foreignKeyName: "lesson_progress_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      member_projects: {
+        Row: MemberProject;
+        Insert: {
+          id?: string;
+          user_id: string;
+          track_slug: string;
+          lesson_slug: string;
+          kind: string;
+          title: string;
+          data?: Record<string, unknown>;
+          updated_at?: string;
+        };
+        Update: Partial<MemberProject>;
+        Relationships: [
+          {
+            foreignKeyName: "member_projects_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
         ];
@@ -2345,6 +2556,8 @@ export type Database = {
       webhook_event: WebhookEvent;
       age_band: AgeBandDb;
       wellness_kind: WellnessKind;
+      lesson_status: LessonStatus;
+      live_stream_status: LiveStreamStatus;
     };
     CompositeTypes: {
       [_ in never]: never;

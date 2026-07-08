@@ -9,6 +9,7 @@ import {
   LayoutGrid,
   Leaf,
   Lightbulb,
+  Radio,
   ShoppingCart,
   Sprout,
   Users,
@@ -28,6 +29,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/friends", labelKey: "friends", icon: Users },
   { href: "/groups", labelKey: "groups", icon: LayoutGrid },
   { href: "/pages", labelKey: "pages", icon: Flag },
+  { href: "/live", labelKey: "live", icon: Radio },
 ];
 
 export const TOOL_NAV: NavItem[] = [

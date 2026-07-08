@@ -5,10 +5,21 @@ import { CheckCircle2, RotateCcw, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  reportLessonComplete,
+  type LessonRef,
+} from "@/components/learn/use-learn-progress";
 import type { QuizQuestion } from "@/lib/learn/lessons";
 import { cn } from "@/lib/utils";
 
-export function Quiz({ questions }: { questions: QuizQuestion[] }) {
+export function Quiz({
+  questions,
+  lesson,
+}: {
+  questions: QuizQuestion[];
+  /** When set, submitting records completion + score for this lesson. */
+  lesson?: LessonRef;
+}) {
   const [answers, setAnswers] = React.useState<(number | null)[]>(
     () => questions.map(() => null),
   );
@@ -28,6 +39,16 @@ export function Quiz({ questions }: { questions: QuizQuestion[] }) {
   function reset() {
     setAnswers(questions.map(() => null));
     setSubmitted(false);
+  }
+
+  function submit() {
+    setSubmitted(true);
+    // Optimistic: the result banner shows instantly; the server keeps the
+    // best score, so retries can only improve it.
+    reportLessonComplete(
+      lesson,
+      Math.round((score / questions.length) * 100),
+    );
   }
 
   return (
@@ -92,11 +113,7 @@ export function Quiz({ questions }: { questions: QuizQuestion[] }) {
           </Button>
         </div>
       ) : (
-        <Button
-          className="w-full"
-          disabled={!allAnswered}
-          onClick={() => setSubmitted(true)}
-        >
+        <Button className="w-full" disabled={!allAnswered} onClick={submit}>
           {allAnswered ? "Check answers" : "Answer all questions to continue"}
         </Button>
       )}

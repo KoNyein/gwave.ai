@@ -23,7 +23,8 @@
     "settings": "Settings",
     "logout": "Log out",
     "learn": "Learn",
-    "wellness": "Wellness"
+    "wellness": "Wellness",
+    "live": "Live"
   },
   "auth": {
     "login": "Log in",
@@ -243,7 +244,8 @@
     "moreActions": "More actions",
     "reportUser": "Report user",
     "blockUser": "Block user",
-    "unblockUser": "Unblock user"
+    "unblockUser": "Unblock user",
+    "myProjects": "My Projects"
   },
   "groups": {
     "title": "Groups",

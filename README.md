@@ -92,6 +92,27 @@ Open http://localhost:3000.
 | `pnpm format`    | Prettier                                        |
 | `pnpm e2e`       | Playwright E2E (smoke suite; `E2E_FULL=1` for full flows) |
 
+## Live streaming (Mux)
+
+Facebook-Live-style broadcasting at `/live` is powered by
+[Mux](https://www.mux.com). One-time setup:
+
+1. Create a Mux account and, under **Settings → Access Tokens**, generate a
+   token with **Mux Video** permission. Put the ID/secret in
+   `MUX_TOKEN_ID` / `MUX_TOKEN_SECRET` (server-only env vars — on Vercel:
+   Project → Settings → Environment Variables).
+2. Under **Settings → Webhooks**, add an endpoint pointing at
+   `https://<your-domain>/api/live/webhook` and copy its **signing secret**
+   into `MUX_WEBHOOK_SECRET`. The webhook flips streams between
+   idle → live → ended; every request is signature-verified.
+3. Apply the `20260708120000_live_streaming.sql` migration and redeploy.
+
+Hosts create a stream at `/live/new`, paste the RTMP URL + private stream
+key into OBS (Settings → Stream), and go live. The stream key is stored in
+its own host-only RLS table (`live_stream_keys`) and is never readable by
+viewers. Viewers get HLS playback, realtime chat (postgres_changes),
+floating reactions (broadcast) and a presence-based viewer count.
+
 ## Testing & audits
 
 - **Smoke E2E** (`e2e/smoke.spec.ts`) — auth guards, public pages, security

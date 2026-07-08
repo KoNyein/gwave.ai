@@ -4,10 +4,15 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { CircuitGame } from "@/components/learn/circuit-game";
 import { CodePlayground } from "@/components/learn/code-playground";
+import {
+  LessonStartMarker,
+  ReadingProgressTracker,
+} from "@/components/learn/progress-tracker";
 import { Quiz } from "@/components/learn/quiz";
 import { RobotGame } from "@/components/learn/robot-game";
 import { Card, CardContent } from "@/components/ui/card";
 import { ageBandOf, getCurrentProfile } from "@/lib/auth";
+import { getProjectForLesson } from "@/lib/db/learn";
 import { getLesson, tracksForBand } from "@/lib/learn/lessons";
 
 export const dynamic = "force-dynamic";
@@ -41,8 +46,28 @@ export default async function LessonPage({
   const index = track.lessons.findIndex((l) => l.slug === lesson.slug);
   const next = track.lessons[index + 1];
 
+  // Saved game/playground state for resume (only these kinds persist state).
+  const persistedKinds = ["code", "robot", "circuit"];
+  const project = persistedKinds.includes(lesson.kind)
+    ? await getProjectForLesson(profile.id, track.slug, lesson.slug)
+    : null;
+  const lessonRef = {
+    trackSlug: track.slug,
+    lessonSlug: lesson.slug,
+    initialData: project?.data ?? null,
+  };
+
   return (
     <div className="space-y-4">
+      {lesson.kind === "reading" ? (
+        <ReadingProgressTracker
+          trackSlug={track.slug}
+          lessonSlug={lesson.slug}
+        />
+      ) : (
+        <LessonStartMarker trackSlug={track.slug} lessonSlug={lesson.slug} />
+      )}
+
       <Link
         href={`/learn/${track.slug}`}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -67,14 +92,20 @@ export default async function LessonPage({
       ))}
 
       {lesson.kind === "code" && lesson.code && (
-        <CodePlayground starter={lesson.code} />
+        <CodePlayground
+          starter={lesson.code}
+          lesson={lessonRef}
+          title={lesson.title}
+        />
       )}
 
-      {lesson.kind === "robot" && <RobotGame />}
+      {lesson.kind === "robot" && <RobotGame lesson={lessonRef} />}
 
-      {lesson.kind === "circuit" && <CircuitGame />}
+      {lesson.kind === "circuit" && <CircuitGame lesson={lessonRef} />}
 
-      {lesson.kind === "quiz" && lesson.quiz && <Quiz questions={lesson.quiz} />}
+      {lesson.kind === "quiz" && lesson.quiz && (
+        <Quiz questions={lesson.quiz} lesson={lessonRef} />
+      )}
 
       {next ? (
         <Link
