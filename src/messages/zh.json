@@ -24,7 +24,8 @@
     "logout": "退出登录",
     "learn": "Learn",
     "wellness": "Wellness",
-    "live": "Live"
+    "live": "Live",
+    "games": "游戏"
   },
   "auth": {
     "login": "登录",
@@ -84,7 +85,10 @@
     "originalUnavailable": "原帖子已不可用。",
     "commentCount": "{count, plural, other {# 条评论}}",
     "shareCount": "{count, plural, other {# 次分享}}",
-    "block": "Block user"
+    "block": "Block user",
+    "viewCount": "{count, plural, one {# 次浏览} other {# 次浏览}}",
+    "viewers": "浏览者",
+    "noViewersYet": "还没有浏览。"
   },
   "comments": {
     "placeholder": "写下评论...",
@@ -518,7 +522,8 @@
     "auditLogs": "Audit log",
     "noAuditLogs": "No audit entries yet.",
     "aProfile": "a profile",
-    "profileReportHint": "Resolving with Remove suspends this user for 7 days."
+    "profileReportHint": "Resolving with Remove suspends this user for 7 days.",
+    "navGames": "游戏"
   },
   "dev": {
     "navKeys": "API keys",
@@ -835,5 +840,45 @@
     "cancelDeletion": "Cancel request",
     "billingTitle": "Billing history",
     "noInvoices": "No invoices yet — they appear here after your first membership payment."
+  },
+  "games": {
+    "title": "游戏",
+    "subtitle": "玩内置游戏，或试试社区制作的游戏。",
+    "submitCta": "提交游戏",
+    "builtinHeading": "GreenWave 原创游戏",
+    "communityHeading": "社区游戏",
+    "communityEmpty": "还没有社区游戏 — 来做第一个提交的人吧！",
+    "mineHeading": "我提交的游戏",
+    "plays": "{count, plural, one {# 次游玩} other {# 次游玩}}",
+    "growTagline": "管理水分、养分和虫害，收获最佳产量。",
+    "gardenTagline": "适合小小种植者的轻松花园游戏。",
+    "learnGamesTitle": "学习游戏",
+    "learnGamesTagline": "Learn 中心里的机器人编程、电路和测验。",
+    "backToGames": "返回游戏",
+    "formTitle": "标题",
+    "formEmoji": "表情符号",
+    "formDescription": "描述",
+    "formCode": "游戏代码（单个 HTML 文件）",
+    "sandboxNote": "你的游戏在锁定的沙箱中运行：仅限内联 HTML/CSS/JS — 无网络请求、无外部文件、无 Cookie。每个游戏上架前都会经过审核。",
+    "preview": "预览",
+    "submit": "提交审核",
+    "resubmit": "重新提交审核",
+    "submitTitle": "提交你的游戏",
+    "editTitle": "编辑你的游戏",
+    "submitSubtitle": "上传一个自包含的 HTML5 游戏。审核通过后即向所有人开放。",
+    "status_pending": "待审核",
+    "status_approved": "已通过",
+    "status_rejected": "已拒绝",
+    "reviewNote": "审核备注",
+    "open": "打开",
+    "edit": "编辑",
+    "pendingBanner": "该游戏正在等待审核 — 目前仅你（和审核员）可见。",
+    "rejectedBanner": "该游戏未通过审核",
+    "adminTitle": "游戏审核队列",
+    "adminEmpty": "还没有游戏提交。",
+    "previewInSandbox": "在沙箱中预览",
+    "reviewNotePlaceholder": "给作者的备注（可选）",
+    "approve": "通过",
+    "reject": "拒绝"
   }
 }

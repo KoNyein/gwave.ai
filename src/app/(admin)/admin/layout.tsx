@@ -20,6 +20,7 @@ export default async function AdminLayout({
     { href: "/admin", label: t("navOverview") },
     { href: "/admin/users", label: t("navUsers") },
     { href: "/admin/moderation", label: t("navModeration") },
+    { href: "/admin/games", label: t("navGames") },
     { href: "/admin/membership", label: t("navMembership") },
     { href: "/admin/settings", label: t("navSettings") },
   ];
