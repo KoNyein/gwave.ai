@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   BookOpen,
+  Bot,
   Code2,
   FlaskConical,
   Gamepad2,
@@ -18,6 +19,7 @@ export const dynamic = "force-dynamic";
 
 const ICONS: Record<string, LucideIcon> = {
   FlaskConical,
+  Bot,
   Code2,
   Sprout,
 };
