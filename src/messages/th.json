@@ -23,7 +23,8 @@
     "settings": "ตั้งค่า",
     "logout": "ออกจากระบบ",
     "learn": "Learn",
-    "wellness": "Wellness"
+    "wellness": "Wellness",
+    "live": "Live"
   },
   "auth": {
     "login": "เข้าสู่ระบบ",

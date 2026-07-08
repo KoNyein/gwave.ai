@@ -9,10 +9,11 @@ const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' blob: data: https://*.supabase.co https://lh3.googleusercontent.com",
-  "media-src 'self' blob: https://*.supabase.co",
+  "img-src 'self' blob: data: https://*.supabase.co https://lh3.googleusercontent.com https://image.mux.com",
+  "media-src 'self' blob: https://*.supabase.co https://stream.mux.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com",
+  // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io",
   // Sandboxed srcdoc iframes power the /learn code playground.
   "frame-src 'self'",
   "frame-ancestors 'none'",

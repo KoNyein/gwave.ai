@@ -75,11 +75,16 @@ const config: Config = {
           from: { width: "0%" },
           to: { width: "100%" },
         },
+        "float-up": {
+          "0%": { transform: "translateY(0) scale(1)", opacity: "1" },
+          "100%": { transform: "translateY(-9rem) scale(1.4)", opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "story-progress": "story-progress linear forwards",
+        "float-up": "float-up 2.4s ease-out forwards",
       },
     },
   },
