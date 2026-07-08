@@ -4,7 +4,7 @@
 
 import type { AgeBand } from "@/lib/age";
 
-export type LessonKind = "reading" | "quiz" | "code";
+export type LessonKind = "reading" | "quiz" | "code" | "robot";
 
 export interface QuizQuestion {
   q: string;
@@ -111,6 +111,115 @@ const stemTrack: Track = {
         {
           heading: "Reaching for the light",
           body: "Place a small plant near a window for a few days. Notice how the leaves turn toward the light. Plants grow toward light so they can make more food. This is called phototropism.",
+        },
+      ],
+    },
+  ],
+};
+
+// ─────────────────── Robotics & AI (all ages, banded) ──────────────────────
+
+const roboticsTrack: Track = {
+  slug: "robotics",
+  title: "Robotics & AI",
+  description:
+    "How robots sense, think and move — with a hands-on robot programming game.",
+  icon: "Bot",
+  bands: ["child", "preteen", "teen", "adult"],
+  lessons: [
+    {
+      slug: "what-is-a-robot",
+      title: "What Is a Robot?",
+      summary: "Sense, think, act — the loop every robot runs on.",
+      minutes: 7,
+      kind: "reading",
+      sections: [
+        {
+          heading: "Sense → Think → Act",
+          body: "A robot is a machine that senses its surroundings, decides what to do, and then acts. It repeats this loop many times a second. A robot vacuum senses a wall (sense), decides to turn (think), and drives away from it (act).",
+        },
+        {
+          heading: "Sensors are a robot's senses",
+          body: "Sensors turn the real world into numbers a robot can use — distance sensors, cameras, temperature and light sensors. On a GreenWave smart farm, sensors read temperature, humidity and soil moisture so the system can act automatically.",
+        },
+        {
+          heading: "Actuators make things move",
+          body: "Actuators are the muscles: motors that spin wheels, arms that lift, valves that open. A robot's program connects what the sensors say to what the actuators do.",
+        },
+      ],
+    },
+    {
+      slug: "program-a-robot",
+      title: "Program a Robot (Game)",
+      summary: "Write a list of commands to guide the robot to the goal.",
+      minutes: 12,
+      kind: "robot",
+      sections: [
+        {
+          heading: "Sequencing: order matters",
+          body: "Programming a robot means giving it commands in the right order — this is called sequencing, the foundation of all coding. Plan the path, add your moves, then press Run and watch the robot follow them exactly.",
+        },
+      ],
+    },
+    {
+      slug: "how-ai-helps-farms",
+      title: "How AI Helps Farms",
+      summary: "From simple rules to smart predictions.",
+      minutes: 8,
+      kind: "reading",
+      sections: [
+        {
+          heading: "Rules vs. learning",
+          body: "The simplest 'smart' systems follow rules a human wrote: IF humidity > 70% THEN turn on the fan. Artificial intelligence goes further — it learns patterns from lots of past data to predict what will happen next, like forecasting when a crop will be ready to harvest.",
+        },
+        {
+          heading: "AI you can see in GreenWave",
+          body: "The smart-farm automation rules are the rule-based kind — reliable and easy to understand. As more sensor history builds up, AI models can spot trends a person might miss, such as an early sign of plant stress.",
+        },
+        {
+          heading: "Keeping AI safe and fair",
+          body: "AI is only as good as its data. Good engineers check that predictions are accurate, explain how decisions are made, and always keep a human in charge of important choices.",
+        },
+      ],
+    },
+    {
+      slug: "robotics-quiz",
+      title: "Robotics & AI Quiz",
+      summary: "Check what you learned about robots and AI.",
+      minutes: 5,
+      kind: "quiz",
+      quiz: [
+        {
+          q: "What loop does every robot repeat?",
+          options: [
+            "Start → Stop",
+            "Sense → Think → Act",
+            "Buy → Sell",
+            "Up → Down",
+          ],
+          answer: 1,
+          explain: "Robots continuously sense their surroundings, decide, and act.",
+        },
+        {
+          q: "What turns the real world into numbers a robot can use?",
+          options: ["Actuators", "Wheels", "Sensors", "Batteries"],
+          answer: 2,
+        },
+        {
+          q: "Giving commands in the correct order is called…",
+          options: ["Sequencing", "Painting", "Charging", "Guessing"],
+          answer: 0,
+          explain: "Sequencing is the foundation of programming.",
+        },
+        {
+          q: "What is the safest way to use AI for important decisions?",
+          options: [
+            "Let it decide everything alone",
+            "Keep a human in charge and check its accuracy",
+            "Never write down the data",
+            "Turn off all sensors",
+          ],
+          answer: 1,
         },
       ],
     },
@@ -277,7 +386,12 @@ const agriTrack: Track = {
   ],
 };
 
-export const TRACKS: Track[] = [stemTrack, codingTrack, agriTrack];
+export const TRACKS: Track[] = [
+  stemTrack,
+  roboticsTrack,
+  codingTrack,
+  agriTrack,
+];
 
 /** Tracks visible to a given age band. Unknown DOB sees the kid-safe set. */
 export function tracksForBand(band: AgeBand): Track[] {

@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { CodePlayground } from "@/components/learn/code-playground";
 import { Quiz } from "@/components/learn/quiz";
+import { RobotGame } from "@/components/learn/robot-game";
 import { Card, CardContent } from "@/components/ui/card";
 import { ageBandOf, getCurrentProfile } from "@/lib/auth";
 import { getLesson, tracksForBand } from "@/lib/learn/lessons";
@@ -67,6 +68,8 @@ export default async function LessonPage({
       {lesson.kind === "code" && lesson.code && (
         <CodePlayground starter={lesson.code} />
       )}
+
+      {lesson.kind === "robot" && <RobotGame />}
 
       {lesson.kind === "quiz" && lesson.quiz && <Quiz questions={lesson.quiz} />}
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, BookText, Code2, HelpCircle } from "lucide-react";
+import { ArrowLeft, BookText, Bot, Code2, HelpCircle } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { ageBandOf, getCurrentProfile } from "@/lib/auth";
@@ -8,7 +8,12 @@ import { getTrack, tracksForBand, type LessonKind } from "@/lib/learn/lessons";
 
 export const dynamic = "force-dynamic";
 
-const KIND_ICON = { reading: BookText, quiz: HelpCircle, code: Code2 };
+const KIND_ICON = {
+  reading: BookText,
+  quiz: HelpCircle,
+  code: Code2,
+  robot: Bot,
+};
 
 export async function generateMetadata({
   params,
