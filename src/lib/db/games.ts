@@ -58,20 +58,33 @@ export async function getGame(id: string): Promise<GameWithAuthor | null> {
   return data;
 }
 
-/** Review queue for moderators: pending first, then recent decisions. */
+/**
+ * Review queue for moderators: every pending game (oldest first, so nothing
+ * ever ages out of the queue), followed by the most recent decisions.
+ */
 export async function getGamesForReview(): Promise<GameWithAuthor[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("games")
-    .select(GAME_SELECT)
-    .order("created_at", { ascending: false })
-    .limit(100)
-    .returns<GameWithAuthor[]>();
+  const [pendingRes, decidedRes] = await Promise.all([
+    supabase
+      .from("games")
+      .select(GAME_SELECT)
+      .eq("status", "pending")
+      .order("created_at", { ascending: true })
+      .returns<GameWithAuthor[]>(),
+    supabase
+      .from("games")
+      .select(GAME_SELECT)
+      .neq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(50)
+      .returns<GameWithAuthor[]>(),
+  ]);
 
-  if (error) throw new Error(`Failed to load review queue: ${error.message}`);
-  const games = data ?? [];
-  return [
-    ...games.filter((g) => g.status === "pending"),
-    ...games.filter((g) => g.status !== "pending"),
-  ];
+  if (pendingRes.error) {
+    throw new Error(`Failed to load review queue: ${pendingRes.error.message}`);
+  }
+  if (decidedRes.error) {
+    throw new Error(`Failed to load review queue: ${decidedRes.error.message}`);
+  }
+  return [...(pendingRes.data ?? []), ...(decidedRes.data ?? [])];
 }

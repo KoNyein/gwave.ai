@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { buildGameDoc } from "@/components/games/game-sandbox";
 import { submitGame } from "@/lib/actions/games";
 import type { Game } from "@/types/database";
 
@@ -130,7 +131,7 @@ export function SubmitGameForm({ existing }: { existing?: Game }) {
             <iframe
               title="Game preview"
               sandbox="allow-scripts"
-              srcDoc={preview}
+              srcDoc={buildGameDoc(preview)}
               className="h-96 w-full rounded-lg bg-white"
             />
           </CardContent>
