@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import type { ReactionType } from "@/types/database";
+import type { PostViewer } from "@/types/social";
 
 const REACTION_TYPES = [
   "like",
@@ -262,4 +263,52 @@ export async function deleteComment(commentId: string): Promise<ActionResult> {
     .eq("id", commentId);
   if (error) return { ok: false, error: error.message };
   return { ok: true, data: undefined };
+}
+
+/**
+ * Record that the viewer has seen a post. Idempotent (one row per
+ * post+viewer); RLS rejects self-views, invisible posts and spoofed viewer
+ * ids, so failures are simply ignored.
+ */
+export async function recordPostView(postId: string): Promise<void> {
+  if (!z.string().uuid().safeParse(postId).success) return;
+  const userId = await getUserId();
+  if (!userId) return;
+
+  const supabase = await createClient();
+  await supabase
+    .from("post_views")
+    .upsert(
+      { post_id: postId, viewer_id: userId },
+      { onConflict: "post_id,viewer_id", ignoreDuplicates: true },
+    );
+}
+
+/**
+ * Who has seen a post — RLS only returns the full list to the post's author
+ * (anyone else gets at most their own row, which we filter out client-side
+ * by never showing the dialog on foreign posts).
+ */
+export async function getPostViewers(
+  postId: string,
+): Promise<ActionResult<PostViewer[]>> {
+  if (!z.string().uuid().safeParse(postId).success) {
+    return { ok: false, error: "Invalid post." };
+  }
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not authenticated." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("post_views")
+    .select(
+      "viewed_at, viewer:profiles!post_views_viewer_id_fkey(id, username, full_name, avatar_url)",
+    )
+    .eq("post_id", postId)
+    .order("viewed_at", { ascending: false })
+    .limit(200)
+    .returns<PostViewer[]>();
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: data ?? [] };
 }

@@ -35,6 +35,12 @@ export interface FeedPost extends Post {
   page: { id: string; name: string; slug: string; avatar_url: string | null } | null;
 }
 
+/** One entry in a post's audience list (author-only). */
+export interface PostViewer {
+  viewed_at: string;
+  viewer: Pick<Profile, "id" | "username" | "full_name" | "avatar_url">;
+}
+
 export interface CommentWithAuthor extends Comment {
   author: AuthorSummary;
   my_reaction: { type: ReactionType }[];
