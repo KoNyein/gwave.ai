@@ -20,6 +20,10 @@ import { useTranslations } from "next-intl";
 import { CommentSection } from "@/components/social/comment-section";
 import { MediaGrid } from "@/components/social/media-grid";
 import { MemberBadge } from "@/components/social/member-badge";
+import {
+  PostViewsButton,
+  PostViewTracker,
+} from "@/components/social/post-views";
 import { ReactionButton } from "@/components/social/reaction-button";
 import { REACTIONS } from "@/components/social/reactions";
 import { ReportDialog } from "@/components/social/report-dialog";
@@ -101,7 +105,9 @@ export function PostCard({
   }
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="relative overflow-hidden">
+      {/* Views are only recorded on other people's posts. */}
+      {!isOwn ? <PostViewTracker postId={post.id} /> : null}
       {/* Header */}
       <div className="flex items-start justify-between px-4 pt-3">
         <div className="flex items-center gap-3">
@@ -252,7 +258,10 @@ export function PostCard({
       )}
 
       {/* Counts */}
-      {reactionCount > 0 || commentCount > 0 || post.share_count > 0 ? (
+      {reactionCount > 0 ||
+      commentCount > 0 ||
+      post.share_count > 0 ||
+      (isOwn && post.view_count > 0) ? (
         <div className="flex items-center justify-between px-4 py-2 text-sm text-muted-foreground">
           <span>
             {reactionCount > 0 ? (
@@ -264,7 +273,11 @@ export function PostCard({
               </>
             ) : null}
           </span>
-          <span className="flex gap-3">
+          <span className="flex items-center gap-3">
+            {/* Only the author sees how many people viewed the post. */}
+            {isOwn ? (
+              <PostViewsButton postId={post.id} viewCount={post.view_count} />
+            ) : null}
             {commentCount > 0 ? (
               <button
                 type="button"

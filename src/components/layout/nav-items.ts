@@ -4,6 +4,7 @@ import {
   Calculator,
   Flag,
   Flower2,
+  Gamepad2,
   Gem,
   Home,
   LayoutGrid,
@@ -30,6 +31,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/groups", labelKey: "groups", icon: LayoutGrid },
   { href: "/pages", labelKey: "pages", icon: Flag },
   { href: "/live", labelKey: "live", icon: Radio },
+  { href: "/games", labelKey: "games", icon: Gamepad2 },
 ];
 
 export const TOOL_NAV: NavItem[] = [

@@ -24,7 +24,8 @@
     "logout": "Log out",
     "learn": "Learn",
     "wellness": "Wellness",
-    "live": "Live"
+    "live": "Live",
+    "games": "Games"
   },
   "auth": {
     "login": "Log in",
@@ -84,7 +85,10 @@
     "originalUnavailable": "The original post is no longer available.",
     "commentCount": "{count, plural, one {# comment} other {# comments}}",
     "shareCount": "{count, plural, one {# share} other {# shares}}",
-    "block": "Block user"
+    "block": "Block user",
+    "viewCount": "{count, plural, one {# view} other {# views}}",
+    "viewers": "Viewed by",
+    "noViewersYet": "No views yet."
   },
   "comments": {
     "placeholder": "Write a comment...",
@@ -518,7 +522,8 @@
     "auditLogs": "Audit log",
     "noAuditLogs": "No audit entries yet.",
     "aProfile": "a profile",
-    "profileReportHint": "Resolving with Remove suspends this user for 7 days."
+    "profileReportHint": "Resolving with Remove suspends this user for 7 days.",
+    "navGames": "Games"
   },
   "dev": {
     "navKeys": "API keys",
@@ -835,5 +840,45 @@
     "cancelDeletion": "Cancel request",
     "billingTitle": "Billing history",
     "noInvoices": "No invoices yet — they appear here after your first membership payment."
+  },
+  "games": {
+    "title": "Games",
+    "subtitle": "Play built-in games or try games made by the community.",
+    "submitCta": "Submit a game",
+    "builtinHeading": "GreenWave originals",
+    "communityHeading": "Community games",
+    "communityEmpty": "No community games yet — be the first to submit one!",
+    "mineHeading": "My submissions",
+    "plays": "{count, plural, one {# play} other {# plays}}",
+    "growTagline": "Manage water, nutrients and pests to harvest the best yield.",
+    "gardenTagline": "A gentle garden game for young growers.",
+    "learnGamesTitle": "Learning games",
+    "learnGamesTagline": "Robot coding, circuits and quizzes in the Learn hub.",
+    "backToGames": "Back to Games",
+    "formTitle": "Title",
+    "formEmoji": "Emoji",
+    "formDescription": "Description",
+    "formCode": "Game code (single HTML file)",
+    "sandboxNote": "Your game runs in a locked sandbox: inline HTML/CSS/JS only — no network requests, no external files, no cookies. A moderator reviews every game before it is listed.",
+    "preview": "Preview",
+    "submit": "Submit for review",
+    "resubmit": "Resubmit for review",
+    "submitTitle": "Submit your game",
+    "editTitle": "Edit your game",
+    "submitSubtitle": "Upload a self-contained HTML5 game. After moderator approval it appears in the arcade for everyone.",
+    "status_pending": "Pending review",
+    "status_approved": "Approved",
+    "status_rejected": "Rejected",
+    "reviewNote": "Reviewer note",
+    "open": "Open",
+    "edit": "Edit",
+    "pendingBanner": "This game is waiting for moderator review — only you (and moderators) can see it.",
+    "rejectedBanner": "This game was rejected",
+    "adminTitle": "Game review queue",
+    "adminEmpty": "No game submissions yet.",
+    "previewInSandbox": "Preview in sandbox",
+    "reviewNotePlaceholder": "Optional note to the author",
+    "approve": "Approve",
+    "reject": "Reject"
   }
 }

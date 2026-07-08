@@ -36,6 +36,19 @@ function sortMedia(post: FeedPost): FeedPost {
   return post;
 }
 
+/**
+ * View counts are author-only, but the column rides along in `select *`
+ * rows readable by every allowed viewer — so zero it out server-side for
+ * anyone who isn't the author, instead of merely hiding it in the UI.
+ */
+function hideForeignViewCounts(post: FeedPost, viewerId: string): FeedPost {
+  if (post.author_id !== viewerId) post.view_count = 0;
+  if (post.shared_post && post.shared_post.author_id !== viewerId) {
+    post.shared_post.view_count = 0;
+  }
+  return post;
+}
+
 /** Applies a keyset pagination filter for (created_at desc, id desc). */
 function applyCursor<T extends { or: (filter: string) => T }>(
   query: T,
@@ -49,9 +62,12 @@ function applyCursor<T extends { or: (filter: string) => T }>(
   );
 }
 
-function toPage(posts: FeedPost[], limit: number): FeedPage {
+function toPage(posts: FeedPost[], limit: number, viewerId: string): FeedPage {
   const hasMore = posts.length > limit;
-  const page = posts.slice(0, limit).map(sortMedia);
+  const page = posts
+    .slice(0, limit)
+    .map(sortMedia)
+    .map((post) => hideForeignViewCounts(post, viewerId));
   const last = page[page.length - 1];
   return {
     posts: page,
@@ -109,7 +125,7 @@ export async function getFeed(
     .returns<FeedPost[]>();
 
   if (error) throw new Error(`Failed to load feed: ${error.message}`);
-  return toPage(data ?? [], limit);
+  return toPage(data ?? [], limit, userId);
 }
 
 /**
@@ -140,7 +156,7 @@ export async function getProfilePosts(
     .returns<FeedPost[]>();
 
   if (error) throw new Error(`Failed to load posts: ${error.message}`);
-  return toPage(data ?? [], limit);
+  return toPage(data ?? [], limit, viewerId);
 }
 
 /** Cursor-paginated posts inside a group. RLS enforces group privacy. */
@@ -166,7 +182,7 @@ export async function getGroupPosts(
     .returns<FeedPost[]>();
 
   if (error) throw new Error(`Failed to load group posts: ${error.message}`);
-  return toPage(data ?? [], limit);
+  return toPage(data ?? [], limit, viewerId);
 }
 
 /** Cursor-paginated posts published by a page. */
@@ -192,7 +208,7 @@ export async function getPagePosts(
     .returns<FeedPost[]>();
 
   if (error) throw new Error(`Failed to load page posts: ${error.message}`);
-  return toPage(data ?? [], limit);
+  return toPage(data ?? [], limit, viewerId);
 }
 
 /** A single post with card relations (for permalinks / after-share refresh). */
@@ -209,7 +225,7 @@ export async function getPost(
     .maybeSingle<FeedPost>();
 
   if (error) throw new Error(`Failed to load post: ${error.message}`);
-  return data ? sortMedia(data) : null;
+  return data ? hideForeignViewCounts(sortMedia(data), viewerId) : null;
 }
 
 /**

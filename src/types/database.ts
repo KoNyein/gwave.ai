@@ -143,6 +143,28 @@ export interface MemberProject {
   updated_at: string;
 }
 
+export type GameStatus = "pending" | "approved" | "rejected";
+
+export interface Game {
+  id: string;
+  author_id: string;
+  title: string;
+  description: string | null;
+  emoji: string;
+  code: string;
+  status: GameStatus;
+  review_note: string | null;
+  plays_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PostView {
+  post_id: string;
+  viewer_id: string;
+  viewed_at: string;
+}
+
 export type WellnessKind = "dhamma" | "meditation" | "radio" | "health";
 
 export interface Profile {
@@ -290,6 +312,7 @@ export interface Post {
   reaction_count: number;
   comment_count: number;
   share_count: number;
+  view_count: number;
   removed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -1193,6 +1216,7 @@ export type Database = {
           reaction_count?: number;
           comment_count?: number;
           share_count?: number;
+          view_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -1207,6 +1231,7 @@ export type Database = {
           reaction_count?: number;
           comment_count?: number;
           share_count?: number;
+          view_count?: number;
           removed_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -1224,6 +1249,57 @@ export type Database = {
             columns: ["shared_post_id"];
             isOneToOne: false;
             referencedRelation: "posts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      post_views: {
+        Row: PostView;
+        Insert: {
+          post_id: string;
+          viewer_id: string;
+          viewed_at?: string;
+        };
+        Update: Partial<PostView>;
+        Relationships: [
+          {
+            foreignKeyName: "post_views_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "posts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "post_views_viewer_id_fkey";
+            columns: ["viewer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      games: {
+        Row: Game;
+        Insert: {
+          id?: string;
+          author_id: string;
+          title: string;
+          description?: string | null;
+          emoji?: string;
+          code: string;
+          status?: GameStatus;
+          review_note?: string | null;
+          plays_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Game>;
+        Relationships: [
+          {
+            foreignKeyName: "games_author_id_fkey";
+            columns: ["author_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
         ];
@@ -2530,6 +2606,10 @@ export type Database = {
         Args: Record<string, never>;
         Returns: AgeBandDb;
       };
+      record_game_play: {
+        Args: { gid: string };
+        Returns: undefined;
+      };
     };
     Enums: {
       user_role: UserRole;
@@ -2558,6 +2638,7 @@ export type Database = {
       wellness_kind: WellnessKind;
       lesson_status: LessonStatus;
       live_stream_status: LiveStreamStatus;
+      game_status: GameStatus;
     };
     CompositeTypes: {
       [_ in never]: never;

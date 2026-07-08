@@ -24,7 +24,8 @@
     "logout": "ထွက်ရန်",
     "learn": "သင်ယူရန်",
     "wellness": "ကျန်းမာရေး",
-    "live": "တိုက်ရိုက်ထုတ်လွှင့်မှု"
+    "live": "တိုက်ရိုက်ထုတ်လွှင့်မှု",
+    "games": "ဂိမ်းများ"
   },
   "auth": {
     "login": "ဝင်ရန်",
@@ -84,7 +85,10 @@
     "originalUnavailable": "မူရင်းပို့စ် မရှိတော့ပါ။",
     "commentCount": "မှတ်ချက် {count} ခု",
     "shareCount": "မျှဝေမှု {count} ခု",
-    "block": "အသုံးပြုသူကို ဘလော့မည်"
+    "block": "အသုံးပြုသူကို ဘလော့မည်",
+    "viewCount": "{count, plural, one {ကြည့်ရှုမှု #} other {ကြည့်ရှုမှု #}}",
+    "viewers": "ကြည့်ရှုသူများ",
+    "noViewersYet": "ကြည့်ရှုမှု မရှိသေးပါ။"
   },
   "comments": {
     "placeholder": "မှတ်ချက်ရေးပါ...",
@@ -518,7 +522,8 @@
     "auditLogs": "Audit မှတ်တမ်း",
     "noAuditLogs": "မှတ်တမ်း မရှိသေးပါ။",
     "aProfile": "ပရိုဖိုင်တစ်ခု",
-    "profileReportHint": "Remove ဖြင့်ဖြေရှင်းပါက ဤအသုံးပြုသူကို ၇ ရက် ဆိုင်းငံ့မည်။"
+    "profileReportHint": "Remove ဖြင့်ဖြေရှင်းပါက ဤအသုံးပြုသူကို ၇ ရက် ဆိုင်းငံ့မည်။",
+    "navGames": "ဂိမ်းများ"
   },
   "dev": {
     "navKeys": "API keys",
@@ -835,5 +840,45 @@
     "cancelDeletion": "တောင်းဆိုမှု ပယ်ဖျက်မည်",
     "billingTitle": "ငွေတောင်းခံမှတ်တမ်း",
     "noInvoices": "Invoice မရှိသေးပါ — ပထမဆုံး membership ငွေပေးချေမှုပြီးရင် ဒီမှာ ပေါ်လာပါမည်။"
+  },
+  "games": {
+    "title": "ဂိမ်းများ",
+    "subtitle": "ပါဝင်ပြီးသား ဂိမ်းများ ကစားပါ သို့မဟုတ် community က ဖန်တီးထားတဲ့ ဂိမ်းများ စမ်းကြည့်ပါ။",
+    "submitCta": "ဂိမ်းတင်မယ်",
+    "builtinHeading": "GreenWave မူရင်းဂိမ်းများ",
+    "communityHeading": "Community ဂိမ်းများ",
+    "communityEmpty": "Community ဂိမ်း မရှိသေးပါ — ပထမဆုံး တင်သူဖြစ်လိုက်ပါ!",
+    "mineHeading": "ကျွန်ုပ်တင်ထားသော ဂိမ်းများ",
+    "plays": "{count, plural, one {ကစားမှု #} other {ကစားမှု #}}",
+    "growTagline": "ရေ၊ အာဟာရနဲ့ ပိုးမွှားတွေကို စီမံပြီး အကောင်းဆုံး အထွက်နှုန်း ရိတ်သိမ်းပါ။",
+    "gardenTagline": "လူငယ်စိုက်ပျိုးသူများအတွက် ဥယျာဉ်ဂိမ်းလေး။",
+    "learnGamesTitle": "သင်ယူရေးဂိမ်းများ",
+    "learnGamesTagline": "Learn ထဲမှာ Robot coding၊ circuits နဲ့ quiz များ။",
+    "backToGames": "ဂိမ်းများသို့ ပြန်သွားမည်",
+    "formTitle": "ခေါင်းစဉ်",
+    "formEmoji": "Emoji",
+    "formDescription": "ဖော်ပြချက်",
+    "formCode": "ဂိမ်း code (HTML ဖိုင်တစ်ခုတည်း)",
+    "sandboxNote": "သင့်ဂိမ်းက လုံခြုံတဲ့ sandbox ထဲမှာ run ပါမယ် — inline HTML/CSS/JS သာ၊ network request မရ၊ ပြင်ပဖိုင် မရ၊ cookie မရပါ။ ဂိမ်းတိုင်းကို moderator စစ်ဆေးပြီးမှ ဖော်ပြပါမယ်။",
+    "preview": "အစမ်းကြည့်မည်",
+    "submit": "စစ်ဆေးရန် တင်မည်",
+    "resubmit": "ပြန်တင်မည်",
+    "submitTitle": "သင့်ဂိမ်းကို တင်ပါ",
+    "editTitle": "သင့်ဂိမ်းကို ပြင်ပါ",
+    "submitSubtitle": "ကိုယ်ပိုင် HTML5 ဂိမ်းတင်ပါ။ Moderator အတည်ပြုပြီးရင် လူတိုင်းအတွက် ဖော်ပြပေးပါမယ်။",
+    "status_pending": "စစ်ဆေးဆဲ",
+    "status_approved": "အတည်ပြုပြီး",
+    "status_rejected": "ငြင်းပယ်ခံရသည်",
+    "reviewNote": "စစ်ဆေးသူ မှတ်ချက်",
+    "open": "ဖွင့်မည်",
+    "edit": "ပြင်မည်",
+    "pendingBanner": "ဒီဂိမ်းက moderator စစ်ဆေးမှု စောင့်နေပါတယ် — သင် (နဲ့ moderator) သာ မြင်နိုင်ပါတယ်။",
+    "rejectedBanner": "ဒီဂိမ်းကို ငြင်းပယ်ခဲ့ပါတယ်",
+    "adminTitle": "ဂိမ်းစစ်ဆေးရေး တန်းစီ",
+    "adminEmpty": "ဂိမ်းတင်ထားတာ မရှိသေးပါ။",
+    "previewInSandbox": "Sandbox မှာ အစမ်းကြည့်မည်",
+    "reviewNotePlaceholder": "ဖန်တီးသူထံ မှတ်ချက် (ရွေးချယ်နိုင်)",
+    "approve": "အတည်ပြုမည်",
+    "reject": "ငြင်းပယ်မည်"
   }
 }

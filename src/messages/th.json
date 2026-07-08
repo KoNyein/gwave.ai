@@ -24,7 +24,8 @@
     "logout": "ออกจากระบบ",
     "learn": "Learn",
     "wellness": "Wellness",
-    "live": "Live"
+    "live": "Live",
+    "games": "เกม"
   },
   "auth": {
     "login": "เข้าสู่ระบบ",
@@ -84,7 +85,10 @@
     "originalUnavailable": "โพสต์ต้นฉบับไม่มีอยู่แล้ว",
     "commentCount": "{count, plural, other {# ความคิดเห็น}}",
     "shareCount": "{count, plural, other {# การแชร์}}",
-    "block": "Block user"
+    "block": "Block user",
+    "viewCount": "{count, plural, one {การดู # ครั้ง} other {การดู # ครั้ง}}",
+    "viewers": "ผู้ที่ดู",
+    "noViewersYet": "ยังไม่มีการดู"
   },
   "comments": {
     "placeholder": "เขียนความคิดเห็น...",
@@ -518,7 +522,8 @@
     "auditLogs": "Audit log",
     "noAuditLogs": "No audit entries yet.",
     "aProfile": "a profile",
-    "profileReportHint": "Resolving with Remove suspends this user for 7 days."
+    "profileReportHint": "Resolving with Remove suspends this user for 7 days.",
+    "navGames": "เกม"
   },
   "dev": {
     "navKeys": "API keys",
@@ -835,5 +840,45 @@
     "cancelDeletion": "Cancel request",
     "billingTitle": "Billing history",
     "noInvoices": "No invoices yet — they appear here after your first membership payment."
+  },
+  "games": {
+    "title": "เกม",
+    "subtitle": "เล่นเกมในตัวหรือลองเกมที่สร้างโดยชุมชน",
+    "submitCta": "ส่งเกม",
+    "builtinHeading": "เกมต้นฉบับ GreenWave",
+    "communityHeading": "เกมจากชุมชน",
+    "communityEmpty": "ยังไม่มีเกมจากชุมชน — มาเป็นคนแรกที่ส่งเกมกัน!",
+    "mineHeading": "เกมที่ฉันส่ง",
+    "plays": "{count, plural, one {เล่น # ครั้ง} other {เล่น # ครั้ง}}",
+    "growTagline": "จัดการน้ำ สารอาหาร และแมลงเพื่อเก็บเกี่ยวผลผลิตที่ดีที่สุด",
+    "gardenTagline": "เกมสวนเบา ๆ สำหรับนักปลูกรุ่นเยาว์",
+    "learnGamesTitle": "เกมเพื่อการเรียนรู้",
+    "learnGamesTagline": "โค้ดหุ่นยนต์ วงจรไฟฟ้า และควิซในศูนย์ Learn",
+    "backToGames": "กลับไปหน้าเกม",
+    "formTitle": "ชื่อเกม",
+    "formEmoji": "อีโมจิ",
+    "formDescription": "คำอธิบาย",
+    "formCode": "โค้ดเกม (ไฟล์ HTML เดียว)",
+    "sandboxNote": "เกมของคุณทำงานในแซนด์บ็อกซ์ที่ล็อกไว้: HTML/CSS/JS แบบอินไลน์เท่านั้น — ไม่มีการเชื่อมต่อเครือข่าย ไม่มีไฟล์ภายนอก ไม่มีคุกกี้ ผู้ดูแลจะตรวจสอบทุกเกมก่อนแสดง",
+    "preview": "ดูตัวอย่าง",
+    "submit": "ส่งเพื่อตรวจสอบ",
+    "resubmit": "ส่งอีกครั้ง",
+    "submitTitle": "ส่งเกมของคุณ",
+    "editTitle": "แก้ไขเกมของคุณ",
+    "submitSubtitle": "อัปโหลดเกม HTML5 แบบครบในไฟล์เดียว หลังผู้ดูแลอนุมัติ เกมจะปรากฏให้ทุกคนเล่น",
+    "status_pending": "รอตรวจสอบ",
+    "status_approved": "อนุมัติแล้ว",
+    "status_rejected": "ถูกปฏิเสธ",
+    "reviewNote": "หมายเหตุผู้ตรวจ",
+    "open": "เปิด",
+    "edit": "แก้ไข",
+    "pendingBanner": "เกมนี้กำลังรอผู้ดูแลตรวจสอบ — มีเพียงคุณ (และผู้ดูแล) ที่มองเห็น",
+    "rejectedBanner": "เกมนี้ถูกปฏิเสธ",
+    "adminTitle": "คิวตรวจสอบเกม",
+    "adminEmpty": "ยังไม่มีเกมที่ส่งเข้ามา",
+    "previewInSandbox": "ดูตัวอย่างในแซนด์บ็อกซ์",
+    "reviewNotePlaceholder": "หมายเหตุถึงผู้สร้าง (ไม่บังคับ)",
+    "approve": "อนุมัติ",
+    "reject": "ปฏิเสธ"
   }
 }
