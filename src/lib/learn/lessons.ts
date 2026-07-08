@@ -4,7 +4,7 @@
 
 import type { AgeBand } from "@/lib/age";
 
-export type LessonKind = "reading" | "quiz" | "code" | "robot";
+export type LessonKind = "reading" | "quiz" | "code" | "robot" | "circuit";
 
 export interface QuizQuestion {
   q: string;
@@ -111,6 +111,120 @@ const stemTrack: Track = {
         {
           heading: "Reaching for the light",
           body: "Place a small plant near a window for a few days. Notice how the leaves turn toward the light. Plants grow toward light so they can make more food. This is called phototropism.",
+        },
+      ],
+    },
+  ],
+};
+
+// ─────────────────── Electronics & IoT (all ages, banded) ──────────────────
+
+const electronicsTrack: Track = {
+  slug: "electronics-iot",
+  title: "Electronics & IoT",
+  description: "Sensors, circuits and connected devices for smart growing.",
+  icon: "Cpu",
+  bands: ["child", "preteen", "teen", "adult"],
+  lessons: [
+    {
+      slug: "what-is-a-sensor",
+      title: "What Is a Sensor?",
+      summary: "The devices that turn the real world into numbers.",
+      minutes: 6,
+      kind: "reading",
+      sections: [
+        {
+          heading: "A sensor measures the world",
+          body: "A sensor is a small electronic device that measures something physical — temperature, light, moisture, distance — and turns it into an electrical signal a computer can read. Your phone has many: a light sensor dims the screen, and an accelerometer knows which way you tilt it.",
+        },
+        {
+          heading: "Sensors on a smart farm",
+          body: "GreenWave farms use sensors for temperature, humidity and soil moisture. Each reading becomes a number the system stores and charts. When a value crosses a limit — say humidity above 70% — an automation rule can act, like switching on a fan.",
+        },
+        {
+          heading: "Analog vs. digital",
+          body: "Some sensors give an analog signal — a smooth range of values, like a dial. Others are digital — clear on/off or exact numbers. A tiny computer called a microcontroller reads the sensor and decides what to do next.",
+        },
+      ],
+    },
+    {
+      slug: "build-a-circuit",
+      title: "Build a Circuit (Game)",
+      summary: "Connect a battery, wire, switch and LED to light it up.",
+      minutes: 12,
+      kind: "circuit",
+      sections: [
+        {
+          heading: "Electricity needs a loop",
+          body: "Electricity only flows around a complete loop called a circuit. Connect the battery, wire, switch and LED in a full ring, then close the switch — the LED lights up! Break the loop anywhere and the light goes out. Add each part in order and press the switch.",
+        },
+      ],
+    },
+    {
+      slug: "sending-data-to-the-cloud",
+      title: "Sending Data to the Cloud",
+      summary: "How a sensor's reading travels to an app you can see.",
+      minutes: 8,
+      kind: "reading",
+      sections: [
+        {
+          heading: "From device to internet",
+          body: "An IoT (Internet of Things) device is anything with sensors that connects to the internet. The microcontroller reads a sensor, packages the number as a small message, and sends it over Wi-Fi or a mobile network to a server in the cloud.",
+        },
+        {
+          heading: "MQTT: a language for tiny devices",
+          body: "Many IoT devices talk using MQTT — a lightweight messaging system. A device 'publishes' a reading to a topic (like farm/zone1/temperature) and a server 'subscribes' to receive it. GreenWave uses an MQTT broker so farm sensors can stream data efficiently, even on weak connections.",
+        },
+        {
+          heading: "Storing and showing the data",
+          body: "The cloud server saves each reading with a timestamp in a database. An app then reads that history and draws charts — exactly what the GreenWave smart-farm dashboard does. Because the data is live, the dashboard updates the moment a new reading arrives.",
+        },
+      ],
+    },
+    {
+      slug: "electronics-iot-quiz",
+      title: "Electronics & IoT Quiz",
+      summary: "Check what you learned about sensors, circuits and IoT.",
+      minutes: 5,
+      kind: "quiz",
+      quiz: [
+        {
+          q: "What does a sensor do?",
+          options: [
+            "Stores files",
+            "Turns something physical into a signal a computer can read",
+            "Prints paper",
+            "Charges a battery",
+          ],
+          answer: 1,
+          explain: "Sensors measure the world and convert it into electrical signals.",
+        },
+        {
+          q: "Electricity flows only around a…",
+          options: [
+            "Straight line",
+            "Complete loop (circuit)",
+            "Single wire with one end",
+            "Magnet",
+          ],
+          answer: 1,
+          explain: "A circuit must be a complete loop for current to flow.",
+        },
+        {
+          q: "What does IoT stand for?",
+          options: [
+            "Internet of Things",
+            "Input of Text",
+            "Index of Tables",
+            "Images or Text",
+          ],
+          answer: 0,
+        },
+        {
+          q: "Which lightweight system do many IoT devices use to send readings?",
+          options: ["MQTT", "PDF", "HTML", "USB"],
+          answer: 0,
+          explain: "MQTT is a lightweight publish/subscribe messaging protocol for devices.",
         },
       ],
     },
@@ -388,6 +502,7 @@ const agriTrack: Track = {
 
 export const TRACKS: Track[] = [
   stemTrack,
+  electronicsTrack,
   roboticsTrack,
   codingTrack,
   agriTrack,

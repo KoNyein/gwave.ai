@@ -4,6 +4,7 @@ import {
   BookOpen,
   Bot,
   Code2,
+  Cpu,
   FlaskConical,
   Gamepad2,
   Sprout,
@@ -19,6 +20,7 @@ export const dynamic = "force-dynamic";
 
 const ICONS: Record<string, LucideIcon> = {
   FlaskConical,
+  Cpu,
   Bot,
   Code2,
   Sprout,
