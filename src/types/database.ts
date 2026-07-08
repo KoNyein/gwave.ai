@@ -72,6 +72,30 @@ export type GroupMemberStatus = "pending" | "active";
 
 export type AgeBandDb = "child" | "preteen" | "teen" | "adult" | "unknown";
 
+export type LessonStatus = "in_progress" | "completed";
+
+export interface LessonProgress {
+  user_id: string;
+  track_slug: string;
+  lesson_slug: string;
+  status: LessonStatus;
+  progress_pct: number;
+  score: number | null;
+  last_viewed_at: string;
+  completed_at: string | null;
+}
+
+export interface MemberProject {
+  id: string;
+  user_id: string;
+  track_slug: string;
+  lesson_slug: string;
+  kind: string;
+  title: string;
+  data: Record<string, unknown>;
+  updated_at: string;
+}
+
 export type WellnessKind = "dhamma" | "meditation" | "radio" | "health";
 
 export interface Profile {
@@ -747,6 +771,52 @@ export type Database = {
             columns: ["comment_id"];
             isOneToOne: false;
             referencedRelation: "comments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      lesson_progress: {
+        Row: LessonProgress;
+        Insert: {
+          user_id: string;
+          track_slug: string;
+          lesson_slug: string;
+          status?: LessonStatus;
+          progress_pct?: number;
+          score?: number | null;
+          last_viewed_at?: string;
+          completed_at?: string | null;
+        };
+        Update: Partial<LessonProgress>;
+        Relationships: [
+          {
+            foreignKeyName: "lesson_progress_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      member_projects: {
+        Row: MemberProject;
+        Insert: {
+          id?: string;
+          user_id: string;
+          track_slug: string;
+          lesson_slug: string;
+          kind: string;
+          title: string;
+          data?: Record<string, unknown>;
+          updated_at?: string;
+        };
+        Update: Partial<MemberProject>;
+        Relationships: [
+          {
+            foreignKeyName: "member_projects_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
         ];
@@ -2345,6 +2415,7 @@ export type Database = {
       webhook_event: WebhookEvent;
       age_band: AgeBandDb;
       wellness_kind: WellnessKind;
+      lesson_status: LessonStatus;
     };
     CompositeTypes: {
       [_ in never]: never;

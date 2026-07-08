@@ -1,18 +1,21 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
+  ArrowRight,
   BookOpen,
   Bot,
   Code2,
   Cpu,
   FlaskConical,
   Gamepad2,
+  Play,
   Sprout,
   type LucideIcon,
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { ageBandOf, getCurrentProfile } from "@/lib/auth";
+import { getProgressForUser, getResumePointForUser } from "@/lib/db/learn";
 import { headingForBand, tracksForBand } from "@/lib/learn/lessons";
 
 export const metadata = { title: "Learn" };
@@ -34,6 +37,20 @@ export default async function LearnPage() {
   const tracks = tracksForBand(band);
   const showGame = band === "child" || band === "preteen" || band === "unknown";
 
+  const [progressRows, resume] = await Promise.all([
+    getProgressForUser(profile.id),
+    getResumePointForUser(profile.id),
+  ]);
+  const completedByTrack = new Map<string, number>();
+  for (const row of progressRows) {
+    if (row.status === "completed") {
+      completedByTrack.set(
+        row.track_slug,
+        (completedByTrack.get(row.track_slug) ?? 0) + 1,
+      );
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2">
@@ -43,6 +60,31 @@ export default async function LearnPage() {
           <p className="text-sm text-muted-foreground">{headingForBand(band)}</p>
         </div>
       </div>
+
+      {resume && (
+        <Link
+          href={`/learn/${resume.trackSlug}/${resume.lessonSlug}`}
+          className="block"
+        >
+          <Card className="border-primary/40 bg-primary/5 transition-colors hover:bg-primary/10">
+            <CardContent className="flex items-center gap-3 p-4">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Play className="h-5 w-5" />
+              </span>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-primary">
+                  Continue learning
+                </p>
+                <p className="font-semibold">{resume.lessonTitle}</p>
+                <p className="text-xs text-muted-foreground">
+                  {resume.trackTitle} · {resume.progressPct}% done
+                </p>
+              </div>
+              <ArrowRight className="h-5 w-5 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+      )}
 
       {showGame && (
         <Link href="/learn/game" className="block">
@@ -65,6 +107,11 @@ export default async function LearnPage() {
       <div className="space-y-3">
         {tracks.map((track) => {
           const Icon = ICONS[track.icon] ?? BookOpen;
+          const done = Math.min(
+            completedByTrack.get(track.slug) ?? 0,
+            track.lessons.length,
+          );
+          const pct = Math.round((done / track.lessons.length) * 100);
           return (
             <Link key={track.slug} href={`/learn/${track.slug}`} className="block">
               <Card className="transition-colors hover:bg-muted/50">
@@ -76,12 +123,28 @@ export default async function LearnPage() {
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-semibold">{track.title}</p>
                       <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
-                        {track.lessons.length} lessons
+                        {done > 0
+                          ? `${done}/${track.lessons.length} lessons`
+                          : `${track.lessons.length} lessons`}
                       </span>
                     </div>
                     <p className="mt-0.5 text-sm text-muted-foreground">
                       {track.description}
                     </p>
+                    {done > 0 && (
+                      <div
+                        className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted"
+                        role="progressbar"
+                        aria-valuenow={pct}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                      >
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

@@ -5,6 +5,11 @@ import { Lightbulb, Plus, Power, RotateCcw, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  reportLessonComplete,
+  useProjectAutosave,
+  type LessonRef,
+} from "@/components/learn/use-learn-progress";
 import { cn } from "@/lib/utils";
 
 // Build-a-Circuit: the learner adds components (battery → wire → switch → LED)
@@ -26,14 +31,40 @@ const PART_META: Record<
   led: { label: "LED", icon: Lightbulb, emoji: "💡" },
 };
 
-export function CircuitGame() {
-  const [placed, setPlaced] = React.useState<Part[]>([]);
+function restorePlaced(
+  saved: Record<string, unknown> | null | undefined,
+): Part[] {
+  if (saved && Array.isArray(saved.placed)) {
+    const parts = saved.placed.filter((p): p is Part =>
+      (ORDER as string[]).includes(p as string),
+    );
+    // Only accept a valid prefix of the build order.
+    if (parts.every((p, i) => p === ORDER[i])) return parts;
+  }
+  return [];
+}
+
+export function CircuitGame({ lesson }: { lesson?: LessonRef }) {
+  const [placed, setPlaced] = React.useState<Part[]>(() =>
+    restorePlaced(lesson?.initialData),
+  );
   const [switchOn, setSwitchOn] = React.useState(false);
 
   // The circuit is complete only when every part is placed in the right order.
   const complete =
     placed.length === ORDER.length && placed.every((p, i) => p === ORDER[i]);
   const lit = complete && switchOn;
+
+  useProjectAutosave(lesson, "circuit", "My circuit", { placed });
+
+  // Lighting the LED completes the lesson (sent once per mount).
+  const reported = React.useRef(false);
+  React.useEffect(() => {
+    if (lit && !reported.current) {
+      reported.current = true;
+      reportLessonComplete(lesson);
+    }
+  }, [lit, lesson]);
 
   // The next part the learner should add (null once all are placed).
   const nextPart: Part | undefined = ORDER[placed.length];

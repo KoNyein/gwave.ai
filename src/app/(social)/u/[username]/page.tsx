@@ -18,6 +18,7 @@ import {
   getFriendState,
   isFollowing,
 } from "@/lib/db/friends";
+import { getProjectsForUser } from "@/lib/db/learn";
 import { getProfilePosts } from "@/lib/db/posts";
 import { displayName, initials } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
@@ -57,6 +58,9 @@ export default async function ProfilePage({
             .maybeSingle(),
     ]);
   const initiallyBlocked = Boolean(blockRow && "data" in blockRow && blockRow.data);
+
+  // Learning projects are private — only shown on your own profile.
+  const projects = isSelf ? await getProjectsForUser(viewer.id, 6) : [];
 
   const currentUser = {
     id: viewer.id,
@@ -118,6 +122,30 @@ export default async function ProfilePage({
           ) : null}
         </CardContent>
       </Card>
+
+      {/* My learning projects (own profile only) */}
+      {isSelf && projects.length > 0 ? (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            <p className="font-semibold">{t("myProjects")}</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {projects.map((project) => (
+                <Link
+                  key={project.id}
+                  href={`/learn/${project.track_slug}/${project.lesson_slug}`}
+                  className="rounded-lg border p-3 transition-colors hover:bg-muted"
+                >
+                  <p className="truncate text-sm font-medium">{project.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {project.trackTitle} ·{" "}
+                    {new Date(project.updated_at).toLocaleDateString()}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Tabs */}
       <ProfileTabs

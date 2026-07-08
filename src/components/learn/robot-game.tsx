@@ -12,6 +12,11 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  reportLessonComplete,
+  useProjectAutosave,
+  type LessonRef,
+} from "@/components/learn/use-learn-progress";
 import { cn } from "@/lib/utils";
 
 // Program-a-Robot: the learner builds a command sequence (forward / turn) to
@@ -27,11 +32,27 @@ const GOAL = { x: 4, y: 0 };
 const ROCKS = new Set(["2,3", "2,2", "3,1"]);
 const ARROWS = ["↑", "→", "↓", "←"];
 
-export function RobotGame() {
-  const [program, setProgram] = React.useState<Cmd[]>([]);
+function restoreProgram(
+  saved: Record<string, unknown> | null | undefined,
+): Cmd[] {
+  if (saved && Array.isArray(saved.program)) {
+    return saved.program.filter(
+      (cmd): cmd is Cmd =>
+        cmd === "forward" || cmd === "left" || cmd === "right",
+    );
+  }
+  return [];
+}
+
+export function RobotGame({ lesson }: { lesson?: LessonRef }) {
+  const [program, setProgram] = React.useState<Cmd[]>(() =>
+    restoreProgram(lesson?.initialData),
+  );
   const [pos, setPos] = React.useState(START);
   const [running, setRunning] = React.useState(false);
   const [result, setResult] = React.useState<"win" | "crash" | null>(null);
+
+  useProjectAutosave(lesson, "robot", "My robot program", { program });
 
   function add(cmd: Cmd) {
     if (running) return;
@@ -86,11 +107,14 @@ export function RobotGame() {
       if (cur.x === GOAL.x && cur.y === GOAL.y) {
         setResult("win");
         setRunning(false);
+        reportLessonComplete(lesson);
         return;
       }
     }
-    setResult(cur.x === GOAL.x && cur.y === GOAL.y ? "win" : "crash");
+    const won = cur.x === GOAL.x && cur.y === GOAL.y;
+    setResult(won ? "win" : "crash");
     setRunning(false);
+    if (won) reportLessonComplete(lesson);
   }
 
   return (

@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   BookText,
   Bot,
+  CheckCircle2,
   Code2,
   Cpu,
   HelpCircle,
@@ -11,6 +12,7 @@ import {
 
 import { Card, CardContent } from "@/components/ui/card";
 import { ageBandOf, getCurrentProfile } from "@/lib/auth";
+import { getTrackProgress } from "@/lib/db/learn";
 import { getTrack, tracksForBand, type LessonKind } from "@/lib/learn/lessons";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +49,8 @@ export default async function TrackPage({
   const allowed = tracksForBand(band).some((t) => t.slug === track.slug);
   if (!allowed) redirect("/learn");
 
+  const progress = await getTrackProgress(profile.id, track.slug);
+
   return (
     <div className="space-y-4">
       <Link
@@ -63,6 +67,8 @@ export default async function TrackPage({
       <div className="space-y-2">
         {track.lessons.map((lesson, i) => {
           const Icon = KIND_ICON[lesson.kind as LessonKind];
+          const row = progress.get(lesson.slug);
+          const completed = row?.status === "completed";
           return (
             <Link
               key={lesson.slug}
@@ -71,13 +77,25 @@ export default async function TrackPage({
             >
               <Card className="transition-colors hover:bg-muted/50">
                 <CardContent className="flex items-center gap-3 p-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-primary">
-                    {i + 1}
-                  </span>
+                  {completed ? (
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center">
+                      <CheckCircle2
+                        className="h-6 w-6 text-primary"
+                        aria-label="Completed"
+                      />
+                    </span>
+                  ) : (
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-primary">
+                      {i + 1}
+                    </span>
+                  )}
                   <div className="flex-1">
                     <p className="font-medium">{lesson.title}</p>
                     <p className="text-xs text-muted-foreground">
                       {lesson.summary}
+                      {completed && row?.score != null
+                        ? ` · Score ${row.score}%`
+                        : ""}
                     </p>
                   </div>
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">

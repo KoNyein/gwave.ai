@@ -243,7 +243,8 @@
     "moreActions": "More actions",
     "reportUser": "Report user",
     "blockUser": "Block user",
-    "unblockUser": "Unblock user"
+    "unblockUser": "Unblock user",
+    "myProjects": "My Projects"
   },
   "groups": {
     "title": "Groups",

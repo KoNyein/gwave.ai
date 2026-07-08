@@ -4,24 +4,54 @@ import * as React from "react";
 import { Play, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  useProjectAutosave,
+  type LessonRef,
+} from "@/components/learn/use-learn-progress";
 import { cn } from "@/lib/utils";
 
 type Tab = "html" | "css" | "js";
+
+type CodeState = { html: string; css: string; js: string };
+
+function restoreCode(
+  starter: CodeState,
+  saved: Record<string, unknown> | null | undefined,
+): CodeState {
+  if (
+    saved &&
+    typeof saved.html === "string" &&
+    typeof saved.css === "string" &&
+    typeof saved.js === "string"
+  ) {
+    return { html: saved.html, css: saved.css, js: saved.js };
+  }
+  return starter;
+}
 
 /**
  * A live HTML/CSS/JS editor. The preview runs inside a sandboxed iframe with
  * `allow-scripts` only (no `allow-same-origin`), so learner code executes in an
  * opaque origin — it cannot read cookies, call our APIs, or touch the parent
- * page. Nothing is persisted or sent anywhere.
+ * page. With a `lesson` ref the code is auto-saved (debounced) so the learner
+ * can resume where they left off.
  */
 export function CodePlayground({
   starter,
+  lesson,
+  title = "My web page",
 }: {
-  starter: { html: string; css: string; js: string };
+  starter: CodeState;
+  lesson?: LessonRef;
+  title?: string;
 }) {
   const [tab, setTab] = React.useState<Tab>("html");
-  const [code, setCode] = React.useState(starter);
+  const [code, setCode] = React.useState<CodeState>(() =>
+    restoreCode(starter, lesson?.initialData),
+  );
   const [srcDoc, setSrcDoc] = React.useState("");
+
+  useProjectAutosave(lesson, "code", title, code);
 
   const build = React.useCallback(
     () =>
