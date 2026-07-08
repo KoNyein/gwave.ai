@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
+import { CircuitGame } from "@/components/learn/circuit-game";
 import { CodePlayground } from "@/components/learn/code-playground";
 import { Quiz } from "@/components/learn/quiz";
 import { RobotGame } from "@/components/learn/robot-game";
@@ -70,6 +71,8 @@ export default async function LessonPage({
       )}
 
       {lesson.kind === "robot" && <RobotGame />}
+
+      {lesson.kind === "circuit" && <CircuitGame />}
 
       {lesson.kind === "quiz" && lesson.quiz && <Quiz questions={lesson.quiz} />}
 

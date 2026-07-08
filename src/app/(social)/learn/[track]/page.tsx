@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, BookText, Bot, Code2, HelpCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  BookText,
+  Bot,
+  Code2,
+  Cpu,
+  HelpCircle,
+} from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { ageBandOf, getCurrentProfile } from "@/lib/auth";
@@ -13,6 +20,7 @@ const KIND_ICON = {
   quiz: HelpCircle,
   code: Code2,
   robot: Bot,
+  circuit: Cpu,
 };
 
 export async function generateMetadata({
