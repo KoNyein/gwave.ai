@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { isSiteTheme } from "@/lib/theme";
 import type { ActionResult } from "@/lib/actions/posts";
 import type { UserRole } from "@/types/database";
 
@@ -306,6 +307,25 @@ export async function updateSiteName(name: string): Promise<ActionResult> {
     site_name: parsed.data,
   });
   revalidatePath("/admin/settings");
+  return { ok: true, data: undefined };
+}
+
+export async function updateSiteTheme(theme: string): Promise<ActionResult> {
+  if (!isSiteTheme(theme)) return { ok: false, error: "Unknown theme." };
+  const adminId = await requireAdminId();
+  if (!adminId) return { ok: false, error: "Admin access required." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("site_settings")
+    .upsert({ key: "appearance", value: { theme } });
+  if (error) return { ok: false, error: error.message };
+
+  await audit(adminId, "settings.updated", "site_settings", "appearance", {
+    theme,
+  });
+  // The theme is stamped on <html> by the root layout — bust everything.
+  revalidatePath("/", "layout");
   return { ok: true, data: undefined };
 }
 

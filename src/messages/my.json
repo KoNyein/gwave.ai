@@ -314,7 +314,20 @@
     "sentPhoto": "ဓာတ်ပုံပို့ခဲ့သည်",
     "typing": "စာရိုက်နေသည်...",
     "seen": "မြင်ပြီး",
-    "back": "နောက်သို့"
+    "back": "နောက်သို့",
+    "audioCall": "အသံခေါ်ဆိုမှု",
+    "videoCall": "ဗီဒီယိုခေါ်ဆိုမှု",
+    "incomingAudioCall": "အသံခေါ်ဆိုမှု ဝင်နေသည်…",
+    "incomingVideoCall": "ဗီဒီယိုခေါ်ဆိုမှု ဝင်နေသည်…",
+    "accept": "လက်ခံမည်",
+    "decline": "ငြင်းမည်",
+    "ringing": "ခေါ်နေသည်…",
+    "connecting": "ချိတ်ဆက်နေသည်…",
+    "mute": "အသံပိတ်",
+    "unmute": "အသံဖွင့်",
+    "cameraOn": "ကင်မရာဖွင့်",
+    "cameraOff": "ကင်မရာပိတ်",
+    "endCall": "ခေါ်ဆိုမှုရပ်မည်"
   },
   "stories": {
     "createStory": "စတိုရီဖန်တီးရန်",
@@ -523,7 +536,14 @@
     "noAuditLogs": "မှတ်တမ်း မရှိသေးပါ။",
     "aProfile": "ပရိုဖိုင်တစ်ခု",
     "profileReportHint": "Remove ဖြင့်ဖြေရှင်းပါက ဤအသုံးပြုသူကို ၇ ရက် ဆိုင်းငံ့မည်။",
-    "navGames": "ဂိမ်းများ"
+    "navGames": "ဂိမ်းများ",
+    "themeTitle": "ဆိုက် template",
+    "theme_greenwave": "GreenWave",
+    "theme_ocean": "Ocean",
+    "theme_sunset": "Sunset",
+    "themeDesc_greenwave": "အစိမ်းရောင် — မူရင်းပုံစံ။",
+    "themeDesc_ocean": "ပင်လယ်ပြာရောင်နဲ့ teal အရောင်စပ်။",
+    "themeDesc_sunset": "နွေးထွေးတဲ့ လိမ္မော်ရောင်နဲ့ နှင်းဆီရောင်စပ်။"
   },
   "dev": {
     "navKeys": "API keys",

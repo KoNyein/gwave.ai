@@ -314,7 +314,20 @@
     "sentPhoto": "Sent a photo",
     "typing": "Typing...",
     "seen": "Seen",
-    "back": "Back"
+    "back": "Back",
+    "audioCall": "Audio call",
+    "videoCall": "Video call",
+    "incomingAudioCall": "Incoming audio call…",
+    "incomingVideoCall": "Incoming video call…",
+    "accept": "Accept",
+    "decline": "Decline",
+    "ringing": "Ringing…",
+    "connecting": "Connecting…",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "cameraOn": "Turn camera on",
+    "cameraOff": "Turn camera off",
+    "endCall": "End call"
   },
   "stories": {
     "createStory": "Create story",
@@ -523,7 +536,14 @@
     "noAuditLogs": "No audit entries yet.",
     "aProfile": "a profile",
     "profileReportHint": "Resolving with Remove suspends this user for 7 days.",
-    "navGames": "Games"
+    "navGames": "Games",
+    "themeTitle": "Site template",
+    "theme_greenwave": "GreenWave",
+    "theme_ocean": "Ocean",
+    "theme_sunset": "Sunset",
+    "themeDesc_greenwave": "Fresh greens — the original look.",
+    "themeDesc_ocean": "Deep blues with a teal accent.",
+    "themeDesc_sunset": "Warm oranges with a rose accent."
   },
   "dev": {
     "navKeys": "API keys",

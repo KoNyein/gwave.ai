@@ -113,6 +113,17 @@ its own host-only RLS table (`live_stream_keys`) and is never readable by
 viewers. Viewers get HLS playback, realtime chat (postgres_changes),
 floating reactions (broadcast) and a presence-based viewer count.
 
+## Messenger calls (WebRTC)
+
+The messenger supports 1:1 **audio and video calls**. Signaling runs over
+Supabase Realtime broadcast channels (ring → accept → offer/answer → ICE),
+and media flows peer-to-peer via WebRTC — no extra service required. By
+default calls use Google's public STUN server; for callers behind strict
+NATs, set the optional `NEXT_PUBLIC_TURN_*` variables (see `.env.example`)
+to add a TURN relay. Both parties must keep the messenger open to receive
+rings, and browsers require HTTPS for camera/microphone access. Every
+finished or missed call is logged as a message in the conversation.
+
 ## Testing & audits
 
 - **Smoke E2E** (`e2e/smoke.spec.ts`) — auth guards, public pages, security

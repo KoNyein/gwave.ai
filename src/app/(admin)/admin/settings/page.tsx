@@ -5,21 +5,23 @@ import {
   FeatureFlagsEditor,
   SiteNameForm,
 } from "@/components/admin/settings-forms";
+import { ThemePicker } from "@/components/admin/theme-picker";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getAuditLogs, getSiteName } from "@/lib/db/admin";
+import { getAuditLogs, getSiteName, getSiteTheme } from "@/lib/db/admin";
 import { displayName, timeAgo } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminSettingsPage() {
   const t = await getTranslations("admin");
   const supabase = await createClient();
-  const [siteName, flagsRes, auditLogs] = await Promise.all([
+  const [siteName, siteTheme, flagsRes, auditLogs] = await Promise.all([
     getSiteName(),
+    getSiteTheme(),
     supabase.from("feature_flags").select("*").order("key"),
     getAuditLogs(100),
   ]);
@@ -43,6 +45,15 @@ export default async function AdminSettingsPage() {
               {t("currencyRatesLink")}
             </Link>
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{t("themeTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ThemePicker current={siteTheme} />
         </CardContent>
       </Card>
 

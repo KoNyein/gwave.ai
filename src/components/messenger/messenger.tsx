@@ -6,11 +6,15 @@ import {
   ImagePlus,
   Loader2,
   MessageCircle,
+  Phone,
   SendHorizonal,
   SquarePen,
+  Video,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { CallUI } from "@/components/messenger/call-ui";
+import { useCall } from "@/components/messenger/use-call";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -90,6 +94,9 @@ export function Messenger({
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
   const peer = active ? conversationPeer(active, currentUser.id) : null;
+
+  // WebRTC audio/video calls (Supabase Realtime signaling).
+  const call = useCall(currentUser);
 
   const refreshConversations = React.useCallback(async () => {
     const response = await fetch("/api/conversations");
@@ -447,7 +454,7 @@ export function Messenger({
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               {peer ? <UserAvatar profile={peer} /> : null}
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">
                   {active.title ?? (peer ? displayName(peer) : "")}
                 </p>
@@ -455,6 +462,30 @@ export function Messenger({
                   <p className="text-xs text-primary">{t("typing")}</p>
                 ) : null}
               </div>
+              {peer ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full"
+                    onClick={() => call.startCall(peer, active.id, false)}
+                    disabled={call.status !== "idle"}
+                    aria-label={t("audioCall")}
+                  >
+                    <Phone className="h-5 w-5 text-accent" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full"
+                    onClick={() => call.startCall(peer, active.id, true)}
+                    disabled={call.status !== "idle"}
+                    aria-label={t("videoCall")}
+                  >
+                    <Video className="h-5 w-5 text-accent" />
+                  </Button>
+                </>
+              ) : null}
             </div>
 
             {/* Messages */}
@@ -596,6 +627,8 @@ export function Messenger({
           </>
         )}
       </section>
+
+      <CallUI call={call} />
     </div>
   );
 }

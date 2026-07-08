@@ -67,6 +67,88 @@
     --input: 96 20% 18%;
     --ring: 87 64% 45%;
   }
+
+  /* ------------------------------------------------------------------
+   * Site templates. Admin picks one in /admin/settings; the root layout
+   * stamps it as data-theme on <html>. Unset variables fall through to
+   * the GreenWave defaults above.
+   * ------------------------------------------------------------------ */
+
+  /* Ocean — deep blues with a teal accent. */
+  [data-theme="ocean"] {
+    --foreground: 215 60% 12%;
+    --card-foreground: 215 60% 12%;
+    --popover-foreground: 215 60% 12%;
+    --primary: 203 83% 31%;
+    --primary-foreground: 200 60% 97%;
+    --secondary: 203 65% 92%;
+    --secondary-foreground: 215 60% 12%;
+    --muted: 205 40% 95%;
+    --muted-foreground: 212 20% 38%;
+    --accent: 190 73% 32%;
+    --accent-foreground: 200 60% 97%;
+    --border: 205 30% 87%;
+    --input: 205 30% 87%;
+    --ring: 203 83% 31%;
+  }
+
+  .dark[data-theme="ocean"] {
+    --background: 215 45% 7%;
+    --foreground: 205 50% 92%;
+    --card: 215 40% 10%;
+    --card-foreground: 205 50% 92%;
+    --popover: 215 40% 10%;
+    --popover-foreground: 205 50% 92%;
+    --primary: 203 80% 52%;
+    --primary-foreground: 215 60% 8%;
+    --secondary: 213 25% 17%;
+    --secondary-foreground: 205 50% 92%;
+    --muted: 213 25% 17%;
+    --muted-foreground: 207 15% 65%;
+    --accent: 190 70% 42%;
+    --accent-foreground: 200 60% 97%;
+    --border: 213 25% 20%;
+    --input: 213 25% 20%;
+    --ring: 203 80% 52%;
+  }
+
+  /* Sunset — warm oranges with a rose accent. */
+  [data-theme="sunset"] {
+    --foreground: 20 60% 12%;
+    --card-foreground: 20 60% 12%;
+    --popover-foreground: 20 60% 12%;
+    --primary: 21 85% 41%;
+    --primary-foreground: 30 80% 97%;
+    --secondary: 32 88% 91%;
+    --secondary-foreground: 20 60% 12%;
+    --muted: 30 45% 95%;
+    --muted-foreground: 24 22% 38%;
+    --accent: 345 70% 45%;
+    --accent-foreground: 30 80% 97%;
+    --border: 30 35% 87%;
+    --input: 30 35% 87%;
+    --ring: 21 85% 41%;
+  }
+
+  .dark[data-theme="sunset"] {
+    --background: 20 45% 7%;
+    --foreground: 30 50% 92%;
+    --card: 20 40% 10%;
+    --card-foreground: 30 50% 92%;
+    --popover: 20 40% 10%;
+    --popover-foreground: 30 50% 92%;
+    --primary: 24 85% 55%;
+    --primary-foreground: 20 60% 8%;
+    --secondary: 22 25% 17%;
+    --secondary-foreground: 30 50% 92%;
+    --muted: 22 25% 17%;
+    --muted-foreground: 26 15% 65%;
+    --accent: 345 65% 55%;
+    --accent-foreground: 30 80% 97%;
+    --border: 22 25% 20%;
+    --input: 22 25% 20%;
+    --ring: 24 85% 55%;
+  }
 }
 
 @layer base {
