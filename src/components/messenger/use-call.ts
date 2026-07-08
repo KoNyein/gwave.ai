@@ -243,8 +243,16 @@ export function useCall(currentUser: AuthorSummary): CallApi {
    */
   const joinCallChannel = React.useCallback(
     (s: Session) => {
+      // Media/SDP failure (e.g. the user denied the camera prompt): tell the
+      // peer before tearing down, so they don't hang in "connecting".
       const handleFatal = () => {
-        if (session.current === s) cleanup(true);
+        if (session.current !== s) return;
+        void s.channel.send({
+          type: "broadcast",
+          event: "hangup",
+          payload: {},
+        });
+        cleanup(true);
       };
 
       s.channel
@@ -321,10 +329,31 @@ export function useCall(currentUser: AuthorSummary): CallApi {
   );
 
   // Personal ring channel — listens for incoming calls while the messenger
-  // is open. Ring payloads are peer-supplied (same trust level as typing
-  // broadcasts); media only ever flows after WE explicitly accept.
+  // is open. Ring payloads are peer-supplied, so before showing any UI the
+  // claimed caller is verified against the conversation's participant list
+  // (RLS: only readable when WE are a participant too). A ring whose
+  // conversation doesn't include both parties is dropped — nobody can ring
+  // us under someone else's name — and the caller identity we display comes
+  // from the database, never from the broadcast payload.
   React.useEffect(() => {
     const supabase = createClient();
+
+    async function verifyRing(payload: {
+      conversationId: string;
+      fromId: string;
+    }): Promise<AuthorSummary | null> {
+      const { data } = await supabase
+        .from("conversation_participants")
+        .select(
+          "user_id, profile:profiles!conversation_participants_user_id_fkey(id, username, full_name, avatar_url)",
+        )
+        .eq("conversation_id", payload.conversationId)
+        .returns<{ user_id: string; profile: AuthorSummary }[]>();
+      const includesMe = data?.some((row) => row.user_id === currentUser.id);
+      const caller = data?.find((row) => row.user_id === payload.fromId);
+      return includesMe && caller ? caller.profile : null;
+    }
+
     const channel = supabase
       .channel(`calls:${currentUser.id}`)
       .on("broadcast", { event: "ring" }, (message) => {
@@ -338,21 +367,29 @@ export function useCall(currentUser: AuthorSummary): CallApi {
           !payload.callId ||
           !payload.conversationId ||
           !payload.from?.id ||
+          payload.from.id === currentUser.id ||
           session.current ||
           incoming.current
         ) {
           return; // busy or malformed — let it ring out on the caller side
         }
-        incoming.current = {
+        const ring = {
           callId: payload.callId,
           conversationId: payload.conversationId,
-          from: payload.from,
           video: Boolean(payload.video),
         };
-        patch({
-          status: "incoming",
-          peer: payload.from,
-          video: Boolean(payload.video),
+        void verifyRing({
+          conversationId: ring.conversationId,
+          fromId: payload.from.id,
+        }).then((verifiedCaller) => {
+          // Re-check state: a call may have started while verifying.
+          if (!verifiedCaller || session.current || incoming.current) return;
+          incoming.current = { ...ring, from: verifiedCaller };
+          patch({
+            status: "incoming",
+            peer: verifiedCaller,
+            video: ring.video,
+          });
         });
       })
       .on("broadcast", { event: "cancel" }, (message) => {
@@ -393,34 +430,38 @@ export function useCall(currentUser: AuthorSummary): CallApi {
       };
       session.current = s;
       joinCallChannel(s);
-      s.channel.subscribe();
 
-      // Ring the peer once our broadcast channel is live.
-      const ringChannel = supabase.channel(`calls:${peer.id}`);
-      s.ringChannel = ringChannel;
-      ringChannel.subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          void ringChannel.send({
-            type: "broadcast",
-            event: "ring",
-            payload: {
-              callId,
-              conversationId,
-              video,
-              from: {
-                id: currentUser.id,
-                username: currentUser.username,
-                full_name: currentUser.full_name,
-                avatar_url: currentUser.avatar_url,
+      // Join our own call channel FIRST — only ring the peer once we are
+      // subscribed, otherwise a fast "accept" broadcast could be missed.
+      s.channel.subscribe((callStatus) => {
+        if (callStatus !== "SUBSCRIBED" || session.current !== s) return;
+        if (s.ringChannel) return; // already ringing (subscribe callbacks repeat)
+        const ringChannel = supabase.channel(`calls:${peer.id}`);
+        s.ringChannel = ringChannel;
+        ringChannel.subscribe((ringStatus) => {
+          if (ringStatus === "SUBSCRIBED") {
+            void ringChannel.send({
+              type: "broadcast",
+              event: "ring",
+              payload: {
+                callId,
+                conversationId,
+                video,
+                from: {
+                  id: currentUser.id,
+                  username: currentUser.username,
+                  full_name: currentUser.full_name,
+                  avatar_url: currentUser.avatar_url,
+                },
               },
-            },
-          });
-        }
+            });
+          }
+        });
       });
 
       s.ringTimer = setTimeout(() => {
         if (session.current === s && !s.connectedAt) {
-          void ringChannel.send({
+          void s.ringChannel?.send({
             type: "broadcast",
             event: "cancel",
             payload: { callId },
