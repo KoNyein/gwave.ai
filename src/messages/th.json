@@ -314,7 +314,20 @@
     "sentPhoto": "ส่งรูปภาพแล้ว",
     "typing": "กำลังพิมพ์...",
     "seen": "เห็นแล้ว",
-    "back": "กลับ"
+    "back": "กลับ",
+    "audioCall": "โทรด้วยเสียง",
+    "videoCall": "วิดีโอคอล",
+    "incomingAudioCall": "สายเรียกเข้า (เสียง)…",
+    "incomingVideoCall": "สายเรียกเข้า (วิดีโอ)…",
+    "accept": "รับสาย",
+    "decline": "ปฏิเสธ",
+    "ringing": "กำลังเรียก…",
+    "connecting": "กำลังเชื่อมต่อ…",
+    "mute": "ปิดไมค์",
+    "unmute": "เปิดไมค์",
+    "cameraOn": "เปิดกล้อง",
+    "cameraOff": "ปิดกล้อง",
+    "endCall": "วางสาย"
   },
   "stories": {
     "createStory": "สร้างสตอรี่",
@@ -523,7 +536,14 @@
     "noAuditLogs": "No audit entries yet.",
     "aProfile": "a profile",
     "profileReportHint": "Resolving with Remove suspends this user for 7 days.",
-    "navGames": "เกม"
+    "navGames": "เกม",
+    "themeTitle": "เทมเพลตเว็บไซต์",
+    "theme_greenwave": "GreenWave",
+    "theme_ocean": "Ocean",
+    "theme_sunset": "Sunset",
+    "themeDesc_greenwave": "โทนเขียวสด — ลุคดั้งเดิม",
+    "themeDesc_ocean": "น้ำเงินเข้มพร้อมสำเนียงเขียวอมฟ้า",
+    "themeDesc_sunset": "ส้มอบอุ่นพร้อมสำเนียงชมพูเข้ม"
   },
   "dev": {
     "navKeys": "API keys",

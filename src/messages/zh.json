@@ -314,7 +314,20 @@
     "sentPhoto": "发送了一张照片",
     "typing": "正在输入...",
     "seen": "已读",
-    "back": "返回"
+    "back": "返回",
+    "audioCall": "语音通话",
+    "videoCall": "视频通话",
+    "incomingAudioCall": "语音来电…",
+    "incomingVideoCall": "视频来电…",
+    "accept": "接听",
+    "decline": "拒绝",
+    "ringing": "正在呼叫…",
+    "connecting": "连接中…",
+    "mute": "静音",
+    "unmute": "取消静音",
+    "cameraOn": "开启摄像头",
+    "cameraOff": "关闭摄像头",
+    "endCall": "挂断"
   },
   "stories": {
     "createStory": "创建快拍",
@@ -523,7 +536,14 @@
     "noAuditLogs": "No audit entries yet.",
     "aProfile": "a profile",
     "profileReportHint": "Resolving with Remove suspends this user for 7 days.",
-    "navGames": "游戏"
+    "navGames": "游戏",
+    "themeTitle": "站点模板",
+    "theme_greenwave": "GreenWave",
+    "theme_ocean": "Ocean",
+    "theme_sunset": "Sunset",
+    "themeDesc_greenwave": "清新绿色 — 原始外观。",
+    "themeDesc_ocean": "深蓝配青色点缀。",
+    "themeDesc_sunset": "暖橙配玫瑰点缀。"
   },
   "dev": {
     "navKeys": "API keys",
