@@ -11,8 +11,11 @@ import {
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { getLocale } from "next-intl/server";
+
 import { ageBandOf, getCurrentProfile } from "@/lib/auth";
 import { getTrackProgress } from "@/lib/db/learn";
+import { localizeTrack } from "@/lib/learn/i18n";
 import { getTrack, tracksForBand, type LessonKind } from "@/lib/learn/lessons";
 
 export const dynamic = "force-dynamic";
@@ -41,14 +44,16 @@ export default async function TrackPage({
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 
-  const track = getTrack(params.track);
-  if (!track) notFound();
+  const rawTrack = getTrack(params.track);
+  if (!rawTrack) notFound();
 
   // Only show tracks appropriate for the viewer's age band.
   const band = ageBandOf(profile.birth_date);
-  const allowed = tracksForBand(band).some((t) => t.slug === track.slug);
+  const allowed = tracksForBand(band).some((t) => t.slug === rawTrack.slug);
   if (!allowed) redirect("/learn");
 
+  const locale = await getLocale();
+  const track = localizeTrack(rawTrack, locale);
   const progress = await getTrackProgress(profile.id, track.slug);
 
   return (
