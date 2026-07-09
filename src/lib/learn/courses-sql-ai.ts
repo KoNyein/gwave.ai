@@ -375,12 +375,13 @@ const aiTrack: Track = {
       slug: "ai-intro",
       title: "What Is Artificial Intelligence?",
       summary: "The idea of machines that perform tasks that seem to need thinking.",
-      minutes: 8,
+      minutes: 9,
       kind: "reading",
+      youtubeQuery: "what is artificial intelligence explained",
       sections: [
         {
           heading: "A working definition",
-          body: "Artificial intelligence (AI) is software that performs tasks we usually associate with human thinking — recognising a photo, understanding a sentence, recommending a strain, or predicting when a crop is ready. AI does not 'think' like a person; it finds patterns in data and uses them to make useful guesses.",
+          body: "Artificial intelligence (AI) is software that performs tasks we usually associate with human thinking — recognising a photo, understanding a sentence, recommending a strain, or predicting when a crop is ready to harvest. It is one of the most talked-about ideas in technology, and also one of the most misunderstood.\n\nThe key thing to hold onto is this: AI does not 'think' or 'understand' the way a person does. What it really does is find patterns in large amounts of data and use those patterns to make useful guesses about new situations. Keeping that plain reality in mind will help you cut through a lot of the hype around the subject.",
         },
         {
           heading: "Narrow AI is everywhere",
@@ -398,6 +399,7 @@ const aiTrack: Track = {
       summary: "How software learns patterns from examples instead of being told the rules.",
       minutes: 10,
       kind: "reading",
+      youtubeQuery: "what is machine learning explained",
       sections: [
         {
           heading: "Learning from examples",
@@ -419,6 +421,7 @@ const aiTrack: Track = {
       summary: "The layered models behind image and language AI.",
       minutes: 10,
       kind: "reading",
+      youtubeQuery: "neural networks explained",
       sections: [
         {
           heading: "Inspired by the brain",
@@ -440,6 +443,7 @@ const aiTrack: Track = {
       summary: "Why the quality of the data decides the quality of the AI.",
       minutes: 9,
       kind: "reading",
+      youtubeQuery: "why data matters in machine learning",
       sections: [
         {
           heading: "Garbage in, garbage out",
@@ -461,6 +465,7 @@ const aiTrack: Track = {
       summary: "The AI that writes, draws and codes — and how it works.",
       minutes: 11,
       kind: "reading",
+      youtubeQuery: "how large language models work",
       sections: [
         {
           heading: "Making new content",
@@ -482,6 +487,7 @@ const aiTrack: Track = {
       summary: "Practical ways to get better results from AI tools.",
       minutes: 9,
       kind: "reading",
+      youtubeQuery: "prompt engineering for beginners",
       sections: [
         {
           heading: "A prompt is your instruction",
@@ -503,6 +509,7 @@ const aiTrack: Track = {
       summary: "Fairness, privacy and keeping people in charge.",
       minutes: 9,
       kind: "reading",
+      youtubeQuery: "AI ethics explained",
       sections: [
         {
           heading: "Fairness",

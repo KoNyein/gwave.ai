@@ -23,7 +23,33 @@ function rd(
   };
 }
 
-export const AI_EXTRA: Lesson[] = [
+// A "Learn on YouTube" search per lesson (localized to Burmese via the overlay).
+const YT: Record<string, string> = {
+  "ai-history": "history of artificial intelligence",
+  "ai-narrow-general": "narrow vs general AI explained",
+  "ai-how-learns": "how machine learning models learn",
+  "ai-classification-regression": "classification vs regression machine learning",
+  "ai-clustering": "clustering unsupervised learning explained",
+  "ai-reinforcement": "reinforcement learning explained",
+  "ai-features": "feature engineering machine learning",
+  "ai-overfitting": "overfitting and underfitting explained",
+  "ai-evaluation": "precision recall confusion matrix explained",
+  "ai-computer-vision": "computer vision explained",
+  "ai-nlp": "natural language processing explained",
+  "ai-transformers": "transformers attention explained",
+  "ai-embeddings": "vector embeddings explained",
+  "ai-prompt-advanced": "advanced prompt engineering tutorial",
+  "ai-rag": "retrieval augmented generation explained",
+  "ai-agents": "AI agents explained",
+  "ai-image-generation": "how AI image generation works diffusion",
+  "ai-speech-audio": "speech recognition and text to speech AI",
+  "ai-hallucination": "AI hallucinations explained",
+  "ai-bias-fairness": "AI bias and fairness explained",
+  "ai-privacy-data": "AI and data privacy explained",
+  "ai-in-agriculture": "artificial intelligence in agriculture",
+};
+
+const AI_EXTRA_BASE: Lesson[] = [
   rd(
     "ai-history",
     "A Short History of AI",
@@ -465,3 +491,7 @@ export const AI_EXTRA: Lesson[] = [
     ],
   ),
 ];
+
+export const AI_EXTRA: Lesson[] = AI_EXTRA_BASE.map((lesson) =>
+  YT[lesson.slug] ? { ...lesson, youtubeQuery: YT[lesson.slug] } : lesson,
+);
