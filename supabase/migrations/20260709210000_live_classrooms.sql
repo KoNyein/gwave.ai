@@ -8,6 +8,22 @@
 alter table public.profiles
   add column is_teacher boolean not null default false;
 
+-- Close the self-grant hole: the original self-update policy only pinned
+-- `role`, so a learner could set is_teacher=true on their own row via the
+-- anon key and bypass approval. Recreate it to pin is_teacher too — the
+-- flag can only ever change through the service role (in reviewTeacher…).
+drop policy "Users can update their own profile" on public.profiles;
+create policy "Users can update their own profile"
+  on public.profiles
+  for update
+  to authenticated
+  using (auth.uid() = id)
+  with check (
+    auth.uid() = id
+    and role = (select p.role from public.profiles p where p.id = auth.uid())
+    and is_teacher = (select p.is_teacher from public.profiles p where p.id = auth.uid())
+  );
+
 -- Classroom facets on the shared streams table.
 alter table public.live_streams
   add column kind text not null default 'stream'
@@ -62,15 +78,16 @@ create policy "Users apply to teach as themselves"
     and not public.is_suspended(auth.uid())
   );
 
--- Applicants may edit their own pending application (resubmit); moderators
--- may set the decision.
-create policy "Applicants edit pending, moderators review"
+-- Applicants may edit/resubmit their OWN application (the USING clause must
+-- match the existing row, which may be 'rejected' — so it can't require
+-- pending, or resubmit-after-rejection would be blocked); the WITH CHECK
+-- forces the applicant's new row back to 'pending'. Moderators may set any
+-- decision.
+create policy "Applicants resubmit their own, moderators review"
   on public.teacher_applications
   for update
   to authenticated
-  using (
-    (user_id = auth.uid() and status = 'pending') or public.is_moderator()
-  )
+  using (user_id = auth.uid() or public.is_moderator())
   with check (
     (user_id = auth.uid() and status = 'pending') or public.is_moderator()
   );

@@ -21,7 +21,10 @@ const STATUS_STYLE: Record<TeacherApplicationStatus, string> = {
 
 /** Moderation queue for teacher applications. */
 export default async function AdminTeachersPage() {
-  await requireRole("moderator");
+  // The whole /admin area is admin-gated by the layout, so match it here
+  // (the RLS policies additionally allow moderators — harmless defense in
+  // depth).
+  await requireRole("admin");
   const [t, apps] = await Promise.all([
     getTranslations("learn"),
     getTeacherApplications(),

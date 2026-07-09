@@ -54,9 +54,7 @@ export async function reviewTeacherApplication(
 ): Promise<ActionResult> {
   const reviewer = await getCurrentProfile();
   if (!reviewer) return { ok: false, error: "Not authenticated." };
-  const canReview = ["moderator", "admin", "super_admin"].includes(
-    reviewer.role,
-  );
+  const canReview = ["admin", "super_admin"].includes(reviewer.role);
   if (!canReview) return { ok: false, error: "Not allowed." };
 
   const supabase = await createClient();
