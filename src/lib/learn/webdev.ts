@@ -12,6 +12,7 @@ import {
 import { HTML_EXTRA2 } from "@/lib/learn/webdev-html2";
 import { CSS_EXTRA2 } from "@/lib/learn/webdev-css2";
 import { JS_EXTRA2 } from "@/lib/learn/webdev-js2";
+import { PY_EXTRA2 } from "@/lib/learn/webdev-py2";
 import {
   BOX_MODEL_SVG,
   FLEXBOX_SVG,
@@ -928,11 +929,12 @@ export const pythonTrack: Track = {
       ],
     },
     ...PY_EXTRA,
+    ...PY_EXTRA2,
     {
       slug: "py-quiz",
       title: "Python Quiz",
-      summary: "Test the whole Python course.",
-      minutes: 6,
+      summary: "Twelve questions covering the whole Python course.",
+      minutes: 8,
       kind: "quiz",
       quiz: [
         {
@@ -985,6 +987,42 @@ export const pythonTrack: Track = {
             "Debugs the code",
           ],
           answer: 1,
+        },
+        {
+          q: "What does [n*2 for n in range(3)] produce?",
+          options: ["[0, 2, 4]", "[2, 4, 6]", "[0, 1, 2]", "[6]"],
+          answer: 0,
+          explain: "A list comprehension doubles 0, 1 and 2.",
+        },
+        {
+          q: "Which collection cannot be changed after it is created?",
+          options: ["list", "dict", "tuple", "set"],
+          answer: 2,
+        },
+        {
+          q: "word[::-1] gives you the string…",
+          options: ["unchanged", "reversed", "uppercased", "empty"],
+          answer: 1,
+        },
+        {
+          q: "In a class, __init__ is…",
+          options: [
+            "a loop",
+            "the constructor that sets up each object",
+            "a comment",
+            "a module",
+          ],
+          answer: 1,
+        },
+        {
+          q: "lambda x: x + 1 is…",
+          options: [
+            "a small anonymous function",
+            "a list",
+            "an error",
+            "a keyword to delete x",
+          ],
+          answer: 0,
         },
       ],
     },
