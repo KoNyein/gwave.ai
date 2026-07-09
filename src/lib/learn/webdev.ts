@@ -3,6 +3,12 @@
 // every web lesson, and quizzes. All content is original.
 
 import type { Track } from "@/lib/learn/lessons";
+import {
+  CSS_EXTRA,
+  HTML_EXTRA,
+  JS_EXTRA,
+  PY_EXTRA,
+} from "@/lib/learn/webdev-extra";
 
 // ────────────────────────────── HTML ───────────────────────────────────────
 
@@ -144,6 +150,7 @@ export const htmlTrack: Track = {
         js: "// Try adding an <aside> next to the article.",
       },
     },
+    ...HTML_EXTRA,
     {
       slug: "html-quiz",
       title: "HTML Quiz",
@@ -350,6 +357,7 @@ export const cssTrack: Track = {
         js: "// Mobile-first: try min-width instead of max-width.",
       },
     },
+    ...CSS_EXTRA,
     {
       slug: "css-quiz",
       title: "CSS Quiz",
@@ -536,6 +544,7 @@ export const javascriptTrack: Track = {
         js: "const input = document.getElementById('task');\nconst list = document.getElementById('list');\n\ndocument.getElementById('add').addEventListener('click', () => {\n  const text = input.value.trim();\n  if (!text) return;\n  const li = document.createElement('li');\n  li.textContent = '🌱 ' + text;\n  li.addEventListener('click', () => li.classList.toggle('done'));\n  list.appendChild(li);\n  input.value = '';\n});",
       },
     },
+    ...JS_EXTRA,
     {
       slug: "js-quiz",
       title: "JavaScript Quiz",
@@ -737,6 +746,7 @@ export const pythonTrack: Track = {
         },
       ],
     },
+    ...PY_EXTRA,
     {
       slug: "py-quiz",
       title: "Python Quiz",

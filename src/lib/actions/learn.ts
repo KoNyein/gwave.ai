@@ -110,7 +110,11 @@ export async function saveProject(input: {
   if (!parsed.success) return { ok: false, error: "Invalid project." };
   const { trackSlug, lessonSlug, kind, title, data } = parsed.data;
 
-  if (!getLesson(trackSlug, lessonSlug)) {
+  // The free-practice playground saves like a lesson but isn't in the
+  // catalog; everything else must be a real lesson.
+  const isFreePractice =
+    trackSlug === "playground" && lessonSlug === "free-practice";
+  if (!isFreePractice && !getLesson(trackSlug, lessonSlug)) {
     return { ok: false, error: "Unknown lesson." };
   }
   let serialized: string;
