@@ -93,16 +93,39 @@ export async function createCamera(input: {
   return { ok: true, data: { id: data.id } };
 }
 
+/**
+ * A public HLS URL must be plain https, end in .m3u8, and carry NO embedded
+ * credentials. Rejecting userinfo (https://user:pass@host/…) is essential:
+ * hls_url is exposed to public share-link viewers via PUBLIC_COLS, so a
+ * Basic-auth URL pasted here would leak the media-server password. Credentials
+ * belong in the server-side rtsp_url, never here.
+ */
+function isPublicHlsUrl(v: string): boolean {
+  if (v === "") return true; // empty clears the URL
+  let url: URL;
+  try {
+    url = new URL(v);
+  } catch {
+    return false;
+  }
+  return (
+    url.protocol === "https:" &&
+    url.username === "" &&
+    url.password === "" &&
+    /\.m3u8$/i.test(url.pathname)
+  );
+}
+
 const hlsSchema = z.object({
   id: z.string().uuid(),
-  // Empty string clears the URL; otherwise it must be an https .m3u8 playlist.
+  // Empty string clears the URL; otherwise a credential-free https .m3u8.
   hlsUrl: z
     .string()
     .trim()
     .max(500)
     .refine(
-      (v) => v === "" || /^https:\/\/[^\s]+\.m3u8(\?[^\s]*)?$/i.test(v),
-      "Enter an https:// URL ending in .m3u8",
+      isPublicHlsUrl,
+      "Enter a public https:// .m3u8 URL with no username or password in it.",
     ),
 });
 

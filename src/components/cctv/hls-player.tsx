@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Loader2, VideoOff } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Loader2, Play, VideoOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-type PlayerState = "loading" | "playing" | "error";
+type PlayerState = "loading" | "paused" | "playing" | "error";
 
 /**
  * Plays a live HLS (.m3u8) stream directly in a <video> element.
@@ -23,10 +23,21 @@ export function HlsPlayer({ src, title }: { src: string; title: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [state, setState] = useState<PlayerState>("loading");
 
+  // Try to autoplay; if the browser blocks it (common when not muted, or under
+  // strict autoplay settings), fall back to a "paused" state that shows a play
+  // button the user can click, rather than a spinner that never resolves.
+  const tryPlay = useCallback((video: HTMLVideoElement) => {
+    video.play().catch(() => {
+      // A rejected play() means autoplay was blocked, not a stream error.
+      setState((s) => (s === "playing" ? s : "paused"));
+    });
+  }, []);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
+    setState("loading");
     let destroyed = false;
     // Holds the hls.js instance so cleanup can tear it down.
     let hls: import("hls.js").default | null = null;
@@ -42,9 +53,7 @@ export function HlsPlayer({ src, title }: { src: string; title: string }) {
       video.addEventListener("error", () => {
         if (!destroyed) setState("error");
       });
-      void video.play().catch(() => {
-        /* autoplay may be blocked; the poster/controls remain usable */
-      });
+      tryPlay(video);
     } else {
       // Everyone else: hls.js, loaded on demand.
       import("hls.js")
@@ -61,11 +70,7 @@ export function HlsPlayer({ src, title }: { src: string; title: string }) {
           });
           hls.loadSource(src);
           hls.attachMedia(video);
-          hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            void video.play().catch(() => {
-              /* autoplay may be blocked */
-            });
-          });
+          hls.on(Hls.Events.MANIFEST_PARSED, () => tryPlay(video));
         })
         .catch(() => {
           if (!destroyed) setState("error");
@@ -79,7 +84,12 @@ export function HlsPlayer({ src, title }: { src: string; title: string }) {
       video.removeAttribute("src");
       video.load();
     };
-  }, [src]);
+  }, [src, tryPlay]);
+
+  const onPlayClick = () => {
+    const video = videoRef.current;
+    if (video) void video.play().catch(() => setState("error"));
+  };
 
   return (
     <div className="relative aspect-video w-full overflow-hidden rounded-xl border bg-black">
@@ -91,22 +101,31 @@ export function HlsPlayer({ src, title }: { src: string; title: string }) {
         playsInline
         className="h-full w-full"
       />
-      {state !== "playing" ? (
+      {state === "loading" ? (
+        // pointer-events-none so the native controls underneath stay reachable
+        // even while the connecting overlay is shown.
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-center text-white">
+          <Loader2 className="h-7 w-7 animate-spin" />
+          <p className="text-sm">{t("hlsLoading")}</p>
+        </div>
+      ) : state === "paused" ? (
+        <button
+          type="button"
+          onClick={onPlayClick}
+          className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 text-center text-white transition-colors hover:bg-black/50"
+        >
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 text-black">
+            <Play className="h-7 w-7 translate-x-0.5" />
+          </span>
+          <span className="text-sm font-medium">{t("hlsPlay")}</span>
+        </button>
+      ) : state === "error" ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-center text-white">
-          {state === "loading" ? (
-            <>
-              <Loader2 className="h-7 w-7 animate-spin" />
-              <p className="text-sm">{t("hlsLoading")}</p>
-            </>
-          ) : (
-            <>
-              <VideoOff className="h-7 w-7" />
-              <p className="text-sm font-medium">{t("hlsError")}</p>
-              <p className="max-w-xs px-4 text-xs text-white/70">
-                {t("hlsErrorHint")}
-              </p>
-            </>
-          )}
+          <VideoOff className="h-7 w-7" />
+          <p className="text-sm font-medium">{t("hlsError")}</p>
+          <p className="max-w-xs px-4 text-xs text-white/70">
+            {t("hlsErrorHint")}
+          </p>
         </div>
       ) : null}
     </div>
