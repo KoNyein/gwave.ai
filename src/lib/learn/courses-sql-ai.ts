@@ -7,6 +7,12 @@
 
 import { AI_EXTRA } from "@/lib/learn/ai-extra";
 import { SQL_EXTRA } from "@/lib/learn/courses-sql-ai-extra";
+import {
+  GROUP_BY_SVG,
+  JOIN_SVG,
+  SELECT_FLOW_SVG,
+  TABLE_SVG,
+} from "@/lib/learn/sql-diagrams";
 import type { Track } from "@/lib/learn/lessons";
 
 // ─────────────────────────── SQL course ────────────────────────────────────
@@ -23,21 +29,30 @@ const sqlTrack: Track = {
       slug: "sql-intro",
       title: "What Is SQL?",
       summary: "Databases, tables, rows and columns — the language of data.",
-      minutes: 8,
+      minutes: 10,
       kind: "reading",
+      youtubeQuery: "SQL tutorial for beginners",
       sections: [
         {
           heading: "A database is organised information",
-          body: "A database stores information so a program can find it again quickly. Almost every app you use — a shop, a chat, GreenWave itself — keeps its data in a database. SQL (Structured Query Language) is the language we use to ask a database questions and to change what it holds.",
+          body: "A database is a store of information arranged so a program can find any part of it again in an instant. Almost every app you touch keeps its data in one: an online shop remembers its products and orders, a chat app remembers every message, and GreenWave itself stores growers, strains, posts and lessons this way. Without databases, an app would forget everything the moment you closed it.\n\nSQL — Structured Query Language — is the language we use to talk to a database: to ask it questions ('which growers are in Yangon?') and to change what it holds ('add this new grower'). It has been the standard language for this for decades, so the ideas you learn here apply to almost every database you will ever meet.",
         },
         {
           heading: "Tables, rows and columns",
-          body: "Data lives in tables, which look like spreadsheets. Each table has columns (the fields, such as name or city) and rows (one record each, such as a single grower). In these lessons you will query two tables: `growers` and `strains`.",
-          code: "growers\n  id | name  | city      | plants\n  ---+-------+-----------+-------\n   1 | Mai   | Yangon    | 12\n   2 | Aung  | Mandalay  |  5\n   3 | Su    | Yangon    | 20",
+          body: "Data in a SQL database lives in tables, which look much like a spreadsheet. Each table has columns — the fields every record shares, such as name or city — and rows, where each row is one complete record, such as a single grower. The diagram below shows the `growers` table you will query throughout this course, alongside a `strains` table.\n\nThinking in tables is the heart of SQL: once you can picture your data as neat rows and columns, the queries that follow become far easier to read and write.",
+          image: {
+            src: TABLE_SVG,
+            alt: "A growers table with id, name, city and plants columns and three example rows.",
+            caption: "A table: columns run across the top, one record per row.",
+          },
         },
         {
           heading: "Queries ask questions",
-          body: "A query is a request for data. The most common query starts with SELECT — 'select these columns from this table'. Over the next lessons you will filter, sort, count and combine data. Every lesson has a live editor: edit the query and press Run to see the real result.",
+          body: "A query is simply a request for data written in SQL. The most common query begins with SELECT — literally 'select these columns from this table'. Over the coming lessons you will learn to filter rows, sort them, count and total them, and combine two tables together. Each idea builds on the last.",
+        },
+        {
+          heading: "Learn by doing",
+          body: "You do not need to install anything. Every SQL lesson in this course has a live editor with a small database already loaded, running entirely in your browser. Read the explanation, then edit the query and press Run to see the real result — and, just as usefully, change it and see what happens. Experimenting freely is the fastest way to build real understanding, and nothing you do here can break anything.",
         },
       ],
     },
@@ -45,17 +60,27 @@ const sqlTrack: Track = {
       slug: "sql-select",
       title: "SELECT: Read Data",
       summary: "Pull columns out of a table with SELECT.",
-      minutes: 10,
+      minutes: 11,
       kind: "sql",
+      youtubeQuery: "SQL SELECT statement explained",
       sections: [
         {
           heading: "SELECT columns FROM a table",
-          body: "SELECT names the columns you want; FROM names the table. Use `*` to mean 'every column'. SQL keywords are not case-sensitive, but writing them in capitals is a common habit that makes queries easy to read.",
+          body: "Every question you ask a database follows the same simple shape: SELECT names the columns you want, and FROM names the table they live in. The diagram below shows that shape, with WHERE (which you will meet next) choosing the rows.\n\nUse `*` as a shortcut meaning 'every column'. SQL keywords like SELECT and FROM are not case-sensitive — `select` works too — but writing them in capitals is a widespread habit that makes a query easy to read at a glance, separating the commands from your column and table names.",
+          image: {
+            src: SELECT_FLOW_SVG,
+            alt: "SELECT chooses columns, FROM chooses the table, WHERE chooses the rows.",
+            caption: "The shape of a query: columns, then table, then a row filter.",
+          },
+        },
+        {
+          heading: "Choose only what you need",
+          body: "Listing the exact columns you want — `SELECT name, city` — is usually better than `SELECT *`. It makes the result easier to read, and in a real app it moves less data, so pages load faster. Reach for `*` when you are exploring a table; name your columns when you know what you want.",
           code: "SELECT name, city FROM growers;\nSELECT * FROM growers;",
         },
         {
           heading: "Try it",
-          body: "Run the query below to list every grower. Then change it to `SELECT name, plants FROM growers;` and run it again to see only two columns.",
+          body: "Run the query below to list every grower with all their columns. Then change it to `SELECT name, plants FROM growers;` and run it again — notice the result now shows only the two columns you named. Try naming the columns in a different order and see that the result follows your order.",
         },
       ],
       sqlCode: "SELECT * FROM growers;",
@@ -64,17 +89,23 @@ const sqlTrack: Track = {
       slug: "sql-where",
       title: "WHERE: Filter Rows",
       summary: "Keep only the rows that match a condition.",
-      minutes: 10,
+      minutes: 11,
       kind: "sql",
+      youtubeQuery: "SQL WHERE clause tutorial",
       sections: [
         {
           heading: "Filtering with WHERE",
-          body: "WHERE keeps only rows where a condition is true. You can compare with `=`, `<`, `>`, `<=`, `>=` and `<>` (not equal). Text values go in single quotes; numbers do not. Combine conditions with AND and OR.",
-          code: "SELECT * FROM growers WHERE city = 'Yangon';\nSELECT * FROM growers WHERE plants > 10;\nSELECT * FROM growers WHERE city = 'Mandalay' AND plants > 10;",
+          body: "A table can hold millions of rows, but you rarely want them all. WHERE keeps only the rows where a condition you write is true, and quietly drops the rest. It is the single most useful clause in SQL — 'show me just the rows I care about'.\n\nYou compare values with `=` (equal), `<` and `>` (less/greater than), `<=` and `>=`, and `<>` (not equal). One rule trips up every beginner: text values must go inside single quotes (`'Yangon'`), while numbers must not (`10`). Getting that right is half the battle.",
+          code: "SELECT * FROM growers WHERE city = 'Yangon';\nSELECT * FROM growers WHERE plants > 10;",
+        },
+        {
+          heading: "Combining conditions",
+          body: "Real questions often have more than one part. Join conditions with AND (both must be true) and OR (either may be true). 'Growers in Mandalay with more than 10 plants' needs both, so you use AND. When you mix AND and OR in one query, wrap the OR part in brackets so the meaning is clear.",
+          code: "SELECT * FROM growers\nWHERE city = 'Mandalay' AND plants > 10;",
         },
         {
           heading: "Try it",
-          body: "Run the query to find growers with more than 10 plants. Then edit the number, or swap in a city name, and run again.",
+          body: "Run the query to find growers with more than 10 plants. Then edit the number to `5`, or replace the whole condition with `city = 'Yangon'`, and run again. Try adding `AND plants > 10` to a city filter to combine the two.",
         },
       ],
       sqlCode: "SELECT name, city, plants\nFROM growers\nWHERE plants > 10;",
@@ -85,6 +116,7 @@ const sqlTrack: Track = {
       summary: "Sort your results and take just the top few.",
       minutes: 9,
       kind: "sql",
+      youtubeQuery: "SQL ORDER BY and LIMIT tutorial",
       sections: [
         {
           heading: "Sorting rows",
@@ -104,6 +136,7 @@ const sqlTrack: Track = {
       summary: "Remove duplicate values from a column.",
       minutes: 8,
       kind: "sql",
+      youtubeQuery: "SQL DISTINCT keyword explained",
       sections: [
         {
           heading: "Unique values only",
@@ -123,6 +156,7 @@ const sqlTrack: Track = {
       summary: "Turn many rows into a single answer.",
       minutes: 11,
       kind: "sql",
+      youtubeQuery: "SQL COUNT SUM AVG aggregate functions",
       sections: [
         {
           heading: "Aggregate functions",
@@ -140,17 +174,28 @@ const sqlTrack: Track = {
       slug: "sql-group-by",
       title: "GROUP BY & HAVING",
       summary: "Summarise data per category.",
-      minutes: 12,
+      minutes: 13,
       kind: "sql",
+      youtubeQuery: "SQL GROUP BY and HAVING tutorial",
       sections: [
         {
           heading: "One summary per group",
-          body: "GROUP BY splits rows into groups that share a value, then runs an aggregate on each group. 'How many plants per city?' means group by city and sum the plants. HAVING filters those grouped results (WHERE filters rows before grouping; HAVING filters after).",
-          code: "SELECT city, SUM(plants) AS plants\nFROM growers\nGROUP BY city;\n\nSELECT city, COUNT(*) AS growers\nFROM growers\nGROUP BY city\nHAVING COUNT(*) > 1;",
+          body: "An aggregate like SUM squeezes many rows into a single number. GROUP BY makes that far more powerful: it first splits the rows into groups that share a value, then runs the aggregate once for each group. 'How many plants per city?' means group the growers by city, then sum the plants within each — as the diagram shows, several rows collapse into one summary row per city.",
+          image: {
+            src: GROUP_BY_SVG,
+            alt: "Rows for each city collapse into one summed row per city.",
+            caption: "GROUP BY collapses rows that share a value into one row each.",
+          },
+          code: "SELECT city, SUM(plants) AS plants\nFROM growers\nGROUP BY city;",
+        },
+        {
+          heading: "HAVING: filtering the groups",
+          body: "WHERE cannot test a group total, because the total does not exist until after the rows are grouped. That is what HAVING is for: it filters the grouped results using an aggregate. 'Only cities with more than one grower' is `HAVING COUNT(*) > 1`. A simple rule to remember: WHERE filters rows before grouping, HAVING filters groups after.",
+          code: "SELECT city, COUNT(*) AS growers\nFROM growers\nGROUP BY city\nHAVING COUNT(*) > 1;",
         },
         {
           heading: "Try it",
-          body: "The query totals plants for each city. Add an ORDER BY plants DESC at the end to rank the cities, then run it.",
+          body: "The query totals plants for each city. Add `ORDER BY plants DESC` at the end to rank the cities from most to fewest plants, then run it. Try swapping SUM for COUNT(*) to count growers per city instead.",
         },
       ],
       sqlCode: "SELECT city, SUM(plants) AS plants\nFROM growers\nGROUP BY city;",
@@ -159,17 +204,27 @@ const sqlTrack: Track = {
       slug: "sql-join",
       title: "JOIN: Combine Tables",
       summary: "Match rows across two tables to answer richer questions.",
-      minutes: 13,
+      minutes: 14,
       kind: "sql",
+      youtubeQuery: "SQL JOIN explained for beginners",
       sections: [
         {
           heading: "Linking tables with keys",
-          body: "Real databases spread data across tables and link them with keys. Each strain has a `grower_id` that points at a grower's `id`. A JOIN matches those rows so you can see the grower's name next to the strain in one result.",
+          body: "Good databases do not cram everything into one giant table. Instead they spread data across several tables and link them with keys. Here, rather than repeating a grower's details on every strain, each strain simply carries a `grower_id` that points at a grower's `id`. The diagram shows that link.\n\nA JOIN follows that key to match rows across the two tables, so you can pull the grower's name and the strain's name together into a single result — the database re-assembles the connected data for you.",
+          image: {
+            src: JOIN_SVG,
+            alt: "The strains.grower_id column points to the growers.id column, linking the tables.",
+            caption: "A JOIN matches rows across two tables using a shared key.",
+          },
           code: "SELECT strains.name AS strain, growers.name AS grower\nFROM strains\nJOIN growers ON strains.grower_id = growers.id;",
         },
         {
+          heading: "Reading a JOIN",
+          body: "The ON part is the heart of a JOIN: it tells the database which columns must match — here `strains.grower_id = growers.id`. Because both tables have a `name` column, we write `strains.name` and `growers.name` in full so there is no confusion about which one we mean. Prefixing columns with their table name is a good habit in any query that joins.",
+        },
+        {
           heading: "Try it",
-          body: "The query lists each strain with the grower who grows it. Add `WHERE growers.city = 'Yangon'` before the semicolon to see only Yangon growers' strains.",
+          body: "The query lists each strain with the grower who grows it. Add `WHERE growers.city = 'Yangon'` before the semicolon to see only the strains grown by Yangon growers, then run it again.",
         },
       ],
       sqlCode:
@@ -181,6 +236,7 @@ const sqlTrack: Track = {
       summary: "Change the data, not just read it.",
       minutes: 12,
       kind: "sql",
+      youtubeQuery: "SQL INSERT UPDATE DELETE tutorial",
       sections: [
         {
           heading: "Writing data",
