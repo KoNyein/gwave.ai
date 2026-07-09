@@ -33,22 +33,27 @@ export const htmlTrack: Track = {
       slug: "html-intro",
       title: "HTML Introduction",
       summary: "What HTML is and how a page is put together.",
-      minutes: 8,
+      minutes: 10,
       kind: "code",
+      youtubeQuery: "HTML tutorial for beginners",
       sections: [
         {
           heading: "HTML describes structure",
-          body: "HTML (HyperText Markup Language) tells the browser what each piece of a page IS: a heading, a paragraph, a button. Elements are written as tags in angle brackets, and most come in opening/closing pairs.",
+          body: "Every web page you have ever visited is built from HTML — HyperText Markup Language. HTML does not make things move or calculate anything; its one job is to tell the browser what each piece of a page IS: this is a heading, this is a paragraph, this is a button, this is an image. The browser then knows how to display each part and how assistive tools should read it aloud.\n\nWe describe each piece with a tag written in angle brackets. Most tags come in a pair — an opening tag and a matching closing tag with a slash — that wrap around their content.",
           code: "<h1>A big heading</h1>\n<p>A paragraph of text.</p>",
         },
         {
           heading: "A full document",
-          body: "A real page starts with <!DOCTYPE html> and wraps everything in <html>, with page info in <head> and visible content in <body>. The playground writes that shell for you — you only edit the body. Press Run after every change!",
+          body: "A complete page has a fixed skeleton. It starts with `<!DOCTYPE html>`, then wraps everything in an `<html>` element. Inside that sit two parts: the `<head>`, which holds information about the page (its title, character set and settings) that visitors do not see directly, and the `<body>`, which holds everything they do see. The diagram shows this structure as a tree.\n\nIn this playground the skeleton is written for you — you edit the body content and press Run to see your page. Getting into the habit of pressing Run after every small change is the fastest way to learn.",
           image: {
             src: HTML_STRUCTURE_SVG,
             alt: "A tree: html contains head (title, meta) and body (h1, p, img).",
             caption: "Every page is an <html> element holding <head> and <body>.",
           },
+        },
+        {
+          heading: "How the browser reads it",
+          body: "When a browser loads your HTML it reads it from top to bottom and builds a model of the page in memory, then paints that model on the screen. Because it reads in order, the order you write your tags is the order things appear. This same model is what CSS later styles and what JavaScript later changes — so clean, well-structured HTML is the foundation everything else is built on.",
         },
       ],
       code: {
@@ -63,6 +68,7 @@ export const htmlTrack: Track = {
       summary: "Six heading levels, paragraphs, bold, italic and line breaks.",
       minutes: 10,
       kind: "code",
+      youtubeQuery: "HTML headings and text formatting",
       sections: [
         {
           heading: "Headings h1–h6",
@@ -86,6 +92,7 @@ export const htmlTrack: Track = {
       summary: "Connect pages with <a> and show pictures with <img>.",
       minutes: 10,
       kind: "code",
+      youtubeQuery: "HTML links and images tutorial",
       sections: [
         {
           heading: "Anchors",
@@ -110,6 +117,7 @@ export const htmlTrack: Track = {
       summary: "Bullet lists, numbered lists and data tables.",
       minutes: 12,
       kind: "code",
+      youtubeQuery: "HTML lists and tables tutorial",
       sections: [
         {
           heading: "Lists",
@@ -133,6 +141,7 @@ export const htmlTrack: Track = {
       summary: "Text boxes, checkboxes, dropdowns and buttons.",
       minutes: 12,
       kind: "code",
+      youtubeQuery: "HTML forms and inputs tutorial",
       sections: [
         {
           heading: "Collecting input",
@@ -152,6 +161,7 @@ export const htmlTrack: Track = {
       summary: "header, nav, main, article, footer — pages with meaning.",
       minutes: 10,
       kind: "code",
+      youtubeQuery: "HTML semantic elements tutorial",
       sections: [
         {
           heading: "Why semantic tags",

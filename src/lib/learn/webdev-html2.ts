@@ -9,7 +9,33 @@ import type { Lesson } from "@/lib/learn/lessons";
 const css = "body { font-family: sans-serif; padding: 1.5rem; line-height: 1.6; }";
 const noJs = "// This is an HTML lesson — edit the HTML and press Run.";
 
-export const HTML_EXTRA2: Lesson[] = [
+// A "Learn on YouTube" search per lesson (localized to Burmese via the overlay).
+const YT: Record<string, string> = {
+  "html-elements": "HTML elements and nesting tutorial",
+  "html-paragraphs": "HTML paragraphs and whitespace",
+  "html-formatting": "HTML text formatting tags bold italic",
+  "html-quotations": "HTML blockquote and quotation tags",
+  "html-comments": "HTML comments tutorial",
+  "html-colors": "HTML colors tutorial",
+  "html-styles": "HTML style attribute inline CSS",
+  "html-classes": "HTML class attribute explained",
+  "html-id": "HTML id attribute explained",
+  "html-links-advanced": "HTML links target and anchors",
+  "html-images-advanced": "HTML images alt and responsive",
+  "html-tables-advanced": "HTML tables colspan rowspan",
+  "html-lists-advanced": "HTML nested lists tutorial",
+  "html-block-inline": "HTML block vs inline elements",
+  "html-div-span": "HTML div and span explained",
+  "html-head": "HTML head meta tags tutorial",
+  "html-entities": "HTML entities special characters",
+  "html-emojis": "HTML emojis tutorial",
+  "html-input-types": "HTML input types form fields",
+  "html-input-attributes": "HTML input attributes required placeholder",
+  "html-layout": "HTML page layout semantic tutorial",
+  "html-responsive": "HTML responsive web design viewport",
+};
+
+const HTML_EXTRA2_BASE: Lesson[] = [
   {
     slug: "html-elements",
     title: "Elements & Nesting",
@@ -428,3 +454,7 @@ export const HTML_EXTRA2: Lesson[] = [
     },
   },
 ];
+
+export const HTML_EXTRA2: Lesson[] = HTML_EXTRA2_BASE.map((lesson) =>
+  YT[lesson.slug] ? { ...lesson, youtubeQuery: YT[lesson.slug] } : lesson,
+);
