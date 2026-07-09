@@ -5,6 +5,7 @@
 // `strains(id, name, type, weeks, grower_id)` — see sql-playground.tsx.
 // Pure data, safe to import from server and client.
 
+import { AI_EXTRA } from "@/lib/learn/ai-extra";
 import { SQL_EXTRA } from "@/lib/learn/courses-sql-ai-extra";
 import type { Track } from "@/lib/learn/lessons";
 
@@ -461,6 +462,7 @@ const aiTrack: Track = {
         },
       ],
     },
+    ...AI_EXTRA,
     {
       slug: "ai-quiz",
       title: "AI Quiz",
@@ -511,6 +513,64 @@ const aiTrack: Track = {
             "Keep a human in charge to check and override it",
             "Hide that AI was involved",
             "Feed it as much private data as possible",
+          ],
+          answer: 1,
+        },
+        {
+          q: "Classification predicts a category; regression predicts…",
+          options: [
+            "A number on a continuous scale",
+            "Another category",
+            "Nothing at all",
+            "The training data",
+          ],
+          answer: 0,
+          explain: "'How many grams?' is regression; 'sick or healthy?' is classification.",
+        },
+        {
+          q: "A model that scores perfectly on training data but fails on new data has…",
+          options: ["Underfit", "Overfit", "No loss", "Been retrained"],
+          answer: 1,
+          explain: "Overfitting means memorising the examples instead of the pattern.",
+        },
+        {
+          q: "Why can plain accuracy be misleading?",
+          options: [
+            "It is always wrong",
+            "With rare cases, always guessing 'no' can look highly accurate yet be useless",
+            "It cannot be measured",
+            "It only works for images",
+          ],
+          answer: 1,
+        },
+        {
+          q: "In a transformer, 'attention' lets each word…",
+          options: [
+            "Be ignored",
+            "Focus on the other words most relevant to it",
+            "Be translated automatically",
+            "Turn into an image",
+          ],
+          answer: 1,
+        },
+        {
+          q: "Retrieval-augmented generation (RAG) improves answers by…",
+          options: [
+            "Retraining the whole model each time",
+            "Searching your own documents and giving the model those facts",
+            "Making the model bigger",
+            "Removing the prompt",
+          ],
+          answer: 1,
+          explain: "RAG grounds answers in sources you control, like an open-book exam.",
+        },
+        {
+          q: "An AI agent differs from a plain chat model because it can…",
+          options: [
+            "Only produce text",
+            "Use tools and take actions, not just talk",
+            "Never make mistakes",
+            "Work without any goal",
           ],
           answer: 1,
         },
