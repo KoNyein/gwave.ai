@@ -27,7 +27,31 @@ function py(
   };
 }
 
-export const PY_EXTRA2: Lesson[] = [
+// A "Learn on YouTube" search per lesson (localized to Burmese via the overlay).
+const YT: Record<string, string> = {
+  "py-numbers": "Python numbers int float tutorial",
+  "py-operators": "Python operators tutorial",
+  "py-fstrings": "Python f-strings tutorial",
+  "py-lists-deep": "Python lists tutorial",
+  "py-tuples": "Python tuples tutorial",
+  "py-sets": "Python sets tutorial",
+  "py-dict-methods": "Python dictionary methods tutorial",
+  "py-comprehensions": "Python list comprehension tutorial",
+  "py-slicing": "Python slicing tutorial",
+  "py-string-methods": "Python string methods tutorial",
+  "py-booleans": "Python booleans and logic",
+  "py-while": "Python while loop tutorial",
+  "py-range-enumerate-zip": "Python range enumerate zip",
+  "py-func-args": "Python function arguments args kwargs",
+  "py-lambda": "Python lambda functions tutorial",
+  "py-recursion": "Python recursion tutorial",
+  "py-classes": "Python classes and objects tutorial",
+  "py-inheritance": "Python inheritance tutorial",
+  "py-generators": "Python generators yield tutorial",
+  "py-decorators": "Python decorators tutorial",
+};
+
+const PY_EXTRA2_BASE: Lesson[] = [
   py(
     "py-numbers",
     "Numbers & Maths",
@@ -209,3 +233,7 @@ export const PY_EXTRA2: Lesson[] = [
     'def shout(func):\n    def wrapper(*args):\n        return func(*args).upper() + "!"\n    return wrapper\n\n@shout\ndef greet(name):\n    return f"hi {name}"\n\nprint(greet("su"))\nprint(greet("mai"))',
   ),
 ];
+
+export const PY_EXTRA2: Lesson[] = PY_EXTRA2_BASE.map((lesson) =>
+  YT[lesson.slug] ? { ...lesson, youtubeQuery: YT[lesson.slug] } : lesson,
+);

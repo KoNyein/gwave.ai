@@ -830,13 +830,14 @@ export const pythonTrack: Track = {
       slug: "py-intro",
       title: "Python Introduction",
       summary: "What Python is, printing, and running your first lines.",
-      minutes: 8,
+      minutes: 9,
       kind: "python",
+      youtubeQuery: "Python tutorial for beginners",
       pythonCode: "print(\"Hello, gwave.ai!\")\nprint(\"2 + 3 =\", 2 + 3)\n\n# Try changing the text, then press Run.\nname = \"Mai\"\nprint(\"Grower:\", name)",
       sections: [
         {
           heading: "Why Python",
-          body: "Python reads almost like English, which makes it the most popular first language — and it powers AI, data science, websites and automation. Run it free at python.org, in the Pydroid/Pythonista phone apps, or online at replit.com.",
+          body: "Python is famous for reading almost like plain English, which makes it the most popular first programming language in the world. But it is not a toy: the same language you learn here powers artificial intelligence, data science, websites, scientific research and everyday automation. Learning it opens more doors than almost any other single skill in computing.\n\nBest of all, this course runs Python right in your browser — press Run and it executes instantly, with nothing to install. When you want to run it on your own machine later, it is free from python.org, in phone apps like Pydroid, or online at replit.com.",
         },
         {
           heading: "print() — your first function",
@@ -856,6 +857,7 @@ export const pythonTrack: Track = {
       summary: "Numbers, strings, booleans and f-strings.",
       minutes: 10,
       kind: "python",
+      youtubeQuery: "Python variables and data types",
       pythonCode: "name = \"Mai\"\nplants = 3\nheight = 12.5\nis_growing = True\n\nprint(f\"{name} is growing {plants} plants\")\nprint(\"Tallest:\", height, \"cm\")\nprint(\"Type of plants:\", type(plants).__name__)\nprint(\"Growing?\", is_growing)",
       sections: [
         {
@@ -881,6 +883,7 @@ export const pythonTrack: Track = {
       summary: "Decisions with indentation — Python's signature style.",
       minutes: 10,
       kind: "python",
+      youtubeQuery: "Python if elif else tutorial",
       pythonCode: "ec = 1.4\n\nif ec < 1.0:\n    print(\"Feed is gentle\")\nelif ec < 2.0:\n    print(\"Feed is medium\")\nelse:\n    print(\"Feed is strong\")\n\ntemp = 26\nhumid = 65\nif temp > 24 and humid > 60:\n    print(\"Turn on the exhaust fan\")",
       sections: [
         {
@@ -901,6 +904,7 @@ export const pythonTrack: Track = {
       summary: "for, while, range() and looping over lists.",
       minutes: 10,
       kind: "python",
+      youtubeQuery: "Python for and while loops tutorial",
       pythonCode: "for day in range(1, 8):\n    if day % 2 == 1:\n        print(f\"Day {day}: water\")\n    else:\n        print(f\"Day {day}: rest\")\n\nplants = [\"Blue Dream\", \"OG Kush\", \"White Widow\"]\nfor plant in plants:\n    print(\"Checking\", plant)",
       sections: [
         {
@@ -926,6 +930,7 @@ export const pythonTrack: Track = {
       summary: "def, parameters, return values and defaults.",
       minutes: 10,
       kind: "python",
+      youtubeQuery: "Python functions def return tutorial",
       pythonCode: "def ml_for_litres(litres, ml_per_litre):\n    return litres * ml_per_litre\n\nprint(ml_for_litres(10, 2))\nprint(ml_for_litres(25, 1.5))\n\ndef greet(name, lang=\"en\"):\n    return f\"Hello {name}!\" if lang == \"en\" else f\"Mingalaba {name}!\"\n\nprint(greet(\"Mai\"))\nprint(greet(\"Mai\", \"my\"))",
       sections: [
         {
@@ -946,6 +951,7 @@ export const pythonTrack: Track = {
       summary: "Python's two workhorse containers.",
       minutes: 12,
       kind: "python",
+      youtubeQuery: "Python lists dictionaries tutorial",
       pythonCode: "plants = [\"Blue Dream\", \"OG Kush\"]\nplants.append(\"White Widow\")\nprint(\"All:\", plants)\nprint(\"First:\", plants[0], \"\u00b7 Count:\", len(plants))\n\nplant = {\"name\": \"Blue Dream\", \"weeks\": 3, \"healthy\": True}\nplant[\"weeks\"] = 4\nfor key, value in plant.items():\n    print(key, \"->\", value)",
       sections: [
         {
