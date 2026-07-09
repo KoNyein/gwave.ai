@@ -1,0 +1,217 @@
+// JavaScript course — expansion pack. Runnable lessons spliced into
+// javascriptTrack (webdev.ts) after the core lessons, taking the JS course to
+// a full beginner→intermediate curriculum. All original content; every lesson
+// runs in the playground and prints to a <pre> via a small log() helper (no
+// network is used, so everything works in the sandboxed preview).
+
+import type { Lesson } from "@/lib/learn/lessons";
+
+const html = '<h2>Console output</h2>\n<pre id="out"></pre>';
+const css =
+  "body{font-family:sans-serif;padding:1.5rem}h2{color:#3B6D11}pre{background:#f4f4f4;padding:1rem;border-radius:8px;white-space:pre-wrap;font-size:13px}";
+const LOG =
+  "const log = (m) => document.getElementById('out').textContent += m + '\\n';\n\n";
+
+function lesson(
+  slug: string,
+  title: string,
+  summary: string,
+  heading: string,
+  body: string,
+  snippet: string,
+  js: string,
+  minutes = 10,
+): Lesson {
+  return {
+    slug,
+    title,
+    summary,
+    minutes,
+    kind: "code",
+    sections: [{ heading, body, code: snippet }],
+    code: { html, css, js: LOG + js },
+  };
+}
+
+export const JS_EXTRA2: Lesson[] = [
+  lesson(
+    "js-operators",
+    "Operators",
+    "Arithmetic, comparison and logical operators.",
+    "Doing maths and comparisons",
+    "Arithmetic operators (+ - * / % **) do maths; comparison operators (=== !== > < >= <=) return true or false; logical operators (&& || !) combine conditions. Always compare with === (strict equality), not ==.",
+    "5 % 2   // 1 (remainder)\n2 ** 3  // 8 (power)\n3 === '3' // false",
+    "log(7 + 3 * 2);\nlog('remainder: ' + (7 % 3));\nlog('power: ' + 2 ** 5);\nlog('equal? ' + (3 === 3));\nlog('and: ' + (true && false));\nlog('or: ' + (true || false));",
+  ),
+  lesson(
+    "js-data-types",
+    "Data Types & typeof",
+    "Numbers, strings, booleans, null, undefined — and how to convert.",
+    "Knowing your values",
+    "JavaScript values have a type: number, string, boolean, null, undefined, object and more. typeof tells you which. Convert with Number(), String() and Boolean(). Watch out: typeof null is 'object' (a famous quirk).",
+    "typeof 42        // 'number'\ntypeof 'hi'      // 'string'\nNumber('3') + 1  // 4",
+    "log(typeof 42);\nlog(typeof 'hello');\nlog(typeof true);\nlog(typeof undefined);\nlog('convert: ' + (Number('10') + 5));\nlog('to string: ' + String(99));",
+  ),
+  lesson(
+    "js-template-literals",
+    "Template Literals",
+    "Backtick strings with embedded values and line breaks.",
+    "Strings that hold values",
+    "A template literal uses backticks (`) instead of quotes. Inside, ${ } inserts any value or expression, and the string can span multiple lines — perfect for building messages and HTML.",
+    "const n = 3;\n`I have ${n} plant${n === 1 ? '' : 's'}`",
+    "const name = 'Su';\nconst plants = 20;\nlog(`Grower: ${name}`);\nlog(`Next year: ${plants * 2} plants`);\nlog(`Status: ${plants > 10 ? 'expert' : 'beginner'}`);",
+  ),
+  lesson(
+    "js-scope",
+    "Scope: let, const & var",
+    "Where a variable lives and why block scope matters.",
+    "Block scope",
+    "let and const are block-scoped: they exist only inside the { } where they're declared. const can't be reassigned. The old var is function-scoped and best avoided. Keeping variables in the smallest scope prevents bugs.",
+    "{\n  let x = 1;\n}\n// x is not visible here",
+    "let total = 0;\nfor (let i = 1; i <= 3; i++) {\n  const doubled = i * 2;\n  total += doubled;\n  log(`i=${i}, doubled=${doubled}`);\n}\nlog('total: ' + total);",
+  ),
+  lesson(
+    "js-arrow-functions",
+    "Arrow Functions",
+    "A shorter way to write functions.",
+    "Concise functions",
+    "Arrow functions are a compact syntax: (a, b) => a + b. With one expression they return it automatically (no return needed). They're everywhere in modern JavaScript, especially with array methods.",
+    "const add = (a, b) => a + b;\nconst square = n => n * n;",
+    "const add = (a, b) => a + b;\nconst greet = name => `Hi, ${name}!`;\nlog(add(4, 5));\nlog(greet('Mai'));\nconst nums = [1, 2, 3];\nlog('doubled: ' + nums.map(n => n * 2).join(', '));",
+  ),
+  lesson(
+    "js-ternary",
+    "Ternary & Short-circuit",
+    "Compact decisions with ?:, && , || and ??.",
+    "One-line choices",
+    "The ternary operator condition ? a : b picks a value in one line. && and || short-circuit: value || fallback gives a default, and ?? does the same but only for null/undefined.",
+    "const label = n > 0 ? 'positive' : 'zero or less';\nconst name = input || 'Guest';",
+    "const plants = 0;\nlog(plants > 0 ? 'has plants' : 'none yet');\nconst input = '';\nlog('name: ' + (input || 'Guest'));\nconst count = 0;\nlog('count: ' + (count ?? 'unknown'));",
+  ),
+  lesson(
+    "js-switch",
+    "The switch Statement",
+    "Choose between many fixed options cleanly.",
+    "Many branches",
+    "switch compares one value against several case labels — tidier than a long if/else chain when matching fixed values. Each case needs a break; default runs when nothing matches.",
+    "switch (day) {\n  case 'Sat':\n  case 'Sun': return 'weekend';\n  default: return 'weekday';\n}",
+    "function stage(week) {\n  switch (week) {\n    case 1: return 'Seedling';\n    case 2: case 3: return 'Vegetative';\n    default: return 'Flowering';\n  }\n}\nlog(stage(1));\nlog(stage(3));\nlog(stage(9));",
+  ),
+  lesson(
+    "js-for-of-in",
+    "for...of and for...in",
+    "Loop over arrays and object keys the modern way.",
+    "Two friendly loops",
+    "for...of loops over the VALUES of an array (or any iterable). for...in loops over the KEYS of an object. They're clearer than a counter loop when you just want each item.",
+    "for (const item of list) { … }\nfor (const key in obj) { … }",
+    "const strains = ['OG Kush', 'Blue Dream'];\nfor (const s of strains) log('strain: ' + s);\n\nconst plant = { name: 'Su', city: 'Yangon' };\nfor (const key in plant) log(`${key}: ${plant[key]}`);",
+  ),
+  lesson(
+    "js-array-methods",
+    "Array Methods: map, filter, reduce",
+    "Transform, select and summarise arrays without loops.",
+    "The big three",
+    "map makes a new array by transforming each item; filter keeps only items that pass a test; reduce boils an array down to one value (like a total). They replace most manual loops and read beautifully with arrow functions.",
+    "[1,2,3].map(n => n * 2)      // [2,4,6]\n[1,2,3].filter(n => n > 1)   // [2,3]\n[1,2,3].reduce((a,b) => a+b) // 6",
+    "const plants = [12, 5, 20, 8];\nlog('doubled: ' + plants.map(n => n * 2).join(', '));\nlog('big: ' + plants.filter(n => n > 10).join(', '));\nlog('total: ' + plants.reduce((sum, n) => sum + n, 0));",
+  ),
+  lesson(
+    "js-array-more",
+    "More Array Methods",
+    "push, pop, slice, includes, sort and find.",
+    "Everyday array tools",
+    "push/pop add and remove from the end; slice copies a part; includes checks membership; find returns the first match; sort orders items (pass a comparator for numbers). Most don't change the original except push/pop/sort.",
+    "arr.includes('OG')   // true / false\narr.sort((a,b) => a-b) // numeric sort",
+    "const weeks = [9, 7, 10, 8];\nweeks.push(6);\nlog('after push: ' + weeks.join(', '));\nlog('sorted: ' + [...weeks].sort((a, b) => a - b).join(', '));\nlog('has 10? ' + weeks.includes(10));\nlog('first > 8: ' + weeks.find(n => n > 8));",
+  ),
+  lesson(
+    "js-object-methods",
+    "Working with Objects",
+    "Object.keys, values, entries and the spread copy.",
+    "Reading and copying objects",
+    "Object.keys(obj) lists property names, Object.values() the values, and Object.entries() gives [key, value] pairs to loop over. The spread { ...obj } makes a shallow copy, optionally overriding fields.",
+    "Object.entries({a:1}) // [['a', 1]]\nconst copy = { ...obj, city: 'Bago' };",
+    "const grower = { name: 'Nilar', city: 'Mandalay', plants: 15 };\nlog('keys: ' + Object.keys(grower).join(', '));\nlog('values: ' + Object.values(grower).join(', '));\nfor (const [k, v] of Object.entries(grower)) log(`${k} = ${v}`);\nconst moved = { ...grower, city: 'Bago' };\nlog('moved to: ' + moved.city);",
+  ),
+  lesson(
+    "js-destructuring",
+    "Destructuring",
+    "Unpack arrays and objects into variables.",
+    "Pulling values out",
+    "Destructuring copies values out of an array or object into named variables in one line. Objects match by property name; arrays by position. You can set defaults too.",
+    "const { name, city } = grower;\nconst [first, second] = list;",
+    "const grower = { name: 'Su', city: 'Yangon' };\nconst { name, city } = grower;\nlog(`${name} in ${city}`);\nconst weeks = [9, 8, 10];\nconst [firstWeek, ...rest] = weeks;\nlog('first: ' + firstWeek);\nlog('rest: ' + rest.join(', '));",
+  ),
+  lesson(
+    "js-spread-rest",
+    "Spread & Rest",
+    "The ... that expands or collects values.",
+    "Two uses of ...",
+    "Spread expands an array or object into its parts — great for copying or merging ([...a, ...b]). Rest does the opposite in a function: it collects extra arguments into an array (...args).",
+    "const merged = [...a, ...b];\nfunction sum(...nums) { … }",
+    "const a = [1, 2], b = [3, 4];\nlog('merged: ' + [...a, ...b].join(', '));\nfunction total(...nums) {\n  return nums.reduce((s, n) => s + n, 0);\n}\nlog('total: ' + total(5, 10, 15));",
+  ),
+  lesson(
+    "js-classes",
+    "Classes",
+    "Blueprints for objects with data and methods.",
+    "Making your own types",
+    "A class is a template for objects. The constructor sets up each instance's data (this.x), and methods are shared functions. Create instances with new. Classes organise related data and behaviour together.",
+    "class Plant {\n  constructor(name){ this.name = name; }\n  water(){ return this.name + ' watered'; }\n}",
+    "class Plant {\n  constructor(name, weeks) {\n    this.name = name;\n    this.weeks = weeks;\n  }\n  describe() {\n    return `${this.name} flowers in ${this.weeks} weeks`;\n  }\n}\nconst og = new Plant('OG Kush', 8);\nlog(og.describe());\nlog(new Plant('Blue Dream', 9).describe());",
+  ),
+  lesson(
+    "js-this",
+    "The this Keyword",
+    "What this refers to inside a method.",
+    "Context matters",
+    "Inside a method, this refers to the object the method was called on — so this.name reads that object's own data. Arrow functions don't have their own this; they borrow it from the surrounding scope, which is often exactly what you want.",
+    "obj.method()  // this === obj",
+    "const farm = {\n  name: 'GreenWave',\n  plants: 40,\n  report() {\n    return `${this.name} has ${this.plants} plants`;\n  }\n};\nlog(farm.report());\nfarm.plants = 55;\nlog(farm.report());",
+  ),
+  lesson(
+    "js-error-handling",
+    "Errors: try / catch",
+    "Handle problems without crashing the program.",
+    "Catching mistakes",
+    "Code inside try runs normally; if it throws an error, catch handles it instead of stopping everything. You can throw your own errors with throw. finally runs either way — good for cleanup.",
+    "try { risky(); }\ncatch (err) { log(err.message); }",
+    "function divide(a, b) {\n  if (b === 0) throw new Error('cannot divide by zero');\n  return a / b;\n}\ntry {\n  log('10 / 2 = ' + divide(10, 2));\n  log('10 / 0 = ' + divide(10, 0));\n} catch (err) {\n  log('Caught: ' + err.message);\n} finally {\n  log('done');\n}",
+  ),
+  lesson(
+    "js-callbacks",
+    "Callbacks",
+    "Passing a function to be called later.",
+    "Functions as arguments",
+    "A callback is a function you hand to another function to run later — when work finishes, or for each item. Array methods take callbacks; so do timers. Understanding them is the doorway to asynchronous code.",
+    "setTimeout(() => log('later'), 1000);\n[1,2].forEach(n => log(n));",
+    "function greetEach(names, callback) {\n  for (const n of names) callback(n);\n}\ngreetEach(['Mai', 'Su'], name => log('Hi, ' + name));\n\nlog('waiting...');\nsetTimeout(() => log('...one second later!'), 1000);",
+  ),
+  lesson(
+    "js-promises",
+    "Promises",
+    "A value that arrives later — the base of async code.",
+    "Work that finishes later",
+    "A Promise represents a result that isn't ready yet. It ends up resolved (success, handled with .then) or rejected (failure, handled with .catch). Promises replace tangled callbacks with a clean chain.",
+    "doWork().then(result => log(result)).catch(err => …);",
+    "function waterPlant() {\n  return new Promise((resolve) => {\n    setTimeout(() => resolve('Plant watered 💧'), 800);\n  });\n}\nlog('starting...');\nwaterPlant().then(result => log(result));",
+  ),
+  lesson(
+    "js-async-await",
+    "async / await",
+    "Write asynchronous code that reads top to bottom.",
+    "Async that looks sync",
+    "async marks a function that returns a Promise; await pauses inside it until a Promise resolves, giving you the value directly. It makes asynchronous steps read like ordinary sequential code — with try/catch for errors.",
+    "async function run() {\n  const x = await getValue();\n}",
+    "function delay(msg, ms) {\n  return new Promise(res => setTimeout(() => res(msg), ms));\n}\nasync function grow() {\n  log(await delay('🌱 sprout', 500));\n  log(await delay('🌿 grow', 500));\n  log(await delay('🌸 flower', 500));\n}\ngrow();",
+  ),
+  lesson(
+    "js-math-date",
+    "Math & Date",
+    "Numbers, rounding, randomness and the clock.",
+    "Built-in helpers",
+    "The Math object has handy tools: Math.round/floor/ceil, Math.max/min, Math.random() (a number 0–1) and Math.PI. The Date object represents a moment in time — new Date() is now, with methods to read the year, month and day.",
+    "Math.round(4.6)          // 5\nMath.floor(Math.random()*6) // 0–5",
+    "log('round: ' + Math.round(4.6));\nlog('max: ' + Math.max(9, 7, 10));\nlog('dice: ' + (Math.floor(Math.random() * 6) + 1));\nconst now = new Date();\nlog('year: ' + now.getFullYear());",
+  ),
+];
