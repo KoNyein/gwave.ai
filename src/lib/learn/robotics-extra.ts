@@ -23,7 +23,36 @@ function rd(
   };
 }
 
-export const ROBOTICS_EXTRA: Lesson[] = [
+const _YT: Record<string, string> = {
+  "robot-history": "history of robots",
+  "robot-types": "types of robots explained",
+  "robot-anatomy": "parts of a robot",
+  "robot-actuators": "what are actuators robotics",
+  "robot-sensors": "robot sensors explained",
+  "robot-power": "how robots are powered",
+  "locomotion-wheels": "wheeled robot locomotion",
+  "locomotion-legs": "legged robots walking",
+  "robot-arms": "how robot arms work",
+  "grippers-end-effectors": "robot grippers end effectors",
+  "degrees-of-freedom": "degrees of freedom robotics",
+  "coordinate-frames": "robot coordinate frames",
+  "kinematics-basics": "robot kinematics explained",
+  "control-loops": "open loop vs closed loop control",
+  "feedback-pid": "PID control explained simply",
+  "sequencing-robots": "sequencing programming basics",
+  "loops-robots": "loops in programming for kids",
+  "conditionals-robots": "conditionals if statements for kids",
+  "robot-navigation": "robot navigation explained",
+  "obstacle-avoidance": "obstacle avoidance robot",
+  "line-following": "line following robot",
+  "mapping-localization": "robot SLAM mapping explained",
+  "computer-vision-robots": "computer vision robotics",
+  "robot-learning": "machine learning robots",
+  "agri-robots-drones": "agricultural robots and drones",
+  "robot-safety-ethics": "robot safety and ethics"
+};
+
+const ROBOTICS_EXTRA_BASE: Lesson[] = [
   rd(
     "robot-history",
     "A Short History of Robots",
@@ -545,3 +574,7 @@ export const ROBOTICS_EXTRA: Lesson[] = [
     ],
   ),
 ];
+
+export const ROBOTICS_EXTRA: Lesson[] = ROBOTICS_EXTRA_BASE.map((l) =>
+  _YT[l.slug] ? { ...l, youtubeQuery: _YT[l.slug] } : l,
+);

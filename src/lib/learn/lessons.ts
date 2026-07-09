@@ -87,6 +87,7 @@ const stemTrack: Track = {
       summary: "Seeds, soil, sunshine and water — the recipe for a plant.",
       minutes: 6,
       kind: "reading",
+      youtubeQuery: "how plants grow for kids",
       sections: [
         {
           heading: "A seed is a tiny package",
@@ -166,10 +167,11 @@ const electronicsTrack: Track = {
       summary: "The devices that turn the real world into numbers.",
       minutes: 6,
       kind: "reading",
+      youtubeQuery: "what is a sensor explained",
       sections: [
         {
           heading: "A sensor measures the world",
-          body: "A sensor is a small electronic device that measures something physical — temperature, light, moisture, distance — and turns it into an electrical signal a computer can read. Your phone has many: a light sensor dims the screen, and an accelerometer knows which way you tilt it.",
+          body: "A sensor is a small electronic device that measures something physical — temperature, light, moisture, distance, movement — and turns it into an electrical signal a computer can read. It is the bridge between the real, physical world and the digital world of numbers a computer understands.\n\nYou are surrounded by them. Your phone alone has many: a light sensor that dims the screen in the dark, a proximity sensor that turns it off against your ear, and an accelerometer that knows which way you tilt it. Each one quietly turns something happening in the world into data.",
         },
         {
           heading: "Sensors on a smart farm",
@@ -200,6 +202,7 @@ const electronicsTrack: Track = {
       summary: "How a sensor's reading travels to an app you can see.",
       minutes: 8,
       kind: "reading",
+      youtubeQuery: "how IoT sends data to the cloud",
       sections: [
         {
           heading: "From device to internet",
@@ -349,10 +352,11 @@ const roboticsTrack: Track = {
       summary: "Sense, think, act — the loop every robot runs on.",
       minutes: 7,
       kind: "reading",
+      youtubeQuery: "what is a robot for kids",
       sections: [
         {
           heading: "Sense → Think → Act",
-          body: "A robot is a machine that senses its surroundings, decides what to do, and then acts. It repeats this loop many times a second. A robot vacuum senses a wall (sense), decides to turn (think), and drives away from it (act).",
+          body: "A robot is a machine that senses its surroundings, decides what to do, and then acts — over and over, many times a second. This three-step loop, sense → think → act, is the single idea at the heart of every robot, from a toy to a Mars rover. A robot vacuum shows it perfectly: it senses a wall, decides to turn, and drives away — then does it all again a moment later. Once you spot this loop, you can understand almost any robot.",
         },
         {
           heading: "Sensors are a robot's senses",
@@ -383,6 +387,7 @@ const roboticsTrack: Track = {
       summary: "From simple rules to smart predictions.",
       minutes: 8,
       kind: "reading",
+      youtubeQuery: "how AI helps farming",
       sections: [
         {
           heading: "Rules vs. learning",

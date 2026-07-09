@@ -22,7 +22,36 @@ function rd(
   };
 }
 
-export const ELECTRONICS_EXTRA: Lesson[] = [
+const _YT: Record<string, string> = {
+  "electricity-flow": "what is electricity for kids",
+  "voltage-current-resistance": "voltage current resistance explained",
+  "conductors-insulators": "conductors and insulators",
+  "battery-power": "how batteries work",
+  "circuit-components": "basic electronic components explained",
+  "series-parallel": "series and parallel circuits",
+  "switches-buttons": "how switches work electronics",
+  "resistors": "resistors explained",
+  "leds-diodes": "how LEDs and diodes work",
+  "capacitors": "what is a capacitor",
+  "breadboards": "how to use a breadboard",
+  "reading-schematics": "how to read circuit diagrams",
+  "microcontrollers": "what is a microcontroller",
+  "digital-analog-signals": "analog vs digital signals",
+  "gpio-inputs-outputs": "GPIO inputs and outputs",
+  "temperature-sensors": "temperature sensor tutorial",
+  "light-sensors": "light sensor LDR tutorial",
+  "moisture-sensors": "soil moisture sensor tutorial",
+  "motors-servos": "DC motors and servos explained",
+  "relays-switching": "how relays work",
+  "power-safety": "electronics safety basics",
+  "wifi-networks": "how wifi works",
+  "mqtt-messaging": "MQTT explained for beginners",
+  "iot-architecture": "how IoT works explained",
+  "automation-logic": "home automation if this then that",
+  "soldering-troubleshooting": "soldering for beginners"
+};
+
+const ELECTRONICS_EXTRA_BASE: Lesson[] = [
   rd(
     "electricity-flow",
     "What Is Electricity?",
@@ -544,3 +573,7 @@ export const ELECTRONICS_EXTRA: Lesson[] = [
     ],
   ),
 ];
+
+export const ELECTRONICS_EXTRA: Lesson[] = ELECTRONICS_EXTRA_BASE.map((l) =>
+  _YT[l.slug] ? { ...l, youtubeQuery: _YT[l.slug] } : l,
+);
