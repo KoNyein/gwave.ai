@@ -16,7 +16,9 @@ const csp = [
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
   // *.tile.openstreetmap.org serves the Leaflet map tiles for location share.
-  "img-src 'self' blob: data: https://*.supabase.co https://lh3.googleusercontent.com https://image.mux.com https://*.tile.openstreetmap.org",
+  // https: allows Shop product images, which come from arbitrary external
+  // merchant hosts (affiliate/dropship listings imported from other sites).
+  "img-src 'self' blob: data: https: https://*.supabase.co https://lh3.googleusercontent.com https://image.mux.com https://*.tile.openstreetmap.org",
   "media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com",
   "font-src 'self' data:",
   // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.

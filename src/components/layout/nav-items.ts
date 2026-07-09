@@ -13,6 +13,7 @@ import {
   Radio,
   ShoppingCart,
   Sprout,
+  Store,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -46,6 +47,7 @@ export const TOOL_NAV: NavItem[] = [
   { href: "/farm", labelKey: "farm", icon: Sprout, adultOnly: true },
   { href: "/home", labelKey: "smartHome", icon: Lightbulb },
   { href: "/pos", labelKey: "pos", icon: ShoppingCart },
+  { href: "/shop", labelKey: "shop", icon: Store },
 ];
 
 /** Routes that require a verified adult (18+). Enforced by requireAdult(). */
