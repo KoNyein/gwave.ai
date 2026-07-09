@@ -5,6 +5,7 @@
 // `strains(id, name, type, weeks, grower_id)` — see sql-playground.tsx.
 // Pure data, safe to import from server and client.
 
+import { SQL_EXTRA } from "@/lib/learn/courses-sql-ai-extra";
 import type { Track } from "@/lib/learn/lessons";
 
 // ─────────────────────────── SQL course ────────────────────────────────────
@@ -193,6 +194,7 @@ const sqlTrack: Track = {
       sqlCode:
         "INSERT INTO growers VALUES (6, 'Thida', 'Bago', 9);\nSELECT * FROM growers;",
     },
+    ...SQL_EXTRA,
     {
       slug: "sql-quiz",
       title: "SQL Quiz",
@@ -242,6 +244,60 @@ const sqlTrack: Track = {
           ],
           answer: 1,
           explain: "Without WHERE, UPDATE and DELETE affect every row.",
+        },
+        {
+          q: "In LIKE, what does the % wildcard match?",
+          options: [
+            "Exactly one character",
+            "Any run of characters, including none",
+            "Only digits",
+            "A literal percent sign",
+          ],
+          answer: 1,
+          explain: "% matches any number of characters; _ matches exactly one.",
+        },
+        {
+          q: "Which clause filters groups after GROUP BY?",
+          options: ["WHERE", "HAVING", "ORDER BY", "LIMIT"],
+          answer: 1,
+          explain: "WHERE filters rows before grouping; HAVING filters the groups.",
+        },
+        {
+          q: "A LEFT JOIN differs from a plain JOIN because it…",
+          options: [
+            "Sorts the result",
+            "Keeps left-table rows even with no match, filling NULLs",
+            "Removes duplicate rows",
+            "Is always faster",
+          ],
+          answer: 1,
+        },
+        {
+          q: "How do you test for a missing (NULL) value?",
+          options: ["= NULL", "IS NULL", "== NULL", "NULL()"],
+          answer: 1,
+          explain: "NULL is unknown, so you must use IS NULL, not =.",
+        },
+        {
+          q: "What does COUNT(DISTINCT city) return?",
+          options: [
+            "The total number of rows",
+            "The number of different city values",
+            "The longest city name",
+            "The first city alphabetically",
+          ],
+          answer: 1,
+        },
+        {
+          q: "Which pair takes 'page two' of two rows each?",
+          options: [
+            "LIMIT 2 OFFSET 2",
+            "LIMIT 2 OFFSET 0",
+            "TOP 2",
+            "PAGE 2",
+          ],
+          answer: 0,
+          explain: "OFFSET skips rows before LIMIT starts counting.",
         },
       ],
     },
