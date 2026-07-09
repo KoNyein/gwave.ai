@@ -20,6 +20,17 @@ export function timeAgo(iso: string): string {
   });
 }
 
+/** Money with its currency code, e.g. "1,200 THB". */
+export function formatPrice(
+  amount: number | null | undefined,
+  currency: string,
+): string {
+  if (amount == null) return "";
+  return `${amount.toLocaleString("en-US", {
+    maximumFractionDigits: 2,
+  })} ${currency}`;
+}
+
 /** Display name with username fallback. */
 export function displayName(profile: {
   full_name: string | null;

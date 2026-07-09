@@ -181,6 +181,52 @@ export interface PostView {
   viewed_at: string;
 }
 
+export type ShopProductKind = "affiliate" | "dropship";
+export type ShopProductStatus = "active" | "hidden";
+export type ShopOrderStatus =
+  | "pending"
+  | "forwarded"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
+
+export interface ShopProduct {
+  id: string;
+  seller_id: string;
+  kind: ShopProductKind;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  price: number | null;
+  currency: string;
+  external_url: string | null;
+  merchant: string | null;
+  source_url: string | null;
+  category: string | null;
+  commission_rate: number | null;
+  clicks_count: number;
+  status: ShopProductStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShopOrder {
+  id: string;
+  buyer_id: string;
+  product_id: string;
+  seller_id: string;
+  quantity: number;
+  unit_price: number;
+  currency: string;
+  status: ShopOrderStatus;
+  ship_name: string;
+  ship_phone: string;
+  ship_address: string;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type WellnessKind = "dhamma" | "meditation" | "radio" | "health";
 
 export interface Profile {
@@ -2699,6 +2745,9 @@ export type Database = {
       lesson_status: LessonStatus;
       live_stream_status: LiveStreamStatus;
       game_status: GameStatus;
+      shop_product_kind: ShopProductKind;
+      shop_product_status: ShopProductStatus;
+      shop_order_status: ShopOrderStatus;
     };
     CompositeTypes: {
       [_ in never]: never;
