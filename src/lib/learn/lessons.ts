@@ -4,7 +4,13 @@
 
 import type { AgeBand } from "@/lib/age";
 
-export type LessonKind = "reading" | "quiz" | "code" | "robot" | "circuit";
+export type LessonKind =
+  | "reading"
+  | "quiz"
+  | "code"
+  | "robot"
+  | "circuit"
+  | "python";
 
 export interface QuizQuestion {
   q: string;
@@ -30,6 +36,8 @@ export interface Lesson {
   quiz?: QuizQuestion[];
   /** For code lessons: starter files for the playground. */
   code?: { html: string; css: string; js: string };
+  /** For python lessons: starter script for the Pyodide playground. */
+  pythonCode?: string;
   /** Optional YouTube video id embedded at the top of the lesson. */
   youtubeId?: string;
 }

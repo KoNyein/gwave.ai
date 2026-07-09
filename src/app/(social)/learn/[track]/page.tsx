@@ -8,6 +8,7 @@ import {
   Code2,
   Cpu,
   HelpCircle,
+  Terminal,
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,12 +21,13 @@ import { getTrack, tracksForBand, type LessonKind } from "@/lib/learn/lessons";
 
 export const dynamic = "force-dynamic";
 
-const KIND_ICON = {
+const KIND_ICON: Record<LessonKind, typeof BookText> = {
   reading: BookText,
   quiz: HelpCircle,
   code: Code2,
   robot: Bot,
   circuit: Cpu,
+  python: Terminal,
 };
 
 export async function generateMetadata({

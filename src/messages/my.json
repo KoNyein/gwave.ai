@@ -959,6 +959,12 @@
     "reject": "ငြင်းပယ်မည်",
     "status_pending": "စစ်ဆေးဆဲ",
     "status_approved": "အတည်ပြုပြီး",
-    "status_rejected": "ငြင်းပယ်ပြီး"
+    "status_rejected": "ငြင်းပယ်ပြီး",
+    "runPython": "Run",
+    "loadingPython": "Python တင်နေသည်…",
+    "running": "လုပ်ဆောင်နေသည်…",
+    "output": "ရလဒ်",
+    "pythonHint": "သင့် Python code ကို run ဖို့ Run နှိပ်ပါ။",
+    "reset": "ပြန်စ"
   }
 }

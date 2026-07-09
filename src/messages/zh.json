@@ -959,6 +959,12 @@
     "reject": "拒绝",
     "status_pending": "待审核",
     "status_approved": "已通过",
-    "status_rejected": "已拒绝"
+    "status_rejected": "已拒绝",
+    "runPython": "运行",
+    "loadingPython": "正在加载 Python…",
+    "running": "运行中…",
+    "output": "输出",
+    "pythonHint": "按 Run 运行你的 Python 代码。",
+    "reset": "重置"
   }
 }

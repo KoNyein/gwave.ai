@@ -959,6 +959,12 @@
     "reject": "ปฏิเสธ",
     "status_pending": "รอตรวจสอบ",
     "status_approved": "อนุมัติแล้ว",
-    "status_rejected": "ถูกปฏิเสธ"
+    "status_rejected": "ถูกปฏิเสธ",
+    "runPython": "รัน",
+    "loadingPython": "กำลังโหลด Python…",
+    "running": "กำลังรัน…",
+    "output": "ผลลัพธ์",
+    "pythonHint": "กด Run เพื่อรันโค้ด Python",
+    "reset": "รีเซ็ต"
   }
 }

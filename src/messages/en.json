@@ -959,6 +959,12 @@
     "reject": "Reject",
     "status_pending": "Pending",
     "status_approved": "Approved",
-    "status_rejected": "Rejected"
+    "status_rejected": "Rejected",
+    "runPython": "Run",
+    "loadingPython": "Loading Python…",
+    "running": "Running…",
+    "output": "Output",
+    "pythonHint": "Press Run to execute your Python code.",
+    "reset": "Reset"
   }
 }

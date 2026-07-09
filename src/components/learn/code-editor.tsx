@@ -4,15 +4,17 @@ import * as React from "react";
 import { css } from "@codemirror/lang-css";
 import { html } from "@codemirror/lang-html";
 import { javascript } from "@codemirror/lang-javascript";
+import { python } from "@codemirror/lang-python";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { EditorView, basicSetup } from "codemirror";
 
-export type EditorLanguage = "html" | "css" | "js";
+export type EditorLanguage = "html" | "css" | "js" | "python";
 
 const LANGUAGES = {
   html: () => html(),
   css: () => css(),
   js: () => javascript(),
+  python: () => python(),
 };
 
 /**

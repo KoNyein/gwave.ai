@@ -174,7 +174,8 @@ export const PY_EXTRA: Lesson[] = [
     title: "Working with Strings",
     summary: "Slicing, methods and joining text.",
     minutes: 10,
-    kind: "reading",
+    kind: "python",
+      pythonCode: "strain = \"Blue Dream\"\nprint(strain[0], strain[-1], strain[0:4])\n\nprint(\"Blue Dream\".upper())\nprint(\"a,b,c\".split(\",\"))\nprint(\" - \".join([\"a\", \"b\", \"c\"]))\nprint(\"Blue Dream\".replace(\"Blue\", \"Green\"))",
     sections: [
       {
         heading: "Slicing",
@@ -193,7 +194,8 @@ export const PY_EXTRA: Lesson[] = [
     title: "Errors & try/except",
     summary: "Handle problems gracefully instead of crashing.",
     minutes: 10,
-    kind: "reading",
+    kind: "python",
+      pythonCode: "def safe_divide(a, b):\n    try:\n        return a / b\n    except ZeroDivisionError:\n        return \"cannot divide by zero\"\n    finally:\n        print(\"done\")\n\nprint(safe_divide(10, 2))\nprint(safe_divide(10, 0))",
     sections: [
       {
         heading: "Catching exceptions",
@@ -212,7 +214,8 @@ export const PY_EXTRA: Lesson[] = [
     title: "Modules: math, random & datetime",
     summary: "Import ready-made tools from the standard library.",
     minutes: 10,
-    kind: "reading",
+    kind: "python",
+      pythonCode: "import math\nimport random\nfrom datetime import date, timedelta\n\nprint(\"sqrt(144) =\", math.sqrt(144))\nprint(\"pi ~\", round(math.pi, 2))\nprint(\"dice:\", random.randint(1, 6))\n\ntoday = date.today()\nharvest = today + timedelta(weeks=8)\nprint(f\"Planted {today}, harvest ~ {harvest}\")",
     sections: [
       {
         heading: "import",
