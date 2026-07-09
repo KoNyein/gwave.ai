@@ -118,6 +118,7 @@ export const JS_EXTRA: Lesson[] = [
     summary: "The everyday methods you reach for constantly.",
     minutes: 10,
     kind: "code",
+      youtubeQuery: "JavaScript strings and numbers methods",
     sections: [
       {
         heading: "String toolbox",
@@ -137,6 +138,7 @@ export const JS_EXTRA: Lesson[] = [
     summary: "The data format of the web — stringify and parse.",
     minutes: 10,
     kind: "code",
+      youtubeQuery: "JavaScript JSON parse stringify",
     sections: [
       {
         heading: "Objects ⇄ text",
@@ -156,6 +158,7 @@ export const JS_EXTRA: Lesson[] = [
     summary: "setTimeout, setInterval and a live clock.",
     minutes: 10,
     kind: "code",
+      youtubeQuery: "JavaScript setTimeout setInterval timers",
     sections: [
       {
         heading: "Doing things later — or repeatedly",

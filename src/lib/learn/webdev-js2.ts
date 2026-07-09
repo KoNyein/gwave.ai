@@ -33,7 +33,31 @@ function lesson(
   };
 }
 
-export const JS_EXTRA2: Lesson[] = [
+// A "Learn on YouTube" search per lesson (localized to Burmese via the overlay).
+const YT: Record<string, string> = {
+  "js-operators": "JavaScript operators tutorial",
+  "js-data-types": "JavaScript data types explained",
+  "js-template-literals": "JavaScript template literals",
+  "js-scope": "JavaScript scope explained",
+  "js-arrow-functions": "JavaScript arrow functions",
+  "js-ternary": "JavaScript ternary operator",
+  "js-switch": "JavaScript switch statement",
+  "js-for-of-in": "JavaScript for of and for in loops",
+  "js-array-methods": "JavaScript array methods map filter",
+  "js-array-more": "JavaScript array methods reduce find",
+  "js-object-methods": "JavaScript object methods keys values",
+  "js-destructuring": "JavaScript destructuring tutorial",
+  "js-spread-rest": "JavaScript spread and rest operators",
+  "js-classes": "JavaScript classes tutorial",
+  "js-this": "JavaScript this keyword explained",
+  "js-error-handling": "JavaScript try catch error handling",
+  "js-callbacks": "JavaScript callbacks explained",
+  "js-promises": "JavaScript promises tutorial",
+  "js-async-await": "JavaScript async await tutorial",
+  "js-math-date": "JavaScript Math and Date objects",
+};
+
+const JS_EXTRA2_BASE: Lesson[] = [
   lesson(
     "js-operators",
     "Operators",
@@ -215,3 +239,7 @@ export const JS_EXTRA2: Lesson[] = [
     "log('round: ' + Math.round(4.6));\nlog('max: ' + Math.max(9, 7, 10));\nlog('dice: ' + (Math.floor(Math.random() * 6) + 1));\nconst now = new Date();\nlog('year: ' + now.getFullYear());",
   ),
 ];
+
+export const JS_EXTRA2: Lesson[] = JS_EXTRA2_BASE.map((lesson) =>
+  YT[lesson.slug] ? { ...lesson, youtubeQuery: YT[lesson.slug] } : lesson,
+);

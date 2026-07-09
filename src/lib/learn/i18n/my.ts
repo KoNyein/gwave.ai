@@ -1969,13 +1969,17 @@ export const MY_OVERLAY: LearnOverlay = {
       "js-variables": {
         title: "Variable နဲ့ Type များ",
         summary: "let, const နဲ့ အခြေခံ value type များ။",
+        youtubeQuery: "JavaScript variable let const မြန်မာ",
         sections: [
-          { heading: "value သိမ်းခြင်း", body: "မပြောင်းတဲ့ value အတွက် const၊ ပြောင်းတဲ့ဟာအတွက် let သုံးပါ။ JavaScript ရဲ့ အခြေခံ type တွေမှာ number, string (quote ထဲ စာသား), boolean (true/false), array နဲ့ object ပါတယ်။ backtick နဲ့ template string က ${ } နဲ့ value ထည့်လို့ရတယ်။" },
+          { heading: "Variable ထဲ value သိမ်းခြင်း", body: "Variable ဆိုတာ value တစ်ခုကို သိမ်းထားပြီး program က နောက်မှ သုံးနိုင်အောင် နာမည်ပေးထားတဲ့ ပုံး ဖြစ်ပါတယ်။ `const` သို့ `let` နဲ့ နာမည်တစ်ခု နဲ့ ဖန်တီးတယ်။ တစ်ခါ သတ်မှတ်ပြီး မပြောင်းတော့တဲ့ value — အများစုပါ၊ code ပိုလုံခြုံစေတယ် — အတွက် `const`၊ တကယ် နောက်မှ ပြောင်းရမယ့် value အတွက်မှသာ `let` သုံးပါ။ (`var` ဆိုတဲ့ အဟောင်း keyword လည်း ရှိသေးပေမဲ့ ခေတ်မီ code က ရှောင်တယ်။)" },
+          { heading: "အခြေခံ type များ", body: "value တိုင်းမှာ type ရှိတယ်။ အမြဲ သုံးတဲ့ဟာတွေက — number (`3`, `1.5`)၊ string (quote ထဲ စာသား, `\"Mai\"`)၊ boolean (`true`/`false`)။ နောက်နှစ်ခုက စုစည်းမှု သိမ်းတယ် — array (အစဉ်လိုက် စာရင်း) နဲ့ object (label တပ် data) — နှစ်ခုလုံး မကြာခင် တွေ့မယ်။ `typeof` keyword က value တစ်ခုရဲ့ type ကို ပြောလို့ debug လုပ်တဲ့အခါ အသုံးဝင်တယ်။" },
+          { heading: "Template string", body: "value တွေကနေ စာသားတစ်ပိုဒ် တည်ဆောက်ဖို့ backtick (`) နဲ့ ဝိုင်းပြီး value တွေကို `${ }` နဲ့ ထည့်ပါ။ ဒီ 'template string' က အပိုင်းတွေကို `+` နဲ့ ဆက်တာထက် အများကြီး သန့်ရှင်းတယ်။ နေ့စဉ် JavaScript မှာ အသုံးအများဆုံး feature တစ်ခုပါ။" },
         ],
       },
       "js-functions": {
         title: "Function များ",
         summary: "input နဲ့ output ပါတဲ့ ပြန်သုံးနိုင်တဲ့ logic block များ။",
+        youtubeQuery: "JavaScript function မြန်မာ",
         sections: [
           { heading: "သတ်မှတ်ခြင်းနဲ့ ခေါ်ခြင်း", body: "function တစ်ခုက parameter ယူ၊ အလုပ်လုပ်ပြီး ရလဒ်ပြန်ပေးတယ်။ arrow function က ခေတ်မီ အတိုကောက် syntax။ တစ်ခါ သတ်မှတ်ပြီးရင် ကြိုက်သလောက် ခေါ်လို့ရတယ်။" },
         ],

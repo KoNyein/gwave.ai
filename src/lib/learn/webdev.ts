@@ -579,13 +579,24 @@ export const javascriptTrack: Track = {
       slug: "js-variables",
       title: "Variables & Types",
       summary: "let, const and the basic value types.",
-      minutes: 10,
+      minutes: 11,
       kind: "code",
+      youtubeQuery: "JavaScript variables let const tutorial",
       sections: [
         {
-          heading: "Storing values",
-          body: "Use const for values that never change and let for ones that do. JavaScript's basic types include numbers, strings (text in quotes), booleans (true/false), arrays and objects. Template strings with backticks let you insert values with ${ }.",
-          code: "const name = \"Mai\";\nlet count = 3;\nconsole.log(`${name} has ${count} plants`);",
+          heading: "Storing values in variables",
+          body: "A variable is a named box that holds a value so your program can use it later. You create one with `const` or `let` and a name. Use `const` for a value that never changes after you set it — which is most of the time, and makes your code safer — and `let` only when the value genuinely needs to change later. (An older keyword, `var`, still works but modern code avoids it.)",
+          code: 'const name = "Mai";   // never changes\nlet count = 3;        // will change later',
+        },
+        {
+          heading: "The basic types",
+          body: "Every value has a type. The ones you use constantly are: numbers (`3`, `1.5`), strings (text in quotes, `\"Mai\"`), and booleans (`true`/`false`). Two more hold collections: arrays (an ordered list) and objects (labelled data) — you will meet both soon. The `typeof` keyword tells you the type of any value, which is handy when debugging.",
+          code: 'typeof 3       // "number"\ntypeof "hi"    // "string"\ntypeof true    // "boolean"',
+        },
+        {
+          heading: "Template strings",
+          body: "To build a piece of text out of values, wrap it in backticks (`) and drop values in with `${ }`. This 'template string' is far cleaner than gluing pieces together with `+`. It is one of the most-used features in everyday JavaScript.",
+          code: "const name = 'Mai';\nconst plants = 5;\n`${name} has ${plants} plants`;",
         },
       ],
       code: {
@@ -600,6 +611,7 @@ export const javascriptTrack: Track = {
       summary: "Reusable blocks of logic with inputs and outputs.",
       minutes: 12,
       kind: "code",
+      youtubeQuery: "JavaScript functions tutorial",
       sections: [
         {
           heading: "Defining and calling",
@@ -619,6 +631,7 @@ export const javascriptTrack: Track = {
       summary: "if/else decisions and for/while repetition.",
       minutes: 12,
       kind: "code",
+      youtubeQuery: "JavaScript if else loops tutorial",
       sections: [
         {
           heading: "Deciding and repeating",
@@ -638,6 +651,7 @@ export const javascriptTrack: Track = {
       summary: "Lists of values and labelled data, plus map/filter.",
       minutes: 14,
       kind: "code",
+      youtubeQuery: "JavaScript arrays and objects tutorial",
       sections: [
         {
           heading: "Collections",
@@ -657,6 +671,7 @@ export const javascriptTrack: Track = {
       summary: "Read and change the page from JavaScript.",
       minutes: 12,
       kind: "code",
+      youtubeQuery: "JavaScript DOM manipulation tutorial",
       sections: [
         {
           heading: "The page as objects",
@@ -676,6 +691,7 @@ export const javascriptTrack: Track = {
       summary: "Click, input and submit — build a tiny todo list.",
       minutes: 15,
       kind: "code",
+      youtubeQuery: "JavaScript events addEventListener tutorial",
       sections: [
         {
           heading: "Reacting to the user",
