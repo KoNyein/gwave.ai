@@ -13,6 +13,8 @@ export interface SectionI18n {
   body?: string;
   /** Localized caption for the section's teaching image. */
   caption?: string;
+  /** Localized alt text; falls back to the caption when omitted. */
+  alt?: string;
 }
 
 export interface QuizI18n {
@@ -63,6 +65,9 @@ function localizeLessonData(lesson: Lesson, i18n?: LessonI18n): Lesson {
         image: section.image
           ? {
               ...section.image,
+              // Localize alt too; fall back to the localized caption so a
+              // Burmese caption also gives Burmese screen-reader text.
+              alt: override.alt ?? override.caption ?? section.image.alt,
               caption: override.caption ?? section.image.caption,
             }
           : section.image,
