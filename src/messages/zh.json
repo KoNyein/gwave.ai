@@ -926,7 +926,16 @@
     "previewInSandbox": "在沙箱中预览",
     "reviewNotePlaceholder": "给作者的备注（可选）",
     "approve": "通过",
-    "reject": "拒绝"
+    "reject": "拒绝",
+    "eduHeading": "学习游戏",
+    "eduMathTitle": "数学冲刺",
+    "eduMathDesc": "30 秒内尽量多做算术题。",
+    "eduTypingTitle": "打字训练",
+    "eduTypingDesc": "快速输入单词 — 30 秒能打多少个？",
+    "eduMemoryTitle": "记忆配对",
+    "eduMemoryDesc": "翻牌找出全部六对。",
+    "eduHexTitle": "猜十六进制颜色",
+    "eduHexDesc": "把颜色和十六进制码配对 — 学习 CSS 颜色。"
   },
   "learn": {
     "backToLearn": "返回学习",

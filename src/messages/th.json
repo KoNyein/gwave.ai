@@ -926,7 +926,16 @@
     "previewInSandbox": "ดูตัวอย่างในแซนด์บ็อกซ์",
     "reviewNotePlaceholder": "หมายเหตุถึงผู้สร้าง (ไม่บังคับ)",
     "approve": "อนุมัติ",
-    "reject": "ปฏิเสธ"
+    "reject": "ปฏิเสธ",
+    "eduHeading": "เกมการเรียนรู้",
+    "eduMathTitle": "Math Sprint",
+    "eduMathDesc": "แก้โจทย์ให้ได้มากที่สุดใน 30 วินาที",
+    "eduTypingTitle": "ฝึกพิมพ์",
+    "eduTypingDesc": "พิมพ์คำให้เร็ว — ได้กี่คำใน 30 วินาที?",
+    "eduMemoryTitle": "จับคู่ความจำ",
+    "eduMemoryDesc": "พลิกการ์ดหาคู่ทั้งหกคู่",
+    "eduHexTitle": "ทายสีเฮ็กซ์",
+    "eduHexDesc": "จับคู่สีกับรหัสเฮ็กซ์ — เรียนรู้สี CSS"
   },
   "learn": {
     "backToLearn": "กลับไปเรียนรู้",

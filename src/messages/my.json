@@ -926,7 +926,16 @@
     "previewInSandbox": "Sandbox မှာ အစမ်းကြည့်မည်",
     "reviewNotePlaceholder": "ဖန်တီးသူထံ မှတ်ချက် (ရွေးချယ်နိုင်)",
     "approve": "အတည်ပြုမည်",
-    "reject": "ငြင်းပယ်မည်"
+    "reject": "ငြင်းပယ်မည်",
+    "eduHeading": "သင်ယူ Game များ",
+    "eduMathTitle": "Math Sprint",
+    "eduMathDesc": "၃၀ စက္ကန့်အတွင်း အတွက်များများ ဖြေပါ။",
+    "eduTypingTitle": "စာရိုက် လေ့ကျင့်",
+    "eduTypingDesc": "စကားလုံးတွေ မြန်မြန်ရိုက် — ၃၀ စက္ကန့်မှာ ဘယ်နှလုံးလဲ?",
+    "eduMemoryTitle": "မှတ်ဉာဏ် တွဲဆက်",
+    "eduMemoryDesc": "ကတ်တွေ လှန်ပြီး အတွဲ ၆ တွဲ ရှာပါ။",
+    "eduHexTitle": "Hex အရောင် ခန့်မှန်း",
+    "eduHexDesc": "အရောင်ကို hex code နဲ့ တွဲ — CSS အရောင် သင်ယူ။"
   },
   "learn": {
     "backToLearn": "Learn သို့ ပြန်သွားမည်",
