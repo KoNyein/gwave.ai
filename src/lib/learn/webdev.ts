@@ -11,6 +11,11 @@ import {
 } from "@/lib/learn/webdev-extra";
 import { HTML_EXTRA2 } from "@/lib/learn/webdev-html2";
 import { CSS_EXTRA2 } from "@/lib/learn/webdev-css2";
+import {
+  BOX_MODEL_SVG,
+  FLEXBOX_SVG,
+  HTML_STRUCTURE_SVG,
+} from "@/lib/learn/diagrams";
 
 // ────────────────────────────── HTML ───────────────────────────────────────
 
@@ -37,6 +42,11 @@ export const htmlTrack: Track = {
         {
           heading: "A full document",
           body: "A real page starts with <!DOCTYPE html> and wraps everything in <html>, with page info in <head> and visible content in <body>. The playground writes that shell for you — you only edit the body. Press Run after every change!",
+          image: {
+            src: HTML_STRUCTURE_SVG,
+            alt: "A tree: html contains head (title, meta) and body (h1, p, img).",
+            caption: "Every page is an <html> element holding <head> and <body>.",
+          },
         },
       ],
       code: {
@@ -305,6 +315,11 @@ export const cssTrack: Track = {
           heading: "Content → padding → border → margin",
           body: "Every element is a rectangle. Padding is space INSIDE the border, margin is space OUTSIDE it. Understanding this solves most 'why is there a gap' mysteries.",
           code: ".box {\n  padding: 16px;   /* inside */\n  border: 2px solid green;\n  margin: 24px;    /* outside */\n}",
+          image: {
+            src: BOX_MODEL_SVG,
+            alt: "Nested boxes: content inside padding, inside border, inside margin.",
+            caption: "The box model: content → padding → border → margin.",
+          },
         },
       ],
       code: {
@@ -342,6 +357,11 @@ export const cssTrack: Track = {
           heading: "display: flex",
           body: "Set display:flex on a container and its children line up in a row. justify-content spaces them along the row, align-items positions them across it, gap adds space between them, and flex-direction:column stacks them instead.",
           code: ".row {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  gap: 12px;\n}",
+          image: {
+            src: FLEXBOX_SVG,
+            alt: "Three items in a row along the main axis, with a cross axis.",
+            caption: "Flex items flow along the main axis; the cross axis is perpendicular.",
+          },
         },
       ],
       code: {

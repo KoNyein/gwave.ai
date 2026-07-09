@@ -3,6 +3,7 @@
 // three-lesson taster. All original content; Burmese overlay in i18n/my.ts.
 
 import type { Lesson } from "@/lib/learn/lessons";
+import { WATER_CYCLE_SVG } from "@/lib/learn/diagrams";
 
 export const STEM_EXTRA: Lesson[] = [
   {
@@ -32,6 +33,11 @@ export const STEM_EXTRA: Lesson[] = [
       {
         heading: "Round and round",
         body: "The Sun heats water in oceans and rivers, turning it into invisible vapour — evaporation. High up it cools and forms clouds — condensation. When the drops grow heavy they fall as rain or snow — precipitation. The water flows back to the sea and the cycle repeats.",
+        image: {
+          src: WATER_CYCLE_SVG,
+          alt: "The sun evaporates water from the sea; clouds form and rain falls on land.",
+          caption: "Evaporation → clouds → rain → back to the sea.",
+        },
       },
       {
         heading: "Why it matters for growing",

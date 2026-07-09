@@ -26,6 +26,12 @@ export interface LessonSection {
   body: string;
   /** Optional code sample rendered as a formatted block under the body. */
   code?: string;
+  /**
+   * Optional teaching image/diagram shown under the body. `src` can be any
+   * image URL or an inline SVG data URI. Teachers can point this at their own
+   * photo; the caption is localized via the overlay.
+   */
+  image?: { src: string; alt: string; caption?: string };
 }
 
 export interface Lesson {
