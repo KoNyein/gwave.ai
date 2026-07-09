@@ -21,15 +21,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { updatePost } from "@/lib/actions/posts";
 import type { PostVisibility } from "@/types/database";
 
+// Same audience options/keys as the composer (composer.* namespace).
 const VISIBILITY_OPTIONS: {
   value: PostVisibility;
-  labelKey: string;
+  labelKey: "public" | "friends" | "onlyMe" | "members";
   icon: typeof Globe;
 }[] = [
-  { value: "public", labelKey: "visibilityPublic", icon: Globe },
-  { value: "friends", labelKey: "visibilityFriends", icon: Users },
-  { value: "only_me", labelKey: "visibilityOnlyMe", icon: Lock },
-  { value: "members", labelKey: "visibilityMembers", icon: BadgeCheck },
+  { value: "public", labelKey: "public", icon: Globe },
+  { value: "friends", labelKey: "friends", icon: Users },
+  { value: "only_me", labelKey: "onlyMe", icon: Lock },
+  { value: "members", labelKey: "members", icon: BadgeCheck },
 ];
 
 /** Facebook-style post editing: change the text and audience in place. */
