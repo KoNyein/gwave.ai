@@ -936,7 +936,21 @@
     "eduMemoryTitle": "จับคู่ความจำ",
     "eduMemoryDesc": "พลิกการ์ดหาคู่ทั้งหกคู่",
     "eduHexTitle": "ทายสีเฮ็กซ์",
-    "eduHexDesc": "จับคู่สีกับรหัสเฮ็กซ์ — เรียนรู้สี CSS"
+    "eduHexDesc": "จับคู่สีกับรหัสเฮ็กซ์ — เรียนรู้สี CSS",
+    "catalogHeading": "พอร์ทัลเกม",
+    "catalogEmpty": "ยังไม่มีเกมในพอร์ทัล",
+    "addGame": "เพิ่มเกม",
+    "gameTitle": "ชื่อ",
+    "gameThumbnail": "URL ภาพย่อ",
+    "gameCategory": "หมวดหมู่",
+    "gameUrl": "URL เกม",
+    "gameUrlHint": "ต้องเป็น URL แบบ https:// จากต้นทางที่อนุญาต (โฮสต์ AWS ของคุณหรือเว็บเกมที่เชื่อถือได้)",
+    "closeGame": "ปิด",
+    "deleteGame": "ลบ",
+    "deleteConfirm": "นำเกมนี้ออกจากพอร์ทัลหรือไม่?",
+    "notEmbeddable": "ไม่สามารถฝังเกมนี้ได้ ต้นทางไม่อยู่ในรายการที่อนุญาต",
+    "openInNewTab": "เปิดในแท็บใหม่",
+    "cancel": "ยกเลิก"
   },
   "learn": {
     "backToLearn": "กลับไปเรียนรู้",

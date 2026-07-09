@@ -227,6 +227,19 @@ export interface ShopOrder {
   updated_at: string;
 }
 
+export interface GameCatalogItem {
+  id: string;
+  title: string;
+  thumbnail_url: string;
+  game_url: string;
+  category: string;
+  is_active: boolean;
+  sort_order: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type CameraType = "webrtc" | "rtsp";
 
 export interface UserCamera {

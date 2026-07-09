@@ -936,7 +936,21 @@
     "eduMemoryTitle": "Memory Match",
     "eduMemoryDesc": "Flip the cards and find all six pairs.",
     "eduHexTitle": "Hex Colour Guess",
-    "eduHexDesc": "Match the colour to its hex code — learn CSS colours."
+    "eduHexDesc": "Match the colour to its hex code — learn CSS colours.",
+    "catalogHeading": "Game portal",
+    "catalogEmpty": "No games in the portal yet.",
+    "addGame": "Add game",
+    "gameTitle": "Title",
+    "gameThumbnail": "Thumbnail URL",
+    "gameCategory": "Category",
+    "gameUrl": "Game URL",
+    "gameUrlHint": "Must be an https:// URL on an allow-listed origin (your AWS host or a trusted game site).",
+    "closeGame": "Close",
+    "deleteGame": "Delete",
+    "deleteConfirm": "Remove this game from the portal?",
+    "notEmbeddable": "This game can't be embedded here. Its origin isn't on the allow-list.",
+    "openInNewTab": "Open in a new tab",
+    "cancel": "Cancel"
   },
   "learn": {
     "backToLearn": "Back to Learn",

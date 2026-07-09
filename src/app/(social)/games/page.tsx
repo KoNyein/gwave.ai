@@ -3,11 +3,13 @@ import { redirect } from "next/navigation";
 import { Gamepad2, Play, Upload } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
+import { GameCatalog } from "@/components/games/game-catalog";
 import { MyGameCard } from "@/components/games/my-game-card";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile, isAdultProfile } from "@/lib/auth";
+import { getCatalogGames } from "@/lib/db/game-catalog";
 import { getApprovedGames, getMyGames } from "@/lib/db/games";
 import { EDU_GAMES } from "@/lib/games/edu-games";
 import { displayName } from "@/lib/format";
@@ -19,12 +21,14 @@ export default async function GamesPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 
-  const [t, games, myGames] = await Promise.all([
+  const [t, games, myGames, catalogGames] = await Promise.all([
     getTranslations("games"),
     getApprovedGames(),
     getMyGames(profile.id),
+    getCatalogGames(),
   ]);
   const isAdult = isAdultProfile(profile);
+  const isStaff = profile.role === "admin" || profile.role === "moderator";
 
   const builtins = [
     {
@@ -113,6 +117,11 @@ export default async function GamesPage() {
           ))}
         </div>
       </section>
+
+      {/* Database-driven external game catalog (admin-curated) */}
+      {catalogGames.length > 0 || isStaff ? (
+        <GameCatalog games={catalogGames} isStaff={isStaff} />
+      ) : null}
 
       {/* Community games */}
       <section className="space-y-2">
