@@ -12,6 +12,8 @@ import {
   MapPin,
   MessageCircle,
   MoreHorizontal,
+  Pencil,
+  Send,
   Share2,
   Trash2,
   Users,
@@ -19,6 +21,7 @@ import {
 import { useTranslations } from "next-intl";
 
 import { CommentSection } from "@/components/social/comment-section";
+import { EditPostDialog } from "@/components/social/edit-post-dialog";
 import { LocationMap } from "@/components/social/location-map";
 import { MediaGrid } from "@/components/social/media-grid";
 import { MemberBadge } from "@/components/social/member-badge";
@@ -77,9 +80,30 @@ export function PostCard({
   const [shareOpen, setShareOpen] = React.useState(false);
   const [reportOpen, setReportOpen] = React.useState(false);
   const [mapOpen, setMapOpen] = React.useState(false);
+  const [editOpen, setEditOpen] = React.useState(false);
+  // Editable fields keep local state so an edit shows instantly.
+  const [content, setContent] = React.useState(post.content);
+  const [visibility, setVisibility] = React.useState(post.visibility);
+  const [canNativeShare, setCanNativeShare] = React.useState(false);
 
-  const VisibilityIcon = VISIBILITY_ICONS[post.visibility];
+  React.useEffect(() => {
+    setCanNativeShare(typeof navigator !== "undefined" && !!navigator.share);
+  }, []);
+
+  const VisibilityIcon = VISIBILITY_ICONS[visibility];
   const isOwn = post.author_id === currentUser.id;
+
+  // Native share sheet (Web Share API) — phones show the OS share dialog.
+  async function shareExternally() {
+    try {
+      await navigator.share({
+        title: "gwave.ai",
+        url: `${window.location.origin}/p/${post.id}`,
+      });
+    } catch {
+      // User dismissed the sheet — nothing to do.
+    }
+  }
 
   async function handleReactionChange(next: ReactionType | null) {
     const previous = myReaction;
@@ -176,14 +200,26 @@ export function PostCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {isOwn ? (
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onSelect={handleDelete}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {t("delete")}
+            {canNativeShare ? (
+              <DropdownMenuItem onSelect={() => void shareExternally()}>
+                <Send className="mr-2 h-4 w-4" />
+                {t("shareExternal")}
               </DropdownMenuItem>
+            ) : null}
+            {isOwn ? (
+              <>
+                <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  {t("edit")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onSelect={handleDelete}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {t("delete")}
+                </DropdownMenuItem>
+              </>
             ) : (
               <>
                 <DropdownMenuItem onSelect={() => setReportOpen(true)}>
@@ -221,9 +257,9 @@ export function PostCard({
       ) : null}
 
       {/* Content */}
-      {post.content ? (
+      {content ? (
         <p className="whitespace-pre-wrap break-words px-4 py-2 text-sm">
-          {post.content}
+          {content}
         </p>
       ) : (
         <div className="pt-2" />
@@ -358,6 +394,19 @@ export function PostCard({
         open={reportOpen}
         onOpenChange={setReportOpen}
       />
+      {isOwn ? (
+        <EditPostDialog
+          postId={post.id}
+          initialContent={content}
+          initialVisibility={visibility}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          onSaved={(nextContent, nextVisibility) => {
+            setContent(nextContent);
+            setVisibility(nextVisibility);
+          }}
+        />
+      ) : null}
     </Card>
   );
 }
