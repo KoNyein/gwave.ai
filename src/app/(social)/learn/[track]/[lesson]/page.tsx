@@ -11,10 +11,11 @@ import {
 import { Quiz } from "@/components/learn/quiz";
 import { RobotGame } from "@/components/learn/robot-game";
 import { Card, CardContent } from "@/components/ui/card";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 
 import { LessonAudio } from "@/components/learn/lesson-audio";
 import { LessonVideo } from "@/components/learn/lesson-video";
+import { LessonYouTubeLink } from "@/components/learn/lesson-youtube-link";
 import { PythonPlayground } from "@/components/learn/python-playground";
 import { SqlPlayground } from "@/components/learn/sql-playground";
 import { ageBandOf, getCurrentProfile } from "@/lib/auth";
@@ -51,6 +52,7 @@ export default async function LessonPage({
 
   // Localize lesson content to the viewer's language (falls back to English).
   const locale = await getLocale();
+  const t = await getTranslations("learn");
   const { track, lesson } = localizeLesson(found.track, found.lesson, locale);
 
   const index = track.lessons.findIndex((l) => l.slug === lesson.slug);
@@ -106,6 +108,8 @@ export default async function LessonPage({
 
       {lesson.youtubeId ? (
         <LessonVideo youtubeId={lesson.youtubeId} title={lesson.title} />
+      ) : lesson.youtubeQuery ? (
+        <LessonYouTubeLink query={lesson.youtubeQuery} label={t("watchOnYouTube")} />
       ) : null}
 
       {lesson.sections?.map((section, i) => (

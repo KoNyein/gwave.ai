@@ -12,6 +12,7 @@ import {
   FileCode2,
   FlaskConical,
   Gamepad2,
+  ListChecks,
   Palette,
   GraduationCap,
   Play,
@@ -49,6 +50,7 @@ const ICONS: Record<string, LucideIcon> = {
   Terminal,
   Database,
   BrainCircuit,
+  ListChecks,
 };
 
 export default async function LearnPage() {
@@ -58,7 +60,8 @@ export default async function LearnPage() {
   const band = ageBandOf(profile.birth_date);
   const locale = await getLocale();
   const tracks = tracksForBand(band).map((t) => localizeTrack(t, locale));
-  const showGame = band === "child" || band === "preteen" || band === "unknown";
+  // The Grow-a-Garden mini game is light and fun for every age.
+  const showGame = true;
 
   const [progressRows, resume, points] = await Promise.all([
     getProgressForUser(profile.id),

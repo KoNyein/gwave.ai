@@ -1042,4 +1042,193 @@ export const MY_OVERLAY: LearnOverlay = {
       },
     },
   },
+
+  // ─────────────────────── Pseudocode & Algorithms ─────────────────────────
+  pseudocode: {
+    title: "Pseudocode နဲ့ Algorithm",
+    description:
+      "Programmer လို တွေးတတ်အောင် — အဆင့်လိုက် ရိုးရိုးရေးဆွဲပြီး တကယ့် code အဖြစ် run ။ အခြေခံမှ project အထိ။",
+    lessons: {
+      "pc-intro": {
+        title: "Pseudocode ဆိုတာ ဘာလဲ?",
+        summary: "တကယ့် code မရေးခင် program ကို ရိုးရိုးအဆင့်တွေနဲ့ စီစဉ်ပါ။",
+        youtubeQuery: "pseudocode မြန်မာ programming အခြေခံ",
+        sections: [
+          {
+            heading: "ကွန်ပျူတာအတွက် ချက်ပြုတ်နည်း",
+            body: "Pseudocode က program ရဲ့ အဆင့်တွေကို ရိုးရိုးစကားနဲ့ ဖော်ပြတဲ့ နည်းလမ်း — သဒ္ဒါတင်းကျပ်မှုမလို၊ ကွန်ပျူတာမလို။ ချက်ပြုတ်နည်းလို ဘာလုပ်ရမလဲ အစဉ်လိုက် စာရင်းချ၊ ပြီးမှ တကယ့် programming language အဖြစ် ပြောင်းတယ်။",
+          },
+          {
+            heading: "ဘာလို့ လုပ်ရလဲ?",
+            body: "Pseudocode နဲ့ စီစဉ်ခြင်းက logic ကို အရင် မှန်အောင် လုပ်ပေးတယ် — မိမိနားလည်တဲ့ ဘာသာစကားနဲ့။ အဆင့်တွေ ရှင်းသွားရင် Python, JavaScript ဘယ်ဟာဆီ ပြောင်းပြောင်း လွယ်တယ်။ ကျွမ်းကျင်သူတွေ algorithm ဒီဇိုင်း/ရှင်းပြဖို့ pseudocode ရေးတယ်။",
+          },
+          {
+            heading: "အသုံးများတဲ့ keyword များ",
+            body: "Pseudocode အများစုမှာ စကားလုံးအနည်းငယ်ပဲ သုံးတယ်: READ/INPUT (data ယူ)၊ PRINT/OUTPUT (data ပြ)၊ SET (တန်ဖိုးသိမ်း)၊ IF…THEN…ELSE (ဆုံးဖြတ်)၊ WHILE/FOR (ထပ်လုပ်)။ တစ်ခုချင်း တွေ့ပြီး တကယ့် Python ကို run ကြည့်မယ်။",
+          },
+        ],
+      },
+      "pc-sequence": {
+        title: "Sequence: အဆင့်လိုက်",
+        summary: "ညွှန်ကြားချက်တွေ အပေါ်ကနေ အောက် အစဉ်လိုက် run တယ်။ ပထမဆုံး program run ပါ။",
+        youtubeQuery: "programming sequence မြန်မာ အခြေခံ",
+        sections: [
+          {
+            heading: "အစဉ် အရေးကြီးတယ်",
+            body: "Sequence ဆိုတာ အဆင့်တွေကို တစ်ခုပြီးတစ်ခု အပေါ်ကနေအောက် လုပ်တာ။ အဆင့်နှစ်ခု နေရာလွှဲရင် ရလဒ် ပြောင်းနိုင်တယ် — ရေမနွေးခင် လက်ဖက်ရည်ထည့်ရင် မဖြစ်ဘူး! အောက်မှာ pseudocode နဲ့ Python ဘေးချင်းယှဉ်ထားတယ်။ Run နှိပ်ပါ။",
+          },
+        ],
+      },
+      "pc-variables": {
+        title: "Variable နဲ့ Output",
+        summary: "တန်ဖိုးတွေကို အမည်ပေးထားတဲ့ box ထဲ သိမ်းပြီး တွက်ချက်ပါ။",
+        youtubeQuery: "variable programming မြန်မာ ရှင်းပြ",
+        sections: [
+          {
+            heading: "Variable က အမည်တပ် box",
+            body: "SET က တန်ဖိုးတစ်ခုကို အမည်တပ် box (variable) ထဲ ထည့်ပြီး နောက်မှ ပြန်သုံးလို့ရစေတယ်။ ဂဏန်း/စာသား သိမ်းလို့ရ၊ ဂဏန်းဆို တွက်လို့ရ။ တန်ဖိုးပြောင်းပြီး Run ရင် total ပြောင်းတာ ကြည့်ပါ။",
+          },
+        ],
+      },
+      "pc-conditions": {
+        title: "ဆုံးဖြတ်ချက်: IF / ELSE",
+        summary: "program ကို လမ်းနှစ်ခုကြား ရွေးခိုင်းပါ။",
+        youtubeQuery: "if else statement မြန်မာ programming",
+        sections: [
+          {
+            heading: "လမ်းရွေးခြင်း",
+            body: "IF…THEN…ELSE က program ကို ဆုံးဖြတ်ခိုင်းတယ်။ အခြေအနေ (မှန်/မှား) ကို စစ်ပြီး branch တစ်ခုကို run တယ်။ ဒီမှာ မြေစိုဓာတ်ကို စစ်ပြီး ရေလောင်းမလား ဆုံးဖြတ်တယ်။ moisture တန်ဖိုးပြောင်းပြီး Run ပါ။",
+          },
+        ],
+      },
+      "pc-loops": {
+        title: "Loop: အဆင့်ထပ်လုပ်ခြင်း",
+        summary: "code မကူးဘဲ တစ်ခုတည်းကို အကြိမ်များစွာ လုပ်ပါ။",
+        youtubeQuery: "for loop while loop မြန်မာ ရှင်းပြ",
+        sections: [
+          {
+            heading: "FOR နဲ့ WHILE",
+            body: "Loop က အဆင့်တွေ ထပ်လုပ်တယ်။ FOR loop က သတ်မှတ်အကြိမ် ထပ်လုပ်၊ WHILE loop က အခြေအနေ မှန်နေသ၍ ထပ်လုပ်တယ်။ ဒါက countdown ပြီး times-table row ပြတယ်။ Run ပြီး ဂဏန်းပြောင်းကြည့်ပါ။",
+          },
+        ],
+      },
+      "pc-project-guessing": {
+        title: "Project: ဂဏန်းခန့်မှန်း Game",
+        summary: "variable, loop, condition တွေ ပေါင်းပြီး တကယ့် game တစ်ခု။",
+        youtubeQuery: "number guessing game algorithm မြန်မာ",
+        sections: [
+          {
+            heading: "အစီအစဉ် (pseudocode)",
+            body: "ဒီ game က လျှို့ဝှက်ဂဏန်းကို ဝှက်ပြီး range ကို တစ်ဝက်စီ လျှော့ရင်း တော်တော်လေး 'ခန့်မှန်း' တယ် — binary search သဘောတရားပါ။ အစီအစဉ်ဖတ်၊ Python run၊ secret ပြောင်းပြီး ခန့်မှန်းအကြိမ် ဘယ်လောက်နည်းလဲ ကြည့်ပါ။",
+          },
+        ],
+      },
+      "pc-functions": {
+        title: "Function: ပြန်သုံးလို့ရတဲ့ အဆင့်များ",
+        summary: "အဆင့်အုပ်စုတစ်ခုကို အမည်ပေးပြီး နေရာတိုင်း ပြန်သုံးပါ။",
+        youtubeQuery: "function programming မြန်မာ ရှင်းပြ",
+        sections: [
+          {
+            heading: "အမည်တပ် procedure",
+            body: "Function (PROCEDURE) က အမည်တပ်ထားတဲ့ အဆင့်အုပ်စု — input အမျိုးမျိုးနဲ့ ထပ်ခါထပ်ခါ run လို့ရ။ program ကို တိုပြီး ရှင်းစေတယ်။ ဒီမှာ Celsius ကို Fahrenheit ပြောင်းတဲ့ function ကို အကြိမ်များစွာ ခေါ်တယ်။",
+          },
+        ],
+      },
+      "pc-arrays": {
+        title: "List နဲ့ Array",
+        summary: "တန်ဖိုးများစွာကို တစ်နေရာတည်း သိမ်းပြီး loop ပတ်ပါ။",
+        youtubeQuery: "array list programming မြန်မာ",
+        sections: [
+          {
+            heading: "box တန်းတစ်တန်း",
+            body: "Array (list) က တန်ဖိုးများစွာကို အမည်တစ်ခုအောက်၊ တစ်ခုစီ index (0 ကနေ စ) မှာ သိမ်းတယ်။ List ကို loop ပတ်ပြီး item တိုင်း ကိုင်တွယ် — grower အများ၏ အပင်ပေါင်းလိုမျိုး။",
+          },
+        ],
+      },
+      "pc-project-fizzbuzz": {
+        title: "Project: FizzBuzz",
+        summary: "အင်တာဗျူး ပဟေဠိ classic — loop နဲ့ condition။",
+        youtubeQuery: "fizzbuzz မြန်မာ ရှင်းပြ",
+        sections: [
+          {
+            heading: "စည်းမျဉ်းများ",
+            body: "1 ကနေ 20 ရေတွက်။ 3 ဆ ဆို 'Fizz'၊ 5 ဆ ဆို 'Buzz'၊ နှစ်ခုလုံးဆို 'FizzBuzz'၊ မဟုတ်ရင် ဂဏန်း။ loop + condition logic စစ်တဲ့ အကြိုက်ဆုံး စမ်းသပ်ချက်။ Run ပြီး 20 ကို 30 ပြောင်းကြည့်ပါ။",
+          },
+        ],
+      },
+      "pc-algorithms": {
+        title: "Algorithm: ရှာဖွေ & စီစဉ်",
+        summary: "ကွန်ပျူတာက အရာတွေ ထိရောက်စွာ ရှာ/စီပုံ။",
+        youtubeQuery: "searching sorting algorithm မြန်မာ အခြေခံ",
+        sections: [
+          {
+            heading: "Algorithm က ရှင်းလင်းတဲ့ အစီအစဉ်",
+            body: "Algorithm က ပြဿနာတစ်ခု ဖြေရှင်းပြီး အမြဲ ပြီးဆုံးတဲ့ တိကျတဲ့ အဆင့်များ။ အလုပ်တစ်ခုတည်းမှာ မြန်တဲ့/နှေးတဲ့ algorithm ရှိနိုင်တယ် — ကောင်းတာက data များလာတာနဲ့အမျှ အလုပ်နည်းနည်း လုပ်တယ်။",
+          },
+          {
+            heading: "Linear vs. binary search",
+            body: "Linear search က item တစ်ခုချင်း စစ် — list သေးရင် အဆင်ပြေ။ Binary search (ငါတို့ game လိုမျိုး) က စီထားတဲ့ list မှာသာ အလုပ်လုပ်ပြီး အဆင့်တိုင်း တစ်ဝက်လျှော့တာမို့ သန်းဂဏန်း list ထဲက item ကို သန်းအစား ~၂၀ ကြိမ်နဲ့ ရှာတယ်။",
+          },
+          {
+            heading: "စီစဉ်ခြင်း (Sorting)",
+            body: "Sorting က data ကို အစဉ်လိုက်ထားပြီး ရှာဖွေ/report လွယ်စေတယ်။ bubble sort လို ရိုးရှင်းနည်းက နားလည်လွယ်ပေမဲ့ နှေး၊ တကယ့် language တွေမှာ မြန်တဲ့ built-in sort ပါတယ်။ သဘောတရားသိရင် ကိရိယာမှန် ရွေးတတ်တယ်။",
+          },
+        ],
+      },
+      "pc-project-calculator": {
+        title: "Project: Mini Calculator",
+        summary: "အားလုံးပေါင်း — function, list, condition။",
+        youtubeQuery: "simple calculator program မြန်မာ",
+        sections: [
+          {
+            heading: "အရင် ဒီဇိုင်းဆွဲ",
+            body: "Calculator ကို pseudocode နဲ့ စီစဉ်: operation တစ်ခုစီအတွက် function၊ ပြီးရင် sum list ကို run ပြီး ရလဒ်တစ်ခုစီ ပြ။ တကယ့် app ဖွဲ့စည်းပုံနဲ့ တူတယ်။ Run ပြီး ကိုယ့် operation (ဥပမာ power) ထည့်ကြည့်ပါ။",
+          },
+        ],
+      },
+      "pc-quiz": {
+        title: "Pseudocode Quiz",
+        summary: "algorithm တွေးတောနိုင်စွမ်း စစ်ပါ။",
+        quiz: [
+          {
+            q: "Pseudocode ဆိုတာ ဘာလဲ?",
+            options: [
+              "ကွန်ပျူတာ တိုက်ရိုက် run တဲ့ programming language",
+              "program ရဲ့ အဆင့်များကို ရိုးရိုးစကားနဲ့ စီစဉ်ချက်",
+              "ကွန်ပျူတာ virus အမျိုးအစား",
+              "database အမျိုးအစား",
+            ],
+            explain: "Pseudocode က logic ကို ဘာသာစကား သီးသန့်မဟုတ်ဘဲ ရိုးရိုးအဆင့်နဲ့ ဖော်ပြတယ်။",
+          },
+          {
+            q: "အခြေအနေ မှန်နေသ၍ အဆင့်ထပ်လုပ်တဲ့ ဖွဲ့စည်းပုံက?",
+            options: ["IF", "WHILE loop", "SET", "PRINT"],
+          },
+          {
+            q: "List မှာ ပထမ item က ဘယ် index မှာ များလဲ?",
+            options: ["1", "0", "-1", "100"],
+            explain: "language အများစုက နေရာကို 0 ကနေ စရေတွက်တယ်။",
+          },
+          {
+            q: "Binary search က ဘာလို့ စီထားတဲ့ list လိုတာလဲ?",
+            options: [
+              "မလိုဘူး — ဘယ်အစဉ်မဆို ရ",
+              "အဆင့်တိုင်း list တစ်ဝက်ကို ဘေးဖယ်လို့ရအောင်",
+              "list လှအောင်",
+              "စီထားရင် ပိုနှေးလို့",
+            ],
+          },
+          {
+            q: "Function (procedure) ရဲ့ အဓိက အကျိုးက?",
+            options: [
+              "program ကို တစ်ကြိမ်ပဲ run စေ",
+              "အဆင့်အုပ်စုတစ်ခုကို အမည်ပေးပြီး ပြန်သုံးလို့ရစေ",
+              "variable ဖျက်",
+              "error ဖုံး",
+            ],
+          },
+        ],
+      },
+    },
+  },
 };

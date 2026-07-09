@@ -977,7 +977,8 @@
     "runStopped": "Stopped.",
     "engineError": "Could not load the code engine. Check your connection and try again.",
     "listen": "Listen",
-    "stopAudio": "Stop"
+    "stopAudio": "Stop",
+    "watchOnYouTube": "Learn on YouTube"
   },
   "shop": {
     "title": "Shop",

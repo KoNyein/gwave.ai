@@ -977,7 +977,8 @@
     "runStopped": "หยุดแล้ว",
     "engineError": "โหลดเอนจินโค้ดไม่สำเร็จ ตรวจสอบการเชื่อมต่อแล้วลองใหม่",
     "listen": "ฟัง",
-    "stopAudio": "หยุด"
+    "stopAudio": "หยุด",
+    "watchOnYouTube": "เรียนบน YouTube"
   },
   "shop": {
     "title": "ร้านค้า",
