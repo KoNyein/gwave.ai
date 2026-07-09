@@ -78,7 +78,11 @@
     "removeLocation": "တည်နေရာ ဖယ်ရန်",
     "placeNamePrompt": "ဒီနေရာကို နာမည်ပေးပါ (ရွေးချယ်နိုင်):",
     "myLocation": "ကျွန်ုပ်၏တည်နေရာ",
-    "locationFailed": "တည်နေရာ ထည့်၍မရပါ။"
+    "locationFailed": "တည်နေရာ ထည့်၍မရပါ။",
+    "takePhoto": "ဓာတ်ပုံရိုက်ရန်",
+    "editTitle": "Post ပြင်ရန်",
+    "saveChanges": "သိမ်းမည်",
+    "saving": "သိမ်းနေသည်…"
   },
   "post": {
     "comment": "မှတ်ချက်",
@@ -94,7 +98,9 @@
     "viewCount": "{count, plural, one {ကြည့်ရှုမှု #} other {ကြည့်ရှုမှု #}}",
     "viewers": "ကြည့်ရှုသူများ",
     "noViewersYet": "ကြည့်ရှုမှု မရှိသေးပါ။",
-    "atALocation": "တစ်နေရာတွင်"
+    "atALocation": "တစ်နေရာတွင်",
+    "edit": "Post ပြင်ရန်",
+    "shareExternal": "အပြင်သို့ မျှဝေရန်…"
   },
   "comments": {
     "placeholder": "မှတ်ချက်ရေးပါ...",

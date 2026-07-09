@@ -78,7 +78,11 @@
     "removeLocation": "ลบตำแหน่ง",
     "placeNamePrompt": "ตั้งชื่อสถานที่นี้ (ไม่บังคับ):",
     "myLocation": "ตำแหน่งของฉัน",
-    "locationFailed": "เพิ่มตำแหน่งไม่ได้"
+    "locationFailed": "เพิ่มตำแหน่งไม่ได้",
+    "takePhoto": "ถ่ายรูป",
+    "editTitle": "แก้ไขโพสต์",
+    "saveChanges": "บันทึก",
+    "saving": "กำลังบันทึก…"
   },
   "post": {
     "comment": "แสดงความคิดเห็น",
@@ -94,7 +98,9 @@
     "viewCount": "{count, plural, one {การดู # ครั้ง} other {การดู # ครั้ง}}",
     "viewers": "ผู้ที่ดู",
     "noViewersYet": "ยังไม่มีการดู",
-    "atALocation": "ที่สถานที่หนึ่ง"
+    "atALocation": "ที่สถานที่หนึ่ง",
+    "edit": "แก้ไขโพสต์",
+    "shareExternal": "แชร์ผ่าน…"
   },
   "comments": {
     "placeholder": "เขียนความคิดเห็น...",

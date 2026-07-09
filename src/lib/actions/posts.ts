@@ -324,3 +324,40 @@ export async function getPostViewers(
   if (error) return { ok: false, error: error.message };
   return { ok: true, data: data ?? [] };
 }
+
+const updatePostSchema = z.object({
+  postId: z.string().uuid(),
+  content: z.string().max(10000),
+  visibility: z.enum(["public", "friends", "only_me", "members"]),
+});
+
+/**
+ * Edit a post's text and audience. RLS ("Authors can update their own
+ * posts") guarantees only the author's rows are touched; media and location
+ * are left as-is, matching Facebook's edit behavior.
+ */
+export async function updatePost(
+  input: z.infer<typeof updatePostSchema>,
+): Promise<ActionResult> {
+  const parsed = updatePostSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid edit." };
+
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not authenticated." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("posts")
+    .update({
+      content: parsed.data.content.trim(),
+      visibility: parsed.data.visibility,
+    })
+    .eq("id", parsed.data.postId)
+    .eq("author_id", userId)
+    .select("id");
+
+  if (error) return { ok: false, error: error.message };
+  if (!data?.length) return { ok: false, error: "Not allowed." };
+  revalidatePath("/feed");
+  return { ok: true, data: undefined };
+}

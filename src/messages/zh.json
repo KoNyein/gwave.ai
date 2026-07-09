@@ -78,7 +78,11 @@
     "removeLocation": "移除位置",
     "placeNamePrompt": "为这个地点命名（可选）：",
     "myLocation": "我的位置",
-    "locationFailed": "无法添加位置。"
+    "locationFailed": "无法添加位置。",
+    "takePhoto": "拍照",
+    "editTitle": "编辑帖子",
+    "saveChanges": "保存",
+    "saving": "保存中…"
   },
   "post": {
     "comment": "评论",
@@ -94,7 +98,9 @@
     "viewCount": "{count, plural, one {# 次浏览} other {# 次浏览}}",
     "viewers": "浏览者",
     "noViewersYet": "还没有浏览。",
-    "atALocation": "在某个位置"
+    "atALocation": "在某个位置",
+    "edit": "编辑帖子",
+    "shareExternal": "分享到…"
   },
   "comments": {
     "placeholder": "写下评论...",

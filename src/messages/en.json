@@ -78,7 +78,11 @@
     "removeLocation": "Remove location",
     "placeNamePrompt": "Name this place (optional):",
     "myLocation": "My location",
-    "locationFailed": "Couldn't add location."
+    "locationFailed": "Couldn't add location.",
+    "takePhoto": "Take a photo",
+    "editTitle": "Edit post",
+    "saveChanges": "Save changes",
+    "saving": "Saving…"
   },
   "post": {
     "comment": "Comment",
@@ -94,7 +98,9 @@
     "viewCount": "{count, plural, one {# view} other {# views}}",
     "viewers": "Viewed by",
     "noViewersYet": "No views yet.",
-    "atALocation": "at a location"
+    "atALocation": "at a location",
+    "edit": "Edit post",
+    "shareExternal": "Share via…"
   },
   "comments": {
     "placeholder": "Write a comment...",

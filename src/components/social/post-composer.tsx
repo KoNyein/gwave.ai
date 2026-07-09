@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   BadgeCheck,
+  Camera,
   Globe,
   ImagePlus,
   Loader2,
@@ -79,6 +80,7 @@ export function PostComposer({
   } | null>(null);
   const [locating, setLocating] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
 
   const reset = React.useCallback(() => {
     setContent("");
@@ -328,6 +330,15 @@ export function PostComposer({
                   type="button"
                   variant="ghost"
                   size="icon"
+                  onClick={() => cameraInputRef.current?.click()}
+                  aria-label={t("takePhoto")}
+                >
+                  <Camera className="h-5 w-5 text-primary" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
                   onClick={addLocation}
                   disabled={locating}
                   aria-label={t("addLocation")}
@@ -344,6 +355,19 @@ export function PostComposer({
                 type="file"
                 accept="image/*,video/*"
                 multiple
+                hidden
+                onChange={(event) => {
+                  addFiles(event.target.files);
+                  event.target.value = "";
+                }}
+              />
+              {/* capture opens the phone camera directly (desktop falls
+                  back to the normal file picker). */}
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
                 hidden
                 onChange={(event) => {
                   addFiles(event.target.files);
