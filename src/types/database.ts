@@ -248,6 +248,8 @@ export interface UserCamera {
   title: string;
   camera_type: CameraType;
   rtsp_url: string | null;
+  // Public HLS (.m3u8) playback URL. Credential-free, safe to expose to viewers.
+  hls_url: string | null;
   stream_id: string;
   share_token: string;
   is_public: boolean;

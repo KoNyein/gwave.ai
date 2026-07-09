@@ -93,6 +93,48 @@ export async function createCamera(input: {
   return { ok: true, data: { id: data.id } };
 }
 
+const hlsSchema = z.object({
+  id: z.string().uuid(),
+  // Empty string clears the URL; otherwise it must be an https .m3u8 playlist.
+  hlsUrl: z
+    .string()
+    .trim()
+    .max(500)
+    .refine(
+      (v) => v === "" || /^https:\/\/[^\s]+\.m3u8(\?[^\s]*)?$/i.test(v),
+      "Enter an https:// URL ending in .m3u8",
+    ),
+});
+
+/**
+ * Set (or clear) a camera's public HLS playback URL. Owner-scoped. The URL must
+ * be an https .m3u8 — a credential-free playback endpoint. The private RTSP
+ * source is never touched here and never leaves the server.
+ */
+export async function setCameraHlsUrl(input: {
+  id: string;
+  hlsUrl: string;
+}): Promise<ActionResult> {
+  const parsed = hlsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const { id, hlsUrl } = parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("user_cameras")
+    .update({ hls_url: hlsUrl === "" ? null : hlsUrl })
+    .eq("id", id)
+    .eq("owner_id", userId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/cameras/${id}`);
+  return { ok: true, data: undefined };
+}
+
 const visibilitySchema = z.object({
   id: z.string().uuid(),
   isPublic: z.boolean(),
