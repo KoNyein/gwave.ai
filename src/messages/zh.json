@@ -965,6 +965,15 @@
     "running": "运行中…",
     "output": "输出",
     "pythonHint": "按 Run 运行你的 Python 代码。",
-    "reset": "重置"
+    "reset": "重置",
+    "runQuery": "运行查询",
+    "loadingSql": "正在加载 SQL 引擎…",
+    "result": "结果",
+    "sqlNoRows": "查询已运行 — 未返回任何行。",
+    "sqlHint": "点击运行，对示例数据库执行你的 SQL。",
+    "stop": "停止",
+    "runTimeout": "已停止 — 本次运行耗时过长（无限循环？）。",
+    "runStopped": "已停止。",
+    "engineError": "无法加载代码引擎。请检查网络连接后重试。"
   }
 }

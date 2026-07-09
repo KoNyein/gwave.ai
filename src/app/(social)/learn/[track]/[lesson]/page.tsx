@@ -15,6 +15,7 @@ import { getLocale } from "next-intl/server";
 
 import { LessonVideo } from "@/components/learn/lesson-video";
 import { PythonPlayground } from "@/components/learn/python-playground";
+import { SqlPlayground } from "@/components/learn/sql-playground";
 import { ageBandOf, getCurrentProfile } from "@/lib/auth";
 import { getProjectForLesson } from "@/lib/db/learn";
 import { localizeLesson } from "@/lib/learn/i18n";
@@ -55,7 +56,7 @@ export default async function LessonPage({
   const next = track.lessons[index + 1];
 
   // Saved game/playground state for resume (only these kinds persist state).
-  const persistedKinds = ["code", "robot", "circuit", "python"];
+  const persistedKinds = ["code", "robot", "circuit", "python", "sql"];
   const project = persistedKinds.includes(lesson.kind)
     ? await getProjectForLesson(profile.id, track.slug, lesson.slug)
     : null;
@@ -119,6 +120,14 @@ export default async function LessonPage({
       {lesson.kind === "python" && lesson.pythonCode !== undefined && (
         <PythonPlayground
           starter={lesson.pythonCode}
+          lesson={lessonRef}
+          title={lesson.title}
+        />
+      )}
+
+      {lesson.kind === "sql" && lesson.sqlCode !== undefined && (
+        <SqlPlayground
+          starter={lesson.sqlCode}
           lesson={lessonRef}
           title={lesson.title}
         />

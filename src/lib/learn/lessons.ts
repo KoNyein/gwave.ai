@@ -10,7 +10,8 @@ export type LessonKind =
   | "code"
   | "robot"
   | "circuit"
-  | "python";
+  | "python"
+  | "sql";
 
 export interface QuizQuestion {
   q: string;
@@ -38,6 +39,8 @@ export interface Lesson {
   code?: { html: string; css: string; js: string };
   /** For python lessons: starter script for the Pyodide playground. */
   pythonCode?: string;
+  /** For sql lessons: starter query for the sql.js playground. */
+  sqlCode?: string;
   /** Optional YouTube video id embedded at the top of the lesson. */
   youtubeId?: string;
 }
@@ -513,6 +516,7 @@ const agriTrack: Track = {
 };
 
 import { WEBDEV_TRACKS } from "@/lib/learn/webdev";
+import { SQL_AI_TRACKS } from "@/lib/learn/courses-sql-ai";
 
 export const TRACKS: Track[] = [
   stemTrack,
@@ -520,6 +524,7 @@ export const TRACKS: Track[] = [
   roboticsTrack,
   codingTrack,
   ...WEBDEV_TRACKS,
+  ...SQL_AI_TRACKS,
   agriTrack,
 ];
 

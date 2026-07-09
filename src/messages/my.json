@@ -965,6 +965,15 @@
     "running": "လုပ်ဆောင်နေသည်…",
     "output": "ရလဒ်",
     "pythonHint": "သင့် Python code ကို run ဖို့ Run နှိပ်ပါ။",
-    "reset": "ပြန်စ"
+    "reset": "ပြန်စ",
+    "runQuery": "Query ကို Run မယ်",
+    "loadingSql": "SQL engine ကို ဖွင့်နေသည်…",
+    "result": "ရလဒ်",
+    "sqlNoRows": "Query အလုပ်လုပ်ပြီ — row မရှိပါ။",
+    "sqlHint": "သင့် SQL ကို နမူနာ database ပေါ်မှာ run ရန် Run ကို နှိပ်ပါ။",
+    "stop": "ရပ်မယ်",
+    "runTimeout": "ရပ်လိုက်သည် — ဒီ run က အချိန်ကြာလွန်းသည် (loop အဆုံးမရှိ?)။",
+    "runStopped": "ရပ်လိုက်ပါပြီ။",
+    "engineError": "Code engine ကို မဖွင့်နိုင်ပါ။ ချိတ်ဆက်မှုကို စစ်ပြီး ပြန်ကြိုးစားပါ။"
   }
 }

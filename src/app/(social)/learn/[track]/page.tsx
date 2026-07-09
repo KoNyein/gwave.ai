@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Code2,
   Cpu,
+  Database,
   HelpCircle,
   Terminal,
 } from "lucide-react";
@@ -28,6 +29,7 @@ const KIND_ICON: Record<LessonKind, typeof BookText> = {
   robot: Bot,
   circuit: Cpu,
   python: Terminal,
+  sql: Database,
 };
 
 export async function generateMetadata({
