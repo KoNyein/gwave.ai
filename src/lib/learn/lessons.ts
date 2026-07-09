@@ -3,6 +3,7 @@
 // content is versioned in code so it works offline and is easy to review.
 
 import type { AgeBand } from "@/lib/age";
+import { STEM_EXTRA } from "@/lib/learn/stem-extra";
 
 export type LessonKind =
   | "reading"
@@ -65,8 +66,9 @@ export interface Track {
 
 const stemTrack: Track = {
   slug: "stem",
-  title: "Science Starters",
-  description: "Fun science about plants, water and light — for every curious learner.",
+  title: "STEM: Science Starters",
+  description:
+    "Fun science — matter, energy, forces, the body, weather and space — for every curious learner.",
   icon: "FlaskConical",
   bands: ["child", "preteen", "teen", "adult"],
   lessons: [
@@ -135,6 +137,7 @@ const stemTrack: Track = {
         },
       ],
     },
+    ...STEM_EXTRA,
   ],
 };
 

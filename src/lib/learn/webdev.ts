@@ -9,6 +9,7 @@ import {
   JS_EXTRA,
   PY_EXTRA,
 } from "@/lib/learn/webdev-extra";
+import { HTML_EXTRA2 } from "@/lib/learn/webdev-html2";
 
 // ────────────────────────────── HTML ───────────────────────────────────────
 
@@ -151,11 +152,12 @@ export const htmlTrack: Track = {
       },
     },
     ...HTML_EXTRA,
+    ...HTML_EXTRA2,
     {
       slug: "html-quiz",
       title: "HTML Quiz",
-      summary: "Ten questions covering the whole HTML course.",
-      minutes: 6,
+      summary: "Fourteen questions covering the whole HTML course.",
+      minutes: 7,
       kind: "quiz",
       quiz: [
         {
@@ -209,6 +211,53 @@ export const htmlTrack: Track = {
           q: "Which is a semantic layout tag?",
           options: ["<div>", "<span>", "<article>", "<b>"],
           answer: 2,
+        },
+        {
+          q: "How do you write a comment in HTML?",
+          options: [
+            "// like this",
+            "<!-- like this -->",
+            "/* like this */",
+            "# like this",
+          ],
+          answer: 1,
+        },
+        {
+          q: "Which entity displays a less-than sign (<)?",
+          options: ["&amp;", "&lt;", "&gt;", "&quot;"],
+          answer: 1,
+          explain: "&lt; renders < ; &gt; renders >.",
+        },
+        {
+          q: "Which attribute lets you style and script one unique element?",
+          options: ["class", "id", "name", "type"],
+          answer: 1,
+          explain: "An id is unique per page; a class can be shared by many.",
+        },
+        {
+          q: "Which input attribute stops an empty field being submitted?",
+          options: ["placeholder", "readonly", "required", "value"],
+          answer: 2,
+        },
+        {
+          q: "Which meta tag makes a page fit phone screens?",
+          options: [
+            '<meta charset="utf-8">',
+            '<meta name="viewport" content="width=device-width, initial-scale=1">',
+            '<meta name="description">',
+            "<title>",
+          ],
+          answer: 1,
+        },
+        {
+          q: "A block element like <div> …",
+          options: [
+            "sits within a line of text",
+            "starts on a new line and fills the width",
+            "is always invisible",
+            "can only hold images",
+          ],
+          answer: 1,
         },
       ],
     },

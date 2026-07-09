@@ -64,6 +64,134 @@ export const MY_OVERLAY: LearnOverlay = {
           },
         ],
       },
+      "states-of-matter": {
+        title: "ပစ္စည်း အခြေအနေများ",
+        summary: "အခဲ၊ အရည်၊ အခိုး — ဘယ်လို ပြောင်းလဲလဲ။",
+        sections: [
+          { heading: "နေ့စဉ် အခြေအနေ ၃ မျိုး", body: "ပတ်ဝန်းကျင်က အရာအားလုံး အမှုန်ကလေးတွေနဲ့ ဖွဲ့ထားတယ်။ အခဲမှာ တင်းကျပ်စွာ စုပြီး ပုံသဏ္ဌာန်ရှိ (ရေခဲ)။ အရည်မှာ တစ်ခုနဲ့တစ်ခု လျှောပြီး ခွက်ပုံ ယူ (ရေ)။ အခိုးမှာ လွတ်လပ်စွာ ပျံ၊ ပြန့်သွား (ရေငွေ့)။" },
+          { heading: "အခြေအနေ ပြောင်းခြင်း", body: "အပူထည့်ရင် အမှုန်တွေ ပိုမြန်လှုပ်: အခဲ အရည်ဖြစ်၊ အရည် အခိုးဖြစ် (အငွေ့ပျံ)။ အပူဖယ်ရင် ပြောင်းပြန်။ အပင်ထဲက ရေက သဘာဝမှာ ဒီ ၃ ခြေအနေလုံး ဖြတ်သန်းတယ်။" },
+        ],
+      },
+      "the-water-cycle": {
+        title: "ရေ သံသရာ",
+        summary: "ရေက ပင်လယ်ကနေ ကောင်းကင်ဆီ၊ ပြန်လည်ဆီ ဘယ်လို ခရီးသွားလဲ။",
+        sections: [
+          { heading: "လှည့်ပတ်နေတယ်", body: "နေက ပင်လယ်/မြစ်က ရေကို ပူစေပြီး မမြင်ရတဲ့ အငွေ့ ဖြစ်စေ — အငွေ့ပျံ။ အထက်မှာ အေးပြီး တိမ်ဖြစ် — အငွေ့ခဲ။ အစက် လေးလာရင် မိုး/နှင်း ကျ — မိုးရွာ။ ရေက ပင်လယ်ဆီ ပြန်စီးပြီး သံသရာ ထပ်လည်။" },
+          { heading: "စိုက်ပျိုးရေးအတွက် ဘာလို့ အရေးကြီးလဲ", body: "ရေ သံသရာက ကမ္ဘာပေါ်က အပင်တိုင်းကို အခမဲ့ ရေပေးတယ်။ ဒါကို နားလည်ရင် grower က မိုးရေ စု၊ စိုထိုင်းဆ ထိန်း၊ ပူ/ခြောက်တဲ့ နေ့မှာ အရွက် ဘာလို့ ရေဆုံးလဲ သိတယ်။" },
+        ],
+      },
+      "forces-and-motion": {
+        title: "အား နဲ့ လှုပ်ရှားမှု",
+        summary: "တွန်း၊ ဆွဲနဲ့ ဆွဲငင်အား။",
+        sections: [
+          { heading: "အား ဆိုတာ တွန်း/ဆွဲ", body: "အားက တစ်ခုကို စလှုပ်၊ ရပ်၊ မြန်စေ၊ နှေးစေ၊ ဒါမှမဟုတ် ဦးတည်ချက် ပြောင်းစေနိုင်တယ်။ ဘောလုံးကန်၊ တံခါးဖွင့်၊ သံဆူးကို သံလိုက်ဆွဲ — အားလုံး အား အလုပ်လုပ်နေတာ။" },
+          { heading: "ဆွဲငင်အား", body: "ဆွဲငင်အားက အရာအားလုံးကို ကမ္ဘာဆီ ဆွဲတဲ့ အား — မျိုးစေ့ ကျတာ၊ ရေ အောက်ဆင်းပြီး အမြစ်ဆီ စီးတာ ဒါကြောင့်။ အရာကြီးလေ ဆွဲငင်အား ကြီးလေ — ကမ္ဘာက လကို လမ်းကြောင်းထဲ ထိန်းထားတာ ဒါကြောင့်။" },
+        ],
+      },
+      "energy-forms": {
+        title: "စွမ်းအင် ပုံစံများ",
+        summary: "အလင်း၊ အပူ၊ အသံ၊ လှုပ်ရှားမှုနဲ့ လျှပ်စစ်။",
+        sections: [
+          { heading: "စွမ်းအင်က အရာတွေ ဖြစ်စေ", body: "စွမ်းအင်ဆိုတာ အလုပ်လုပ်/ပြောင်းလဲစေနိုင်တဲ့ စွမ်းရည်။ နေ့စဉ် တွေ့ရတဲ့ ပုံစံ: နေက အလင်း၊ မီးက အပူ၊ speaker က အသံ၊ ပြေးနေတဲ့ ကလေးမှာ လှုပ်ရှား၊ ဝါယာထဲ လျှပ်စစ်။" },
+          { heading: "စွမ်းအင် ပုံစံ ပြောင်း", body: "စွမ်းအင်က ဘယ်တော့မှ ကုန်မသွား — ပုံစံတစ်ခုကနေ တစ်ခု ပြောင်းတယ်။ အပင်က အလင်းစွမ်းအင်ကို ဓာတု (အစာ) ပြောင်း၊ မီးအိမ်က လျှပ်စစ်ကို အလင်း၊ ကိုယ်က အစာကို လှုပ်ရှား/အပူ ပြောင်း။" },
+        ],
+      },
+      "simple-machines": {
+        title: "ရိုးရှင်း စက်ကိရိယာများ",
+        summary: "အလုပ်လွယ်စေတဲ့ လီဗာ၊ ဘီးနဲ့ လျှောစောင်း။",
+        sections: [
+          { heading: "ပိုတော်တော် လုပ်ခြင်း", body: "ရိုးရှင်းစက်က အားရဲ့ အရွယ်/ဦးတည်ချက်ကို ပြောင်းပြီး အလုပ်လွယ်အောင် လုပ်တယ်။ လီဗာ (ချော့ချော့ / crowbar) က တွန်းအားနည်းနည်းနဲ့ ဝန်လေး မ။ လျှောစောင်းက ဒေါင်လိုက်တင်အစား တဖြည်းဖြည်း မြှင့်။" },
+          { heading: "ဘီးနဲ့ pulley", body: "ဘီးနဲ့ ဝင်ရိုးက ဝန်ကို ဆွဲအစား လှိမ့် — ပွတ်တိုက်အား လျှော့။ Pulley က အောက်ဆွဲပြီး အထက်မ — ရေတွင်းက ရေမဖို့ အသုံးတည့်။ စက်အများစုက ရိုးရှင်းစက် များစွာ ပေါင်းထားတာ။" },
+        ],
+      },
+      "magnets": {
+        title: "သံလိုက်များ",
+        summary: "ဆွဲငင်/တွန်းလွှတ်တဲ့ မမြင်ရတဲ့ အား။",
+        sections: [
+          { heading: "ဝင်ရိုးက ဆွဲ/တွန်း", body: "သံလိုက်မှာ အစွန်း ၂ ခု: မြောက်ဝင်ရိုးနဲ့ တောင်ဝင်ရိုး။ ဆန့်ကျင်ဝင်ရိုး ဆွဲ (attract)၊ တူဝင်ရိုး တွန်း (repel)။ သံ၊ nickel၊ သံမဏိ ဆွဲ၊ သစ်သား/ပလတ်စတစ်/စက္ကူ မဆွဲ။" },
+          { heading: "ကမ္ဘာက သံလိုက်", body: "ကမ္ဘာကြီး ကိုယ်တိုင် သံလိုက်ကြီးလို ပြုမူတာမို့ compass အပ်က မြောက်ဘက် အမြဲ ညွှန်တယ်။ သံလိုက်တွေ motor၊ speaker နဲ့ စမတ်ဖမ် sensor ထဲ ပါတယ်။" },
+        ],
+      },
+      "electricity-basics": {
+        title: "လျှပ်စစ် အခြေခံ",
+        summary: "current, circuit နဲ့ ဘေးကင်းရေး။",
+        sections: [
+          { heading: "အားငယ် စီးဆင်းမှု", body: "လျှပ်စစ်က electron လို့ခေါ်တဲ့ အားသွင်း အမှုန်ကလေးတွေ စီးဆင်းတာ။ ပြည့်စုံတဲ့ loop — circuit — မှာသာ စီး။ loop ဖြတ်ရင် ရပ် — မီးခလုပ် ပိတ်သလို။" },
+          { heading: "လျှပ်ကူး/လျှပ်ကာ နဲ့ ဘေးကင်းရေး", body: "လျှပ်စစ်စီးစေတဲ့ ပစ္စည်း conductor (သတ္တု)၊ ပိတ်တဲ့ဟာ insulator (ရာဘာ၊ ပလတ်စတစ်)။ ဒါကြောင့် ဝါယာမှာ ပလတ်စတစ် အကာ ရှိ။ mains လျှပ်စစ်နဲ့ ဘယ်တော့မှ မစမ်းပါနဲ့ — အန္တရာယ်ရှိ၊ ဘက်ထရီက လုံခြုံတဲ့ လေ့လာနည်း။" },
+        ],
+      },
+      "the-human-body": {
+        title: "လူ့ခန္ဓာ",
+        summary: "အသက်ရှင်စေတဲ့ အဓိက စနစ်များ။",
+        sections: [
+          { heading: "အင်္ဂါ အသင်းများ", body: "ကိုယ်ခန္ဓာက အလုပ်တစ်ခုစီ လုပ်တဲ့ စနစ်တွေအဖြစ် စီစဉ်ထား။ နှလုံး+သွေးကြော (သွေးလှည့်ပတ်) က အောက်ဆီဂျင်သယ်၊ အဆုတ် (အသက်ရှူ) က အသက်ရှူ၊ အစာအိမ်+အူ (အစာချေ) က အစာကို လောင်စာ ပြောင်း၊ အရိုး+ကြွက်သား က လှုပ်ရှားစေ။" },
+          { heading: "ဂရုစိုက်ခြင်း", body: "အစာကောင်း၊ ရေသန့်၊ အိပ်စက်၊ လေ့ကျင့်ခန်း၊ လက်ဆေးခြင်းက ဒီစနစ်တွေ ကျန်းမာစေ။ အပင်တွေလည်း ကူ — အဆုတ်လိုတဲ့ အောက်ဆီဂျင် ထုတ်ပေးတယ်။" },
+        ],
+      },
+      "weather-and-seasons": {
+        title: "ရာသီဥတု နဲ့ ရာသီများ",
+        summary: "ရာသီဥတု ဘာလို့ ပြောင်း၊ ရာသီတွေ ဘာလို့ ဖြစ်လဲ။",
+        sections: [
+          { heading: "ရာသီဥတု ဖြစ်စေတာ", body: "ရာသီဥတုက လေ အခု ဘာလုပ်နေလဲ — နေသာ၊ မိုးရွာ၊ လေတိုက်၊ ပူ/အေး။ နေက လေနဲ့ ရေကို မညီမညာ ပူစေတာက တိမ်နဲ့ လေကို ရွှေ့စေရာက လာ။" },
+          { heading: "ရာသီ ဘာလို့ ပြောင်းလဲ", body: "ကမ္ဘာက နေကို လှည့်ရင်း စောင်းနေတယ်။ မင်းနေရာ နေဘက် ကိုင်းရင် အလင်း/အပူ ပိုတိုက်ရိုက်ရ (နွေ)၊ နေကနေ ကိုင်းရင် အေးတဲ့ ရာသီ။ Grower တွေ ဒီ ရာသီအလိုက် စိုက်တယ်။" },
+        ],
+      },
+      "the-solar-system": {
+        title: "နေအဖွဲ့အစည်း",
+        summary: "နေ၊ ဂြိုဟ်များနဲ့ ငါတို့ အာကာသ နေရာ။",
+        sections: [
+          { heading: "နေ ပတ်လည်က မိသားစု", body: "ဂြိုဟ် ၈ လုံးက ငါတို့ ကြယ် — နေ — ကို ဆွဲငင်အားနဲ့ ပတ်တယ်။ နေကနေ အစဉ်လိုက်: ဗုဒ္ဓဟူး၊ သောကြာ၊ ကမ္ဘာ၊ အင်္ဂါ၊ ကြာသပတေး၊ စနေ၊ ယူရေးနပ်စ်၊ နက်ပကျွန်း။ ကမ္ဘာက အသက်ရှိမှန်း သိတဲ့ တစ်ခုတည်း။" },
+          { heading: "နေ့၊ ည နဲ့ လ", body: "ကမ္ဘာက တစ်ရက် တစ်ကြိမ် လှည့်တာမို့ နေ့နဲ့ ည ရ။ လက ကမ္ဘာကို လခန့် တစ်ကြိမ် ပတ်ပြီး နေ့အလင်း ပြန်ဟပ်။ နေ့အလင်းက အပင်တိုင်းရဲ့ photosynthesis ကို လည်ပတ်စေ။" },
+        ],
+      },
+      "living-things": {
+        title: "သက်ရှိများ",
+        summary: "ဘာက အသက်ရှိလဲ၊ သက်ရှိတွေ ဘယ်လို အုပ်စုခွဲလဲ။",
+        sections: [
+          { heading: "အသက်ရှင်ခြင်း လက္ခဏာ", body: "သက်ရှိတွေ ကြီးထွား၊ စွမ်းအင် (အစာ) လို၊ ပတ်ဝန်းကျင်ကို တုံ့ပြန်၊ မျိုးဆက်ပွား။ အပင်၊ ငှက်၊ ဘက်တီးရီးယား အသက်ရှိ၊ ကျောက်နဲ့ robot မဟုတ် — robot က ရွေ့လို့ရ ဒါပေမဲ့ မကြီးထွား၊ မမျိုးပွား။" },
+          { heading: "အပင်နဲ့ တိရစ္ဆာန်", body: "အပင်က နေရောင်ကနေ ကိုယ်ပိုင်အစာ လုပ်လို့ များသောအားဖြင့် တစ်နေရာတည်း နေ။ တိရစ္ဆာန်က အစာ ရှာစားရလို့ ရွေ့။ နှစ်ခုလုံး တစ်ခုကိုတစ်ခု မှီ: တိရစ္ဆာန်က အပင်ထုတ်တဲ့ အောက်ဆီဂျင် ရှူ၊ အပင်များစွာက မျိုးစေ့ဖြန့်ဖို့ တိရစ္ဆာန် လို။" },
+        ],
+      },
+      "measurement": {
+        title: "ကမ္ဘာကို တိုင်းတာခြင်း",
+        summary: "အလျား၊ ထုထည်၊ အချိန်နဲ့ အပူချိန် — နဲ့ ယူနစ်များ။",
+        sections: [
+          { heading: "ယူနစ်ပါတဲ့ ဂဏန်း", body: "သိပ္ပံက အရာတွေကို တိုင်းပြီး နှိုင်း/ပြန်လုပ်လို့ရအောင်။ အလျား မီတာ၊ ဒြပ်ထု ဂရမ်/ကီလိုဂရမ်၊ အချိန် စက္ကန့်၊ အပူချိန် ဒီဂရီ Celsius။ တိုင်းချက်မှာ ဂဏန်း နဲ့ ယူနစ် နှစ်ခုလုံး လို — '5' က အဓိပ္ပာယ်မရှိ၊ '5 cm' က ရှိ။" },
+          { heading: "မျှတ တိုင်းတာ", body: "သိပ္ပံပညာရှင်ကောင်းက ကိရိယာမှန် (အလျား ပေတံ၊ ဒြပ်ထု စကေး) သုံးပြီး ဂရုတစိုက် ဖတ်။ စမတ်ဖမ်မှာ sensor တွေက အပူချိန်၊ စိုထိုင်းဆ၊ စိုစွတ်မှုကို အဲ့လိုပဲ တိုင်း — ကမ္ဘာကို ဂဏန်း ပြောင်းပေး။" },
+        ],
+      },
+      "stem-quiz-2": {
+        title: "STEM သိပ္ပံ Quiz",
+        summary: "ပစ္စည်း၊ အား၊ စွမ်းအင်နဲ့ အာကာသ သင်ယူထားတာ စစ်ပါ။",
+        quiz: [
+          {
+            q: "ဘယ် ပစ္စည်းအခြေအနေမှာ အမှုန်တွေ ပုံသဏ္ဌာန် ခိုင်မြဲလဲ?",
+            options: ["အခဲ", "အရည်", "အခိုး", "မရှိ"],
+            explain: "အခဲမှာ အမှုန်တွေ တင်းကျပ်စွာ စုပြီး ပုံသဏ္ဌာန် ထိန်း။",
+          },
+          {
+            q: "ရေ သံသရာမှာ အငွေ့ပျံ (evaporation) ဆိုတာ?",
+            options: ["မိုးကျ", "ရေ အငွေ့ဖြစ်ပြီး တက်", "တိမ်ဖွဲ့", "ရေခဲ"],
+          },
+          {
+            q: "ကျတဲ့ မျိုးစေ့ကို မြေဆီ ဆွဲတဲ့ အားက?",
+            options: ["သံလိုက်အား", "ဆွဲငင်အား", "အသံ", "လျှပ်စစ်"],
+          },
+          {
+            q: "အပင်က အလင်းစွမ်းအင်ကို အဓိက ဘာ ပြောင်းလဲ?",
+            options: ["အသံစွမ်းအင်", "ဓာတုစွမ်းအင် (အစာ)", "လျှပ်စစ်စွမ်းအင်", "ဘာမှမ"],
+            explain: "Photosynthesis က အလင်းစွမ်းအင်ကို သကြားထဲ ဓာတုစွမ်းအင်အဖြစ် သိမ်း။",
+          },
+          {
+            q: "ချော့ချော့ (see-saw) က ဘယ် ရိုးရှင်းစက် ဥပမာလဲ?",
+            options: ["pulley", "လီဗာ", "ဘီး", "လျှောစောင်း"],
+          },
+          {
+            q: "ငါတို့ ဘယ် ဂြိုဟ်ပေါ် နေထိုင်လဲ?",
+            options: ["အင်္ဂါ", "သောကြာ", "ကမ္ဘာ", "ကြာသပတေး"],
+          },
+        ],
+      },
     },
   },
 
@@ -444,9 +572,246 @@ export const MY_OVERLAY: LearnOverlay = {
           { heading: "Iframe", body: "<iframe> က တခြားစာမျက်နှာကို သင့်ထဲ ထည့်တယ် — မြေပုံ၊ video၊ dashboard။ မယုံရတဲ့ content ကို sandbox attribute အမြဲပေးသင့်တယ် (ဒီ site က community game တွေကို လုံခြုံအောင် run တဲ့ နည်းအတိအကျပါ)။" },
         ],
       },
+      "html-elements": {
+        title: "Element နဲ့ Nesting",
+        summary: "tag တွေ content ကို ထုပ်ပြီး တစ်ခုအတွင်း တစ်ခု နေပုံ။",
+        sections: [
+          { heading: "Element = start tag + content + end tag", body: "HTML element ဆိုတာ opening tag၊ content၊ ပြီး slash ပါတဲ့ closing tag။ Element တွေ တစ်ခုအတွင်းတစ်ခု (nesting) ထားလို့ရ — ဒါပေမဲ့ ဖွင့်တဲ့ အစဉ်ပြောင်းပြန် ပိတ်ရမယ်၊ bracket ပိတ်သလိုပါ။" },
+        ],
+      },
+      "html-paragraphs": {
+        title: "Paragraph နဲ့ Whitespace",
+        summary: "space/line break တွေ ဘာလို့ ပေါင်းသွားလဲ — ဘယ်လို ထိန်းမလဲ။",
+        sections: [
+          { heading: "Browser က whitespace ပေါင်းတယ်", body: "space ဘယ်လောက်ရိုက်ရိုက်၊ line အသစ်ဘယ်လောက်ချချ HTML က တစ်ခုတည်း ပြတယ်။ line break အတွက် <br>၊ paragraph အသစ်အတွက် <p>။ space အတိအကျ ထားချင်ရင် <pre> သုံးပါ။" },
+        ],
+      },
+      "html-formatting": {
+        title: "စာသား Format tag များ",
+        summary: "bold, italic, highlight, small, deleted, sub/sup။",
+        sections: [
+          { heading: "အသွင်မဟုတ်၊ အဓိပ္ပာယ်", body: "<strong>/<b> bold၊ <em>/<i> italic၊ <mark> highlight၊ <del> ဖျက်ထား၊ <ins> ထည့်ထား၊ <sub>/<sup> အောက်/အထက်ညွှန်း။ အလေးပေးမှုက အဓိပ္ပာယ်ပါရင် <strong>/<em> ကို ဦးစားပေးပါ။" },
+        ],
+      },
+      "html-quotations": {
+        title: "ကိုးကား & Citation",
+        summary: "blockquote, q, abbr, cite နဲ့ ကိုးကားခြင်း။",
+        sections: [
+          { heading: "ကိုးကားချက် မှတ်ခြင်း", body: "<blockquote> က ရှည်တဲ့ ခွဲထုတ်ကိုးကား၊ <q> က တိုတဲ့ inline ကိုးကား (browser က quote mark ထည့်)၊ <abbr> က အတိုကောက်ကို title နဲ့၊ <cite> က ကိုးကားတဲ့ လက်ရာ အမည်။" },
+        ],
+      },
+      "html-comments": {
+        title: "Comment များ",
+        summary: "browser လျစ်လျူရှုတဲ့ မှတ်စုတွေ code ထဲ ချန်ပါ။",
+        sections: [
+          { heading: "လူအတွက် မှတ်စု", body: "<!-- နဲ့ --> ကြားက အရာအားလုံးက comment — browser က ကျော်တယ်၊ ဒါပေမဲ့ code နားလည်ဖို့ ကူညီတယ်။ ရှုပ်တဲ့နေရာ ရှင်းပြ ဒါမှမဟုတ် HTML တစ်ခုကို ခဏဖျောက်ဖို့ သုံးပါ။" },
+        ],
+      },
+      "html-colors": {
+        title: "HTML မှာ အရောင်",
+        summary: "name, hex, rgb အရောင် — ဘယ်မှာသုံးလဲ။",
+        sections: [
+          { heading: "အရောင် အမည်ပေးနည်း ၃ မျိုး", body: "အရောင်ကို keyword (tomato)၊ hex (#639922)၊ ဒါမှမဟုတ် rgb()/rgba() (အနီ-အစိမ်း-အပြာ 0–255၊ alpha နဲ့ ဖောက်ထွင်း) နဲ့ ပေးလို့ရ။ CSS မှာ color, background-color နဲ့ သတ်မှတ်တယ်။" },
+        ],
+      },
+      "html-styles": {
+        title: "style Attribute",
+        summary: "element တစ်ခုတည်းကို CSS တိုက်ရိုက် ထည့် (ဘာလို့ ရှောင်သင့်လဲ)။",
+        sections: [
+          { heading: "Inline style", body: "style attribute က element တစ်ခုပေါ် CSS တင်တယ်: style=\"color:green\"။ မြန်ပေမဲ့ content နဲ့ design ရောပြီး ပြန်မသုံးနိုင်။ တစ်ခုထက်ပိုရင် class + stylesheet ကို ဦးစားပေးပါ။" },
+        ],
+      },
+      "html-classes": {
+        title: "class Attribute",
+        summary: "CSS/JavaScript က ဆွဲကိုင်နိုင်အောင် element ကို label တပ်ပါ။",
+        sections: [
+          { heading: "ပြန်သုံးလို့ရ label", body: "class က element တစ်ခု/အများကို ပေးတဲ့ အမည်။ CSS မှာ dot selector (.card) နဲ့ အားလုံးကို တစ်ပြိုင်တည်း style ချ။ element တစ်ခုမှာ class များစွာကို space ခြားပြီး ထားလို့ရ။" },
+        ],
+      },
+      "html-id": {
+        title: "id Attribute",
+        summary: "element တစ်ခုတည်းအတွက် သီးသန့်အမည် — link/script အတွက်။",
+        sections: [
+          { heading: "page တစ်ခုမှာ id တစ်ခု", body: "id က element တစ်ခုတည်းကို သီးသန့် သတ်မှတ်တယ်။ class နဲ့မတူ၊ id တစ်ခုစီ တစ်ကြိမ်ပဲ ပါသင့်။ link (#section) နဲ့ ခုန်၊ CSS #id နဲ့ style၊ JavaScript getElementById နဲ့ ဆွဲယူ။" },
+        ],
+      },
+      "html-links-advanced": {
+        title: "Link အသေးစိတ်",
+        summary: "tab အသစ်၊ page anchor၊ email/phone link။",
+        sections: [
+          { heading: "ရိုးရိုး link ထက်ကျော်", body: "target=\"_blank\" က tab အသစ်ဖွင့် (rel=\"noopener\" ထည့်ပါ)။ href=\"#id\" က page ထဲ ခုန်၊ mailto: က email ဖွင့်၊ tel: က ဖုန်းမှာ ခေါ်ဆိုပေးတယ်။" },
+        ],
+      },
+      "html-images-advanced": {
+        title: "ပုံ: alt, figure & favicon",
+        summary: "အသုံးတည့် ပုံ၊ ခေါင်းစဉ်နဲ့ tab icon။",
+        sections: [
+          { heading: "ပုံတိုင်း ဖော်ပြပါ", body: "alt attribute က screen reader အတွက် ပုံကို ဖော်ပြ၊ ပုံ load မဖြစ်ရင်လည်း ပြ — အမြဲ ရေးပါ။ <figure> က ပုံနဲ့ <figcaption> ကို တွဲ။ favicon (head ထဲ <link>) က tab icon ကလေး။" },
+        ],
+      },
+      "html-tables-advanced": {
+        title: "Table: Span & Caption",
+        summary: "colspan, rowspan, caption နဲ့ table section။",
+        sections: [
+          { heading: "cell ပေါင်းခြင်း", body: "colspan က cell ကို column ဖြတ်ဆန့်၊ rowspan က row ဖြတ်။ <caption> က table ခေါင်းစဉ်၊ <thead>/<tbody> က header/body row တွေ ဖွဲ့စည်း/style လုပ်ဖို့ အုပ်စုဖွဲ့။" },
+        ],
+      },
+      "html-lists-advanced": {
+        title: "List: Nested & Description",
+        summary: "list ထဲ list၊ term/definition list။",
+        sections: [
+          { heading: "List အမျိုးအစား ပို", body: "<li> ထဲ <ul>/<ol> ထည့်ရင် list nested ဖြစ်။ description list <dl> က term <dt> ကို definition <dd> နဲ့ တွဲ — အပင်ဝေါဟာရ glossary အတွက် အထူးသင့်။" },
+        ],
+      },
+      "html-block-inline": {
+        title: "Block vs Inline",
+        summary: "အချို့ element စီတက်၊ အချို့ တစ်တန်းတည်း နေတာ ဘာလို့လဲ။",
+        sections: [
+          { heading: "display အမျိုးအစား ၂ ခု", body: "Block element (<div>, <p>, <h1>) က line အသစ်စ၊ width အပြည့်ယူ။ Inline element (<span>, <a>, <strong>) က တစ်တန်းတည်းမှာ လိုသလောက်ပဲ ယူ။ CSS နဲ့ ပြောင်းလို့ရ။" },
+        ],
+      },
+      "html-div-span": {
+        title: "div နဲ့ span",
+        summary: "နေရာတိုင်း သုံးမယ့် ယေဘုယျ container များ။",
+        sections: [
+          { heading: "အုပ်စုဖွဲ့ ကိရိယာ", body: "<div> က layout/style အတွက် section အုပ်စုဖွဲ့တဲ့ block container၊ <span> က line တစ်ခုရဲ့ အစိတ်အပိုင်း style ချတဲ့ inline container။ နှစ်ခုလုံး အဓိပ္ပာယ်မပါ — class နဲ့ style ချဖို့ ရှိတာ။" },
+        ],
+      },
+      "html-head": {
+        title: "<head> နဲ့ Metadata",
+        summary: "title, charset, viewport, description — မမြင်ရတဲ့ page အချက်အလက်။",
+        sections: [
+          { heading: "page အကြောင်း အချက်အလက်", body: "<head> ထဲမှာ ဧည့်သည် တိုက်ရိုက်မမြင်ရတဲ့ data — <title> (tab နာမည်)၊ <meta charset=\"utf-8\">၊ mobile အတွက် viewport meta၊ search engine ပြတဲ့ description meta။ <link> က stylesheet နဲ့ favicon ချိတ်။" },
+          { heading: "ဘာလို့ အရေးကြီးလဲ", body: "Metadata ကောင်းရင် page က mobile-friendly၊ ရှာဖွေလို့ရ၊ share လို့ကောင်းတယ်။ playground က head ကို ရေးပေးထားတာမို့ body ကို အာရုံစိုက်ရုံ — ဒါပေမဲ့ တကယ့် page တွေမှာ ဒီ tag တွေ အမြဲပါတယ်။" },
+        ],
+      },
+      "html-entities": {
+        title: "Entity & Symbol",
+        summary: "< > & လို သီးသန့်စာလုံးနဲ့ special symbol ပြပါ။",
+        sections: [
+          { heading: "special စာလုံး escape", body: "အချို့စာလုံးကို HTML က သီးသန့်ထားတယ်။ < အတွက် &lt;၊ > အတွက် &gt;၊ & အတွက် &amp;၊ non-breaking space အတွက် &nbsp;။ symbol များစွာမှာ အမည်ရှိ: &copy; ©၊ &deg; °၊ &rarr; →။" },
+        ],
+      },
+      "html-emojis": {
+        title: "Charset & Emoji",
+        summary: "UTF-8 က ဘာသာစကားတိုင်းနဲ့ emoji သုံးခွင့်ပေးပုံ။",
+        sections: [
+          { heading: "UTF-8 က ကမ္ဘာ့စာလုံး ခြုံ", body: "UTF-8 charset က ရေးသားစနစ်တိုင်းနီးပါး — မြန်မာအပါအဝင် — နဲ့ emoji (စာလုံးတွေပဲ) ကို ကိုယ်စားပြုနိုင်။ <meta charset=\"utf-8\"> (playground က ပေးပြီး) ဆိုရင် 🌱 ဒါမှမဟုတ် မြန်မာ ကို HTML ထဲ တိုက်ရိုက် paste လို့ရ။" },
+        ],
+      },
+      "html-input-types": {
+        title: "Form Input Type များ",
+        summary: "email, number, date, range, colour စသည်။",
+        sections: [
+          { heading: "အလုပ်နဲ့ ကိုက်တဲ့ input", body: "type attribute က <input> လုပ်ဆောင်ပုံ ပြောင်း: email/number က content စစ်၊ date က picker ပြ၊ range က slider၊ color က swatch၊ checkbox/radio က ရွေးချယ်ဖို့။ mobile keyboard ပါ လိုက်ပြောင်း။" },
+        ],
+      },
+      "html-input-attributes": {
+        title: "Input Attribute များ",
+        summary: "placeholder, required, value, readonly, disabled။",
+        sections: [
+          { heading: "input လမ်းညွှန်/စစ်ဆေး", body: "placeholder က hint ပြ၊ value က default၊ required က ဗလာ submit ပိတ်၊ readonly က မပြင်နိုင်တဲ့ တန်ဖိုးပြ၊ disabled က မီးခိုးရောင်ပြ။ <label> က စာသားကို field နဲ့ တွဲ — label နှိပ်ရင် field focus ဖြစ်။" },
+        ],
+      },
+      "html-layout": {
+        title: "Page Layout",
+        summary: "header, nav, main, aside, footer စီစဉ်ခြင်း။",
+        sections: [
+          { heading: "semantic ကျောရိုး", body: "ပုံမှန် page က အပေါ်မှာ <header>၊ link အတွက် <nav>၊ အဓိက content အတွက် <main> (<article> နဲ့ <aside> ပါ)၊ အောက်မှာ <footer>။ ဒီ element တွေက layout ကို ဖော်ပြတာမို့ browser/search engine/screen reader နားလည်။" },
+        ],
+      },
+      "html-responsive": {
+        title: "Responsive အခြေခံ",
+        summary: "viewport နဲ့ ပြောင်းလွယ်ဆိုက်နဲ့ ဖုန်းမှာ ကိုက်အောင်။",
+        sections: [
+          { heading: "page တစ်ခု၊ screen တိုင်း", body: "viewport meta tag က ဖုန်းကို သူ့တကယ့် width သုံးခိုင်း။ ပြီးရင် ပြောင်းလွယ်ဆိုက် — percentage, max-width, ပုံ max-width:100% — သုံးရင် content က ကိုက်အောင် ချုံ့။ media query (CSS သင်တန်းမှာ) က screen size တစ်ခုစီ ချိန်ညှိ။" },
+        ],
+      },
       "html-quiz": {
         title: "HTML Quiz",
-        summary: "HTML သင်တန်းတစ်ခုလုံးအတွက် မေးခွန်း ဆယ်ခု။",
+        summary: "HTML သင်တန်းတစ်ခုလုံးအတွက် မေးခွန်း ၁၄ ခု။",
+        quiz: [
+          {
+            q: "HTML က ဘာအတွက် အတိုကောက်လဲ?",
+            options: [
+              "HyperText Markup Language",
+              "High Tech Modern Language",
+              "Home Tool Markup List",
+              "Hyperlink Text Machine Language",
+            ],
+          },
+          {
+            q: "အရေးအကြီးဆုံး ခေါင်းစဉ် ဖန်တီးတဲ့ tag က?",
+            options: ["<h6>", "<head>", "<h1>", "<title>"],
+            explain: "<h1> က အထက်ဆုံး ခေါင်းစဉ်၊ <head> က page metadata ။",
+          },
+          {
+            q: "link ရဲ့ ဦးတည်ရာကို ဘယ် attribute က ကိုင်လဲ?",
+            options: ["src", "href", "link", "to"],
+          },
+          {
+            q: "ပုံ ပြတဲ့ tag က?",
+            options: ["<picture-file>", "<image>", "<img>", "<src>"],
+          },
+          {
+            q: "နံပါတ်စဉ် list က ဘယ် tag သုံးလဲ?",
+            options: ["<ul>", "<ol>", "<li> တစ်ခုတည်း", "<list>"],
+            explain: "<ol> = နံပါတ်စဉ်၊ <ul> = bullet ။",
+          },
+          {
+            q: "ဘယ် input element က dropdown ဖြစ်လဲ?",
+            options: ["<textarea>", "<select>", "<button>", "<option> တစ်ခုတည်း"],
+          },
+          {
+            q: "ပုံမှာ alt စာသား ဘာလို့ ရေးရလဲ?",
+            options: [
+              "ပုံ ပိုမြန် load ဖို့",
+              "screen reader အတွက်နဲ့ ပုံ load မဖြစ်ရင် ဖော်ပြဖို့",
+              "CSS အတွက် မဖြစ်မနေ",
+              "ပုံ ဖျောက်ဖို့",
+            ],
+          },
+          {
+            q: "ဘယ်ဟာက semantic layout tag လဲ?",
+            options: ["<div>", "<span>", "<article>", "<b>"],
+          },
+          {
+            q: "HTML မှာ comment ဘယ်လို ရေးလဲ?",
+            options: ["// ဒီလို", "<!-- ဒီလို -->", "/* ဒီလို */", "# ဒီလို"],
+          },
+          {
+            q: "less-than (<) ကို ဘယ် entity က ပြလဲ?",
+            options: ["&amp;", "&lt;", "&gt;", "&quot;"],
+            explain: "&lt; က < ၊ &gt; က > ။",
+          },
+          {
+            q: "element သီးသန့်တစ်ခုကို style/script လုပ်ဖို့ ဘယ် attribute လဲ?",
+            options: ["class", "id", "name", "type"],
+            explain: "id က page တစ်ခုမှာ သီးသန့်၊ class က အများ မျှသုံးလို့ရ။",
+          },
+          {
+            q: "ဗလာ field submit မဖြစ်အောင် တားတဲ့ input attribute က?",
+            options: ["placeholder", "readonly", "required", "value"],
+          },
+          {
+            q: "ဖုန်း screen နဲ့ ကိုက်စေတဲ့ meta tag က?",
+            options: [
+              '<meta charset="utf-8">',
+              '<meta name="viewport" content="width=device-width, initial-scale=1">',
+              '<meta name="description">',
+              "<title>",
+            ],
+          },
+          {
+            q: "<div> လို block element က …",
+            options: [
+              "စာကြောင်းအတွင်း နေတယ်",
+              "line အသစ်စပြီး width အပြည့်ယူတယ်",
+              "အမြဲ မမြင်ရဘူး",
+              "ပုံပဲ ထည့်လို့ရတယ်",
+            ],
+          },
+        ],
       },
     },
   },
