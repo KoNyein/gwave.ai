@@ -30,6 +30,8 @@ export interface Lesson {
   quiz?: QuizQuestion[];
   /** For code lessons: starter files for the playground. */
   code?: { html: string; css: string; js: string };
+  /** Optional YouTube video id embedded at the top of the lesson. */
+  youtubeId?: string;
 }
 
 export interface Track {

@@ -11,8 +11,12 @@ import {
 import { Quiz } from "@/components/learn/quiz";
 import { RobotGame } from "@/components/learn/robot-game";
 import { Card, CardContent } from "@/components/ui/card";
+import { getLocale } from "next-intl/server";
+
+import { LessonVideo } from "@/components/learn/lesson-video";
 import { ageBandOf, getCurrentProfile } from "@/lib/auth";
 import { getProjectForLesson } from "@/lib/db/learn";
+import { localizeLesson } from "@/lib/learn/i18n";
 import { getLesson, tracksForBand } from "@/lib/learn/lessons";
 
 export const dynamic = "force-dynamic";
@@ -37,11 +41,14 @@ export default async function LessonPage({
 
   const found = getLesson(params.track, params.lesson);
   if (!found) notFound();
-  const { track, lesson } = found;
 
   const band = ageBandOf(profile.birth_date);
-  const allowed = tracksForBand(band).some((t) => t.slug === track.slug);
+  const allowed = tracksForBand(band).some((t) => t.slug === found.track.slug);
   if (!allowed) redirect("/learn");
+
+  // Localize lesson content to the viewer's language (falls back to English).
+  const locale = await getLocale();
+  const { track, lesson } = localizeLesson(found.track, found.lesson, locale);
 
   const index = track.lessons.findIndex((l) => l.slug === lesson.slug);
   const next = track.lessons[index + 1];
@@ -79,6 +86,10 @@ export default async function LessonPage({
         <h1 className="text-xl font-bold">{lesson.title}</h1>
         <p className="text-sm text-muted-foreground">{lesson.summary}</p>
       </div>
+
+      {lesson.youtubeId ? (
+        <LessonVideo youtubeId={lesson.youtubeId} title={lesson.title} />
+      ) : null}
 
       {lesson.sections?.map((section, i) => (
         <Card key={i}>

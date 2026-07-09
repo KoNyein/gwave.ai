@@ -15,8 +15,9 @@ const csp = [
   "font-src 'self' data:",
   // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io",
-  // Sandboxed srcdoc iframes power the /learn code playground.
-  "frame-src 'self'",
+  // 'self' for sandboxed srcdoc iframes (/learn playground & games);
+  // youtube-nocookie for embedded video lessons.
+  "frame-src 'self' https://www.youtube-nocookie.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

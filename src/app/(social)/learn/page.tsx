@@ -20,12 +20,15 @@ import {
 
 import { Card, CardContent } from "@/components/ui/card";
 import { ageBandOf, getCurrentProfile } from "@/lib/auth";
+import { getLocale } from "next-intl/server";
+
 import { LevelBadge } from "@/components/learn/level-badge";
 import {
   getLearningPoints,
   getProgressForUser,
   getResumePointForUser,
 } from "@/lib/db/learn";
+import { localizeTrack, localizedLessonTitle } from "@/lib/learn/i18n";
 import { headingForBand, tracksForBand } from "@/lib/learn/lessons";
 
 export const metadata = { title: "Learn" };
@@ -48,7 +51,8 @@ export default async function LearnPage() {
   if (!profile) redirect("/login");
 
   const band = ageBandOf(profile.birth_date);
-  const tracks = tracksForBand(band);
+  const locale = await getLocale();
+  const tracks = tracksForBand(band).map((t) => localizeTrack(t, locale));
   const showGame = band === "child" || band === "preteen" || band === "unknown";
 
   const [progressRows, resume, points] = await Promise.all([
@@ -114,7 +118,14 @@ export default async function LearnPage() {
                 <p className="text-xs font-medium text-primary">
                   Continue learning
                 </p>
-                <p className="font-semibold">{resume.lessonTitle}</p>
+                <p className="font-semibold">
+                  {localizedLessonTitle(
+                    resume.trackSlug,
+                    resume.lessonSlug,
+                    resume.lessonTitle,
+                    locale,
+                  )}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {resume.trackTitle} · {resume.progressPct}% done
                 </p>
