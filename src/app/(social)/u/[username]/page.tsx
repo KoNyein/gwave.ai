@@ -151,7 +151,11 @@ export default async function ProfilePage({
               {projects.map((project) => (
                 <Link
                   key={project.id}
-                  href={`/learn/${project.track_slug}/${project.lesson_slug}`}
+                  href={
+                    project.track_slug === "playground"
+                      ? "/learn/playground"
+                      : `/learn/${project.track_slug}/${project.lesson_slug}`
+                  }
                   className="rounded-lg border p-3 transition-colors hover:bg-muted"
                 >
                   <p className="truncate text-sm font-medium">{project.title}</p>
