@@ -4,6 +4,7 @@
 
 import type { AgeBand } from "@/lib/age";
 import { AGRI_EXTRA } from "@/lib/learn/agri-extra";
+import { ELECTRONICS_EXTRA } from "@/lib/learn/electronics-extra";
 import { STEM_EXTRA } from "@/lib/learn/stem-extra";
 
 export type LessonKind =
@@ -212,6 +213,7 @@ const electronicsTrack: Track = {
         },
       ],
     },
+    ...ELECTRONICS_EXTRA,
     {
       slug: "electronics-iot-quiz",
       title: "Electronics & IoT Quiz",
@@ -256,6 +258,73 @@ const electronicsTrack: Track = {
           options: ["MQTT", "PDF", "HTML", "USB"],
           answer: 0,
           explain: "MQTT is a lightweight publish/subscribe messaging protocol for devices.",
+        },
+        {
+          q: "Ohm's law says voltage equals…",
+          options: [
+            "current + resistance",
+            "current × resistance",
+            "current − resistance",
+            "resistance ÷ current",
+          ],
+          answer: 1,
+          explain: "V = I × R ties voltage, current and resistance together.",
+        },
+        {
+          q: "Which material is a good conductor?",
+          options: ["Rubber", "Copper", "Glass", "Dry wood"],
+          answer: 1,
+          explain: "Metals like copper let current flow easily; plastic and glass insulate.",
+        },
+        {
+          q: "Why does an LED need a resistor in series?",
+          options: [
+            "To make it brighter",
+            "To limit current so it does not burn out",
+            "To change its colour",
+            "It does not need one",
+          ],
+          answer: 1,
+        },
+        {
+          q: "In a series circuit, if one part breaks…",
+          options: [
+            "Nothing changes",
+            "The whole loop opens and current stops",
+            "Only that part keeps working",
+            "The voltage doubles",
+          ],
+          answer: 1,
+        },
+        {
+          q: "What is a microcontroller?",
+          options: [
+            "A type of battery",
+            "A tiny computer on a chip that reads inputs and controls outputs",
+            "A kind of wire",
+            "A screen",
+          ],
+          answer: 1,
+        },
+        {
+          q: "What does a relay let you do?",
+          options: [
+            "Store files",
+            "Use a small signal to switch a much larger, separate circuit",
+            "Measure temperature",
+            "Charge a phone faster",
+          ],
+          answer: 1,
+        },
+        {
+          q: "A good automation rule uses a gap (turn on at 70%, off at 60%) to…",
+          options: [
+            "Save files",
+            "Stop the device rapidly flicking on and off around one level",
+            "Increase voltage",
+            "Make the sensor faster",
+          ],
+          answer: 1,
         },
       ],
     },
