@@ -303,6 +303,7 @@ export const cssTrack: Track = {
       summary: "Target elements and paint them.",
       minutes: 10,
       kind: "code",
+      youtubeQuery: "CSS selectors tutorial",
       sections: [
         {
           heading: "Three ways to select",
@@ -322,16 +323,21 @@ export const cssTrack: Track = {
       summary: "Padding, border and margin — every element is a box.",
       minutes: 12,
       kind: "code",
+      youtubeQuery: "CSS box model explained",
       sections: [
         {
           heading: "Content → padding → border → margin",
-          body: "Every element is a rectangle. Padding is space INSIDE the border, margin is space OUTSIDE it. Understanding this solves most 'why is there a gap' mysteries.",
-          code: ".box {\n  padding: 16px;   /* inside */\n  border: 2px solid green;\n  margin: 24px;    /* outside */\n}",
+          body: "One idea unlocks most of CSS layout: every element on the page is a rectangular box, and that box has four layers wrapped around its content. Working outward from the middle: the content itself, then padding (space INSIDE the border that pushes the border away from the content), then the border, then margin (space OUTSIDE the border that pushes other elements away). The diagram shows these four layers nested inside one another.\n\nOnce you can picture this, most 'why is there a gap here?' and 'why won't these two boxes touch?' puzzles answer themselves — the gap is almost always padding or margin.",
+          code: ".box {\n  padding: 16px;   /* inside the border */\n  border: 2px solid green;\n  margin: 24px;    /* outside the border */\n}",
           image: {
             src: BOX_MODEL_SVG,
             alt: "Nested boxes: content inside padding, inside border, inside margin.",
             caption: "The box model: content → padding → border → margin.",
           },
+        },
+        {
+          heading: "Padding vs. margin — when to use which",
+          body: "They look similar but do different jobs. Use padding when you want space that is part of the element — for example, breathing room inside a button so the text does not touch the edge; padding takes the element's background colour. Use margin to push an element away from its neighbours — the space between two cards. A handy rule: padding is space you can 'see' (it is coloured by the box); margin is invisible space between boxes.",
         },
       ],
       code: {
@@ -346,6 +352,7 @@ export const cssTrack: Track = {
       summary: "Font families, sizes, weights and spacing.",
       minutes: 10,
       kind: "code",
+      youtubeQuery: "CSS typography fonts tutorial",
       sections: [
         {
           heading: "The type toolbox",
@@ -364,6 +371,7 @@ export const cssTrack: Track = {
       summary: "One-dimensional layout: rows, columns, centring.",
       minutes: 14,
       kind: "code",
+      youtubeQuery: "CSS flexbox tutorial",
       sections: [
         {
           heading: "display: flex",
@@ -388,6 +396,7 @@ export const cssTrack: Track = {
       summary: "Two-dimensional layout for cards and galleries.",
       minutes: 14,
       kind: "code",
+      youtubeQuery: "CSS grid layout tutorial",
       sections: [
         {
           heading: "Rows AND columns",
@@ -407,6 +416,7 @@ export const cssTrack: Track = {
       summary: "Smooth hovers and keyframe animations.",
       minutes: 12,
       kind: "code",
+      youtubeQuery: "CSS animations and transitions",
       sections: [
         {
           heading: "Transitions",
@@ -426,6 +436,7 @@ export const cssTrack: Track = {
       summary: "Media queries — one page that fits every screen.",
       minutes: 12,
       kind: "code",
+      youtubeQuery: "CSS media queries responsive",
       sections: [
         {
           heading: "Media queries",

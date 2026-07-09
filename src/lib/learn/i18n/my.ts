@@ -1699,6 +1699,7 @@ export const MY_OVERLAY: LearnOverlay = {
       "css-selectors": {
         title: "Selector နဲ့ အရောင်များ",
         summary: "element တွေကို ရွေးပြီး ဆေးသုတ်ပါ။",
+        youtubeQuery: "CSS selector အခြေခံ မြန်မာ",
         sections: [
           { heading: "ရွေးနည်း သုံးမျိုး", body: "tag selector (p) က စာပိုဒ်တိုင်းကို style လုပ်တယ်၊ class selector (.note) က class=\"note\" ရှိတဲ့ element တွေ၊ id selector (#title) က အဲဒီ id ရှိတဲ့ element တစ်ခုတည်း။ အရောင်တွေက အမည်၊ #3B6D11 လို hex၊ ဒါမှမဟုတ် rgb()/hsl() ဖြစ်နိုင်တယ်။" },
         ],
@@ -1706,8 +1707,10 @@ export const MY_OVERLAY: LearnOverlay = {
       "css-box-model": {
         title: "Box Model",
         summary: "padding, border နဲ့ margin — element တိုင်းက box တစ်ခု။",
+        youtubeQuery: "CSS box model မြန်မာ",
         sections: [
-          { heading: "content → padding → border → margin", body: "element တိုင်းက စတုဂံ တစ်ခု။ padding က border အတွင်းဘက် နေရာလွတ်၊ margin က အပြင်ဘက် နေရာလွတ်။ ဒါကို နားလည်ရင် 'ဘာလို့ ကွက်လပ်ရှိတာလဲ' ပြဿနာ အများစု ဖြေရှင်းနိုင်တယ်။", caption: "Box model: content → padding → border → margin ။" },
+          { heading: "content → padding → border → margin", body: "CSS layout အများစုကို ဖွင့်ပေးတဲ့ အတွေးတစ်ခု — စာမျက်နှာပေါ်က element တိုင်းက စတုဂံ box တစ်ခုဖြစ်ပြီး အဲဒီ box မှာ content ကို ဝိုင်းထားတဲ့ အလွှာ လေးထပ် ရှိတယ်။ အလယ်ကနေ အပြင်သို့ — content ကိုယ်တိုင်၊ ပြီးရင် padding (border ကို content ကနေ တွန်းဖယ်တဲ့ အတွင်းဘက် နေရာလွတ်)၊ ပြီးရင် border၊ ပြီးရင် margin (အခြား element တွေကို တွန်းဖယ်တဲ့ အပြင်ဘက် နေရာလွတ်)။ ပုံမှာ ဒီ လေးထပ် တစ်ခုအတွင်း တစ်ခု ထပ်ထားတာ ပြတယ်။\n\nဒါကို မြင်ယောင်နိုင်ရင် 'ဒီမှာ ဘာလို့ ကွက်လပ်ရှိတာလဲ'၊ 'ဒီ box နှစ်ခု ဘာလို့ မထိတာလဲ' ပဟေဠိ အများစု ကိုယ့်ဟာကိုယ် ဖြေရှင်းသွားတယ် — ကွက်လပ်က အမြဲလိုလို padding သို့ margin ပါ။", caption: "Box model: content → padding → border → margin ။", alt: "content ကို padding, border, margin က အထပ်လိုက် ဝိုင်းထားတဲ့ box ပုံ။" },
+          { heading: "padding vs margin — ဘယ်တော့ ဘယ်ဟာ", body: "နှစ်ခု တူသလို ဖြစ်ပေမဲ့ အလုပ်မတူဘူး။ element ရဲ့ အစိတ်အပိုင်း ဖြစ်တဲ့ နေရာလွတ် လိုချင်ရင် padding သုံး — ဥပမာ ခလုတ်ထဲ စာသား အနားနဲ့ မထိအောင် အသက်ရှူခွင့်၊ padding က element ရဲ့ background အရောင် ယူတယ်။ element ကို အိမ်နီးချင်းတွေကနေ တွန်းဖယ်ချင်ရင် margin သုံး — card နှစ်ခုကြားက နေရာလွတ်။ မှတ်ရလွယ်တဲ့ စည်း — padding က 'မြင်ရတဲ့' နေရာလွတ် (box အရောင်တင်)၊ margin က box တွေကြားက မမြင်ရတဲ့ နေရာလွတ်။" },
         ],
       },
       "css-typography": {
@@ -1720,6 +1723,7 @@ export const MY_OVERLAY: LearnOverlay = {
       "css-flexbox": {
         title: "Flexbox",
         summary: "တစ်ဖက်မြင် layout — အတန်း၊ ကော်လံ၊ ဗဟိုချ။",
+        youtubeQuery: "CSS flexbox မြန်မာ",
         sections: [
           { heading: "display: flex", body: "container ပေါ်မှာ display:flex ထားရင် သားသမီး element တွေ အတန်းလိုက် စီတယ်။ justify-content က အတန်းတလျှောက်၊ align-items က ဖြတ်ကာ၊ gap က ကြားထဲ နေရာလွတ်ထည့်၊ flex-direction:column က ဒေါင်လိုက် စီပေးတယ်။", caption: "Flex item တွေ main axis တလျှောက် စီ၊ cross axis က ထောင့်မှန်။" },
         ],

@@ -55,6 +55,7 @@ export const CSS_EXTRA: Lesson[] = [
     summary: "relative, absolute, fixed, sticky — and stacking order.",
     minutes: 12,
     kind: "code",
+      youtubeQuery: "CSS position relative absolute fixed",
     sections: [
       {
         heading: "The position property",
@@ -74,6 +75,7 @@ export const CSS_EXTRA: Lesson[] = [
     summary: "Custom properties — theme your whole page from one place.",
     minutes: 10,
     kind: "code",
+      youtubeQuery: "CSS variables custom properties",
     sections: [
       {
         heading: "Define once, use everywhere",
@@ -93,6 +95,7 @@ export const CSS_EXTRA: Lesson[] = [
     summary: "Depth and colour blends that make UIs feel polished.",
     minutes: 10,
     kind: "code",
+      youtubeQuery: "CSS box-shadow and gradients",
     sections: [
       {
         heading: "box-shadow and linear-gradient",
