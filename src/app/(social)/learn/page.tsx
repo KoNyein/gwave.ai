@@ -5,8 +5,10 @@ import {
   BookOpen,
   Bot,
   Braces,
+  BrainCircuit,
   Code2,
   Cpu,
+  Database,
   FileCode2,
   FlaskConical,
   Gamepad2,
@@ -45,6 +47,8 @@ const ICONS: Record<string, LucideIcon> = {
   Palette,
   Braces,
   Terminal,
+  Database,
+  BrainCircuit,
 };
 
 export default async function LearnPage() {

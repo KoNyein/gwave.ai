@@ -618,7 +618,8 @@ export const pythonTrack: Track = {
       title: "Python Introduction",
       summary: "What Python is, printing, and running your first lines.",
       minutes: 8,
-      kind: "reading",
+      kind: "python",
+      pythonCode: "print(\"Hello, gwave.ai!\")\nprint(\"2 + 3 =\", 2 + 3)\n\n# Try changing the text, then press Run.\nname = \"Mai\"\nprint(\"Grower:\", name)",
       sections: [
         {
           heading: "Why Python",
@@ -641,7 +642,8 @@ export const pythonTrack: Track = {
       title: "Variables & Types",
       summary: "Numbers, strings, booleans and f-strings.",
       minutes: 10,
-      kind: "reading",
+      kind: "python",
+      pythonCode: "name = \"Mai\"\nplants = 3\nheight = 12.5\nis_growing = True\n\nprint(f\"{name} is growing {plants} plants\")\nprint(\"Tallest:\", height, \"cm\")\nprint(\"Type of plants:\", type(plants).__name__)\nprint(\"Growing?\", is_growing)",
       sections: [
         {
           heading: "No declarations needed",
@@ -665,7 +667,8 @@ export const pythonTrack: Track = {
       title: "If / Elif / Else",
       summary: "Decisions with indentation — Python's signature style.",
       minutes: 10,
-      kind: "reading",
+      kind: "python",
+      pythonCode: "ec = 1.4\n\nif ec < 1.0:\n    print(\"Feed is gentle\")\nelif ec < 2.0:\n    print(\"Feed is medium\")\nelse:\n    print(\"Feed is strong\")\n\ntemp = 26\nhumid = 65\nif temp > 24 and humid > 60:\n    print(\"Turn on the exhaust fan\")",
       sections: [
         {
           heading: "Indentation IS the syntax",
@@ -684,7 +687,8 @@ export const pythonTrack: Track = {
       title: "Loops",
       summary: "for, while, range() and looping over lists.",
       minutes: 10,
-      kind: "reading",
+      kind: "python",
+      pythonCode: "for day in range(1, 8):\n    if day % 2 == 1:\n        print(f\"Day {day}: water\")\n    else:\n        print(f\"Day {day}: rest\")\n\nplants = [\"Blue Dream\", \"OG Kush\", \"White Widow\"]\nfor plant in plants:\n    print(\"Checking\", plant)",
       sections: [
         {
           heading: "for + range",
@@ -708,7 +712,8 @@ export const pythonTrack: Track = {
       title: "Functions",
       summary: "def, parameters, return values and defaults.",
       minutes: 10,
-      kind: "reading",
+      kind: "python",
+      pythonCode: "def ml_for_litres(litres, ml_per_litre):\n    return litres * ml_per_litre\n\nprint(ml_for_litres(10, 2))\nprint(ml_for_litres(25, 1.5))\n\ndef greet(name, lang=\"en\"):\n    return f\"Hello {name}!\" if lang == \"en\" else f\"Mingalaba {name}!\"\n\nprint(greet(\"Mai\"))\nprint(greet(\"Mai\", \"my\"))",
       sections: [
         {
           heading: "def defines, return answers",
@@ -727,7 +732,8 @@ export const pythonTrack: Track = {
       title: "Lists & Dictionaries",
       summary: "Python's two workhorse containers.",
       minutes: 12,
-      kind: "reading",
+      kind: "python",
+      pythonCode: "plants = [\"Blue Dream\", \"OG Kush\"]\nplants.append(\"White Widow\")\nprint(\"All:\", plants)\nprint(\"First:\", plants[0], \"\u00b7 Count:\", len(plants))\n\nplant = {\"name\": \"Blue Dream\", \"weeks\": 3, \"healthy\": True}\nplant[\"weeks\"] = 4\nfor key, value in plant.items():\n    print(key, \"->\", value)",
       sections: [
         {
           heading: "Lists",

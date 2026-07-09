@@ -959,6 +959,21 @@
     "reject": "Reject",
     "status_pending": "Pending",
     "status_approved": "Approved",
-    "status_rejected": "Rejected"
+    "status_rejected": "Rejected",
+    "runPython": "Run",
+    "loadingPython": "Loading Python…",
+    "running": "Running…",
+    "output": "Output",
+    "pythonHint": "Press Run to execute your Python code.",
+    "reset": "Reset",
+    "runQuery": "Run query",
+    "loadingSql": "Loading SQL engine…",
+    "result": "Result",
+    "sqlNoRows": "Query ran — no rows returned.",
+    "sqlHint": "Press Run to execute your SQL against the demo database.",
+    "stop": "Stop",
+    "runTimeout": "Stopped — this run took too long (an infinite loop?).",
+    "runStopped": "Stopped.",
+    "engineError": "Could not load the code engine. Check your connection and try again."
   }
 }

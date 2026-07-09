@@ -7,14 +7,20 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 // the Supabase project (REST, storage, realtime websockets).
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  // cdn.jsdelivr.net serves Pyodide (Python-in-WebAssembly) for the Python
+  // playground; 'wasm-unsafe-eval' lets its WASM compile.
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net",
+  // Blob-URL Web Workers run Pyodide/sql.js off the main thread so runaway
+  // learner code can't freeze the tab; importScripts inside them is covered
+  // by script-src above.
+  "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
   // *.tile.openstreetmap.org serves the Leaflet map tiles for location share.
   "img-src 'self' blob: data: https://*.supabase.co https://lh3.googleusercontent.com https://image.mux.com https://*.tile.openstreetmap.org",
   "media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com",
   "font-src 'self' data:",
   // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net",
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
   "frame-src 'self' https://www.youtube-nocookie.com",

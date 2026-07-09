@@ -959,6 +959,21 @@
     "reject": "ปฏิเสธ",
     "status_pending": "รอตรวจสอบ",
     "status_approved": "อนุมัติแล้ว",
-    "status_rejected": "ถูกปฏิเสธ"
+    "status_rejected": "ถูกปฏิเสธ",
+    "runPython": "รัน",
+    "loadingPython": "กำลังโหลด Python…",
+    "running": "กำลังรัน…",
+    "output": "ผลลัพธ์",
+    "pythonHint": "กด Run เพื่อรันโค้ด Python",
+    "reset": "รีเซ็ต",
+    "runQuery": "รันคำสั่ง",
+    "loadingSql": "กำลังโหลดเครื่องมือ SQL…",
+    "result": "ผลลัพธ์",
+    "sqlNoRows": "รันแล้ว — ไม่มีแถวข้อมูลที่ส่งกลับ",
+    "sqlHint": "กดรันเพื่อประมวลผล SQL ของคุณกับฐานข้อมูลตัวอย่าง",
+    "stop": "หยุด",
+    "runTimeout": "หยุดแล้ว — การรันนี้ใช้เวลานานเกินไป (ลูปไม่รู้จบ?)",
+    "runStopped": "หยุดแล้ว",
+    "engineError": "โหลดเอนจินโค้ดไม่สำเร็จ ตรวจสอบการเชื่อมต่อแล้วลองใหม่"
   }
 }
