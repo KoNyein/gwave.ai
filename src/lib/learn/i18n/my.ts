@@ -246,6 +246,240 @@ export const MY_OVERLAY: LearnOverlay = {
           },
         ],
       },
+      "electricity-flow": {
+        title: "လျှပ်စစ် ဆိုတာ ဘာလဲ?",
+        summary: "electronic ပစ္စည်းတိုင်း စွမ်းအားပေးတဲ့ သေးငယ်တဲ့ charge စီးဆင်းမှု။",
+        sections: [
+          { heading: "Charge ရွေ့လျားခြင်း", body: "အရာအားလုံး atom နဲ့ ဖွဲ့၊ atom ထဲ electron ဆိုတဲ့ အနုမြူသေးသေးတွေ negative charge သယ်တယ်။ Electron တွေ material တစ်ခုကနေ အတူ ရွေ့တဲ့အခါ အဲဒီ စီးဆင်းမှုက electric current — electronic ပစ္စည်းတိုင်းရဲ့ အခြေခံ။" },
+          { heading: "တွန်းအားနဲ့ စီးဆင်း", body: "လျှပ်စစ်က ရွေ့ဖို့ တွန်းအား လိုတယ်။ Battery သို့ power supply က အဲဒီ တွန်းအား (voltage) ပေးတယ်။ circuit တစ်ပတ်လုံး တွန်းတဲ့ တည်ငြိမ် charge စီးက current — ညီညာတဲ့ ပိုက်ထဲ ရေ ငြိမ်နေသလိုပါ။" },
+          { heading: "ဘာလို့ အသုံးဝင်လဲ", body: "ရွေ့တဲ့ charge ကို အလင်း၊ အပူ၊ အသံ၊ လှုပ်ရှားမှု ဖြစ်အောင် သို့ သတင်းအချက်အလက် သယ်ဖို့ သုံးနိုင်တယ်။ ဒါကြောင့် မမြင်ရတဲ့ စီးဆင်းမှုတစ်ခုက မီး၊ motor၊ ဖုန်း၊ လယ်ယာ sensor အားလုံး စွမ်းအားပေးနိုင်တာ — မှန်တဲ့ ပစ္စည်းနဲ့ လမ်းညွှန်ရုံပါ။" },
+        ],
+      },
+      "voltage-current-resistance": {
+        title: "Voltage, Current နဲ့ Resistance",
+        summary: "circuit တိုင်းရဲ့ အနှစ်သာရ အတွေး သုံးခု။",
+        sections: [
+          { heading: "ရေပိုက် ပုံဥပမာ", body: "ပိုက်ထဲ ရေကို စဉ်းစားပါ။ Voltage က ရေတွန်းတဲ့ ဖိအား၊ current က တစ်နေရာကို တစ်စက္ကန့် ဘယ်လောက် ရေဖြတ်စီးလဲ၊ resistance က ပိုက် ဘယ်လောက်ကျဉ်းလဲ။ လျှပ်စစ်က အလွန်ဆင်တူ ဆောင်ရွက်လို့ ဒါ အသုံးဝင်တဲ့ ပုံ။" },
+          { heading: "Ohm's law", body: "ဒီ သုံးခု ရိုးရှင်းတဲ့ စည်း Ohm's law နဲ့ ချိတ် — voltage = current × resistance။ Voltage တင်ရင် current ပိုစီး၊ resistance တင်ရင် current နည်း။ အခြေခံ circuit သင်္ချာ အားလုံးလိုလို ဒီကနေ စ။" },
+          { heading: "ယူနစ်", body: "Voltage ကို volt (V)၊ current ကို ampere/'amp' (A)၊ resistance ကို ohm (Ω) နဲ့ တိုင်း။ LED circuit သေးသေးက volt အနည်းငယ်နဲ့ amp ရဲ့ ထောင်ပုံတစ်ပုံလောက်နဲ့ အလုပ်လုပ် — ဂဏန်းသေးသေးတွေ အသုံးဝင်တဲ့ အလုပ်လုပ်။" },
+        ],
+      },
+      "conductors-insulators": {
+        title: "Conductor နဲ့ Insulator",
+        summary: "အချို့ကို လျှပ်စစ်ဖြတ်ပြီး အချို့ကို မဖြတ်ရတဲ့ အကြောင်း။",
+        sections: [
+          { heading: "Conductor က charge ဖြတ်ခွင့်ပေး", body: "Conductor က electric current လွယ်လွယ် စီးခွင့်ပေးတဲ့ material။ သတ္တုအများ — ကြေးနီ၊ အလူမီနီယမ်၊ ရွှေ — က conductor ကောင်းလို့ ဝါယာကြိုးတွေ သတ္တုနဲ့ လုပ်တယ်။ သူတို့ electron တွေ လွတ်လွတ်လပ်လပ် ရွေ့လို့ charge က resistance နည်းနည်းနဲ့ ဖြတ်။" },
+          { heading: "Insulator က ပိတ်ဆို့", body: "Insulator က current စီးဆင်းမှု ခုခံတယ်။ ပလတ်စတစ်၊ ရာဘာ၊ ဖန်၊ ခြောက်တဲ့ သစ်သားက electron တွေ တင်းကျပ် ကိုင်လို့ charge မဖြတ်နိုင်။ ဝါယာပေါ်က ပလတ်စတစ် အလွှာက current ကို သတ္တုထဲ ထားပြီး သင့်ကို လုံခြုံစေတဲ့ insulator။" },
+          { heading: "အလယ်: semiconductor", body: "Silicon လို material အချို့ နှစ်ခုကြားမှာ ရှိပြီး အခြေအနေပေါ်မူတည်ပြီး conduct လုပ်/မလုပ် စေနိုင်။ ဒီ 'semiconductor' တွေက chip၊ sensor၊ smart device run တဲ့ microcontroller တွေရဲ့ အခြေခံ။" },
+        ],
+      },
+      "battery-power": {
+        title: "Battery နဲ့ Power",
+        summary: "တွန်းအား ဘယ်ကလာ၊ ဘယ်လို ကုန်လဲ။",
+        sections: [
+          { heading: "ဓာတုနည်းနဲ့ စွမ်းအင် သိုလှောင်", body: "Battery က စွမ်းအင်ကို ဓာတုပစ္စည်းထဲ သိုပြီး circuit နဲ့ ချိတ်တဲ့အခါ လျှပ်စစ်အဖြစ် ထုတ်။ အထဲမှာ react မှုက electron တွေကို အစွန်းတစ်ဖက် (negative) ကနေ တွန်းထုတ်၊ တစ်ဖက် (positive) ကို ဆွဲသွင်း၊ current ကို ပတ်တွန်း။" },
+          { heading: "Voltage နဲ့ capacity", body: "Battery ကို သူ့ voltage (တွန်းအား၊ 1.5V/3.7V လို) နဲ့ capacity — current ဘယ်လောက်ကြာ ပေးနိုင်လဲ၊ များသောအားဖြင့် milliamp-hour (mAh) — နဲ့ အဆင့်သတ်မှတ်။ Capacity မြင့်တဲ့ battery က device ကို အားသွင်း/လဲ မလိုခင် ပိုကြာ run။" },
+          { heading: "Power ကို ပညာနဲ့ သုံး", body: "device တိုင်း power ဆွဲ၊ battery-run gadget — wireless လယ်ယာ sensor လို — က ချွေတာရမယ်။ ဖတ်ချက်ကြားမှာ အိပ်ပြီး message သေးသေးပဲ ပို့ခြင်းက sensor တစ်ခုကို battery သေးသေးတစ်ခုနဲ့ လ ပေါင်းများစွာ run စေ။" },
+        ],
+      },
+      "circuit-components": {
+        title: "Component များနဲ့ တွေ့ဆုံခြင်း",
+        summary: "circuit ဆောက်ဖို့ ချိတ်တဲ့ ပစ္စည်းသေးသေးများ။",
+        sections: [
+          { heading: "Building block အစုံ", body: "Electronic circuit တွေကို စံ ပစ္စည်းအနည်းငယ်နဲ့ ဆောက်၊ တစ်ခုစီ အလုပ်တစ်ခု။ Resistor က current ကန့်၊ capacitor က charge နည်းနည်း သို၊ LED က အလင်းပေး၊ switch က loop ဖွင့်/ပိတ်၊ ဝါယာက အားလုံး ချိတ်။" },
+          { heading: "သင်္ကေတနဲ့ တန်ဖိုး", body: "Component တစ်ခုစီ diagram မှာ သုံးတဲ့ သင်္ကေတနဲ့ အရွယ် ဖော်ပြတဲ့ တန်ဖိုး ရှိ — resistor ရဲ့ resistance ohm နဲ့၊ capacitor ရဲ့ farad နဲ့။ သင်္ကေတ အနည်းငယ် မှတ်မိတာက circuit ကို ရိုးရိုး မြေပုံလို ဖတ်နိုင်စေ။" },
+          { heading: "အချို့ polarity အရေးကြီး", body: "Resistor လို အချို့ ဘယ်ဘက်လှည့်လှည့်ရ။ တခြား — LED၊ capacitor အများ၊ battery — က positive/negative ဖက်ရှိပြီး မှန်ဖက် ချိတ်ရ၊ မဟုတ်ရင် အလုပ်မလုပ် (ပျက်နိုင်)။ power မဖွင့်ခင် အမြဲ စစ်။" },
+        ],
+      },
+      "series-parallel": {
+        title: "Series နဲ့ Parallel Circuit",
+        summary: "ပစ္စည်း ဝါယာချိတ်တဲ့ နည်းနှစ်မျိုး၊ ရလဒ် အလွန်ကွဲ။",
+        sections: [
+          { heading: "Series: လမ်းတစ်ခု", body: "Series circuit မှာ ပစ္စည်းတွေ loop တစ်ခုပေါ် တစ်ခုပြီးတစ်ခု ထိုင်လို့ current တူတူ တစ်ခုစီ ဖြတ်။ တစ်ခု ပျက်ရင် — မီးကြိုးဟောင်းမှာ မီးလုံးတစ်လုံး ပျက်သလို — loop တစ်ခုလုံး ဖွင့်ပြီး အားလုံး ပျက်။" },
+          { heading: "Parallel: မျှဝေ အကိုင်း", body: "Parallel circuit မှာ ပစ္စည်းတွေ connection point နှစ်ခုတူတူ မျှတဲ့ သီးခြား အကိုင်းပေါ် ထိုင်။ အကိုင်းတစ်ခုစီ voltage အပြည့်ရ၊ တစ်ကိုင်း ပျက်ရင် ကျန်တာ ဆက်အလုပ်လုပ်။ အိမ်ဝါယာနဲ့ တကယ့် device အများ parallel သုံး။" },
+          { heading: "ဘယ်ဟာ ရွေးမလဲ", body: "Series က ရိုးရှင်းပြီး current မျှ၊ parallel က ပစ္စည်း သီးခြားထား၊ တစ်ခုစီ voltage အပြည့်ပေး။ တကယ့် circuit တွေ နှစ်ခု ရောသုံးလေ့ရှိ။ ဘယ်ဟာ ကြည့်နေလဲ သိတာက circuit ဘာလို့ ဒီလို ဆောင်ရွက်လဲ ရှင်းပြ။" },
+        ],
+      },
+      "switches-buttons": {
+        title: "Switch နဲ့ Button",
+        summary: "circuit ကို တမင် ဖွင့်/ပိတ်ခွင့်ပေးတဲ့ ပစ္စည်းများ။",
+        sections: [
+          { heading: "Loop ဖွင့်/ပိတ်", body: "Switch က circuit ထဲ ထိန်းချုပ်ထားတဲ့ ကွက်လပ်တစ်ခုပါ။ ပိတ်ရင် loop ပြည့်ပြီး current စီး၊ ဖွင့်ရင် loop ပြတ်ပြီး current ရပ်။ နံရံက မီးခလုတ်တိုင်း ဒါ အတိအကျ လုပ်။" },
+          { heading: "Momentary vs latching", body: "Push button (momentary) က ဖိထားစဉ်မှသာ ချိတ်၊ ပြီးရင် ပြန်ခုန် — 'ဖိ၍စ' အတွက် ကောင်း။ Latching switch က ထားတဲ့နေရာ တည်၊ ဖွင့်/ပိတ် ကိုင်တဲ့ မီးခလုတ်လို။ တစ်ခုစီ အလုပ်မတူ သင့်။" },
+          { heading: "Computer နဲ့ switch ဖတ်", body: "Microcontroller က button ကို input အဖြစ် ကြည့် — pin ချိတ်/မချိတ် စစ်ပြီး state ပြောင်းရင် code run။ ဒါက button တစ်ခုတည်းက pump စ၊ alarm တိတ်စေ၊ အိပ်နေတဲ့ sensor နှိုးနိုင်ပုံ။" },
+        ],
+      },
+      "resistors": {
+        title: "Resistor",
+        summary: "current ကို ထိန်းချုပ်ထားတဲ့ နှိမ့်ချ ပစ္စည်း။",
+        sections: [
+          { heading: "စီးဆင်းမှု နှေးစေ", body: "Resistor က circuit တစ်ပိုင်းကို current ဘယ်လောက် စီးမလဲ ကန့်။ မရှိရင် LED လို sensitive component က current များလွန်း ဆွဲပြီး ပျက်နိုင်။ Resistor က voltage အချို့ 'သုံးပစ်' ပြီး ကျန်တာ လုံခြုံစေ။" },
+          { heading: "တန်ဖိုး ရွေးခြင်း", body: "Resistor ရဲ့ တန်ဖိုး (ohm) က current ဘယ်လောက် ကန့်မလဲ သတ်မှတ် — တန်ဖိုးကြီး၊ current နည်း။ Ohm's law က ပစ္စည်းနဲ့ voltage အတွက် ဘယ်တန်ဖိုး ရွေးမလဲ ပြော။ ဒါ မှန်အောင်လုပ်တာက ရိုးရိုး electronics ရဲ့ အဖြစ်များဆုံး အလုပ်။" },
+          { heading: "အရောင် code", body: "Resistor သေးသေးတွေ ဂဏန်းရိုက်မထားဘဲ အရောင်ကွင်းနဲ့ တန်ဖိုးပြ။ အရောင်တစ်ခုစီ ဂဏန်းတစ်လုံး ကိုယ်စားပြု၊ ကွင်းကို အစဉ်လိုက် ဖတ်ရင် တန်ဖိုးရ။ ပထမ ထူးဆန်းပေမဲ့ လေ့ကျင့်ရင် မြန်လာ။" },
+        ],
+      },
+      "leds-diodes": {
+        title: "LED နဲ့ Diode",
+        summary: "အလင်းထွက် သို့ current ဦးတည်တဲ့ တစ်လမ်းသွား ပစ္စည်း။",
+        sections: [
+          { heading: "Diode က တစ်လမ်းသွား valve", body: "Diode က current ကို တစ်ဖက်တည်း စီးခွင့်ပြီး တစ်ဖက် ပိတ်။ ဒါက circuit ကာကွယ်ဖို့ အသုံးဝင် — ဥပမာ battery မှားဖက် ချိတ်ရင် ပျက်စီးမှု တားဆီး။" },
+          { heading: "LED", body: "Light-emitting diode (LED) က current မှန်ဖက် ဖြတ်ရင် တောက်ပတဲ့ diode။ LED တွေ တောက်၊ ခံ၊ power နည်းနည်းသုံးလို့ screen ကနေ ဓာတ်မီး၊ device ပေါ်က ညွှန်ပြမီးအထိ အားလုံး လင်းစေ။" },
+          { heading: "Resistor အမြဲ ထည့်", body: "LED က current ကန့်ဖို့ series မှာ resistor လို၊ မဟုတ်ရင် များလွန်း ဆွဲပြီး ပျက်။ တစ်လမ်းသွား ပစ္စည်းမို့ မှန်ဖက် ချိတ်ရ — ခြေထောက်ရှည်တာက များသောအားဖြင့် positive ဖက်။" },
+        ],
+      },
+      "capacitors": {
+        title: "Capacitor",
+        summary: "charge နည်းနည်း သိုပြီး ချောမွေ့စေတဲ့ ပစ္စည်း။",
+        sections: [
+          { heading: "charge ခဏ သိုလှောင်", body: "Capacitor က electric charge နည်းနည်း သိုပြီး မြန်မြန် ထုတ်။ လျှပ်စစ်အတွက် သေးပြီး မြန်တဲ့ ရေပုံးလို — voltage ပေးရင် ပြည့်၊ circuit မြန်မြန် လိုရင် ပြန်ထုတ်။" },
+          { heading: "ချောမွေ့စေခြင်းနဲ့ အချိန်", body: "ခန့်မှန်းနိုင်စွာ ပြည့်/ဗလာ ဖြစ်လို့ capacitor တွေ ကြမ်းတဲ့ power ချောမွေ့ (တုန်တဲ့ supply တည်ငြိမ်စေ)၊ အချိန်နှောင့်နှေး ဖန်တီးဖို့ သုံး။ Circuit အများ signal သန့်ရှင်း တည်ငြိမ်စေဖို့ သူတို့အပေါ် မှီ။" },
+          { heading: "နည်းနည်း ဂရုစိုက်", body: "Capacitor ကြီးတွေ power ပိတ်ပြီးတောင် charge ကိုင်နိုင်၊ အများ positive/negative ဖက်ရှိပြီး မှန်ဖက် ချိတ်ရ။ Hobby circuit သေးသေးမှာ လုံခြုံပေမဲ့ လေးစားပြီး orientation စစ်တာ အလေ့အထ ကောင်း။" },
+        ],
+      },
+      "breadboards": {
+        title: "Breadboard: Solder မလိုဘဲ ဆောက်ခြင်း",
+        summary: "circuit စမ်းရ လွယ်စေတဲ့ ပြန်သုံးနိုင် board။",
+        sections: [
+          { heading: "Prototype ရိုးရှင်းစေ", body: "Breadboard က ပစ္စည်းနဲ့ ဝါယာကို အပေါက်ထဲ ထိုးပြီး circuit ဆောက်ခွင့်ပေး — solder မလို၊ အမြဲတမ်း ဆက်မလို။ အတွေးစမ်းဖို့ အမြန်ဆုံး နည်း၊ အားလုံး ဆွဲထုတ်ပြီး စက္ကန့်ပိုင်းနဲ့ ပြန်စလို့ရ။" },
+          { heading: "အပေါက်တွေ ဘယ်လို ချိတ်လဲ", body: "အပေါက်တွေ ဖုံးထားတဲ့ strip နဲ့ ချိတ် — အလယ်က တိုတဲ့ row တွေ တူတဲ့ row က ပစ္စည်း ချိတ်၊ ဘေးက ရှည်တဲ့ rail က board တစ်ခုလုံးကို power/ground သယ်။ ဒီ ပုံစံ သိတာက သုံးဖို့ သော့ချက်။" },
+          { heading: "Breadboard ကနေ တကယ့် board", body: "Circuit တစ်ခု breadboard မှာ အလုပ်လုပ်ရင် ကြာရှည် သုံးဖို့ အမြဲတမ်း board ပေါ် solder လို့ရ။ Gadget တိုင်းလိုလို သပ်ရပ်တဲ့ ထုတ်ကုန် မဖြစ်ခင် ရှုပ်ပွတဲ့ breadboard prototype ကနေ စ။" },
+        ],
+      },
+      "reading-schematics": {
+        title: "Circuit Diagram ဖတ်ခြင်း",
+        summary: "circuit ဘယ်လို ချိတ်လဲ ပြတဲ့ မြေပုံ။",
+        sections: [
+          { heading: "Diagram၊ ဓာတ်ပုံ မဟုတ်", body: "Schematic က component တွေ ဘယ်လို ချိတ်လဲ သင်္ကေတနဲ့ လိုင်းသုံးပြီး ပြတဲ့ ပုံ၊ တကယ့် layout ဓာတ်ပုံ မဟုတ်။ ပစ္စည်း ဘယ်မှာ ရုပ်ပိုင်း ထိုင်လဲ ဂရုမစိုက်ဘဲ ချိတ်ဆက်ကို ဂရုစိုက်လို့ ရှုပ်တဲ့ circuit လိုက်ရ လွယ်။" },
+          { heading: "သင်္ကေတနဲ့ လိုင်း", body: "ပစ္စည်းတစ်ခုစီ ကိုယ်ပိုင် သင်္ကေတ ရှိ — resistor အတွက် zigzag/box၊ diode အတွက် triangle-bar — လိုင်းတွေက ဝါယာ။ လိုင်းဖြတ်ရာမှာ အစက်က ချိတ်ထား၊ အစက်မရှိရင် ဖြတ်ကျော်သွားရုံ။" },
+          { heading: "Power နဲ့ ground", body: "Schematic အများ အပေါ်မှာ power သင်္ကေတ၊ အောက်မှာ ground သင်္ကေတ၊ ကြားမှာ circuit ပြ။ Power ကနေ ground အောက်သို့ ဖတ်ရင် current ဖြတ်တဲ့ လမ်း လိုက်နိုင်ပြီး ပစ္စည်းတစ်ခုစီ ဘာလုပ်လဲ နားလည်။" },
+        ],
+      },
+      "microcontrollers": {
+        title: "Microcontroller",
+        summary: "circuit ကို ဦးနှောက်ပေးတဲ့ သေးငယ်တဲ့ computer။",
+        sections: [
+          { heading: "Chip တစ်ခုပေါ် computer တစ်ခုလုံး", body: "Microcontroller က chip တစ်ခုတည်းပေါ်က သေး၊ ဈေးသက်တဲ့ computer။ processor၊ memory နည်းနည်းနဲ့ ပြင်ပ ချိတ်ဖို့ pin ရှိ။ Arduino လို board တွေက တစ်ခုကို program နဲ့ ဝါယာချိတ်ရ လွယ်စေ။" },
+          { heading: "ဖတ်၊ ဆုံးဖြတ်၊ လုပ်", body: "Microcontroller က program ကို loop နဲ့ run — input (sensor, button) ဖတ်၊ ဘာလုပ်မလဲ ဆုံးဖြတ်၊ ပြီးရင် output (မီး, motor, message) ထိန်း။ ဒီ ရိုးရိုး သံသရာက smart device တိုင်းလိုလိုရဲ့ အနှစ်သာရ။" },
+          { heading: "Smart farm node ရဲ့ ဦးနှောက်", body: "GreenWave sensor မှာ microcontroller က အပူချိန်နဲ့ စိုထိုင်းဆ ဖတ်၊ ဂရုစိုက်စရာ ရှိ/မရှိ စစ်၊ ဖတ်ချက်တွေ cloud ပို့။ သေးပြီး power နည်းပေမဲ့ device တစ်ခုလုံးကို ချိတ်ဆက်ပေး။" },
+        ],
+      },
+      "digital-analog-signals": {
+        title: "Digital နဲ့ Analog Signal",
+        summary: "electronics က သတင်းအချက်အလက် သယ်တဲ့ နည်းနှစ်မျိုး။",
+        sections: [
+          { heading: "Analog: ချောမွေ့တဲ့ တန်ဖိုး", body: "Analog signal က အကွာအဝေးတစ်ခုတွင်း ချောမွေ့စွာ ပြောင်း — တစ်နေ့တာ အပူချိန် ဖြည်းဖြည်းတက်၊ dimmer က မီးကို ပိတ်ကနေ အပြည့်သို့ ရွှေ့သလို။ တကယ့် sensor အများ analog ထုတ်တာ ကမ္ဘာကိုယ်တိုင် ချောမွေ့စွာ ပြောင်းလို့။" },
+          { heading: "Digital: ဖွင့် သို့ ပိတ်", body: "Digital signal က ရှင်းတဲ့ state နှစ်ခုပဲ ရှိ၊ များသောအားဖြင့် 1 နဲ့ 0 (ဖွင့်/ပိတ်၊ high/low)။ Computer တွေ digital နဲ့ အလုပ်လုပ်တာ state သန့်နှစ်ခုက အမှားမပါ သိမ်း/ကူး လွယ်လို့။ Button က သဘာဝ digital — ဖိ သို့ မဖိ။" },
+          { heading: "နှစ်ခုကြား ပြောင်းခြင်း", body: "Microcontroller က analog sensor ဖတ်ချက်ကို analog-to-digital converter (ADC) နဲ့ digital ဂဏန်း ဖြစ်စေ။ ဂဏန်းဖြစ်ရင် computer က နှိုင်း၊ သိမ်း၊ ပို့နိုင် — ချောမွေ့ကမ္ဘာနဲ့ digital ကမ္ဘာ ပေါင်းကူး။" },
+        ],
+      },
+      "gpio-inputs-outputs": {
+        title: "Input နဲ့ Output (GPIO)",
+        summary: "microcontroller က sensor/switch နဲ့ ဘယ်လို ချိတ်လဲ။",
+        sections: [
+          { heading: "နှစ်ဖက်လုံး သွားနိုင်တဲ့ pin", body: "Microcontroller က ကမ္ဘာနဲ့ pin တွေ (အများ 'general purpose' GPIO) နဲ့ ချိတ်။ တစ်ခုစီ input (button/sensor လို ဖတ်) သို့ output (LED/motor လို ထိန်း) အဖြစ် သတ်မှတ်နိုင်။" },
+          { heading: "Input ဖတ်ခြင်း", body: "Input အဖြစ် pin က voltage ရှိ (high)/မရှိ (low) ခံစား၊ သို့ analog level ဖတ်။ Program က pin စစ်ပြီး တုံ့ပြန် — ဥပမာ moisture ဖတ်ချက် နိမ့်သွားရင် ပန်ကာ ဖွင့်။" },
+          { heading: "Output မောင်းခြင်း", body: "Output အဖြစ် pin ကို program က high/low ပြောင်းပြီး အရာတွေ ဖွင့်/ပိတ်။ LED လို load သေးက တိုက်ရိုက် ချိတ်၊ pump လို ကြီးက transistor သို့ relay လို အကူ လို — နောက်မှာ ဖော်ပြ။" },
+        ],
+      },
+      "temperature-sensors": {
+        title: "အပူချိန် Sensor",
+        summary: "အပူကို device သုံးနိုင်တဲ့ ဂဏန်း ဖြစ်စေခြင်း။",
+        sections: [
+          { heading: "အပူကို electronic နဲ့ ခံစား", body: "အပူချိန် sensor က အပူနဲ့ သူ့ electrical အပြုအမူ ပြောင်း — နွေး/အေးတာနဲ့ resistance သို့ output voltage ရွေ့။ Microcontroller က အဲဒီ ပြောင်းလဲမှု ဖတ်ပြီး ဒီဂရီ အပူချိန်အဖြစ် ပြောင်း။" },
+          { heading: "အဖြစ်များ အမျိုးအစား", body: "Thermistor လို ရိုးရိုး sensor က အပူနဲ့ resistance ပြောင်း၊ digital sensor က data line ကနေ တိတိကျကျ ဖတ်ချက် ပို့။ Digital ဟာက သင်္ချာ ကိုယ်တိုင်လုပ်ပြီး ဂဏန်းသန့် တင်ပြလို့ လွယ်။" },
+          { heading: "လယ်မှာ ဘာလို့ အရေးကြီးလဲ", body: "အပူချိန်က အပင်ကြီးထွား၊ ရောဂါ အန္တရာယ်၊ ကိရိယာ အပြုအမူ တွန်းလို့ ကောင်းကောင်း တိုင်းတာ မဖြစ်မနေ။ GreenWave node က အပူချိန် အဆက်မပြတ် မှတ်၊ dashboard က chart ဆွဲ၊ အကွာအဝေးလွဲရင် ပန်ကာ/အပူပေးစက် trigger။" },
+        ],
+      },
+      "light-sensors": {
+        title: "အလင်း Sensor",
+        summary: "electronics နဲ့ တောက်ပမှု တိုင်းခြင်း။",
+        sections: [
+          { heading: "အလင်းကို signal ဖြစ်စေ", body: "အလင်း sensor က ကျရောက်တဲ့ အလင်းပမာဏပေါ်မူတည်ပြီး electrical output ပြောင်း။ အရိုးရှင်းဆုံး light-dependent resistor (LDR) က အလင်းပြင်းရင် resistance ကျ၊ မှောင်ရင် တက် — ဖတ်ရ လွယ်တဲ့ signal။" },
+          { heading: "နေ့စဉ် အသုံးပြုမှု", body: "အလင်း sensor က မှောင်ရင် ဖုန်း screen မှိန်၊ ညနေ လမ်းမီး ဖွင့်၊ camera က exposure သတ်မှတ်။ device က တောက်ပမှု 'သတိထား' ဖို့ လိုတဲ့ နေရာတိုင်း အလင်း sensor တိတ်တဆိတ် အလုပ်လုပ်။" },
+          { heading: "စိုက်ပျိုးမှုမှာ", body: "အပင်အတွက် အလင်းက အစားအစာမို့ သီးနှံ ဘယ်လောက်ရလဲ သိတာ တန်ဖိုးရှိ။ အလင်း sensor က မီး အလုပ်လုပ်မှန်း အတည်ပြု၊ နေ့စဉ်အလင်း လိုက်၊ သို့ အရိပ် trigger — 'အလင်းလုံလောက်' ဆိုတဲ့ မှုန်ဝါးအတွေးကို တိုင်းထားတဲ့ ဂဏန်း ဖြစ်စေ။" },
+        ],
+      },
+      "moisture-sensors": {
+        title: "စိုထိုင်းဆ Sensor",
+        summary: "အပင် ရေလိုချိန်ကို မှန်းဆမလိုဘဲ သိခြင်း။",
+        sections: [
+          { heading: "မြေထဲ ရေ တိုင်း", body: "မြေစိုထိုင်းဆ sensor က medium ထဲ ရေ ဘယ်လောက်ရှိလဲ တိုင်း၊ များသောအားဖြင့် နေရာနှစ်ခုကြား current ဘယ်လောက်လွယ်လွယ် ဖြတ်လဲ တိုင်းခြင်းဖြင့် — ပိုစိုရင် ပိုဖြတ်။ ဖတ်ချက်က အမြစ်မှာ ရေလုံလောက်/မလုံလောက် ပြော။" },
+          { heading: "ဖတ်ပြီး တုံ့ပြန်", body: "Microcontroller က sensor signal ကို စိုထိုင်းဆ level ဖြစ်စေ။ သတ်မှတ်ချက်အောက် ကျရင် automation rule က pump ခဏ ဖွင့်ပြီး ရေခဏလောင်း၊ ပြီးရင် ရပ် — အလေ့အထမဟုတ်ဘဲ data နဲ့ ရေလောင်း။" },
+          { heading: "နေရာချနဲ့ ပြုစု", body: "Sensor ဘယ်မှာ ထားလဲ အရေးကြီး — တိမ်လွန်းရင် အရင်ခြောက်၊ နက်လွန်းရင် နောက်ကျ။ ဈေးသက်တဲ့ sensor တွေ အချိန်ကြာ သံချေးတက်နိုင်လို့ စိုက်သူတွေ စစ်၊ သန့်။ နေရာမှန်၊ ထိန်းသိမ်းကောင်းတဲ့ sensor က ရေရော စိုးရိမ်မှုရော ချွေ။" },
+        ],
+      },
+      "motors-servos": {
+        title: "Motor နဲ့ Servo",
+        summary: "လျှပ်စစ်နဲ့ အရာတွေ လှုပ်ရှားစေခြင်း။",
+        sections: [
+          { heading: "current ကို လှုပ်ရှားမှု ဖြစ်စေ", body: "Motor က လျှပ်စစ်စွမ်းအင်ကို သံလိုက်သုံးပြီး လည်ပတ်လှုပ်ရှားမှု ဖြစ်စေ။ Coil ထဲ current ပို့ရင် shaft လည် — ပန်ကာ၊ pump၊ ဘီး၊ စက်မရေတွက်နိုင်ရဲ့ အခြေခံ။ current ပြောင်းပြန်ရင် တစ်ဖက် လည်။" },
+          { heading: "Servo: ချိန်ရွယ်တဲ့ motor", body: "Servo က တိကျတဲ့ ထောင့်ကို ရွှေ့ပြီး ကိုင်ထားတဲ့ motor သေးသေး၊ control signal က လမ်းညွှန်။ Vent ကို သတ်မှတ်ပမာဏ ဖွင့်၊ robot လက် မောင်း လို position အရေးကြီးတဲ့ အလုပ်အတွက် ကွက်တိ။" },
+          { heading: "ကိုယ်ပိုင် power လို", body: "Motor တွေ microcontroller pin ပေးနိုင်တာထက် current အများကြီး ဆွဲလို့ ကိုယ်ပိုင် power ရ၊ driver သို့ transistor ကနေ ဖွင့်/ပိတ်။ Motor ကို control pin တိုက်ရိုက် ချိတ်တာ အစပြု အမှားများ။" },
+        ],
+      },
+      "relays-switching": {
+        title: "Relay: Load ကြီး ဖွင့်ပိတ်ခြင်း",
+        summary: "signal သေးသေးက power ကြီးတဲ့ device ထိန်းခွင့်ပေး။",
+        sections: [
+          { heading: "ထိန်းချုပ်နိုင်တဲ့ switch", body: "Relay က လျှပ်စစ်နဲ့ လည်ပတ်တဲ့ switch။ Microcontroller က signal သေးသေးက relay ကို အားသွင်း၊ relay က ပိုကြီးတဲ့ သီးခြား circuit ကို ဖွင့်/ပိတ်။ 3-volt ဦးနှောက်နူးညံ့က power ကြီးတဲ့ pump/မီး လုံခြုံစွာ ထိန်းစေ။" },
+          { heading: "ဖက်နှစ်ဖက် ခွဲထား", body: "Relay ရဲ့ control ဖက်နဲ့ load ဖက် လျှပ်စစ်အရ သီးခြားထား၊ ဒါက microcontroller ကို ဖွင့်ပိတ်နေတဲ့ power ကြီးကနေ ကာ။ ဒီ ခွဲထားမှုက relay အသုံးများတဲ့ အကြောင်းရင်း အများကြီး။" },
+          { heading: "Smart home/farm မှာ", body: "Relay က GreenWave smart-home switch တွေ တကယ့် ကိရိယာ ဖွင့်ပိတ်ပုံ။ App မှာ တို့လိုက်ရင် signal ပို့၊ relay ကလစ်၊ ပန်ကာ/pump/မီး တုံ့ပြန် — software နဲ့ ရုပ်ပိုင်းကမ္ဘာ ကြားက တံတား။" },
+        ],
+      },
+      "power-safety": {
+        title: "Power နဲ့ လုံခြုံရေး",
+        summary: "လျှပ်စစ်နဲ့ အသိဉာဏ်ရှိရှိ လုံခြုံစွာ အလုပ်လုပ်ခြင်း။",
+        sections: [
+          { heading: "Voltage နိမ့် vs mains", body: "Hobby electronics က နိမ့်၊ လုံခြုံတဲ့ voltage — battery/USB က volt အနည်းငယ် — နဲ့ run။ နံရံ socket က mains လျှပ်စစ်က များစွာ မြင့်ပြီး ဒဏ်ရာ/သေစေနိုင်။ သင့်လျော်တဲ့ လေ့ကျင့်မှုနဲ့ ကာကွယ်မှု မရှိဘဲ mains device မဖွင့်/မချိတ်နဲ့။" },
+          { heading: "အသိဉာဏ် အလေ့အထ", body: "Circuit မပြောင်းခင် power ဖြုတ်၊ ပစ္စည်း မှန်ဖက်ဖြစ်မှန်း စစ်၊ short circuit (plus ကနေ minus တိုက်ရိုက်လမ်း) ရှောင် — ဝါယာ/battery ပူလောင်စေနိုင်။ သပ်ရပ်တဲ့ ဝါယာက လုံခြုံတဲ့ ဝါယာ။" },
+          { heading: "အပူနဲ့ battery", body: "ပစ္စည်း သို့ battery ပူလာရင် ဖြုတ် — အပူက များသောအားဖြင့် current များလွန်း ဆိုလို။ Battery ကို ဂရုစိုက် — မဖိ၊ မ short၊ ပူလွန်းမစေနဲ့။ ဒီ ကန့်သတ်ချက် လေးစားတာက သင်ရော project ရော လုံခြုံစေ။" },
+        ],
+      },
+      "wifi-networks": {
+        title: "Wi-Fi နဲ့ Network",
+        summary: "device က data မျှဝေဖို့ internet ဘယ်လို ဝင်လဲ။",
+        sections: [
+          { heading: "ဝါယာမဲ့ ပြောဆို", body: "Wi-Fi က device ကို cable အစား ရေဒီယိုလှိုင်းနဲ့ data ပို့/လက်ခံခွင့်ပေး။ Sensor board ပေါ်က Wi-Fi chip သေးသေးက အိမ်/လယ် network နဲ့ ချိတ်၊ အဲဒါက ပြန်ပြီး internet ကျယ်ကို ချိတ်။" },
+          { heading: "Address နဲ့ router", body: "Network မှာ device တစ်ခုစီ address ရှိလို့ message မှန်တဲ့နေရာ ရောက်၊ router က သူတို့နဲ့ internet ကြား traffic ညွှန် — စာတိုက် စာခွဲသလို။ သင့် data အဲဒီ မှတ်တိုင်များစွာ ခုန်ပြီး server ရောက်။" },
+          { heading: "Signal အားနည်းနဲ့ အကွာအဝေး", body: "ရေဒီယို signal အကွာအဝေးနဲ့ နံရံနဲ့ မှိန်လို့ ဝေးတဲ့ လယ် sensor က Wi-Fi မှာ ရုန်းကန်နိုင်။ ဒါကြောင့် IoT device တွေ message သေးသေး ထား၊ တခါတရံ အကွာအဝေးရှည် ရေဒီယို သုံး — data ယုံကြည်စွာ ထုတ်တာ စိန်ခေါ်မှု တစ်ဝက်။" },
+        ],
+      },
+      "mqtt-messaging": {
+        title: "MQTT: Device များအတွက် Messaging",
+        summary: "device သေးသေးတွေ ဖတ်ချက် မျှဖို့ ပေါ့ပါးတဲ့ နည်း။",
+        sections: [
+          { heading: "Publish နဲ့ subscribe", body: "MQTT က device သေးသေး၊ power နည်းတွေအတွက် တည်ဆောက်ထားတဲ့ messaging စနစ်။ Device က ဖတ်ချက်ကို အမည်ရ topic သို့ 'publish'၊ စိတ်ဝင်စားတဲ့ ဟာက အဲဒီ topic ကို 'subscribe' လုပ်ပြီး လက်ခံ။ ပို့သူနဲ့ လက်ခံသူ တစ်ဦးကိုတစ်ဦး တိုက်ရိုက် သိစရာ မလို။" },
+          { heading: "အလယ်က broker", body: "Broker ဆိုတဲ့ ဗဟို server က publish လုပ်တဲ့ message တိုင်း လက်ခံပြီး မှန်တဲ့ subscriber ဆီ ပို့။ GreenWave က broker run လို့ လယ် sensor အများ dashboard ဆီ data တစ်ပြိုင်နက် သပ်သပ်ရပ်ရပ် ထိရောက်စွာ stream။" },
+          { heading: "IoT ကို ဘာလို့ သင့်လဲ", body: "MQTT message တွေ သေးပြီး protocol က အားနည်း/ပြတ်တဲ့ ချိတ်ဆက်မှု ကောင်းကောင်း ကိုင်၊ ပြန်ချိတ်ပြီး မီအောင်လုပ်။ ဒါက network ပြတ်တောင်းတောင်းက battery sensor အတွက် ကွက်တိ — တကယ့် လယ်တွေ မကြာခဏ ဒီအခြေအနေ ရှိ။" },
+        ],
+      },
+      "iot-architecture": {
+        title: "IoT System ဘယ်လို ပေါင်းစပ်လဲ",
+        summary: "လယ်ကွင်းက sensor ကနေ ဖုန်းပေါ်က chart အထိ။",
+        sections: [
+          { heading: "အဆင့်လေးဆင့်", body: "ပုံမှန် IoT system မှာ အပိုင်းလေးခု — တိုင်းတဲ့ device (sensor + microcontroller)၊ data သယ်တဲ့ network၊ သိမ်း/စီမံတဲ့ cloud၊ သင့်ကို ပြတဲ့ app။ တစ်ခုစီ နောက်တစ်ခုကို လက်ဆင့်ကမ်း။" },
+          { heading: "Data အထက်၊ control အောက်", body: "ဖတ်ချက်တွေ အထက်သွား — device→cloud→app၊ command က ပြန်အောက်သွားနိုင် — app မှာ switch တို့ရင် message က device ဆီ စီးပြီး လုပ်ဆောင်။ နှစ်ဖက်လုံး နားလည်တာက smart farm တကယ် ဘယ်လို အလုပ်လုပ်လဲ ရှင်း။" },
+          { heading: "တကယ့်ကမ္ဘာအတွက် ဒီဇိုင်း", body: "ကောင်းတဲ့ IoT ဒီဇိုင်းက ပြတ်တဲ့ ချိတ်ဆက်၊ power နည်း၊ device အများအတွက် စီစဉ်။ Offline ဖြစ်ချိန် ဖတ်ချက် သိမ်းပြီး နောက်ပို့၊ message သေးအောင်ထား၊ data လုံခြုံစေတာ က demo ကို ယုံကြည်ရတဲ့ အရာ ဖြစ်စေ။" },
+        ],
+      },
+      "automation-logic": {
+        title: "Automation: If This, Then That",
+        summary: "ဖတ်ချက်တွေကို လူမပါဘဲ လုပ်ဆောင်ချက် ဖြစ်စေခြင်း။",
+        sections: [
+          { heading: "စောင့်ကြည့်ပြီး လုပ်တဲ့ rule", body: "Automation က 'အခြေအနေ ပြည့်ရင် လုပ်ဆောင်ချက် လုပ်' ပုံစံ rule အစု။ စိုထိုင်းဆ 70% ကျော်ရင် ပန်ကာ ဖွင့်။ မြေစို နိမ့်လွန်းရင် pump run။ System က rule တွေ အဆက်မပြတ် စစ်ပြီး ကိုယ်တိုင် လုပ်။" },
+          { heading: "Threshold နဲ့ hysteresis", body: "Rule က threshold — trigger လုပ်တဲ့ level — လို။ Device အဲဒီ level ဝန်းကျင် ဖွင့်ပိတ် လှန်နေတာ ရပ်ဖို့ ကောင်းတဲ့ rule က ကွာဟ သုံး — ပန်ကာ 70% မှာ ဖွင့်၊ 60% မှသာ ပိတ်။ ဒီ ကွာဟက အပြုအမူ တည်ငြိမ်၊ ကိရိယာ ညင်သာစေ။" },
+          { heading: "လူ ထိန်းချုပ်ဆဲ", body: "Automation က ပုံမှန်တာ ကိုင်ပေမဲ့ လူက rule သတ်မှတ်၊ အမြဲ override နိုင်။ GreenWave farm dashboard က ဒီ rule တွေ ဆောက်ပြီး ဘာလုပ်ခဲ့လဲ ကြည့်ခွင့်ပေး — စက် လုပ်ပေမဲ့ သင် ထိန်းချုပ်ဆဲ။" },
+        ],
+      },
+      "soldering-troubleshooting": {
+        title: "Soldering နဲ့ ပြဿနာဖြေရှင်းခြင်း",
+        summary: "ကြာရှည် ချိတ်ဆက်ခြင်းနဲ့ အမှား ရှာဖွေခြင်း။",
+        sections: [
+          { heading: "Soldering အခြေခံ", body: "Soldering က ပျော့တဲ့ သတ္တု (solder) အရည်ကျိုပြီး ပစ္စည်းတွေ အမြဲတမ်း ချိတ်၊ current သယ်။ ပူတဲ့ မီးပူတံက အလုပ်လုပ်လို့ လေးစားရ — ပစ္စည်း တည်ငြိမ်ကိုင်၊ ဆက်ရာ ခဏ ပူစေ၊ အေးစေ။ လေသန့်မှာ အမြဲ လုပ်၊ ထိပ် ဘယ်တော့မှ မကိုင်။" },
+          { heading: "ကောင်းတဲ့ ဆက်ချက်", body: "ကောင်းတဲ့ solder ဆက်ချက်က တောက်ပ၊ ချောမွေ့၊ ချိတ်ဆက်ကို သပ်သပ်ရပ်ရပ် ဝိုင်း။ မွဲ၊ တုံး၊ ကွဲတဲ့ ဆက်ချက်က မဖြတ်နိုင် ဖြစ်ပြီး circuit တစ်ဝက်အလုပ်လုပ်တဲ့ အဖြစ်များ အကြောင်းရင်း။ ဆက်ချက် ဆိုးတာ မှတ်တတ်တာက နာရီချီ ရှုပ်ထွေးမှု ချွေ။" },
+          { heading: "အမှား ရှာ", body: "Circuit မှားနေရင် အဆင့်လိုက် ဖြေရှင်း — power ရှိမှန်း၊ ချိတ်ဆက် မှန်မှန်း၊ ပစ္စည်း မှန်ဖက်လှည့်မှန်း စစ်။ တစ်ခုစီ ပြောင်းပြီး စမ်း။ စိတ်ရှည်၊ စနစ်တကျ စစ်တာက အဆုံးမှာ အမှားတိုင်းလိုလို ရှာတွေ့။" },
+        ],
+      },
       "electronics-iot-quiz": {
         title: "အီလက်ထရွန်းနစ်နဲ့ IoT Quiz",
         summary: "Sensor၊ circuit နဲ့ IoT အကြောင်း သင်လေ့လာထားတာ စစ်ပါ။",
@@ -268,6 +502,66 @@ export const MY_OVERLAY: LearnOverlay = {
             q: "IoT ကိရိယာအများစုက ဖတ်ချက်ပို့ဖို့ ဘယ်ပေါ့ပါးတဲ့စနစ်သုံးလဲ?",
             options: ["MQTT", "PDF", "HTML", "USB"],
             explain: "MQTT က ကိရိယာများအတွက် ပေါ့ပါးတဲ့ publish/subscribe messaging protocol ပါ။",
+          },
+          {
+            q: "Ohm's law အရ voltage က ဘာနဲ့ ညီလဲ?",
+            options: [
+              "current + resistance",
+              "current × resistance",
+              "current − resistance",
+              "resistance ÷ current",
+            ],
+            explain: "V = I × R က voltage, current, resistance ကို ချိတ်တယ်။",
+          },
+          {
+            q: "ဘယ် material က conductor ကောင်းလဲ?",
+            options: ["ရာဘာ", "ကြေးနီ", "ဖန်", "ခြောက်တဲ့ သစ်သား"],
+            explain: "ကြေးနီလို သတ္တုက current လွယ်လွယ် ဖြတ်၊ ပလတ်စတစ်/ဖန်က insulate။",
+          },
+          {
+            q: "LED က series မှာ resistor ဘာလို့ လိုလဲ?",
+            options: [
+              "ပိုတောက်စေဖို့",
+              "current ကန့်ပြီး မပျက်အောင်",
+              "အရောင် ပြောင်းဖို့",
+              "မလိုပါ",
+            ],
+          },
+          {
+            q: "Series circuit မှာ ပစ္စည်းတစ်ခု ပျက်ရင်…",
+            options: [
+              "ဘာမှ မပြောင်း",
+              "loop တစ်ခုလုံး ဖွင့်ပြီး current ရပ်",
+              "အဲဒီ ပစ္စည်းပဲ ဆက်အလုပ်လုပ်",
+              "voltage နှစ်ဆ",
+            ],
+          },
+          {
+            q: "Microcontroller ဆိုတာ ဘာလဲ?",
+            options: [
+              "battery အမျိုးအစား",
+              "input ဖတ်၊ output ထိန်းတဲ့ chip ပေါ်က computer သေးသေး",
+              "ဝါယာ အမျိုးအစား",
+              "screen",
+            ],
+          },
+          {
+            q: "Relay က ဘာ လုပ်ခွင့်ပေးလဲ?",
+            options: [
+              "ဖိုင်သိမ်း",
+              "signal သေးသေးက ပိုကြီးတဲ့ သီးခြား circuit ဖွင့်ပိတ်",
+              "အပူချိန် တိုင်း",
+              "ဖုန်း ပိုမြန် အားသွင်း",
+            ],
+          },
+          {
+            q: "ကောင်းတဲ့ automation rule က ကွာဟ (70% ဖွင့်၊ 60% ပိတ်) သုံးတာ ဘာလို့လဲ?",
+            options: [
+              "ဖိုင်သိမ်းဖို့",
+              "device က level ဝန်းကျင် အမြန် ဖွင့်ပိတ်လှန်နေတာ ရပ်ဖို့",
+              "voltage တိုးဖို့",
+              "sensor မြန်စေဖို့",
+            ],
           },
         ],
       },
