@@ -12,6 +12,7 @@ export const STEM_EXTRA: Lesson[] = [
     summary: "Solids, liquids and gases — and how they change.",
     minutes: 7,
     kind: "reading",
+      youtubeQuery: "states of matter for kids",
     sections: [
       {
         heading: "Three everyday states",
@@ -29,6 +30,7 @@ export const STEM_EXTRA: Lesson[] = [
     summary: "How water travels from the sea to the sky and back.",
     minutes: 7,
     kind: "reading",
+      youtubeQuery: "the water cycle for kids",
     sections: [
       {
         heading: "Round and round",
@@ -51,6 +53,7 @@ export const STEM_EXTRA: Lesson[] = [
     summary: "Pushes, pulls and the pull of gravity.",
     minutes: 8,
     kind: "reading",
+      youtubeQuery: "forces and motion for kids",
     sections: [
       {
         heading: "A force is a push or a pull",
@@ -68,6 +71,7 @@ export const STEM_EXTRA: Lesson[] = [
     summary: "Light, heat, sound, motion and electricity.",
     minutes: 8,
     kind: "reading",
+      youtubeQuery: "forms of energy for kids",
     sections: [
       {
         heading: "Energy makes things happen",
@@ -85,6 +89,7 @@ export const STEM_EXTRA: Lesson[] = [
     summary: "Levers, wheels and ramps that make work easier.",
     minutes: 8,
     kind: "reading",
+      youtubeQuery: "simple machines for kids",
     sections: [
       {
         heading: "Working smarter",
@@ -102,6 +107,7 @@ export const STEM_EXTRA: Lesson[] = [
     summary: "Invisible forces that attract and repel.",
     minutes: 7,
     kind: "reading",
+      youtubeQuery: "how magnets work for kids",
     sections: [
       {
         heading: "Poles attract and repel",
@@ -119,6 +125,7 @@ export const STEM_EXTRA: Lesson[] = [
     summary: "Current, circuits and staying safe.",
     minutes: 8,
     kind: "reading",
+      youtubeQuery: "electricity basics for kids",
     sections: [
       {
         heading: "A flow of tiny charges",
@@ -136,6 +143,7 @@ export const STEM_EXTRA: Lesson[] = [
     summary: "The main systems that keep you alive.",
     minutes: 8,
     kind: "reading",
+      youtubeQuery: "human body systems for kids",
     sections: [
       {
         heading: "Teams of organs",
@@ -153,6 +161,7 @@ export const STEM_EXTRA: Lesson[] = [
     summary: "Why the weather changes and seasons happen.",
     minutes: 7,
     kind: "reading",
+      youtubeQuery: "weather and seasons for kids",
     sections: [
       {
         heading: "What makes weather",
@@ -170,6 +179,7 @@ export const STEM_EXTRA: Lesson[] = [
     summary: "The Sun, the planets and our place in space.",
     minutes: 8,
     kind: "reading",
+      youtubeQuery: "solar system for kids",
     sections: [
       {
         heading: "A family around the Sun",
@@ -187,6 +197,7 @@ export const STEM_EXTRA: Lesson[] = [
     summary: "What makes something alive, and how we group life.",
     minutes: 7,
     kind: "reading",
+      youtubeQuery: "living things classification for kids",
     sections: [
       {
         heading: "Signs of life",
@@ -204,6 +215,7 @@ export const STEM_EXTRA: Lesson[] = [
     summary: "Length, mass, time and temperature — and their units.",
     minutes: 7,
     kind: "reading",
+      youtubeQuery: "measurement units for kids",
     sections: [
       {
         heading: "Numbers with units",

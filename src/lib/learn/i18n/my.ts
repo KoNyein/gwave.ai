@@ -14,6 +14,7 @@ export const MY_OVERLAY: LearnOverlay = {
       "how-plants-grow": {
         title: "အပင်တွေ ဘယ်လိုကြီးထွားလဲ",
         summary: "မျိုးစေ့၊ မြေဆီ၊ နေရောင်နဲ့ ရေ — အပင်တစ်ပင်ရဲ့ ချက်ပြုတ်နည်း။",
+        youtubeQuery: "အပင် ဘယ်လို ကြီးထွားလဲ ကလေး",
         sections: [
           {
             heading: "မျိုးစေ့က အထုပ်လေးတစ်ခု",
@@ -203,6 +204,7 @@ export const MY_OVERLAY: LearnOverlay = {
       "what-is-a-sensor": {
         title: "Sensor ဆိုတာ ဘာလဲ?",
         summary: "လက်တွေ့ကမ္ဘာကို ဂဏန်းအဖြစ် ပြောင်းပေးတဲ့ ကိရိယာများ။",
+        youtubeQuery: "sensor ဆိုတာ ဘာလဲ မြန်မာ",
         sections: [
           {
             heading: "Sensor က ကမ္ဘာကို တိုင်းတာတယ်",
@@ -576,6 +578,7 @@ export const MY_OVERLAY: LearnOverlay = {
       "what-is-a-robot": {
         title: "Robot ဆိုတာ ဘာလဲ?",
         summary: "Sense → Think → Act — robot တိုင်း run တဲ့ ကွင်းဆက်။",
+        youtubeQuery: "robot ဆိုတာ ဘာလဲ မြန်မာ",
         sections: [
           {
             heading: "Sense → Think → Act",
