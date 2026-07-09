@@ -10,6 +10,8 @@ export const SITE_THEMES = [
   "sunset",
   "midnight",
   "blossom",
+  "meadow",
+  "glass",
 ] as const;
 
 export type SiteTheme = (typeof SITE_THEMES)[number];
@@ -26,6 +28,8 @@ export const THEME_PREVIEW: Record<
   sunset: { primary: "#C25410", secondary: "#FBE8D3", accent: "#C22350" },
   midnight: { primary: "#6D28D9", secondary: "#E9E3F8", accent: "#0EA5E9" },
   blossom: { primary: "#BE185D", secondary: "#FCE7F0", accent: "#9D6BDE" },
+  meadow: { primary: "#2E7D32", secondary: "#FFFFFF", accent: "#66BB6A" },
+  glass: { primary: "#1B8A4B", secondary: "#EAF7EF", accent: "#34D399" },
 };
 
 export function isSiteTheme(value: unknown): value is SiteTheme {
