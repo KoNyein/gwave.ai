@@ -12,6 +12,7 @@ import {
   FileCode2,
   FlaskConical,
   Gamepad2,
+  ListChecks,
   Palette,
   GraduationCap,
   Play,
@@ -49,6 +50,7 @@ const ICONS: Record<string, LucideIcon> = {
   Terminal,
   Database,
   BrainCircuit,
+  ListChecks,
 };
 
 export default async function LearnPage() {

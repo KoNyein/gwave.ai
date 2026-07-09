@@ -977,7 +977,8 @@
     "runStopped": "已停止。",
     "engineError": "无法加载代码引擎。请检查网络连接后重试。",
     "listen": "朗读",
-    "stopAudio": "停止"
+    "stopAudio": "停止",
+    "watchOnYouTube": "在 YouTube 上学习"
   },
   "shop": {
     "title": "商店",

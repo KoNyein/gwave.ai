@@ -43,6 +43,12 @@ export interface Lesson {
   sqlCode?: string;
   /** Optional YouTube video id embedded at the top of the lesson. */
   youtubeId?: string;
+  /**
+   * Optional topic to surface a "Learn on YouTube" link (a search, opened in
+   * a new tab) when no specific youtubeId is pinned. Localized via the
+   * overlay so Myanmar learners get Burmese results.
+   */
+  youtubeQuery?: string;
 }
 
 export interface Track {
@@ -550,11 +556,13 @@ const agriTrack: Track = {
 
 import { WEBDEV_TRACKS } from "@/lib/learn/webdev";
 import { SQL_AI_TRACKS } from "@/lib/learn/courses-sql-ai";
+import { pseudocodeTrack } from "@/lib/learn/pseudocode";
 
 export const TRACKS: Track[] = [
   stemTrack,
   electronicsTrack,
   roboticsTrack,
+  pseudocodeTrack,
   ...WEBDEV_TRACKS,
   ...SQL_AI_TRACKS,
   agriTrack,

@@ -977,7 +977,8 @@
     "runStopped": "ရပ်လိုက်ပါပြီ။",
     "engineError": "Code engine ကို မဖွင့်နိုင်ပါ။ ချိတ်ဆက်မှုကို စစ်ပြီး ပြန်ကြိုးစားပါ။",
     "listen": "နားထောင်ရန်",
-    "stopAudio": "ရပ်ရန်"
+    "stopAudio": "ရပ်ရန်",
+    "watchOnYouTube": "YouTube မှာ လေ့လာရန်"
   },
   "shop": {
     "title": "ဈေးဆိုင်",

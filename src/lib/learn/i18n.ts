@@ -26,6 +26,8 @@ export interface LessonI18n {
   sections?: (SectionI18n | undefined)[];
   /** By question index; sparse entries allowed. */
   quiz?: (QuizI18n | undefined)[];
+  /** Localized YouTube search phrase (Burmese results for `my`, etc.). */
+  youtubeQuery?: string;
 }
 
 export interface TrackI18n {
@@ -48,6 +50,7 @@ function localizeLessonData(lesson: Lesson, i18n?: LessonI18n): Lesson {
     ...lesson,
     title: i18n.title ?? lesson.title,
     summary: i18n.summary ?? lesson.summary,
+    youtubeQuery: i18n.youtubeQuery ?? lesson.youtubeQuery,
     sections: lesson.sections?.map((section, index) => {
       const override = i18n.sections?.[index];
       if (!override) return section;
