@@ -566,7 +566,11 @@
     "theme_blossom": "Blossom",
     "themeDesc_midnight": "ม่วงและฟ้าไฟฟ้า — UI นุ่มนวลและโค้งมนขึ้น",
     "themeDesc_blossom": "กุหลาบอบอุ่นและลาเวนเดอร์ — เป็นมิตรและโค้งมนพิเศษ",
-    "navTeachers": "ครู"
+    "navTeachers": "ครู",
+    "theme_meadow": "ทุ่งหญ้า",
+    "themeDesc_meadow": "เขียวสดบนพื้นขาวสะอาด",
+    "theme_glass": "กระจก",
+    "themeDesc_glass": "ขาว-เขียวโปร่งแสงแบบฝ้า"
   },
   "dev": {
     "navKeys": "API keys",

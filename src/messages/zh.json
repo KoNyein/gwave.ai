@@ -566,7 +566,11 @@
     "theme_blossom": "Blossom",
     "themeDesc_midnight": "紫罗兰与电光蓝 — 更柔和圆润的界面。",
     "themeDesc_blossom": "暖玫瑰与薰衣草 — 亲切且格外圆润。",
-    "navTeachers": "教师"
+    "navTeachers": "教师",
+    "theme_meadow": "草地",
+    "themeDesc_meadow": "洁白底色配清新绿。",
+    "theme_glass": "玻璃",
+    "themeDesc_glass": "磨砂半透明的白与绿。"
   },
   "dev": {
     "navKeys": "API keys",

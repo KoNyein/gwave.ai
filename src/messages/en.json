@@ -566,7 +566,11 @@
     "theme_blossom": "Blossom",
     "themeDesc_midnight": "Violet & electric blue — a softer, rounder UI.",
     "themeDesc_blossom": "Warm rose & lavender — friendly and extra-round.",
-    "navTeachers": "Teachers"
+    "navTeachers": "Teachers",
+    "theme_meadow": "Meadow",
+    "themeDesc_meadow": "Crisp green on clean white.",
+    "theme_glass": "Glass",
+    "themeDesc_glass": "Frosted, translucent white & green."
   },
   "dev": {
     "navKeys": "API keys",

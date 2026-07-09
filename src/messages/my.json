@@ -566,7 +566,11 @@
     "theme_blossom": "Blossom",
     "themeDesc_midnight": "ခရမ်းရောင်နဲ့ လျှပ်စစ်ပြာ — ပိုပျော့ပျောင်းဝိုင်းစက်တဲ့ UI။",
     "themeDesc_blossom": "နွေးထွေးတဲ့ နှင်းဆီနဲ့ လာဗင်ဒါ — ဖော်ရွေပြီး ဝိုင်းဝိုင်းစက်စက်။",
-    "navTeachers": "ဆရာများ"
+    "navTeachers": "ဆရာများ",
+    "theme_meadow": "မြက်ခင်း",
+    "themeDesc_meadow": "သန့်ရှင်းဖြူ ပေါ်မှာ စိမ်းလန်း။",
+    "theme_glass": "ဖန်သား",
+    "themeDesc_glass": "ဖောက်တွင်းမြင် ဖန်သားဆန် အဖြူ-အစိမ်း။"
   },
   "dev": {
     "navKeys": "API keys",
