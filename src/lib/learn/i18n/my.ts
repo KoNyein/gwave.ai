@@ -729,7 +729,89 @@ export const MY_OVERLAY: LearnOverlay = {
       },
       "html-quiz": {
         title: "HTML Quiz",
-        summary: "HTML သင်တန်းတစ်ခုလုံးအတွက် မေးခွန်း ဆယ်ခု။",
+        summary: "HTML သင်တန်းတစ်ခုလုံးအတွက် မေးခွန်း ၁၄ ခု။",
+        quiz: [
+          {
+            q: "HTML က ဘာအတွက် အတိုကောက်လဲ?",
+            options: [
+              "HyperText Markup Language",
+              "High Tech Modern Language",
+              "Home Tool Markup List",
+              "Hyperlink Text Machine Language",
+            ],
+          },
+          {
+            q: "အရေးအကြီးဆုံး ခေါင်းစဉ် ဖန်တီးတဲ့ tag က?",
+            options: ["<h6>", "<head>", "<h1>", "<title>"],
+            explain: "<h1> က အထက်ဆုံး ခေါင်းစဉ်၊ <head> က page metadata ။",
+          },
+          {
+            q: "link ရဲ့ ဦးတည်ရာကို ဘယ် attribute က ကိုင်လဲ?",
+            options: ["src", "href", "link", "to"],
+          },
+          {
+            q: "ပုံ ပြတဲ့ tag က?",
+            options: ["<picture-file>", "<image>", "<img>", "<src>"],
+          },
+          {
+            q: "နံပါတ်စဉ် list က ဘယ် tag သုံးလဲ?",
+            options: ["<ul>", "<ol>", "<li> တစ်ခုတည်း", "<list>"],
+            explain: "<ol> = နံပါတ်စဉ်၊ <ul> = bullet ။",
+          },
+          {
+            q: "ဘယ် input element က dropdown ဖြစ်လဲ?",
+            options: ["<textarea>", "<select>", "<button>", "<option> တစ်ခုတည်း"],
+          },
+          {
+            q: "ပုံမှာ alt စာသား ဘာလို့ ရေးရလဲ?",
+            options: [
+              "ပုံ ပိုမြန် load ဖို့",
+              "screen reader အတွက်နဲ့ ပုံ load မဖြစ်ရင် ဖော်ပြဖို့",
+              "CSS အတွက် မဖြစ်မနေ",
+              "ပုံ ဖျောက်ဖို့",
+            ],
+          },
+          {
+            q: "ဘယ်ဟာက semantic layout tag လဲ?",
+            options: ["<div>", "<span>", "<article>", "<b>"],
+          },
+          {
+            q: "HTML မှာ comment ဘယ်လို ရေးလဲ?",
+            options: ["// ဒီလို", "<!-- ဒီလို -->", "/* ဒီလို */", "# ဒီလို"],
+          },
+          {
+            q: "less-than (<) ကို ဘယ် entity က ပြလဲ?",
+            options: ["&amp;", "&lt;", "&gt;", "&quot;"],
+            explain: "&lt; က < ၊ &gt; က > ။",
+          },
+          {
+            q: "element သီးသန့်တစ်ခုကို style/script လုပ်ဖို့ ဘယ် attribute လဲ?",
+            options: ["class", "id", "name", "type"],
+            explain: "id က page တစ်ခုမှာ သီးသန့်၊ class က အများ မျှသုံးလို့ရ။",
+          },
+          {
+            q: "ဗလာ field submit မဖြစ်အောင် တားတဲ့ input attribute က?",
+            options: ["placeholder", "readonly", "required", "value"],
+          },
+          {
+            q: "ဖုန်း screen နဲ့ ကိုက်စေတဲ့ meta tag က?",
+            options: [
+              '<meta charset="utf-8">',
+              '<meta name="viewport" content="width=device-width, initial-scale=1">',
+              '<meta name="description">',
+              "<title>",
+            ],
+          },
+          {
+            q: "<div> လို block element က …",
+            options: [
+              "စာကြောင်းအတွင်း နေတယ်",
+              "line အသစ်စပြီး width အပြည့်ယူတယ်",
+              "အမြဲ မမြင်ရဘူး",
+              "ပုံပဲ ထည့်လို့ရတယ်",
+            ],
+          },
+        ],
       },
     },
   },
