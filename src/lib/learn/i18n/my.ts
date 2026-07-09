@@ -1149,9 +1149,201 @@ export const MY_OVERLAY: LearnOverlay = {
           { heading: "နောက်မှ — ဒါမှမဟုတ် ထပ်ခါ လုပ်ခြင်း", body: "setTimeout(fn, ms) က ကြာချိန်ပြီးမှ တစ်ခါ run၊ setInterval(fn, ms) က ထပ်ခါထပ်ခါ run တယ်။ နာရီ၊ countdown နဲ့ ရိုးရှင်း animation တွေကို လုပ်ပေးတယ်။ ပြီးရင် clearInterval လုပ်နိုင်အောင် id ကို အမြဲသိမ်းပါ။" },
         ],
       },
+      "js-operators": {
+        title: "Operator များ",
+        summary: "ဂဏန်း၊ နှိုင်းယှဉ်နဲ့ logical operator။",
+        sections: [
+          { heading: "တွက်ချက် နဲ့ နှိုင်းယှဉ်", body: "ဂဏန်း operator (+ - * / % **) က တွက်၊ နှိုင်းယှဉ် operator (=== !== > < >= <=) က true/false ပြန်၊ logical (&& || !) က အခြေအနေ ပေါင်း။ == အစား === (တိကျ) နဲ့ အမြဲ နှိုင်းပါ။" },
+        ],
+      },
+      "js-data-types": {
+        title: "Data Type နဲ့ typeof",
+        summary: "number, string, boolean, null, undefined — နဲ့ ပြောင်းနည်း။",
+        sections: [
+          { heading: "တန်ဖိုးအမျိုးအစား သိခြင်း", body: "JavaScript တန်ဖိုးတွေမှာ type ရှိ: number, string, boolean, null, undefined, object စသည်။ typeof က ဘယ်ဟာလဲ ပြော။ Number(), String(), Boolean() နဲ့ ပြောင်း။ သတိ: typeof null က 'object' (နာမည်ကြီး ချွတ်ယွင်းချက်)။" },
+        ],
+      },
+      "js-template-literals": {
+        title: "Template Literal",
+        summary: "backtick string — တန်ဖိုးထည့်၊ စာကြောင်းအထစ်။",
+        sections: [
+          { heading: "တန်ဖိုးပါတဲ့ string", body: "Template literal က quote အစား backtick (`) သုံး။ အထဲမှာ ${ } က တန်ဖိုး/expression ထည့်၊ string က စာကြောင်းများစွာ ဖြတ်လို့ရ — message နဲ့ HTML ဆောက်ဖို့ အထူးသင့်။" },
+        ],
+      },
+      "js-scope": {
+        title: "Scope: let, const, var",
+        summary: "variable ဘယ်မှာ နေလဲ၊ block scope ဘာလို့ အရေးကြီးလဲ။",
+        sections: [
+          { heading: "Block scope", body: "let/const က block-scope: သူတို့ကြေညာတဲ့ { } ထဲမှာသာ ရှိ။ const က ပြန်မသတ်မှတ်နိုင်။ var (အဟောင်း) က function-scope၊ ရှောင်တာ ကောင်း။ variable ကို scope အသေးဆုံးမှာ ထားရင် bug နည်း။" },
+        ],
+      },
+      "js-arrow-functions": {
+        title: "Arrow Function",
+        summary: "function ရေးနည်း တိုတို။",
+        sections: [
+          { heading: "တိုတဲ့ function", body: "Arrow function က တိုတဲ့ syntax: (a, b) => a + b။ expression တစ်ခုဆို return အလိုအလျောက် (return မလို)။ ခေတ်သစ် JavaScript မှာ နေရာတိုင်း — အထူးသဖြင့် array method တွေနဲ့ — သုံးတယ်။" },
+        ],
+      },
+      "js-ternary": {
+        title: "Ternary နဲ့ Short-circuit",
+        summary: "?:, &&, ||, ?? နဲ့ တိုတဲ့ ဆုံးဖြတ်ချက်။",
+        sections: [
+          { heading: "တစ်ကြောင်းတည်း ရွေးချယ်", body: "Ternary operator condition ? a : b က တစ်ကြောင်းတည်းနဲ့ တန်ဖိုးရွေး။ && နဲ့ || က short-circuit: value || fallback က default ပေး၊ ?? က null/undefined အတွက်သာ အလားတူ လုပ်တယ်။" },
+        ],
+      },
+      "js-switch": {
+        title: "switch Statement",
+        summary: "တန်ဖိုးအမြဲတမ်း အများကြားက ရွေးချယ်ခြင်း သပ်သပ်ရပ်ရပ်။",
+        sections: [
+          { heading: "branch များ", body: "switch က တန်ဖိုးတစ်ခုကို case label အများနဲ့ နှိုင်း — တန်ဖိုးအမြဲတမ်း ကိုက်ရင် if/else ရှည်ထက် သပ်ရပ်။ case တစ်ခုစီ break လို၊ ဘာမှ မကိုက်ရင် default run။" },
+        ],
+      },
+      "js-for-of-in": {
+        title: "for...of နဲ့ for...in",
+        summary: "array နဲ့ object key ကို ခေတ်မီနည်းနဲ့ loop။",
+        sections: [
+          { heading: "ရင်းနှီးတဲ့ loop ၂ ခု", body: "for...of က array (iterable) ရဲ့ VALUE တွေ loop၊ for...in က object ရဲ့ KEY တွေ loop။ item တစ်ခုစီ လိုချင်ရုံဆို counter loop ထက် ရှင်းတယ်။" },
+        ],
+      },
+      "js-array-methods": {
+        title: "Array Method: map, filter, reduce",
+        summary: "loop မလိုဘဲ array ပြောင်း၊ ရွေး၊ ချုပ်။",
+        sections: [
+          { heading: "အဓိက ၃ ခု", body: "map က item တစ်ခုစီ ပြောင်းပြီး array အသစ်လုပ်၊ filter က စစ်အောင်မြင်တဲ့ item ပဲ ထား၊ reduce က array ကို တန်ဖိုးတစ်ခု (စုစုပေါင်းလို) ချုပ်။ manual loop အများစု အစားထိုးပြီး arrow function နဲ့ လှတယ်။" },
+        ],
+      },
+      "js-array-more": {
+        title: "Array Method ထပ်",
+        summary: "push, pop, slice, includes, sort, find။",
+        sections: [
+          { heading: "နေ့စဉ် array ကိရိယာ", body: "push/pop က အဆုံးမှာ ထည့်/ဖယ်၊ slice က အပိုင်း ကူး၊ includes က ပါ/မပါ စစ်၊ find က ပထမ ကိုက်တာ ပြန်၊ sort က စီ (ဂဏန်းဆို comparator ပေး)။ push/pop/sort မှလွဲ၍ မူရင်းကို မပြောင်း။" },
+        ],
+      },
+      "js-object-methods": {
+        title: "Object နဲ့ အလုပ်လုပ်ခြင်း",
+        summary: "Object.keys/values/entries နဲ့ spread ကူး။",
+        sections: [
+          { heading: "object ဖတ်/ကူး", body: "Object.keys(obj) က property name စာရင်း၊ Object.values() က တန်ဖိုး၊ Object.entries() က [key, value] အတွဲ loop ဖို့။ spread { ...obj } က shallow copy — field override လုပ်လို့ရ။" },
+        ],
+      },
+      "js-destructuring": {
+        title: "Destructuring",
+        summary: "array/object ကို variable တွေအဖြစ် ဖြည်ချ။",
+        sections: [
+          { heading: "တန်ဖိုး ဆွဲထုတ်", body: "Destructuring က array/object ထဲက တန်ဖိုးတွေ တစ်ကြောင်းတည်းနဲ့ variable တွေထဲ ကူး။ object က property name နဲ့ ကိုက်၊ array က နေရာနဲ့။ default လည်း ပေးလို့ရ။" },
+        ],
+      },
+      "js-spread-rest": {
+        title: "Spread နဲ့ Rest",
+        summary: "တန်ဖိုး ဖြန့်/စုတဲ့ ... ။",
+        sections: [
+          { heading: "... အသုံး ၂ မျိုး", body: "Spread က array/object ကို အပိုင်းအစအဖြစ် ဖြန့် — ကူး/ပေါင်းဖို့ ကောင်း ([...a, ...b])။ Rest က function ထဲ ဆန့်ကျင် — argument အပို တွေကို array ထဲ စု (...args)။" },
+        ],
+      },
+      "js-classes": {
+        title: "Class များ",
+        summary: "data နဲ့ method ပါတဲ့ object ပုံစံ။",
+        sections: [
+          { heading: "ကိုယ်ပိုင် type ဖန်တီး", body: "Class က object အတွက် template။ constructor က instance တစ်ခုစီ data (this.x) စီစဉ်၊ method က မျှသုံး function။ new နဲ့ instance ဖန်တီး။ ဆက်စပ် data နဲ့ လုပ်ဆောင်ချက်ကို အတူ စုစည်း။" },
+        ],
+      },
+      "js-this": {
+        title: "this Keyword",
+        summary: "method ထဲမှာ this က ဘာကို ရည်ညွှန်းလဲ။",
+        sections: [
+          { heading: "Context အရေးကြီး", body: "method ထဲမှာ this က အဲ့ method ခေါ်တဲ့ object ကို ရည်ညွှန်း — this.name က အဲ့ object ကိုယ်ပိုင် data ဖတ်။ Arrow function မှာ ကိုယ်ပိုင် this မရှိ၊ ပတ်ဝန်းကျင် scope ကနေ ငှား — များသောအားဖြင့် အဲ့ဒါက အဆင်ပြေ။" },
+        ],
+      },
+      "js-error-handling": {
+        title: "Error: try / catch",
+        summary: "program မ crash ဘဲ ပြဿနာ ကိုင်တွယ်။",
+        sections: [
+          { heading: "အမှား ဖမ်းခြင်း", body: "try ထဲ code က ပုံမှန် run၊ error ထုတ်ရင် အားလုံး မရပ်ဘဲ catch က ကိုင်တွယ်။ throw နဲ့ ကိုယ်ပိုင် error ထုတ်။ finally က error ဖြစ်ဖြစ်မဖြစ်ဖြစ် run — cleanup အတွက်။" },
+        ],
+      },
+      "js-callbacks": {
+        title: "Callback",
+        summary: "နောက်မှ ခေါ်ဖို့ function ပေးပို့ခြင်း။",
+        sections: [
+          { heading: "function ကို argument အဖြစ်", body: "Callback က တခြား function ကို နောက်မှ run ဖို့ ပေးတဲ့ function — အလုပ်ပြီးရင် ဒါမှမဟုတ် item တစ်ခုစီ။ array method တွေ callback ယူ၊ timer တွေလည်း။ ဒါ နားလည်ရင် asynchronous code တံခါးဖွင့်။" },
+        ],
+      },
+      "js-promises": {
+        title: "Promise",
+        summary: "နောက်မှ ရောက်တဲ့ တန်ဖိုး — async code အခြေခံ။",
+        sections: [
+          { heading: "နောက်မှ ပြီးတဲ့ အလုပ်", body: "Promise က အသင့်မဖြစ်သေးတဲ့ ရလဒ်ကို ကိုယ်စားပြု။ resolved (အောင်မြင်၊ .then နဲ့ ကိုင်) ဒါမှမဟုတ် rejected (ကျရှုံး၊ .catch) ဖြစ်။ Promise က ရှုပ်တဲ့ callback တွေကို သန့်တဲ့ chain နဲ့ အစားထိုး။" },
+        ],
+      },
+      "js-async-await": {
+        title: "async / await",
+        summary: "asynchronous code ကို အပေါ်ကနေအောက် ဖတ်လို့ရအောင်။",
+        sections: [
+          { heading: "sync လို async", body: "async က Promise ပြန်တဲ့ function ကို မှတ်၊ await က အထဲမှာ Promise resolve သည်အထိ ရပ်ပြီး တန်ဖိုး တိုက်ရိုက်ပေး။ asynchronous အဆင့်တွေ ရိုးရိုး sequential code လို ဖတ်ရ — error အတွက် try/catch နဲ့။" },
+        ],
+      },
+      "js-math-date": {
+        title: "Math နဲ့ Date",
+        summary: "ဂဏန်း၊ အဝိုင်း၊ ကျပန်းနဲ့ နာရီ။",
+        sections: [
+          { heading: "built-in အကူ", body: "Math object မှာ ကိရိယာ: Math.round/floor/ceil, Math.max/min, Math.random() (0–1 ဂဏန်း), Math.PI။ Date object က အချိန်တစ်ခုကို ကိုယ်စားပြု — new Date() က အခု၊ နှစ်/လ/ရက် ဖတ်တဲ့ method တွေ ပါ။" },
+        ],
+      },
       "js-quiz": {
         title: "JavaScript Quiz",
-        summary: "JavaScript သင်တန်းတစ်ခုလုံး စစ်ဆေးပါ။",
+        summary: "JavaScript သင်တန်းတစ်ခုလုံးအတွက် မေးခွန်း ၁၂ ခု။",
+        quiz: [
+          {
+            q: "မပြောင်းတဲ့ တန်ဖိုးကို ဘယ် keyword နဲ့ ကြေညာလဲ?",
+            options: ["let", "var", "const", "static"],
+          },
+          {
+            q: "['a','b','c'] အတွက် `plants.length` က ဘာလဲ?",
+            options: ["2", "3", "'abc'", "undefined"],
+          },
+          {
+            q: "JavaScript မှာ တိကျစွာ-ညီ နှိုင်းယှဉ်ချက် က?",
+            options: ["=", "==", "===", "=>"],
+            explain: "= က သတ်မှတ်၊ == က ပေါ့ပါးနှိုင်း၊ === က တန်ဖိုးနဲ့ type နှစ်ခုလုံး နှိုင်း။",
+          },
+          {
+            q: "array.map(fn) က ဘာ ပြန်လဲ?",
+            options: ["ပထမ ကိုက်တဲ့ item", "item တိုင်းကို fn သုံးထားတဲ့ array အသစ်", "true/false", "ဘာမှ မပြန်"],
+          },
+          {
+            q: "page ထဲက element ကို ဘယ်ဟာက ရှာလဲ?",
+            options: ["document.querySelector('#id')", "page.find('#id')", "html.get('#id')", "css.select('#id')"],
+          },
+          {
+            q: "addEventListener('click', fn) က ဘာလုပ်လဲ?",
+            options: ["element ကို နှိပ်", "fn တစ်ခါ ချက်ချင်း run", "element နှိပ်တိုင်း fn run", "element ဖယ်"],
+          },
+          {
+            q: "array.filter(fn) က ဘာ ပြန်လဲ?",
+            options: ["တန်ဖိုးတစ်ခု (စုစုပေါင်း)", "စစ်အောင်မြင်တဲ့ item တွေ array အသစ်", "array length", "true/false"],
+          },
+          {
+            q: "n ကို နှစ်ဆ ပြန်တဲ့ မှန်ကန်တဲ့ arrow function က?",
+            options: ["n => n * 2", "n -> n * 2", "function n * 2", "=> n * 2 n"],
+          },
+          {
+            q: "const { name } = grower က ဘာလုပ်လဲ?",
+            options: ["name ဆိုတဲ့ object ဖန်တီး", "grower.name ကို variable name ထဲ ကူး (destructuring)", "name ဖျက်", "ဘာမှ မလုပ်"],
+          },
+          {
+            q: "await ကို ဘယ်နေရာမှာသာ သုံးလို့ရလဲ?",
+            options: ["function တိုင်း", "async function ထဲ", "for loop ထဲ", "HTML file ထဲ"],
+          },
+          {
+            q: "error ထုတ်နိုင်တဲ့ code ကို ဘယ် block ထဲ ထားလဲ?",
+            options: ["if", "try", "for", "switch"],
+            explain: "try က အန္တရာယ်ရှိတဲ့ code run၊ catch က error ကို ကိုင်။",
+          },
+          {
+            q: "0 ကနေ 5 အထိ ကိန်းပြည့် ဘယ်ဟာက ပေးလဲ?",
+            options: ["Math.random() * 5", "Math.floor(Math.random() * 6)", "Math.round(6)", "Math.max(0, 5)"],
+          },
+        ],
       },
     },
   },

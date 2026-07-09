@@ -11,6 +11,7 @@ import {
 } from "@/lib/learn/webdev-extra";
 import { HTML_EXTRA2 } from "@/lib/learn/webdev-html2";
 import { CSS_EXTRA2 } from "@/lib/learn/webdev-css2";
+import { JS_EXTRA2 } from "@/lib/learn/webdev-js2";
 import {
   BOX_MODEL_SVG,
   FLEXBOX_SVG,
@@ -667,11 +668,12 @@ export const javascriptTrack: Track = {
       },
     },
     ...JS_EXTRA,
+    ...JS_EXTRA2,
     {
       slug: "js-quiz",
       title: "JavaScript Quiz",
-      summary: "Check the whole JavaScript course.",
-      minutes: 6,
+      summary: "Twelve questions covering the whole JavaScript course.",
+      minutes: 8,
       kind: "quiz",
       quiz: [
         {
@@ -719,6 +721,57 @@ export const javascriptTrack: Track = {
             "Removes the element",
           ],
           answer: 2,
+        },
+        {
+          q: "array.filter(fn) returns…",
+          options: [
+            "one value (a total)",
+            "a new array of items that pass the test",
+            "the array's length",
+            "true or false",
+          ],
+          answer: 1,
+        },
+        {
+          q: "Which is a correct arrow function that returns n doubled?",
+          options: ["n => n * 2", "n -> n * 2", "function n * 2", "=> n * 2 n"],
+          answer: 0,
+        },
+        {
+          q: "What does const { name } = grower do?",
+          options: [
+            "Creates an object called name",
+            "Copies grower.name into a variable name (destructuring)",
+            "Deletes name",
+            "Nothing",
+          ],
+          answer: 1,
+        },
+        {
+          q: "await can only be used inside…",
+          options: [
+            "any function",
+            "an async function",
+            "a for loop",
+            "the HTML file",
+          ],
+          answer: 1,
+        },
+        {
+          q: "Code that might throw an error goes inside which block?",
+          options: ["if", "try", "for", "switch"],
+          answer: 1,
+          explain: "try runs the risky code; catch handles any error it throws.",
+        },
+        {
+          q: "Which gives a whole number from 0 to 5?",
+          options: [
+            "Math.random() * 5",
+            "Math.floor(Math.random() * 6)",
+            "Math.round(6)",
+            "Math.max(0, 5)",
+          ],
+          answer: 1,
         },
       ],
     },
