@@ -337,6 +337,23 @@ export function Messenger({
         sender: currentUser,
       };
       setMessages((previous) => [...(previous ?? []), optimistic]);
+      setConversations((previous) =>
+        previous
+          .map((c) =>
+            c.id === activeId
+              ? {
+                  ...c,
+                  last_message: optimistic,
+                  last_message_at: optimistic.created_at,
+                }
+              : c,
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.last_message_at).getTime() -
+              new Date(a.last_message_at).getTime(),
+          ),
+      );
       const result = await sendMessage({
         conversationId: activeId,
         content: "",
@@ -430,7 +447,11 @@ export function Messenger({
               const other = conversationPeer(conversation, currentUser.id);
               const preview = conversation.last_message
                 ? conversation.last_message.content ||
-                  (conversation.last_message.image_path ? t("sentPhoto") : "")
+                  (conversation.last_message.image_path
+                    ? t("sentPhoto")
+                    : conversation.last_message.latitude != null
+                      ? t("sharedLocation")
+                      : "")
                 : t("noMessagesYet");
               return (
                 <button

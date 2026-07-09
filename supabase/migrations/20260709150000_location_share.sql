@@ -27,3 +27,10 @@ alter table public.messages
   add constraint messages_location_pair check (
     (latitude is null) = (longitude is null)
   );
+
+-- A location-only message has empty content and no image — widen the
+-- original "text or image" constraint to accept coordinates too.
+alter table public.messages drop constraint message_has_content;
+alter table public.messages add constraint message_has_content check (
+  char_length(content) > 0 or image_path is not null or latitude is not null
+);

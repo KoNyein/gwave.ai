@@ -74,7 +74,7 @@ export interface ConversationSummary extends Conversation {
   }[];
   last_message: Pick<
     Message,
-    "id" | "sender_id" | "content" | "image_path" | "created_at"
+    "id" | "sender_id" | "content" | "image_path" | "latitude" | "created_at"
   > | null;
   unread: boolean;
 }
