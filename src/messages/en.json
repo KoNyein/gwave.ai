@@ -73,7 +73,12 @@
     "videoLimit": "A post can have a single video with no other media.",
     "uploadFailed": "Upload failed. Please try again.",
     "post": "Post",
-    "posting": "Posting..."
+    "posting": "Posting...",
+    "addLocation": "Add location",
+    "removeLocation": "Remove location",
+    "placeNamePrompt": "Name this place (optional):",
+    "myLocation": "My location",
+    "locationFailed": "Couldn't add location."
   },
   "post": {
     "comment": "Comment",
@@ -88,7 +93,8 @@
     "block": "Block user",
     "viewCount": "{count, plural, one {# view} other {# views}}",
     "viewers": "Viewed by",
-    "noViewersYet": "No views yet."
+    "noViewersYet": "No views yet.",
+    "atALocation": "at a location"
   },
   "comments": {
     "placeholder": "Write a comment...",
@@ -249,7 +255,10 @@
     "reportUser": "Report user",
     "blockUser": "Block user",
     "unblockUser": "Unblock user",
-    "myProjects": "My Projects"
+    "myProjects": "My Projects",
+    "message": "Message",
+    "tabPhotos": "Photos",
+    "noPhotos": "No photos yet."
   },
   "groups": {
     "title": "Groups",
@@ -327,7 +336,9 @@
     "unmute": "Unmute",
     "cameraOn": "Turn camera on",
     "cameraOff": "Turn camera off",
-    "endCall": "End call"
+    "endCall": "End call",
+    "shareLocation": "Share location",
+    "sharedLocation": "Shared location"
   },
   "stories": {
     "createStory": "Create story",

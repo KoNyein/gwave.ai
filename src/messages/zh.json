@@ -73,7 +73,12 @@
     "videoLimit": "一条帖子只能包含一个视频且不能有其他媒体。",
     "uploadFailed": "上传失败，请重试。",
     "post": "发布",
-    "posting": "正在发布..."
+    "posting": "正在发布...",
+    "addLocation": "添加位置",
+    "removeLocation": "移除位置",
+    "placeNamePrompt": "为这个地点命名（可选）：",
+    "myLocation": "我的位置",
+    "locationFailed": "无法添加位置。"
   },
   "post": {
     "comment": "评论",
@@ -88,7 +93,8 @@
     "block": "Block user",
     "viewCount": "{count, plural, one {# 次浏览} other {# 次浏览}}",
     "viewers": "浏览者",
-    "noViewersYet": "还没有浏览。"
+    "noViewersYet": "还没有浏览。",
+    "atALocation": "在某个位置"
   },
   "comments": {
     "placeholder": "写下评论...",
@@ -249,7 +255,10 @@
     "reportUser": "Report user",
     "blockUser": "Block user",
     "unblockUser": "Unblock user",
-    "myProjects": "My Projects"
+    "myProjects": "My Projects",
+    "message": "发消息",
+    "tabPhotos": "照片",
+    "noPhotos": "还没有照片。"
   },
   "groups": {
     "title": "群组",
@@ -327,7 +336,9 @@
     "unmute": "取消静音",
     "cameraOn": "开启摄像头",
     "cameraOff": "关闭摄像头",
-    "endCall": "挂断"
+    "endCall": "挂断",
+    "shareLocation": "分享位置",
+    "sharedLocation": "分享的位置"
   },
   "stories": {
     "createStory": "创建快拍",

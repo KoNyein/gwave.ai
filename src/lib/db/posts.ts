@@ -228,6 +228,57 @@ export async function getPost(
   return data ? hideForeignViewCounts(sortMedia(data), viewerId) : null;
 }
 
+export interface ProfilePhoto {
+  post_id: string;
+  storage_path: string;
+  created_at: string;
+}
+
+/**
+ * A user's photos for the profile Photos tab: image media from their
+ * personal (non-group, non-page) posts, newest first. RLS on posts keeps
+ * private posts hidden from viewers who can't see them.
+ */
+export async function getProfilePhotos(
+  profileId: string,
+  limit = 30,
+): Promise<ProfilePhoto[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("posts")
+    .select("id, created_at, media:post_media(storage_path, media_type, position)")
+    .eq("author_id", profileId)
+    .is("group_id", null)
+    .is("page_id", null)
+    .order("created_at", { ascending: false })
+    .limit(60)
+    .returns<
+      {
+        id: string;
+        created_at: string;
+        media: { storage_path: string; media_type: string; position: number }[];
+      }[]
+    >();
+
+  if (error) throw new Error(`Failed to load photos: ${error.message}`);
+
+  const photos: ProfilePhoto[] = [];
+  for (const post of data ?? []) {
+    const images = post.media
+      .filter((m) => m.media_type === "image")
+      .sort((a, b) => a.position - b.position);
+    for (const image of images) {
+      photos.push({
+        post_id: post.id,
+        storage_path: image.storage_path,
+        created_at: post.created_at,
+      });
+      if (photos.length >= limit) return photos;
+    }
+  }
+  return photos;
+}
+
 /**
  * All comments for a post (oldest first), with the viewer's own reaction
  * embedded. The UI groups replies under their parents.
