@@ -12,6 +12,7 @@ import {
   Gamepad2,
   Palette,
   Play,
+  Rocket,
   Sprout,
   Terminal,
   type LucideIcon,
@@ -19,7 +20,12 @@ import {
 
 import { Card, CardContent } from "@/components/ui/card";
 import { ageBandOf, getCurrentProfile } from "@/lib/auth";
-import { getProgressForUser, getResumePointForUser } from "@/lib/db/learn";
+import { LevelBadge } from "@/components/learn/level-badge";
+import {
+  getLearningPoints,
+  getProgressForUser,
+  getResumePointForUser,
+} from "@/lib/db/learn";
 import { headingForBand, tracksForBand } from "@/lib/learn/lessons";
 
 export const metadata = { title: "Learn" };
@@ -45,9 +51,10 @@ export default async function LearnPage() {
   const tracks = tracksForBand(band);
   const showGame = band === "child" || band === "preteen" || band === "unknown";
 
-  const [progressRows, resume] = await Promise.all([
+  const [progressRows, resume, points] = await Promise.all([
     getProgressForUser(profile.id),
     getResumePointForUser(profile.id),
+    getLearningPoints(profile.id),
   ]);
   const completedByTrack = new Map<string, number>();
   for (const row of progressRows) {
@@ -68,6 +75,30 @@ export default async function LearnPage() {
           <p className="text-sm text-muted-foreground">{headingForBand(band)}</p>
         </div>
       </div>
+
+      {/* Your learning level — grows with every completed lesson and quiz. */}
+      <Card>
+        <CardContent className="p-4">
+          <LevelBadge points={points} />
+        </CardContent>
+      </Card>
+
+      <Link href="/learn/playground" className="block">
+        <Card className="overflow-hidden transition-colors hover:bg-muted/50">
+          <CardContent className="flex items-center gap-4 p-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Rocket className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="font-semibold">Code Playground 🚀</p>
+              <p className="text-sm text-muted-foreground">
+                Free practice: write HTML, CSS &amp; JavaScript with
+                autocompletion and run it instantly.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
 
       {resume && (
         <Link

@@ -19,7 +19,8 @@ import {
   getFriendState,
   isFollowing,
 } from "@/lib/db/friends";
-import { getProjectsForUser } from "@/lib/db/learn";
+import { LevelBadge } from "@/components/learn/level-badge";
+import { getLearningPoints, getProjectsForUser } from "@/lib/db/learn";
 import { getProfilePhotos, getProfilePosts } from "@/lib/db/posts";
 import { displayName, initials } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
@@ -71,7 +72,10 @@ export default async function ProfilePage({
   const initiallyBlocked = Boolean(blockRow && "data" in blockRow && blockRow.data);
 
   // Learning projects are private — only shown on your own profile.
-  const projects = isSelf ? await getProjectsForUser(viewer.id, 6) : [];
+  const [projects, learningPoints] = await Promise.all([
+    isSelf ? getProjectsForUser(viewer.id, 6) : Promise.resolve([]),
+    getLearningPoints(profile.id),
+  ]);
 
   const currentUser = {
     id: viewer.id,
@@ -112,8 +116,11 @@ export default async function ProfilePage({
                   {displayName(profile)}
                   <MemberBadge role={profile.role} />
                 </h1>
-                <p className="text-sm text-muted-foreground">
+                <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   @{profile.username} · {t("friendCount", { count: friendCount })}
+                  {learningPoints > 0 ? (
+                    <LevelBadge points={learningPoints} compact />
+                  ) : null}
                 </p>
               </div>
             </div>
@@ -144,7 +151,11 @@ export default async function ProfilePage({
               {projects.map((project) => (
                 <Link
                   key={project.id}
-                  href={`/learn/${project.track_slug}/${project.lesson_slug}`}
+                  href={
+                    project.track_slug === "playground"
+                      ? "/learn/playground"
+                      : `/learn/${project.track_slug}/${project.lesson_slug}`
+                  }
                   className="rounded-lg border p-3 transition-colors hover:bg-muted"
                 >
                   <p className="truncate text-sm font-medium">{project.title}</p>

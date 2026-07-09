@@ -4,6 +4,7 @@ import * as React from "react";
 import { Play, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { CodeEditor } from "@/components/learn/code-editor";
 import {
   useProjectAutosave,
   type LessonRef,
@@ -40,16 +41,21 @@ export function CodePlayground({
   starter,
   lesson,
   title = "My web page",
+  tall = false,
 }: {
   starter: CodeState;
   lesson?: LessonRef;
   title?: string;
+  /** Larger editor + preview for the standalone practice page. */
+  tall?: boolean;
 }) {
   const [tab, setTab] = React.useState<Tab>("html");
   const [code, setCode] = React.useState<CodeState>(() =>
     restoreCode(starter, lesson?.initialData),
   );
   const [srcDoc, setSrcDoc] = React.useState("");
+  // Bumps to remount the editors after Reset loads new documents.
+  const [resetKey, setResetKey] = React.useState(0);
 
   useProjectAutosave(lesson, "code", title, code);
 
@@ -94,18 +100,25 @@ export function CodePlayground({
           </div>
           <button
             type="button"
-            onClick={() => setCode(starter)}
+            onClick={() => {
+              setCode(starter);
+              setResetKey((k) => k + 1);
+            }}
             className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
           >
             <RotateCcw className="h-3 w-3" /> Reset
           </button>
         </div>
-        <textarea
-          spellCheck={false}
+        {/* Keyed per tab + reset so each document keeps its own editor
+            (undo history, highlighting, autocompletion). */}
+        <CodeEditor
+          key={`${tab}-${resetKey}`}
           value={code[tab]}
-          onChange={(e) => setCode({ ...code, [tab]: e.target.value })}
-          className="h-64 w-full resize-none bg-background p-3 font-mono text-xs outline-none"
-          aria-label={`${tab} code editor`}
+          language={tab}
+          onChange={(next) =>
+            setCode((previous) => ({ ...previous, [tab]: next }))
+          }
+          heightClass={tall ? "h-[28rem]" : "h-64"}
         />
         <div className="border-t p-2">
           <Button size="sm" className="w-full" onClick={() => setSrcDoc(build())}>
@@ -122,7 +135,7 @@ export function CodePlayground({
           title="Code preview"
           sandbox="allow-scripts"
           srcDoc={srcDoc}
-          className="h-[19rem] w-full bg-white"
+          className={cn("w-full bg-white", tall ? "h-[32rem]" : "h-[19rem]")}
         />
       </div>
     </div>
