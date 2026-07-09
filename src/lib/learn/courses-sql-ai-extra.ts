@@ -34,7 +34,33 @@ function sq(
   };
 }
 
-export const SQL_EXTRA: Lesson[] = [
+// A "Learn on YouTube" search topic per lesson (localized to Burmese via the
+// overlay). Falls through gracefully — a lesson with no entry simply shows no
+// video link.
+const YT: Record<string, string> = {
+  "sql-column-alias": "SQL column alias AS keyword",
+  "sql-calculations": "SQL arithmetic in SELECT calculated columns",
+  "sql-like": "SQL LIKE wildcard pattern matching",
+  "sql-in": "SQL IN operator tutorial",
+  "sql-between": "SQL BETWEEN operator range",
+  "sql-not": "SQL NOT AND OR operators",
+  "sql-order-multi": "SQL ORDER BY multiple columns",
+  "sql-limit-offset": "SQL LIMIT OFFSET pagination",
+  "sql-count-distinct": "SQL COUNT DISTINCT tutorial",
+  "sql-min-max-group": "SQL MIN MAX with GROUP BY",
+  "sql-having-deep": "SQL HAVING clause explained",
+  "sql-left-join": "SQL LEFT JOIN tutorial",
+  "sql-null": "SQL NULL IS NULL tutorial",
+  "sql-join-aggregate": "SQL JOIN with GROUP BY count",
+  "sql-subquery": "SQL subquery in WHERE tutorial",
+  "sql-subquery-in": "SQL subquery with IN",
+  "sql-case": "SQL CASE WHEN expression tutorial",
+  "sql-string-funcs": "SQL string functions UPPER LENGTH SUBSTR",
+  "sql-round": "SQL ROUND AVG numeric functions",
+  "sql-union": "SQL UNION and UNION ALL tutorial",
+};
+
+const SQL_EXTRA_BASE: Lesson[] = [
   sq(
     "sql-column-alias",
     "Column Aliases (AS)",
@@ -256,3 +282,7 @@ export const SQL_EXTRA: Lesson[] = [
     "SELECT name, 'grower' AS kind FROM growers\nUNION ALL\nSELECT name, 'strain' AS kind FROM strains\nORDER BY kind, name;",
   ),
 ];
+
+export const SQL_EXTRA: Lesson[] = SQL_EXTRA_BASE.map((lesson) =>
+  YT[lesson.slug] ? { ...lesson, youtubeQuery: YT[lesson.slug] } : lesson,
+);
