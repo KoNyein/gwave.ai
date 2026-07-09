@@ -227,6 +227,22 @@ export interface ShopOrder {
   updated_at: string;
 }
 
+export type CameraType = "webrtc" | "rtsp";
+
+export interface UserCamera {
+  id: string;
+  owner_id: string;
+  title: string;
+  camera_type: CameraType;
+  rtsp_url: string | null;
+  stream_id: string;
+  share_token: string;
+  is_public: boolean;
+  public_until: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type WellnessKind = "dhamma" | "meditation" | "radio" | "health";
 
 export interface Profile {
