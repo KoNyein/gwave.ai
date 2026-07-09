@@ -11,6 +11,7 @@ import {
   FlaskConical,
   Gamepad2,
   Palette,
+  GraduationCap,
   Play,
   Rocket,
   Sprout,
@@ -87,22 +88,39 @@ export default async function LearnPage() {
         </CardContent>
       </Card>
 
-      <Link href="/learn/playground" className="block">
-        <Card className="overflow-hidden transition-colors hover:bg-muted/50">
-          <CardContent className="flex items-center gap-4 p-4">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Rocket className="h-6 w-6" />
-            </span>
-            <div>
-              <p className="font-semibold">Code Playground 🚀</p>
-              <p className="text-sm text-muted-foreground">
-                Free practice: write HTML, CSS &amp; JavaScript with
-                autocompletion and run it instantly.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </Link>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Link href="/learn/playground" className="block">
+          <Card className="h-full overflow-hidden transition-colors hover:bg-muted/50">
+            <CardContent className="flex items-center gap-4 p-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Rocket className="h-6 w-6" />
+              </span>
+              <div>
+                <p className="font-semibold">Code Playground 🚀</p>
+                <p className="text-sm text-muted-foreground">
+                  Free practice: write HTML, CSS &amp; JavaScript with
+                  autocompletion and run it instantly.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/learn/live" className="block">
+          <Card className="h-full overflow-hidden transition-colors hover:bg-muted/50">
+            <CardContent className="flex items-center gap-4 p-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                <GraduationCap className="h-6 w-6" />
+              </span>
+              <div>
+                <p className="font-semibold">Live Classes 🎓</p>
+                <p className="text-sm text-muted-foreground">
+                  Join a teacher&apos;s live video class — or apply to teach.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
 
       {resume && (
         <Link

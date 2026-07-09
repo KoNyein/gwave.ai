@@ -73,6 +73,8 @@ test("social-shell pages require login", async ({ page }) => {
   // minors, so anonymous visitors bounce to /login too.
   for (const path of [
     "/learn",
+    "/learn/live",
+    "/learn/teach",
     "/games",
     "/wellness",
     "/settings",

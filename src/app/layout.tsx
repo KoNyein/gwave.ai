@@ -19,6 +19,11 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "gwave",
   },
+  // Non-Apple counterpart to appleWebApp.capable (the former is deprecated
+  // on its own); silences the console warning and enables standalone PWA.
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
   icons: {
     icon: "/favicon.svg",
     apple: "/icon-192.png",

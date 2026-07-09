@@ -564,7 +564,8 @@
     "theme_midnight": "Midnight",
     "theme_blossom": "Blossom",
     "themeDesc_midnight": "ม่วงและฟ้าไฟฟ้า — UI นุ่มนวลและโค้งมนขึ้น",
-    "themeDesc_blossom": "กุหลาบอบอุ่นและลาเวนเดอร์ — เป็นมิตรและโค้งมนพิเศษ"
+    "themeDesc_blossom": "กุหลาบอบอุ่นและลาเวนเดอร์ — เป็นมิตรและโค้งมนพิเศษ",
+    "navTeachers": "ครู"
   },
   "dev": {
     "navKeys": "API keys",
@@ -921,5 +922,43 @@
     "reviewNotePlaceholder": "หมายเหตุถึงผู้สร้าง (ไม่บังคับ)",
     "approve": "อนุมัติ",
     "reject": "ปฏิเสธ"
+  },
+  "learn": {
+    "backToLearn": "กลับไปเรียนรู้",
+    "liveClasses": "คลาสสด",
+    "liveClassesSubtitle": "คลาสวิดีโอสดที่สอนโดยครู",
+    "startClass": "เริ่มคลาส",
+    "becomeTeacher": "เป็นครู",
+    "noClassesYet": "ยังไม่มีคลาสสด กลับมาดูใหม่เร็ว ๆ นี้!",
+    "liveNow": "สด",
+    "ended": "จบแล้ว",
+    "byTeacher": "โดย {name}",
+    "startClassSubtitle": "ถ่ายทอดสดและสอน นักเรียนจะได้วิดีโอ แชท และรีแอคชั่น",
+    "classTitle": "ชื่อคลาส",
+    "classTitlePlaceholder": "เช่น พื้นฐาน JavaScript loop",
+    "classSubject": "วิชา",
+    "classDescription": "คำอธิบาย (ไม่บังคับ)",
+    "classDescriptionPlaceholder": "คุณจะสอนอะไร?",
+    "classRtmpHint": "คุณจะได้ RTMP URL และคีย์สำหรับ OBS ในหน้าถัดไป",
+    "teachSubtitle": "สมัครเพื่อสอนคลาสวิดีโอสดให้ผู้เรียน",
+    "teachSubjects": "วิชาที่คุณสอน",
+    "teachSubjectsPlaceholder": "เช่น HTML, CSS, Python",
+    "teachBio": "เกี่ยวกับคุณ",
+    "teachBioPlaceholder": "ประสบการณ์การสอนและสิ่งที่อยากสอน…",
+    "submitApplication": "ส่งใบสมัคร",
+    "resubmitApplication": "ส่งใหม่",
+    "applicationPending": "กำลังตรวจสอบใบสมัคร",
+    "applicationPendingHint": "ผู้ดูแลจะตรวจสอบเร็ว ๆ นี้ เมื่ออนุมัติแล้วคุณจะสอนได้",
+    "applicationRejected": "ใบสมัครของคุณไม่ได้รับอนุมัติ",
+    "alreadyTeacher": "คุณเป็นครูที่ได้รับอนุมัติแล้ว! 🎓",
+    "teacherApplications": "ใบสมัครครู",
+    "noApplications": "ยังไม่มีใบสมัครครู",
+    "reviewNote": "หมายเหตุผู้ตรวจ",
+    "reviewNotePlaceholder": "หมายเหตุ (ไม่บังคับ)",
+    "approve": "อนุมัติ",
+    "reject": "ปฏิเสธ",
+    "status_pending": "รอตรวจสอบ",
+    "status_approved": "อนุมัติแล้ว",
+    "status_rejected": "ถูกปฏิเสธ"
   }
 }

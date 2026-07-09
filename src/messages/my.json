@@ -564,7 +564,8 @@
     "theme_midnight": "Midnight",
     "theme_blossom": "Blossom",
     "themeDesc_midnight": "ခရမ်းရောင်နဲ့ လျှပ်စစ်ပြာ — ပိုပျော့ပျောင်းဝိုင်းစက်တဲ့ UI။",
-    "themeDesc_blossom": "နွေးထွေးတဲ့ နှင်းဆီနဲ့ လာဗင်ဒါ — ဖော်ရွေပြီး ဝိုင်းဝိုင်းစက်စက်။"
+    "themeDesc_blossom": "နွေးထွေးတဲ့ နှင်းဆီနဲ့ လာဗင်ဒါ — ဖော်ရွေပြီး ဝိုင်းဝိုင်းစက်စက်။",
+    "navTeachers": "ဆရာများ"
   },
   "dev": {
     "navKeys": "API keys",
@@ -921,5 +922,43 @@
     "reviewNotePlaceholder": "ဖန်တီးသူထံ မှတ်ချက် (ရွေးချယ်နိုင်)",
     "approve": "အတည်ပြုမည်",
     "reject": "ငြင်းပယ်မည်"
+  },
+  "learn": {
+    "backToLearn": "Learn သို့ ပြန်သွားမည်",
+    "liveClasses": "တိုက်ရိုက် အတန်းများ",
+    "liveClassesSubtitle": "ဆရာများ တိုက်ရိုက်သင်ကြားသော ဗီဒီယိုအတန်းများ။",
+    "startClass": "အတန်းစတင်ရန်",
+    "becomeTeacher": "ဆရာဖြစ်လိုသည်",
+    "noClassesYet": "တိုက်ရိုက်အတန်း မရှိသေးပါ။ နောက်မှ ပြန်ကြည့်ပါ!",
+    "liveNow": "တိုက်ရိုက်",
+    "ended": "ပြီးဆုံး",
+    "byTeacher": "{name} မှ",
+    "startClassSubtitle": "တိုက်ရိုက်ထုတ်လွှင့်ပြီး သင်ကြားပါ။ ကျောင်းသားများ ဗီဒီယို၊ chat နဲ့ reaction ရမယ်။",
+    "classTitle": "အတန်းခေါင်းစဉ်",
+    "classTitlePlaceholder": "ဥပမာ JavaScript loop အခြေခံ",
+    "classSubject": "ဘာသာရပ်",
+    "classDescription": "ဖော်ပြချက် (ရွေးချယ်)",
+    "classDescriptionPlaceholder": "ဘာတွေ သင်ပေးမလဲ?",
+    "classRtmpHint": "နောက်စာမျက်နှာမှာ OBS အတွက် RTMP URL နဲ့ key ရပါမယ်။",
+    "teachSubtitle": "ကျောင်းသားများအတွက် တိုက်ရိုက်ဗီဒီယိုအတန်း သင်ကြားခွင့် လျှောက်ပါ။",
+    "teachSubjects": "သင်ကြားမယ့် ဘာသာရပ်များ",
+    "teachSubjectsPlaceholder": "ဥပမာ HTML, CSS, Python",
+    "teachBio": "သင့်အကြောင်း",
+    "teachBioPlaceholder": "သင်ကြားမှုအတွေ့အကြုံနဲ့ သင်ပေးလိုတာ…",
+    "submitApplication": "လျှောက်လွှာ တင်မည်",
+    "resubmitApplication": "ပြန်တင်မည်",
+    "applicationPending": "လျှောက်လွှာ စစ်ဆေးဆဲ",
+    "applicationPendingHint": "Moderator က မကြာမီ စစ်ဆေးပါမယ်။ အတည်ပြုပြီးရင် အတန်းသင်လို့ရပါမယ်။",
+    "applicationRejected": "သင့်လျှောက်လွှာ အတည်မပြုခဲ့ပါ",
+    "alreadyTeacher": "သင်က အတည်ပြုပြီး ဆရာဖြစ်ပါပြီ! 🎓",
+    "teacherApplications": "ဆရာလျှောက်လွှာများ",
+    "noApplications": "ဆရာလျှောက်လွှာ မရှိသေးပါ။",
+    "reviewNote": "စစ်ဆေးသူ မှတ်ချက်",
+    "reviewNotePlaceholder": "မှတ်ချက် (ရွေးချယ်)",
+    "approve": "အတည်ပြုမည်",
+    "reject": "ငြင်းပယ်မည်",
+    "status_pending": "စစ်ဆေးဆဲ",
+    "status_approved": "အတည်ပြုပြီး",
+    "status_rejected": "ငြင်းပယ်ပြီး"
   }
 }

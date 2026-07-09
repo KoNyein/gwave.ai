@@ -95,9 +95,25 @@ export interface LiveStream {
   mux_stream_id: string;
   mux_playback_id: string | null;
   viewer_count: number;
+  kind: "stream" | "class";
+  track_slug: string | null;
+  scheduled_at: string | null;
   started_at: string | null;
   ended_at: string | null;
   created_at: string;
+}
+
+export type TeacherApplicationStatus = "pending" | "approved" | "rejected";
+
+export interface TeacherApplication {
+  id: string;
+  user_id: string;
+  bio: string;
+  subjects: string | null;
+  status: TeacherApplicationStatus;
+  review_note: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface LiveStreamKey {
@@ -178,6 +194,7 @@ export interface Profile {
   suspended_until: string | null;
   suspend_reason: string | null;
   birth_date: string | null;
+  is_teacher: boolean;
   terms_accepted_version: string | null;
   privacy_accepted_version: string | null;
   terms_accepted_at: string | null;
@@ -861,6 +878,9 @@ export type Database = {
           mux_stream_id: string;
           mux_playback_id?: string | null;
           viewer_count?: number;
+          kind?: "stream" | "class";
+          track_slug?: string | null;
+          scheduled_at?: string | null;
           started_at?: string | null;
           ended_at?: string | null;
           created_at?: string;
@@ -871,6 +891,29 @@ export type Database = {
             foreignKeyName: "live_streams_host_id_fkey";
             columns: ["host_id"];
             isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      teacher_applications: {
+        Row: TeacherApplication;
+        Insert: {
+          id?: string;
+          user_id: string;
+          bio: string;
+          subjects?: string | null;
+          status?: TeacherApplicationStatus;
+          review_note?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<TeacherApplication>;
+        Relationships: [
+          {
+            foreignKeyName: "teacher_applications_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
           },

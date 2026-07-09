@@ -564,7 +564,8 @@
     "theme_midnight": "Midnight",
     "theme_blossom": "Blossom",
     "themeDesc_midnight": "Violet & electric blue — a softer, rounder UI.",
-    "themeDesc_blossom": "Warm rose & lavender — friendly and extra-round."
+    "themeDesc_blossom": "Warm rose & lavender — friendly and extra-round.",
+    "navTeachers": "Teachers"
   },
   "dev": {
     "navKeys": "API keys",
@@ -921,5 +922,43 @@
     "reviewNotePlaceholder": "Optional note to the author",
     "approve": "Approve",
     "reject": "Reject"
+  },
+  "learn": {
+    "backToLearn": "Back to Learn",
+    "liveClasses": "Live Classes",
+    "liveClassesSubtitle": "Teacher-hosted live video classes.",
+    "startClass": "Start a class",
+    "becomeTeacher": "Become a teacher",
+    "noClassesYet": "No live classes yet. Check back soon!",
+    "liveNow": "LIVE",
+    "ended": "Ended",
+    "byTeacher": "by {name}",
+    "startClassSubtitle": "Go live and teach. Students get HLS video, chat and reactions.",
+    "classTitle": "Class title",
+    "classTitlePlaceholder": "e.g. Intro to JavaScript loops",
+    "classSubject": "Subject",
+    "classDescription": "Description (optional)",
+    "classDescriptionPlaceholder": "What will you cover?",
+    "classRtmpHint": "You'll get an RTMP URL and a private key for OBS on the next screen.",
+    "teachSubtitle": "Apply to host live video classes for learners.",
+    "teachSubjects": "Subjects you teach",
+    "teachSubjectsPlaceholder": "e.g. HTML, CSS, Python",
+    "teachBio": "About you",
+    "teachBioPlaceholder": "Your teaching experience and what you'd like to teach…",
+    "submitApplication": "Submit application",
+    "resubmitApplication": "Resubmit application",
+    "applicationPending": "Application under review",
+    "applicationPendingHint": "A moderator will review your application soon. You'll be able to host classes once approved.",
+    "applicationRejected": "Your application was not approved",
+    "alreadyTeacher": "You're an approved teacher! 🎓",
+    "teacherApplications": "Teacher applications",
+    "noApplications": "No teacher applications yet.",
+    "reviewNote": "Reviewer note",
+    "reviewNotePlaceholder": "Optional note",
+    "approve": "Approve",
+    "reject": "Reject",
+    "status_pending": "Pending",
+    "status_approved": "Approved",
+    "status_rejected": "Rejected"
   }
 }
