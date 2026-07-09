@@ -5,6 +5,7 @@
 import type { AgeBand } from "@/lib/age";
 import { AGRI_EXTRA } from "@/lib/learn/agri-extra";
 import { ELECTRONICS_EXTRA } from "@/lib/learn/electronics-extra";
+import { ROBOTICS_EXTRA } from "@/lib/learn/robotics-extra";
 import { STEM_EXTRA } from "@/lib/learn/stem-extra";
 
 export type LessonKind =
@@ -396,6 +397,7 @@ const roboticsTrack: Track = {
         },
       ],
     },
+    ...ROBOTICS_EXTRA,
     {
       slug: "robotics-quiz",
       title: "Robotics & AI Quiz",
@@ -434,6 +436,87 @@ const roboticsTrack: Track = {
             "Turn off all sensors",
           ],
           answer: 1,
+        },
+        {
+          q: "What is an actuator on a robot?",
+          options: [
+            "A part that senses light",
+            "A part that turns energy into movement",
+            "A type of battery",
+            "The robot's map",
+          ],
+          answer: 1,
+          explain: "Actuators — like motors — are a robot's muscles.",
+        },
+        {
+          q: "Closed-loop control is better than open-loop because it…",
+          options: [
+            "Uses no sensors",
+            "Measures the real result and corrects itself",
+            "Is always cheaper",
+            "Runs without power",
+          ],
+          answer: 1,
+        },
+        {
+          q: "A 'degree of freedom' is…",
+          options: [
+            "A temperature reading",
+            "One independent way a robot can move",
+            "A kind of wheel",
+            "A battery level",
+          ],
+          answer: 1,
+        },
+        {
+          q: "Inverse kinematics answers which question?",
+          options: [
+            "What is the battery level?",
+            "What joint angles put the tip at this exact spot?",
+            "How hot is the motor?",
+            "What colour is the object?",
+          ],
+          answer: 1,
+        },
+        {
+          q: "How does a line-following robot stay on the line?",
+          options: [
+            "It memorises the whole floor",
+            "It makes small constant corrections when it drifts off",
+            "It uses GPS only",
+            "It cannot turn",
+          ],
+          answer: 1,
+        },
+        {
+          q: "Why is obstacle avoidance especially important for robots near people?",
+          options: [
+            "To save battery",
+            "For safety — to stop or steer before a collision",
+            "To go faster",
+            "To store more data",
+          ],
+          answer: 1,
+        },
+        {
+          q: "Why do farm drones fly over fields?",
+          options: [
+            "To water every plant directly",
+            "To spot dry patches, pests or sick plants quickly from above",
+            "To replace the soil",
+            "To charge the sensors",
+          ],
+          answer: 1,
+        },
+        {
+          q: "A robot that learns from trial and error often practises first in…",
+          options: [
+            "A simulation, safely, before the real world",
+            "A locked box forever",
+            "No environment at all",
+            "The cloud only",
+          ],
+          answer: 0,
         },
       ],
     },
