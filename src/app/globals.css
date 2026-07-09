@@ -130,6 +130,86 @@
     --ring: 21 85% 41%;
   }
 
+  /* Midnight — violet & electric blue with a softer, rounder UI. */
+  [data-theme="midnight"] {
+    --foreground: 260 40% 12%;
+    --card-foreground: 260 40% 12%;
+    --popover-foreground: 260 40% 12%;
+    --primary: 263 70% 44%;
+    --primary-foreground: 260 60% 98%;
+    --secondary: 258 55% 93%;
+    --secondary-foreground: 260 40% 12%;
+    --muted: 258 35% 95%;
+    --muted-foreground: 260 15% 40%;
+    --accent: 199 89% 42%;
+    --accent-foreground: 200 60% 98%;
+    --border: 258 30% 88%;
+    --input: 258 30% 88%;
+    --ring: 263 70% 44%;
+    --radius: 0.75rem;
+  }
+
+  .dark[data-theme="midnight"] {
+    --background: 260 35% 6%;
+    --foreground: 258 40% 93%;
+    --card: 260 32% 9%;
+    --card-foreground: 258 40% 93%;
+    --popover: 260 32% 9%;
+    --popover-foreground: 258 40% 93%;
+    --primary: 262 75% 66%;
+    --primary-foreground: 260 40% 8%;
+    --secondary: 259 25% 17%;
+    --secondary-foreground: 258 40% 93%;
+    --muted: 259 25% 17%;
+    --muted-foreground: 258 15% 66%;
+    --accent: 199 85% 55%;
+    --accent-foreground: 210 60% 8%;
+    --border: 259 25% 20%;
+    --input: 259 25% 20%;
+    --ring: 262 75% 66%;
+  }
+
+  /* Blossom — warm rose & lavender with a friendly, extra-round UI. */
+  [data-theme="blossom"] {
+    --background: 340 60% 99%;
+    --foreground: 336 45% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 336 45% 14%;
+    --popover-foreground: 336 45% 14%;
+    --primary: 333 74% 42%;
+    --primary-foreground: 340 70% 98%;
+    --secondary: 334 75% 94%;
+    --secondary-foreground: 336 45% 14%;
+    --muted: 334 40% 96%;
+    --muted-foreground: 336 18% 42%;
+    --accent: 265 60% 64%;
+    --accent-foreground: 265 60% 98%;
+    --border: 334 35% 89%;
+    --input: 334 35% 89%;
+    --ring: 333 74% 42%;
+    --radius: 1rem;
+  }
+
+  .dark[data-theme="blossom"] {
+    --background: 336 30% 7%;
+    --foreground: 334 40% 93%;
+    --card: 336 26% 10%;
+    --card-foreground: 334 40% 93%;
+    --popover: 336 26% 10%;
+    --popover-foreground: 334 40% 93%;
+    --primary: 333 75% 62%;
+    --primary-foreground: 336 40% 8%;
+    --secondary: 335 20% 17%;
+    --secondary-foreground: 334 40% 93%;
+    --muted: 335 20% 17%;
+    --muted-foreground: 334 14% 66%;
+    --accent: 265 60% 70%;
+    --accent-foreground: 265 40% 10%;
+    --border: 335 20% 21%;
+    --input: 335 20% 21%;
+    --ring: 333 75% 62%;
+  }
+
   .dark[data-theme="sunset"] {
     --background: 20 45% 7%;
     --foreground: 30 50% 92%;

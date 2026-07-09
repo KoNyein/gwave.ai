@@ -560,7 +560,11 @@
     "theme_sunset": "Sunset",
     "themeDesc_greenwave": "အစိမ်းရောင် — မူရင်းပုံစံ။",
     "themeDesc_ocean": "ပင်လယ်ပြာရောင်နဲ့ teal အရောင်စပ်။",
-    "themeDesc_sunset": "နွေးထွေးတဲ့ လိမ္မော်ရောင်နဲ့ နှင်းဆီရောင်စပ်။"
+    "themeDesc_sunset": "နွေးထွေးတဲ့ လိမ္မော်ရောင်နဲ့ နှင်းဆီရောင်စပ်။",
+    "theme_midnight": "Midnight",
+    "theme_blossom": "Blossom",
+    "themeDesc_midnight": "ခရမ်းရောင်နဲ့ လျှပ်စစ်ပြာ — ပိုပျော့ပျောင်းဝိုင်းစက်တဲ့ UI။",
+    "themeDesc_blossom": "နွေးထွေးတဲ့ နှင်းဆီနဲ့ လာဗင်ဒါ — ဖော်ရွေပြီး ဝိုင်းဝိုင်းစက်စက်။"
   },
   "dev": {
     "navKeys": "API keys",

@@ -560,7 +560,11 @@
     "theme_sunset": "Sunset",
     "themeDesc_greenwave": "โทนเขียวสด — ลุคดั้งเดิม",
     "themeDesc_ocean": "น้ำเงินเข้มพร้อมสำเนียงเขียวอมฟ้า",
-    "themeDesc_sunset": "ส้มอบอุ่นพร้อมสำเนียงชมพูเข้ม"
+    "themeDesc_sunset": "ส้มอบอุ่นพร้อมสำเนียงชมพูเข้ม",
+    "theme_midnight": "Midnight",
+    "theme_blossom": "Blossom",
+    "themeDesc_midnight": "ม่วงและฟ้าไฟฟ้า — UI นุ่มนวลและโค้งมนขึ้น",
+    "themeDesc_blossom": "กุหลาบอบอุ่นและลาเวนเดอร์ — เป็นมิตรและโค้งมนพิเศษ"
   },
   "dev": {
     "navKeys": "API keys",
