@@ -926,7 +926,16 @@
     "previewInSandbox": "Preview in sandbox",
     "reviewNotePlaceholder": "Optional note to the author",
     "approve": "Approve",
-    "reject": "Reject"
+    "reject": "Reject",
+    "eduHeading": "Learning games",
+    "eduMathTitle": "Math Sprint",
+    "eduMathDesc": "Solve as many sums as you can in 30 seconds.",
+    "eduTypingTitle": "Typing Trainer",
+    "eduTypingDesc": "Type the words fast — how many in 30 seconds?",
+    "eduMemoryTitle": "Memory Match",
+    "eduMemoryDesc": "Flip the cards and find all six pairs.",
+    "eduHexTitle": "Hex Colour Guess",
+    "eduHexDesc": "Match the colour to its hex code — learn CSS colours."
   },
   "learn": {
     "backToLearn": "Back to Learn",

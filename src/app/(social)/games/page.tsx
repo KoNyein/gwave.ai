@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile, isAdultProfile } from "@/lib/auth";
 import { getApprovedGames, getMyGames } from "@/lib/db/games";
+import { EDU_GAMES } from "@/lib/games/edu-games";
 import { displayName } from "@/lib/format";
 
 export const metadata = { title: "Games" };
@@ -81,6 +82,30 @@ export default async function GamesPage() {
                   <p className="font-semibold">{game.title}</p>
                   <p className="text-xs text-muted-foreground">
                     {game.description}
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Educational HTML5 games */}
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold text-muted-foreground">
+          {t("eduHeading")}
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {EDU_GAMES.map((game) => (
+            <Link key={game.slug} href={`/games/edu/${game.slug}`}>
+              <Card className="h-full transition-colors hover:bg-muted/50">
+                <CardContent className="flex h-full flex-col items-center gap-1 p-4 text-center">
+                  <span className="text-4xl" aria-hidden>
+                    {game.emoji}
+                  </span>
+                  <p className="font-semibold">{t(game.titleKey)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t(game.descKey)}
                   </p>
                 </CardContent>
               </Card>
