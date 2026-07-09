@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ImagePlus,
   Loader2,
+  MapPin,
   MessageCircle,
   Phone,
   SendHorizonal,
@@ -15,6 +16,7 @@ import { useTranslations } from "next-intl";
 
 import { CallUI } from "@/components/messenger/call-ui";
 import { useCall } from "@/components/messenger/use-call";
+import { LocationMap } from "@/components/social/location-map";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +31,7 @@ import {
   sendMessage,
 } from "@/lib/actions/messages";
 import { displayName, timeAgo } from "@/lib/format";
+import { getCurrentPosition } from "@/lib/geolocation";
 import { mediaUrl, uploadMedia } from "@/lib/media";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -274,6 +277,8 @@ export function Messenger({
         sender_id: currentUser.id,
         content,
         image_path: imagePath,
+        latitude: null,
+        longitude: null,
         created_at: new Date().toISOString(),
         sender: currentUser,
       };
@@ -310,6 +315,63 @@ export function Messenger({
           m.id === optimistic.id ? { ...m, id: result.data.messageId } : m,
         );
       });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function shareLocation() {
+    if (!activeId || sending) return;
+    setSending(true);
+    try {
+      const position = await getCurrentPosition();
+      const optimistic: MessageWithSender = {
+        id: `optimistic-${Date.now()}`,
+        conversation_id: activeId,
+        sender_id: currentUser.id,
+        content: "",
+        image_path: null,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        created_at: new Date().toISOString(),
+        sender: currentUser,
+      };
+      setMessages((previous) => [...(previous ?? []), optimistic]);
+      setConversations((previous) =>
+        previous
+          .map((c) =>
+            c.id === activeId
+              ? {
+                  ...c,
+                  last_message: optimistic,
+                  last_message_at: optimistic.created_at,
+                }
+              : c,
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.last_message_at).getTime() -
+              new Date(a.last_message_at).getTime(),
+          ),
+      );
+      const result = await sendMessage({
+        conversationId: activeId,
+        content: "",
+        imagePath: null,
+        latitude: position.latitude,
+        longitude: position.longitude,
+      });
+      setMessages((previous) => {
+        if (!previous) return previous;
+        if (!result.ok) {
+          return previous.filter((m) => m.id !== optimistic.id);
+        }
+        return previous.map((m) =>
+          m.id === optimistic.id ? { ...m, id: result.data.messageId } : m,
+        );
+      });
+    } catch {
+      // Permission denied / unavailable — silently abort (button re-enables).
     } finally {
       setSending(false);
     }
@@ -385,7 +447,11 @@ export function Messenger({
               const other = conversationPeer(conversation, currentUser.id);
               const preview = conversation.last_message
                 ? conversation.last_message.content ||
-                  (conversation.last_message.image_path ? t("sentPhoto") : "")
+                  (conversation.last_message.image_path
+                    ? t("sentPhoto")
+                    : conversation.last_message.latitude != null
+                      ? t("sharedLocation")
+                      : "")
                 : t("noMessagesYet");
               return (
                 <button
@@ -538,6 +604,25 @@ export function Messenger({
                               className="max-h-72 w-full object-cover"
                             />
                           ) : null}
+                          {message.latitude != null &&
+                          message.longitude != null ? (
+                            <a
+                              href={`https://www.openstreetmap.org/?mlat=${message.latitude}&mlon=${message.longitude}#map=16/${message.latitude}/${message.longitude}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block"
+                            >
+                              <LocationMap
+                                latitude={message.latitude}
+                                longitude={message.longitude}
+                                className="h-40 w-60"
+                              />
+                              <span className="flex items-center gap-1 px-3 py-1.5 text-xs">
+                                <MapPin className="h-3.5 w-3.5" />
+                                {t("sharedLocation")}
+                              </span>
+                            </a>
+                          ) : null}
                           {message.content ? (
                             <p className="whitespace-pre-wrap break-words px-3 py-2 text-sm">
                               {message.content}
@@ -582,6 +667,16 @@ export function Messenger({
                 aria-label={t("sendPhoto")}
               >
                 <ImagePlus className="h-5 w-5 text-accent" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+                onClick={() => void shareLocation()}
+                disabled={sending}
+                aria-label={t("shareLocation")}
+              >
+                <MapPin className="h-5 w-5 text-destructive" />
               </Button>
               <input
                 ref={fileInputRef}

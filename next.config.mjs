@@ -9,7 +9,8 @@ const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' blob: data: https://*.supabase.co https://lh3.googleusercontent.com https://image.mux.com",
+  // *.tile.openstreetmap.org serves the Leaflet map tiles for location share.
+  "img-src 'self' blob: data: https://*.supabase.co https://lh3.googleusercontent.com https://image.mux.com https://*.tile.openstreetmap.org",
   "media-src 'self' blob: https://*.supabase.co https://stream.mux.com",
   "font-src 'self' data:",
   // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.
@@ -31,9 +32,10 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
-    // camera/microphone stay same-origin only — required by messenger calls.
+    // camera/microphone (calls) and geolocation (location share) stay
+    // same-origin only.
     key: "Permissions-Policy",
-    value: "camera=(self), microphone=(self), geolocation=()",
+    value: "camera=(self), microphone=(self), geolocation=(self)",
   },
 ];
 

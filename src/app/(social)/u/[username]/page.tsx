@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 
 import { FollowButton } from "@/components/social/follow-button";
 import { FriendButton } from "@/components/social/friend-button";
+import { MessageButton } from "@/components/social/message-button";
 import { MemberBadge } from "@/components/social/member-badge";
 import { ProfileActions } from "@/components/social/profile-actions";
 import { PostFeed } from "@/components/social/post-feed";
@@ -19,8 +20,9 @@ import {
   isFollowing,
 } from "@/lib/db/friends";
 import { getProjectsForUser } from "@/lib/db/learn";
-import { getProfilePosts } from "@/lib/db/posts";
+import { getProfilePhotos, getProfilePosts } from "@/lib/db/posts";
 import { displayName, initials } from "@/lib/format";
+import { mediaUrl } from "@/lib/media";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ProfilePage({
@@ -42,13 +44,22 @@ export default async function ProfilePage({
   if (!profile) notFound();
 
   const isSelf = viewer.id === profile.id;
-  const [friendState, following, friendCount, friends, initialPage, blockRow] =
+  const [
+    friendState,
+    following,
+    friendCount,
+    friends,
+    initialPage,
+    photos,
+    blockRow,
+  ] =
     await Promise.all([
       getFriendState(viewer.id, profile.id),
       isSelf ? Promise.resolve(false) : isFollowing(viewer.id, profile.id),
       getFriendCount(profile.id),
       getFriends(profile.id),
       getProfilePosts(profile.id, viewer.id),
+      getProfilePhotos(profile.id),
       isSelf
         ? Promise.resolve(null)
         : supabase
@@ -107,8 +118,9 @@ export default async function ProfilePage({
               </div>
             </div>
             {!isSelf ? (
-              <div className="flex gap-2 pb-1">
+              <div className="flex flex-wrap gap-2 pb-1">
                 <FriendButton profileId={profile.id} state={friendState} />
+                <MessageButton profileId={profile.id} />
                 <FollowButton profileId={profile.id} following={following} />
                 <ProfileActions
                   profileId={profile.id}
@@ -157,6 +169,35 @@ export default async function ProfilePage({
             contextId={profile.id}
             showComposer={isSelf}
           />
+        }
+        photos={
+          <Card>
+            <CardContent className="p-4">
+              {photos.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  {t("noPhotos")}
+                </p>
+              ) : (
+                <div className="grid grid-cols-3 gap-1 sm:grid-cols-4">
+                  {photos.map((photo) => (
+                    <Link
+                      key={`${photo.post_id}-${photo.storage_path}`}
+                      href={`/p/${photo.post_id}`}
+                      className="relative aspect-square overflow-hidden rounded-md bg-muted"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={mediaUrl(photo.storage_path)}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform hover:scale-105"
+                      />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         }
         about={
           <Card>

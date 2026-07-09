@@ -9,6 +9,7 @@ import {
   Flag,
   Globe,
   Lock,
+  MapPin,
   MessageCircle,
   MoreHorizontal,
   Share2,
@@ -18,6 +19,7 @@ import {
 import { useTranslations } from "next-intl";
 
 import { CommentSection } from "@/components/social/comment-section";
+import { LocationMap } from "@/components/social/location-map";
 import { MediaGrid } from "@/components/social/media-grid";
 import { MemberBadge } from "@/components/social/member-badge";
 import {
@@ -74,6 +76,7 @@ export function PostCard({
   const [commentsOpen, setCommentsOpen] = React.useState(false);
   const [shareOpen, setShareOpen] = React.useState(false);
   const [reportOpen, setReportOpen] = React.useState(false);
+  const [mapOpen, setMapOpen] = React.useState(false);
 
   const VisibilityIcon = VISIBILITY_ICONS[post.visibility];
   const isOwn = post.author_id === currentUser.id;
@@ -205,6 +208,18 @@ export function PostCard({
         </DropdownMenu>
       </div>
 
+      {/* Location check-in */}
+      {post.latitude != null && post.longitude != null ? (
+        <button
+          type="button"
+          onClick={() => setMapOpen((open) => !open)}
+          className="flex items-center gap-1 px-4 pt-2 text-xs text-muted-foreground hover:underline"
+        >
+          <MapPin className="h-3.5 w-3.5 text-destructive" />
+          {post.location_name || t("atALocation")}
+        </button>
+      ) : null}
+
       {/* Content */}
       {post.content ? (
         <p className="whitespace-pre-wrap break-words px-4 py-2 text-sm">
@@ -213,6 +228,12 @@ export function PostCard({
       ) : (
         <div className="pt-2" />
       )}
+
+      {mapOpen && post.latitude != null && post.longitude != null ? (
+        <div className="mx-4 mb-2">
+          <LocationMap latitude={post.latitude} longitude={post.longitude} />
+        </div>
+      ) : null}
 
       {/* Media / shared post */}
       {post.shared_post ? (
