@@ -1,10 +1,66 @@
 "use server";
 
+import dns from "node:dns/promises";
+import net from "node:net";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
 import { createClient } from "@/lib/supabase/server";
+
+/**
+ * True for loopback, private (RFC1918), carrier-grade-NAT, link-local
+ * (incl. the 169.254.169.254 cloud metadata endpoint) and reserved ranges —
+ * anything a server-side fetch must never be tricked into reaching (SSRF).
+ */
+function isBlockedIp(raw: string): boolean {
+  let ip = raw;
+  const mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  if (mapped?.[1]) ip = mapped[1];
+
+  if (net.isIPv4(ip)) {
+    const [a, b] = ip.split(".").map(Number) as [number, number, number, number];
+    if (a === 0 || a === 10 || a === 127) return true;
+    if (a === 169 && b === 254) return true; // link-local + metadata
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+    if (a === 198 && (b === 18 || b === 19)) return true; // benchmarking
+    if (a >= 224) return true; // multicast + reserved
+    return false;
+  }
+  if (net.isIPv6(ip)) {
+    const low = ip.toLowerCase();
+    if (low === "::1" || low === "::") return true;
+    if (low.startsWith("fe80")) return true; // link-local
+    if (low.startsWith("fc") || low.startsWith("fd")) return true; // unique-local
+    return false;
+  }
+  return true; // unparseable → block
+}
+
+/**
+ * Resolve a URL's host and reject it if any resolved address is private or
+ * link-local. Called for every hop so redirects can't smuggle in an internal
+ * target. Returns the validated URL.
+ */
+async function assertPublicUrl(raw: string): Promise<URL> {
+  const u = new URL(raw);
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    throw new Error("Only http(s) links are allowed.");
+  }
+  if (net.isIP(u.hostname)) {
+    if (isBlockedIp(u.hostname)) throw new Error("That address is not allowed.");
+    return u;
+  }
+  const addrs = await dns.lookup(u.hostname, { all: true });
+  if (addrs.length === 0) throw new Error("Could not resolve that host.");
+  for (const a of addrs) {
+    if (isBlockedIp(a.address)) throw new Error("That host is not allowed.");
+  }
+  return u;
+}
 
 async function getUserId(): Promise<string | null> {
   const supabase = await createClient();
@@ -269,18 +325,40 @@ export async function importProductFromUrl(
   if (!userId) return { ok: false, error: "Not authenticated." };
 
   const url = parsed.data;
-  let html: string;
+  let html: string | null = null;
   try {
-    const res = await fetch(url, {
-      headers: { "user-agent": "Mozilla/5.0 (gwave.ai product import)" },
-      redirect: "follow",
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) return { ok: false, error: `Site returned ${res.status}.` };
-    // Read at most ~512KB — the <head> is all we need.
-    html = (await res.text()).slice(0, 512_000);
-  } catch {
-    return { ok: false, error: "Could not reach that website." };
+    // Follow redirects manually so every hop's host is re-validated against
+    // private/link-local ranges (SSRF defence).
+    let current = url;
+    for (let hop = 0; hop < 5; hop++) {
+      await assertPublicUrl(current);
+      const res = await fetch(current, {
+        headers: { "user-agent": "Mozilla/5.0 (gwave.ai product import)" },
+        redirect: "manual",
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (res.status >= 300 && res.status < 400) {
+        const loc = res.headers.get("location");
+        if (!loc) break;
+        current = new URL(loc, current).href;
+        continue;
+      }
+      if (!res.ok) return { ok: false, error: `Site returned ${res.status}.` };
+      // Read at most ~512KB — the <head> is all we need.
+      html = (await res.text()).slice(0, 512_000);
+      break;
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      error:
+        err instanceof Error && /allowed|resolve|http/.test(err.message)
+          ? err.message
+          : "Could not reach that website.",
+    };
+  }
+  if (html === null) {
+    return { ok: false, error: "Too many redirects." };
   }
 
   const meta = (prop: string) => [

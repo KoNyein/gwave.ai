@@ -213,7 +213,7 @@ export interface ShopProduct {
 export interface ShopOrder {
   id: string;
   buyer_id: string;
-  product_id: string;
+  product_id: string | null;
   seller_id: string;
   quantity: number;
   unit_price: number;

@@ -100,7 +100,10 @@ create policy "Sellers and mods delete products"
 create table public.shop_orders (
   id uuid primary key default gen_random_uuid(),
   buyer_id uuid not null references public.profiles (id) on delete cascade,
-  product_id uuid not null references public.shop_products (id) on delete cascade,
+  -- Keep the order history when a listing is deleted: the product reference
+  -- goes null (the UI shows a "deleted product" placeholder) rather than
+  -- cascading away the buyer's and seller's records.
+  product_id uuid references public.shop_products (id) on delete set null,
   -- Denormalized so a seller can query their orders without a join and RLS
   -- stays a simple column check.
   seller_id uuid not null references public.profiles (id) on delete cascade,
