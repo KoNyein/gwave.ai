@@ -135,6 +135,7 @@ const stemTrack: Track = {
       summary: "Simple, safe things to try at home with a grown-up.",
       minutes: 5,
       kind: "reading",
+      youtubeQuery: "how plants use water and light",
       sections: [
         {
           heading: "Rainbow celery",
@@ -538,14 +539,15 @@ const agriTrack: Track = {
       summary: "Growing without soil — how nutrient solutions work.",
       minutes: 10,
       kind: "reading",
+      youtubeQuery: "hydroponics for beginners explained",
       sections: [
         {
           heading: "Soil-free growing",
-          body: "Hydroponics grows plants in a nutrient-rich water solution instead of soil. Roots get direct access to dissolved minerals, so plants often grow faster and use less water than field growing.",
+          body: "Hydroponics grows plants in a nutrient-rich water solution instead of soil. Because the roots get their food dissolved and delivered straight to them, they spend less energy searching for it — so plants often grow noticeably faster than in soil, while using far less water because the solution is recirculated rather than draining away.\n\nThe trade-off is control and responsibility: in soil, the earth buffers mistakes, but in hydroponics you are the soil. Everything the plant eats and drinks passes through a solution you mix and manage, which is exactly why the two numbers in the next section matter so much.",
         },
         {
-          heading: "EC and pH",
-          body: "Two numbers matter most: EC (electrical conductivity) measures how much nutrient is dissolved, and pH measures acidity. Most crops thrive at pH 5.5–6.5. The GreenWave tools include an EC/PPM converter and a VPD calculator to dial this in.",
+          heading: "EC and pH — the two numbers to watch",
+          body: "Two measurements matter most. EC (electrical conductivity) tells you how much nutrient is dissolved in the water — the strength of the feed. pH tells you how acidic or alkaline it is, which decides whether the roots can actually absorb those nutrients. Most hydroponic crops thrive around pH 5.5–6.5; drift outside that window and nutrients get 'locked out' even when they are present. The GreenWave tools include an EC/PPM converter and a VPD calculator to help you dial this in.",
         },
         {
           heading: "Monitoring with sensors",
@@ -559,6 +561,7 @@ const agriTrack: Track = {
       summary: "The elements a plant needs — and how to read a deficiency.",
       minutes: 10,
       kind: "reading",
+      youtubeQuery: "plant nutrients NPK explained",
       sections: [
         {
           heading: "Macronutrients: N, P, K",
@@ -584,6 +587,7 @@ const agriTrack: Track = {
       summary: "PPFD, DLI and photoperiod — measuring the light a crop gets.",
       minutes: 10,
       kind: "reading",
+      youtubeQuery: "grow light PPFD DLI spectrum",
       sections: [
         {
           heading: "Light is food",
@@ -605,6 +609,7 @@ const agriTrack: Track = {
       summary: "Prevent, monitor and respond to pests with the least harm.",
       minutes: 9,
       kind: "reading",
+      youtubeQuery: "integrated pest management IPM basics",
       sections: [
         {
           heading: "Prevention first",
@@ -626,6 +631,7 @@ const agriTrack: Track = {
       summary: "Timing and after-care that decide final quality.",
       minutes: 9,
       kind: "reading",
+      youtubeQuery: "harvesting drying and curing",
       sections: [
         {
           heading: "Knowing when to harvest",

@@ -22,7 +22,34 @@ function rd(
   };
 }
 
-export const AGRI_EXTRA: Lesson[] = [
+const AGRI_YT: Record<string, string> = {
+  "seed-starting": "seed germination for beginners",
+  "cloning-cuttings": "how to clone plants from cuttings",
+  "transplanting": "how to transplant seedlings",
+  "growing-media": "hydroponic growing media explained",
+  "water-quality": "water quality for hydroponics",
+  "ph-management": "managing pH in hydroponics",
+  "ec-ppm-mixing": "EC PPM nutrient mixing tutorial",
+  "deficiency-guide": "plant nutrient deficiency guide",
+  "nutrient-toxicity": "nutrient burn and flushing plants",
+  "root-health": "healthy roots hydroponics",
+  "vpd-transpiration": "VPD vapor pressure deficit growing",
+  "climate-control": "grow room temperature humidity",
+  "co2-enrichment": "CO2 enrichment for plants",
+  "airflow-ventilation": "grow room airflow ventilation",
+  "plant-training": "low stress training LST topping",
+  "trellising-scrog": "SCROG screen of green tutorial",
+  "flowering-stages": "plant flowering stages explained",
+  "breeding-pollination": "plant breeding pollination basics",
+  "common-pests": "identifying common garden pests",
+  "common-diseases": "common plant diseases powdery mildew",
+  "beneficial-insects": "beneficial insects biological pest control",
+  "organic-vs-mineral": "organic vs synthetic nutrients",
+  "post-harvest-storage": "curing and storing harvest",
+  "grow-journal-data": "grow journal record keeping"
+};
+
+const AGRI_EXTRA_BASE: Lesson[] = [
   rd(
     "seed-starting",
     "Seeds & Germination",
@@ -504,3 +531,7 @@ export const AGRI_EXTRA: Lesson[] = [
     ],
   ),
 ];
+
+export const AGRI_EXTRA: Lesson[] = AGRI_EXTRA_BASE.map((l) =>
+  AGRI_YT[l.slug] ? { ...l, youtubeQuery: AGRI_YT[l.slug] } : l,
+);
