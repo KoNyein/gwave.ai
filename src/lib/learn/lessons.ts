@@ -66,9 +66,9 @@ export interface Track {
 const stemTrack: Track = {
   slug: "stem",
   title: "Science Starters",
-  description: "Fun science about plants, water and light — for young explorers.",
+  description: "Fun science about plants, water and light — for every curious learner.",
   icon: "FlaskConical",
-  bands: ["child", "preteen"],
+  bands: ["child", "preteen", "teen", "adult"],
   lessons: [
     {
       slug: "how-plants-grow",
