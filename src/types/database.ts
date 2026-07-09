@@ -313,6 +313,9 @@ export interface Post {
   comment_count: number;
   share_count: number;
   view_count: number;
+  location_name: string | null;
+  latitude: number | null;
+  longitude: number | null;
   removed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -382,6 +385,8 @@ export interface Message {
   sender_id: string;
   content: string;
   image_path: string | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
 }
 
@@ -1217,6 +1222,9 @@ export type Database = {
           comment_count?: number;
           share_count?: number;
           view_count?: number;
+          location_name?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1232,6 +1240,9 @@ export type Database = {
           comment_count?: number;
           share_count?: number;
           view_count?: number;
+          location_name?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
           removed_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -1743,6 +1754,8 @@ export type Database = {
           sender_id: string;
           content?: string;
           image_path?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
           created_at?: string;
         };
         Update: Partial<Message>;

@@ -30,9 +30,18 @@ const sendMessageSchema = z
     conversationId: z.string().uuid(),
     content: z.string().max(4000),
     imagePath: z.string().max(500).nullable(),
+    latitude: z.number().min(-90).max(90).nullish(),
+    longitude: z.number().min(-180).max(180).nullish(),
   })
-  .refine((input) => input.content.trim().length > 0 || input.imagePath, {
-    message: "Message is empty.",
+  .refine(
+    (input) =>
+      input.content.trim().length > 0 ||
+      input.imagePath ||
+      (input.latitude != null && input.longitude != null),
+    { message: "Message is empty." },
+  )
+  .refine((input) => (input.latitude == null) === (input.longitude == null), {
+    message: "Location needs both coordinates.",
   });
 
 export async function sendMessage(
@@ -54,6 +63,8 @@ export async function sendMessage(
       sender_id: user.id,
       content: parsed.data.content.trim(),
       image_path: parsed.data.imagePath,
+      latitude: parsed.data.latitude ?? null,
+      longitude: parsed.data.longitude ?? null,
     })
     .select("id")
     .single();

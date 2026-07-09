@@ -30,14 +30,23 @@ const createPostSchema = z
     media: z.array(mediaItemSchema).max(10),
     groupId: z.string().uuid().nullish(),
     pageId: z.string().uuid().nullish(),
+    locationName: z.string().trim().max(120).nullish(),
+    latitude: z.number().min(-90).max(90).nullish(),
+    longitude: z.number().min(-180).max(180).nullish(),
   })
   .refine((input) => !(input.groupId && input.pageId), {
     message: "A post cannot belong to both a group and a page.",
   })
   .refine(
-    (input) => input.content.trim().length > 0 || input.media.length > 0,
-    { message: "A post needs text or media." },
+    (input) =>
+      input.content.trim().length > 0 ||
+      input.media.length > 0 ||
+      (input.latitude != null && input.longitude != null),
+    { message: "A post needs text, media or a location." },
   )
+  .refine((input) => (input.latitude == null) === (input.longitude == null), {
+    message: "Location needs both coordinates.",
+  })
   .refine(
     (input) =>
       input.media.filter((m) => m.media_type === "video").length === 0 ||
@@ -87,6 +96,9 @@ export async function createPost(
           : parsed.data.visibility,
       group_id: parsed.data.groupId ?? null,
       page_id: parsed.data.pageId ?? null,
+      location_name: parsed.data.locationName || null,
+      latitude: parsed.data.latitude ?? null,
+      longitude: parsed.data.longitude ?? null,
     })
     .select("id")
     .single();

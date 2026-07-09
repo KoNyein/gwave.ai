@@ -7,6 +7,7 @@ import {
   ImagePlus,
   Loader2,
   Lock,
+  MapPin,
   Users,
   X,
 } from "lucide-react";
@@ -31,6 +32,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { createPost } from "@/lib/actions/posts";
 import { displayName } from "@/lib/format";
+import { getCurrentPosition } from "@/lib/geolocation";
 import { MAX_POST_IMAGES, uploadMedia } from "@/lib/media";
 import type { PostVisibility } from "@/types/database";
 import type { AuthorSummary } from "@/types/social";
@@ -70,17 +72,43 @@ export function PostComposer({
   const [files, setFiles] = React.useState<SelectedFile[]>([]);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [location, setLocation] = React.useState<{
+    name: string;
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [locating, setLocating] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const reset = React.useCallback(() => {
     setContent("");
     setVisibility("public");
     setError(null);
+    setLocation(null);
+    setLocating(false);
     setFiles((previous) => {
       previous.forEach((f) => URL.revokeObjectURL(f.previewUrl));
       return [];
     });
   }, []);
+
+  async function addLocation() {
+    setError(null);
+    setLocating(true);
+    try {
+      const position = await getCurrentPosition();
+      const name = window.prompt(t("placeNamePrompt"))?.trim();
+      setLocation({ name: name || t("myLocation"), ...position });
+    } catch (locationError) {
+      setError(
+        locationError instanceof Error
+          ? locationError.message
+          : t("locationFailed"),
+      );
+    } finally {
+      setLocating(false);
+    }
+  }
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
@@ -139,6 +167,9 @@ export function PostComposer({
         media,
         groupId: context?.groupId ?? null,
         pageId: context?.pageId ?? null,
+        locationName: location?.name ?? null,
+        latitude: location?.latitude ?? null,
+        longitude: location?.longitude ?? null,
       });
       if (!result.ok) {
         setError(result.error);
@@ -156,7 +187,8 @@ export function PostComposer({
   }
 
   const canSubmit =
-    !submitting && (content.trim().length > 0 || files.length > 0);
+    !submitting &&
+    (content.trim().length > 0 || files.length > 0 || location !== null);
   const activeVisibility =
     VISIBILITY_OPTIONS.find((o) => o.value === visibility) ??
     VISIBILITY_OPTIONS[0]!;
@@ -264,19 +296,49 @@ export function PostComposer({
               </div>
             ) : null}
 
+            {location ? (
+              <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm">
+                <MapPin className="h-4 w-4 text-accent" />
+                <span className="flex-1 truncate">{location.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setLocation(null)}
+                  aria-label={t("removeLocation")}
+                >
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </div>
+            ) : null}
+
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
             <div className="flex items-center justify-between rounded-lg border p-2">
               <span className="pl-2 text-sm font-medium">{t("addToPost")}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => fileInputRef.current?.click()}
-                aria-label={t("addPhotos")}
-              >
-                <ImagePlus className="h-5 w-5 text-accent" />
-              </Button>
+              <div className="flex items-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label={t("addPhotos")}
+                >
+                  <ImagePlus className="h-5 w-5 text-accent" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={addLocation}
+                  disabled={locating}
+                  aria-label={t("addLocation")}
+                >
+                  {locating ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <MapPin className="h-5 w-5 text-destructive" />
+                  )}
+                </Button>
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"
