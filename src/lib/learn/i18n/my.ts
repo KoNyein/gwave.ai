@@ -961,6 +961,7 @@ export const MY_OVERLAY: LearnOverlay = {
       "hydroponics-basics": {
         title: "Hydroponics အခြေခံ",
         summary: "မြေမပါဘဲ စိုက်ခြင်း — အာဟာရဓာတ်ရည် ဘယ်လိုအလုပ်လုပ်လဲ။",
+        youtubeQuery: "hydroponics အခြေခံ မြန်မာ",
         sections: [
           {
             heading: "မြေမဲ့ စိုက်ပျိုးခြင်း",
