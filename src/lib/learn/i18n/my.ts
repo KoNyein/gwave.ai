@@ -2239,8 +2239,9 @@ export const MY_OVERLAY: LearnOverlay = {
       "py-intro": {
         title: "Python မိတ်ဆက်",
         summary: "Python ဆိုတာဘာလဲ၊ print၊ ပထမဆုံး လိုင်းများ run ခြင်း။",
+        youtubeQuery: "Python သင်ခန်းစာ အခြေခံ မြန်မာ",
         sections: [
-          { heading: "Python ဘာလို့လဲ", body: "Python က အင်္ဂလိပ်လို ဖတ်လို့ရလုနီးပါးမို့ ပထမဆုံး language အဖြစ် လူသုံးအများဆုံး — AI, data science, website နဲ့ automation တွေကို လုပ်ပေးတယ်။ python.org မှာ အခမဲ့ run လို့ရတယ်။" },
+          { heading: "Python ဘာလို့လဲ", body: "Python က ရိုးရိုး အင်္ဂလိပ်လို ဖတ်လို့ရလုနီးပါးဖြစ်လို့ ကမ္ဘာမှာ ပထမဆုံး programming language အဖြစ် လူသုံးအများဆုံး နာမည်ကြီးတယ်။ ဒါပေမဲ့ ကစားစရာ မဟုတ်ဘူး — ဒီမှာ သင်တဲ့ language တူတူက artificial intelligence, data science, website, သိပ္ပံ သုတေသနနဲ့ နေ့စဉ် automation တွေကို စွမ်းအားပေးတယ်။ ဒါကို သင်ယူတာက computing မှာ တခြား ကျွမ်းကျင်မှုတစ်ခုထက် တံခါးပိုများစွာ ဖွင့်ပေးတယ်။\n\nအကောင်းဆုံးက ဒီ course က Python ကို သင့် browser ထဲမှာတင် run — Run နှိပ်လိုက်ရုံနဲ့ ချက်ချင်း အလုပ်လုပ်၊ install စရာ မလို။ နောက်ပိုင်း ကိုယ့်စက်မှာ run ချင်ရင် python.org မှာ အခမဲ့၊ Pydroid လို ဖုန်း app၊ သို့ replit.com မှာ ရတယ်။" },
           { heading: "print() — ပထမဆုံး function", body: "print() က မျက်နှာပြင်မှာ စာသားရေးတယ်။ စာသား (string) က quote ထဲ ထည့်၊ ဂဏန်းက quote မလို။ တစ်လိုင်းက program အပြည့်အစုံ။" },
           { heading: "Comment", body: "# နဲ့ စတဲ့ လိုင်းတွေက comment — လူတွေအတွက် မှတ်စု၊ Python က လျစ်လျူရှုတယ်။" },
         ],
@@ -2248,6 +2249,7 @@ export const MY_OVERLAY: LearnOverlay = {
       "py-variables": {
         title: "Variable နဲ့ Type များ",
         summary: "number, string, boolean နဲ့ f-string။",
+        youtubeQuery: "Python variable type မြန်မာ",
         sections: [
           { heading: "ကြေညာစရာ မလို", body: "variable ကို တန်ဖိုးပေးလိုက်တာနဲ့ ဖန်တီးပြီးသား။ Python က type ကို သိတယ် — int (ဂဏန်းပြည့်), float (ဒသမ), str (စာသား), bool (True/False)။" },
           { heading: "f-string", body: "quote ရှေ့မှာ f ထည့်ပြီး curly brace နဲ့ value ထည့်ပါ — စာသားဆောက်ဖို့ အသန့်ရှင်းဆုံးနည်း။" },
