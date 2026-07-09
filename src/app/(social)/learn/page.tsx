@@ -4,12 +4,16 @@ import {
   ArrowRight,
   BookOpen,
   Bot,
+  Braces,
   Code2,
   Cpu,
+  FileCode2,
   FlaskConical,
   Gamepad2,
+  Palette,
   Play,
   Sprout,
+  Terminal,
   type LucideIcon,
 } from "lucide-react";
 
@@ -27,6 +31,10 @@ const ICONS: Record<string, LucideIcon> = {
   Bot,
   Code2,
   Sprout,
+  FileCode2,
+  Palette,
+  Braces,
+  Terminal,
 };
 
 export default async function LearnPage() {
