@@ -124,6 +124,25 @@ export default async function LessonPage({
                 {section.code}
               </pre>
             ) : null}
+            {section.image ? (
+              <figure className="pt-1">
+                {/* Teaching image/diagram; may be an external photo or an
+                    inline SVG data URI, so a plain img avoids the loader
+                    allowlist. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={section.image.src}
+                  alt={section.image.alt}
+                  loading="lazy"
+                  className="w-full rounded-lg border bg-white"
+                />
+                {section.image.caption ? (
+                  <figcaption className="pt-1 text-center text-xs text-muted-foreground">
+                    {section.image.caption}
+                  </figcaption>
+                ) : null}
+              </figure>
+            ) : null}
           </CardContent>
         </Card>
       ))}

@@ -11,6 +11,8 @@ import { MY_OVERLAY } from "@/lib/learn/i18n/my";
 export interface SectionI18n {
   heading?: string;
   body?: string;
+  /** Localized caption for the section's teaching image. */
+  caption?: string;
 }
 
 export interface QuizI18n {
@@ -58,6 +60,12 @@ function localizeLessonData(lesson: Lesson, i18n?: LessonI18n): Lesson {
         ...section,
         heading: override.heading ?? section.heading,
         body: override.body ?? section.body,
+        image: section.image
+          ? {
+              ...section.image,
+              caption: override.caption ?? section.image.caption,
+            }
+          : section.image,
       };
     }),
     quiz: lesson.quiz?.map((question, index) => {

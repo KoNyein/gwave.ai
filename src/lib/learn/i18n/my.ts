@@ -76,7 +76,7 @@ export const MY_OVERLAY: LearnOverlay = {
         title: "ရေ သံသရာ",
         summary: "ရေက ပင်လယ်ကနေ ကောင်းကင်ဆီ၊ ပြန်လည်ဆီ ဘယ်လို ခရီးသွားလဲ။",
         sections: [
-          { heading: "လှည့်ပတ်နေတယ်", body: "နေက ပင်လယ်/မြစ်က ရေကို ပူစေပြီး မမြင်ရတဲ့ အငွေ့ ဖြစ်စေ — အငွေ့ပျံ။ အထက်မှာ အေးပြီး တိမ်ဖြစ် — အငွေ့ခဲ။ အစက် လေးလာရင် မိုး/နှင်း ကျ — မိုးရွာ။ ရေက ပင်လယ်ဆီ ပြန်စီးပြီး သံသရာ ထပ်လည်။" },
+          { heading: "လှည့်ပတ်နေတယ်", body: "နေက ပင်လယ်/မြစ်က ရေကို ပူစေပြီး မမြင်ရတဲ့ အငွေ့ ဖြစ်စေ — အငွေ့ပျံ။ အထက်မှာ အေးပြီး တိမ်ဖြစ် — အငွေ့ခဲ။ အစက် လေးလာရင် မိုး/နှင်း ကျ — မိုးရွာ။ ရေက ပင်လယ်ဆီ ပြန်စီးပြီး သံသရာ ထပ်လည်။", caption: "အငွေ့ပျံ → တိမ် → မိုး → ပင်လယ်ဆီ ပြန်။" },
           { heading: "စိုက်ပျိုးရေးအတွက် ဘာလို့ အရေးကြီးလဲ", body: "ရေ သံသရာက ကမ္ဘာပေါ်က အပင်တိုင်းကို အခမဲ့ ရေပေးတယ်။ ဒါကို နားလည်ရင် grower က မိုးရေ စု၊ စိုထိုင်းဆ ထိန်း၊ ပူ/ခြောက်တဲ့ နေ့မှာ အရွက် ဘာလို့ ရေဆုံးလဲ သိတယ်။" },
         ],
       },
@@ -515,7 +515,7 @@ export const MY_OVERLAY: LearnOverlay = {
         summary: "HTML ဆိုတာဘာလဲ၊ စာမျက်နှာတစ်ခု ဘယ်လိုတည်ဆောက်လဲ။",
         sections: [
           { heading: "HTML က ဖွဲ့စည်းပုံကို ဖော်ပြတယ်", body: "HTML (HyperText Markup Language) က browser ကို စာမျက်နှာရဲ့ အစိတ်အပိုင်းတစ်ခုစီ ဘာဖြစ်လဲ ပြောပြတယ် — ခေါင်းစဉ်၊ စာပိုဒ်၊ ခလုတ်။ Element တွေကို angle bracket ထဲမှာ tag အဖြစ်ရေးပြီး အများစုက အဖွင့်/အပိတ် အတွဲလိုက် ရှိတယ်။" },
-          { heading: "စာမျက်နှာ အပြည့်အစုံတစ်ခု", body: "တကယ့်စာမျက်နှာက <!DOCTYPE html> နဲ့စပြီး အားလုံးကို <html> ထဲ ထည့်တယ်။ စာမျက်နှာအချက်အလက်က <head> ထဲ၊ မြင်ရတဲ့ content က <body> ထဲ။ Playground က အဲဒီ shell ကို သင့်အတွက် ရေးပေးထားပြီး body ကိုပဲ ပြင်ရမယ်။ ပြင်တိုင်း Run နှိပ်ပါ!" },
+          { heading: "စာမျက်နှာ အပြည့်အစုံတစ်ခု", body: "တကယ့်စာမျက်နှာက <!DOCTYPE html> နဲ့စပြီး အားလုံးကို <html> ထဲ ထည့်တယ်။ စာမျက်နှာအချက်အလက်က <head> ထဲ၊ မြင်ရတဲ့ content က <body> ထဲ။ Playground က အဲဒီ shell ကို သင့်အတွက် ရေးပေးထားပြီး body ကိုပဲ ပြင်ရမယ်။ ပြင်တိုင်း Run နှိပ်ပါ!", caption: "စာမျက်နှာတိုင်းက <head> နဲ့ <body> ပါတဲ့ <html> element တစ်ခု။" },
         ],
       },
       "html-text": {
@@ -831,7 +831,7 @@ export const MY_OVERLAY: LearnOverlay = {
         title: "Box Model",
         summary: "padding, border နဲ့ margin — element တိုင်းက box တစ်ခု။",
         sections: [
-          { heading: "content → padding → border → margin", body: "element တိုင်းက စတုဂံ တစ်ခု။ padding က border အတွင်းဘက် နေရာလွတ်၊ margin က အပြင်ဘက် နေရာလွတ်။ ဒါကို နားလည်ရင် 'ဘာလို့ ကွက်လပ်ရှိတာလဲ' ပြဿနာ အများစု ဖြေရှင်းနိုင်တယ်။" },
+          { heading: "content → padding → border → margin", body: "element တိုင်းက စတုဂံ တစ်ခု။ padding က border အတွင်းဘက် နေရာလွတ်၊ margin က အပြင်ဘက် နေရာလွတ်။ ဒါကို နားလည်ရင် 'ဘာလို့ ကွက်လပ်ရှိတာလဲ' ပြဿနာ အများစု ဖြေရှင်းနိုင်တယ်။", caption: "Box model: content → padding → border → margin ။" },
         ],
       },
       "css-typography": {
@@ -845,7 +845,7 @@ export const MY_OVERLAY: LearnOverlay = {
         title: "Flexbox",
         summary: "တစ်ဖက်မြင် layout — အတန်း၊ ကော်လံ၊ ဗဟိုချ။",
         sections: [
-          { heading: "display: flex", body: "container ပေါ်မှာ display:flex ထားရင် သားသမီး element တွေ အတန်းလိုက် စီတယ်။ justify-content က အတန်းတလျှောက်၊ align-items က ဖြတ်ကာ၊ gap က ကြားထဲ နေရာလွတ်ထည့်၊ flex-direction:column က ဒေါင်လိုက် စီပေးတယ်။" },
+          { heading: "display: flex", body: "container ပေါ်မှာ display:flex ထားရင် သားသမီး element တွေ အတန်းလိုက် စီတယ်။ justify-content က အတန်းတလျှောက်၊ align-items က ဖြတ်ကာ၊ gap က ကြားထဲ နေရာလွတ်ထည့်၊ flex-direction:column က ဒေါင်လိုက် စီပေးတယ်။", caption: "Flex item တွေ main axis တလျှောက် စီ၊ cross axis က ထောင့်မှန်။" },
         ],
       },
       "css-grid": {
