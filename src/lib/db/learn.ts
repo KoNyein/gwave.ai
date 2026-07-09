@@ -108,3 +108,13 @@ export async function getProjectsForUser(
     trackTitle: getTrack(project.track_slug)?.title ?? project.track_slug,
   }));
 }
+
+/**
+ * Total learning points for any user (public aggregate via the
+ * learning_points definer function — individual lesson rows stay private).
+ */
+export async function getLearningPoints(userId: string): Promise<number> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("learning_points", { uid: userId });
+  return typeof data === "number" ? data : 0;
+}

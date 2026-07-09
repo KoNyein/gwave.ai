@@ -2623,6 +2623,10 @@ export type Database = {
         Args: { gid: string };
         Returns: undefined;
       };
+      learning_points: {
+        Args: { uid: string };
+        Returns: number;
+      };
     };
     Enums: {
       user_role: UserRole;
