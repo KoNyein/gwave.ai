@@ -7,7 +7,30 @@ import type { Lesson } from "@/lib/learn/lessons";
 
 const noJs = "// CSS lesson — edit the CSS and press Run.";
 
-export const CSS_EXTRA2: Lesson[] = [
+// A "Learn on YouTube" search per lesson (localized to Burmese via the overlay).
+const YT: Record<string, string> = {
+  "css-syntax": "CSS syntax rules selectors properties",
+  "css-how-to": "how to add CSS to HTML",
+  "css-colors-values": "CSS color values hex rgb hsl",
+  "css-backgrounds": "CSS background properties tutorial",
+  "css-borders": "CSS borders and border-radius",
+  "css-margin-padding": "CSS margin and padding tutorial",
+  "css-sizing": "CSS width height min max sizing",
+  "css-units": "CSS units px em rem percent",
+  "css-display-visibility": "CSS display and visibility",
+  "css-text": "CSS text properties alignment spacing",
+  "css-fonts": "CSS fonts font-family tutorial",
+  "css-links": "CSS styling links hover states",
+  "css-lists": "CSS styling lists tutorial",
+  "css-tables": "CSS styling tables tutorial",
+  "css-pseudo-classes": "CSS pseudo-classes hover focus",
+  "css-pseudo-elements": "CSS pseudo-elements before after",
+  "css-specificity": "CSS specificity explained",
+  "css-overflow": "CSS overflow property tutorial",
+  "css-transforms": "CSS transform rotate scale translate",
+};
+
+const CSS_EXTRA2_BASE: Lesson[] = [
   {
     slug: "css-syntax",
     title: "CSS Syntax",
@@ -369,3 +392,7 @@ export const CSS_EXTRA2: Lesson[] = [
     },
   },
 ];
+
+export const CSS_EXTRA2: Lesson[] = CSS_EXTRA2_BASE.map((lesson) =>
+  YT[lesson.slug] ? { ...lesson, youtubeQuery: YT[lesson.slug] } : lesson,
+);
