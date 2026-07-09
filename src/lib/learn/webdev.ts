@@ -1,0 +1,808 @@
+// Full HTML / CSS / JavaScript / Python courses for /learn — tutorial-style
+// tracks with short explanations, a runnable "try it yourself" playground on
+// every web lesson, and quizzes. All content is original.
+
+import type { Track } from "@/lib/learn/lessons";
+
+// ────────────────────────────── HTML ───────────────────────────────────────
+
+export const htmlTrack: Track = {
+  slug: "html",
+  title: "HTML Course",
+  description:
+    "The language of every web page — from your first tag to full page layouts.",
+  icon: "FileCode2",
+  bands: ["teen", "adult"],
+  lessons: [
+    {
+      slug: "html-intro",
+      title: "HTML Introduction",
+      summary: "What HTML is and how a page is put together.",
+      minutes: 8,
+      kind: "code",
+      sections: [
+        {
+          heading: "HTML describes structure",
+          body: "HTML (HyperText Markup Language) tells the browser what each piece of a page IS: a heading, a paragraph, a button. Elements are written as tags in angle brackets, and most come in opening/closing pairs.",
+          code: "<h1>A big heading</h1>\n<p>A paragraph of text.</p>",
+        },
+        {
+          heading: "A full document",
+          body: "A real page starts with <!DOCTYPE html> and wraps everything in <html>, with page info in <head> and visible content in <body>. The playground writes that shell for you — you only edit the body. Press Run after every change!",
+        },
+      ],
+      code: {
+        html: "<h1>My first page</h1>\n<p>I am learning HTML on gwave.ai.</p>\n<p>Change this text, then press <b>Run</b>.</p>",
+        css: "body { font-family: sans-serif; padding: 2rem; }",
+        js: "// HTML lesson — no JavaScript needed yet.",
+      },
+    },
+    {
+      slug: "html-text",
+      title: "Headings & Text",
+      summary: "Six heading levels, paragraphs, bold, italic and line breaks.",
+      minutes: 10,
+      kind: "code",
+      sections: [
+        {
+          heading: "Headings h1–h6",
+          body: "Headings range from <h1> (most important, one per page) down to <h6>. Search engines and screen readers use them to understand your page outline.",
+          code: "<h1>Title</h1>\n<h2>Section</h2>\n<h3>Sub-section</h3>",
+        },
+        {
+          heading: "Inline text tags",
+          body: "<b> and <strong> make text bold, <i> and <em> make it italic, <mark> highlights, <small> shrinks, and <br> forces a line break without starting a new paragraph.",
+        },
+      ],
+      code: {
+        html: "<h1>Growing Guide</h1>\n<h2>Week 1</h2>\n<p>Water <strong>every two days</strong>.</p>\n<p>Keep the light <em>gentle</em> — seedlings burn <mark>easily</mark>.</p>\n<p>Line one<br>Line two</p>",
+        css: "body { font-family: sans-serif; padding: 2rem; line-height: 1.6; }",
+        js: "// Try adding an <h3> of your own.",
+      },
+    },
+    {
+      slug: "html-links-images",
+      title: "Links & Images",
+      summary: "Connect pages with <a> and show pictures with <img>.",
+      minutes: 10,
+      kind: "code",
+      sections: [
+        {
+          heading: "Anchors",
+          body: "The <a> tag creates a link. Its href attribute holds the destination. Text between the tags becomes clickable.",
+          code: '<a href="https://example.com">Visit example.com</a>',
+        },
+        {
+          heading: "Images",
+          body: "The <img> tag has no closing tag. src points to the picture and alt describes it for people who can't see it — always write a useful alt. (The playground blocks the network, so we draw 'images' with emoji and CSS here.)",
+          code: '<img src="plant.jpg" alt="A young cannabis seedling">',
+        },
+      ],
+      code: {
+        html: '<h1>My garden gallery</h1>\n<p class="photo">🌱</p>\n<p class="photo">🌿</p>\n<a href="#" onclick="alert(\'Links work!\'); return false;">Click this link</a>',
+        css: ".photo {\n  display: inline-block;\n  font-size: 64px;\n  padding: 20px;\n  background: #EAF3DE;\n  border-radius: 12px;\n}",
+        js: "// Real pages load images from src URLs.",
+      },
+    },
+    {
+      slug: "html-lists-tables",
+      title: "Lists & Tables",
+      summary: "Bullet lists, numbered lists and data tables.",
+      minutes: 12,
+      kind: "code",
+      sections: [
+        {
+          heading: "Lists",
+          body: "<ul> makes a bulleted (unordered) list, <ol> a numbered (ordered) one. Each item sits in an <li>.",
+          code: "<ul>\n  <li>Water</li>\n  <li>Light</li>\n</ul>",
+        },
+        {
+          heading: "Tables",
+          body: "A <table> holds rows (<tr>). Header cells are <th>, data cells are <td>. Use tables for data — not for page layout.",
+        },
+      ],
+      code: {
+        html: "<h2>Feeding schedule</h2>\n<table>\n  <tr><th>Week</th><th>EC</th></tr>\n  <tr><td>1</td><td>0.8</td></tr>\n  <tr><td>2</td><td>1.2</td></tr>\n</table>\n<h2>Shopping list</h2>\n<ol>\n  <li>Seeds</li>\n  <li>Pots</li>\n  <li>Nutrients</li>\n</ol>",
+        css: "table { border-collapse: collapse; }\nth, td { border: 1px solid #999; padding: 6px 12px; }\nth { background: #EAF3DE; }",
+        js: "// Add a third row to the table.",
+      },
+    },
+    {
+      slug: "html-forms",
+      title: "Forms & Inputs",
+      summary: "Text boxes, checkboxes, dropdowns and buttons.",
+      minutes: 12,
+      kind: "code",
+      sections: [
+        {
+          heading: "Collecting input",
+          body: "Forms gather what users type or pick. <input> handles text, numbers, checkboxes and more via its type attribute; <select> makes a dropdown; <textarea> is a big text box; <label> names a field and should point at the input's id.",
+          code: '<label for="name">Name</label>\n<input id="name" type="text">',
+        },
+      ],
+      code: {
+        html: '<h2>Grow log entry</h2>\n<label for="plant">Plant name</label><br>\n<input id="plant" type="text" placeholder="Blue Dream"><br><br>\n<label for="stage">Stage</label><br>\n<select id="stage">\n  <option>Seedling</option>\n  <option>Veg</option>\n  <option>Flower</option>\n</select><br><br>\n<button id="save">Save</button>\n<p id="out"></p>',
+        css: "body { font-family: sans-serif; padding: 2rem; }\ninput, select { padding: 6px; }",
+        js: "document.getElementById('save').onclick = () => {\n  const plant = document.getElementById('plant').value || '(no name)';\n  const stage = document.getElementById('stage').value;\n  document.getElementById('out').textContent = `Saved: ${plant} — ${stage}`;\n};",
+      },
+    },
+    {
+      slug: "html-semantic",
+      title: "Semantic Layout",
+      summary: "header, nav, main, article, footer — pages with meaning.",
+      minutes: 10,
+      kind: "code",
+      sections: [
+        {
+          heading: "Why semantic tags",
+          body: "Instead of wrapping everything in <div>, semantic tags say what each area is: <header>, <nav>, <main>, <article>, <aside>, <footer>. Screen readers and search engines rely on them, and your CSS gets simpler.",
+        },
+      ],
+      code: {
+        html: "<header>🌿 GrowBlog</header>\n<nav>Home · Guides · About</nav>\n<main>\n  <article>\n    <h2>Week 3 update</h2>\n    <p>The plants doubled in size!</p>\n  </article>\n</main>\n<footer>© 2026 GrowBlog</footer>",
+        css: "body { font-family: sans-serif; margin: 0; }\nheader { background: #3B6D11; color: white; padding: 1rem; font-weight: bold; }\nnav { background: #EAF3DE; padding: .5rem 1rem; }\nmain { padding: 1rem; }\nfooter { border-top: 1px solid #ddd; padding: 1rem; color: #777; }",
+        js: "// Try adding an <aside> next to the article.",
+      },
+    },
+    {
+      slug: "html-quiz",
+      title: "HTML Quiz",
+      summary: "Ten questions covering the whole HTML course.",
+      minutes: 6,
+      kind: "quiz",
+      quiz: [
+        {
+          q: "What does HTML stand for?",
+          options: [
+            "HyperText Markup Language",
+            "High Tech Modern Language",
+            "Home Tool Markup List",
+            "Hyperlink Text Machine Language",
+          ],
+          answer: 0,
+        },
+        {
+          q: "Which tag makes the most important heading?",
+          options: ["<h6>", "<head>", "<h1>", "<title>"],
+          answer: 2,
+          explain: "<h1> is the top-level heading; <head> holds page metadata.",
+        },
+        {
+          q: "Which attribute holds a link's destination?",
+          options: ["src", "href", "link", "to"],
+          answer: 1,
+        },
+        {
+          q: "Which tag shows an image?",
+          options: ["<picture-file>", "<image>", "<img>", "<src>"],
+          answer: 2,
+        },
+        {
+          q: "A numbered list uses which tag?",
+          options: ["<ul>", "<ol>", "<li> alone", "<list>"],
+          answer: 1,
+          explain: "<ol> = ordered (numbered); <ul> = unordered (bullets).",
+        },
+        {
+          q: "Which input element makes a dropdown?",
+          options: ["<textarea>", "<select>", "<button>", "<option> alone"],
+          answer: 1,
+        },
+        {
+          q: "Why write alt text on images?",
+          options: [
+            "It makes images load faster",
+            "It describes the image for screen readers and when it fails to load",
+            "It is required for CSS",
+            "It hides the image",
+          ],
+          answer: 1,
+        },
+        {
+          q: "Which is a semantic layout tag?",
+          options: ["<div>", "<span>", "<article>", "<b>"],
+          answer: 2,
+        },
+      ],
+    },
+  ],
+};
+
+// ────────────────────────────── CSS ────────────────────────────────────────
+
+export const cssTrack: Track = {
+  slug: "css",
+  title: "CSS Course",
+  description:
+    "Colours, spacing, flexbox, grid and animation — make pages beautiful.",
+  icon: "Palette",
+  bands: ["teen", "adult"],
+  lessons: [
+    {
+      slug: "css-selectors",
+      title: "Selectors & Colours",
+      summary: "Target elements and paint them.",
+      minutes: 10,
+      kind: "code",
+      sections: [
+        {
+          heading: "Three ways to select",
+          body: "A tag selector (p) styles every paragraph, a class selector (.note) styles elements with class=\"note\", and an id selector (#title) styles the single element with that id. Colours can be names, hex codes like #3B6D11, or rgb()/hsl().",
+          code: "p { color: gray; }\n.note { color: #C25410; }\n#title { color: hsl(93 73% 25%); }",
+        },
+      ],
+      code: {
+        html: '<h1 id="title">CSS Selectors</h1>\n<p>A normal paragraph.</p>\n<p class="note">A paragraph with the note class.</p>',
+        css: "#title { color: #3B6D11; }\np { color: #444; }\n.note { color: #C25410; font-weight: bold; }",
+        js: "// Change the colours, then press Run.",
+      },
+    },
+    {
+      slug: "css-box-model",
+      title: "The Box Model",
+      summary: "Padding, border and margin — every element is a box.",
+      minutes: 12,
+      kind: "code",
+      sections: [
+        {
+          heading: "Content → padding → border → margin",
+          body: "Every element is a rectangle. Padding is space INSIDE the border, margin is space OUTSIDE it. Understanding this solves most 'why is there a gap' mysteries.",
+          code: ".box {\n  padding: 16px;   /* inside */\n  border: 2px solid green;\n  margin: 24px;    /* outside */\n}",
+        },
+      ],
+      code: {
+        html: '<div class="box">Box A</div>\n<div class="box">Box B</div>',
+        css: ".box {\n  background: #EAF3DE;\n  padding: 16px;\n  border: 2px solid #3B6D11;\n  border-radius: 8px;\n  margin: 16px;\n}",
+        js: "// Try margin: 0 and see the boxes touch.",
+      },
+    },
+    {
+      slug: "css-typography",
+      title: "Text & Fonts",
+      summary: "Font families, sizes, weights and spacing.",
+      minutes: 10,
+      kind: "code",
+      sections: [
+        {
+          heading: "The type toolbox",
+          body: "font-family picks the typeface (with fallbacks), font-size sets the size (use rem so users can zoom), font-weight sets thickness, line-height controls the space between lines, and text-align positions the text.",
+        },
+      ],
+      code: {
+        html: "<h1>Readable typography</h1>\n<p>Good text styling makes long reading comfortable. Aim for a line height around 1.5 and a size of at least 16 pixels for body text.</p>",
+        css: "body {\n  font-family: Georgia, serif;\n  font-size: 1.05rem;\n  line-height: 1.6;\n  max-width: 34rem;\n  margin: 2rem auto;\n}\nh1 {\n  font-family: Arial, sans-serif;\n  letter-spacing: -0.5px;\n}",
+        js: "// Swap Georgia for Courier and feel the difference.",
+      },
+    },
+    {
+      slug: "css-flexbox",
+      title: "Flexbox",
+      summary: "One-dimensional layout: rows, columns, centring.",
+      minutes: 14,
+      kind: "code",
+      sections: [
+        {
+          heading: "display: flex",
+          body: "Set display:flex on a container and its children line up in a row. justify-content spaces them along the row, align-items positions them across it, gap adds space between them, and flex-direction:column stacks them instead.",
+          code: ".row {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  gap: 12px;\n}",
+        },
+      ],
+      code: {
+        html: '<div class="row">\n  <div class="chip">🌱 Seed</div>\n  <div class="chip">🌿 Veg</div>\n  <div class="chip">🌸 Flower</div>\n</div>',
+        css: ".row {\n  display: flex;\n  gap: 12px;\n  justify-content: center;\n  padding: 2rem;\n}\n.chip {\n  background: #EAF3DE;\n  padding: 12px 20px;\n  border-radius: 999px;\n  font-family: sans-serif;\n}",
+        js: "// Try justify-content: space-between, then flex-direction: column.",
+      },
+    },
+    {
+      slug: "css-grid",
+      title: "CSS Grid",
+      summary: "Two-dimensional layout for cards and galleries.",
+      minutes: 14,
+      kind: "code",
+      sections: [
+        {
+          heading: "Rows AND columns",
+          body: "Grid lays children out in two dimensions. grid-template-columns defines the columns — repeat(3, 1fr) means three equal shares — and gap spaces the cells. It's the tool for photo grids and dashboards.",
+          code: ".grid {\n  display: grid;\n  grid-template-columns: repeat(3, 1fr);\n  gap: 10px;\n}",
+        },
+      ],
+      code: {
+        html: '<div class="grid">\n  <div class="cell">1</div>\n  <div class="cell">2</div>\n  <div class="cell">3</div>\n  <div class="cell">4</div>\n  <div class="cell">5</div>\n  <div class="cell">6</div>\n</div>',
+        css: ".grid {\n  display: grid;\n  grid-template-columns: repeat(3, 1fr);\n  gap: 10px;\n  padding: 1rem;\n}\n.cell {\n  background: #3B6D11;\n  color: white;\n  padding: 2rem 0;\n  text-align: center;\n  border-radius: 10px;\n  font-family: sans-serif;\n}",
+        js: "// Change repeat(3, 1fr) to repeat(2, 1fr).",
+      },
+    },
+    {
+      slug: "css-animation",
+      title: "Transitions & Animation",
+      summary: "Smooth hovers and keyframe animations.",
+      minutes: 12,
+      kind: "code",
+      sections: [
+        {
+          heading: "Transitions",
+          body: "transition makes property changes glide instead of jump — perfect for hover effects. @keyframes defines multi-step animations you attach with the animation property.",
+          code: ".btn { transition: transform .2s; }\n.btn:hover { transform: scale(1.1); }",
+        },
+      ],
+      code: {
+        html: '<button class="btn">Hover me</button>\n<div class="pulse">🌿</div>',
+        css: ".btn {\n  padding: 12px 24px;\n  border: 0;\n  border-radius: 10px;\n  background: #639922;\n  color: white;\n  font-size: 1rem;\n  transition: transform .2s, background .2s;\n}\n.btn:hover { transform: scale(1.1); background: #3B6D11; }\n.pulse {\n  font-size: 48px;\n  width: fit-content;\n  margin: 2rem;\n  animation: grow 1.2s infinite alternate;\n}\n@keyframes grow {\n  from { transform: scale(1); }\n  to { transform: scale(1.4); }\n}",
+        js: "// Make the pulse faster: change 1.2s to 0.4s.",
+      },
+    },
+    {
+      slug: "css-responsive",
+      title: "Responsive Design",
+      summary: "Media queries — one page that fits every screen.",
+      minutes: 12,
+      kind: "code",
+      sections: [
+        {
+          heading: "Media queries",
+          body: "A media query applies styles only when a condition is true, like the screen being narrower than 600px. Design mobile-first: write the phone styles normally, then add min-width queries for bigger screens.",
+          code: "@media (max-width: 600px) {\n  .cards { grid-template-columns: 1fr; }\n}",
+        },
+      ],
+      code: {
+        html: '<div class="cards">\n  <div class="card">One</div>\n  <div class="card">Two</div>\n  <div class="card">Three</div>\n</div>\n<p>Resize the preview panel to see the layout change.</p>',
+        css: ".cards {\n  display: grid;\n  grid-template-columns: repeat(3, 1fr);\n  gap: 10px;\n  padding: 1rem;\n}\n.card {\n  background: #EAF3DE;\n  padding: 2rem 0;\n  text-align: center;\n  border-radius: 10px;\n  font-family: sans-serif;\n}\n@media (max-width: 500px) {\n  .cards { grid-template-columns: 1fr; }\n}",
+        js: "// Mobile-first: try min-width instead of max-width.",
+      },
+    },
+    {
+      slug: "css-quiz",
+      title: "CSS Quiz",
+      summary: "Test your styling knowledge.",
+      minutes: 6,
+      kind: "quiz",
+      quiz: [
+        {
+          q: "Which selector targets class=\"card\"?",
+          options: ["#card", ".card", "card()", "<card>"],
+          answer: 1,
+        },
+        {
+          q: "Space INSIDE an element's border is:",
+          options: ["margin", "gap", "padding", "outline"],
+          answer: 2,
+        },
+        {
+          q: "Which makes a flex container?",
+          options: [
+            "display: block",
+            "display: flex",
+            "position: flex",
+            "flex: on",
+          ],
+          answer: 1,
+        },
+        {
+          q: "grid-template-columns: repeat(4, 1fr) creates:",
+          options: [
+            "Four equal columns",
+            "Four rows",
+            "One column repeated on four pages",
+            "A 4px gap",
+          ],
+          answer: 0,
+        },
+        {
+          q: "What does transition do?",
+          options: [
+            "Deletes an element",
+            "Makes property changes animate smoothly",
+            "Loads the next page",
+            "Changes the HTML",
+          ],
+          answer: 1,
+        },
+        {
+          q: "@media (max-width: 600px) applies its styles when…",
+          options: [
+            "the screen is wider than 600px",
+            "the screen is at most 600px wide",
+            "the page has 600 elements",
+            "JavaScript is disabled",
+          ],
+          answer: 1,
+        },
+      ],
+    },
+  ],
+};
+
+// ─────────────────────────── JavaScript ────────────────────────────────────
+
+export const javascriptTrack: Track = {
+  slug: "javascript",
+  title: "JavaScript Course",
+  description:
+    "Variables, functions, loops, the DOM and events — make pages think.",
+  icon: "Braces",
+  bands: ["teen", "adult"],
+  lessons: [
+    {
+      slug: "js-variables",
+      title: "Variables & Types",
+      summary: "let, const and the basic value types.",
+      minutes: 10,
+      kind: "code",
+      sections: [
+        {
+          heading: "Storing values",
+          body: "Use const for values that never change and let for ones that do. JavaScript's basic types include numbers, strings (text in quotes), booleans (true/false), arrays and objects. Template strings with backticks let you insert values with ${ }.",
+          code: "const name = \"Mai\";\nlet count = 3;\nconsole.log(`${name} has ${count} plants`);",
+        },
+      ],
+      code: {
+        html: '<h2>Console output</h2>\n<pre id="out"></pre>',
+        css: "body { font-family: sans-serif; padding: 1.5rem; }\npre { background: #f4f4f4; padding: 1rem; border-radius: 8px; }",
+        js: "const log = (m) => document.getElementById('out').textContent += m + '\\n';\n\nconst name = 'Mai';\nlet plants = 3;\nplants = plants + 2;\n\nlog(`Grower: ${name}`);\nlog(`Plants: ${plants}`);\nlog(`Type of plants: ${typeof plants}`);\nlog(`Is happy: ${plants > 0}`);",
+      },
+    },
+    {
+      slug: "js-functions",
+      title: "Functions",
+      summary: "Reusable blocks of logic with inputs and outputs.",
+      minutes: 12,
+      kind: "code",
+      sections: [
+        {
+          heading: "Defining and calling",
+          body: "A function takes parameters, does work and returns a result. Arrow functions are a short modern syntax. Once defined, call it as many times as you like.",
+          code: "function add(a, b) {\n  return a + b;\n}\nconst double = (n) => n * 2;",
+        },
+      ],
+      code: {
+        html: '<h2>Nutrient mixer</h2>\n<pre id="out"></pre>',
+        css: "body { font-family: sans-serif; padding: 1.5rem; }\npre { background: #f4f4f4; padding: 1rem; border-radius: 8px; }",
+        js: "const log = (m) => document.getElementById('out').textContent += m + '\\n';\n\nfunction mlForLitres(litres, mlPerLitre) {\n  return litres * mlPerLitre;\n}\n\nconst strength = (ec) => ec < 1 ? 'gentle' : ec < 2 ? 'medium' : 'strong';\n\nlog(`10 L at 2 ml/L needs ${mlForLitres(10, 2)} ml`);\nlog(`EC 0.8 is ${strength(0.8)}`);\nlog(`EC 2.4 is ${strength(2.4)}`);",
+      },
+    },
+    {
+      slug: "js-conditions-loops",
+      title: "Conditions & Loops",
+      summary: "if/else decisions and for/while repetition.",
+      minutes: 12,
+      kind: "code",
+      sections: [
+        {
+          heading: "Deciding and repeating",
+          body: "if/else runs code only when a condition is true. A for loop repeats code a set number of times; while repeats as long as a condition holds. Comparison uses === (equal), !== (not equal), < and >.",
+          code: "for (let i = 1; i <= 3; i++) {\n  console.log(i);\n}",
+        },
+      ],
+      code: {
+        html: '<h2>Watering week</h2>\n<pre id="out"></pre>',
+        css: "body { font-family: sans-serif; padding: 1.5rem; }\npre { background: #f4f4f4; padding: 1rem; border-radius: 8px; }",
+        js: "const log = (m) => document.getElementById('out').textContent += m + '\\n';\n\nfor (let day = 1; day <= 7; day++) {\n  if (day % 2 === 1) {\n    log(`Day ${day}: 💧 water`);\n  } else {\n    log(`Day ${day}: rest`);\n  }\n}",
+      },
+    },
+    {
+      slug: "js-arrays-objects",
+      title: "Arrays & Objects",
+      summary: "Lists of values and labelled data, plus map/filter.",
+      minutes: 14,
+      kind: "code",
+      sections: [
+        {
+          heading: "Collections",
+          body: "Arrays hold ordered lists: plants[0] is the first item. Objects hold labelled fields: plant.name. Array methods do the heavy lifting — map transforms every item, filter keeps some, and find gets the first match.",
+          code: "const plants = ['Blue Dream', 'OG Kush'];\nconst plant = { name: 'Blue Dream', weeks: 3 };",
+        },
+      ],
+      code: {
+        html: '<h2>My grow room</h2>\n<pre id="out"></pre>',
+        css: "body { font-family: sans-serif; padding: 1.5rem; }\npre { background: #f4f4f4; padding: 1rem; border-radius: 8px; }",
+        js: "const log = (m) => document.getElementById('out').textContent += m + '\\n';\n\nconst plants = [\n  { name: 'Blue Dream', weeks: 3 },\n  { name: 'Northern Lights', weeks: 7 },\n  { name: 'White Widow', weeks: 5 },\n];\n\nconst names = plants.map(p => p.name);\nlog('All: ' + names.join(', '));\n\nconst flowering = plants.filter(p => p.weeks >= 5);\nlog('Flowering: ' + flowering.map(p => p.name).join(', '));\n\nconst oldest = plants.find(p => p.weeks === 7);\nlog('Oldest: ' + oldest.name);",
+      },
+    },
+    {
+      slug: "js-dom",
+      title: "The DOM",
+      summary: "Read and change the page from JavaScript.",
+      minutes: 12,
+      kind: "code",
+      sections: [
+        {
+          heading: "The page as objects",
+          body: "The browser turns your HTML into the DOM — a tree of objects JavaScript can read and change. document.querySelector finds an element; .textContent changes its text; .style and .classList change its look; document.createElement adds new ones.",
+          code: "const title = document.querySelector('h1');\ntitle.textContent = 'Changed!';",
+        },
+      ],
+      code: {
+        html: '<h1 id="title">Original title</h1>\n<ul id="list"></ul>',
+        css: "body { font-family: sans-serif; padding: 1.5rem; }\nli { margin: 4px 0; }",
+        js: "document.getElementById('title').textContent = 'DOM powers 🌿';\n\nconst list = document.getElementById('list');\n['Read elements', 'Change text', 'Add nodes'].forEach((text) => {\n  const li = document.createElement('li');\n  li.textContent = '✅ ' + text;\n  list.appendChild(li);\n});",
+      },
+    },
+    {
+      slug: "js-events",
+      title: "Events & a Mini App",
+      summary: "Click, input and submit — build a tiny todo list.",
+      minutes: 15,
+      kind: "code",
+      sections: [
+        {
+          heading: "Reacting to the user",
+          body: "addEventListener runs your function when something happens: a click, typing, a form submit. This lesson combines everything so far into a working todo list — the pattern behind every web app.",
+          code: "button.addEventListener('click', () => {\n  // runs on every click\n});",
+        },
+      ],
+      code: {
+        html: '<h2>Grow tasks</h2>\n<input id="task" placeholder="e.g. flush the system">\n<button id="add">Add</button>\n<ul id="list"></ul>',
+        css: "body { font-family: sans-serif; padding: 1.5rem; }\ninput { padding: 8px; width: 55%; }\nbutton { padding: 8px 14px; }\nli { margin: 6px 0; cursor: pointer; }\nli.done { text-decoration: line-through; color: #999; }",
+        js: "const input = document.getElementById('task');\nconst list = document.getElementById('list');\n\ndocument.getElementById('add').addEventListener('click', () => {\n  const text = input.value.trim();\n  if (!text) return;\n  const li = document.createElement('li');\n  li.textContent = '🌱 ' + text;\n  li.addEventListener('click', () => li.classList.toggle('done'));\n  list.appendChild(li);\n  input.value = '';\n});",
+      },
+    },
+    {
+      slug: "js-quiz",
+      title: "JavaScript Quiz",
+      summary: "Check the whole JavaScript course.",
+      minutes: 6,
+      kind: "quiz",
+      quiz: [
+        {
+          q: "Which keyword declares a value that never changes?",
+          options: ["let", "var", "const", "static"],
+          answer: 2,
+        },
+        {
+          q: "What does `plants.length` give for ['a','b','c']?",
+          options: ["2", "3", "'abc'", "undefined"],
+          answer: 1,
+        },
+        {
+          q: "Which comparison is strictly-equal in JavaScript?",
+          options: ["=", "==", "===", "=>"],
+          answer: 2,
+          explain: "= assigns, == loosely compares, === compares value AND type.",
+        },
+        {
+          q: "array.map(fn) returns…",
+          options: [
+            "the first matching item",
+            "a new array with fn applied to every item",
+            "true or false",
+            "nothing",
+          ],
+          answer: 1,
+        },
+        {
+          q: "Which finds an element in the page?",
+          options: [
+            "document.querySelector('#id')",
+            "page.find('#id')",
+            "html.get('#id')",
+            "css.select('#id')",
+          ],
+          answer: 0,
+        },
+        {
+          q: "addEventListener('click', fn) does what?",
+          options: [
+            "Clicks the element",
+            "Runs fn once immediately",
+            "Runs fn every time the element is clicked",
+            "Removes the element",
+          ],
+          answer: 2,
+        },
+      ],
+    },
+  ],
+};
+
+// ─────────────────────────────── Python ────────────────────────────────────
+
+export const pythonTrack: Track = {
+  slug: "python",
+  title: "Python Course",
+  description:
+    "The friendliest programming language — data, logic and automation.",
+  icon: "Terminal",
+  bands: ["teen", "adult"],
+  lessons: [
+    {
+      slug: "py-intro",
+      title: "Python Introduction",
+      summary: "What Python is, printing, and running your first lines.",
+      minutes: 8,
+      kind: "reading",
+      sections: [
+        {
+          heading: "Why Python",
+          body: "Python reads almost like English, which makes it the most popular first language — and it powers AI, data science, websites and automation. Run it free at python.org, in the Pydroid/Pythonista phone apps, or online at replit.com.",
+        },
+        {
+          heading: "print() — your first function",
+          body: "print() writes text to the screen. Text (a string) goes in quotes; numbers don't need them. One line is a complete program:",
+          code: 'print("Hello, gwave.ai!")\nprint("2 + 3 =", 2 + 3)',
+        },
+        {
+          heading: "Comments",
+          body: "Lines starting with # are comments — notes for humans that Python ignores.",
+          code: "# This is a comment\nprint(\"Python ignores the line above\")",
+        },
+      ],
+    },
+    {
+      slug: "py-variables",
+      title: "Variables & Types",
+      summary: "Numbers, strings, booleans and f-strings.",
+      minutes: 10,
+      kind: "reading",
+      sections: [
+        {
+          heading: "No declarations needed",
+          body: "A variable is created the moment you assign it. Python figures out the type: int (whole number), float (decimal), str (text), bool (True/False).",
+          code: 'name = "Mai"\nplants = 3\nheight = 12.5\nis_growing = True',
+        },
+        {
+          heading: "f-strings",
+          body: "Put an f before the quotes and insert values with curly braces — the cleanest way to build text:",
+          code: 'name = "Mai"\nplants = 3\nprint(f"{name} is growing {plants} plants")',
+        },
+        {
+          heading: "Converting types",
+          body: "int(), float() and str() convert between types — essential when reading user input, which always arrives as text:",
+          code: 'age = int(input("Your age: "))\nprint(f"Next year you will be {age + 1}")',
+        },
+      ],
+    },
+    {
+      slug: "py-conditions",
+      title: "If / Elif / Else",
+      summary: "Decisions with indentation — Python's signature style.",
+      minutes: 10,
+      kind: "reading",
+      sections: [
+        {
+          heading: "Indentation IS the syntax",
+          body: "Python groups code by indentation instead of curly braces. Everything indented under an if runs only when the condition is true. elif chains more checks; else catches the rest.",
+          code: 'ec = 1.4\nif ec < 1.0:\n    print("Feed is gentle")\nelif ec < 2.0:\n    print("Feed is medium")\nelse:\n    print("Feed is strong")',
+        },
+        {
+          heading: "Combining conditions",
+          body: "and, or and not combine checks — much more readable than symbols:",
+          code: 'temp = 26\nhumid = 65\nif temp > 24 and humid > 60:\n    print("Turn on the exhaust fan")',
+        },
+      ],
+    },
+    {
+      slug: "py-loops",
+      title: "Loops",
+      summary: "for, while, range() and looping over lists.",
+      minutes: 10,
+      kind: "reading",
+      sections: [
+        {
+          heading: "for + range",
+          body: "range(1, 8) counts 1 to 7 (the end is excluded). The loop body runs once per number:",
+          code: 'for day in range(1, 8):\n    if day % 2 == 1:\n        print(f"Day {day}: water 💧")\n    else:\n        print(f"Day {day}: rest")',
+        },
+        {
+          heading: "Looping a list",
+          body: "for works directly on lists — no index bookkeeping needed:",
+          code: 'plants = ["Blue Dream", "OG Kush", "White Widow"]\nfor plant in plants:\n    print(f"Checking {plant}...")',
+        },
+        {
+          heading: "while",
+          body: "while repeats as long as its condition stays true — be sure something inside changes it, or it loops forever:",
+          code: "water = 5\nwhile water > 0:\n    print(f\"Watering... {water} litres left\")\n    water = water - 1",
+        },
+      ],
+    },
+    {
+      slug: "py-functions",
+      title: "Functions",
+      summary: "def, parameters, return values and defaults.",
+      minutes: 10,
+      kind: "reading",
+      sections: [
+        {
+          heading: "def defines, return answers",
+          body: "Functions bundle logic you want to reuse. Parameters go in the parentheses; return sends a result back to the caller.",
+          code: 'def ml_for_litres(litres, ml_per_litre):\n    return litres * ml_per_litre\n\nprint(ml_for_litres(10, 2))   # 20\nprint(ml_for_litres(25, 1.5)) # 37.5',
+        },
+        {
+          heading: "Default values",
+          body: "A parameter can have a default so callers may skip it:",
+          code: 'def greet(name, lang="en"):\n    if lang == "my":\n        return f"မင်္ဂလာပါ {name}!"\n    return f"Hello {name}!"\n\nprint(greet("Mai"))\nprint(greet("Mai", "my"))',
+        },
+      ],
+    },
+    {
+      slug: "py-collections",
+      title: "Lists & Dictionaries",
+      summary: "Python's two workhorse containers.",
+      minutes: 12,
+      kind: "reading",
+      sections: [
+        {
+          heading: "Lists",
+          body: "A list is an ordered collection. Index from 0, append to add, len() to count:",
+          code: 'plants = ["Blue Dream", "OG Kush"]\nplants.append("White Widow")\nprint(plants[0])      # Blue Dream\nprint(len(plants))    # 3',
+        },
+        {
+          heading: "Dictionaries",
+          body: "A dict maps keys to values — like a labelled record:",
+          code: 'plant = {"name": "Blue Dream", "weeks": 3, "healthy": True}\nprint(plant["name"])\nplant["weeks"] = 4\nfor key, value in plant.items():\n    print(key, "→", value)',
+        },
+        {
+          heading: "A mini program",
+          body: "Combining everything — find the plants that need feeding:",
+          code: 'plants = [\n    {"name": "A", "ec": 0.7},\n    {"name": "B", "ec": 1.8},\n    {"name": "C", "ec": 0.5},\n]\nhungry = [p["name"] for p in plants if p["ec"] < 1.0]\nprint("Feed these:", hungry)',
+        },
+      ],
+    },
+    {
+      slug: "py-quiz",
+      title: "Python Quiz",
+      summary: "Test the whole Python course.",
+      minutes: 6,
+      kind: "quiz",
+      quiz: [
+        {
+          q: "Which prints text to the screen?",
+          options: ["echo()", "print()", "console.log()", "write()"],
+          answer: 1,
+        },
+        {
+          q: "How does Python group the body of an if?",
+          options: [
+            "Curly braces { }",
+            "Parentheses ( )",
+            "Indentation",
+            "Semicolons",
+          ],
+          answer: 2,
+        },
+        {
+          q: "range(1, 5) produces…",
+          options: ["1,2,3,4,5", "1,2,3,4", "0,1,2,3,4", "5,4,3,2,1"],
+          answer: 1,
+          explain: "The end value is excluded.",
+        },
+        {
+          q: "f\"Hi {name}\" is called…",
+          options: ["a comment", "an f-string", "a function", "a dictionary"],
+          answer: 1,
+        },
+        {
+          q: "Which adds an item to a list?",
+          options: [
+            "list.push(x)",
+            "list.append(x)",
+            "list.add(x)",
+            "list + x",
+          ],
+          answer: 1,
+        },
+        {
+          q: "plant[\"name\"] reads from a…",
+          options: ["list", "loop", "dictionary", "range"],
+          answer: 2,
+        },
+        {
+          q: "What does def do?",
+          options: [
+            "Deletes a file",
+            "Defines a function",
+            "Declares a constant",
+            "Debugs the code",
+          ],
+          answer: 1,
+        },
+      ],
+    },
+  ],
+};
+
+export const WEBDEV_TRACKS: Track[] = [
+  htmlTrack,
+  cssTrack,
+  javascriptTrack,
+  pythonTrack,
+];

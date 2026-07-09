@@ -560,7 +560,11 @@
     "theme_sunset": "Sunset",
     "themeDesc_greenwave": "Fresh greens — the original look.",
     "themeDesc_ocean": "Deep blues with a teal accent.",
-    "themeDesc_sunset": "Warm oranges with a rose accent."
+    "themeDesc_sunset": "Warm oranges with a rose accent.",
+    "theme_midnight": "Midnight",
+    "theme_blossom": "Blossom",
+    "themeDesc_midnight": "Violet & electric blue — a softer, rounder UI.",
+    "themeDesc_blossom": "Warm rose & lavender — friendly and extra-round."
   },
   "dev": {
     "navKeys": "API keys",

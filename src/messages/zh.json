@@ -560,7 +560,11 @@
     "theme_sunset": "Sunset",
     "themeDesc_greenwave": "清新绿色 — 原始外观。",
     "themeDesc_ocean": "深蓝配青色点缀。",
-    "themeDesc_sunset": "暖橙配玫瑰点缀。"
+    "themeDesc_sunset": "暖橙配玫瑰点缀。",
+    "theme_midnight": "Midnight",
+    "theme_blossom": "Blossom",
+    "themeDesc_midnight": "紫罗兰与电光蓝 — 更柔和圆润的界面。",
+    "themeDesc_blossom": "暖玫瑰与薰衣草 — 亲切且格外圆润。"
   },
   "dev": {
     "navKeys": "API keys",

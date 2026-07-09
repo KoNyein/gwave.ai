@@ -4,7 +4,13 @@
  * data-theme attribute on <html>; each template is a CSS-variable set in
  * globals.css, so switching is instant and needs no rebuild.
  */
-export const SITE_THEMES = ["greenwave", "ocean", "sunset"] as const;
+export const SITE_THEMES = [
+  "greenwave",
+  "ocean",
+  "sunset",
+  "midnight",
+  "blossom",
+] as const;
 
 export type SiteTheme = (typeof SITE_THEMES)[number];
 
@@ -18,6 +24,8 @@ export const THEME_PREVIEW: Record<
   greenwave: { primary: "#3B6D11", secondary: "#EAF3DE", accent: "#639922" },
   ocean: { primary: "#0D5F8F", secondary: "#DDEEf8", accent: "#16788C" },
   sunset: { primary: "#C25410", secondary: "#FBE8D3", accent: "#C22350" },
+  midnight: { primary: "#6D28D9", secondary: "#E9E3F8", accent: "#0EA5E9" },
+  blossom: { primary: "#BE185D", secondary: "#FCE7F0", accent: "#9D6BDE" },
 };
 
 export function isSiteTheme(value: unknown): value is SiteTheme {

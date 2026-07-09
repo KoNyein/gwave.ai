@@ -16,6 +16,8 @@ export interface QuizQuestion {
 export interface LessonSection {
   heading: string;
   body: string;
+  /** Optional code sample rendered as a formatted block under the body. */
+  code?: string;
 }
 
 export interface Lesson {
@@ -500,11 +502,14 @@ const agriTrack: Track = {
   ],
 };
 
+import { WEBDEV_TRACKS } from "@/lib/learn/webdev";
+
 export const TRACKS: Track[] = [
   stemTrack,
   electronicsTrack,
   roboticsTrack,
   codingTrack,
+  ...WEBDEV_TRACKS,
   agriTrack,
 ];
 

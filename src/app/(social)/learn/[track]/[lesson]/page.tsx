@@ -87,6 +87,11 @@ export default async function LessonPage({
             <p className="text-sm leading-relaxed text-muted-foreground">
               {section.body}
             </p>
+            {section.code ? (
+              <pre className="overflow-x-auto rounded-lg bg-muted p-3 font-mono text-xs leading-relaxed">
+                {section.code}
+              </pre>
+            ) : null}
           </CardContent>
         </Card>
       ))}
