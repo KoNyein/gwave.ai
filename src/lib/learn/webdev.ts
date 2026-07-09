@@ -10,6 +10,7 @@ import {
   PY_EXTRA,
 } from "@/lib/learn/webdev-extra";
 import { HTML_EXTRA2 } from "@/lib/learn/webdev-html2";
+import { CSS_EXTRA2 } from "@/lib/learn/webdev-css2";
 
 // ────────────────────────────── HTML ───────────────────────────────────────
 
@@ -407,11 +408,12 @@ export const cssTrack: Track = {
       },
     },
     ...CSS_EXTRA,
+    ...CSS_EXTRA2,
     {
       slug: "css-quiz",
       title: "CSS Quiz",
-      summary: "Test your styling knowledge.",
-      minutes: 6,
+      summary: "Twelve questions covering the whole CSS course.",
+      minutes: 8,
       kind: "quiz",
       quiz: [
         {
@@ -461,6 +463,57 @@ export const cssTrack: Track = {
             "the screen is at most 600px wide",
             "the page has 600 elements",
             "JavaScript is disabled",
+          ],
+          answer: 1,
+        },
+        {
+          q: "Which value makes an element's width INCLUDE its padding and border?",
+          options: [
+            "box-sizing: content-box",
+            "box-sizing: border-box",
+            "overflow: hidden",
+            "display: flex",
+          ],
+          answer: 1,
+        },
+        {
+          q: "Which unit is relative to the ROOT font size?",
+          options: ["px", "rem", "vw", "pt"],
+          answer: 1,
+          explain: "rem scales with the root font-size; em with the element's own.",
+        },
+        {
+          q: "Which pseudo-class styles an element while the mouse is over it?",
+          options: [":focus", ":hover", ":first-child", ":checked"],
+          answer: 1,
+        },
+        {
+          q: "What do ::before and ::after let you do?",
+          options: [
+            "Delete elements",
+            "Insert generated content around an element",
+            "Load a new page",
+            "Change the HTML file",
+          ],
+          answer: 1,
+        },
+        {
+          q: "When two rules conflict, which is the STRONGEST selector?",
+          options: [
+            "a tag selector (p)",
+            "a class selector (.note)",
+            "an id selector (#lead)",
+            "they are all equal",
+          ],
+          answer: 2,
+        },
+        {
+          q: "How do you make a fixed-height box scroll when content overflows?",
+          options: [
+            "overflow: visible",
+            "overflow: auto with a set height",
+            "display: none",
+            "position: fixed",
           ],
           answer: 1,
         },

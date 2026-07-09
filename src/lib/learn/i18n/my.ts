@@ -890,9 +890,194 @@ export const MY_OVERLAY: LearnOverlay = {
           { heading: "box-shadow နဲ့ linear-gradient", body: "box-shadow က အနက်ထည့်တယ် (x, y, blur, အရောင်)၊ blur ကြီးတဲ့ အရိပ်ပျော့က မြင့်တက်မှုအဖြစ် မြင်ရတယ်။ linear-gradient က အရောင်တွေ background အဖြစ် ရောစပ်တယ် — ထောင့်နဲ့ အရောင်နေရာ ပေးပါ။" },
         ],
       },
+      "css-syntax": {
+        title: "CSS Syntax",
+        summary: "selector, property, value — rule တိုင်းရဲ့ ပုံသဏ္ဌာန်။",
+        sections: [
+          { heading: "rule တစ်ခု၊ အပိုင်း ၃ ခု", body: "CSS rule က selector နဲ့ element ကို ချိန်ရွယ်၊ ပြီးရင် curly brace ထဲ property: value အတွဲတစ်ခု/အများ သတ်မှတ်။ declaration တစ်ခုစီ semicolon နဲ့ ဆုံး။ အောက်က အရောင်/ဆိုက် ပြောင်းပြီး Run ။" },
+        ],
+      },
+      "css-how-to": {
+        title: "CSS ထည့်နည်း ၃ မျိုး",
+        summary: "inline, internal, external — ဘယ်ဟာ ဦးစားပေးမလဲ။",
+        sections: [
+          { heading: "inline, internal, external", body: "style attribute (inline)၊ head ထဲ <style> (internal)၊ ဒါမှမဟုတ် <link> နဲ့ ချိတ်တဲ့ သီးသန့် .css file (external) နဲ့ style လုပ်လို့ရ။ တကယ့် site အတွက် external အကောင်းဆုံး — file တစ်ခုက page တိုင်း style ချ။" },
+        ],
+      },
+      "css-colors-values": {
+        title: "အရောင် တန်ဖိုးများ",
+        summary: "name, hex, rgb, hsl — အရောင်ရွေးနည်း ၄ မျိုး။",
+        sections: [
+          { heading: "မှတ်သားနည်း ၄ မျိုး", body: "အရောင်ကို keyword (teal)၊ hex (#639922)၊ rgb(99,153,34)၊ hsl(88,64%,37%) နဲ့ ပေးလို့ရ။ rgb/hsl က ဖောက်ထွင်းအတွက် alpha ပါယူ။ hsl က hue/saturation/lightness ကို သီးခြား ချိန်လို့ရလို့ အသုံးတည့်။" },
+        ],
+      },
+      "css-backgrounds": {
+        title: "Background များ",
+        summary: "အရောင်၊ ပုံ၊ gradient၊ size နဲ့ position။",
+        sections: [
+          { heading: "background အလွှာဖွဲ့", body: "background-color က element ဖြည့်၊ background-image က ပုံ/gradient ထည့်၊ background-size (cover/contain) နဲ့ background-position က နေပုံ ထိန်း။ linear-gradient() က ပုံ file မလိုဘဲ ရ။" },
+        ],
+      },
+      "css-borders": {
+        title: "Border နဲ့ Radius",
+        summary: "မျဉ်းပုံစံ၊ အထူ၊ အရောင်နဲ့ ထောင့်ဝိုင်း။",
+        sections: [
+          { heading: "border ဆွဲခြင်း", body: "border က အထူ၊ style (solid/dashed/dotted)၊ အရောင်ကို တစ်ကြောင်းတည်း သတ်မှတ်။ border-radius က ထောင့်ဝိုင်း — စတုရန်းမှာ တန်ဖိုးကြီးရင် စက်ဝိုင်းဖြစ်။ ဘေးတစ်ခုစီ သီးသန့်လည်း ပေးလို့ရ။" },
+        ],
+      },
+      "css-margin-padding": {
+        title: "Margin နဲ့ Padding",
+        summary: "element ရဲ့ အပြင်/အတွင်း အကွာအဝေး။",
+        sections: [
+          { heading: "အပြင်နဲ့ အတွင်း", body: "margin က element border အပြင်က space (တခြားဟာတွေ တွန်းဖယ်)၊ padding က အတွင်း၊ border နဲ့ content ကြားက space။ နှစ်ခုလုံး တန်ဖိုး ၁–၄ ခု (top/right/bottom/left) ယူ။ margin: 0 auto က ဆိုက်သတ်မှတ်ထားတဲ့ block ကို အလယ်တင်။" },
+        ],
+      },
+      "css-sizing": {
+        title: "Sizing နဲ့ box-sizing",
+        summary: "width, height, min/max — box-sizing ဘာလို့ အရေးကြီးလဲ။",
+        sections: [
+          { heading: "ဆိုက် ထိန်းချုပ်ခြင်း", body: "width/height က ဆိုက်၊ max-width က screen ကြီးမှာ ကြီးလွန်းမသွားအောင်၊ min-height က ကျုံ့မသွားအောင်။ box-sizing: border-box က width ထဲ padding+border ပါဝင်စေလို့ layout တွက်ရ ပိုလွယ်။" },
+        ],
+      },
+      "css-units": {
+        title: "Unit: px, em, rem, %, vw",
+        summary: "အတိအကျ vs ဆက်စပ် ဆိုက်၊ ဘယ်တော့ ဘယ်ဟာ သုံးမလဲ။",
+        sections: [
+          { heading: "ဆက်စပ် unit က ချုံ့ချဲ့", body: "px က အတိအကျ။ em က element font-size နဲ့ ဆက်စပ်၊ rem က root font-size နဲ့ — တသမတ်တည်း ချုံ့ချဲ့နိုင်။ % က parent နဲ့၊ vw/vh က viewport width/height ရဲ့ 1%။ responsive အတွက် rem နဲ့ % ဦးစားပေး။" },
+        ],
+      },
+      "css-display-visibility": {
+        title: "display နဲ့ visibility",
+        summary: "ပြ/ဖျောက်၊ element စီးပုံ ပြောင်း။",
+        sections: [
+          { heading: "block, inline, none", body: "display က element ပြုမူပုံ ပြောင်း: block (width အပြည့်၊ line အသစ်)၊ inline (line ထဲ)၊ inline-block (line ထဲ ဒါပေမဲ့ ဆိုက်ပေးလို့ရ)၊ none (လုံးဝ ဖယ်)။ visibility: hidden က ဖျောက်ပေမဲ့ နေရာ ချန်၊ display: none က နှစ်ခုလုံး ဖယ်။" },
+        ],
+      },
+      "css-text": {
+        title: "စာသား Style ချခြင်း",
+        summary: "align, decoration, transform နဲ့ space။",
+        sections: [
+          { heading: "text property များ", body: "text-align က နေရာချ (left/center/right)၊ text-decoration က underline ထည့်/ဖယ်၊ text-transform က case ပြောင်း (uppercase/capitalize)၊ line-height က စာကြောင်းကြား၊ letter-spacing က စာလုံးကြား ချဲ့။" },
+        ],
+      },
+      "css-fonts": {
+        title: "Font များ",
+        summary: "font family, size, weight, style။",
+        sections: [
+          { heading: "စာလုံးပုံစံ ရွေးခြင်း", body: "font-family က နှစ်သက်ရာ font တွေကို generic fallback (sans-serif/serif/monospace) နဲ့အတူ စာရင်းချ။ font-weight က ထူ/ပါး (400 normal, 700 bold)၊ font-style က italic။ font shorthand နဲ့ စုပြီး ရေးလေ့ရှိ။" },
+        ],
+      },
+      "css-links": {
+        title: "Link Style ချခြင်း",
+        summary: "link ကို state အလိုက် အရောင်ချ: normal, hover, visited, active။",
+        sections: [
+          { heading: "link state များ", body: "link ကို pseudo-class နဲ့ state အလိုက် style: :link (မဝင်ရသေး)၊ :visited၊ :hover (mouse တင်)၊ :active (နှိပ်နေ)။ text-decoration နဲ့ underline default ဖယ်ပြီး hover မှာ ပြန်ထည့်ရင် ခေတ်မီ။" },
+        ],
+      },
+      "css-lists": {
+        title: "List Style ချခြင်း",
+        summary: "bullet, number နဲ့ list ကို menu ပြောင်း။",
+        sections: [
+          { heading: "list-style နဲ့ layout", body: "list-style-type က marker ပြောင်း (disc/circle/square/decimal) ဒါမှမဟုတ် ဖယ် (none)။ list item မှာ display/flex သတ်မှတ်ရင် ရိုးရိုး <ul> က အလျားလိုက် navigation bar ဖြစ် — classic menu နည်း။" },
+        ],
+      },
+      "css-tables": {
+        title: "Table Style ချခြင်း",
+        summary: "border, space, အစင်းရောင် row နဲ့ hover။",
+        sections: [
+          { heading: "ဖတ်ရလွယ်တဲ့ table", body: "border-collapse: collapse က cell border တွေကို သန့်တဲ့ မျဉ်းတစ်ကြောင်း ပေါင်း။ padding က cell ကို နေရာပေး၊ header row မှာ background ပေးရင် ထင်ရှား၊ :nth-child(even) က row တစ်လှည့်စီ အစင်းချ။" },
+        ],
+      },
+      "css-pseudo-classes": {
+        title: "Pseudo-class များ",
+        summary: ":hover, :focus, :first-child, :nth-child စသည်။",
+        sections: [
+          { heading: "state/နေရာ အလိုက် style", body: "pseudo-class က element ကို အခြေအနေ/နေရာ အလိုက် style: :hover (mouse တင်)၊ :focus (ရွေးထားတဲ့ input)၊ :first-child/:last-child၊ :nth-child(n) (n ခုမြောက်တိုင်း)။ JavaScript မလိုဘဲ တုံ့ပြန်။" },
+        ],
+      },
+      "css-pseudo-elements": {
+        title: "Pseudo-element များ",
+        summary: "::before နဲ့ ::after က content/အလှ ထည့်။",
+        sections: [
+          { heading: "ဖန်တီး content", body: "::before နဲ့ ::after က element ရှေ့/နောက်မှာ ဖန်တီး content ထည့် — icon၊ quote mark၊ အလှမျဉ်း — HTML မထိဘဲ။ ပေါ်ဖို့ content property (ဗလာဖြစ်ဖြစ်) လို။" },
+        ],
+      },
+      "css-specificity": {
+        title: "Specificity နဲ့ Cascade",
+        summary: "rule နှစ်ခု ဆန့်ကျင်ရင် ဘယ်ဟာ နိုင်လဲ။",
+        sections: [
+          { heading: "Cascade က ဆုံးဖြတ်", body: "rule နှစ်ခုက property တူ သတ်မှတ်ရင် CSS က ပိုတိကျတာ ရွေး။ id (#name) က class (.name) ကို၊ class က tag (p) ကို နိုင်။ specificity ညီရင် နောက်ရေးတာ နိုင်။ inline style က ပိုအားကြီး။" },
+          { heading: "ရိုးရိုးထားပါ", body: "specificity မြင့် (ဒါမှမဟုတ် !important) ရင် နောက်မှ override ရ ခက်။ stylesheet ကောင်းက class နဲ့ အစဉ်မှန်ကို အားကိုး၊ id/!important ကို ရှားရှားပါးပါးမှ။ cascade နားလည်ရင် 'ဘာလို့ style မသက်ရောက်တာလဲ' debug လွယ်။" },
+        ],
+      },
+      "css-overflow": {
+        title: "Overflow နဲ့ Scroll",
+        summary: "content က box ထက် ကြီးရင် ဘာဖြစ်လဲ။",
+        sections: [
+          { heading: "ကြီးလွန်း content ကိုင်တွယ်", body: "overflow က မဆံ့တဲ့ content ကို ထိန်း: visible (ဖိတ်ထွက်၊ default)၊ hidden (ဖြတ်)၊ scroll (scrollbar အမြဲ)၊ auto (လိုမှ scrollbar)။ height သတ်မှတ်ပြီး overflow: auto ဆိုရင် scroll ဖြစ်တဲ့ panel ရ။" },
+        ],
+      },
+      "css-transforms": {
+        title: "2D Transform များ",
+        summary: "element ကို ရွှေ့၊ လှည့်၊ ချုံ့ချဲ့၊ စောင်း။",
+        sections: [
+          { heading: "layout မထိဘဲ ပုံပြောင်း", body: "transform က ပတ်ဝန်းကျင် layout မထိခိုက်ဘဲ element ကို ရွှေ့/ပြောင်း: translate(x,y) ရွှေ့၊ rotate(deg) လှည့်၊ scale(n) ချုံ့ချဲ့၊ ပေါင်းလို့ရ။ transition နဲ့ တွဲရင် hover မှာ ချောမွေ့။" },
+        ],
+      },
       "css-quiz": {
         title: "CSS Quiz",
-        summary: "သင့် style ဗဟုသုတ စစ်ဆေးပါ။",
+        summary: "CSS သင်တန်းတစ်ခုလုံးအတွက် မေးခွန်း ၁၂ ခု။",
+        quiz: [
+          {
+            q: "class=\"card\" ကို ဘယ် selector က ချိန်ရွယ်လဲ?",
+            options: ["#card", ".card", "card()", "<card>"],
+          },
+          {
+            q: "element border ရဲ့ အတွင်းက space က?",
+            options: ["margin", "gap", "padding", "outline"],
+          },
+          {
+            q: "ဘယ်ဟာက flex container ဖြစ်စေလဲ?",
+            options: ["display: block", "display: flex", "position: flex", "flex: on"],
+          },
+          {
+            q: "grid-template-columns: repeat(4, 1fr) က ဘာ ဖန်တီးလဲ?",
+            options: ["column ညီတူ ၄ ခု", "row ၄ ခု", "page ၄ ခုမှာ column တစ်ခု ထပ်", "4px gap"],
+          },
+          {
+            q: "transition က ဘာလုပ်လဲ?",
+            options: ["element ဖျက်", "property ပြောင်းမှုကို ချောမွေ့ animate", "နောက် page load", "HTML ပြောင်း"],
+          },
+          {
+            q: "@media (max-width: 600px) က ဘယ်အခါ သက်ရောက်လဲ?",
+            options: ["screen 600px ထက် ကျယ်ရင်", "screen 600px အများဆုံး ကျယ်ရင်", "page မှာ element 600 ရှိရင်", "JavaScript ပိတ်ရင်"],
+          },
+          {
+            q: "ဘယ် တန်ဖိုးက element width ထဲ padding+border ပါဝင်စေလဲ?",
+            options: ["box-sizing: content-box", "box-sizing: border-box", "overflow: hidden", "display: flex"],
+          },
+          {
+            q: "ဘယ် unit က ROOT font size နဲ့ ဆက်စပ်လဲ?",
+            options: ["px", "rem", "vw", "pt"],
+            explain: "rem က root font-size နဲ့၊ em က element ကိုယ်ပိုင်နဲ့ ချုံ့ချဲ့။",
+          },
+          {
+            q: "mouse တင်နေစဉ် style ချတဲ့ pseudo-class က?",
+            options: [":focus", ":hover", ":first-child", ":checked"],
+          },
+          {
+            q: "::before နဲ့ ::after က ဘာ လုပ်ပေးလဲ?",
+            options: ["element ဖျက်", "element ပတ်လည် ဖန်တီး content ထည့်", "page အသစ် load", "HTML file ပြောင်း"],
+          },
+          {
+            q: "rule နှစ်ခု ဆန့်ကျင်ရင် ဘယ် selector က အားအကြီးဆုံးလဲ?",
+            options: ["tag selector (p)", "class selector (.note)", "id selector (#lead)", "အားလုံး ညီ"],
+          },
+          {
+            q: "height သတ်မှတ်ထားတဲ့ box ကို content ဖိတ်ရင် scroll ဖြစ်အောင် ဘယ်လို လုပ်မလဲ?",
+            options: ["overflow: visible", "height သတ်မှတ်ပြီး overflow: auto", "display: none", "position: fixed"],
+          },
+        ],
       },
     },
   },
