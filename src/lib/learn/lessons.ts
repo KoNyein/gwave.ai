@@ -3,6 +3,7 @@
 // content is versioned in code so it works offline and is easy to review.
 
 import type { AgeBand } from "@/lib/age";
+import { AGRI_EXTRA } from "@/lib/learn/agri-extra";
 import { STEM_EXTRA } from "@/lib/learn/stem-extra";
 
 export type LessonKind =
@@ -488,6 +489,7 @@ const agriTrack: Track = {
         },
       ],
     },
+    ...AGRI_EXTRA,
     {
       slug: "agri-quiz",
       title: "Agri-Science Quiz",
@@ -555,6 +557,68 @@ const agriTrack: Track = {
             "Trigger an action like a fan when a reading crosses a threshold",
             "Replace the plants",
             "Grow food in space only",
+          ],
+          answer: 1,
+        },
+        {
+          q: "A deficiency showing on older, lower leaves first usually points to a…",
+          options: [
+            "Immobile nutrient",
+            "Mobile nutrient the plant moved to new growth",
+            "Light problem",
+            "Pest",
+          ],
+          answer: 1,
+          explain: "Mobile nutrients like N, P, K and Mg are relocated to new leaves.",
+        },
+        {
+          q: "Why do roots need a medium with air in it?",
+          options: [
+            "Roots photosynthesise",
+            "Roots need oxygen and suffocate in waterlogged medium",
+            "Air adds nutrients",
+            "It keeps pests away",
+          ],
+          answer: 1,
+          explain: "Over-watering starves roots of oxygen and causes rot.",
+        },
+        {
+          q: "VPD (vapour pressure deficit) combines which two readings?",
+          options: [
+            "pH and EC",
+            "Temperature and humidity",
+            "Light and CO₂",
+            "Weight and time",
+          ],
+          answer: 1,
+        },
+        {
+          q: "Adding CO₂ mainly helps growth only when…",
+          options: [
+            "The room is dark",
+            "Light is already strong and other factors are not the limit",
+            "Humidity is very low",
+            "Plants are seedlings",
+          ],
+          answer: 1,
+        },
+        {
+          q: "What is the point of topping a plant during vegetative growth?",
+          options: [
+            "To kill pests",
+            "To turn one main shoot into multiple even tops",
+            "To flower it faster",
+            "To reduce watering",
+          ],
+          answer: 1,
+        },
+        {
+          q: "A grow journal is valuable mainly because it lets you…",
+          options: [
+            "Skip watering",
+            "Link a result back to the conditions and decisions that caused it",
+            "Avoid all pests",
+            "Grow without light",
           ],
           answer: 1,
         },
