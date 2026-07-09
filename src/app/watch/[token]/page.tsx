@@ -3,6 +3,7 @@ import { Lock, Video } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { CameraPlayer } from "@/components/cctv/camera-player";
+import { HlsPlayer } from "@/components/cctv/hls-player";
 import { getSharedCamera } from "@/lib/db/cctv";
 
 export const dynamic = "force-dynamic";
@@ -42,7 +43,11 @@ export default async function WatchPage({
         <Video className="h-5 w-5 text-primary" />
         <h1 className="text-lg font-bold">{camera.title}</h1>
       </div>
-      <CameraPlayer streamId={camera.stream_id} title={camera.title} />
+      {camera.hls_url ? (
+        <HlsPlayer src={camera.hls_url} title={camera.title} />
+      ) : (
+        <CameraPlayer streamId={camera.stream_id} title={camera.title} />
+      )}
       <p className="text-center text-xs text-muted-foreground">
         {t("sharedFooter")}
       </p>

@@ -25,6 +25,17 @@ const gameFrameSrc = gameFrameOrigins.length
   ? ` ${gameFrameOrigins.join(" ")}`
   : "";
 
+// CCTV cameras can play a live HLS (.m3u8) stream directly in a <video>. The
+// browser fetches the playlist and its segments from the operator's media
+// server (MediaMTX / Ant Media / nginx), so that origin must be allow-listed in
+// both connect-src (hls.js XHR/fetch) and media-src (the <video> source).
+// Space-separated origins via NEXT_PUBLIC_CCTV_HLS_ORIGINS; empty by default.
+const cctvHlsOrigins = (process.env.NEXT_PUBLIC_CCTV_HLS_ORIGINS ?? "")
+  .split(/\s+/)
+  .map((s) => s.trim())
+  .filter(Boolean);
+const cctvHlsSrc = cctvHlsOrigins.length ? ` ${cctvHlsOrigins.join(" ")}` : "";
+
 // Content-Security-Policy: 'unsafe-inline'/'unsafe-eval' are required by
 // Next.js hydration + dev tooling; everything else is locked to self and
 // the Supabase project (REST, storage, realtime websockets).
@@ -42,10 +53,10 @@ const csp = [
   // https: allows Shop product images, which come from arbitrary external
   // merchant hosts (affiliate/dropship listings imported from other sites).
   "img-src 'self' blob: data: https: https://*.supabase.co https://lh3.googleusercontent.com https://image.mux.com https://*.tile.openstreetmap.org",
-  "media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com",
+  `media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com${cctvHlsSrc}`,
   "font-src 'self' data:",
   // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net",
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net${cctvHlsSrc}`,
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
   `frame-src 'self' https://www.youtube-nocookie.com${cctvFrameSrc}${gameFrameSrc}`,

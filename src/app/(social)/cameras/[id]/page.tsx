@@ -3,8 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Radio, Upload } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
+import { CameraHlsForm } from "@/components/cctv/camera-hls-form";
 import { CameraPlayer } from "@/components/cctv/camera-player";
 import { CameraShareControls } from "@/components/cctv/camera-share-controls";
+import { HlsPlayer } from "@/components/cctv/hls-player";
 import { Button } from "@/components/ui/button";
 import { getCurrentProfile } from "@/lib/auth";
 import { publishUrl } from "@/lib/cctv-player";
@@ -42,7 +44,13 @@ export default async function CameraDetailPage({
 
       <h1 className="text-xl font-bold">{camera.title}</h1>
 
-      <CameraPlayer streamId={camera.stream_id} title={camera.title} />
+      {camera.hls_url ? (
+        <HlsPlayer src={camera.hls_url} title={camera.title} />
+      ) : (
+        <CameraPlayer streamId={camera.stream_id} title={camera.title} />
+      )}
+
+      <CameraHlsForm id={camera.id} hlsUrl={camera.hls_url} />
 
       {publish ? (
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-3">

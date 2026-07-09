@@ -93,6 +93,71 @@ export async function createCamera(input: {
   return { ok: true, data: { id: data.id } };
 }
 
+/**
+ * A public HLS URL must be plain https, end in .m3u8, and carry NO embedded
+ * credentials. Rejecting userinfo (https://user:pass@host/…) is essential:
+ * hls_url is exposed to public share-link viewers via PUBLIC_COLS, so a
+ * Basic-auth URL pasted here would leak the media-server password. Credentials
+ * belong in the server-side rtsp_url, never here.
+ */
+function isPublicHlsUrl(v: string): boolean {
+  if (v === "") return true; // empty clears the URL
+  let url: URL;
+  try {
+    url = new URL(v);
+  } catch {
+    return false;
+  }
+  return (
+    url.protocol === "https:" &&
+    url.username === "" &&
+    url.password === "" &&
+    /\.m3u8$/i.test(url.pathname)
+  );
+}
+
+const hlsSchema = z.object({
+  id: z.string().uuid(),
+  // Empty string clears the URL; otherwise a credential-free https .m3u8.
+  hlsUrl: z
+    .string()
+    .trim()
+    .max(500)
+    .refine(
+      isPublicHlsUrl,
+      "Enter a public https:// .m3u8 URL with no username or password in it.",
+    ),
+});
+
+/**
+ * Set (or clear) a camera's public HLS playback URL. Owner-scoped. The URL must
+ * be an https .m3u8 — a credential-free playback endpoint. The private RTSP
+ * source is never touched here and never leaves the server.
+ */
+export async function setCameraHlsUrl(input: {
+  id: string;
+  hlsUrl: string;
+}): Promise<ActionResult> {
+  const parsed = hlsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const { id, hlsUrl } = parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("user_cameras")
+    .update({ hls_url: hlsUrl === "" ? null : hlsUrl })
+    .eq("id", id)
+    .eq("owner_id", userId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/cameras/${id}`);
+  return { ok: true, data: undefined };
+}
+
 const visibilitySchema = z.object({
   id: z.string().uuid(),
   isPublic: z.boolean(),
