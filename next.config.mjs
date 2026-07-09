@@ -10,6 +10,10 @@ const csp = [
   // cdn.jsdelivr.net serves Pyodide (Python-in-WebAssembly) for the Python
   // playground; 'wasm-unsafe-eval' lets its WASM compile.
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net",
+  // Blob-URL Web Workers run Pyodide/sql.js off the main thread so runaway
+  // learner code can't freeze the tab; importScripts inside them is covered
+  // by script-src above.
+  "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
   // *.tile.openstreetmap.org serves the Leaflet map tiles for location share.
   "img-src 'self' blob: data: https://*.supabase.co https://lh3.googleusercontent.com https://image.mux.com https://*.tile.openstreetmap.org",

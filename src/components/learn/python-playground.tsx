@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, Play, RotateCcw } from "lucide-react";
+import { Loader2, Play, RotateCcw, Square } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { CodeEditor } from "@/components/learn/code-editor";
 import {
+  reportLessonComplete,
   useProjectAutosave,
   type LessonRef,
 } from "@/components/learn/use-learn-progress";
@@ -17,47 +18,41 @@ import { Button } from "@/components/ui/button";
 const PYODIDE_VERSION = "0.26.2";
 const PYODIDE_BASE = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
 
-interface PyodideInstance {
-  runPythonAsync: (code: string) => Promise<unknown>;
-  setStdout: (opts: { batched: (s: string) => void }) => void;
-  setStderr: (opts: { batched: (s: string) => void }) => void;
-}
+// A single run may execute this long before we assume it's stuck (e.g. an
+// accidental `while True:`) and terminate the worker.
+const RUN_TIMEOUT_MS = 15000;
 
-declare global {
-  interface Window {
-    loadPyodide?: (opts: { indexURL: string }) => Promise<PyodideInstance>;
+// Pyodide runs inside a Web Worker so a learner's infinite loop never freezes
+// the page: the main thread stays responsive and we simply terminate the
+// worker when it overruns or the learner presses Stop. Built as a Blob URL so
+// there's no separate worker file to ship.
+const WORKER_SOURCE = `
+let pyodideReady = null;
+async function getPyodide() {
+  if (!pyodideReady) {
+    importScripts("${PYODIDE_BASE}pyodide.js");
+    pyodideReady = loadPyodide({ indexURL: "${PYODIDE_BASE}" });
   }
+  return pyodideReady;
 }
-
-let pyodidePromise: Promise<PyodideInstance> | null = null;
-
-/** Load Pyodide once per page and reuse it across every playground. */
-function loadPyodideOnce(): Promise<PyodideInstance> {
-  if (pyodidePromise) return pyodidePromise;
-  pyodidePromise = new Promise<PyodideInstance>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(
-      "script[data-pyodide]",
-    );
-    const start = () => {
-      window
-        .loadPyodide?.({ indexURL: PYODIDE_BASE })
-        .then(resolve)
-        .catch(reject);
-    };
-    if (existing) {
-      if (window.loadPyodide) start();
-      else existing.addEventListener("load", start);
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = `${PYODIDE_BASE}pyodide.js`;
-    script.dataset.pyodide = "true";
-    script.onload = start;
-    script.onerror = () => reject(new Error("Failed to load Python runtime."));
-    document.head.appendChild(script);
-  });
-  return pyodidePromise;
-}
+self.onmessage = async (e) => {
+  try {
+    const pyodide = await getPyodide();
+    self.postMessage({ type: "loaded" });
+    const chunks = [];
+    const collect = { batched: (s) => chunks.push(s) };
+    pyodide.setStdout(collect);
+    pyodide.setStderr(collect);
+    await pyodide.runPythonAsync(e.data.code);
+    self.postMessage({ type: "result", output: chunks.join("\\n") });
+  } catch (err) {
+    self.postMessage({
+      type: "error",
+      error: err && err.message ? err.message : String(err),
+    });
+  }
+};
+`;
 
 function restoreCode(starter: string, saved: Record<string, unknown> | null) {
   return saved && typeof saved.code === "string" ? saved.code : starter;
@@ -66,8 +61,9 @@ function restoreCode(starter: string, saved: Record<string, unknown> | null) {
 /**
  * A real Python editor + runner. Learners write Python, press Run, and see
  * the actual interpreter output — like the "Try it Yourself" panels on
- * classic tutorial sites, but running client-side. Autosaves via the
- * member-project system when a lesson ref is provided.
+ * classic tutorial sites, but running client-side in a worker so runaway
+ * loops can't hang the tab. Autosaves via the member-project system and marks
+ * the lesson complete after a successful run.
  */
 export function PythonPlayground({
   starter,
@@ -90,25 +86,83 @@ export function PythonPlayground({
 
   useProjectAutosave(lesson, "python", title, { code });
 
-  async function run() {
-    setStatus((s) => (s === "idle" ? "loading" : s));
-    setOutput("");
-    try {
-      const pyodide = await loadPyodideOnce();
-      setStatus("running");
-      const chunks: string[] = [];
-      const collect = { batched: (s: string) => chunks.push(s) };
-      pyodide.setStdout(collect);
-      pyodide.setStderr(collect);
-      await pyodide.runPythonAsync(code);
-      setOutput(chunks.join("\n") || "(no output)");
-    } catch (error) {
-      setOutput(
-        error instanceof Error ? error.message : "Something went wrong.",
-      );
-    } finally {
-      setStatus("idle");
+  // Keep the latest lesson ref for the async completion callback.
+  const lessonRef = React.useRef(lesson);
+  lessonRef.current = lesson;
+
+  const workerRef = React.useRef<Worker | null>(null);
+  const blobUrlRef = React.useRef<string | null>(null);
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const teardownWorker = React.useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
     }
+    if (workerRef.current) {
+      workerRef.current.terminate();
+      workerRef.current = null;
+    }
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+  }, []);
+
+  React.useEffect(() => teardownWorker, [teardownWorker]);
+
+  function run() {
+    if (status !== "idle") return;
+    setOutput("");
+    setStatus("loading");
+
+    const blob = new Blob([WORKER_SOURCE], { type: "application/javascript" });
+    const url = URL.createObjectURL(blob);
+    blobUrlRef.current = url;
+    const worker = new Worker(url);
+    workerRef.current = worker;
+
+    worker.onmessage = (e: MessageEvent) => {
+      const msg = e.data as
+        | { type: "loaded" }
+        | { type: "result"; output: string }
+        | { type: "error"; error: string };
+
+      if (msg.type === "loaded") {
+        setStatus("running");
+        timerRef.current = setTimeout(() => {
+          teardownWorker();
+          setOutput(t("runTimeout"));
+          setStatus("idle");
+        }, RUN_TIMEOUT_MS);
+        return;
+      }
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      if (msg.type === "result") {
+        setOutput(msg.output || "(no output)");
+        reportLessonComplete(lessonRef.current);
+      } else {
+        setOutput(msg.error || t("engineError"));
+      }
+      setStatus("idle");
+      teardownWorker();
+    };
+    worker.onerror = () => {
+      teardownWorker();
+      setOutput(t("engineError"));
+      setStatus("idle");
+    };
+
+    worker.postMessage({ code });
+  }
+
+  function stop() {
+    teardownWorker();
+    setOutput(t("runStopped"));
+    setStatus("idle");
   }
 
   return (
@@ -136,10 +190,10 @@ export function PythonPlayground({
           onChange={setCode}
           heightClass="h-64"
         />
-        <div className="border-t p-2">
+        <div className="flex gap-2 border-t p-2">
           <Button
             size="sm"
-            className="w-full"
+            className="flex-1"
             onClick={run}
             disabled={status !== "idle"}
           >
@@ -154,6 +208,11 @@ export function PythonPlayground({
               </>
             )}
           </Button>
+          {status !== "idle" && (
+            <Button size="sm" variant="outline" onClick={stop}>
+              <Square className="mr-1 h-4 w-4" /> {t("stop")}
+            </Button>
+          )}
         </div>
       </div>
 
