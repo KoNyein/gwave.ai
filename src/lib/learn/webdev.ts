@@ -9,6 +9,7 @@ import {
   JS_EXTRA,
   PY_EXTRA,
 } from "@/lib/learn/webdev-extra";
+import { HTML_EXTRA2 } from "@/lib/learn/webdev-html2";
 
 // ────────────────────────────── HTML ───────────────────────────────────────
 
@@ -151,6 +152,7 @@ export const htmlTrack: Track = {
       },
     },
     ...HTML_EXTRA,
+    ...HTML_EXTRA2,
     {
       slug: "html-quiz",
       title: "HTML Quiz",
