@@ -21,6 +21,7 @@ export default async function AdminLayout({
     { href: "/admin/users", label: t("navUsers") },
     { href: "/admin/moderation", label: t("navModeration") },
     { href: "/admin/games", label: t("navGames") },
+    { href: "/admin/teachers", label: t("navTeachers") },
     { href: "/admin/membership", label: t("navMembership") },
     { href: "/admin/settings", label: t("navSettings") },
   ];

@@ -8,6 +8,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 const bodySchema = z.object({
   title: z.string().min(1).max(120),
   description: z.string().max(1000).optional(),
+  // A 'class' is a teacher-hosted live lesson; 'stream' is a normal broadcast.
+  kind: z.enum(["stream", "class"]).optional().default("stream"),
+  trackSlug: z.string().max(60).optional(),
+  scheduledAt: z.string().datetime().optional(),
 });
 
 /**
@@ -32,6 +36,19 @@ export async function POST(request: Request) {
       { error: parsed.error.errors[0]?.message ?? "Invalid input." },
       { status: 400 },
     );
+  }
+
+  // Only approved teachers (or moderators/admins) may host a live class.
+  if (parsed.data.kind === "class") {
+    const isStaff = ["moderator", "admin", "super_admin"].includes(
+      profile.role,
+    );
+    if (!profile.is_teacher && !isStaff) {
+      return NextResponse.json(
+        { error: "Only approved teachers can host a class." },
+        { status: 403 },
+      );
+    }
   }
 
   let mux;
@@ -69,6 +86,15 @@ export async function POST(request: Request) {
         description: parsed.data.description?.trim() || null,
         mux_stream_id: stream.id,
         mux_playback_id: playbackId,
+        kind: parsed.data.kind,
+        track_slug:
+          parsed.data.kind === "class"
+            ? parsed.data.trackSlug || null
+            : null,
+        scheduled_at:
+          parsed.data.kind === "class"
+            ? parsed.data.scheduledAt || null
+            : null,
       })
       .select("id")
       .single();

@@ -564,7 +564,8 @@
     "theme_midnight": "Midnight",
     "theme_blossom": "Blossom",
     "themeDesc_midnight": "紫罗兰与电光蓝 — 更柔和圆润的界面。",
-    "themeDesc_blossom": "暖玫瑰与薰衣草 — 亲切且格外圆润。"
+    "themeDesc_blossom": "暖玫瑰与薰衣草 — 亲切且格外圆润。",
+    "navTeachers": "教师"
   },
   "dev": {
     "navKeys": "API keys",
@@ -921,5 +922,43 @@
     "reviewNotePlaceholder": "给作者的备注（可选）",
     "approve": "通过",
     "reject": "拒绝"
+  },
+  "learn": {
+    "backToLearn": "返回学习",
+    "liveClasses": "直播课",
+    "liveClassesSubtitle": "由老师主持的直播视频课。",
+    "startClass": "开始上课",
+    "becomeTeacher": "成为老师",
+    "noClassesYet": "还没有直播课，敬请期待！",
+    "liveNow": "直播中",
+    "ended": "已结束",
+    "byTeacher": "来自 {name}",
+    "startClassSubtitle": "开始直播授课。学生可获得视频、聊天和表情。",
+    "classTitle": "课程标题",
+    "classTitlePlaceholder": "例如 JavaScript 循环入门",
+    "classSubject": "科目",
+    "classDescription": "描述（可选）",
+    "classDescriptionPlaceholder": "你将讲什么？",
+    "classRtmpHint": "下一屏你将获得用于 OBS 的 RTMP 地址和密钥。",
+    "teachSubtitle": "申请为学员主持直播视频课。",
+    "teachSubjects": "你教授的科目",
+    "teachSubjectsPlaceholder": "例如 HTML、CSS、Python",
+    "teachBio": "关于你",
+    "teachBioPlaceholder": "你的教学经验和想教的内容…",
+    "submitApplication": "提交申请",
+    "resubmitApplication": "重新提交",
+    "applicationPending": "申请审核中",
+    "applicationPendingHint": "管理员会尽快审核。通过后即可开课。",
+    "applicationRejected": "你的申请未通过",
+    "alreadyTeacher": "你是已认证的老师！🎓",
+    "teacherApplications": "教师申请",
+    "noApplications": "还没有教师申请。",
+    "reviewNote": "审核备注",
+    "reviewNotePlaceholder": "备注（可选）",
+    "approve": "通过",
+    "reject": "拒绝",
+    "status_pending": "待审核",
+    "status_approved": "已通过",
+    "status_rejected": "已拒绝"
   }
 }

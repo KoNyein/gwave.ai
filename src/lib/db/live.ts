@@ -72,3 +72,19 @@ export async function getRecentChat(streamId: string, limit = 50) {
     .limit(limit);
   return (data ?? []).reverse();
 }
+
+/** Live classes for /learn/live: live now first, then upcoming, then past. */
+export async function listClasses(limit = 40): Promise<LiveStreamWithHost[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("live_streams")
+    .select(HOST_SELECT)
+    .eq("kind", "class")
+    .order("created_at", { ascending: false })
+    .limit(limit)
+    .returns<LiveStreamWithHost[]>();
+  const classes = data ?? [];
+  const rank = (s: LiveStreamWithHost) =>
+    s.status === "live" ? 0 : s.status === "idle" ? 1 : 2;
+  return classes.sort((a, b) => rank(a) - rank(b));
+}
