@@ -936,7 +936,21 @@
     "eduMemoryTitle": "记忆配对",
     "eduMemoryDesc": "翻牌找出全部六对。",
     "eduHexTitle": "猜十六进制颜色",
-    "eduHexDesc": "把颜色和十六进制码配对 — 学习 CSS 颜色。"
+    "eduHexDesc": "把颜色和十六进制码配对 — 学习 CSS 颜色。",
+    "catalogHeading": "游戏门户",
+    "catalogEmpty": "门户中还没有游戏。",
+    "addGame": "添加游戏",
+    "gameTitle": "标题",
+    "gameThumbnail": "缩略图 URL",
+    "gameCategory": "类别",
+    "gameUrl": "游戏 URL",
+    "gameUrlHint": "必须是允许来源（你的 AWS 主机或可信游戏站点）的 https:// URL。",
+    "closeGame": "关闭",
+    "deleteGame": "删除",
+    "deleteConfirm": "从门户中移除此游戏？",
+    "notEmbeddable": "无法在此嵌入该游戏，其来源不在允许列表中。",
+    "openInNewTab": "在新标签页打开",
+    "cancel": "取消"
   },
   "learn": {
     "backToLearn": "返回学习",

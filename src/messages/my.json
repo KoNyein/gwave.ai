@@ -936,7 +936,21 @@
     "eduMemoryTitle": "မှတ်ဉာဏ် တွဲဆက်",
     "eduMemoryDesc": "ကတ်တွေ လှန်ပြီး အတွဲ ၆ တွဲ ရှာပါ။",
     "eduHexTitle": "Hex အရောင် ခန့်မှန်း",
-    "eduHexDesc": "အရောင်ကို hex code နဲ့ တွဲ — CSS အရောင် သင်ယူ။"
+    "eduHexDesc": "အရောင်ကို hex code နဲ့ တွဲ — CSS အရောင် သင်ယူ။",
+    "catalogHeading": "ဂိမ်း Portal",
+    "catalogEmpty": "Portal ထဲ ဂိမ်း မရှိသေးပါ။",
+    "addGame": "ဂိမ်း ထည့်ရန်",
+    "gameTitle": "ခေါင်းစဉ်",
+    "gameThumbnail": "Thumbnail URL",
+    "gameCategory": "အမျိုးအစား",
+    "gameUrl": "ဂိမ်း URL",
+    "gameUrlHint": "allow-list ထဲက origin (သင့် AWS host သို့ ယုံကြည်ရ ဂိမ်း site) မှ https:// URL ဖြစ်ရမယ်။",
+    "closeGame": "ပိတ်ရန်",
+    "deleteGame": "ဖျက်ရန်",
+    "deleteConfirm": "ဒီ ဂိမ်းကို Portal ကနေ ဖယ်မလား?",
+    "notEmbeddable": "ဒီ ဂိမ်းကို ဒီမှာ ထည့်သွင်း၍ မရပါ။ သူ့ origin က allow-list ထဲ မရှိပါ။",
+    "openInNewTab": "Tab အသစ်မှာ ဖွင့်ရန်",
+    "cancel": "မလုပ်တော့ပါ"
   },
   "learn": {
     "backToLearn": "Learn သို့ ပြန်သွားမည်",
