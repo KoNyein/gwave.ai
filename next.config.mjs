@@ -2,6 +2,13 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
+// The CCTV media server (Ant Media / LiveKit) is hosted on the operator's own
+// origin, configured via NEXT_PUBLIC_CCTV_PLAYER_ORIGIN. When set, its player
+// page is embedded in an iframe, so the origin must be allow-listed in
+// frame-src. Empty by default → no CCTV origin is trusted.
+const cctvOrigin = process.env.NEXT_PUBLIC_CCTV_PLAYER_ORIGIN?.trim() ?? "";
+const cctvFrameSrc = cctvOrigin ? ` ${cctvOrigin}` : "";
+
 // Content-Security-Policy: 'unsafe-inline'/'unsafe-eval' are required by
 // Next.js hydration + dev tooling; everything else is locked to self and
 // the Supabase project (REST, storage, realtime websockets).
@@ -25,7 +32,7 @@ const csp = [
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net",
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
-  "frame-src 'self' https://www.youtube-nocookie.com",
+  `frame-src 'self' https://www.youtube-nocookie.com${cctvFrameSrc}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

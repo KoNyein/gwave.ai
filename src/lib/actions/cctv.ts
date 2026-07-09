@@ -1,0 +1,190 @@
+"use server";
+
+import { randomBytes } from "node:crypto";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+import type { ActionResult } from "@/lib/actions/posts";
+import { registerBroadcast, removeBroadcast } from "@/lib/cctv";
+import { createClient } from "@/lib/supabase/server";
+import type { UserCamera } from "@/types/database";
+
+async function getUserId(): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
+
+const createSchema = z
+  .object({
+    title: z.string().trim().min(1).max(120),
+    cameraType: z.enum(["webrtc", "rtsp"]),
+    // Only meaningful for rtsp; must be an rtsp(s):// URL with a host.
+    rtspUrl: z
+      .string()
+      .trim()
+      .max(500)
+      .refine(
+        (v) => /^rtsps?:\/\/[^\s/]+/i.test(v),
+        "Enter a valid rtsp:// or rtsps:// URL.",
+      )
+      .optional(),
+  })
+  .refine((v) => v.cameraType !== "rtsp" || Boolean(v.rtspUrl), {
+    message: "An RTSP camera needs its stream URL.",
+    path: ["rtspUrl"],
+  });
+
+/** Create a camera: mint ids, register it on the media server (if configured),
+ *  then store the row. Private by default. */
+export async function createCamera(input: {
+  title: string;
+  cameraType: "webrtc" | "rtsp";
+  rtspUrl?: string;
+}): Promise<ActionResult<{ id: string }>> {
+  const parsed = createSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const { title, cameraType, rtspUrl } = parsed.data;
+  const streamId = `cam_${randomBytes(6).toString("hex")}`;
+  const shareToken = randomBytes(16).toString("hex");
+
+  const registration = await registerBroadcast({
+    streamId,
+    name: title,
+    type: cameraType === "rtsp" ? "streamSource" : "liveStream",
+    rtspUrl: cameraType === "rtsp" ? rtspUrl : null,
+  });
+  if (registration.configured && !registration.ok) {
+    return {
+      ok: false,
+      error: registration.error ?? "The media server rejected the camera.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("user_cameras")
+    .insert({
+      owner_id: userId,
+      title,
+      camera_type: cameraType,
+      rtsp_url: cameraType === "rtsp" ? rtspUrl : null,
+      stream_id: streamId,
+      share_token: shareToken,
+    })
+    .select("id")
+    .single<{ id: string }>();
+
+  if (error || !data) {
+    // Roll back the media-server registration so we don't leak orphan streams.
+    await removeBroadcast(streamId);
+    return { ok: false, error: error?.message ?? "Could not save the camera." };
+  }
+
+  revalidatePath("/cameras");
+  return { ok: true, data: { id: data.id } };
+}
+
+const visibilitySchema = z.object({
+  id: z.string().uuid(),
+  isPublic: z.boolean(),
+  // Optional minutes for a temporary public share; omitted/0 = indefinite.
+  durationMinutes: z.number().int().min(0).max(7 * 24 * 60).optional(),
+});
+
+/** Toggle a camera public/private, optionally for a limited time. */
+export async function setCameraVisibility(input: {
+  id: string;
+  isPublic: boolean;
+  durationMinutes?: number;
+}): Promise<ActionResult> {
+  const parsed = visibilitySchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid input" };
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const { id, isPublic, durationMinutes } = parsed.data;
+  const publicUntil =
+    isPublic && durationMinutes && durationMinutes > 0
+      ? new Date(Date.now() + durationMinutes * 60_000).toISOString()
+      : null;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("user_cameras")
+    .update({ is_public: isPublic, public_until: publicUntil })
+    .eq("id", id)
+    .eq("owner_id", userId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/cameras");
+  revalidatePath(`/cameras/${id}`);
+  return { ok: true, data: undefined };
+}
+
+/** Rotate a camera's share token, invalidating any previously shared link. */
+export async function regenerateShareToken(input: {
+  id: string;
+}): Promise<ActionResult<{ shareToken: string }>> {
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+  if (!z.string().uuid().safeParse(input.id).success) {
+    return { ok: false, error: "Invalid input" };
+  }
+
+  const shareToken = randomBytes(16).toString("hex");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("user_cameras")
+    .update({ share_token: shareToken })
+    .eq("id", input.id)
+    .eq("owner_id", userId)
+    .select("id")
+    .maybeSingle<Pick<UserCamera, "id">>();
+
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? "Camera not found." };
+  }
+  revalidatePath(`/cameras/${input.id}`);
+  return { ok: true, data: { shareToken } };
+}
+
+/** Delete a camera and its media-server stream. */
+export async function deleteCamera(input: {
+  id: string;
+}): Promise<ActionResult> {
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+  if (!z.string().uuid().safeParse(input.id).success) {
+    return { ok: false, error: "Invalid input" };
+  }
+
+  const supabase = await createClient();
+  // Fetch the stream id first (owner-scoped) so we can clean up the media server.
+  const { data: cam } = await supabase
+    .from("user_cameras")
+    .select("stream_id")
+    .eq("id", input.id)
+    .eq("owner_id", userId)
+    .maybeSingle<Pick<UserCamera, "stream_id">>();
+
+  const { error } = await supabase
+    .from("user_cameras")
+    .delete()
+    .eq("id", input.id)
+    .eq("owner_id", userId);
+
+  if (error) return { ok: false, error: error.message };
+  if (cam?.stream_id) await removeBroadcast(cam.stream_id);
+
+  revalidatePath("/cameras");
+  return { ok: true, data: undefined };
+}

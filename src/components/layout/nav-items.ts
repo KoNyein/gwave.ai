@@ -15,6 +15,7 @@ import {
   Sprout,
   Store,
   Users,
+  Video,
   type LucideIcon,
 } from "lucide-react";
 
@@ -46,6 +47,7 @@ export const TOOL_NAV: NavItem[] = [
   // Grow-operation monitoring → verified adults only.
   { href: "/farm", labelKey: "farm", icon: Sprout, adultOnly: true },
   { href: "/home", labelKey: "smartHome", icon: Lightbulb },
+  { href: "/cameras", labelKey: "cameras", icon: Video },
   { href: "/pos", labelKey: "pos", icon: ShoppingCart },
   { href: "/shop", labelKey: "shop", icon: Store },
 ];
