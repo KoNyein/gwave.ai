@@ -11,7 +11,7 @@ import type { Track } from "@/lib/learn/lessons";
 
 const sqlTrack: Track = {
   slug: "sql",
-  title: "SQL: Talk to Databases",
+  title: "SQL Course",
   description:
     "Query real data in your browser — SELECT, WHERE, JOIN and more. No install needed.",
   icon: "Database",
@@ -252,7 +252,7 @@ const sqlTrack: Track = {
 
 const aiTrack: Track = {
   slug: "ai",
-  title: "Artificial Intelligence Basics",
+  title: "AI Course",
   description:
     "How machines learn, what neural networks and generative AI are, and how to use AI responsibly.",
   icon: "BrainCircuit",

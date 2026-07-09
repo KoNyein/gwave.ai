@@ -355,98 +355,6 @@ const roboticsTrack: Track = {
   ],
 };
 
-// ─────────────────── Teens: web coding (HTML/CSS/JS) ────────────────────────
-
-const codingTrack: Track = {
-  slug: "coding",
-  title: "Web Coding: HTML, CSS & JavaScript",
-  description: "Build real web pages in your browser — no install needed.",
-  icon: "Code2",
-  bands: ["teen", "adult"],
-  lessons: [
-    {
-      slug: "first-html-page",
-      title: "Your First HTML Page",
-      summary: "HTML is the skeleton of every web page. Build one and run it.",
-      minutes: 10,
-      kind: "code",
-      sections: [
-        {
-          heading: "Tags build the page",
-          body: "HTML uses tags like <h1> for a heading and <p> for a paragraph. Most tags come in pairs: an opening tag and a closing tag with a slash. Edit the code and press Run to see your page.",
-        },
-      ],
-      code: {
-        html: '<h1>Hello, GreenWave!</h1>\n<p>My first web page. 🌱</p>\n<button id="grow">Grow a plant</button>\n<p id="garden"></p>',
-        css: "body { font-family: sans-serif; text-align: center; padding: 2rem; }\nh1 { color: #3B6D11; }\nbutton { background: #639922; color: white; border: 0; padding: .6rem 1rem; border-radius: 8px; cursor: pointer; }",
-        js: "document.getElementById('grow').onclick = () => {\n  document.getElementById('garden').textContent += '🌿';\n};",
-      },
-    },
-    {
-      slug: "styling-with-css",
-      title: "Make It Pretty with CSS",
-      summary: "CSS controls colours, spacing and layout. Style a card.",
-      minutes: 12,
-      kind: "code",
-      sections: [
-        {
-          heading: "Selectors and properties",
-          body: "CSS picks an element with a selector (like .card) and sets properties (like color or padding). Try changing the colours and numbers, then press Run.",
-        },
-      ],
-      code: {
-        html: '<div class="card">\n  <h2>Blue Dream</h2>\n  <p>A calm, happy hybrid strain.</p>\n</div>',
-        css: ".card {\n  max-width: 280px;\n  margin: 2rem auto;\n  padding: 1.5rem;\n  border-radius: 16px;\n  background: #EAF3DE;\n  box-shadow: 0 8px 24px rgba(0,0,0,.1);\n}\n.card h2 { color: #173404; margin: 0 0 .5rem; }\n.card p { color: #3B6D11; margin: 0; }",
-        js: "// No JavaScript needed for this lesson — try editing the CSS!",
-      },
-    },
-    {
-      slug: "javascript-basics",
-      title: "Interactive with JavaScript",
-      summary: "JavaScript makes pages react. Build a click counter.",
-      minutes: 12,
-      kind: "code",
-      sections: [
-        {
-          heading: "Variables and events",
-          body: "JavaScript stores data in variables and runs code when things happen (events), like a click. This counter goes up every time you press the button.",
-        },
-      ],
-      code: {
-        html: '<h2>Water your plant</h2>\n<button id="water">💧 Water</button>\n<p>Watered <span id="count">0</span> times</p>',
-        css: "body { font-family: sans-serif; text-align: center; padding: 2rem; }\nbutton { font-size: 1.2rem; padding: .6rem 1.2rem; border-radius: 8px; border: 0; background: #639922; color: white; cursor: pointer; }",
-        js: "let count = 0;\nconst label = document.getElementById('count');\ndocument.getElementById('water').addEventListener('click', () => {\n  count = count + 1;\n  label.textContent = count;\n});",
-      },
-    },
-    {
-      slug: "coding-quiz",
-      title: "Web Coding Quiz",
-      summary: "Test your HTML, CSS and JavaScript knowledge.",
-      minutes: 5,
-      kind: "quiz",
-      quiz: [
-        {
-          q: "Which language controls the STRUCTURE of a web page?",
-          options: ["CSS", "HTML", "JavaScript", "SQL"],
-          answer: 1,
-          explain: "HTML defines the structure and content; CSS styles it; JS adds behaviour.",
-        },
-        {
-          q: "Which is used to change colours and layout?",
-          options: ["HTML", "JavaScript", "CSS", "Python"],
-          answer: 2,
-        },
-        {
-          q: "What runs when a user clicks a button?",
-          options: ["A stylesheet", "An event handler", "A database", "A heading"],
-          answer: 1,
-          explain: "JavaScript event handlers run in response to actions like clicks.",
-        },
-      ],
-    },
-  ],
-};
-
 // ─────────────────── Adults: applied agri-science ──────────────────────────
 
 const agriTrack: Track = {
@@ -478,10 +386,98 @@ const agriTrack: Track = {
       ],
     },
     {
+      slug: "plant-nutrients",
+      title: "Plant Nutrients",
+      summary: "The elements a plant needs — and how to read a deficiency.",
+      minutes: 10,
+      kind: "reading",
+      sections: [
+        {
+          heading: "Macronutrients: N, P, K",
+          body: "Three elements are needed in the largest amounts. Nitrogen (N) drives green, leafy growth. Phosphorus (P) supports roots, flowers and fruit. Potassium (K) keeps the whole plant healthy and helps it move water and resist stress. The numbers on a nutrient bottle — like 5-10-5 — are the N-P-K ratio.",
+        },
+        {
+          heading: "Micronutrients matter too",
+          body: "Plants also need small amounts of calcium, magnesium, sulfur, iron, zinc and more. They are needed in tiny quantities, but a shortage of even one can stall growth. A balanced feed supplies them together.",
+        },
+        {
+          heading: "Reading a deficiency",
+          body: "Leaves are the plant's status screen. Older leaves turning pale or yellow often means low nitrogen, since the plant moves it to new growth. Yellowing between the veins can signal iron or magnesium shortage. Match the symptom to the feed before guessing.",
+        },
+        {
+          heading: "Feed by growth stage",
+          body: "Young plants in vegetative growth want more nitrogen; flowering and fruiting plants want more phosphorus and potassium. Adjusting the mix as the crop matures is the heart of feeding — and every change should be logged so you can repeat what works.",
+        },
+      ],
+    },
+    {
+      slug: "light-and-spectrum",
+      title: "Light & Spectrum",
+      summary: "PPFD, DLI and photoperiod — measuring the light a crop gets.",
+      minutes: 10,
+      kind: "reading",
+      sections: [
+        {
+          heading: "Light is food",
+          body: "Photosynthesis runs on light, so light is effectively a crop's energy budget. Plants mostly use the wavelengths we see as blue and red; blue-rich light keeps growth compact, while red light encourages stretching and flowering.",
+        },
+        {
+          heading: "PPFD and DLI",
+          body: "PPFD (photosynthetic photon flux density) measures how much usable light lands on the canopy each second. DLI (daily light integral) adds that up over a whole day. Together they tell you whether a crop is under-lit or getting plenty — far more useful than a lamp's watts.",
+        },
+        {
+          heading: "Photoperiod: the day-length switch",
+          body: "Many plants flower based on how many hours of darkness they get. Long-day and short-day crops respond differently, so growers control the light schedule with a timer. Keeping the dark period truly dark is as important as the light hours.",
+        },
+      ],
+    },
+    {
+      slug: "pest-management",
+      title: "Integrated Pest Management",
+      summary: "Prevent, monitor and respond to pests with the least harm.",
+      minutes: 9,
+      kind: "reading",
+      sections: [
+        {
+          heading: "Prevention first",
+          body: "Integrated Pest Management (IPM) treats chemicals as a last resort. Most problems are avoided by clean tools, healthy airflow, quarantining new plants and keeping the growing area tidy. A strong plant resists pests far better than a stressed one.",
+        },
+        {
+          heading: "Scout regularly",
+          body: "Check plants often — under leaves especially — and note what you see. Sticky traps reveal flying pests early. Catching an infestation while it is small is the difference between wiping a leaf and losing a crop.",
+        },
+        {
+          heading: "Respond in steps",
+          body: "Start with the gentlest fix: remove affected leaves, adjust humidity, or introduce beneficial insects that eat the pest. Escalate only if needed, and always identify the pest first — the wrong treatment wastes time and can harm the plant.",
+        },
+      ],
+    },
+    {
+      slug: "harvest-and-curing",
+      title: "Harvest, Drying & Curing",
+      summary: "Timing and after-care that decide final quality.",
+      minutes: 9,
+      kind: "reading",
+      sections: [
+        {
+          heading: "Knowing when to harvest",
+          body: "Harvest timing shapes potency, flavour and weight. Growers watch maturity signs on the plant rather than the calendar — colour changes and ripeness cues that develop in the final weeks. Harvesting too early or too late both cost quality.",
+        },
+        {
+          heading: "Drying slowly",
+          body: "After harvest, plants are dried slowly in a cool, dark, ventilated space over one to two weeks. Rushing it with heat traps harsh compounds and ruins aroma; drying too slowly risks mould. Steady temperature and humidity are everything.",
+        },
+        {
+          heading: "Curing for quality",
+          body: "Curing stores the dried harvest in sealed containers, opened briefly each day, for several weeks. This gentle process smooths flavour and improves the final product. Logging temperature and humidity — the same habit the GreenWave dashboard encourages — makes good results repeatable.",
+        },
+      ],
+    },
+    {
       slug: "agri-quiz",
       title: "Agri-Science Quiz",
-      summary: "Check your hydroponics and monitoring knowledge.",
-      minutes: 5,
+      summary: "Check your growing, nutrient and harvest knowledge.",
+      minutes: 6,
       kind: "quiz",
       quiz: [
         {
@@ -498,6 +494,43 @@ const agriTrack: Track = {
         {
           q: "What pH range suits most hydroponic crops?",
           options: ["1–2", "5.5–6.5", "8–9", "11–12"],
+          answer: 1,
+        },
+        {
+          q: "In an N-P-K ratio, what does the N stand for?",
+          options: ["Nickel", "Nitrogen", "Neon", "Sodium"],
+          answer: 1,
+          explain: "Nitrogen drives leafy, vegetative growth.",
+        },
+        {
+          q: "What does DLI (daily light integral) describe?",
+          options: [
+            "The colour of the light",
+            "Total usable light a crop receives over a day",
+            "The price of a lamp",
+            "The soil pH",
+          ],
+          answer: 1,
+        },
+        {
+          q: "What is the first choice in Integrated Pest Management?",
+          options: [
+            "Spray strong chemicals immediately",
+            "Prevention and regular scouting",
+            "Remove all the plants",
+            "Ignore it",
+          ],
+          answer: 1,
+          explain: "IPM prevents and monitors first, using chemicals only as a last resort.",
+        },
+        {
+          q: "Why is curing done slowly in sealed containers?",
+          options: [
+            "To dry it faster with heat",
+            "To smooth flavour and improve quality over weeks",
+            "To add weight with water",
+            "It has no effect",
+          ],
           answer: 1,
         },
         {
@@ -522,7 +555,6 @@ export const TRACKS: Track[] = [
   stemTrack,
   electronicsTrack,
   roboticsTrack,
-  codingTrack,
   ...WEBDEV_TRACKS,
   ...SQL_AI_TRACKS,
   agriTrack,

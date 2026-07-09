@@ -974,6 +974,8 @@
     "stop": "停止",
     "runTimeout": "已停止 — 本次运行耗时过长（无限循环？）。",
     "runStopped": "已停止。",
-    "engineError": "无法加载代码引擎。请检查网络连接后重试。"
+    "engineError": "无法加载代码引擎。请检查网络连接后重试。",
+    "listen": "朗读",
+    "stopAudio": "停止"
   }
 }

@@ -13,6 +13,7 @@ import { RobotGame } from "@/components/learn/robot-game";
 import { Card, CardContent } from "@/components/ui/card";
 import { getLocale } from "next-intl/server";
 
+import { LessonAudio } from "@/components/learn/lesson-audio";
 import { LessonVideo } from "@/components/learn/lesson-video";
 import { PythonPlayground } from "@/components/learn/python-playground";
 import { SqlPlayground } from "@/components/learn/sql-playground";
@@ -55,6 +56,17 @@ export default async function LessonPage({
   const index = track.lessons.findIndex((l) => l.slug === lesson.slug);
   const next = track.lessons[index + 1];
 
+  // Text read aloud by the audio explainer (Burmese when the site is in
+  // Burmese) — title, summary and every section's heading + body. Code
+  // samples are deliberately excluded.
+  const narration = [
+    lesson.title,
+    lesson.summary,
+    ...(lesson.sections ?? []).flatMap((s) => [s.heading, s.body]),
+  ]
+    .filter(Boolean)
+    .join(". ");
+
   // Saved game/playground state for resume (only these kinds persist state).
   const persistedKinds = ["code", "robot", "circuit", "python", "sql"];
   const project = persistedKinds.includes(lesson.kind)
@@ -84,9 +96,12 @@ export default async function LessonPage({
         <ArrowLeft className="h-4 w-4" /> {track.title}
       </Link>
 
-      <div>
-        <h1 className="text-xl font-bold">{lesson.title}</h1>
-        <p className="text-sm text-muted-foreground">{lesson.summary}</p>
+      <div className="space-y-2">
+        <div>
+          <h1 className="text-xl font-bold">{lesson.title}</h1>
+          <p className="text-sm text-muted-foreground">{lesson.summary}</p>
+        </div>
+        <LessonAudio text={narration} locale={locale} />
       </div>
 
       {lesson.youtubeId ? (
