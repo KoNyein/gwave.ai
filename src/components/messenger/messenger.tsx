@@ -359,6 +359,25 @@ export function Messenger({
         sender: currentUser,
       };
       setMessages((previous) => [...(previous ?? []), optimistic]);
+      // Keep the sidebar preview and ordering current (the realtime handler
+      // ignores our own inserts, so update the list optimistically here too).
+      setConversations((previous) =>
+        previous
+          .map((c) =>
+            c.id === activeId
+              ? {
+                  ...c,
+                  last_message: optimistic,
+                  last_message_at: optimistic.created_at,
+                }
+              : c,
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.last_message_at).getTime() -
+              new Date(a.last_message_at).getTime(),
+          ),
+      );
 
       const result = await sendMessage({
         conversationId: activeId,
