@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { z } from "zod";
 
+import { DoubleTapHeart } from "@/components/live/double-tap-heart";
 import { HostPanel } from "@/components/live/host-panel";
 import { LiveChat, type ChatEntry } from "@/components/live/live-chat";
 import { LivePlayer } from "@/components/live/live-player";
@@ -56,13 +57,16 @@ export default async function LiveStreamPage({
         <ArrowLeft className="h-4 w-4" /> Back to Live
       </Link>
 
-      <div className="relative">
+      <div className="relative overflow-hidden rounded-xl">
         <LivePlayer
           playbackId={stream.mux_playback_id}
           status={stream.status}
           title={stream.title}
         />
-        <div className="absolute right-3 top-3 flex items-center gap-2">
+        {stream.status === "live" ? (
+          <DoubleTapHeart streamId={stream.id} userId={profile.id} />
+        ) : null}
+        <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
           {stream.status === "live" && (
             <span className="rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase text-destructive-foreground">
               Live
