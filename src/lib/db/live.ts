@@ -73,6 +73,79 @@ export async function getRecentChat(streamId: string, limit = 50) {
   return (data ?? []).reverse();
 }
 
+export interface HostStreamStat {
+  stream: LiveStream;
+  reactions: number;
+  messages: number;
+  durationMinutes: number | null;
+}
+
+export interface HostDashboard {
+  totalStreams: number;
+  liveNow: number;
+  totalReactions: number;
+  totalMessages: number;
+  peakViewers: number;
+  streams: HostStreamStat[];
+}
+
+/** Per-stream engagement for the streamer's own dashboard. */
+export async function getHostDashboard(
+  hostId: string,
+  limit = 30,
+): Promise<HostDashboard> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("live_streams")
+    .select("*")
+    .eq("host_id", hostId)
+    .order("created_at", { ascending: false })
+    .limit(limit)
+    .returns<LiveStream[]>();
+  const streams = data ?? [];
+
+  const stats = await Promise.all(
+    streams.map(async (stream) => {
+      const [reactRes, chatRes] = await Promise.all([
+        supabase
+          .from("live_reactions")
+          .select("id", { count: "exact", head: true })
+          .eq("stream_id", stream.id),
+        supabase
+          .from("live_chat_messages")
+          .select("id", { count: "exact", head: true })
+          .eq("stream_id", stream.id),
+      ]);
+      let durationMinutes: number | null = null;
+      if (stream.started_at && stream.ended_at) {
+        durationMinutes = Math.max(
+          0,
+          Math.round(
+            (new Date(stream.ended_at).getTime() -
+              new Date(stream.started_at).getTime()) /
+              60000,
+          ),
+        );
+      }
+      return {
+        stream,
+        reactions: reactRes.count ?? 0,
+        messages: chatRes.count ?? 0,
+        durationMinutes,
+      };
+    }),
+  );
+
+  return {
+    totalStreams: streams.length,
+    liveNow: streams.filter((s) => s.status === "live").length,
+    totalReactions: stats.reduce((sum, s) => sum + s.reactions, 0),
+    totalMessages: stats.reduce((sum, s) => sum + s.messages, 0),
+    peakViewers: streams.reduce((max, s) => Math.max(max, s.viewer_count), 0),
+    streams: stats,
+  };
+}
+
 /** Live classes for /learn/live: live now first, then upcoming, then past. */
 export async function listClasses(limit = 40): Promise<LiveStreamWithHost[]> {
   const supabase = await createClient();
