@@ -338,7 +338,10 @@ function TypeMode({
 
   const target = item.target;
   const score = value ? similarity(value, target) : null;
-  const correct = value.length > 0 && value === target;
+  // Accept on the same normalized basis as the score (similarity() lowercases
+  // and strips punctuation), so e.g. "hello" for "Hello" — which scores 100% —
+  // is counted correct instead of being rejected by an exact-match check.
+  const correct = score === 100;
   // The next character the learner should type (for the keyboard hint).
   const nextChar =
     value.length < target.length ? (target[value.length] ?? null) : null;
