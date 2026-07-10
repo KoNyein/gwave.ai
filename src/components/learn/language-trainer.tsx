@@ -94,7 +94,13 @@ function SpeakButton({
   large?: boolean;
 }) {
   const t = useTranslations("lang");
-  const supported = isTtsSupported();
+  // Detect support only after mount. On the server (and the first client
+  // render) window is undefined, so we optimistically assume support and keep
+  // the button enabled; this avoids a hydration mismatch that could otherwise
+  // leave the button stuck disabled. If the browser truly lacks TTS, the effect
+  // disables it right after mount.
+  const [supported, setSupported] = React.useState(true);
+  React.useEffect(() => setSupported(isTtsSupported()), []);
   return (
     <button
       type="button"
@@ -175,7 +181,11 @@ function SpeakMode({ items, lang }: { items: Phrase[]; lang: string }) {
   const [heard, setHeard] = React.useState<string | null>(null);
   const [score, setScore] = React.useState<number | null>(null);
   const recRef = React.useRef<SpeechRecognitionLike | null>(null);
-  const supported = isRecognitionSupported();
+  // Detect support after mount to avoid an SSR hydration mismatch (window is
+  // undefined on the server). Assume supported until proven otherwise so the
+  // full practice UI hydrates cleanly, then swap to the fallback if needed.
+  const [supported, setSupported] = React.useState(true);
+  React.useEffect(() => setSupported(isRecognitionSupported()), []);
   const item = items[index] ?? items[0]!;
 
   const reset = React.useCallback(() => {
