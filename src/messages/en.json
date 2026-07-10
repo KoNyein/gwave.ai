@@ -28,7 +28,8 @@
     "games": "Games",
     "shop": "Shop",
     "cameras": "Cameras",
-    "gpay": "G-Pay"
+    "gpay": "G-Pay",
+    "family": "Family"
   },
   "auth": {
     "login": "Log in",
@@ -1072,6 +1073,28 @@
     "status_shipped": "Shipped",
     "status_delivered": "Delivered",
     "status_cancelled": "Cancelled"
+  },
+  "family": {
+    "title": "Family locator",
+    "subtitle": "Share your live location with family and see everyone on a map.",
+    "createTitle": "Create a family circle",
+    "namePlaceholder": "e.g. Our family",
+    "create": "Create",
+    "joinTitle": "Join with a code",
+    "codePlaceholder": "Invite code",
+    "join": "Join",
+    "code": "Code",
+    "sharingOn": "You are sharing your location",
+    "sharingOff": "Turn on location sharing",
+    "sharingHint": "While on, your position updates every ~30 seconds for this circle. Turn it off any time.",
+    "you": "you",
+    "updatedAgo": "Updated {ago}",
+    "noLocationYet": "No location yet",
+    "notSharing": "Not sharing",
+    "openMaps": "Open in Google Maps",
+    "leave": "Leave circle",
+    "leaveConfirm": "Leave this family circle?",
+    "empty": "You're not in a family circle yet. Create one or join with a code."
   },
   "gpay": {
     "title": "G-Pay",

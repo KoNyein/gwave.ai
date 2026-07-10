@@ -258,6 +258,29 @@ export interface UserCamera {
   updated_at: string;
 }
 
+export interface FamilyCircle {
+  id: string;
+  owner_id: string;
+  name: string;
+  invite_code: string;
+  created_at: string;
+}
+
+export interface FamilyMembership {
+  circle_id: string;
+  user_id: string;
+  sharing_enabled: boolean;
+  joined_at: string;
+}
+
+export interface MemberLocation {
+  user_id: string;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  updated_at: string;
+}
+
 export type GpayStatus = "pending" | "active" | "suspended" | "rejected";
 export type GpayTxnKind = "transfer" | "topup" | "withdraw" | "fee";
 
