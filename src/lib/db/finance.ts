@@ -41,10 +41,16 @@ export function summariseMonth(expenses: BusinessExpense[]): MonthlyTotals {
   };
   let total = 0;
   let unpaidTotal = 0;
+  const nextMonthStart = new Date(y, m + 1, 1);
   for (const e of expenses) {
-    // Attribute to the month by due date when present, else created date.
-    const d = new Date(e.due_date ?? e.created_at);
-    if (d.getFullYear() !== y || d.getMonth() !== m) continue;
+    const start = new Date(e.due_date ?? e.created_at);
+    // A monthly-recurring cost counts every month from its start onward (so
+    // rent/salary added earlier isn't dropped); a one-off counts only in its
+    // own month.
+    const counts = e.recurring
+      ? start < nextMonthStart
+      : start.getFullYear() === y && start.getMonth() === m;
+    if (!counts) continue;
     byCategory[e.category] += e.amount;
     total += e.amount;
     if (!e.is_paid) unpaidTotal += e.amount;
