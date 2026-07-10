@@ -343,7 +343,7 @@ const ENGLISH: LangCourse = {
       emoji: "🥤",
       items: [
         { target: "Water", roman: "ဝေါ်တာ", my: "ရေ", emoji: "💧" },
-        { target: "Milk", roman: "မေါက်", my: "နို့", emoji: "🥛" },
+        { target: "Milk", roman: "မိလ်ခ်", my: "နို့", emoji: "🥛" },
         { target: "Tea", roman: "တီး", my: "လက်ဖက်ရည်", emoji: "🍵" },
         { target: "Coffee", roman: "ကော်ဖီ", my: "ကော်ဖီ", emoji: "☕" },
         { target: "Juice", roman: "ဂျုးစ်", my: "ဖျော်ရည်", emoji: "🧃" },
