@@ -77,6 +77,42 @@ export default async function ProfilePage({
     getLearningPoints(profile.id),
   ]);
 
+  // Extra profile stats + the public pages this person runs.
+  const [postCountRes, followerRes, followingRes, ownedPagesRes] =
+    await Promise.all([
+      supabase
+        .from("posts")
+        .select("id", { count: "exact", head: true })
+        .eq("author_id", profile.id)
+        .is("group_id", null)
+        .is("page_id", null),
+      supabase
+        .from("follows")
+        .select("follower_id", { count: "exact", head: true })
+        .eq("followee_id", profile.id),
+      supabase
+        .from("follows")
+        .select("followee_id", { count: "exact", head: true })
+        .eq("follower_id", profile.id),
+      supabase
+        .from("pages")
+        .select("id, name, slug, avatar_url")
+        .eq("owner_id", profile.id)
+        .order("created_at", { ascending: false })
+        .limit(6)
+        .returns<
+          { id: string; name: string; slug: string; avatar_url: string | null }[]
+        >(),
+    ]);
+
+  const stats = [
+    { label: t("postsLabel"), value: postCountRes.count ?? 0 },
+    { label: t("friendsLabel"), value: friendCount },
+    { label: t("followersLabel"), value: followerRes.count ?? 0 },
+    { label: t("followingLabel"), value: followingRes.count ?? 0 },
+  ];
+  const ownedPages = ownedPagesRes.data ?? [];
+
   const currentUser = {
     id: viewer.id,
     username: viewer.username,
@@ -141,6 +177,48 @@ export default async function ProfilePage({
           ) : null}
         </CardContent>
       </Card>
+
+      {/* Stats strip */}
+      <Card>
+        <CardContent className="grid grid-cols-4 divide-x p-0">
+          {stats.map((s) => (
+            <div key={s.label} className="px-2 py-3 text-center">
+              <p className="text-lg font-bold tabular-nums">
+                {s.value.toLocaleString("en-US")}
+              </p>
+              <p className="text-[11px] text-muted-foreground">{s.label}</p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Pages this person runs */}
+      {ownedPages.length > 0 ? (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            <p className="font-semibold">{t("runsPages")}</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {ownedPages.map((pg) => (
+                <Link
+                  key={pg.id}
+                  href={`/pages/${pg.slug}`}
+                  className="flex items-center gap-2 rounded-lg border p-2 transition-colors hover:bg-muted"
+                >
+                  <Avatar className="h-9 w-9 rounded-lg">
+                    {pg.avatar_url ? (
+                      <AvatarImage src={pg.avatar_url} alt="" />
+                    ) : null}
+                    <AvatarFallback className="rounded-lg text-xs">
+                      {pg.name.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="truncate text-sm font-medium">{pg.name}</span>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* My learning projects (own profile only) */}
       {isSelf && projects.length > 0 ? (
