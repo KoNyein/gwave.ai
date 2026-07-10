@@ -2,18 +2,22 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
+import { HomeAlerts } from "@/components/home/home-alerts";
+import { HomeDashboard } from "@/components/home/home-dashboard";
 import { SmartHome } from "@/components/home/smart-home";
 import { getCurrentProfile } from "@/lib/auth";
-import { getDevices, getScenes } from "@/lib/db/iot";
+import { getAlerts, getDevices, getLatestReadings, getScenes } from "@/lib/db/iot";
 
 export default async function SmartHomePage() {
   const t = await getTranslations("home");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 
-  const [devices, scenes] = await Promise.all([
+  const [devices, scenes, readings, alerts] = await Promise.all([
     getDevices(profile.id),
     getScenes(profile.id),
+    getLatestReadings(),
+    getAlerts(profile.id, 30),
   ]);
   const switches = devices.filter((device) => device.type === "switch");
 
@@ -28,6 +32,15 @@ export default async function SmartHomePage() {
           {t("manageDevices")}
         </Link>
       </div>
+
+      <HomeDashboard
+        devices={devices}
+        scenesCount={scenes.length}
+        readings={readings}
+      />
+
+      <HomeAlerts initialAlerts={alerts} userId={profile.id} />
+
       <SmartHome
         initialSwitches={switches}
         scenes={scenes}
