@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Banknote, Clock, Eye, Heart, Loader2, Video } from "lucide-react";
+import { Banknote, BarChart3, Clock, Eye, Heart, Loader2, Video } from "lucide-react";
 
 import { withdrawEarnings } from "@/lib/actions/reels";
 import { Button } from "@/components/ui/button";
@@ -93,6 +94,13 @@ export function CreatorStudio({ summary }: { summary: CreatorSummary }) {
       </div>
 
       {msg ? <p className="text-sm">{msg}</p> : null}
+
+      <Link
+        href="/reels/analytics"
+        className="flex items-center justify-center gap-1.5 rounded-lg border py-2 text-sm font-medium hover:bg-muted/50"
+      >
+        <BarChart3 className="h-4 w-4" /> 📊 အသေးစိတ် စာရင်း (နေ့စဉ် / လစဉ်)
+      </Link>
 
       <RulesPanel />
     </div>
