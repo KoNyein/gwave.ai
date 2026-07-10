@@ -282,7 +282,169 @@ const CHINESE: LangCourse = {
   ],
 };
 
-export const LANG_COURSES: LangCourse[] = [ENGLISH, THAI, CHINESE];
+// ---------------------------------------------------------------------------
+// Japanese
+// ---------------------------------------------------------------------------
+const JAPANESE: LangCourse = {
+  slug: "japanese",
+  label: "Japanese",
+  nativeLabel: "日本語",
+  flag: "🇯🇵",
+  bcp47: "ja-JP",
+  description: "ဂျပန်စကား — romaji ဖြင့် အခြေခံ။",
+  units: [
+    {
+      slug: "greetings",
+      title: "နှုတ်ဆက်ခြင်း",
+      subtitle: "あいさつ",
+      emoji: "🙇",
+      items: [
+        { target: "こんにちは", roman: "ကွန်နိချိဝ (konnichiwa)", my: "မင်္ဂလာပါ (နေ့ခင်း)", emoji: "👋" },
+        { target: "おはよう", roman: "အိုဟာယော် (ohayō)", my: "မင်္ဂလာနံနက်ခင်းပါ", emoji: "🌅" },
+        { target: "こんばんは", roman: "ကွန်ဘန်ဝ (konbanwa)", my: "မင်္ဂလာ ညနေခင်းပါ", emoji: "🌆" },
+        { target: "ありがとう", roman: "အာရိဂတော် (arigatō)", my: "ကျေးဇူးတင်ပါတယ်", emoji: "🙏" },
+        { target: "すみません", roman: "ဆုမိမာဆဲန် (sumimasen)", my: "တောင်းပန်ပါတယ် / ခွင့်ပြုပါ", emoji: "😔" },
+        { target: "はい", roman: "ဟိုင် (hai)", my: "ဟုတ်ကဲ့", emoji: "✅" },
+        { target: "いいえ", roman: "အီးအဲ (iie)", my: "မဟုတ်ဘူး", emoji: "❌" },
+        { target: "さようなら", roman: "ဆာယောနာရ (sayōnara)", my: "သွားတော့မယ်", emoji: "👋" },
+      ],
+    },
+    {
+      slug: "numbers",
+      title: "ဂဏန်းများ",
+      subtitle: "数字",
+      emoji: "🔢",
+      items: [
+        { target: "一", roman: "အိချိ (ichi)", my: "တစ် (၁)", emoji: "1️⃣" },
+        { target: "二", roman: "နိ (ni)", my: "နှစ် (၂)", emoji: "2️⃣" },
+        { target: "三", roman: "ဆန် (san)", my: "သုံး (၃)", emoji: "3️⃣" },
+        { target: "四", roman: "ရှိ / ယွန် (shi/yon)", my: "လေး (၄)", emoji: "4️⃣" },
+        { target: "五", roman: "ဂေါ် (go)", my: "ငါး (၅)", emoji: "5️⃣" },
+        { target: "六", roman: "ရော်ကု (roku)", my: "ခြောက် (၆)", emoji: "6️⃣" },
+        { target: "七", roman: "နာနာ / ရှိချိ (nana)", my: "ခုနစ် (၇)", emoji: "7️⃣" },
+        { target: "十", roman: "ဂျူး (jū)", my: "ဆယ် (၁၀)", emoji: "🔟" },
+      ],
+    },
+    {
+      slug: "food",
+      title: "အစားအသောက်",
+      subtitle: "食べ物",
+      emoji: "🍱",
+      items: [
+        { target: "水", roman: "မိဇု (mizu)", my: "ရေ", emoji: "💧" },
+        { target: "ご飯", roman: "ဂိုဟန် (gohan)", my: "ထမင်း", emoji: "🍚" },
+        { target: "お茶", roman: "အိုချ (ocha)", my: "လက်ဖက်ရည်", emoji: "🍵" },
+        { target: "おいしい", roman: "အွိုင်ရှီး (oishii)", my: "စားလို့ကောင်းတယ်", emoji: "😋" },
+        { target: "いただきます", roman: "အိတဒကိမာစု (itadakimasu)", my: "စားတော့မယ် (မစားခင်)", emoji: "🍽️" },
+        { target: "いくらですか", roman: "အိကုရ ဒက်စ်က (ikura desu ka)", my: "ဘယ်လောက်လဲ", emoji: "💰" },
+        { target: "お会計", roman: "အိုကိုင်းကေး (okaikei)", my: "ငွေရှင်းမယ်", emoji: "🧾" },
+        { target: "お腹すいた", roman: "အိုနာက ဆွိုက်တ (onaka suita)", my: "ဗိုက်ဆာတယ်", emoji: "😩" },
+      ],
+    },
+    {
+      slug: "travel",
+      title: "ခရီးသွား",
+      subtitle: "移動",
+      emoji: "🧭",
+      items: [
+        { target: "トイレはどこですか", roman: "တွိုင်းရေ ဝ ဒေါ်ကို ဒက်စ်က (toire wa doko desu ka)", my: "အိမ်သာ ဘယ်မှာလဲ", emoji: "🚻" },
+        { target: "助けて", roman: "တစုကေတဲ (tasukete)", my: "ကူညီပါ", emoji: "🆘" },
+        { target: "左", roman: "ဟိဒရိ (hidari)", my: "ဘယ်ဘက်", emoji: "⬅️" },
+        { target: "右", roman: "မိဂိ (migi)", my: "ညာဘက်", emoji: "➡️" },
+        { target: "まっすぐ", roman: "မတ်ဆုဂု (massugu)", my: "တည့်တည့်", emoji: "⬆️" },
+        { target: "ここで止まって", roman: "ကိုကို ဒဲ တိုမတ်တဲ (koko de tomatte)", my: "ဒီမှာ ရပ်ပါ", emoji: "🛑" },
+        { target: "空港", roman: "ကူးကော် (kūkō)", my: "လေဆိပ်", emoji: "✈️" },
+        { target: "病院", roman: "ဗျိုးအင် (byōin)", my: "ဆေးရုံ", emoji: "🏥" },
+      ],
+    },
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Korean
+// ---------------------------------------------------------------------------
+const KOREAN: LangCourse = {
+  slug: "korean",
+  label: "Korean",
+  nativeLabel: "한국어",
+  flag: "🇰🇷",
+  bcp47: "ko-KR",
+  description: "ကိုရီးယားစကား — Hangul ဖြင့် အခြေခံ။",
+  units: [
+    {
+      slug: "greetings",
+      title: "နှုတ်ဆက်ခြင်း",
+      subtitle: "인사",
+      emoji: "🙇",
+      items: [
+        { target: "안녕하세요", roman: "အန်ညောင်ဟာဆေးယို (annyeonghaseyo)", my: "မင်္ဂလာပါ", emoji: "👋" },
+        { target: "감사합니다", roman: "ကမ်ဆာဟမ်နီဒ (gamsahamnida)", my: "ကျေးဇူးတင်ပါတယ်", emoji: "🙏" },
+        { target: "죄송합니다", roman: "ချွယ်ဆောင်ဟမ်နီဒ (joesonghamnida)", my: "တောင်းပန်ပါတယ်", emoji: "😔" },
+        { target: "네", roman: "နဲ (ne)", my: "ဟုတ်ကဲ့", emoji: "✅" },
+        { target: "아니요", roman: "အာနီယို (aniyo)", my: "မဟုတ်ဘူး", emoji: "❌" },
+        { target: "잘 지내세요?", roman: "ချယ် ချီနဲဆေးယို (jal jinaeseyo)", my: "နေကောင်းလား", emoji: "🙂" },
+        { target: "안녕히 가세요", roman: "အန်ညောင်ဟီ ကာဆေးယို (annyeonghi gaseyo)", my: "သွားတော့မယ်", emoji: "👋" },
+        { target: "반갑습니다", roman: "ပန်ကပ်စမ်နီဒ (bangapseumnida)", my: "တွေ့ရတာ ဝမ်းသာပါတယ်", emoji: "😊" },
+      ],
+    },
+    {
+      slug: "numbers",
+      title: "ဂဏန်းများ",
+      subtitle: "숫자",
+      emoji: "🔢",
+      items: [
+        { target: "일", roman: "အိလ် (il)", my: "တစ် (၁)", emoji: "1️⃣" },
+        { target: "이", roman: "အီး (i)", my: "နှစ် (၂)", emoji: "2️⃣" },
+        { target: "삼", roman: "ဆမ် (sam)", my: "သုံး (၃)", emoji: "3️⃣" },
+        { target: "사", roman: "ဆာ (sa)", my: "လေး (၄)", emoji: "4️⃣" },
+        { target: "오", roman: "အို (o)", my: "ငါး (၅)", emoji: "5️⃣" },
+        { target: "육", roman: "ယွတ် (yuk)", my: "ခြောက် (၆)", emoji: "6️⃣" },
+        { target: "칠", roman: "ချိလ် (chil)", my: "ခုနစ် (၇)", emoji: "7️⃣" },
+        { target: "십", roman: "ရှစ်ပ် (sip)", my: "ဆယ် (၁၀)", emoji: "🔟" },
+      ],
+    },
+    {
+      slug: "food",
+      title: "အစားအသောက်",
+      subtitle: "음식",
+      emoji: "🍚",
+      items: [
+        { target: "물", roman: "မွုလ် (mul)", my: "ရေ", emoji: "💧" },
+        { target: "밥", roman: "ပပ် (bap)", my: "ထမင်း", emoji: "🍚" },
+        { target: "차", roman: "ချာ (cha)", my: "လက်ဖက်ရည်", emoji: "🍵" },
+        { target: "맛있어요", roman: "မာရှိဆောယို (masisseoyo)", my: "စားလို့ကောင်းတယ်", emoji: "😋" },
+        { target: "매워요", roman: "မဲဝေါယို (maewoyo)", my: "စပ်တယ်", emoji: "🌶️" },
+        { target: "배고파요", roman: "ပဲကိုပါယို (baegopayo)", my: "ဗိုက်ဆာတယ်", emoji: "😩" },
+        { target: "얼마예요", roman: "အောလ်မာယဲယို (eolmayeyo)", my: "ဘယ်လောက်လဲ", emoji: "💰" },
+        { target: "계산해 주세요", roman: "ကယဆန်ဟဲ ဂျုဆေးယို (gyesanhae juseyo)", my: "ငွေရှင်းမယ်", emoji: "🧾" },
+      ],
+    },
+    {
+      slug: "travel",
+      title: "ခရီးသွား",
+      subtitle: "이동",
+      emoji: "🧭",
+      items: [
+        { target: "화장실이 어디예요?", roman: "ဟွာဂျန်ရှီလိ အောဒီယဲယို (hwajangsiri eodiyeyo)", my: "အိမ်သာ ဘယ်မှာလဲ", emoji: "🚻" },
+        { target: "도와주세요", roman: "တိုဝါဂျုဆေးယို (dowajuseyo)", my: "ကူညီပါ", emoji: "🆘" },
+        { target: "왼쪽", roman: "ဝဲန်ချောက် (oenjjok)", my: "ဘယ်ဘက်", emoji: "⬅️" },
+        { target: "오른쪽", roman: "အောရွန်ချောက် (oreunjjok)", my: "ညာဘက်", emoji: "➡️" },
+        { target: "직진", roman: "ချစ်ဂျင် (jikjin)", my: "တည့်တည့်", emoji: "⬆️" },
+        { target: "여기서 세워 주세요", roman: "ယောဂီဆော ဆယ်ဝေါ ဂျုဆေးယို (yeogiseo sewo juseyo)", my: "ဒီမှာ ရပ်ပါ", emoji: "🛑" },
+        { target: "공항", roman: "ကွန်းဟန် (gonghang)", my: "လေဆိပ်", emoji: "✈️" },
+        { target: "병원", roman: "ဗျောင်ဝွန် (byeongwon)", my: "ဆေးရုံ", emoji: "🏥" },
+      ],
+    },
+  ],
+};
+
+export const LANG_COURSES: LangCourse[] = [
+  ENGLISH,
+  THAI,
+  CHINESE,
+  JAPANESE,
+  KOREAN,
+];
 
 export function getLangCourse(slug: string): LangCourse | undefined {
   return LANG_COURSES.find((c) => c.slug === slug);
