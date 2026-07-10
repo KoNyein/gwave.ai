@@ -107,9 +107,11 @@ export default async function GamesPage() {
                   <span className="text-4xl" aria-hidden>
                     {game.emoji}
                   </span>
-                  <p className="font-semibold">{t(game.titleKey)}</p>
+                  <p className="font-semibold">
+                    {game.title ?? (game.titleKey ? t(game.titleKey) : game.slug)}
+                  </p>
                   <p className="text-xs text-muted-foreground">
-                    {t(game.descKey)}
+                    {game.desc ?? (game.descKey ? t(game.descKey) : "")}
                   </p>
                 </CardContent>
               </Card>

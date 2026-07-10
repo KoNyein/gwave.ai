@@ -2,23 +2,11 @@
 // document fragment (inline CSS + JS, no network) rendered inside the same
 // hardened sandbox as community games (see game-sandbox.ts). All original.
 
-export interface EduGame {
-  slug: string;
-  emoji: string;
-  /** i18n keys in the "games" namespace. */
-  titleKey: string;
-  descKey: string;
-  html: string;
-}
+import { EDU_GAMES_EXTRA } from "@/lib/games/edu-games-extra";
+import { SHELL, type EduGame } from "@/lib/games/edu-shell";
 
-const SHELL = `<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-  body{font-family:system-ui,-apple-system,sans-serif;margin:0;padding:1.1rem;text-align:center;background:#EAF3DE;color:#173404}
-  h2{margin:.2rem 0}
-  button{font-size:1rem;padding:.5rem 1rem;border:0;border-radius:10px;background:#639922;color:#fff;cursor:pointer}
-  button:active{transform:scale(.97)}
-  .bar{font-weight:bold;margin:.4rem 0}
-</style>`;
+export { SHELL };
+export type { EduGame };
 
 const MATH_SPRINT = `${SHELL}
 <h2>🧮 Math Sprint</h2>
@@ -121,6 +109,7 @@ export const EDU_GAMES: EduGame[] = [
     descKey: "eduHexDesc",
     html: HEX,
   },
+  ...EDU_GAMES_EXTRA,
 ];
 
 export function getEduGame(slug: string): EduGame | undefined {
