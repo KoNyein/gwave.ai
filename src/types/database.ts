@@ -258,6 +258,35 @@ export interface UserCamera {
   updated_at: string;
 }
 
+export type GpayStatus = "pending" | "active" | "suspended" | "rejected";
+export type GpayTxnKind = "transfer" | "topup" | "withdraw" | "fee";
+
+export interface GpayAccount {
+  id: string;
+  user_id: string;
+  status: GpayStatus;
+  full_name: string;
+  nrc_number: string;
+  phone: string;
+  email: string;
+  telegram: string | null;
+  viber: string | null;
+  address: string;
+  balance: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GpayTransaction {
+  id: string;
+  kind: GpayTxnKind;
+  from_account: string | null;
+  to_account: string | null;
+  amount: number;
+  note: string | null;
+  created_at: string;
+}
+
 export type WellnessKind = "dhamma" | "meditation" | "radio" | "health";
 
 export interface Profile {
