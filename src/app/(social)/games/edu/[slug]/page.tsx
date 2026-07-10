@@ -44,13 +44,17 @@ export default async function EduGamePage({
           {game.emoji}
         </span>
         <div>
-          <h1 className="text-xl font-bold">{t(game.titleKey)}</h1>
-          <p className="text-sm text-muted-foreground">{t(game.descKey)}</p>
+          <h1 className="text-xl font-bold">
+            {game.title ?? (game.titleKey ? t(game.titleKey) : game.slug)}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {game.desc ?? (game.descKey ? t(game.descKey) : "")}
+          </p>
         </div>
       </div>
       {/* Same hardened sandbox as community games: opaque origin, no network. */}
       <iframe
-        title={t(game.titleKey)}
+        title={game.title ?? (game.titleKey ? t(game.titleKey) : game.slug)}
         sandbox="allow-scripts"
         srcDoc={buildGameDoc(game.html)}
         className="h-[70vh] w-full rounded-xl border bg-white"
