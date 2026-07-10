@@ -10,6 +10,7 @@ import {
   LayoutGrid,
   Leaf,
   Lightbulb,
+  MapPin,
   Radio,
   ShoppingCart,
   Wallet,
@@ -52,6 +53,7 @@ export const TOOL_NAV: NavItem[] = [
   { href: "/pos", labelKey: "pos", icon: ShoppingCart },
   { href: "/shop", labelKey: "shop", icon: Store },
   { href: "/gpay", labelKey: "gpay", icon: Wallet },
+  { href: "/family", labelKey: "family", icon: MapPin },
 ];
 
 /** Routes that require a verified adult (18+). Enforced by requireAdult(). */

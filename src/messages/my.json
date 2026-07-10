@@ -28,7 +28,8 @@
     "games": "ဂိမ်းများ",
     "shop": "ဈေးဆိုင်",
     "cameras": "ကင်မရာများ",
-    "gpay": "G-Pay"
+    "gpay": "G-Pay",
+    "family": "မိသားစု"
   },
   "auth": {
     "login": "ဝင်ရန်",
@@ -1072,6 +1073,28 @@
     "status_shipped": "ပို့ဆောင်ပြီး",
     "status_delivered": "ရောက်ရှိပြီး",
     "status_cancelled": "ပယ်ဖျက်"
+  },
+  "family": {
+    "title": "မိသားစု တည်နေရာ",
+    "subtitle": "သင့်တည်နေရာကို မိသားစုနှင့် မျှဝေပြီး အားလုံးကို မြေပုံပေါ်တွင် ကြည့်ပါ။",
+    "createTitle": "မိသားစု circle ဖွင့်ရန်",
+    "namePlaceholder": "ဥပမာ - ကျွန်တော်တို့ မိသားစု",
+    "create": "ဖွင့်မည်",
+    "joinTitle": "Code ဖြင့် ဝင်ရန်",
+    "codePlaceholder": "ဖိတ်ကြားကုဒ်",
+    "join": "ဝင်မည်",
+    "code": "ကုဒ်",
+    "sharingOn": "သင့်တည်နေရာ မျှဝေနေသည်",
+    "sharingOff": "တည်နေရာ မျှဝေခြင်း ဖွင့်ရန်",
+    "sharingHint": "ဖွင့်ထားစဉ် သင့်တည်နေရာသည် ဒီ circle အတွက် ~၃၀ စက္ကန့်တိုင်း update ဖြစ်ပါမည်။ အချိန်မရွေး ပိတ်နိုင်သည်။",
+    "you": "သင်",
+    "updatedAgo": "{ago} က update",
+    "noLocationYet": "တည်နေရာ မရသေးပါ",
+    "notSharing": "မမျှဝေထားပါ",
+    "openMaps": "Google Maps မှာ ဖွင့်",
+    "leave": "Circle မှ ထွက်မည်",
+    "leaveConfirm": "ဒီ မိသားစု circle မှ ထွက်မလား?",
+    "empty": "သင်သည် မိသားစု circle တစ်ခုမှ မဝင်ရသေးပါ။ အသစ်ဖွင့်ပါ သို့ code ဖြင့် ဝင်ပါ။"
   },
   "gpay": {
     "title": "G-Pay",

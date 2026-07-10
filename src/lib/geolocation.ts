@@ -2,6 +2,7 @@
 export function getCurrentPosition(): Promise<{
   latitude: number;
   longitude: number;
+  accuracy: number | null;
 }> {
   return new Promise((resolve, reject) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
@@ -13,6 +14,7 @@ export function getCurrentPosition(): Promise<{
         resolve({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy ?? null,
         }),
       (error) => {
         reject(

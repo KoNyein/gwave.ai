@@ -28,7 +28,8 @@
     "games": "游戏",
     "shop": "商店",
     "cameras": "摄像头",
-    "gpay": "G-Pay"
+    "gpay": "G-Pay",
+    "family": "家庭"
   },
   "auth": {
     "login": "登录",
@@ -1072,6 +1073,28 @@
     "status_shipped": "已发货",
     "status_delivered": "已送达",
     "status_cancelled": "已取消"
+  },
+  "family": {
+    "title": "家庭定位",
+    "subtitle": "与家人分享你的实时位置，在地图上查看每个人。",
+    "createTitle": "创建家庭圈",
+    "namePlaceholder": "例如：我们的家",
+    "create": "创建",
+    "joinTitle": "用邀请码加入",
+    "codePlaceholder": "邀请码",
+    "join": "加入",
+    "code": "邀请码",
+    "sharingOn": "你正在分享位置",
+    "sharingOff": "开启位置分享",
+    "sharingHint": "开启时，你的位置每约 30 秒为此圈更新一次。可随时关闭。",
+    "you": "你",
+    "updatedAgo": "{ago}更新",
+    "noLocationYet": "暂无位置",
+    "notSharing": "未分享",
+    "openMaps": "在 Google 地图中打开",
+    "leave": "退出家庭圈",
+    "leaveConfirm": "退出这个家庭圈？",
+    "empty": "你还没有加入家庭圈。创建一个或用邀请码加入。"
   },
   "gpay": {
     "title": "G-Pay",

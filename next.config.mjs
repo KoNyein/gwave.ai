@@ -36,6 +36,14 @@ const cctvHlsOrigins = (process.env.NEXT_PUBLIC_CCTV_HLS_ORIGINS ?? "")
   .filter(Boolean);
 const cctvHlsSrc = cctvHlsOrigins.length ? ` ${cctvHlsOrigins.join(" ")}` : "";
 
+// The Family locator can embed a Google Map via the Maps Embed API (an
+// <iframe>) when NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is configured. Only then do we
+// widen frame-src to google.com; with no key the built-in OpenStreetMap map is
+// used and no Google origin is trusted.
+const googleMapsSrc = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+  ? " https://www.google.com"
+  : "";
+
 // Content-Security-Policy: 'unsafe-inline'/'unsafe-eval' are required by
 // Next.js hydration + dev tooling; everything else is locked to self and
 // the Supabase project (REST, storage, realtime websockets).
@@ -59,7 +67,7 @@ const csp = [
   `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net${cctvHlsSrc}`,
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
-  `frame-src 'self' https://www.youtube-nocookie.com${cctvFrameSrc}${gameFrameSrc}`,
+  `frame-src 'self' https://www.youtube-nocookie.com${cctvFrameSrc}${gameFrameSrc}${googleMapsSrc}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

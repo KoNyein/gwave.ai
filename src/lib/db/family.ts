@@ -1,0 +1,68 @@
+import "server-only";
+
+import { createClient } from "@/lib/supabase/server";
+import type {
+  FamilyCircle,
+  FamilyMembership,
+  MemberLocation,
+} from "@/types/database";
+import type { AuthorSummary } from "@/types/social";
+
+export interface CircleWithMine extends FamilyCircle {
+  sharing_enabled: boolean;
+}
+
+/** Circles the caller belongs to, with their own sharing flag. */
+export async function getMyCircles(userId: string): Promise<CircleWithMine[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("family_memberships")
+    .select("sharing_enabled, circle:family_circles(*)")
+    .eq("user_id", userId)
+    .order("joined_at", { ascending: true })
+    .returns<{ sharing_enabled: boolean; circle: FamilyCircle }[]>();
+  return (data ?? [])
+    .filter((r) => r.circle)
+    .map((r) => ({ ...r.circle, sharing_enabled: r.sharing_enabled }));
+}
+
+export interface CircleMember {
+  profile: AuthorSummary;
+  sharing_enabled: boolean;
+  location: MemberLocation | null;
+}
+
+/** Members of a circle with their latest shared location (RLS-filtered). */
+export async function getCircleMembers(
+  circleId: string,
+): Promise<CircleMember[]> {
+  const supabase = await createClient();
+  const { data: memberships } = await supabase
+    .from("family_memberships")
+    .select(
+      "user_id, sharing_enabled, profile:profiles!family_memberships_user_id_fkey(id, username, full_name, avatar_url)",
+    )
+    .eq("circle_id", circleId)
+    .returns<
+      (Pick<FamilyMembership, "user_id" | "sharing_enabled"> & {
+        profile: AuthorSummary;
+      })[]
+    >();
+
+  const rows = memberships ?? [];
+  if (rows.length === 0) return [];
+
+  const ids = rows.map((r) => r.user_id);
+  const { data: locations } = await supabase
+    .from("member_locations")
+    .select("*")
+    .in("user_id", ids)
+    .returns<MemberLocation[]>();
+  const byUser = new Map((locations ?? []).map((l) => [l.user_id, l]));
+
+  return rows.map((r) => ({
+    profile: r.profile,
+    sharing_enabled: r.sharing_enabled,
+    location: byUser.get(r.user_id) ?? null,
+  }));
+}
