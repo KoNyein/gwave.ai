@@ -14,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { FarmShareButton } from "@/components/farm/farm-share-button";
 import {
   formatMetric,
   metricLabel,
@@ -146,6 +147,9 @@ export function FarmDashboard({
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <FarmShareButton sensors={sensors} latest={latest} />
+      </div>
       {zones.map((zone) => (
         <section key={zone}>
           <h2 className="mb-2 px-1 text-sm font-semibold uppercase text-muted-foreground">
