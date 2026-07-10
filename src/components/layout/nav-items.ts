@@ -12,6 +12,7 @@ import {
   Lightbulb,
   Radio,
   ShoppingCart,
+  Wallet,
   Sprout,
   Store,
   Users,
@@ -50,6 +51,7 @@ export const TOOL_NAV: NavItem[] = [
   { href: "/cameras", labelKey: "cameras", icon: Video },
   { href: "/pos", labelKey: "pos", icon: ShoppingCart },
   { href: "/shop", labelKey: "shop", icon: Store },
+  { href: "/gpay", labelKey: "gpay", icon: Wallet },
 ];
 
 /** Routes that require a verified adult (18+). Enforced by requireAdult(). */
