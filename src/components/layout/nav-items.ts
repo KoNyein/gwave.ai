@@ -2,6 +2,7 @@ import {
   BadgeCheck,
   BookOpen,
   Calculator,
+  Clapperboard,
   Flag,
   Flower2,
   Gamepad2,
@@ -36,6 +37,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/groups", labelKey: "groups", icon: LayoutGrid },
   { href: "/pages", labelKey: "pages", icon: Flag },
   { href: "/live", labelKey: "live", icon: Radio },
+  { href: "/reels", labelKey: "reels", icon: Clapperboard },
   { href: "/games", labelKey: "games", icon: Gamepad2 },
 ];
 

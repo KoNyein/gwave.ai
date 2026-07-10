@@ -949,6 +949,46 @@ export interface Notification {
   created_at: string;
 }
 
+// ── Reels & creator monetization ────────────────────────────────────────────
+export interface Reel {
+  id: string;
+  owner_id: string;
+  video_path: string;
+  poster_path: string | null;
+  caption: string | null;
+  view_count: number;
+  like_count: number;
+  is_public: boolean;
+  created_at: string;
+}
+
+export type EarningKind = "view" | "like" | "bonus";
+
+export interface CreatorEarning {
+  id: string;
+  user_id: string;
+  reel_id: string | null;
+  kind: EarningKind;
+  amount_mmk: number;
+  paid_out: boolean;
+  created_at: string;
+}
+
+/** A reel joined with its author + the caller's like state, for the feed. */
+export interface ReelWithAuthor extends Reel {
+  author: Pick<Profile, "id" | "username" | "full_name" | "avatar_url">;
+  video_url: string;
+  liked_by_me: boolean;
+}
+
+export interface CreatorSummary {
+  reelCount: number;
+  totalViews: number;
+  totalLikes: number;
+  totalEarned: number;
+  balance: number;
+}
+
 export type Database = {
   public: {
     Tables: {
