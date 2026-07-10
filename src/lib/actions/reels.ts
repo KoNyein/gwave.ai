@@ -18,6 +18,11 @@ const createSchema = z.object({
   video_path: z.string().trim().min(3).max(300),
   poster_path: z.string().trim().max(300).nullish(),
   caption: z.string().trim().max(500).nullish(),
+  /**
+   * The creator confirms this is their own original work that has not been
+   * posted on any other platform — required for the reel to earn money.
+   */
+  original_confirmed: z.boolean().optional(),
 });
 
 /** Create a reel from an already-uploaded video (path in the media bucket). */
@@ -35,6 +40,7 @@ export async function createReel(
     video_path: parsed.data.video_path,
     poster_path: parsed.data.poster_path ?? null,
     caption: parsed.data.caption ?? null,
+    original_confirmed: parsed.data.original_confirmed === true,
   });
   if (error) return { ok: false, error: error.message };
   revalidatePath("/reels");
