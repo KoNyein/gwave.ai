@@ -15,7 +15,27 @@ export type LessonKind =
   | "robot"
   | "circuit"
   | "python"
-  | "sql";
+  | "sql"
+  | "scratch";
+
+/** One preset block in a Scratch playground starter script. */
+export interface ScratchBlockSpec {
+  kind: string;
+  arg?: string | number;
+}
+
+/** Configuration for a block-coding ("scratch") lesson. */
+export interface ScratchConfig {
+  /** Blocks preloaded into the editor when the lesson opens. */
+  starter?: ScratchBlockSpec[];
+  /** Optional success criteria; completion is reported when met. */
+  goal?: {
+    /** Sprite must finish within `tol` (default 30) of this Scratch point. */
+    reach?: { x: number; y: number; tol?: number };
+    /** These block kinds must all appear in the run. */
+    requireKinds?: string[];
+  };
+}
 
 export interface QuizQuestion {
   q: string;
@@ -51,6 +71,8 @@ export interface Lesson {
   pythonCode?: string;
   /** For sql lessons: starter query for the sql.js playground. */
   sqlCode?: string;
+  /** For scratch lessons: block-coding playground config. */
+  scratch?: ScratchConfig;
   /** Optional YouTube video id embedded at the top of the lesson. */
   youtubeId?: string;
   /**
@@ -793,9 +815,11 @@ const agriTrack: Track = {
 import { WEBDEV_TRACKS } from "@/lib/learn/webdev";
 import { SQL_AI_TRACKS } from "@/lib/learn/courses-sql-ai";
 import { pseudocodeTrack } from "@/lib/learn/pseudocode";
+import { scratchTrack } from "@/lib/learn/scratch";
 
 export const TRACKS: Track[] = [
   stemTrack,
+  scratchTrack,
   electronicsTrack,
   roboticsTrack,
   pseudocodeTrack,

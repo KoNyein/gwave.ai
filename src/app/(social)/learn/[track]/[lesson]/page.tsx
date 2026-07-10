@@ -17,6 +17,7 @@ import { LessonAudio } from "@/components/learn/lesson-audio";
 import { LessonVideo } from "@/components/learn/lesson-video";
 import { LessonYouTubeLink } from "@/components/learn/lesson-youtube-link";
 import { PythonPlayground } from "@/components/learn/python-playground";
+import { ScratchPlayground } from "@/components/learn/scratch-playground";
 import { SqlPlayground } from "@/components/learn/sql-playground";
 import { ageBandOf, getCurrentProfile } from "@/lib/auth";
 import { getProjectForLesson } from "@/lib/db/learn";
@@ -70,7 +71,7 @@ export default async function LessonPage({
     .join(". ");
 
   // Saved game/playground state for resume (only these kinds persist state).
-  const persistedKinds = ["code", "robot", "circuit", "python", "sql"];
+  const persistedKinds = ["code", "robot", "circuit", "python", "sql", "scratch"];
   const project = persistedKinds.includes(lesson.kind)
     ? await getProjectForLesson(profile.id, track.slug, lesson.slug)
     : null;
@@ -166,6 +167,14 @@ export default async function LessonPage({
       {lesson.kind === "sql" && lesson.sqlCode !== undefined && (
         <SqlPlayground
           starter={lesson.sqlCode}
+          lesson={lessonRef}
+          title={lesson.title}
+        />
+      )}
+
+      {lesson.kind === "scratch" && (
+        <ScratchPlayground
+          config={lesson.scratch}
           lesson={lessonRef}
           title={lesson.title}
         />

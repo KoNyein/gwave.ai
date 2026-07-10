@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ArrowRight,
+  Blocks,
   BookOpen,
   Bot,
   Braces,
@@ -40,6 +41,7 @@ export const metadata = { title: "Learn" };
 export const dynamic = "force-dynamic";
 
 const ICONS: Record<string, LucideIcon> = {
+  Blocks,
   FlaskConical,
   Cpu,
   Bot,
