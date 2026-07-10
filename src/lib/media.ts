@@ -2,7 +2,10 @@ import { publicEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/client";
 
 export const MAX_POST_IMAGES = 10;
-export const MAX_IMAGE_DIMENSION = 2048;
+/** Standard longest-edge for stored photos (downscaled to this). */
+export const MAX_IMAGE_DIMENSION = 1920;
+/** Byte budget a compressed photo tries to fit under. */
+export const TARGET_IMAGE_BYTES = 600 * 1024; // ~0.6 MB
 export const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
 export const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB for chat documents
 
@@ -20,9 +23,34 @@ export interface PreparedMedia {
   height: number | null;
 }
 
+function toBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob | null> {
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+}
+
+/** Draw the bitmap into a canvas scaled to `longest` on its longest edge. */
+function drawScaled(
+  bitmap: ImageBitmap,
+  longest: number,
+): { canvas: HTMLCanvasElement; width: number; height: number } {
+  const scale = Math.min(1, longest / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas is not supported in this browser.");
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  return { canvas, width, height };
+}
+
 /**
- * Client-side image compression: downscale to MAX_IMAGE_DIMENSION and encode
- * as JPEG so uploads stay small. Videos are passed through untouched.
+ * Client-side image compression: downscale to MAX_IMAGE_DIMENSION, then step
+ * JPEG quality (and, if still over budget, the dimension) down until the file
+ * fits under TARGET_IMAGE_BYTES — so every stored photo lands at a predictable,
+ * small size. Videos are size-capped but passed through untouched (real
+ * transcoding would need a heavy in-browser codec).
  */
 export async function prepareMedia(file: File): Promise<PreparedMedia> {
   if (file.type.startsWith("video/")) {
@@ -43,33 +71,32 @@ export async function prepareMedia(file: File): Promise<PreparedMedia> {
   }
 
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(
-    1,
-    MAX_IMAGE_DIMENSION / Math.max(bitmap.width, bitmap.height),
-  );
-  const width = Math.round(bitmap.width * scale);
-  const height = Math.round(bitmap.height * scale);
+  // Two dimension passes (standard, then a smaller fallback) crossed with a
+  // descending quality ladder. Keep the first result that fits the budget;
+  // otherwise keep the smallest we produced.
+  const dimensions = [MAX_IMAGE_DIMENSION, 1280];
+  const qualities = [0.82, 0.7, 0.58, 0.45];
 
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas is not supported in this browser.");
-  ctx.drawImage(bitmap, 0, 0, width, height);
+  let best: { blob: Blob; width: number; height: number } | null = null;
+  outer: for (const longest of dimensions) {
+    const { canvas, width, height } = drawScaled(bitmap, longest);
+    for (const q of qualities) {
+      const blob = await toBlob(canvas, q);
+      if (!blob) continue;
+      if (!best || blob.size < best.blob.size) best = { blob, width, height };
+      if (blob.size <= TARGET_IMAGE_BYTES) break outer;
+    }
+  }
   bitmap.close();
-
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, "image/jpeg", 0.85),
-  );
-  if (!blob) throw new Error("Failed to compress image.");
+  if (!best) throw new Error("Failed to compress image.");
 
   return {
-    blob,
+    blob: best.blob,
     contentType: "image/jpeg",
     extension: "jpg",
     mediaType: "image",
-    width,
-    height,
+    width: best.width,
+    height: best.height,
   };
 }
 
