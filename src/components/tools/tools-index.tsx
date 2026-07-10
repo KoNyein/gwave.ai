@@ -6,7 +6,6 @@ import {
   Banknote,
   Droplets,
   FlaskConical,
-  Lock,
   QrCode,
   Ruler,
   Scale,
@@ -18,28 +17,19 @@ import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 
+// Every tool is free to use.
 const TOOLS = [
-  { id: "ec", href: "/tools/ec-converter", icon: Zap, memberOnly: false },
-  { id: "vpd", href: "/tools/vpd", icon: Droplets, memberOnly: false },
-  {
-    id: "nutrient",
-    href: "/tools/nutrient-calculator",
-    icon: FlaskConical,
-    memberOnly: true,
-  },
-  {
-    id: "yield",
-    href: "/tools/yield-estimator",
-    icon: Scale,
-    memberOnly: true,
-  },
-  { id: "units", href: "/tools/converters", icon: Ruler, memberOnly: false },
-  { id: "currency", href: "/tools/currency", icon: Banknote, memberOnly: false },
-  { id: "profit", href: "/tools/profit", icon: TrendingUp, memberOnly: false },
-  { id: "qr", href: "/tools/qr", icon: QrCode, memberOnly: false },
+  { id: "ec", href: "/tools/ec-converter", icon: Zap },
+  { id: "vpd", href: "/tools/vpd", icon: Droplets },
+  { id: "nutrient", href: "/tools/nutrient-calculator", icon: FlaskConical },
+  { id: "yield", href: "/tools/yield-estimator", icon: Scale },
+  { id: "units", href: "/tools/converters", icon: Ruler },
+  { id: "currency", href: "/tools/currency", icon: Banknote },
+  { id: "profit", href: "/tools/profit", icon: TrendingUp },
+  { id: "qr", href: "/tools/qr", icon: QrCode },
 ] as const;
 
-export function ToolsIndex({ isMember }: { isMember: boolean }) {
+export function ToolsIndex() {
   const t = useTranslations("tools");
   const [query, setQuery] = React.useState("");
 
@@ -72,14 +62,12 @@ export function ToolsIndex({ isMember }: { isMember: boolean }) {
       <div className="grid gap-3 sm:grid-cols-2">
         {visible.map((tool) => {
           const Icon = tool.icon;
-          const locked = tool.memberOnly && !isMember;
           return (
             <Link
               key={tool.id}
-              href={locked ? "/membership" : tool.href}
+              href={tool.href}
               className={cn(
                 "flex items-start gap-3 rounded-xl border bg-background p-4 transition-shadow hover:shadow-md",
-                locked && "opacity-80",
               )}
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">
@@ -88,19 +76,9 @@ export function ToolsIndex({ isMember }: { isMember: boolean }) {
               <span className="min-w-0">
                 <span className="flex items-center gap-2 font-semibold">
                   {t(`items.${tool.id}.name`)}
-                  {tool.memberOnly ? (
-                    <span
-                      className={cn(
-                        "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-                        locked
-                          ? "bg-muted text-muted-foreground"
-                          : "bg-secondary text-primary",
-                      )}
-                    >
-                      {locked ? <Lock className="h-3 w-3" /> : null}
-                      {t("memberOnly")}
-                    </span>
-                  ) : null}
+                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                    {t("free")}
+                  </span>
                 </span>
                 <span className="mt-0.5 block text-sm text-muted-foreground">
                   {t(`items.${tool.id}.description`)}
