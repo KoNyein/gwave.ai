@@ -32,16 +32,23 @@ const sendMessageSchema = z
     imagePath: z.string().max(500).nullable(),
     latitude: z.number().min(-90).max(90).nullish(),
     longitude: z.number().min(-180).max(180).nullish(),
+    filePath: z.string().max(500).nullish(),
+    fileKind: z.enum(["video", "file"]).nullish(),
+    fileName: z.string().max(200).nullish(),
   })
   .refine(
     (input) =>
       input.content.trim().length > 0 ||
       input.imagePath ||
+      input.filePath ||
       (input.latitude != null && input.longitude != null),
     { message: "Message is empty." },
   )
   .refine((input) => (input.latitude == null) === (input.longitude == null), {
     message: "Location needs both coordinates.",
+  })
+  .refine((input) => (input.filePath == null) === (input.fileKind == null), {
+    message: "Attachment needs a kind.",
   });
 
 export async function sendMessage(
@@ -65,6 +72,9 @@ export async function sendMessage(
       image_path: parsed.data.imagePath,
       latitude: parsed.data.latitude ?? null,
       longitude: parsed.data.longitude ?? null,
+      file_path: parsed.data.filePath ?? null,
+      file_kind: parsed.data.fileKind ?? null,
+      file_name: parsed.data.fileName ?? null,
     })
     .select("id")
     .single();

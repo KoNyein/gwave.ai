@@ -35,7 +35,7 @@ export async function getConversations(
   const { data: recent } = await supabase
     .from("messages")
     .select(
-      "id, conversation_id, sender_id, content, image_path, latitude, created_at",
+      "id, conversation_id, sender_id, content, image_path, latitude, file_kind, created_at",
     )
     .in("conversation_id", ids)
     .order("created_at", { ascending: false })

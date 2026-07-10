@@ -3,10 +3,12 @@
 import * as React from "react";
 import {
   ArrowLeft,
+  FileText,
   ImagePlus,
   Loader2,
   MapPin,
   MessageCircle,
+  Paperclip,
   Phone,
   SendHorizonal,
   SquarePen,
@@ -32,7 +34,7 @@ import {
 } from "@/lib/actions/messages";
 import { displayName, timeAgo } from "@/lib/format";
 import { getCurrentPosition } from "@/lib/geolocation";
-import { mediaUrl, uploadMedia } from "@/lib/media";
+import { mediaUrl, uploadFile, uploadMedia } from "@/lib/media";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/types/database";
@@ -86,6 +88,8 @@ export function Messenger({
 
   const bottomRef = React.useRef<HTMLDivElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const attachInputRef = React.useRef<HTMLInputElement>(null);
+  const [uploadError, setUploadError] = React.useState<string | null>(null);
   const typingSentAt = React.useRef(0);
   const typingTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -279,6 +283,9 @@ export function Messenger({
         image_path: imagePath,
         latitude: null,
         longitude: null,
+        file_path: null,
+        file_kind: null,
+        file_name: null,
         created_at: new Date().toISOString(),
         sender: currentUser,
       };
@@ -320,6 +327,80 @@ export function Messenger({
     }
   }
 
+  // Send a video or an arbitrary file attachment.
+  async function handleSendAttachment(file: File, kind: "video" | "file") {
+    if (!activeId || sending) return;
+    setSending(true);
+    try {
+      let filePath: string;
+      let fileName: string;
+      if (kind === "video") {
+        const uploaded = await uploadMedia(currentUser.id, file);
+        filePath = uploaded.storage_path;
+        fileName = file.name;
+      } else {
+        const uploaded = await uploadFile(currentUser.id, file);
+        filePath = uploaded.storage_path;
+        fileName = uploaded.file_name;
+      }
+
+      const optimistic: MessageWithSender = {
+        id: `optimistic-${Date.now()}`,
+        conversation_id: activeId,
+        sender_id: currentUser.id,
+        content: "",
+        image_path: null,
+        latitude: null,
+        longitude: null,
+        file_path: filePath,
+        file_kind: kind,
+        file_name: fileName,
+        created_at: new Date().toISOString(),
+        sender: currentUser,
+      };
+      setMessages((previous) => [...(previous ?? []), optimistic]);
+      // Keep the sidebar preview and ordering current (the realtime handler
+      // ignores our own inserts, so update the list optimistically here too).
+      setConversations((previous) =>
+        previous
+          .map((c) =>
+            c.id === activeId
+              ? {
+                  ...c,
+                  last_message: optimistic,
+                  last_message_at: optimistic.created_at,
+                }
+              : c,
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.last_message_at).getTime() -
+              new Date(a.last_message_at).getTime(),
+          ),
+      );
+
+      const result = await sendMessage({
+        conversationId: activeId,
+        content: "",
+        imagePath: null,
+        filePath,
+        fileKind: kind,
+        fileName,
+      });
+      setMessages((previous) => {
+        if (!previous) return previous;
+        if (!result.ok) return previous.filter((m) => m.id !== optimistic.id);
+        return previous.map((m) =>
+          m.id === optimistic.id ? { ...m, id: result.data.messageId } : m,
+        );
+      });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setSending(false);
+    }
+  }
+
   async function shareLocation() {
     if (!activeId || sending) return;
     setSending(true);
@@ -333,6 +414,9 @@ export function Messenger({
         image_path: null,
         latitude: position.latitude,
         longitude: position.longitude,
+        file_path: null,
+        file_kind: null,
+        file_name: null,
         created_at: new Date().toISOString(),
         sender: currentUser,
       };
@@ -451,7 +535,11 @@ export function Messenger({
                     ? t("sentPhoto")
                     : conversation.last_message.latitude != null
                       ? t("sharedLocation")
-                      : "")
+                      : conversation.last_message.file_kind === "video"
+                        ? t("sentVideo")
+                        : conversation.last_message.file_kind === "file"
+                          ? t("sentFile")
+                          : "")
                 : t("noMessagesYet");
               return (
                 <button
@@ -623,6 +711,28 @@ export function Messenger({
                               </span>
                             </a>
                           ) : null}
+                          {message.file_path && message.file_kind === "video" ? (
+                            <video
+                              src={mediaUrl(message.file_path)}
+                              controls
+                              playsInline
+                              className="max-h-72 w-full bg-black"
+                            />
+                          ) : null}
+                          {message.file_path && message.file_kind === "file" ? (
+                            <a
+                              href={mediaUrl(message.file_path)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download={message.file_name ?? true}
+                              className="flex items-center gap-2 px-3 py-2 text-sm underline"
+                            >
+                              <FileText className="h-4 w-4 shrink-0" />
+                              <span className="truncate">
+                                {message.file_name ?? t("file")}
+                              </span>
+                            </a>
+                          ) : null}
                           {message.content ? (
                             <p className="whitespace-pre-wrap break-words px-3 py-2 text-sm">
                               {message.content}
@@ -656,6 +766,12 @@ export function Messenger({
               <div ref={bottomRef} />
             </div>
 
+            {uploadError ? (
+              <p className="border-t bg-destructive/10 px-3 py-1.5 text-xs text-destructive">
+                {uploadError}
+              </p>
+            ) : null}
+
             {/* Composer */}
             <div className="flex items-center gap-2 border-t p-3">
               <Button
@@ -667,6 +783,16 @@ export function Messenger({
                 aria-label={t("sendPhoto")}
               >
                 <ImagePlus className="h-5 w-5 text-accent" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+                onClick={() => attachInputRef.current?.click()}
+                disabled={sending}
+                aria-label={t("sendAttachment")}
+              >
+                <Paperclip className="h-5 w-5 text-accent" />
               </Button>
               <Button
                 variant="ghost"
@@ -686,6 +812,23 @@ export function Messenger({
                 onChange={(event) => {
                   const file = event.target.files?.[0];
                   if (file) void handleSend(file);
+                  event.target.value = "";
+                }}
+              />
+              <input
+                ref={attachInputRef}
+                type="file"
+                accept="video/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
+                hidden
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) {
+                    setUploadError(null);
+                    void handleSendAttachment(
+                      file,
+                      file.type.startsWith("video/") ? "video" : "file",
+                    );
+                  }
                   event.target.value = "";
                 }}
               />

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 export const MAX_POST_IMAGES = 10;
 export const MAX_IMAGE_DIMENSION = 2048;
 export const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
+export const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB for chat documents
 
 /** Public URL for a file in the "media" storage bucket. */
 export function mediaUrl(storagePath: string): string {
@@ -105,4 +106,36 @@ export async function uploadMedia(
     width: prepared.width,
     height: prepared.height,
   };
+}
+
+export interface UploadedFile {
+  storage_path: string;
+  file_name: string;
+}
+
+/**
+ * Uploads an arbitrary document (PDF, doc, zip, …) to the user's folder in the
+ * "media" bucket, unmodified. Used for chat file attachments. Images and videos
+ * should go through uploadMedia instead.
+ */
+export async function uploadFile(
+  userId: string,
+  file: File,
+): Promise<UploadedFile> {
+  if (file.size > MAX_FILE_BYTES) {
+    throw new Error("File is too large (max 25 MB).");
+  }
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+
+  const supabase = createClient();
+  const { error } = await supabase.storage
+    .from("media")
+    .upload(path, file, {
+      contentType: file.type || "application/octet-stream",
+      cacheControl: "31536000",
+    });
+  if (error) throw new Error(error.message);
+
+  return { storage_path: path, file_name: file.name };
 }
