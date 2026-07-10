@@ -1,0 +1,40 @@
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Map as MapIcon, Users } from "lucide-react";
+
+import { GpsMap } from "@/components/gps/gps-map";
+import { getCurrentProfile } from "@/lib/auth";
+
+export const metadata = { title: "Map" };
+export const dynamic = "force-dynamic";
+
+export default async function MapPage() {
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <MapIcon className="h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="text-xl font-bold">🗺️ GPS Map</h1>
+            <p className="text-sm text-muted-foreground">
+              သင့် တည်နေရာကို မြေပုံပေါ်တွင် တိုက်ရိုက် ကြည့်ရန်
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/family"
+          className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted/50"
+        >
+          <Users className="h-4 w-4" /> မိသားစု
+        </Link>
+      </div>
+
+      <GpsMap />
+    </div>
+  );
+}

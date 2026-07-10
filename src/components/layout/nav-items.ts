@@ -12,6 +12,7 @@ import {
   Landmark,
   Leaf,
   Lightbulb,
+  Map,
   MapPin,
   Radio,
   Rocket,
@@ -61,6 +62,7 @@ export const TOOL_NAV: NavItem[] = [
   { href: "/boost", labelKey: "boost", icon: Rocket },
   { href: "/gpay", labelKey: "gpay", icon: Wallet },
   { href: "/family", labelKey: "family", icon: MapPin },
+  { href: "/map", labelKey: "map", icon: Map },
   { href: "/finance", labelKey: "finance", icon: Landmark },
 ];
 
