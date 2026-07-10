@@ -514,6 +514,10 @@ export interface Message {
   image_path: string | null;
   latitude: number | null;
   longitude: number | null;
+  // Generic attachment: a video or an arbitrary file in the "media" bucket.
+  file_path: string | null;
+  file_kind: "video" | "file" | null;
+  file_name: string | null;
   created_at: string;
 }
 
