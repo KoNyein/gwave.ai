@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
   ArrowLeft,
+  Blocks,
   BookText,
   Bot,
   CheckCircle2,
@@ -30,6 +31,7 @@ const KIND_ICON: Record<LessonKind, typeof BookText> = {
   circuit: Cpu,
   python: Terminal,
   sql: Database,
+  scratch: Blocks,
 };
 
 export async function generateMetadata({
