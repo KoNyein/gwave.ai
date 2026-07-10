@@ -1068,6 +1068,28 @@
     "status_delivered": "ရောက်ရှိပြီး",
     "status_cancelled": "ပယ်ဖျက်"
   },
+  "lang": {
+    "title": "ဘာသာစကားများ",
+    "subtitle": "မြန်မာလိုနေပြီး English, ထိုင်း, တရုတ် လေ့လာပါ — အသံ၊ နားထောင်၊ အသံထွက်နှင့် စာရိုက် လေ့ကျင့်ခန်းများဖြင့်။",
+    "unitsWords": "အခန်း {units} ခန်း · စကားလုံး {words} လုံး",
+    "browserNote": "အသံနှင့် အသံထွက်စစ်ဆေးမှုသည် သင့် browser ရဲ့ built-in speech စနစ်ကို သုံးပါသည်။ Chrome သို့ Edge မှာ အကောင်းဆုံး အလုပ်လုပ်ပါသည်။ မပံ့ပိုးရင်လည်း ဖတ်ရှုနားထောင်နိုင်ပါသည်။",
+    "modeListen": "နားထောင်",
+    "modeSpeak": "အသံထွက်",
+    "modeType": "စာရိုက်",
+    "playAudio": "အသံဖွင့်",
+    "ttsUnsupported": "သင့် browser က ဒီအသံကို မဖွင့်နိုင်ပါ။",
+    "recUnsupportedTitle": "အသံထွက်လေ့ကျင့်ခန်း ဒီမှာ မရနိုင်ပါ",
+    "recUnsupportedHint": "သင့် browser က speech recognition မပံ့ပိုးပါ။ အသံထွက် စစ်ဆေးဖို့ Chrome သို့ Edge သုံးကြည့်ပါ။",
+    "listening": "နားထောင်နေသည်… ရပ်ရန် နှိပ်ပါ",
+    "tapToSpeak": "နှိပ်ပြီး ပြောပါ",
+    "youSaid": "သင်ပြောသည်",
+    "greatJob": "အသံထွက် အလွန်ကောင်းပါတယ်! 🎉",
+    "tryAgain": "နီးပါပြီ — ပြန်နားထောင်ပြီး ထပ်ကြိုးစားပါ။",
+    "typeHint": "နားထောင်ပြီး ရိုက်ပါ",
+    "typePlaceholder": "ဒီမှာ ရိုက်ပါ…",
+    "correct": "မှန်ပါတယ်! 🎉",
+    "target": "အဖြေ"
+  },
   "cctv": {
     "title": "ကင်မရာများ",
     "subtitle": "သင့် GreenWave ကင်မရာများ။ မူလက private — ကိုယ်ရွေးမှသာ share ။",

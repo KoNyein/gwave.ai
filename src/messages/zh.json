@@ -1068,6 +1068,28 @@
     "status_delivered": "已送达",
     "status_cancelled": "已取消"
   },
+  "lang": {
+    "title": "语言",
+    "subtitle": "用缅甸语学习英语、泰语和中文 — 配有音频、听力、口语和打字练习。",
+    "unitsWords": "{units} 单元 · {words} 个词",
+    "browserNote": "音频和发音检查使用浏览器内置的语音功能，在 Chrome 或 Edge 中效果最佳。若不支持，你仍可阅读和收听。",
+    "modeListen": "听",
+    "modeSpeak": "说",
+    "modeType": "打字",
+    "playAudio": "播放音频",
+    "ttsUnsupported": "你的浏览器无法播放此音频。",
+    "recUnsupportedTitle": "此处无法进行口语练习",
+    "recUnsupportedHint": "你的浏览器不支持语音识别。请尝试使用 Chrome 或 Edge 检查发音。",
+    "listening": "正在聆听… 点击停止",
+    "tapToSpeak": "点击并说话",
+    "youSaid": "你说的是",
+    "greatJob": "发音很棒！🎉",
+    "tryAgain": "接近了 — 再听一遍并重试。",
+    "typeHint": "先听，再打字",
+    "typePlaceholder": "在此输入…",
+    "correct": "正确！🎉",
+    "target": "答案"
+  },
   "cctv": {
     "title": "摄像头",
     "subtitle": "你的 GreenWave 摄像头。默认私密 — 仅在你选择时分享。",

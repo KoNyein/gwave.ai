@@ -12,6 +12,7 @@ import {
   FileCode2,
   FlaskConical,
   Gamepad2,
+  Languages,
   ListChecks,
   Palette,
   GraduationCap,
@@ -128,6 +129,23 @@ export default async function LearnPage() {
           </Card>
         </Link>
       </div>
+
+      <Link href="/learn/languages" className="block">
+        <Card className="overflow-hidden border-primary/30 bg-primary/5 transition-colors hover:bg-primary/10">
+          <CardContent className="flex items-center gap-4 p-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Languages className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="font-semibold">Languages 🌏 🇬🇧 🇹🇭 🇨🇳</p>
+              <p className="text-sm text-muted-foreground">
+                မြန်မာလိုနေပြီး English, ထိုင်း, တရုတ် လေ့လာပါ — အသံထွက်၊ နားထောင်၊
+                စာရိုက် လေ့ကျင့်ခန်းများနှင့်။
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
 
       {resume && (
         <Link

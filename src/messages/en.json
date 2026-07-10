@@ -1068,6 +1068,28 @@
     "status_delivered": "Delivered",
     "status_cancelled": "Cancelled"
   },
+  "lang": {
+    "title": "Languages",
+    "subtitle": "Learn English, Thai and Chinese from Burmese — with audio, listening, speaking and typing practice.",
+    "unitsWords": "{units} units · {words} words",
+    "browserNote": "Audio and pronunciation checking use your browser's built-in speech features. They work best in Chrome or Edge; if your browser doesn't support them, you can still read and listen.",
+    "modeListen": "Listen",
+    "modeSpeak": "Speak",
+    "modeType": "Type",
+    "playAudio": "Play audio",
+    "ttsUnsupported": "Your browser can't play audio for this.",
+    "recUnsupportedTitle": "Speaking practice isn't available here",
+    "recUnsupportedHint": "Your browser doesn't support speech recognition. Try Chrome or Edge to check your pronunciation.",
+    "listening": "Listening… tap to stop",
+    "tapToSpeak": "Tap and speak",
+    "youSaid": "You said",
+    "greatJob": "Great pronunciation! 🎉",
+    "tryAgain": "Close — listen again and try once more.",
+    "typeHint": "Listen, then type it",
+    "typePlaceholder": "Type here…",
+    "correct": "Correct! 🎉",
+    "target": "Answer"
+  },
   "cctv": {
     "title": "Cameras",
     "subtitle": "Your GreenWave cameras. Private by default — share only when you choose.",
