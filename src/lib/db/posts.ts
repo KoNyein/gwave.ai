@@ -1,5 +1,7 @@
 import "server-only";
 
+import { SPONSORED_SLOT } from "@/lib/ads/rank";
+import { pickBoostForFeed } from "@/lib/db/boosts";
 import { createClient } from "@/lib/supabase/server";
 import { rankItems } from "@/lib/feed/rank";
 import {
@@ -130,6 +132,40 @@ function chronoCursor(post: FeedPost): string {
 }
 
 /**
+ * Splice one *Sponsored* post into a freshly-loaded first page: run the boost
+ * auction, fetch the winning campaign's post (RLS still applies), and place it
+ * at SPONSORED_SLOT. Skipped silently if there's no eligible ad or the promoted
+ * post isn't visible to this viewer. Billing happens client-side on view.
+ */
+async function injectSponsoredPost(
+  posts: FeedPost[],
+  viewerId: string,
+): Promise<FeedPost[]> {
+  if (posts.length === 0) return posts;
+  const winner = await pickBoostForFeed("post");
+  if (!winner) return posts;
+  // Don't show a promo for a post already on screen.
+  if (posts.some((p) => p.id === winner.target_id)) return posts;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("posts")
+    .select(POST_SELECT)
+    .eq("id", winner.target_id)
+    .eq("my_reaction.user_id", viewerId)
+    .maybeSingle<FeedPost>();
+  if (!data) return posts;
+
+  const ad = hideForeignViewCounts(sortMedia(data), viewerId);
+  ad.sponsored = true;
+  ad.boost_id = winner.id;
+  ad.boost_headline = winner.headline;
+
+  const slot = Math.min(SPONSORED_SLOT, posts.length);
+  return [...posts.slice(0, slot), ad, ...posts.slice(slot)];
+}
+
+/**
  * Personalized, cursor-paginated news feed. Phase 1 surfaces the best recent
  * posts from the viewer's graph; phase 2 continues chronologically through
  * older history. RLS still enforces visibility.
@@ -199,10 +235,16 @@ export async function getFeed(
     followIds: graph.followIds,
   });
 
-  const page = ranked
+  let page = ranked
     .slice(offset, offset + limit)
     .map(sortMedia)
     .map((p) => hideForeignViewCounts(p, userId));
+
+  // Only the very first page carries a Sponsored slot, so an ad shows up front
+  // without repeating on every infinite-scroll fetch.
+  if (offset === 0) {
+    page = await injectSponsoredPost(page, userId);
+  }
 
   let nextCursor: string | null = null;
   if (offset + limit < ranked.length) {

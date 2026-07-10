@@ -13,6 +13,7 @@ import {
   MessageCircle,
   MoreHorizontal,
   Pencil,
+  Rocket,
   Send,
   Share2,
   Trash2,
@@ -20,6 +21,10 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import {
+  SponsoredImpression,
+  useBoostClick,
+} from "@/components/boost/sponsored-tracker";
 import { CommentSection } from "@/components/social/comment-section";
 import { EditPostDialog } from "@/components/social/edit-post-dialog";
 import { LocationMap } from "@/components/social/location-map";
@@ -92,6 +97,9 @@ export function PostCard({
 
   const VisibilityIcon = VISIBILITY_ICONS[visibility];
   const isOwn = post.author_id === currentUser.id;
+  const boostId = post.sponsored ? (post.boost_id ?? null) : null;
+  const isSponsored = boostId !== null;
+  const onAdClick = useBoostClick(boostId);
 
   // Native share sheet (Web Share API) — phones show the OS share dialog.
   async function shareExternally() {
@@ -132,9 +140,23 @@ export function PostCard({
   }
 
   return (
-    <Card className="relative overflow-hidden">
+    <Card
+      className="relative overflow-hidden"
+      onClickCapture={isSponsored ? onAdClick : undefined}
+    >
       {/* Views are only recorded on other people's posts. */}
-      {!isOwn ? <PostViewTracker postId={post.id} /> : null}
+      {!isOwn && !isSponsored ? <PostViewTracker postId={post.id} /> : null}
+      {/* Sponsored (paid promotion) — bills at most once per viewer/day. */}
+      {boostId ? <SponsoredImpression boostId={boostId} /> : null}
+      {isSponsored ? (
+        <div className="flex items-center gap-1.5 border-b bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground">
+          <Rocket className="h-3.5 w-3.5 text-primary" />
+          <span className="font-medium">{t("sponsored")}</span>
+          {post.boost_headline ? (
+            <span className="truncate">· {post.boost_headline}</span>
+          ) : null}
+        </div>
+      ) : null}
       {/* Header */}
       <div className="flex items-start justify-between px-4 pt-3">
         <div className="flex items-center gap-3">
@@ -208,6 +230,12 @@ export function PostCard({
             ) : null}
             {isOwn ? (
               <>
+                <DropdownMenuItem asChild>
+                  <Link href={`/boost/new?type=post&id=${post.id}`}>
+                    <Rocket className="mr-2 h-4 w-4" />
+                    {t("boost")}
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setEditOpen(true)}>
                   <Pencil className="mr-2 h-4 w-4" />
                   {t("edit")}

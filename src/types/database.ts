@@ -1001,6 +1001,64 @@ export interface CreatorStatBucket {
   earnings: number;
 }
 
+// ---------------------------------------------------------------------------
+// Boosts (paid promotion / ads)
+// ---------------------------------------------------------------------------
+
+export type BoostTarget = "post" | "shop_product" | "pos_product";
+export type BoostStatus =
+  | "active"
+  | "paused"
+  | "completed"
+  | "cancelled"
+  | "rejected";
+
+export interface Boost {
+  id: string;
+  owner_id: string;
+  target_type: BoostTarget;
+  target_id: string;
+  headline: string | null;
+  budget_mmk: number;
+  spent_mmk: number;
+  daily_cap_mmk: number;
+  bid_mmk: number;
+  audience: { adult?: boolean; region?: string | null; tags?: string[] };
+  start_at: string;
+  end_at: string;
+  status: BoostStatus;
+  impressions: number;
+  reach: number;
+  clicks: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** One eligible campaign row returned by the get_feed_boosts RPC. */
+export interface BoostServeRow {
+  id: string;
+  owner_id: string;
+  target_id: string;
+  headline: string | null;
+  bid_mmk: number;
+  budget_mmk: number;
+  spent_mmk: number;
+  daily_cap_mmk: number;
+  spent_today: number;
+  impressions: number;
+  clicks: number;
+  start_at: string;
+  end_at: string;
+}
+
+/** One day of a single campaign's performance (owner analytics). */
+export interface BoostDailyStat {
+  day: string;
+  impressions: number;
+  clicks: number;
+  spent: number;
+}
+
 export type Database = {
   public: {
     Tables: {

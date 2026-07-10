@@ -33,6 +33,12 @@ export interface FeedPost extends Post {
   group: { id: string; name: string; slug: string } | null;
   /** Page context when the post was published as a page. */
   page: { id: string; name: string; slug: string; avatar_url: string | null } | null;
+  /** Set when this card is a paid promotion spliced into the feed. */
+  sponsored?: boolean;
+  /** The campaign that placed this card (for impression/click billing). */
+  boost_id?: string | null;
+  /** Advertiser's promotional headline, shown above the post. */
+  boost_headline?: string | null;
 }
 
 /** One entry in a post's audience list (author-only). */

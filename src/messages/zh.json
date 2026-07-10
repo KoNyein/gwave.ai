@@ -28,6 +28,7 @@
     "games": "游戏",
     "shop": "商店",
     "cameras": "摄像头",
+    "boost": "推广",
     "gpay": "G-Pay",
     "family": "家庭",
     "finance": "财务",
@@ -106,7 +107,9 @@
     "noViewersYet": "还没有浏览。",
     "atALocation": "在某个位置",
     "edit": "编辑帖子",
-    "shareExternal": "分享到…"
+    "shareExternal": "分享到…",
+    "boost": "推广",
+    "sponsored": "赞助"
   },
   "comments": {
     "placeholder": "写下评论...",
