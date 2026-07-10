@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { MapPin } from "lucide-react";
+import { Map as MapIcon, MapPin } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { FamilyClient } from "@/components/family/family-client";
@@ -25,14 +26,22 @@ export default async function FamilyPage({
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-2">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <MapPin className="h-5 w-5" />
-        </span>
-        <div>
-          <h1 className="text-xl font-bold">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <MapPin className="h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="text-xl font-bold">{t("title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+          </div>
         </div>
+        <Link
+          href="/map"
+          className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted/50"
+        >
+          <MapIcon className="h-4 w-4" /> GPS Map
+        </Link>
       </div>
 
       <FamilyClient
