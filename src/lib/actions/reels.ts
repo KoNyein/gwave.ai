@@ -48,6 +48,22 @@ export async function recordReelView(reelId: string): Promise<void> {
   await supabase.rpc("record_reel_view", { p_reel: reelId });
 }
 
+/**
+ * Record a chunk of watch time (seconds) for a reel. Fire-and-forget; the RPC
+ * clamps the value server-side so it can't over-credit.
+ */
+export async function recordReelWatch(
+  reelId: string,
+  seconds: number,
+): Promise<void> {
+  if (!reelId || !Number.isFinite(seconds) || seconds <= 0) return;
+  const supabase = await createClient();
+  await supabase.rpc("record_reel_watch", {
+    p_reel: reelId,
+    p_seconds: Math.round(seconds),
+  });
+}
+
 /** Toggle the caller's like on a reel; returns the new liked state. */
 export async function toggleReelLike(
   reelId: string,

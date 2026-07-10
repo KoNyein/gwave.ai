@@ -958,11 +958,12 @@ export interface Reel {
   caption: string | null;
   view_count: number;
   like_count: number;
+  watch_seconds: number;
   is_public: boolean;
   created_at: string;
 }
 
-export type EarningKind = "view" | "like" | "bonus";
+export type EarningKind = "view" | "like" | "watch" | "bonus";
 
 export interface CreatorEarning {
   id: string;
@@ -985,6 +986,7 @@ export interface CreatorSummary {
   reelCount: number;
   totalViews: number;
   totalLikes: number;
+  totalWatchSeconds: number;
   totalEarned: number;
   balance: number;
 }
