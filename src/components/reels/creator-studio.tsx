@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Banknote, Eye, Heart, Loader2, Video } from "lucide-react";
+import { Banknote, Clock, Eye, Heart, Loader2, Video } from "lucide-react";
 
 import { withdrawEarnings } from "@/lib/actions/reels";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,18 @@ import type { CreatorSummary } from "@/types/database";
 
 function mmk(n: number): string {
   return `${Math.round(n).toLocaleString("en-US")} Ks`;
+}
+
+/** Total seconds → "Hနာ Mမိ Sစ" (Burmese h/m/s). */
+function watchTime(total: number): string {
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = Math.floor(total % 60);
+  const parts: string[] = [];
+  if (h) parts.push(`${h}နာ`);
+  if (m || h) parts.push(`${m}မိ`);
+  parts.push(`${s}စ`);
+  return parts.join(" ");
 }
 
 export function CreatorStudio({ summary }: { summary: CreatorSummary }) {
@@ -39,6 +51,7 @@ export function CreatorStudio({ summary }: { summary: CreatorSummary }) {
     { icon: <Video className="h-4 w-4" />, label: "Reels", value: String(summary.reelCount) },
     { icon: <Eye className="h-4 w-4" />, label: "ကြည့်ရှုမှု", value: summary.totalViews.toLocaleString("en-US") },
     { icon: <Heart className="h-4 w-4" />, label: "Like", value: summary.totalLikes.toLocaleString("en-US") },
+    { icon: <Clock className="h-4 w-4" />, label: "ကြည့်ချိန်", value: watchTime(summary.totalWatchSeconds) },
     { icon: <Banknote className="h-4 w-4" />, label: "စုစုပေါင်း ဝင်ငွေ", value: mmk(summary.totalEarned) },
   ];
 
@@ -49,7 +62,7 @@ export function CreatorStudio({ summary }: { summary: CreatorSummary }) {
         <h2 className="font-semibold">🎬 Creator Studio — ဝင်ငွေ</h2>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {stats.map((s) => (
           <div key={s.label} className="rounded-lg bg-muted/60 p-2 text-center">
             <div className="flex items-center justify-center gap-1 text-muted-foreground">
@@ -80,9 +93,47 @@ export function CreatorStudio({ summary }: { summary: CreatorSummary }) {
       </div>
 
       {msg ? <p className="text-sm">{msg}</p> : null}
-      <p className="text-xs text-muted-foreground">
-        💡 ဝင်ငွေနှုန်း — ကြည့်ရှုမှု တစ်ခုလျှင် ၁ Ks၊ Like တစ်ခုလျှင် ၃ Ks (play-money)။
-      </p>
+
+      <RulesPanel />
+    </div>
+  );
+}
+
+function RulesPanel() {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="rounded-lg border bg-muted/40 p-2 text-xs">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between font-medium"
+      >
+        <span>📜 ဝင်ငွေ စည်းကမ်းချက် (Monetization rules)</span>
+        <span className="text-muted-foreground">{open ? "▲" : "▼"}</span>
+      </button>
+      {open ? (
+        <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground">
+          <li>
+            <b>ဝင်ငွေနှုန်း</b> — ကြည့်ရှုမှု ၁ ခု = <b>၁ Ks</b>၊ Like ၁ ခု ={" "}
+            <b>၃ Ks</b>၊ ကြည့်ချိန် ၁ မိနစ် = <b>၃ Ks</b> (စက္ကန့် ၁ ခု = ၀.၀၅ Ks)။ (play-money MMK)
+          </li>
+          <li>
+            ကြည့်ရှုမှုကို <b>ကြည့်သူ တစ်ဦးလျှင် တစ်ကြိမ်သာ</b> ရေတွက်သည်။
+          </li>
+          <li>
+            ကိုယ့် reel ကို <b>ကိုယ်တိုင် ကြည့်/like</b> လုပ်ခြင်း — ဝင်ငွေ မရပါ။
+          </li>
+          <li>
+            ကြည့်ချိန် ဝင်ငွေကို တစ်ကြိမ်လျှင် အများဆုံး <b>၃၀၀ စက္ကန့်</b> ကန့်သတ်ထားသည် (bot/tab-ဖွင့်ထား လိမ်လည်မှု တားဆီးရန်)။
+          </li>
+          <li>
+            ငွေထုတ်ရန် <b>active G-Pay account</b> လိုအပ်သည်။ ငွေအားလုံး G-Pay wallet သို့ လွှဲပါသည်။
+          </li>
+          <li>
+            လိမ်လည်မှု (fake views/likes) တွေ့ရှိပါက ဝင်ငွေ ရုပ်သိမ်း/account ပိတ်နိုင်သည်။ တရားဝင်၊ ကိုယ်ပိုင် content သာ တင်ပါ။
+          </li>
+        </ul>
+      ) : null}
     </div>
   );
 }

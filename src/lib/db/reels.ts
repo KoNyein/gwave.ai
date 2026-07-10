@@ -89,6 +89,7 @@ export async function getCreatorSummary(): Promise<CreatorSummary> {
     reelCount: 0,
     totalViews: 0,
     totalLikes: 0,
+    totalWatchSeconds: 0,
     totalEarned: 0,
     balance: 0,
   };
@@ -101,9 +102,9 @@ export async function getCreatorSummary(): Promise<CreatorSummary> {
   const [{ data: reels }, { data: earnings }] = await Promise.all([
     supabase
       .from("reels")
-      .select("view_count, like_count")
+      .select("view_count, like_count, watch_seconds")
       .eq("owner_id", user.id)
-      .returns<Pick<Reel, "view_count" | "like_count">[]>(),
+      .returns<Pick<Reel, "view_count" | "like_count" | "watch_seconds">[]>(),
     supabase
       .from("creator_earnings")
       .select("amount_mmk, paid_out")
@@ -117,6 +118,7 @@ export async function getCreatorSummary(): Promise<CreatorSummary> {
     reelCount: r.length,
     totalViews: r.reduce((s, x) => s + (x.view_count ?? 0), 0),
     totalLikes: r.reduce((s, x) => s + (x.like_count ?? 0), 0),
+    totalWatchSeconds: r.reduce((s, x) => s + Number(x.watch_seconds ?? 0), 0),
     totalEarned: e.reduce((s, x) => s + Number(x.amount_mmk ?? 0), 0),
     balance: e
       .filter((x) => !x.paid_out)

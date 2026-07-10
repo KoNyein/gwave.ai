@@ -4,7 +4,11 @@ import * as React from "react";
 import Link from "next/link";
 import { Heart, Play, Volume2, VolumeX } from "lucide-react";
 
-import { recordReelView, toggleReelLike } from "@/lib/actions/reels";
+import {
+  recordReelView,
+  recordReelWatch,
+  toggleReelLike,
+} from "@/lib/actions/reels";
 import { cn } from "@/lib/utils";
 import type { ReelWithAuthor } from "@/types/database";
 
@@ -29,6 +33,15 @@ function ReelItem({ reel }: { reel: ReelWithAuthor }) {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const wrapRef = React.useRef<HTMLDivElement | null>(null);
   const viewed = React.useRef(false);
+  // Watch-time: accumulate seconds while playing and report in chunks.
+  const pendingSeconds = React.useRef(0);
+  const flushWatch = React.useCallback(() => {
+    const s = pendingSeconds.current;
+    if (s > 0) {
+      pendingSeconds.current = 0;
+      void recordReelWatch(reel.id, s);
+    }
+  }, [reel.id]);
 
   const [muted, setMuted] = React.useState(true);
   const [playing, setPlaying] = React.useState(false);
@@ -62,6 +75,20 @@ function ReelItem({ reel }: { reel: ReelWithAuthor }) {
     io.observe(el);
     return () => io.disconnect();
   }, [reel.id]);
+
+  // Tick one watch-second per second while playing; flush in 10s chunks and on
+  // stop/unmount so partial watch time is still credited.
+  React.useEffect(() => {
+    if (!playing) return;
+    const iv = window.setInterval(() => {
+      pendingSeconds.current += 1;
+      if (pendingSeconds.current >= 10) flushWatch();
+    }, 1000);
+    return () => {
+      window.clearInterval(iv);
+      flushWatch();
+    };
+  }, [playing, flushWatch]);
 
   const togglePlay = () => {
     const vid = videoRef.current;
