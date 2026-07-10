@@ -34,7 +34,7 @@ export default async function MapPage() {
         </Link>
       </div>
 
-      <GpsMap />
+      <GpsMap apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""} />
     </div>
   );
 }

@@ -28,7 +28,8 @@ const MapInner = dynamic(() => import("@/components/gps/gps-map-inner"), {
   ),
 });
 
-export function GpsMap() {
+export function GpsMap({ apiKey }: { apiKey: string }) {
+  const useGoogle = Boolean(apiKey);
   const router = useRouter();
   const [fix, setFix] = React.useState<GeoFix | null>(null);
   const [recenter, setRecenter] = React.useState(0);
@@ -116,7 +117,24 @@ export function GpsMap() {
   return (
     <div className="space-y-3">
       <div className="h-[60vh] min-h-[320px] w-full overflow-hidden rounded-xl border">
-        <MapInner fix={fix} recenter={recenter} />
+        {useGoogle ? (
+          fix ? (
+            <iframe
+              title="Google Map"
+              className="h-full w-full border-0"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              allow="geolocation"
+              src={`https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${fix.latitude},${fix.longitude}&zoom=16`}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-muted text-xs text-muted-foreground">
+              တည်နေရာ ရှာနေသည်…
+            </div>
+          )
+        ) : (
+          <MapInner fix={fix} recenter={recenter} />
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -136,7 +154,7 @@ export function GpsMap() {
           <Radio className="mr-1 h-4 w-4" />
           {follow ? "Live · ရပ်ရန်" : "Live လိုက်ကြည့်"}
         </Button>
-        {fix ? (
+        {fix && !useGoogle ? (
           <Button
             onClick={() => setRecenter((n) => n + 1)}
             size="sm"
