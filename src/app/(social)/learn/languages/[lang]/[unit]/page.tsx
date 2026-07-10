@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { LanguageTrainer } from "@/components/learn/language-trainer";
 import { getCurrentProfile } from "@/lib/auth";
-import { getLangUnit } from "@/lib/learn/languages";
+import { getLangUi, getLangUnit } from "@/lib/learn/languages";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +50,11 @@ export default async function LanguageUnitPage({
         </div>
       </div>
 
-      <LanguageTrainer items={unit.items} lang={course.bcp47} />
+      <LanguageTrainer
+        items={unit.items}
+        lang={course.bcp47}
+        ui={getLangUi(course.slug)}
+      />
     </div>
   );
 }
