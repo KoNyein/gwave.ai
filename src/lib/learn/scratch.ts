@@ -260,6 +260,67 @@ export const scratchTrack: Track = {
         goal: { requireKinds: ["penDown", "repeat", "turnRight", "turnLeft"] },
       },
     },
+    // 9b ── Forever loop
+    {
+      slug: "forever-loop",
+      title: "အမြဲ ထပ်လုပ် (Forever)",
+      summary: "«အမြဲ ထပ်လုပ်» block နဲ့ မရပ်တမ်း လုပ်ဆောင်စေမယ်။",
+      minutes: 7,
+      kind: "scratch",
+      sections: [
+        {
+          heading: "Forever loop",
+          body: "«အမြဲ ထပ်လုပ်» ဆိုတာ အတွင်းက block တွေကို ရပ်တန့်မထားဘဲ ထပ်ခါထပ်ခါ လုပ်စေတာပါ (ဂိမ်းတွေမှာ အသုံးများတယ်)။ ကျွန်တော်တို့ playground မှာတော့ အဆုံးမရှိ မဖြစ်အောင် အကြိမ်ရေ အနည်းငယ် ကန့်သတ်ထားပါတယ်။",
+        },
+        {
+          heading: "စမ်းကြည့်ပါ",
+          body: "«အမြဲ ထပ်လုပ် [ ရှေ့သွား ၊ ညာဘက် ၉၀° လှည့် ]» — ဇာတ်ကောင် စက်ဝိုင်းလို ပတ်နေတာ တွေ့ရမယ်။ ခဲတံ ချထားရင် ပုံ ဆွဲသွားမယ်။",
+        },
+      ],
+      scratch: {
+        starter: [
+          { kind: "penDown" },
+          { kind: "forever" },
+          { kind: "move", arg: 50 },
+          { kind: "turnRight", arg: 72 },
+          { kind: "repeatEnd" },
+        ],
+        goal: { requireKinds: ["forever", "move"] },
+      },
+    },
+    // 9c ── Variables & lists (arrays)
+    {
+      slug: "variables-lists",
+      title: "ကိန်းရှင် & စာရင်း (Array)",
+      summary: "ကိန်း (counter) နဲ့ စာရင်း (list/array) block တွေ သုံးကြမယ်။",
+      minutes: 9,
+      kind: "scratch",
+      sections: [
+        {
+          heading: "ကိန်းရှင် (Variable)",
+          body: "ကိန်းရှင် ဆိုတာ တန်ဖိုး တစ်ခု သိမ်းထားတဲ့ 'ဗူး' လိုပါ။ «ကိန်း ကို ၀ ထား» ပြီး loop ထဲမှာ «ကိန်း ကို ၁ ပေါင်း» လုပ်ရင် အရေအတွက် တွက်နိုင်ပါတယ်။ «ကိန်း တန်ဖိုး ပြော» နဲ့ ကြည့်လို့ရတယ်။ ဇာတ်ခုံအောက်က monitor မှာ တန်ဖိုး ပေါ်ပါလိမ့်မယ်။",
+        },
+        {
+          heading: "စာရင်း (List / Array)",
+          body: "စာရင်း (array) ဆိုတာ တန်ဖိုး အများကြီး အစဉ်လိုက် သိမ်းထားတဲ့ 'ဗူးတန်း' ပါ။ «စာရင်းထဲ ... ထည့်» နဲ့ တစ်ခုချင်း ထည့်၊ «စာရင်း ရှင်း» နဲ့ ဖျက်၊ «စာရင်း တစ်ခုလုံး ပြော» နဲ့ အားလုံး ကြည့်နိုင်ပါတယ်။",
+        },
+        {
+          heading: "ရည်မှန်းချက်",
+          body: "loop သုံးပြီး ကိန်းကို ရေတွက်၊ စာရင်းထဲ အသီး (🍎🍌🍊) တွေ ထည့်ကြည့်ပါ — monitor မှာ တန်ဖိုးတွေ ပြောင်းသွားတာ ကြည့်ပါ။",
+        },
+      ],
+      scratch: {
+        starter: [
+          { kind: "setVar", arg: 0 },
+          { kind: "repeat", arg: 3 },
+          { kind: "changeVar", arg: 1 },
+          { kind: "listAdd", arg: "🍎" },
+          { kind: "repeatEnd" },
+          { kind: "sayVar" },
+        ],
+        goal: { requireKinds: ["setVar", "changeVar", "listAdd"] },
+      },
+    },
     // 10 ── Quiz
     {
       slug: "concepts-quiz",
