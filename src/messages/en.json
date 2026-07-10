@@ -1111,7 +1111,15 @@
     "status_pending": "Pending",
     "status_active": "Active",
     "status_suspended": "Suspended",
-    "status_rejected": "Rejected"
+    "status_rejected": "Rejected",
+    "depositTitle": "Registration deposit",
+    "depositHint": "Transfer {amount} MMK via KPay, then upload the slip below.",
+    "slipChoose": "Upload KPay slip",
+    "slipReplace": "Replace KPay slip",
+    "slipImageOnly": "The slip must be an image.",
+    "slipUploadFailed": "Couldn't upload the slip. Please try again.",
+    "viewSlip": "View slip",
+    "noSlip": "No slip uploaded"
   },
   "lang": {
     "title": "Languages",

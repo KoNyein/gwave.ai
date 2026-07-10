@@ -1111,7 +1111,15 @@
     "status_pending": "รอตรวจสอบ",
     "status_active": "ใช้งานได้",
     "status_suspended": "ถูกระงับ",
-    "status_rejected": "ถูกปฏิเสธ"
+    "status_rejected": "ถูกปฏิเสธ",
+    "depositTitle": "เงินฝากลงทะเบียน",
+    "depositHint": "โอน {amount} จ๊าดผ่าน KPay แล้วอัปโหลดสลิปด้านล่าง",
+    "slipChoose": "อัปโหลดสลิป KPay",
+    "slipReplace": "เปลี่ยนสลิป KPay",
+    "slipImageOnly": "สลิปต้องเป็นรูปภาพ",
+    "slipUploadFailed": "อัปโหลดสลิปไม่ได้ กรุณาลองอีกครั้ง",
+    "viewSlip": "ดูสลิป",
+    "noSlip": "ยังไม่ได้อัปโหลดสลิป"
   },
   "lang": {
     "title": "ภาษา",

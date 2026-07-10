@@ -272,6 +272,10 @@ export interface GpayAccount {
   telegram: string | null;
   viber: string | null;
   address: string;
+  // Storage path (in the private "slips" bucket) of the KPay payment slip.
+  slip_path: string | null;
+  // Set the first time the account is approved; gates the one-time bonus.
+  welcomed_at: string | null;
   balance: number;
   created_at: string;
   updated_at: string;

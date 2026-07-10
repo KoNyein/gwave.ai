@@ -2,13 +2,19 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { Loader2, ShieldCheck, Upload, Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveGpayKyc } from "@/lib/actions/gpay";
+import {
+  GPAY_PLATFORM_KPAY,
+  GPAY_REGISTER_FEE_MMK,
+} from "@/lib/gpay";
+import { prepareMedia } from "@/lib/media";
+import { createClient } from "@/lib/supabase/client";
 import type { GpayAccount } from "@/types/database";
 
 /**
@@ -19,19 +25,46 @@ import type { GpayAccount } from "@/types/database";
  */
 export function GpayRegistrationForm({
   account,
+  userId,
 }: {
   account: GpayAccount | null;
+  userId: string;
 }) {
   const t = useTranslations("gpay");
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [slip, setSlip] = React.useState<File | null>(null);
+  const slipInputRef = React.useRef<HTMLInputElement>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setPending(true);
     setError(null);
     const fd = new FormData(e.currentTarget);
+
+    // Upload a newly chosen payment slip to the private "slips" bucket first;
+    // we store only its path. Editing without picking a new file keeps the old.
+    let slipPath = "";
+    try {
+      if (slip) {
+        const prepared = await prepareMedia(slip);
+        if (prepared.mediaType !== "image") throw new Error(t("slipImageOnly"));
+        slipPath = `${userId}/gpay/${crypto.randomUUID()}.${prepared.extension}`;
+        const supabase = createClient();
+        const { error: upErr } = await supabase.storage
+          .from("slips")
+          .upload(slipPath, prepared.blob, {
+            contentType: prepared.contentType,
+          });
+        if (upErr) throw new Error(upErr.message);
+      }
+    } catch (err) {
+      setPending(false);
+      setError(err instanceof Error ? err.message : t("slipUploadFailed"));
+      return;
+    }
+
     // These keys match the input `name` attributes rendered by field() below,
     // which use the snake_case column names.
     const res = await saveGpayKyc({
@@ -42,12 +75,14 @@ export function GpayRegistrationForm({
       telegram: String(fd.get("telegram") ?? ""),
       viber: String(fd.get("viber") ?? ""),
       address: String(fd.get("address") ?? ""),
+      slipPath,
     });
     setPending(false);
     if (!res.ok) {
       setError(res.error);
       return;
     }
+    setSlip(null);
     router.refresh();
   }
 
@@ -94,6 +129,48 @@ export function GpayRegistrationForm({
       <p className="text-xs text-muted-foreground">{t("contactHint")}</p>
 
       {field("address", t("address"), { required: true })}
+
+      {/* Deposit instruction + payment-slip upload */}
+      <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+        <p className="flex items-center gap-1.5 text-sm font-medium">
+          <Wallet className="h-4 w-4 text-primary" /> {t("depositTitle")}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {t("depositHint", {
+            amount: GPAY_REGISTER_FEE_MMK.toLocaleString(),
+          })}
+          {GPAY_PLATFORM_KPAY ? (
+            <>
+              {" "}
+              <span className="font-mono font-medium text-foreground">
+                {GPAY_PLATFORM_KPAY}
+              </span>
+            </>
+          ) : null}
+        </p>
+        <button
+          type="button"
+          onClick={() => slipInputRef.current?.click()}
+          className="flex w-full flex-col items-center gap-1 rounded-lg border-2 border-dashed p-4 text-xs text-muted-foreground transition-colors hover:bg-muted"
+        >
+          <Upload className="h-5 w-5" />
+          {slip
+            ? slip.name
+            : account?.slip_path
+              ? t("slipReplace")
+              : t("slipChoose")}
+        </button>
+        <input
+          ref={slipInputRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(ev) => {
+            setSlip(ev.target.files?.[0] ?? null);
+            ev.target.value = "";
+          }}
+        />
+      </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
