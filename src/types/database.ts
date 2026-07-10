@@ -960,6 +960,8 @@ export interface Reel {
   like_count: number;
   watch_seconds: number;
   is_public: boolean;
+  /** Creator confirmed it's their own original work → eligible to earn. */
+  original_confirmed: boolean;
   created_at: string;
 }
 

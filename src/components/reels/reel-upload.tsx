@@ -13,12 +13,14 @@ export function ReelUpload({ userId }: { userId: string }) {
   const [open, setOpen] = React.useState(false);
   const [file, setFile] = React.useState<File | null>(null);
   const [caption, setCaption] = React.useState("");
+  const [original, setOriginal] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const reset = () => {
     setFile(null);
     setCaption("");
+    setOriginal(false);
     setError(null);
   };
 
@@ -34,6 +36,7 @@ export function ReelUpload({ userId }: { userId: string }) {
       const res = await createReel({
         video_path: uploaded.storage_path,
         caption: caption.trim() || null,
+        original_confirmed: original,
       });
       if (!res.ok) throw new Error(res.error);
       reset();
@@ -95,6 +98,21 @@ export function ReelUpload({ userId }: { userId: string }) {
         className="w-full resize-none rounded-lg border bg-background p-2 text-sm"
       />
 
+      <label className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs">
+        <input
+          type="checkbox"
+          checked={original}
+          onChange={(e) => setOriginal(e.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0"
+        />
+        <span>
+          ဤ ဗီဒီယို/အသံကို <b>ကျွန်ုပ် ကိုယ်တိုင် ဖန်တီးထားပြီး</b> မူပိုင်ခွင့်
+          ချိုးဖောက်မှု မရှိပါ။ အခြား platform / social network မည်သည့်နေရာတွင်မျှ
+          <b> တင်ဖူးခြင်း မရှိသေးသော</b> မူရင်း content ဖြစ်ပါသည်။ (ဝင်ငွေ ရရှိရန်
+          အတွက် လိုအပ်သည်)
+        </span>
+      </label>
+
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
       <Button onClick={submit} disabled={!file || busy} className="w-full">
@@ -102,12 +120,14 @@ export function ReelUpload({ userId }: { userId: string }) {
           <>
             <Loader2 className="mr-1 h-4 w-4 animate-spin" /> တင်နေသည်…
           </>
+        ) : original ? (
+          "တင်မည် (💰 monetize)"
         ) : (
           "တင်မည်"
         )}
       </Button>
       <p className="text-center text-xs text-muted-foreground">
-        အများဆုံး ၁၀၀ MB · view/like တိုင်း ဝင်ငွေ ရရှိမည် 💰
+        အများဆုံး ၁၀၀ MB · မူရင်း (original) content သာ ဝင်ငွေ ရရှိမည် 💰
       </p>
     </div>
   );
