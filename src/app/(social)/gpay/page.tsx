@@ -9,8 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
 import {
   getAllGpayAccounts,
+  getGpayTransactions,
   getMyGpayAccount,
-  getMyGpayTransactions,
 } from "@/lib/db/gpay";
 
 export const metadata = { title: "G-Pay" };
@@ -27,9 +27,10 @@ export default async function GpayPage() {
     getMyGpayAccount(),
     isAdmin ? getAllGpayAccounts() : Promise.resolve([]),
   ]);
-  const transactions = account?.status === "active"
-    ? await getMyGpayTransactions()
-    : [];
+  const transactions =
+    account?.status === "active"
+      ? await getGpayTransactions(account.id)
+      : [];
 
   return (
     <div className="space-y-5">

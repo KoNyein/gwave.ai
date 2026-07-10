@@ -32,9 +32,11 @@ export function GpayRegistrationForm({
     setPending(true);
     setError(null);
     const fd = new FormData(e.currentTarget);
+    // These keys match the input `name` attributes rendered by field() below,
+    // which use the snake_case column names.
     const res = await saveGpayKyc({
-      fullName: String(fd.get("fullName") ?? ""),
-      nrcNumber: String(fd.get("nrcNumber") ?? ""),
+      fullName: String(fd.get("full_name") ?? ""),
+      nrcNumber: String(fd.get("nrc_number") ?? ""),
       phone: String(fd.get("phone") ?? ""),
       email: String(fd.get("email") ?? ""),
       telegram: String(fd.get("telegram") ?? ""),

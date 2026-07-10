@@ -170,8 +170,11 @@ begin
   if auth.uid() is null then
     raise exception 'Not authenticated';
   end if;
-  if p_amount is null or p_amount <= 0 then
-    raise exception 'Enter an amount greater than zero';
+  -- Reject anything that isn't a positive amount in whole cents. Without this a
+  -- caller could send e.g. 0.005, which rounds to 0.00 off the sender but 0.01
+  -- onto the recipient/ledger — effectively minting money.
+  if p_amount is null or p_amount < 0.01 or p_amount <> round(p_amount, 2) then
+    raise exception 'Enter a valid amount (at least 0.01, up to 2 decimals)';
   end if;
 
   select * into v_from from public.gpay_accounts where user_id = auth.uid();
@@ -220,8 +223,8 @@ begin
   if not public.is_admin() then
     raise exception 'Admins only';
   end if;
-  if p_amount is null or p_amount <= 0 then
-    raise exception 'Enter an amount greater than zero';
+  if p_amount is null or p_amount < 0.01 or p_amount <> round(p_amount, 2) then
+    raise exception 'Enter a valid amount (at least 0.01, up to 2 decimals)';
   end if;
   perform set_config('gpay.allow_ledger', 'on', true);
   update public.gpay_accounts set balance = balance + p_amount where id = p_account;

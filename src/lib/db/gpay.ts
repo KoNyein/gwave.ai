@@ -18,14 +18,21 @@ export async function getMyGpayAccount(): Promise<GpayAccount | null> {
   return data ?? null;
 }
 
-/** The caller's transaction history (either side), newest first. */
-export async function getMyGpayTransactions(
+/**
+ * A single account's transaction history (either side), newest first.
+ * Always filter by the account id explicitly: RLS lets an admin read every
+ * ledger row, so without this an admin's own wallet would show unrelated
+ * users' transactions.
+ */
+export async function getGpayTransactions(
+  accountId: string,
   limit = 50,
 ): Promise<GpayTransaction[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("gpay_transactions")
     .select("*")
+    .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
     .order("created_at", { ascending: false })
     .limit(limit)
     .returns<GpayTransaction[]>();

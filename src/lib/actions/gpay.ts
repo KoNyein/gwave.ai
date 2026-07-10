@@ -81,7 +81,7 @@ export async function saveGpayKyc(input: GpayKycInput): Promise<ActionResult> {
 
 const transferSchema = z.object({
   toPhone: z.string().trim().min(5).max(20),
-  amount: z.number().positive().max(100_000_000),
+  amount: z.number().min(0.01).max(100_000_000).multipleOf(0.01),
   note: z.string().trim().max(200).optional(),
 });
 
@@ -136,7 +136,7 @@ export async function setGpayStatus(input: {
 
 const topupSchema = z.object({
   accountId: z.string().uuid(),
-  amount: z.number().positive().max(100_000_000),
+  amount: z.number().min(0.01).max(100_000_000).multipleOf(0.01),
   note: z.string().trim().max(200).optional(),
 });
 
