@@ -39,7 +39,9 @@ begin
     raise exception 'Admins only';
   end if;
 
-  select * into v_acct from public.gpay_accounts where id = p_account;
+  -- Lock the row so a concurrent approval can't also read welcomed_at as null
+  -- and credit the welcome bonus twice.
+  select * into v_acct from public.gpay_accounts where id = p_account for update;
   if not found then
     raise exception 'Account not found';
   end if;
