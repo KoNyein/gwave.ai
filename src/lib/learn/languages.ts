@@ -291,7 +291,7 @@ const THAI: LangCourse = {
         { target: "วันพุธ", roman: "ဝမ် ဖုတ်", my: "ဗုဒ္ဓဟူး", emoji: "3️⃣" },
         { target: "วันพฤหัสบดี", roman: "ဝမ် ဖရုဟတ်", my: "ကြာသပတေး", emoji: "4️⃣" },
         { target: "วันศุกร์", roman: "ဝမ် ဆုတ်", my: "သောကြာ", emoji: "5️⃣" },
-        { target: "วันเสาร์", roman: "ဝမ် ဆောင်", my: "စနေ", emoji: "6️⃣" },
+        { target: "วันเสาร์", roman: "ဝမ် ဆော", my: "စနေ", emoji: "6️⃣" },
         { target: "วันอาทิตย์", roman: "ဝမ် အားတိတ်", my: "တနင်္ဂနွေ", emoji: "7️⃣" },
       ],
     },
