@@ -7,7 +7,7 @@
 // audience. State persists per-lesson through the shared autosave hook.
 
 import * as React from "react";
-import { Play, RotateCcw, Square, Trash2 } from "lucide-react";
+import { Grid3x3, Play, RotateCcw, Square, Trash2 } from "lucide-react";
 
 import {
   reportLessonComplete,
@@ -23,7 +23,7 @@ import type { ScratchBlockSpec, ScratchConfig } from "@/lib/learn/lessons";
 // a numeric/text argument with a default. `open`/`close` mark the C-shaped
 // repeat block so the editor can indent and the interpreter can loop.
 
-type Category = "motion" | "looks" | "pen" | "control";
+type Category = "motion" | "looks" | "pen" | "control" | "data";
 
 interface BlockDef {
   kind: string;
@@ -52,7 +52,15 @@ const BLOCK_DEFS: BlockDef[] = [
   // Control — ထိန်းချုပ်
   { kind: "wait", my: "{arg} စက္ကန့် စောင့်", en: "wait {arg} sec", category: "control", arg: { kind: "number", default: 1 } },
   { kind: "repeat", my: "{arg} ကြိမ် ထပ်လုပ်", en: "repeat {arg}", category: "control", arg: { kind: "number", default: 4 }, open: true },
-  { kind: "repeatEnd", my: "ထပ်လုပ် ဆုံး", en: "end repeat", category: "control", close: true },
+  { kind: "forever", my: "အမြဲ ထပ်လုပ်", en: "forever", category: "control", open: true },
+  { kind: "repeatEnd", my: "ထပ်လုပ် ဆုံး", en: "end", category: "control", close: true },
+  // Data — ကိန်းရှင် & စာရင်း (variables & lists / arrays)
+  { kind: "setVar", my: "ကိန်း ကို {arg} ထား", en: "set counter to {arg}", category: "data", arg: { kind: "number", default: 0 } },
+  { kind: "changeVar", my: "ကိန်း ကို {arg} ပေါင်း", en: "change counter by {arg}", category: "data", arg: { kind: "number", default: 1 } },
+  { kind: "sayVar", my: "ကိန်း တန်ဖိုး ပြော", en: "say counter", category: "data" },
+  { kind: "listAdd", my: "စာရင်းထဲ «{arg}» ထည့်", en: "add {arg} to list", category: "data", arg: { kind: "text", default: "🍎" } },
+  { kind: "listClear", my: "စာရင်း ရှင်း", en: "clear list", category: "data" },
+  { kind: "listSay", my: "စာရင်း တစ်ခုလုံး ပြော", en: "say list", category: "data" },
 ];
 
 const DEF_BY_KIND = new Map(BLOCK_DEFS.map((d) => [d.kind, d]));
@@ -62,6 +70,7 @@ const CATEGORY_LABEL: Record<Category, string> = {
   looks: "ပုံပန်း · Looks",
   pen: "ခဲတံ · Pen",
   control: "ထိန်းချုပ် · Control",
+  data: "ကိန်းရှင် & စာရင်း · Data",
 };
 
 const CATEGORY_CLASS: Record<Category, string> = {
@@ -69,6 +78,7 @@ const CATEGORY_CLASS: Record<Category, string> = {
   looks: "bg-purple-500/15 border-purple-500/40 text-purple-700 dark:text-purple-300",
   pen: "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300",
   control: "bg-amber-500/15 border-amber-500/40 text-amber-700 dark:text-amber-300",
+  data: "bg-rose-500/15 border-rose-500/40 text-rose-700 dark:text-rose-300",
 };
 
 const PEN_COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#eab308", "#a855f7", "#ec4899"];
@@ -95,6 +105,48 @@ function labelFor(block: Block): string {
   const value = block.arg ?? def.arg?.default ?? "";
   return def.my.replace("{arg}", String(value));
 }
+
+// ── Sprites & backdrops ──────────────────────────────────────────────────────
+// A rich set of characters the learner can pick for their sprite, grouped so
+// the picker stays tidy. Any single emoji works — it's drawn on the canvas.
+
+interface SpriteGroup {
+  label: string;
+  emojis: string[];
+}
+
+const SPRITE_GROUPS: SpriteGroup[] = [
+  {
+    label: "တိရစ္ဆာန် · Animals",
+    emojis: ["🐱", "🐶", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐸", "🐵", "🐔", "🐧", "🐦", "🦄", "🐝", "🐢", "🐙", "🦋", "🐬", "🐳", "🦖"],
+  },
+  {
+    label: "လူ · People",
+    emojis: ["🧑", "👦", "👧", "👶", "👨‍🚀", "👩‍🚀", "🧙", "🧚", "🦸", "🦹", "👽", "🤖", "🎅", "🧑‍🌾", "👮", "🧑‍🍳"],
+  },
+  {
+    label: "အရာဝတ္ထု · Things",
+    emojis: ["⚽", "🏀", "🎈", "🚗", "🚀", "✈️", "🚲", "⭐", "❤️", "🍎", "🍕", "🎁", "🌸", "🌳", "☀️", "🌙", "⚡", "💎"],
+  },
+];
+
+const ALL_SPRITES = SPRITE_GROUPS.flatMap((g) => g.emojis);
+const DEFAULT_SPRITE = "🐱";
+
+interface Backdrop {
+  id: string;
+  label: string;
+  css: string; // canvas fillStyle (solid or gradient handled specially)
+}
+
+const BACKDROPS: Backdrop[] = [
+  { id: "white", label: "အဖြူ", css: "#ffffff" },
+  { id: "sky", label: "ကောင်းကင်", css: "#dbeafe" },
+  { id: "grass", label: "မြက်ခင်း", css: "#dcfce7" },
+  { id: "sunset", label: "နေဝင်", css: "#fee2e2" },
+  { id: "night", label: "ညအချိန်", css: "#1e293b" },
+  { id: "sand", label: "သဲသောင်", css: "#fef9c3" },
+];
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -130,7 +182,9 @@ export function ScratchPlayground({
   lesson?: LessonRef;
   title: string;
 }) {
-  const saved = lesson?.initialData as { blocks?: ScratchBlockSpec[] } | undefined;
+  const saved = lesson?.initialData as
+    | { blocks?: ScratchBlockSpec[]; sprite?: string; backdrop?: string }
+    | undefined;
   const initialBlocks = React.useMemo<Block[]>(() => {
     if (saved?.blocks?.length) return saved.blocks.map(specToBlock);
     if (config?.starter?.length) return config.starter.map(specToBlock);
@@ -138,20 +192,46 @@ export function ScratchPlayground({
   }, [saved, config]);
 
   const [blocks, setBlocks] = React.useState<Block[]>(initialBlocks);
+  const [sprite, setSprite] = React.useState<string>(
+    saved?.sprite && ALL_SPRITES.includes(saved.sprite) ? saved.sprite : DEFAULT_SPRITE,
+  );
+  const [backdrop, setBackdrop] = React.useState<string>(
+    saved?.backdrop && BACKDROPS.some((b) => b.id === saved.backdrop)
+      ? saved.backdrop
+      : "white",
+  );
   const [running, setRunning] = React.useState(false);
   const [status, setStatus] = React.useState<string>("");
   const [done, setDone] = React.useState(false);
+  const [pickerOpen, setPickerOpen] = React.useState(false);
+  const [showGrid, setShowGrid] = React.useState(true);
+  // Live variable + list values shown in the data monitor while a run plays.
+  const [monitor, setMonitor] = React.useState<{ counter: number; list: string[] } | null>(null);
 
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const penCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const cancelRef = React.useRef(false);
+  // Keep the current sprite/backdrop in refs so drawSprite stays stable while
+  // an animation runs (its deps don't churn on every re-render).
+  const spriteRef = React.useRef(sprite);
+  spriteRef.current = sprite;
+  const backdropRef = React.useRef(backdrop);
+  backdropRef.current = backdrop;
+  const gridRef = React.useRef(showGrid);
+  gridRef.current = showGrid;
 
-  // Persist the block list (as plain specs) per lesson.
+  // Persist the block list + chosen sprite/backdrop per lesson.
   useProjectAutosave(
     lesson,
     "scratch",
     title,
-    { blocks: blocks.map((b) => (b.arg !== undefined ? { kind: b.kind, arg: b.arg } : { kind: b.kind })) },
+    {
+      blocks: blocks.map((b) =>
+        b.arg !== undefined ? { kind: b.kind, arg: b.arg } : { kind: b.kind },
+      ),
+      sprite,
+      backdrop,
+    },
     true,
   );
 
@@ -175,6 +255,7 @@ export function ScratchPlayground({
     setBlocks([]);
     setDone(false);
     setStatus("");
+    setMonitor(null);
     resetStage();
   };
 
@@ -198,7 +279,36 @@ export function ScratchPlayground({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, STAGE, STAGE);
-    // Pen trails underneath.
+    // Backdrop fill.
+    const bd = BACKDROPS.find((b) => b.id === backdropRef.current);
+    const dark = bd?.id === "night";
+    if (bd && bd.id !== "white") {
+      ctx.fillStyle = bd.css;
+      ctx.fillRect(0, 0, STAGE, STAGE);
+    }
+    // Grid (ကျားကွက်) — a light coordinate board so movement is easy to read.
+    if (gridRef.current) {
+      const step = STAGE / 10; // 10×10 board
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = dark ? "rgba(255,255,255,0.12)" : "rgba(15,23,42,0.10)";
+      ctx.beginPath();
+      for (let i = 1; i < 10; i++) {
+        ctx.moveTo(i * step, 0);
+        ctx.lineTo(i * step, STAGE);
+        ctx.moveTo(0, i * step);
+        ctx.lineTo(STAGE, i * step);
+      }
+      ctx.stroke();
+      // Bolder centre cross-hair (the 0,0 origin).
+      ctx.strokeStyle = dark ? "rgba(255,255,255,0.28)" : "rgba(15,23,42,0.25)";
+      ctx.beginPath();
+      ctx.moveTo(CENTER, 0);
+      ctx.lineTo(CENTER, STAGE);
+      ctx.moveTo(0, CENTER);
+      ctx.lineTo(STAGE, CENTER);
+      ctx.stroke();
+    }
+    // Pen trails on top of the backdrop.
     ctx.drawImage(pen, 0, 0);
     // Optional goal marker.
     if (config?.goal?.reach) {
@@ -233,16 +343,23 @@ export function ScratchPlayground({
       ctx.textBaseline = "middle";
       ctx.fillText(s.say, bx + 8, by + 12);
     }
-    // Sprite (a cat) rotated to face its direction.
+    // The chosen sprite, rotated to face its direction.
     ctx.save();
     ctx.translate(sx, sy);
     ctx.rotate(((90 - s.dir) * Math.PI) / 180);
     ctx.font = `${Math.round(30 * s.size)}px serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("🐱", 0, 0);
+    ctx.fillText(spriteRef.current, 0, 0);
     ctx.restore();
   }, [config]);
+
+  // Redraw the initial frame whenever the sprite or backdrop changes (only
+  // while idle — a run repaints every frame anyway).
+  React.useEffect(() => {
+    if (!running) drawSprite(INITIAL_SPRITE);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sprite, backdrop, showGrid]);
 
   const resetStage = React.useCallback(() => {
     const pen = penCanvasRef.current;
@@ -276,6 +393,12 @@ export function ScratchPlayground({
     const usedKinds = new Set<string>();
     const sleep = (ms: number) =>
       new Promise<void>((res) => setTimeout(res, ms));
+
+    // Variable + list runtime (Scratch "Variables / Lists").
+    let counter = 0;
+    const list: string[] = [];
+    const syncMonitor = () => setMonitor({ counter, list: [...list] });
+    setMonitor(null);
 
     // Expand into a linear op list, unrolling repeat blocks (bounded) so the
     // interpreter stays simple. Total steps are capped to avoid runaways.
@@ -337,6 +460,28 @@ export function ScratchPlayground({
           break;
         case "penColor":
           s.colorIndex = (s.colorIndex + 1) % PEN_COLORS.length;
+          break;
+        case "setVar":
+          counter = clampNum(arg, 0);
+          syncMonitor();
+          break;
+        case "changeVar":
+          counter += clampNum(arg, 1);
+          syncMonitor();
+          break;
+        case "sayVar":
+          s.say = String(counter);
+          break;
+        case "listAdd":
+          if (list.length < 50) list.push(String(arg ?? ""));
+          syncMonitor();
+          break;
+        case "listClear":
+          list.length = 0;
+          syncMonitor();
+          break;
+        case "listSay":
+          s.say = list.length ? list.join(" ") : "(စာရင်း ဗလာ)";
           break;
         case "wait":
           drawSprite(s);
@@ -406,7 +551,7 @@ export function ScratchPlayground({
         <div className="space-y-3">
           {/* Palette */}
           <div className="space-y-2 rounded-xl border bg-card p-3">
-            {(["motion", "looks", "pen", "control"] as Category[]).map((cat) => (
+            {(["motion", "looks", "pen", "control", "data"] as Category[]).map((cat) => (
               <div key={cat} className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground">
                   {CATEGORY_LABEL[cat]}
@@ -515,6 +660,14 @@ export function ScratchPlayground({
             <Button size="sm" variant="outline" onClick={resetStage} disabled={running}>
               <RotateCcw className="mr-1 h-4 w-4" /> ဇာတ်ခုံ ရှင်း
             </Button>
+            <Button
+              size="sm"
+              variant={showGrid ? "secondary" : "outline"}
+              onClick={() => setShowGrid((v) => !v)}
+              disabled={running}
+            >
+              <Grid3x3 className="mr-1 h-4 w-4" /> ကျားကွက်
+            </Button>
             {status ? (
               <span
                 className={cn(
@@ -546,8 +699,112 @@ export function ScratchPlayground({
             />
           </div>
           <p className="text-center text-xs text-muted-foreground">
-            🎭 ဇာတ်ခုံ — 🐱 ကြောင်လေး ဒီမှာ ကပြပါလိမ့်မယ်
+            🎭 ဇာတ်ခုံ — {sprite} ဇာတ်ကောင် ဒီမှာ ကပြပါလိမ့်မယ်
           </p>
+
+          {/* Data monitor (variable + list) */}
+          {monitor ? (
+            <div className="space-y-1 rounded-lg border bg-card p-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-rose-500/15 px-1.5 py-0.5 font-medium text-rose-700 dark:text-rose-300">
+                  ကိန်း (counter)
+                </span>
+                <span className="font-mono font-semibold">{monitor.counter}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="rounded bg-rose-500/15 px-1.5 py-0.5 font-medium text-rose-700 dark:text-rose-300">
+                  စာရင်း (list)
+                </span>
+                <span className="flex flex-wrap gap-1">
+                  {monitor.list.length ? (
+                    monitor.list.map((item, i) => (
+                      <span key={i} className="rounded bg-muted px-1.5 py-0.5">
+                        {i + 1}. {item}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-muted-foreground">(ဗလာ)</span>
+                  )}
+                </span>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Sprite chooser */}
+          <div className="rounded-xl border bg-card p-2">
+            <button
+              type="button"
+              onClick={() => setPickerOpen((v) => !v)}
+              disabled={running}
+              className="flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1 text-sm font-medium disabled:opacity-50"
+            >
+              <span className="flex items-center gap-2">
+                <span className="text-xl">{sprite}</span>
+                🎭 ဇာတ်ကောင် ရွေးရန် · Sprite
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {pickerOpen ? "▲ ပိတ်" : "▼ ဖွင့်"}
+              </span>
+            </button>
+            {pickerOpen ? (
+              <div className="mt-2 max-h-56 space-y-2 overflow-y-auto pr-1">
+                {SPRITE_GROUPS.map((group) => (
+                  <div key={group.label} className="space-y-1">
+                    <p className="text-[11px] font-medium text-muted-foreground">
+                      {group.label}
+                    </p>
+                    <div className="grid grid-cols-8 gap-1">
+                      {group.emojis.map((emo) => (
+                        <button
+                          key={emo}
+                          type="button"
+                          disabled={running}
+                          onClick={() => setSprite(emo)}
+                          className={cn(
+                            "flex aspect-square items-center justify-center rounded-md border text-lg transition hover:bg-muted disabled:opacity-50",
+                            sprite === emo
+                              ? "border-primary bg-primary/10 ring-1 ring-primary"
+                              : "border-transparent",
+                          )}
+                          aria-label={`sprite ${emo}`}
+                        >
+                          {emo}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {/* Backdrop chooser */}
+                <div className="space-y-1 border-t pt-2">
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    🖼️ နောက်ခံ · Backdrop
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {BACKDROPS.map((bd) => (
+                      <button
+                        key={bd.id}
+                        type="button"
+                        disabled={running}
+                        onClick={() => setBackdrop(bd.id)}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition hover:bg-muted disabled:opacity-50",
+                          backdrop === bd.id
+                            ? "border-primary ring-1 ring-primary"
+                            : "border-input",
+                        )}
+                      >
+                        <span
+                          className="h-3 w-3 rounded-full border"
+                          style={{ backgroundColor: bd.css }}
+                        />
+                        {bd.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
@@ -555,6 +812,10 @@ export function ScratchPlayground({
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+// "forever" can't loop endlessly in an offline unrolled runtime, so it runs a
+// generous but bounded number of rounds.
+const FOREVER_ROUNDS = 20;
 
 // Unroll repeat/repeatEnd into a flat op list. Unmatched ends are ignored and
 // open repeats are auto-closed at the tail, so a half-built script still runs.
@@ -570,7 +831,10 @@ function expand(blocks: Block[]): Block[] {
   for (const b of blocks) {
     const def = DEF_BY_KIND.get(b.kind);
     if (def?.open) {
-      stack.push({ times: clampNum(b.arg, 4), body: [] });
+      // "forever" is approximated by a bounded number of rounds in this
+      // offline runtime so the animation always ends.
+      const times = b.kind === "forever" ? FOREVER_ROUNDS : clampNum(b.arg, 4);
+      stack.push({ times, body: [] });
     } else if (def?.close) {
       const frame = stack.pop();
       if (frame) {
