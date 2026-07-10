@@ -3,12 +3,14 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ExternalLink, ImageOff } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
+import { ReviewSection } from "@/components/reviews/review-section";
 import { AffiliateButton } from "@/components/shop/affiliate-button";
 import { OrderForm } from "@/components/shop/order-form";
 import { KindBadge } from "@/components/shop/product-card";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
+import { getMyReview, getReviews, getReviewStats } from "@/lib/db/reviews";
 import { getShopProduct } from "@/lib/db/shop";
 import { displayName, formatPrice } from "@/lib/format";
 
@@ -33,6 +35,12 @@ export default async function ProductPage({
 
   const product = await getShopProduct(params.id);
   if (!product) notFound();
+
+  const [stats, reviews, myReview] = await Promise.all([
+    getReviewStats("shop_product", product.id),
+    getReviews("shop_product", product.id),
+    getMyReview("shop_product", product.id),
+  ]);
 
   const t = await getTranslations("shop");
   const kindLabels = { affiliate: t("affiliate"), dropship: t("dropship") };
@@ -122,6 +130,15 @@ export default async function ProductPage({
           <ExternalLink className="h-3 w-3" /> {t("originalListing")}
         </a>
       ) : null}
+
+      <ReviewSection
+        subjectType="shop_product"
+        subjectId={product.id}
+        stats={stats}
+        reviews={reviews}
+        myReview={myReview}
+        canReview={profile.id !== product.seller_id}
+      />
     </div>
   );
 }

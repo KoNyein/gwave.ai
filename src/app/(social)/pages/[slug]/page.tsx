@@ -4,12 +4,15 @@ import { getTranslations } from "next-intl/server";
 
 import { FollowPageButton } from "@/components/pages/follow-page-button";
 import { PageTabs } from "@/components/pages/page-tabs";
+import { ReviewSection } from "@/components/reviews/review-section";
+import { Stars } from "@/components/reviews/stars";
 import { PostFeed } from "@/components/social/post-feed";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
 import { getPageBySlug, isFollowingPage } from "@/lib/db/pages";
 import { getPagePosts } from "@/lib/db/posts";
+import { getMyReview, getReviews, getReviewStats } from "@/lib/db/reviews";
 
 export default async function PageDetailPage({
   params,
@@ -25,9 +28,12 @@ export default async function PageDetailPage({
   if (!page) notFound();
 
   const isOwner = page.owner_id === viewer.id;
-  const [following, initialPage] = await Promise.all([
+  const [following, initialPage, stats, reviews, myReview] = await Promise.all([
     isOwner ? Promise.resolve(false) : isFollowingPage(page.id, viewer.id),
     getPagePosts(page.id, viewer.id),
+    getReviewStats("page", page.id),
+    getReviews("page", page.id),
+    getMyReview("page", page.id),
   ]);
 
   const currentUser = {
@@ -70,6 +76,14 @@ export default async function PageDetailPage({
                   {page.category ? `${page.category} · ` : ""}
                   {t("followerCount", { count: page.follower_count })}
                 </p>
+                {stats.rating_count > 0 ? (
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <Stars value={stats.rating_avg} size={14} />
+                    <span className="text-xs text-muted-foreground">
+                      {stats.rating_avg.toFixed(1)} ({stats.rating_count})
+                    </span>
+                  </div>
+                ) : null}
               </div>
             </div>
             {!isOwner ? (
@@ -120,6 +134,15 @@ export default async function PageDetailPage({
             </CardContent>
           </Card>
         }
+      />
+
+      <ReviewSection
+        subjectType="page"
+        subjectId={page.id}
+        stats={stats}
+        reviews={reviews}
+        myReview={myReview}
+        canReview={!isOwner}
       />
     </div>
   );

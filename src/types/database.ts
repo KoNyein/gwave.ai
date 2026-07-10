@@ -1059,6 +1059,39 @@ export interface BoostDailyStat {
   spent: number;
 }
 
+// ---------------------------------------------------------------------------
+// Reviews & ratings
+// ---------------------------------------------------------------------------
+
+export type ReviewSubject = "profile" | "page" | "shop_product";
+
+export interface Review {
+  id: string;
+  reviewer_id: string;
+  subject_type: ReviewSubject;
+  subject_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReviewStats {
+  rating_count: number;
+  rating_avg: number;
+}
+
+/** One ranked entry on the reviews leaderboard, with display info resolved. */
+export interface LeaderboardEntry {
+  subjectId: string;
+  ratingCount: number;
+  ratingAvg: number;
+  score: number;
+  title: string;
+  image: string | null;
+  href: string;
+}
+
 export type Database = {
   public: {
     Tables: {
