@@ -30,7 +30,8 @@
     "cameras": "Cameras",
     "gpay": "G-Pay",
     "family": "Family",
-    "finance": "Finance"
+    "finance": "Finance",
+    "reels": "Reels"
   },
   "auth": {
     "login": "Log in",

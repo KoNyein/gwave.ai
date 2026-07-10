@@ -30,7 +30,8 @@
     "cameras": "摄像头",
     "gpay": "G-Pay",
     "family": "家庭",
-    "finance": "财务"
+    "finance": "财务",
+    "reels": "Reels 短视频"
   },
   "auth": {
     "login": "登录",
