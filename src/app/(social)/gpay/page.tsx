@@ -12,6 +12,7 @@ import {
   getGpayTransactions,
   getMyGpayAccount,
 } from "@/lib/db/gpay";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "G-Pay" };
 export const dynamic = "force-dynamic";
@@ -32,6 +33,21 @@ export default async function GpayPage() {
       ? await getGpayTransactions(account.id)
       : [];
 
+  // Signed URLs for admins to view each account's KPay slip (private bucket).
+  const slipUrls: Record<string, string> = {};
+  if (isAdmin && adminAccounts.length > 0) {
+    const supabase = await createClient();
+    await Promise.all(
+      adminAccounts.map(async (a) => {
+        if (!a.slip_path) return;
+        const { data } = await supabase.storage
+          .from("slips")
+          .createSignedUrl(a.slip_path, 3600);
+        if (data?.signedUrl) slipUrls[a.id] = data.signedUrl;
+      }),
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2">
@@ -49,7 +65,7 @@ export default async function GpayPage() {
         <Card>
           <CardContent className="p-4">
             <h2 className="mb-3 font-semibold">{t("registerTitle")}</h2>
-            <GpayRegistrationForm account={null} />
+            <GpayRegistrationForm account={null} userId={profile.id} />
           </CardContent>
         </Card>
       ) : account.status === "pending" ? (
@@ -87,14 +103,14 @@ export default async function GpayPage() {
         <Card>
           <CardContent className="p-4">
             <h2 className="mb-3 font-semibold">{t("editTitle")}</h2>
-            <GpayRegistrationForm account={account} />
+            <GpayRegistrationForm account={account} userId={profile.id} />
           </CardContent>
         </Card>
       ) : null}
 
       {/* Admin review queue */}
       {isAdmin && adminAccounts.length > 0 ? (
-        <GpayAdminPanel accounts={adminAccounts} />
+        <GpayAdminPanel accounts={adminAccounts} slipUrls={slipUrls} />
       ) : null}
     </div>
   );

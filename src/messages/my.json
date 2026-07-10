@@ -1111,7 +1111,15 @@
     "status_pending": "စိစစ်ဆဲ",
     "status_active": "သုံးနိုင်",
     "status_suspended": "ရပ်ဆိုင်း",
-    "status_rejected": "ငြင်းပယ်"
+    "status_rejected": "ငြင်းပယ်",
+    "depositTitle": "စာရင်းသွင်း အပ်ငွေ",
+    "depositHint": "KPay ဖြင့် {amount} ကျပ် လွှဲပြီး အောက်တွင် slip တင်ပါ။",
+    "slipChoose": "KPay slip တင်ရန်",
+    "slipReplace": "KPay slip ပြောင်းရန်",
+    "slipImageOnly": "Slip သည် ဓာတ်ပုံဖြစ်ရပါမည်။",
+    "slipUploadFailed": "Slip တင်၍ မရပါ။ ထပ်ကြိုးစားပါ။",
+    "viewSlip": "Slip ကြည့်ရန်",
+    "noSlip": "Slip မတင်ရသေးပါ"
   },
   "lang": {
     "title": "ဘာသာစကားများ",

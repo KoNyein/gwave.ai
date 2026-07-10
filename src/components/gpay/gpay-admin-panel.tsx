@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, Plus, Ban } from "lucide-react";
+import { Check, Loader2, Plus, Ban, Receipt } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,13 @@ const STATUS_STYLE: Record<GpayStatus, string> = {
 };
 
 /** Admin review queue: approve/suspend/reject accounts and top them up. */
-export function GpayAdminPanel({ accounts }: { accounts: GpayAccount[] }) {
+export function GpayAdminPanel({
+  accounts,
+  slipUrls,
+}: {
+  accounts: GpayAccount[];
+  slipUrls: Record<string, string>;
+}) {
   const t = useTranslations("gpay");
   const router = useRouter();
   const [busyId, setBusyId] = React.useState<string | null>(null);
@@ -62,6 +68,20 @@ export function GpayAdminPanel({ accounts }: { accounts: GpayAccount[] }) {
                   {a.telegram && a.viber ? " · " : ""}
                   {a.viber ? `Viber ${a.viber}` : ""}
                 </p>
+                {slipUrls[a.id] ? (
+                  <a
+                    href={slipUrls[a.id]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <Receipt className="h-3.5 w-3.5" /> {t("viewSlip")}
+                  </a>
+                ) : (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("noSlip")}
+                  </p>
+                )}
               </div>
               <span
                 className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_STYLE[a.status]}`}

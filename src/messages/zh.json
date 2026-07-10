@@ -1111,7 +1111,15 @@
     "status_pending": "待审核",
     "status_active": "已激活",
     "status_suspended": "已暂停",
-    "status_rejected": "已拒绝"
+    "status_rejected": "已拒绝",
+    "depositTitle": "注册押金",
+    "depositHint": "通过 KPay 转账 {amount} 缅币，然后在下方上传凭证。",
+    "slipChoose": "上传 KPay 凭证",
+    "slipReplace": "更换 KPay 凭证",
+    "slipImageOnly": "凭证必须是图片。",
+    "slipUploadFailed": "凭证上传失败，请重试。",
+    "viewSlip": "查看凭证",
+    "noSlip": "未上传凭证"
   },
   "lang": {
     "title": "语言",

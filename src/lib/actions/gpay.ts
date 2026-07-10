@@ -32,6 +32,8 @@ const kycSchema = z
     telegram: z.string().trim().max(80).optional().or(z.literal("")),
     viber: z.string().trim().max(40).optional().or(z.literal("")),
     address: z.string().trim().min(3).max(300),
+    // Storage path of the uploaded KPay payment slip (optional on edit).
+    slipPath: z.string().trim().max(500).optional().or(z.literal("")),
   })
   .refine((v) => Boolean(v.telegram) || Boolean(v.viber), {
     message: "Add at least one contact: Telegram or Viber.",
@@ -50,7 +52,7 @@ export async function saveGpayKyc(input: GpayKycInput): Promise<ActionResult> {
   if (!userId) return { ok: false, error: "Not signed in" };
 
   const v = parsed.data;
-  const row = {
+  const row: Record<string, unknown> = {
     user_id: userId,
     full_name: v.fullName,
     nrc_number: v.nrcNumber,
@@ -60,6 +62,9 @@ export async function saveGpayKyc(input: GpayKycInput): Promise<ActionResult> {
     viber: v.viber ? v.viber : null,
     address: v.address,
   };
+  // Only overwrite the slip when a new one was uploaded, so editing other KYC
+  // fields doesn't wipe an existing slip.
+  if (v.slipPath) row.slip_path = v.slipPath;
 
   const supabase = await createClient();
   // Upsert on user_id: first submission inserts (pending), later edits update
