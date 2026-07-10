@@ -991,6 +991,16 @@ export interface CreatorSummary {
   balance: number;
 }
 
+/** One time bucket (a day or a month) of creator analytics. */
+export interface CreatorStatBucket {
+  /** "YYYY-MM-DD" for daily, "YYYY-MM" for monthly. */
+  period: string;
+  views: number;
+  likes: number;
+  watchSeconds: number;
+  earnings: number;
+}
+
 export type Database = {
   public: {
     Tables: {

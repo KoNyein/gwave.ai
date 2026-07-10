@@ -5,6 +5,7 @@ import { rankItems } from "@/lib/feed/rank";
 import { createClient } from "@/lib/supabase/server";
 import type {
   CreatorEarning,
+  CreatorStatBucket,
   CreatorSummary,
   Reel,
   ReelWithAuthor,
@@ -161,4 +162,39 @@ export async function getCreatorSummary(): Promise<CreatorSummary> {
       .filter((x) => !x.paid_out)
       .reduce((s, x) => s + Number(x.amount_mmk ?? 0), 0),
   };
+}
+
+interface StatRow {
+  day?: string;
+  month?: string;
+  views: number;
+  likes: number;
+  watch_seconds: number;
+  earnings: number;
+}
+
+function toBucket(row: StatRow): CreatorStatBucket {
+  return {
+    period: String(row.day ?? row.month ?? ""),
+    views: Number(row.views ?? 0),
+    likes: Number(row.likes ?? 0),
+    watchSeconds: Number(row.watch_seconds ?? 0),
+    earnings: Number(row.earnings ?? 0),
+  };
+}
+
+/** Per-day creator analytics (Myanmar time) for the last `days` days. */
+export async function getCreatorDailyStats(days = 30): Promise<CreatorStatBucket[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("creator_daily_stats", { p_days: days });
+  return ((data as StatRow[] | null) ?? []).map(toBucket);
+}
+
+/** Per-month creator analytics for the last `months` months. */
+export async function getCreatorMonthlyStats(months = 12): Promise<CreatorStatBucket[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("creator_monthly_stats", {
+    p_months: months,
+  });
+  return ((data as StatRow[] | null) ?? []).map(toBucket);
 }
