@@ -1,6 +1,7 @@
 import "server-only";
 
 import { publicEnv } from "@/lib/env";
+import { rankItems } from "@/lib/feed/rank";
 import { createClient } from "@/lib/supabase/server";
 import type {
   CreatorEarning,
@@ -53,19 +54,55 @@ async function decorate(
 const SELECT =
   "*, author:profiles!reels_owner_id_fkey(id, username, full_name, avatar_url)";
 
-/** The public reel feed, newest first. */
+/**
+ * The public "For You" reel feed — a recent pool ranked by recency, engagement
+ * (likes + watch minutes) and whether the viewer follows the creator.
+ */
 export async function getReelsFeed(limit = 20): Promise<ReelWithAuthor[]> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Pull a bounded recent pool, then rank it.
   const { data } = await supabase
     .from("reels")
     .select(SELECT)
     .eq("is_public", true)
     .order("created_at", { ascending: false })
-    .limit(limit);
-  return decorate((data ?? []) as unknown as ReelRow[], user?.id ?? null);
+    .limit(Math.max(limit * 4, 60));
+  const pool = (data ?? []) as unknown as ReelRow[];
+
+  // Who does the viewer follow? (affinity boost)
+  let followIds = new Set<string>();
+  if (user) {
+    const { data: follows } = await supabase
+      .from("follows")
+      .select("followee_id")
+      .eq("follower_id", user.id);
+    followIds = new Set((follows ?? []).map((f) => (f as { followee_id: string }).followee_id));
+  }
+
+  const ranked = rankItems(
+    pool.map((r) => ({
+      ...r,
+      // Map reel signals onto the shared ranker: owner → author (affinity),
+      // likes → reactions, watch minutes → a strong (share-weighted) signal.
+      author_id: r.owner_id,
+      reaction_count: r.like_count,
+      comment_count: 0,
+      share_count: Math.round((r.watch_seconds ?? 0) / 60),
+      hasMedia: true,
+    })),
+    {
+      now: Date.now(),
+      selfId: user?.id ?? "",
+      friendIds: new Set<string>(),
+      followIds,
+    },
+  );
+
+  return decorate(ranked.slice(0, limit) as unknown as ReelRow[], user?.id ?? null);
 }
 
 /** The caller's own reels, newest first. */

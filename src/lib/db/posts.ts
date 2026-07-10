@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { rankItems } from "@/lib/feed/rank";
 import {
   decodeCursor,
   encodeCursor,
@@ -80,7 +81,14 @@ function toPage(posts: FeedPost[], limit: number, viewerId: string): FeedPage {
  * Everyone whose posts appear in the viewer's feed: self + accepted friends
  * + followed users.
  */
-export async function getFeedAuthorIds(userId: string): Promise<string[]> {
+interface FeedGraph {
+  authorIds: string[];
+  friendIds: Set<string>;
+  followIds: Set<string>;
+}
+
+/** The viewer's social graph: accepted friends and followed users. */
+async function getFeedGraph(userId: string): Promise<FeedGraph> {
   const supabase = await createClient();
   const [friendshipsRes, followsRes] = await Promise.all([
     supabase
@@ -91,41 +99,119 @@ export async function getFeedAuthorIds(userId: string): Promise<string[]> {
     supabase.from("follows").select("followee_id").eq("follower_id", userId),
   ]);
 
-  const ids = new Set<string>([userId]);
+  const friendIds = new Set<string>();
   for (const f of friendshipsRes.data ?? []) {
-    ids.add(f.requester_id);
-    ids.add(f.addressee_id);
+    if (f.requester_id !== userId) friendIds.add(f.requester_id);
+    if (f.addressee_id !== userId) friendIds.add(f.addressee_id);
   }
-  for (const f of followsRes.data ?? []) {
-    ids.add(f.followee_id);
-  }
-  return [...ids];
+  const followIds = new Set<string>();
+  for (const f of followsRes.data ?? []) followIds.add(f.followee_id);
+
+  return {
+    authorIds: [...new Set<string>([userId, ...friendIds, ...followIds])],
+    friendIds,
+    followIds,
+  };
 }
 
-/** Cursor-paginated news feed for the given viewer. RLS enforces visibility. */
+/** Everyone whose posts appear in the viewer's feed (self + friends + follows). */
+export async function getFeedAuthorIds(userId: string): Promise<string[]> {
+  return (await getFeedGraph(userId)).authorIds;
+}
+
+// The personalized "For You" feed ranks a bounded pool of the most recent
+// posts by recency + engagement + affinity (phase 1); once that pool is
+// exhausted it falls back to a chronological trail of older posts (phase 2).
+// The cursor encodes the phase: "r:<offset>" while ranking, "c:<keyset>" after.
+const RANKED_POOL = 300;
+
+function chronoCursor(post: FeedPost): string {
+  return `c:${encodeCursor(post.created_at, post.id)}`;
+}
+
+/**
+ * Personalized, cursor-paginated news feed. Phase 1 surfaces the best recent
+ * posts from the viewer's graph; phase 2 continues chronologically through
+ * older history. RLS still enforces visibility.
+ */
 export async function getFeed(
   userId: string,
   cursor: string | null = null,
   limit = FEED_PAGE_SIZE,
 ): Promise<FeedPage> {
   const supabase = await createClient();
-  const authorIds = await getFeedAuthorIds(userId);
+  const graph = await getFeedGraph(userId);
 
-  let query = supabase
+  // Phase 2 — chronological continuation.
+  if (cursor && cursor.startsWith("c:")) {
+    const decoded = decodeCursor(cursor.slice(2));
+    let query = supabase
+      .from("posts")
+      .select(POST_SELECT)
+      .in("author_id", graph.authorIds)
+      .eq("my_reaction.user_id", userId);
+    if (decoded) {
+      query = query.or(
+        `created_at.lt."${decoded.createdAt}",and(created_at.eq."${decoded.createdAt}",id.lt.${decoded.id})`,
+      );
+    }
+    const { data, error } = await query
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(limit + 1)
+      .returns<FeedPost[]>();
+    if (error) throw new Error(`Failed to load feed: ${error.message}`);
+    const rows = data ?? [];
+    const hasMore = rows.length > limit;
+    const page = rows
+      .slice(0, limit)
+      .map(sortMedia)
+      .map((p) => hideForeignViewCounts(p, userId));
+    const last = page[page.length - 1];
+    return { posts: page, nextCursor: hasMore && last ? chronoCursor(last) : null };
+  }
+
+  // Phase 1 — ranked recent pool.
+  const offset =
+    cursor && cursor.startsWith("r:")
+      ? Math.max(0, Number.parseInt(cursor.slice(2), 10) || 0)
+      : 0;
+
+  const { data, error } = await supabase
     .from("posts")
     .select(POST_SELECT)
-    .in("author_id", authorIds)
-    .eq("my_reaction.user_id", userId);
-  query = applyCursor(query, cursor);
-
-  const { data, error } = await query
+    .in("author_id", graph.authorIds)
+    .eq("my_reaction.user_id", userId)
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
-    .limit(limit + 1)
+    .limit(RANKED_POOL)
     .returns<FeedPost[]>();
-
   if (error) throw new Error(`Failed to load feed: ${error.message}`);
-  return toPage(data ?? [], limit, userId);
+
+  const pool = data ?? [];
+  for (const p of pool) {
+    (p as unknown as { hasMedia: boolean }).hasMedia = (p.media?.length ?? 0) > 0;
+  }
+  const ranked = rankItems(pool, {
+    now: Date.now(),
+    selfId: userId,
+    friendIds: graph.friendIds,
+    followIds: graph.followIds,
+  });
+
+  const page = ranked
+    .slice(offset, offset + limit)
+    .map(sortMedia)
+    .map((p) => hideForeignViewCounts(p, userId));
+
+  let nextCursor: string | null = null;
+  if (offset + limit < ranked.length) {
+    nextCursor = `r:${offset + limit}`;
+  } else if (pool.length >= RANKED_POOL) {
+    const oldest = pool[pool.length - 1];
+    if (oldest) nextCursor = chronoCursor(oldest);
+  }
+  return { posts: page, nextCursor };
 }
 
 /**
