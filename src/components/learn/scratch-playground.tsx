@@ -23,7 +23,7 @@ import type { ScratchBlockSpec, ScratchConfig } from "@/lib/learn/lessons";
 // a numeric/text argument with a default. `open`/`close` mark the C-shaped
 // repeat block so the editor can indent and the interpreter can loop.
 
-type Category = "motion" | "looks" | "pen" | "control" | "data";
+type Category = "motion" | "looks" | "sound" | "pen" | "control" | "data";
 
 interface BlockDef {
   kind: string;
@@ -31,7 +31,8 @@ interface BlockDef {
   en: string;
   category: Category;
   arg?: { kind: "number" | "text"; default: string | number };
-  open?: boolean; // starts a C-block (repeat)
+  open?: boolean; // starts a C-block (repeat / forever / if)
+  mid?: boolean; // "else" divider inside an if block
   close?: boolean; // closes a C-block
 }
 
@@ -41,10 +42,14 @@ const BLOCK_DEFS: BlockDef[] = [
   { kind: "turnRight", my: "ညာဘက် {arg}° လှည့်", en: "turn right {arg}°", category: "motion", arg: { kind: "number", default: 90 } },
   { kind: "turnLeft", my: "ဘယ်ဘက် {arg}° လှည့်", en: "turn left {arg}°", category: "motion", arg: { kind: "number", default: 90 } },
   { kind: "goCenter", my: "အလယ်ကို ပြန်သွား", en: "go to center", category: "motion" },
+  { kind: "goRandom", my: "ကျပန်း နေရာ ခုန်", en: "go to random", category: "motion" },
   // Looks — ပုံပန်း
   { kind: "say", my: "«{arg}» ဟုပြော", en: "say “{arg}”", category: "looks", arg: { kind: "text", default: "မင်္ဂလာပါ" } },
   { kind: "grow", my: "အရွယ် ကြီးလာ", en: "grow bigger", category: "looks" },
   { kind: "shrink", my: "အရွယ် ငယ်သွား", en: "shrink", category: "looks" },
+  // Sound — အသံ
+  { kind: "beep", my: "🔊 အသံ မြည်", en: "play beep", category: "sound" },
+  { kind: "meow", my: "🐱 မြည်သံ (နှစ်သံ)", en: "play meow", category: "sound" },
   // Pen — ခဲတံ
   { kind: "penDown", my: "ခဲတံ ချ (ရေးမည်)", en: "pen down", category: "pen" },
   { kind: "penUp", my: "ခဲတံ မ (မရေး)", en: "pen up", category: "pen" },
@@ -53,7 +58,10 @@ const BLOCK_DEFS: BlockDef[] = [
   { kind: "wait", my: "{arg} စက္ကန့် စောင့်", en: "wait {arg} sec", category: "control", arg: { kind: "number", default: 1 } },
   { kind: "repeat", my: "{arg} ကြိမ် ထပ်လုပ်", en: "repeat {arg}", category: "control", arg: { kind: "number", default: 4 }, open: true },
   { kind: "forever", my: "အမြဲ ထပ်လုပ်", en: "forever", category: "control", open: true },
-  { kind: "repeatEnd", my: "ထပ်လုပ် ဆုံး", en: "end", category: "control", close: true },
+  { kind: "ifEdge", my: "အနား ထိရင်…", en: "if touching edge", category: "control", open: true },
+  { kind: "ifBig", my: "ကိန်း > {arg} ဆိုရင်…", en: "if counter > {arg}", category: "control", arg: { kind: "number", default: 3 }, open: true },
+  { kind: "elseMark", my: "မဟုတ်ရင် (else)", en: "else", category: "control", mid: true },
+  { kind: "repeatEnd", my: "ဆုံး (end)", en: "end", category: "control", close: true },
   // Data — ကိန်းရှင် & စာရင်း (variables & lists / arrays)
   { kind: "setVar", my: "ကိန်း ကို {arg} ထား", en: "set counter to {arg}", category: "data", arg: { kind: "number", default: 0 } },
   { kind: "changeVar", my: "ကိန်း ကို {arg} ပေါင်း", en: "change counter by {arg}", category: "data", arg: { kind: "number", default: 1 } },
@@ -68,6 +76,7 @@ const DEF_BY_KIND = new Map(BLOCK_DEFS.map((d) => [d.kind, d]));
 const CATEGORY_LABEL: Record<Category, string> = {
   motion: "အလှုပ်ရှား · Motion",
   looks: "ပုံပန်း · Looks",
+  sound: "အသံ · Sound",
   pen: "ခဲတံ · Pen",
   control: "ထိန်းချုပ် · Control",
   data: "ကိန်းရှင် & စာရင်း · Data",
@@ -76,6 +85,7 @@ const CATEGORY_LABEL: Record<Category, string> = {
 const CATEGORY_CLASS: Record<Category, string> = {
   motion: "bg-blue-500/15 border-blue-500/40 text-blue-700 dark:text-blue-300",
   looks: "bg-purple-500/15 border-purple-500/40 text-purple-700 dark:text-purple-300",
+  sound: "bg-pink-500/15 border-pink-500/40 text-pink-700 dark:text-pink-300",
   pen: "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300",
   control: "bg-amber-500/15 border-amber-500/40 text-amber-700 dark:text-amber-300",
   data: "bg-rose-500/15 border-rose-500/40 text-rose-700 dark:text-rose-300",
@@ -205,6 +215,31 @@ export function ScratchPlayground({
   const [done, setDone] = React.useState(false);
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [showGrid, setShowGrid] = React.useState(true);
+  const [speed, setSpeed] = React.useState<Speed>("normal");
+  const audioRef = React.useRef<AudioContext | null>(null);
+
+  // A short beep via Web Audio — used by the sound blocks. Best-effort: if the
+  // browser blocks audio it simply stays silent.
+  const playTone = React.useCallback((freq: number, dur: number) => {
+    try {
+      const Ctx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = (audioRef.current ??= new Ctx());
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.value = 0.06;
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + dur);
+    } catch {
+      /* ignore */
+    }
+  }, []);
   // Live variable + list values shown in the data monitor while a run plays.
   const [monitor, setMonitor] = React.useState<{ counter: number; list: string[] } | null>(null);
 
@@ -264,9 +299,9 @@ export function ScratchPlayground({
     let depth = 0;
     return blocks.map((b) => {
       const def = DEF_BY_KIND.get(b.kind);
-      if (def?.close) depth = Math.max(0, depth - 1);
+      if (def?.close || def?.mid) depth = Math.max(0, depth - 1);
       const here = depth;
-      if (def?.open) depth += 1;
+      if (def?.open || def?.mid) depth += 1;
       return here;
     });
   }, [blocks]);
@@ -393,17 +428,13 @@ export function ScratchPlayground({
     const usedKinds = new Set<string>();
     const sleep = (ms: number) =>
       new Promise<void>((res) => setTimeout(res, ms));
+    const stepDelay = SPEED_DELAY[speed] ?? 280;
 
     // Variable + list runtime (Scratch "Variables / Lists").
     let counter = 0;
     const list: string[] = [];
     const syncMonitor = () => setMonitor({ counter, list: [...list] });
     setMonitor(null);
-
-    // Expand into a linear op list, unrolling repeat blocks (bounded) so the
-    // interpreter stays simple. Total steps are capped to avoid runaways.
-    const ops = expand(blocks);
-    const MAX_OPS = 2000;
 
     const penLine = (x0: number, y0: number, x1: number, y1: number, color: string) => {
       if (!pctx) return;
@@ -416,13 +447,18 @@ export function ScratchPlayground({
       pctx.stroke();
     };
 
-    let count = 0;
-    for (const op of ops) {
-      if (cancelRef.current) break;
-      if (count++ > MAX_OPS) break;
-      usedKinds.add(op.kind);
-      const arg = op.arg;
-      switch (op.kind) {
+    // A condition slot for the if blocks (evaluated live at runtime).
+    const evalCond = (kind: string, arg: string | number | undefined): boolean => {
+      if (kind === "ifEdge") {
+        return Math.abs(s.x) >= CENTER - 30 || Math.abs(s.y) >= CENTER - 30;
+      }
+      if (kind === "ifBig") return counter > clampNum(arg, 3);
+      return false;
+    };
+
+    // A single leaf instruction.
+    const execOp = async (kind: string, arg: string | number | undefined) => {
+      switch (kind) {
         case "move": {
           const steps = clampNum(arg, 40);
           const rad = (s.dir * Math.PI) / 180;
@@ -443,6 +479,10 @@ export function ScratchPlayground({
           s.x = 0;
           s.y = 0;
           break;
+        case "goRandom":
+          s.x = Math.round((Math.random() * 2 - 1) * (CENTER - 20));
+          s.y = Math.round((Math.random() * 2 - 1) * (CENTER - 20));
+          break;
         case "say":
           s.say = String(arg ?? "");
           break;
@@ -451,6 +491,13 @@ export function ScratchPlayground({
           break;
         case "shrink":
           s.size = Math.max(0.4, s.size - 0.3);
+          break;
+        case "beep":
+          playTone(600, 0.15);
+          break;
+        case "meow":
+          playTone(520, 0.12);
+          window.setTimeout(() => playTone(380, 0.14), 130);
           break;
         case "penDown":
           s.penDown = true;
@@ -486,13 +533,49 @@ export function ScratchPlayground({
         case "wait":
           drawSprite(s);
           await sleep(Math.min(3000, Math.max(0, clampNum(arg, 1)) * 1000));
-          continue;
+          return;
         default:
           break;
       }
       drawSprite(s);
-      await sleep(280);
-    }
+      await sleep(stepDelay);
+    };
+
+    // Recursively execute a parsed block tree (supports repeat / forever loops
+    // and live if / else branching). A shared op budget prevents runaways.
+    let opCount = 0;
+    const MAX_OPS = 4000;
+    const runNodes = async (nodes: ScratchNode[]): Promise<void> => {
+      for (const node of nodes) {
+        if (cancelRef.current || opCount > MAX_OPS) return;
+        opCount++;
+        if (node.type === "op") {
+          usedKinds.add(node.kind);
+          await execOp(node.kind, node.arg);
+        } else if (node.type === "repeat") {
+          usedKinds.add("repeat");
+          const t = Math.max(0, Math.min(100, Math.round(clampNum(node.arg, 4))));
+          for (let i = 0; i < t; i++) {
+            if (cancelRef.current || opCount > MAX_OPS) break;
+            await runNodes(node.body);
+          }
+        } else if (node.type === "forever") {
+          usedKinds.add("forever");
+          let r = 0;
+          while (!cancelRef.current && opCount < MAX_OPS && r < FOREVER_ROUNDS) {
+            await runNodes(node.body);
+            r++;
+          }
+        } else {
+          usedKinds.add(node.kind);
+          usedKinds.add("if");
+          if (evalCond(node.kind, node.arg)) await runNodes(node.body);
+          else if (node.elseBody) await runNodes(node.elseBody);
+        }
+      }
+    };
+
+    await runNodes(parse(blocks));
 
     setRunning(false);
     if (cancelRef.current) {
@@ -551,7 +634,7 @@ export function ScratchPlayground({
         <div className="space-y-3">
           {/* Palette */}
           <div className="space-y-2 rounded-xl border bg-card p-3">
-            {(["motion", "looks", "pen", "control", "data"] as Category[]).map((cat) => (
+            {(["motion", "looks", "sound", "pen", "control", "data"] as Category[]).map((cat) => (
               <div key={cat} className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground">
                   {CATEGORY_LABEL[cat]}
@@ -668,6 +751,19 @@ export function ScratchPlayground({
             >
               <Grid3x3 className="mr-1 h-4 w-4" /> ကျားကွက်
             </Button>
+            <label className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              ⏩
+              <select
+                value={speed}
+                onChange={(e) => setSpeed(e.target.value as Speed)}
+                disabled={running}
+                className="rounded border bg-background px-1 py-1 text-foreground disabled:opacity-50"
+              >
+                <option value="slow">နှေး</option>
+                <option value="normal">ပုံမှန်</option>
+                <option value="fast">မြန်</option>
+              </select>
+            </label>
             {status ? (
               <span
                 className={cn(
@@ -813,52 +909,60 @@ export function ScratchPlayground({
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-// "forever" can't loop endlessly in an offline unrolled runtime, so it runs a
-// generous but bounded number of rounds.
+// "forever" can't loop endlessly in an offline runtime, so it runs a generous
+// but bounded number of rounds.
 const FOREVER_ROUNDS = 20;
 
-// Unroll repeat/repeatEnd into a flat op list. Unmatched ends are ignored and
-// open repeats are auto-closed at the tail, so a half-built script still runs.
-function expand(blocks: Block[]): Block[] {
+type Speed = "slow" | "normal" | "fast";
+const SPEED_DELAY: Record<Speed, number> = { slow: 460, normal: 280, fast: 130 };
+
+// The parsed program tree the interpreter walks.
+type ScratchNode =
+  | { type: "op"; kind: string; arg?: string | number }
+  | { type: "repeat"; arg?: string | number; body: ScratchNode[] }
+  | { type: "forever"; body: ScratchNode[] }
+  | { type: "if"; kind: string; arg?: string | number; body: ScratchNode[]; elseBody?: ScratchNode[] };
+
+// Parse the flat block list (with open / else / close markers) into a tree.
+// Unmatched markers are tolerated so a half-built script still runs.
+function parse(blocks: Block[]): ScratchNode[] {
+  const root: ScratchNode[] = [];
   interface Frame {
-    times: number;
-    body: Block[];
+    node: Extract<ScratchNode, { body: ScratchNode[] }>;
+    arm: "body" | "else";
   }
-  const root: Block[] = [];
   const stack: Frame[] = [];
-  const target = () => (stack.length ? stack[stack.length - 1]!.body : root);
+  const target = (): ScratchNode[] => {
+    if (!stack.length) return root;
+    const f = stack[stack.length - 1]!;
+    if (f.arm === "else" && f.node.type === "if") {
+      return (f.node.elseBody ??= []);
+    }
+    return f.node.body;
+  };
 
   for (const b of blocks) {
     const def = DEF_BY_KIND.get(b.kind);
     if (def?.open) {
-      // "forever" is approximated by a bounded number of rounds in this
-      // offline runtime so the animation always ends.
-      const times = b.kind === "forever" ? FOREVER_ROUNDS : clampNum(b.arg, 4);
-      stack.push({ times, body: [] });
-    } else if (def?.close) {
-      const frame = stack.pop();
-      if (frame) {
-        const unrolled = repeatBody(frame);
-        target().push(...unrolled);
+      let node: Extract<ScratchNode, { body: ScratchNode[] }>;
+      if (b.kind === "repeat") node = { type: "repeat", arg: b.arg, body: [] };
+      else if (b.kind === "forever") node = { type: "forever", body: [] };
+      else node = { type: "if", kind: b.kind, arg: b.arg, body: [] };
+      target().push(node);
+      stack.push({ node, arm: "body" });
+    } else if (def?.mid) {
+      const f = stack[stack.length - 1];
+      if (f && f.node.type === "if") {
+        f.arm = "else";
+        f.node.elseBody ??= [];
       }
+    } else if (def?.close) {
+      stack.pop();
     } else {
-      target().push(b);
+      target().push({ type: "op", kind: b.kind, arg: b.arg });
     }
   }
-  // Auto-close any still-open repeats.
-  while (stack.length) {
-    const frame = stack.pop()!;
-    const unrolled = repeatBody(frame);
-    target().push(...unrolled);
-  }
   return root;
-}
-
-function repeatBody(frame: { times: number; body: Block[] }): Block[] {
-  const times = Math.max(0, Math.min(50, Math.round(frame.times)));
-  const out: Block[] = [];
-  for (let i = 0; i < times; i++) out.push(...frame.body);
-  return out;
 }
 
 function clampNum(v: string | number | undefined, fallback: number): number {

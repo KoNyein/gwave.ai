@@ -321,6 +321,63 @@ export const scratchTrack: Track = {
         goal: { requireKinds: ["setVar", "changeVar", "listAdd"] },
       },
     },
+    // 9d ── Conditionals (if / else)
+    {
+      slug: "conditionals",
+      title: "အကယ်၍ (If / Else)",
+      summary: "condition (အခြေအနေ) အပေါ်မူတည်ပြီး ဆုံးဖြတ်ခြင်း။",
+      minutes: 8,
+      kind: "scratch",
+      sections: [
+        {
+          heading: "Condition ဆိုတာ",
+          body: "«အနား ထိရင်…» block က ဇာတ်ကောင် ဇာတ်ခုံ အနားရောက်မှသာ အတွင်းက block တွေ အလုပ်လုပ်စေတယ်။ «ကိန်း > ၃ ဆိုရင်…» ဆိုတာက ကိန်းရှင် တန်ဖိုးအပေါ် မူတည်တယ်။ «မဟုတ်ရင် (else)» ထည့်ရင် မဖြစ်တဲ့အခါ တခြားလုပ်စရာ ခွဲပေးလို့ရတယ်။",
+        },
+        {
+          heading: "ကစားပါ",
+          body: "«အမြဲ ထပ်လုပ် [ ရှေ့သွား ၊ အနား ထိရင် (ညာ ၁၂၀° လှည့်) ]» — ဇာတ်ကောင် အနားထိတိုင်း ပြန်လှည့်ပြီး ဇာတ်ခုံထဲ လှည့်ပတ်နေပါလိမ့်မယ်။",
+        },
+      ],
+      scratch: {
+        starter: [
+          { kind: "forever" },
+          { kind: "move", arg: 30 },
+          { kind: "ifEdge" },
+          { kind: "turnRight", arg: 120 },
+          { kind: "repeatEnd" },
+          { kind: "repeatEnd" },
+        ],
+        goal: { requireKinds: ["forever", "if", "move"] },
+      },
+    },
+    // 9e ── Sound
+    {
+      slug: "sound",
+      title: "အသံ ထည့်ခြင်း",
+      summary: "«အသံ မြည်» / «မြည်သံ» block နဲ့ အသံ ထည့်မယ်။",
+      minutes: 5,
+      kind: "scratch",
+      sections: [
+        {
+          heading: "အသံ (Sound)",
+          body: "Sound အုပ်စုထဲက «🔊 အသံ မြည်» နဲ့ «🐱 မြည်သံ» block တွေက ကွန်ပျူတာ/ဖုန်း speaker ကနေ အသံ ထွက်စေတယ်။ (device အသံ ဖွင့်ထားပါ)။",
+        },
+        {
+          heading: "ကစားပါ",
+          body: "«၄ ကြိမ် ထပ်လုပ် [ ရှေ့သွား ၊ 🐱 မြည်သံ ၊ ၁ စက္ကန့် စောင့် ]» — ရွေ့တိုင်း အသံနဲ့ တွဲပါ။",
+        },
+      ],
+      scratch: {
+        starter: [
+          { kind: "repeat", arg: 4 },
+          { kind: "move", arg: 40 },
+          { kind: "meow" },
+          { kind: "wait", arg: 1 },
+          { kind: "repeatEnd" },
+        ],
+        goal: { requireKinds: ["meow"] },
+      },
+    },
     // 10 ── Quiz
     {
       slug: "concepts-quiz",
