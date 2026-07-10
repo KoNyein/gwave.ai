@@ -28,6 +28,7 @@
     "games": "ဂိမ်းများ",
     "shop": "ဈေးဆိုင်",
     "cameras": "ကင်မရာများ",
+    "boost": "ကြော်ငြာ",
     "gpay": "G-Pay",
     "family": "မိသားစု",
     "finance": "ငွေစာရင်း",
@@ -106,7 +107,9 @@
     "noViewersYet": "ကြည့်ရှုမှု မရှိသေးပါ။",
     "atALocation": "တစ်နေရာတွင်",
     "edit": "Post ပြင်ရန်",
-    "shareExternal": "အပြင်သို့ မျှဝေရန်…"
+    "shareExternal": "အပြင်သို့ မျှဝေရန်…",
+    "boost": "ကြော်ငြာ တွန်းတင်ရန်",
+    "sponsored": "အခပေး ကြော်ငြာ"
   },
   "comments": {
     "placeholder": "မှတ်ချက်ရေးပါ...",

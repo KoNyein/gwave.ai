@@ -28,6 +28,7 @@
     "games": "เกม",
     "shop": "ร้านค้า",
     "cameras": "กล้อง",
+    "boost": "โปรโมท",
     "gpay": "G-Pay",
     "family": "ครอบครัว",
     "finance": "การเงิน",
@@ -106,7 +107,9 @@
     "noViewersYet": "ยังไม่มีการดู",
     "atALocation": "ที่สถานที่หนึ่ง",
     "edit": "แก้ไขโพสต์",
-    "shareExternal": "แชร์ผ่าน…"
+    "shareExternal": "แชร์ผ่าน…",
+    "boost": "โปรโมท",
+    "sponsored": "ได้รับการสนับสนุน"
   },
   "comments": {
     "placeholder": "เขียนความคิดเห็น...",
