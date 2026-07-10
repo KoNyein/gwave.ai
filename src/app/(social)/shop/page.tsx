@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ClipboardList, Package, Plus, Store } from "lucide-react";
+import { BarChart3, BookOpen, ClipboardList, Package, Plus, Store } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { ProductCard } from "@/components/shop/product-card";
@@ -48,7 +48,17 @@ export default async function ShopPage({
             <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/shop/dashboard" className="gap-1.5">
+              <BarChart3 className="h-4 w-4" /> Dashboard
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/shop/guide" className="gap-1.5">
+              <BookOpen className="h-4 w-4" /> လမ်းညွှန်
+            </Link>
+          </Button>
           <Button asChild variant="outline" size="sm">
             <Link href="/shop/orders" className="gap-1.5">
               <ClipboardList className="h-4 w-4" /> {t("myOrders")}
