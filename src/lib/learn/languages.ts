@@ -459,3 +459,71 @@ export function getLangUnit(
   if (!course || !unit) return undefined;
   return { course, unit };
 }
+
+// ---------------------------------------------------------------------------
+// Bilingual on-screen labels
+//
+// The trainer's action words are shown in BOTH the language being studied and
+// Burmese (e.g. "Listen · နားထောင်"), so a learner always sees the native term
+// for the control they're using next to their own language.
+// ---------------------------------------------------------------------------
+export interface LangUiStrings {
+  listen: string;
+  speak: string;
+  type: string;
+  tapToSpeak: string;
+  typeHint: string;
+}
+
+/** The Burmese half of every bilingual label (the audience's own language). */
+export const MY_UI: LangUiStrings = {
+  listen: "နားထောင်",
+  speak: "အသံထွက်",
+  type: "စာရိုက်",
+  tapToSpeak: "နှိပ်ပြီးပြော",
+  typeHint: "နားထောင်ပြီးရိုက်",
+};
+
+/** The target-language half, per course. */
+export const LANG_UI: Record<string, LangUiStrings> = {
+  english: {
+    listen: "Listen",
+    speak: "Speak",
+    type: "Type",
+    tapToSpeak: "Tap & speak",
+    typeHint: "Listen, then type",
+  },
+  thai: {
+    listen: "ฟัง",
+    speak: "พูด",
+    type: "พิมพ์",
+    tapToSpeak: "แตะแล้วพูด",
+    typeHint: "ฟังแล้วพิมพ์",
+  },
+  chinese: {
+    listen: "听",
+    speak: "说",
+    type: "打字",
+    tapToSpeak: "点击说话",
+    typeHint: "边听边打",
+  },
+  japanese: {
+    listen: "聞く",
+    speak: "話す",
+    type: "入力",
+    tapToSpeak: "タップして話す",
+    typeHint: "聞いて入力",
+  },
+  korean: {
+    listen: "듣기",
+    speak: "말하기",
+    type: "입력",
+    tapToSpeak: "눌러 말하기",
+    typeHint: "듣고 입력",
+  },
+};
+
+/** Bilingual labels for a course, falling back to English target words. */
+export function getLangUi(courseSlug: string): LangUiStrings {
+  return LANG_UI[courseSlug] ?? LANG_UI.english!;
+}
