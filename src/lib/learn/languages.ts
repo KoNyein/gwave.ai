@@ -2221,6 +2221,240 @@ export const LANG_COURSES: LangCourse[] = [
   KOREAN,
 ];
 
+// ---------------------------------------------------------------------------
+// Beyond vocabulary: sentence structure (Subject–Verb–Object), useful phrases,
+// and a short model essay — appended to every course so learners move from
+// words to real sentences.
+// ---------------------------------------------------------------------------
+const LANG_EXTRA_UNITS: Record<string, LangUnit[]> = {
+  english: [
+    {
+      slug: "svo",
+      title: "ဝါကျ တည်ဆောက်ပုံ (S+V+O)",
+      subtitle: "Subject + Verb + Object",
+      emoji: "🧩",
+      items: [
+        { target: "I eat rice.", roman: "အိုင် အိ့ ရိုက်စ်", my: "ငါ ထမင်းစားတယ်။", emoji: "🍚" },
+        { target: "She reads a book.", roman: "ရှီး ရိဒ့် အ ဘွတ်", my: "သူမ စာအုပ်ဖတ်တယ်။", emoji: "📖" },
+        { target: "We drink water.", roman: "ဝီ ဒရင့်ခ် ဝေါ်တာ", my: "ငါတို့ ရေသောက်တယ်။", emoji: "💧" },
+        { target: "He plays football.", roman: "ဟီ ပလေးစ် ဖွတ်ဘော", my: "သူ ဘောလုံးကစားတယ်။", emoji: "⚽" },
+        { target: "They watch TV.", roman: "ဒေး ဝော့ချ် တီဗီ", my: "သူတို့ တီဗီကြည့်တယ်။", emoji: "📺" },
+        { target: "You write a letter.", roman: "ယူ ရိုက် အ လက်တာ", my: "မင်း စာရေးတယ်။", emoji: "✉️" },
+      ],
+    },
+    {
+      slug: "phrases",
+      title: "အသုံးဝင် စကားစုများ",
+      subtitle: "Useful phrases",
+      emoji: "💬",
+      items: [
+        { target: "Thank you very much.", roman: "သန်ကျူး ဗယ်ရီ မပ်ချ်", my: "ကျေးဇူးအများကြီးတင်ပါတယ်။", emoji: "🙏" },
+        { target: "Excuse me.", roman: "အိတ်စ်ကျုးစ် မီ", my: "တစ်ဆိတ်လောက်။", emoji: "🙋" },
+        { target: "How much is it?", roman: "ဟောင် မပ်ချ် အဇ် အစ်", my: "ဘယ်လောက်လဲ။", emoji: "💰" },
+        { target: "I don't understand.", roman: "အိုင် ဒုန့် အန်ဒါစတန်း", my: "နားမလည်ဘူး။", emoji: "🤔" },
+        { target: "Can you help me?", roman: "ကန် ယူ ဟဲ့ပ် မီ", my: "ကူညီပေးနိုင်မလား။", emoji: "🆘" },
+        { target: "Nice to meet you.", roman: "နိုက်စ် တု မိ့ ယူ", my: "တွေ့ရတာဝမ်းသာပါတယ်။", emoji: "😊" },
+      ],
+    },
+    {
+      slug: "essay",
+      title: "အက်ဆေး — My Family",
+      subtitle: "Short essay: My family",
+      emoji: "📝",
+      items: [
+        { target: "My name is Aung.", roman: "မိုင် နိမ်း အီးဇ် အောင်", my: "ကျွန်တော့်နာမည် အောင်ပါ။", emoji: "🧑" },
+        { target: "I live in Yangon.", roman: "အိုင် လစ်ဗ် အင် ရန်ကုန်", my: "ရန်ကုန်မှာနေပါတယ်။", emoji: "🏙️" },
+        { target: "There are four people in my family.", roman: "ဒဲ အာ ဖော ပီပဲ", my: "မိသားစုမှာ လေးယောက်ရှိတယ်။", emoji: "👨‍👩‍👧‍👦" },
+        { target: "My father is a farmer.", roman: "မိုင် ဖါးသာ အီးဇ် အ ဖါမာ", my: "အဖေက လယ်သမားပါ။", emoji: "🌾" },
+        { target: "My mother is a teacher.", roman: "မိုင် မသာ အီးဇ် အ တီချာ", my: "အမေက ဆရာမပါ။", emoji: "👩‍🏫" },
+        { target: "I love my family.", roman: "အိုင် လပ်ဗ် မိုင် ဖမ်မလီ", my: "မိသားစုကို ချစ်ပါတယ်။", emoji: "❤️" },
+      ],
+    },
+  ],
+  thai: [
+    {
+      slug: "svo",
+      title: "ဝါကျ တည်ဆောက်ပုံ (S+V+O)",
+      subtitle: "Subject + Verb + Object",
+      emoji: "🧩",
+      items: [
+        { target: "ฉันกินข้าว", roman: "chan kin khao", my: "ငါ ထမင်းစားတယ်။", emoji: "🍚" },
+        { target: "เขาอ่านหนังสือ", roman: "khao aan nangsue", my: "သူ စာအုပ်ဖတ်တယ်။", emoji: "📖" },
+        { target: "เราดื่มน้ำ", roman: "rao duem nam", my: "ငါတို့ ရေသောက်တယ်။", emoji: "💧" },
+        { target: "เขาเล่นฟุตบอล", roman: "khao len futbon", my: "သူ ဘောလုံးကစားတယ်။", emoji: "⚽" },
+        { target: "พวกเขาดูทีวี", roman: "phuak khao duu thiiwii", my: "သူတို့ တီဗီကြည့်တယ်။", emoji: "📺" },
+        { target: "คุณเขียนจดหมาย", roman: "khun khian jotmai", my: "မင်း စာရေးတယ်။", emoji: "✉️" },
+      ],
+    },
+    {
+      slug: "phrases",
+      title: "အသုံးဝင် စကားစုများ",
+      subtitle: "Useful phrases",
+      emoji: "💬",
+      items: [
+        { target: "ขอบคุณมาก", roman: "khop khun mak", my: "ကျေးဇူးအများကြီးတင်ပါတယ်။", emoji: "🙏" },
+        { target: "ขอโทษ", roman: "kho thot", my: "တောင်းပန်ပါတယ်။", emoji: "🙇" },
+        { target: "เท่าไหร่", roman: "thao rai", my: "ဘယ်လောက်လဲ။", emoji: "💰" },
+        { target: "ไม่เข้าใจ", roman: "mai khao jai", my: "နားမလည်ဘူး။", emoji: "🤔" },
+        { target: "ช่วยด้วย", roman: "chuai duai", my: "ကူညီပါ။", emoji: "🆘" },
+        { target: "ยินดีที่ได้รู้จัก", roman: "yindii thii dai ruujak", my: "တွေ့ရတာဝမ်းသာပါတယ်။", emoji: "😊" },
+      ],
+    },
+    {
+      slug: "essay",
+      title: "အက်ဆေး — ကျွန်တော့်မိသားစု",
+      subtitle: "Short essay: My family",
+      emoji: "📝",
+      items: [
+        { target: "ผมชื่อออง", roman: "phom chue Aung", my: "ကျွန်တော့်နာမည် အောင်ပါ။", emoji: "🧑" },
+        { target: "ผมอยู่ที่ย่างกุ้ง", roman: "phom yuu thii Yangkung", my: "ရန်ကုန်မှာနေပါတယ်။", emoji: "🏙️" },
+        { target: "ครอบครัวผมมีสี่คน", roman: "khropkhrua phom mii sii khon", my: "မိသားစုမှာ လေးယောက်ရှိတယ်။", emoji: "👨‍👩‍👧‍👦" },
+        { target: "พ่อเป็นชาวนา", roman: "pho pen chao naa", my: "အဖေက လယ်သမားပါ။", emoji: "🌾" },
+        { target: "แม่เป็นครู", roman: "mae pen khruu", my: "အမေက ဆရာမပါ။", emoji: "👩‍🏫" },
+        { target: "ผมรักครอบครัว", roman: "phom rak khropkhrua", my: "မိသားစုကို ချစ်ပါတယ်။", emoji: "❤️" },
+      ],
+    },
+  ],
+  chinese: [
+    {
+      slug: "svo",
+      title: "ဝါကျ တည်ဆောက်ပုံ (S+V+O)",
+      subtitle: "Subject + Verb + Object",
+      emoji: "🧩",
+      items: [
+        { target: "我吃饭", roman: "wǒ chī fàn", my: "ငါ ထမင်းစားတယ်။", emoji: "🍚" },
+        { target: "她看书", roman: "tā kàn shū", my: "သူမ စာအုပ်ဖတ်တယ်။", emoji: "📖" },
+        { target: "我们喝水", roman: "wǒmen hē shuǐ", my: "ငါတို့ ရေသောက်တယ်။", emoji: "💧" },
+        { target: "他踢足球", roman: "tā tī zúqiú", my: "သူ ဘောလုံးကန်တယ်။", emoji: "⚽" },
+        { target: "他们看电视", roman: "tāmen kàn diànshì", my: "သူတို့ တီဗီကြည့်တယ်။", emoji: "📺" },
+        { target: "你写信", roman: "nǐ xiě xìn", my: "မင်း စာရေးတယ်။", emoji: "✉️" },
+      ],
+    },
+    {
+      slug: "phrases",
+      title: "အသုံးဝင် စကားစုများ",
+      subtitle: "Useful phrases",
+      emoji: "💬",
+      items: [
+        { target: "非常感谢", roman: "fēicháng gǎnxiè", my: "ကျေးဇူးအများကြီးတင်ပါတယ်။", emoji: "🙏" },
+        { target: "对不起", roman: "duìbuqǐ", my: "တောင်းပန်ပါတယ်။", emoji: "🙇" },
+        { target: "多少钱？", roman: "duōshao qián", my: "ဘယ်လောက်လဲ။", emoji: "💰" },
+        { target: "我不懂", roman: "wǒ bù dǒng", my: "နားမလည်ဘူး။", emoji: "🤔" },
+        { target: "请帮我", roman: "qǐng bāng wǒ", my: "ကူညီပါ။", emoji: "🆘" },
+        { target: "很高兴认识你", roman: "hěn gāoxìng rènshi nǐ", my: "တွေ့ရတာဝမ်းသာပါတယ်။", emoji: "😊" },
+      ],
+    },
+    {
+      slug: "essay",
+      title: "အက်ဆေး — ကျွန်တော့်မိသားစု",
+      subtitle: "Short essay: My family",
+      emoji: "📝",
+      items: [
+        { target: "我叫昂", roman: "wǒ jiào Aung", my: "ကျွန်တော့်နာမည် အောင်ပါ။", emoji: "🧑" },
+        { target: "我住在仰光", roman: "wǒ zhù zài Yǎngguāng", my: "ရန်ကုန်မှာနေပါတယ်။", emoji: "🏙️" },
+        { target: "我家有四口人", roman: "wǒ jiā yǒu sì kǒu rén", my: "မိသားစုမှာ လေးယောက်ရှိတယ်။", emoji: "👨‍👩‍👧‍👦" },
+        { target: "爸爸是农民", roman: "bàba shì nóngmín", my: "အဖေက လယ်သမားပါ။", emoji: "🌾" },
+        { target: "妈妈是老师", roman: "māma shì lǎoshī", my: "အမေက ဆရာမပါ။", emoji: "👩‍🏫" },
+        { target: "我爱我的家", roman: "wǒ ài wǒ de jiā", my: "မိသားစုကို ချစ်ပါတယ်။", emoji: "❤️" },
+      ],
+    },
+  ],
+  japanese: [
+    {
+      slug: "svo",
+      title: "ဝါကျ တည်ဆောက်ပုံ (S+O+V)",
+      subtitle: "Sentence structure (SOV)",
+      emoji: "🧩",
+      items: [
+        { target: "私はご飯を食べます", roman: "watashi wa gohan o tabemasu", my: "ငါ ထမင်းစားတယ်။", emoji: "🍚" },
+        { target: "彼は本を読みます", roman: "kare wa hon o yomimasu", my: "သူ စာအုပ်ဖတ်တယ်။", emoji: "📖" },
+        { target: "私たちは水を飲みます", roman: "watashitachi wa mizu o nomimasu", my: "ငါတို့ ရေသောက်တယ်။", emoji: "💧" },
+        { target: "彼はサッカーをします", roman: "kare wa sakkā o shimasu", my: "သူ ဘောလုံးကစားတယ်။", emoji: "⚽" },
+        { target: "彼らはテレビを見ます", roman: "karera wa terebi o mimasu", my: "သူတို့ တီဗီကြည့်တယ်။", emoji: "📺" },
+        { target: "あなたは手紙を書きます", roman: "anata wa tegami o kakimasu", my: "မင်း စာရေးတယ်။", emoji: "✉️" },
+      ],
+    },
+    {
+      slug: "phrases",
+      title: "အသုံးဝင် စကားစုများ",
+      subtitle: "Useful phrases",
+      emoji: "💬",
+      items: [
+        { target: "どうもありがとう", roman: "dōmo arigatō", my: "ကျေးဇူးအများကြီးတင်ပါတယ်။", emoji: "🙏" },
+        { target: "すみません", roman: "sumimasen", my: "တောင်းပန်ပါတယ်။", emoji: "🙇" },
+        { target: "いくらですか", roman: "ikura desu ka", my: "ဘယ်လောက်လဲ။", emoji: "💰" },
+        { target: "わかりません", roman: "wakarimasen", my: "နားမလည်ဘူး။", emoji: "🤔" },
+        { target: "助けてください", roman: "tasukete kudasai", my: "ကူညီပါ။", emoji: "🆘" },
+        { target: "はじめまして", roman: "hajimemashite", my: "တွေ့ရတာဝမ်းသာပါတယ်။", emoji: "😊" },
+      ],
+    },
+    {
+      slug: "essay",
+      title: "အက်ဆေး — ကျွန်တော့်မိသားစု",
+      subtitle: "Short essay: My family",
+      emoji: "📝",
+      items: [
+        { target: "私の名前はアウンです", roman: "watashi no namae wa Aun desu", my: "ကျွန်တော့်နာမည် အောင်ပါ။", emoji: "🧑" },
+        { target: "ヤンゴンに住んでいます", roman: "Yangon ni sunde imasu", my: "ရန်ကုန်မှာနေပါတယ်။", emoji: "🏙️" },
+        { target: "家族は四人です", roman: "kazoku wa yonin desu", my: "မိသားစုမှာ လေးယောက်ရှိတယ်။", emoji: "👨‍👩‍👧‍👦" },
+        { target: "父は農家です", roman: "chichi wa nōka desu", my: "အဖေက လယ်သမားပါ။", emoji: "🌾" },
+        { target: "母は先生です", roman: "haha wa sensei desu", my: "အမေက ဆရာမပါ။", emoji: "👩‍🏫" },
+        { target: "家族が大好きです", roman: "kazoku ga daisuki desu", my: "မိသားစုကို ချစ်ပါတယ်။", emoji: "❤️" },
+      ],
+    },
+  ],
+  korean: [
+    {
+      slug: "svo",
+      title: "ဝါကျ တည်ဆောက်ပုံ (S+O+V)",
+      subtitle: "Sentence structure (SOV)",
+      emoji: "🧩",
+      items: [
+        { target: "저는 밥을 먹어요", roman: "jeoneun bab-eul meogeoyo", my: "ငါ ထမင်းစားတယ်။", emoji: "🍚" },
+        { target: "그는 책을 읽어요", roman: "geuneun chaeg-eul ilgeoyo", my: "သူ စာအုပ်ဖတ်တယ်။", emoji: "📖" },
+        { target: "우리는 물을 마셔요", roman: "urineun mureul masyeoyo", my: "ငါတို့ ရေသောက်တယ်။", emoji: "💧" },
+        { target: "그는 축구를 해요", roman: "geuneun chukgureul haeyo", my: "သူ ဘောလုံးကစားတယ်။", emoji: "⚽" },
+        { target: "그들은 텔레비전을 봐요", roman: "geudeureun tellebijeoneul bwayo", my: "သူတို့ တီဗီကြည့်တယ်။", emoji: "📺" },
+        { target: "당신은 편지를 써요", roman: "dangsineun pyeonjireul sseoyo", my: "မင်း စာရေးတယ်။", emoji: "✉️" },
+      ],
+    },
+    {
+      slug: "phrases",
+      title: "အသုံးဝင် စကားစုများ",
+      subtitle: "Useful phrases",
+      emoji: "💬",
+      items: [
+        { target: "정말 감사합니다", roman: "jeongmal gamsahamnida", my: "ကျေးဇူးအများကြီးတင်ပါတယ်။", emoji: "🙏" },
+        { target: "죄송합니다", roman: "joesonghamnida", my: "တောင်းပန်ပါတယ်။", emoji: "🙇" },
+        { target: "얼마예요?", roman: "eolmayeyo", my: "ဘယ်လောက်လဲ။", emoji: "💰" },
+        { target: "이해 못 해요", roman: "ihae mot haeyo", my: "နားမလည်ဘူး။", emoji: "🤔" },
+        { target: "도와주세요", roman: "dowajuseyo", my: "ကူညီပါ။", emoji: "🆘" },
+        { target: "만나서 반가워요", roman: "mannaseo bangawoyo", my: "တွေ့ရတာဝမ်းသာပါတယ်။", emoji: "😊" },
+      ],
+    },
+    {
+      slug: "essay",
+      title: "အက်ဆေး — ကျွန်တော့်မိသားစု",
+      subtitle: "Short essay: My family",
+      emoji: "📝",
+      items: [
+        { target: "제 이름은 아웅이에요", roman: "je ireumeun Aung-ieyo", my: "ကျွန်တော့်နာမည် အောင်ပါ။", emoji: "🧑" },
+        { target: "저는 양곤에 살아요", roman: "jeoneun Yangon-e sarayo", my: "ရန်ကုန်မှာနေပါတယ်။", emoji: "🏙️" },
+        { target: "우리 가족은 네 명이에요", roman: "uri gajogeun ne myeong-ieyo", my: "မိသားစုမှာ လေးယောက်ရှိတယ်။", emoji: "👨‍👩‍👧‍👦" },
+        { target: "아버지는 농부예요", roman: "abeojineun nongbuyeyo", my: "အဖေက လယ်သမားပါ။", emoji: "🌾" },
+        { target: "어머니는 선생님이에요", roman: "eomeonineun seonsaengnim-ieyo", my: "အမေက ဆရာမပါ။", emoji: "👩‍🏫" },
+        { target: "저는 가족을 사랑해요", roman: "jeoneun gajogeul saranghaeyo", my: "မိသားစုကို ချစ်ပါတယ်။", emoji: "❤️" },
+      ],
+    },
+  ],
+};
+
+// Append the extra units to each course (words first, then structure).
+for (const course of LANG_COURSES) {
+  const extra = LANG_EXTRA_UNITS[course.slug];
+  if (extra) course.units.push(...extra);
+}
+
 export function getLangCourse(slug: string): LangCourse | undefined {
   return LANG_COURSES.find((c) => c.slug === slug);
 }
