@@ -29,7 +29,8 @@
     "shop": "商店",
     "cameras": "摄像头",
     "gpay": "G-Pay",
-    "family": "家庭"
+    "family": "家庭",
+    "finance": "财务"
   },
   "auth": {
     "login": "登录",
@@ -1073,6 +1074,32 @@
     "status_shipped": "已发货",
     "status_delivered": "已送达",
     "status_cancelled": "已取消"
+  },
+  "finance": {
+    "title": "商业财务",
+    "subtitle": "跟踪运营开支 — 工资、租金、水电费和税款。",
+    "thisMonth": "本月",
+    "unpaidTotal": "尚欠 {amount} 缅币",
+    "cat_salary": "工资",
+    "cat_rent": "租金",
+    "cat_utility": "水电",
+    "cat_tax": "税款",
+    "cat_other": "其他",
+    "addExpense": "添加开支",
+    "category": "类别",
+    "titleLabel": "名称",
+    "amount": "金额",
+    "dueDate": "到期日",
+    "recurring": "每月重复",
+    "noteOptional": "备注（可选）",
+    "save": "保存",
+    "cancel": "取消",
+    "unpaid": "未付",
+    "paid": "已付",
+    "allPaid": "没有未付项。🎉",
+    "markPaid": "标记为已付",
+    "markUnpaid": "标记为未付",
+    "deleteConfirm": "删除此开支？"
   },
   "family": {
     "title": "家庭定位",

@@ -8,6 +8,7 @@ import {
   Gem,
   Home,
   LayoutGrid,
+  Landmark,
   Leaf,
   Lightbulb,
   MapPin,
@@ -54,6 +55,7 @@ export const TOOL_NAV: NavItem[] = [
   { href: "/shop", labelKey: "shop", icon: Store },
   { href: "/gpay", labelKey: "gpay", icon: Wallet },
   { href: "/family", labelKey: "family", icon: MapPin },
+  { href: "/finance", labelKey: "finance", icon: Landmark },
 ];
 
 /** Routes that require a verified adult (18+). Enforced by requireAdult(). */

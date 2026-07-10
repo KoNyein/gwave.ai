@@ -258,6 +258,29 @@ export interface UserCamera {
   updated_at: string;
 }
 
+export type ExpenseCategory =
+  | "salary"
+  | "rent"
+  | "utility"
+  | "tax"
+  | "other";
+
+export interface BusinessExpense {
+  id: string;
+  owner_id: string;
+  category: ExpenseCategory;
+  title: string;
+  amount: number;
+  currency: string;
+  due_date: string | null;
+  is_paid: boolean;
+  paid_at: string | null;
+  recurring: boolean;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface FamilyCircle {
   id: string;
   owner_id: string;
