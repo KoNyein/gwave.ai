@@ -29,7 +29,8 @@
     "shop": "Shop",
     "cameras": "Cameras",
     "gpay": "G-Pay",
-    "family": "Family"
+    "family": "Family",
+    "finance": "Finance"
   },
   "auth": {
     "login": "Log in",
@@ -1073,6 +1074,32 @@
     "status_shipped": "Shipped",
     "status_delivered": "Delivered",
     "status_cancelled": "Cancelled"
+  },
+  "finance": {
+    "title": "Business finance",
+    "subtitle": "Track running costs — salaries, rent, utility bills and taxes.",
+    "thisMonth": "This month",
+    "unpaidTotal": "{amount} MMK still unpaid",
+    "cat_salary": "Salary",
+    "cat_rent": "Rent",
+    "cat_utility": "Utility",
+    "cat_tax": "Tax",
+    "cat_other": "Other",
+    "addExpense": "Add expense",
+    "category": "Category",
+    "titleLabel": "Name",
+    "amount": "Amount",
+    "dueDate": "Due date",
+    "recurring": "Repeats monthly",
+    "noteOptional": "Note (optional)",
+    "save": "Save",
+    "cancel": "Cancel",
+    "unpaid": "Unpaid",
+    "paid": "Paid",
+    "allPaid": "Nothing unpaid. 🎉",
+    "markPaid": "Mark paid",
+    "markUnpaid": "Mark unpaid",
+    "deleteConfirm": "Delete this expense?"
   },
   "family": {
     "title": "Family locator",

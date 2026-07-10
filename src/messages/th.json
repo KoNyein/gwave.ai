@@ -29,7 +29,8 @@
     "shop": "ร้านค้า",
     "cameras": "กล้อง",
     "gpay": "G-Pay",
-    "family": "ครอบครัว"
+    "family": "ครอบครัว",
+    "finance": "การเงิน"
   },
   "auth": {
     "login": "เข้าสู่ระบบ",
@@ -1073,6 +1074,32 @@
     "status_shipped": "จัดส่งแล้ว",
     "status_delivered": "ส่งถึงแล้ว",
     "status_cancelled": "ยกเลิก"
+  },
+  "finance": {
+    "title": "การเงินธุรกิจ",
+    "subtitle": "ติดตามค่าใช้จ่าย — เงินเดือน ค่าเช่า ค่าน้ำค่าไฟ และภาษี",
+    "thisMonth": "เดือนนี้",
+    "unpaidTotal": "ยังค้างชำระ {amount} จ๊าด",
+    "cat_salary": "เงินเดือน",
+    "cat_rent": "ค่าเช่า",
+    "cat_utility": "ค่าสาธารณูปโภค",
+    "cat_tax": "ภาษี",
+    "cat_other": "อื่น ๆ",
+    "addExpense": "เพิ่มค่าใช้จ่าย",
+    "category": "หมวดหมู่",
+    "titleLabel": "ชื่อ",
+    "amount": "จำนวน",
+    "dueDate": "วันครบกำหนด",
+    "recurring": "เกิดซ้ำทุกเดือน",
+    "noteOptional": "หมายเหตุ (ไม่บังคับ)",
+    "save": "บันทึก",
+    "cancel": "ยกเลิก",
+    "unpaid": "ยังไม่จ่าย",
+    "paid": "จ่ายแล้ว",
+    "allPaid": "ไม่มีค้างชำระ 🎉",
+    "markPaid": "ทำเครื่องหมายว่าจ่ายแล้ว",
+    "markUnpaid": "ทำเครื่องหมายว่ายังไม่จ่าย",
+    "deleteConfirm": "ลบค่าใช้จ่ายนี้?"
   },
   "family": {
     "title": "ระบุตำแหน่งครอบครัว",

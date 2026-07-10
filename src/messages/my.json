@@ -29,7 +29,8 @@
     "shop": "ဈေးဆိုင်",
     "cameras": "ကင်မရာများ",
     "gpay": "G-Pay",
-    "family": "မိသားစု"
+    "family": "မိသားစု",
+    "finance": "ငွေစာရင်း"
   },
   "auth": {
     "login": "ဝင်ရန်",
@@ -1073,6 +1074,32 @@
     "status_shipped": "ပို့ဆောင်ပြီး",
     "status_delivered": "ရောက်ရှိပြီး",
     "status_cancelled": "ပယ်ဖျက်"
+  },
+  "finance": {
+    "title": "လုပ်ငန်း ငွေစာရင်း",
+    "subtitle": "လည်ပတ်စရိတ်များ စီမံပါ — လစာ၊ ဆိုင်ခန်းလ၊ မီတာခ၊ အခွန်။",
+    "thisMonth": "ဒီလ",
+    "unpaidTotal": "မပေးရသေး {amount} ကျပ်",
+    "cat_salary": "ဝန်ထမ်းလစာ",
+    "cat_rent": "ဆိုင်ခန်းလခ",
+    "cat_utility": "မီတာ/ရေ/မီး",
+    "cat_tax": "အခွန်",
+    "cat_other": "အခြား",
+    "addExpense": "ကုန်ကျစရိတ် ထည့်ရန်",
+    "category": "အမျိုးအစား",
+    "titleLabel": "အမည်",
+    "amount": "ပမာဏ",
+    "dueDate": "ပေးရမည့်ရက်",
+    "recurring": "လစဉ် ထပ်ခါ",
+    "noteOptional": "မှတ်ချက် (ရွေးချယ်)",
+    "save": "သိမ်းမည်",
+    "cancel": "မလုပ်တော့ပါ",
+    "unpaid": "မပေးရသေး",
+    "paid": "ပေးပြီး",
+    "allPaid": "မပေးရသေးတာ မရှိပါ။ 🎉",
+    "markPaid": "ပေးပြီးဟု မှတ်",
+    "markUnpaid": "မပေးရသေးဟု မှတ်",
+    "deleteConfirm": "ဒီကုန်ကျစရိတ်ကို ဖျက်မလား?"
   },
   "family": {
     "title": "မိသားစု တည်နေရာ",
