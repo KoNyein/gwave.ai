@@ -15,6 +15,36 @@ export interface AdminStats {
   postsByDay: { day: string; count: number }[];
 }
 
+export interface AdminActivityStats {
+  dau: number;
+  wau: number;
+  mau: number;
+  total_orders: number;
+  orders_30d: number;
+  delivered_orders: number;
+  lessons_completed: number;
+  certificates_issued: number;
+  active_learners_30d: number;
+}
+
+/** Engagement + commerce metrics (admin-only RPC). */
+export async function getAdminActivityStats(): Promise<AdminActivityStats> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("admin_activity_stats");
+  const d = (data as Partial<AdminActivityStats> | null) ?? {};
+  return {
+    dau: d.dau ?? 0,
+    wau: d.wau ?? 0,
+    mau: d.mau ?? 0,
+    total_orders: d.total_orders ?? 0,
+    orders_30d: d.orders_30d ?? 0,
+    delivered_orders: d.delivered_orders ?? 0,
+    lessons_completed: d.lessons_completed ?? 0,
+    certificates_issued: d.certificates_issued ?? 0,
+    active_learners_30d: d.active_learners_30d ?? 0,
+  };
+}
+
 function bucketByDay(rows: { created_at: string }[], days: number) {
   const buckets = new Map<string, number>();
   for (let i = days - 1; i >= 0; i -= 1) {
