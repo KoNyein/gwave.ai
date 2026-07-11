@@ -922,6 +922,19 @@ export interface CurrencyRate {
   updated_at: string;
 }
 
+export interface MineralDeposit {
+  place: string;
+  region: string;
+  note?: string;
+}
+
+export interface MineralMyanmar {
+  deposits?: MineralDeposit[];
+  extraction?: string;
+  transport?: string;
+  notes?: string;
+}
+
 export interface Mineral {
   id: string;
   name: string;
@@ -934,6 +947,9 @@ export interface Mineral {
   uses: string[];
   description: string | null;
   image_url: string | null;
+  wikipedia_url: string | null;
+  youtube_query: string | null;
+  myanmar: MineralMyanmar;
   created_at: string;
   updated_at: string;
 }
