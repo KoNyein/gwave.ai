@@ -5,12 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ChevronDown,
+  Gamepad2,
   Loader2,
   MessageCircle,
   SendHorizonal,
   X,
 } from "lucide-react";
 
+import { GamesPanel } from "@/components/messenger/games-panel";
 import { UserAvatar } from "@/components/social/user-avatar";
 import {
   markConversationRead,
@@ -54,6 +56,7 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
   );
   const [input, setInput] = React.useState("");
   const [sending, setSending] = React.useState(false);
+  const [gamesOpen, setGamesOpen] = React.useState(false);
   const bottomRef = React.useRef<HTMLDivElement>(null);
   const activeIdRef = React.useRef(activeId);
   activeIdRef.current = activeId;
@@ -74,6 +77,7 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
 
   // Load a thread when opened.
   React.useEffect(() => {
+    setGamesOpen(false);
     if (!activeId) {
       setMessages(null);
       return;
@@ -202,7 +206,14 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
     <div className="fixed bottom-20 right-3 z-40 flex flex-col items-end gap-2 md:bottom-4 md:right-4">
       {/* Open chat window */}
       {activeId && active ? (
-        <div className="flex h-[26rem] w-[19rem] flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl">
+        <div
+          className={cn(
+            "flex flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl",
+            gamesOpen
+              ? "h-[34rem] w-[22rem] max-w-[calc(100vw-1.5rem)]"
+              : "h-[26rem] w-[19rem]",
+          )}
+        >
           <div className="flex items-center gap-2 border-b bg-card px-3 py-2">
             {activePeer ? (
               <UserAvatar
@@ -215,6 +226,19 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
               {active.title ??
                 (activePeer ? displayName(activePeer) : "Chat")}
             </span>
+            {activePeer ? (
+              <button
+                type="button"
+                onClick={() => setGamesOpen((v) => !v)}
+                className={cn(
+                  "rounded-full p-1 hover:bg-muted",
+                  gamesOpen ? "text-primary" : "text-muted-foreground",
+                )}
+                aria-label="ဂိမ်း"
+              >
+                <Gamepad2 className="h-4 w-4" />
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => setActiveId(null)}
@@ -224,6 +248,16 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
               <ChevronDown className="h-4 w-4" />
             </button>
           </div>
+
+          {gamesOpen ? (
+            <div className="max-h-[22rem] overflow-y-auto">
+              <GamesPanel
+                conversationId={active.id}
+                currentUserId={currentUser.id}
+                onClose={() => setGamesOpen(false)}
+              />
+            </div>
+          ) : null}
 
           <div className="flex-1 space-y-1.5 overflow-y-auto p-2.5">
             {messages === null ? (
