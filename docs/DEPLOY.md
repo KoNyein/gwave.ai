@@ -1,0 +1,57 @@
+# gwave.ai — Deploy Checklist (production live လုပ်ရန်)
+
+နောက်ဆုံး main ကို production ဖြစ်အောင် အဆင့်လိုက် —
+
+## ၁။ Database migration (Supabase SQL Editor)
+
+`gwave-MASTER-run-once.sql` (chat မှာ ပို့ထားသည်) ကို **တစ်ကြိမ်** run ပါ။
+ကျန်နေသေးသမျှ အားလုံး ပါပြီး — အောက်ဆုံးမှာ PASS/FAIL ဇယား ထွက်မည်။
+ဖိုင်ထဲပါ —
+
+- Course completion certificates
+- လောင်းကစား (wager) ဖယ်ရှား + ငွေပြန်အမ်း
+- Push notification subscriptions
+- Learn leaderboard
+- Shop order delivery tracking
+- Admin analytics RPC
+
+> idempotent မို့ ထပ် run လည်း ဘေးကင်း။ ၈ ချက်စလုံး `PASS ✅` ဖြစ်ရမည်။
+
+## ၂။ Environment variables (hosting — Vercel/Netlify/...)
+
+ရှိပြီးသား Supabase/Stripe/Mux env များအပြင် အသစ် —
+
+```
+# Web Push — chat မှာ ပို့ထားတဲ့ gwave-VAPID-keys.env ထဲက တန်ဖိုးများ
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:hello@gwave.ai
+
+# Play Store TWA — bubblewrap build ပြီးမှ ထည့် (docs/PLAY_STORE.md)
+TWA_PACKAGE_NAME=ai.gwave.app
+TWA_SHA256_FINGERPRINT=...
+```
+
+## ၃။ Redeploy
+
+Hosting မှာ နောက်ဆုံး `main` ကို deploy — Vercel ဆို push တိုင်း auto-deploy
+ဖြစ်သင့်သည်။ Dashboard မှာ deployment commit မှန်မမှန် စစ်ပြီး ဖုန်း/browser
+မှာ hard refresh (Ctrl+Shift+R) လုပ်ပါ။
+
+## ၄။ စစ်ဆေးရန် (deploy ပြီးနောက်)
+
+- `/welcome` — logged-out မှာ landing page ပေါ်လာသည်
+- Settings → Notifications → "ဖွင့်မည်" — push subscribe ဖြစ်ပြီး
+  တစ်ခြား device ကနေ message ပို့ကြည့် → notification ရသည်
+- `/learn/leaderboard` — အဆင့်ဇယား
+- Shop order — status ပြောင်းရင် ဝယ်သူဆီ timeline + push
+- `/admin` — DAU/MAU/order/lesson metric row
+- Messenger ဂိမ်း — chess/ကျားထိုး/ဆယ်ကွက် (လောင်းကြေး မပါ)
+
+## ၅။ Play Store (optional — docs/PLAY_STORE.md)
+
+- Feature graphic 1024×500: `public/play-feature-graphic.svg`
+  (chat မှာ PNG အသင့်ပို့ထားသည်)
+- App icon 512×512: `public/icon-512.png`
+- `bubblewrap build` → `.aab` → Play Console upload
+- Content rating: gambling မေးခွန်း "No" (လောင်းကစား ဖယ်ပြီး)
