@@ -30,6 +30,11 @@ function restoreCode(
   return starter;
 }
 
+/** Assemble the full runnable document from the three editors. */
+function buildDoc(code: CodeState): string {
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${code.css}</style></head><body>${code.html}<script>try{${code.js}}catch(e){document.body.insertAdjacentHTML('beforeend','<pre style=\\'color:crimson\\'>'+e+'</pre>')}<\/script></body></html>`;
+}
+
 /**
  * A live HTML/CSS/JS editor. The preview runs inside a sandboxed iframe with
  * `allow-scripts` only (no `allow-same-origin`), so learner code executes in an
@@ -53,22 +58,19 @@ export function CodePlayground({
   const [code, setCode] = React.useState<CodeState>(() =>
     restoreCode(starter, lesson?.initialData),
   );
-  const [srcDoc, setSrcDoc] = React.useState("");
+  const [srcDoc, setSrcDoc] = React.useState(() => buildDoc(code));
   // Bumps to remount the editors after Reset loads new documents.
   const [resetKey, setResetKey] = React.useState(0);
+  // Bumps to remount the preview iframe on every Run, so it re-executes even
+  // when the assembled document is byte-for-byte identical (otherwise React
+  // sees the same srcDoc string and never reloads the frame → "Run" looks dead).
+  const [runKey, setRunKey] = React.useState(0);
 
   useProjectAutosave(lesson, "code", title, code);
 
-  const build = React.useCallback(
-    () =>
-      `<!doctype html><html><head><meta charset="utf-8"><style>${code.css}</style></head><body>${code.html}<script>try{${code.js}}catch(e){document.body.insertAdjacentHTML('beforeend','<pre style=\\'color:crimson\\'>'+e+'</pre>')}<\/script></body></html>`,
-    [code],
-  );
-
-  // Run once on mount so learners see output immediately.
-  React.useEffect(() => {
-    setSrcDoc(build());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const run = React.useCallback((next: CodeState) => {
+    setSrcDoc(buildDoc(next));
+    setRunKey((k) => k + 1);
   }, []);
 
   const TABS: { id: Tab; label: string }[] = [
@@ -103,6 +105,7 @@ export function CodePlayground({
             onClick={() => {
               setCode(starter);
               setResetKey((k) => k + 1);
+              run(starter);
             }}
             className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
           >
@@ -121,7 +124,7 @@ export function CodePlayground({
           heightClass={tall ? "h-[28rem]" : "h-64"}
         />
         <div className="border-t p-2">
-          <Button size="sm" className="w-full" onClick={() => setSrcDoc(build())}>
+          <Button size="sm" className="w-full" onClick={() => run(code)}>
             <Play className="mr-1 h-4 w-4" /> Run
           </Button>
         </div>
@@ -132,6 +135,7 @@ export function CodePlayground({
           Preview
         </div>
         <iframe
+          key={runKey}
           title="Code preview"
           sandbox="allow-scripts"
           srcDoc={srcDoc}
