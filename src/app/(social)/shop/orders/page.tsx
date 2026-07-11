@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, ClipboardList } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
+import { DeliveryTimeline } from "@/components/shop/delivery-timeline";
 import { OrderRow } from "@/components/shop/order-row";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
@@ -40,9 +41,12 @@ export default async function MyOrdersPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {orders.map((order) => (
-            <OrderRow key={order.id} order={order} />
+            <div key={order.id} className="space-y-2 rounded-xl border p-3">
+              <OrderRow order={order} embedded />
+              <DeliveryTimeline order={order} />
+            </div>
           ))}
         </div>
       )}

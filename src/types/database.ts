@@ -235,6 +235,10 @@ export interface ShopOrder {
   ship_phone: string;
   ship_address: string;
   note: string | null;
+  courier: string | null;
+  tracking_number: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
   created_at: string;
   updated_at: string;
 }

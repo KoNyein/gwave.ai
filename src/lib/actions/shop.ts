@@ -278,6 +278,28 @@ export async function updateOrderStatus(
   return { ok: true, data: undefined };
 }
 
+/** Seller sets/updates the courier and tracking number for one of their orders. */
+export async function updateOrderTracking(
+  orderId: string,
+  courier: string,
+  trackingNumber: string,
+): Promise<ActionResult> {
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not authenticated." };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("shop_orders")
+    .update({
+      courier: courier.trim().slice(0, 60) || null,
+      tracking_number: trackingNumber.trim().slice(0, 80) || null,
+    })
+    .eq("id", orderId)
+    .eq("seller_id", userId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/shop/sales");
+  return { ok: true, data: undefined };
+}
+
 // ── Import from another website ─────────────────────────────────────────────
 
 export interface ImportedProduct {
