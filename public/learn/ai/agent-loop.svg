@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 210" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="208" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="ag" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">AI Agent — စဉ်းစား → tool → ကြည့် → ထပ်</text>
+  <rect x="160" y="52" width="120" height="42" rx="9" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="220" y="72" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#6d28d9">စဉ်းစား (LLM)</text>
+  <text x="220" y="87" text-anchor="middle" font-size="8.5" fill="#6d28d9">ဘာလုပ်ရမလဲ</text>
+  <rect x="300" y="112" width="118" height="42" rx="9" fill="#fef3c7" stroke="#d97706"/>
+  <text x="359" y="132" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#92400e">Tool သုံး</text>
+  <text x="359" y="147" text-anchor="middle" font-size="8.5" fill="#92400e">DB/API/တွက်</text>
+  <rect x="160" y="158" width="120" height="42" rx="9" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="220" y="178" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#1e40af">ရလဒ်ကြည့်</text>
+  <text x="220" y="193" text-anchor="middle" font-size="8.5" fill="#1e40af">observe</text>
+  <rect x="22" y="112" width="118" height="42" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="81" y="132" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#166534">ပြီးရင် ဖြေ</text>
+  <text x="81" y="147" text-anchor="middle" font-size="8.5" fill="#166534">final answer</text>
+  <path d="M280 80 Q340 90 348 110" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#ag)"/>
+  <path d="M330 154 Q300 175 282 178" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#ag)"/>
+  <path d="M160 178 Q90 178 100 96 Q120 66 158 70" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#ag)"/>
+  <path d="M160 168 L142 150" stroke="#16a34a" stroke-width="2" fill="none" marker-end="url(#ag)"/>
+  <text x="360" y="182" text-anchor="middle" font-size="9" fill="#334155">function calling</text>
+</svg>

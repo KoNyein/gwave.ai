@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="gn" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">GAN — အတုလုပ်သူ vs စစ်ဆေးသူ ပြိုင်</text>
+  <rect x="30" y="80" width="110" height="52" rx="9" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="85" y="102" text-anchor="middle" font-size="10" font-weight="bold" fill="#6d28d9">Generator</text>
+  <text x="85" y="118" text-anchor="middle" font-size="8.5" fill="#6d28d9">အတုပုံ ဖန်တီး</text>
+  <rect x="290" y="80" width="118" height="52" rx="9" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="349" y="102" text-anchor="middle" font-size="10" font-weight="bold" fill="#1e40af">Discriminator</text>
+  <text x="349" y="118" text-anchor="middle" font-size="8.5" fill="#1e40af">အစစ်/အတု ခွဲ</text>
+  <line x1="140" y1="98" x2="288" y2="98" stroke="#64748b" stroke-width="2" marker-end="url(#gn)"/>
+  <text x="214" y="92" text-anchor="middle" font-size="8.5" fill="#334155">အတုပုံ ပို့</text>
+  <line x1="288" y1="120" x2="140" y2="120" stroke="#d97706" stroke-width="2" marker-end="url(#gn)"/>
+  <text x="214" y="134" text-anchor="middle" font-size="8.5" fill="#92400e">"အတု!" feedback</text>
+  <text x="220" y="164" text-anchor="middle" font-size="10" fill="#334155">G က D ကို လှည့်စားဖို့ ကြိုးစား၊ D က အတု ဖော်ထုတ်ဖို့ ကြိုးစား</text>
+  <text x="220" y="184" text-anchor="middle" font-size="9.5" fill="#64748b">ပြိုင်ရင်း နှစ်ဦးလုံး တော်လာ → အတုပုံ အစစ်နီးလာ</text>
+</svg>

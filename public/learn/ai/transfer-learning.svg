@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="tl" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Transfer Learning — အသိဟောင်း ငှားသုံး</text>
+  <rect x="40" y="66" width="150" height="86" rx="9" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="115" y="84" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#1e40af">Base (freeze 🔒)</text>
+  <text x="115" y="102" text-anchor="middle" font-size="8.5" fill="#1e40af">ImageNet ပုံ သန်းချီ</text>
+  <text x="115" y="116" text-anchor="middle" font-size="8.5" fill="#1e40af">သင်ပြီးသား —</text>
+  <text x="115" y="130" text-anchor="middle" font-size="8.5" fill="#1e40af">အနား/အသွင် သိပြီး</text>
+  <text x="115" y="145" text-anchor="middle" font-size="8" fill="#64748b">မပြင်တော့</text>
+  <line x1="190" y1="109" x2="230" y2="109" stroke="#64748b" stroke-width="2" marker-end="url(#tl)"/>
+  <rect x="234" y="66" width="164" height="86" rx="9" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="316" y="84" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#166534">New Head (သင်)</text>
+  <text x="316" y="104" text-anchor="middle" font-size="8.5" fill="#166534">ကိုယ့်အရွက်ပုံ ရာဂဏန်း</text>
+  <text x="316" y="120" text-anchor="middle" font-size="8.5" fill="#166534">ကျန်းမာ/ပိုး/မှို</text>
+  <text x="316" y="138" text-anchor="middle" font-size="8" fill="#64748b">ဒီအလွှာပဲ ဆက်သင်</text>
+  <text x="220" y="178" text-anchor="middle" font-size="10" fill="#334155">Data နည်းနည်း၊ အချိန်နည်းနည်းနဲ့ accuracy ကောင်း</text>
+</svg>

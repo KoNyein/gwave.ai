@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 210" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="208" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Embeddings — အဓိပ္ပာယ်ကို အာကာသ ထဲ နေရာချ</text>
+  <rect x="150" y="46" width="256" height="124" fill="#f8fafc" stroke="#cbd5e1"/>
+  <circle cx="210" cy="88" r="6" fill="#16a34a"/>
+  <text x="210" y="78" text-anchor="middle" font-size="8.5" fill="#166534">အရွက်ဝါ</text>
+  <circle cx="238" cy="100" r="6" fill="#16a34a"/>
+  <text x="262" y="104" text-anchor="middle" font-size="8.5" fill="#166534">yellow leaf</text>
+  <circle cx="222" cy="118" r="6" fill="#16a34a"/>
+  <text x="222" y="136" text-anchor="middle" font-size="8.5" fill="#166534">ရောဂါ</text>
+  <circle cx="360" cy="150" r="6" fill="#db2777"/>
+  <text x="360" y="140" text-anchor="middle" font-size="8.5" fill="#9d174d">ဈေးနှုန်း</text>
+  <text x="225" y="60" text-anchor="middle" font-size="8" fill="#64748b">ဆင်တူတာ — နီးနီး</text>
+  <text x="30" y="90" font-size="9" fill="#334155">ဘာသာစကား</text>
+  <text x="30" y="104" font-size="9" fill="#334155">ကွဲပေမယ့်</text>
+  <text x="30" y="118" font-size="9" fill="#334155">အဓိပ္ပာယ်တူ =</text>
+  <text x="30" y="132" font-size="9" fill="#334155">vector နီး</text>
+  <text x="220" y="192" text-anchor="middle" font-size="10" fill="#334155">cosine similarity မြင့် = နီး = ဆင်တူ — semantic search ရဲ့ အခြေခံ</text>
+</svg>

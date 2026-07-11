@@ -92,6 +92,221 @@ const IMAGES: Record<string, LessonImage> = {
     alt: "Confusion matrix with precision and recall",
     caption: "TP/FP/FN/TN လေးကွက် — precision နဲ့ recall ထွက်ပုံ",
   },
+  "ai-intro": {
+    src: `${IMG}/ai-landscape.svg`,
+    alt: "AI contains ML contains deep learning",
+    caption: "AI ⊃ ML ⊃ Deep Learning — ဆက်စပ်ပုံ",
+  },
+  "ai-narrow-general": {
+    src: `${IMG}/ai-landscape.svg`,
+    alt: "Narrow AI vs general AI",
+    caption: "Narrow AI (ယနေ့) vs General AI (မရသေး)",
+  },
+  "ai-history": {
+    src: `${IMG}/ai-history.svg`,
+    alt: "Timeline of AI milestones",
+    caption: "၁၉၅၀ Turing ကနေ ယနေ့ LLM အထိ ခရီးလမ်း",
+  },
+  "ai-generative": {
+    src: `${IMG}/generative.svg`,
+    alt: "Generative model producing text image code audio",
+    caption: "Prompt → Gen Model → စာ/ပုံ/code/အသံ အသစ်",
+  },
+  "ai-using-ai": {
+    src: `${IMG}/generative.svg`,
+    alt: "Using generative AI tools",
+    caption: "AI ကို tool အဖြစ် ခေါ်သုံးပုံ",
+  },
+  "ai-training-data": {
+    src: `${IMG}/training-data.svg`,
+    alt: "Features X and label y table",
+    caption: "X = features (မေးခွန်း) · y = label (အဖြေမှန်)",
+  },
+  "ai-features": {
+    src: `${IMG}/features.svg`,
+    alt: "Feature engineering from raw data",
+    caption: "ကုန်ကြမ်း data ကနေ model နားလည်တဲ့ feature",
+  },
+  "ai-classification-regression": {
+    src: `${IMG}/classify-vs-regress.svg`,
+    alt: "Classification boundary vs regression line",
+    caption: "ဘယ်အုပ်စု? (classify) vs ဘယ်လောက်? (regress)",
+  },
+  "ai-clustering": {
+    src: `${IMG}/clustering.svg`,
+    alt: "Unsupervised clustering scatter",
+    caption: "Label မပါဘဲ ဆင်တူချင်း အုပ်စုဖွဲ့ — unsupervised",
+  },
+  "ai-reinforcement": {
+    src: `${IMG}/reinforcement.svg`,
+    alt: "Agent environment reward loop",
+    caption: "Action → Reward/State → ပြင် — RL စက်ဝန်း",
+  },
+  "ai-nlp": {
+    src: `${IMG}/nlp.svg`,
+    alt: "NLP pipeline text to understanding",
+    caption: "စာသား → token → embedding → model နားလည်",
+  },
+  "ai-embeddings": {
+    src: `${IMG}/embeddings.svg`,
+    alt: "Words placed in vector space by meaning",
+    caption: "အဓိပ္ပာယ်တူ = vector နီး — semantic search အခြေခံ",
+  },
+  "ai-prompt-advanced": {
+    src: `${IMG}/prompt-anatomy.svg`,
+    alt: "Prompt anatomy role context task format",
+    caption: "Role + Context + Task + Format — prompt လေးပိုင်း",
+  },
+  "ai-system-prompt": {
+    src: `${IMG}/system-prompt.svg`,
+    alt: "System prompt above user message",
+    caption: "System က AI ရဲ့ စည်းမျဉ်း — user ထက် အပေါ်",
+  },
+  "ai-few-shot": {
+    src: `${IMG}/few-shot.svg`,
+    alt: "Few-shot examples teach the pattern",
+    caption: "နမူနာ ၂-၃ ခု ပြ၍ ပုံစံ လိုက်စေ",
+  },
+  "ai-chain-of-thought": {
+    src: `${IMG}/chain-of-thought.svg`,
+    alt: "Step by step reasoning chain",
+    caption: "အဆင့်လိုက် တွေးခိုင်း → မှားမှု လျော့",
+  },
+  "ai-agents": {
+    src: `${IMG}/agent-loop.svg`,
+    alt: "Agent think act observe loop",
+    caption: "စဉ်းစား → tool → ကြည့် → ထပ် — agent စက်ဝန်း",
+  },
+  "ai-function-calling": {
+    src: `${IMG}/agent-loop.svg`,
+    alt: "Function calling in agent loop",
+    caption: "AI ကို ကိုယ့် function ခေါ်ခွင့်ပေးခြင်း",
+  },
+  "ai-tokenization": {
+    src: `${IMG}/tokenization.svg`,
+    alt: "Sentence split into tokens with ids",
+    caption: "စာသား → token အတုံး → ID ဂဏန်း",
+  },
+  "ai-context-window": {
+    src: `${IMG}/context-window.svg`,
+    alt: "Sliding context window over messages",
+    caption: "Token ဘောင် ပြည့်ရင် အဟောင်း ကျန်ခဲ့",
+  },
+  "ai-temperature": {
+    src: `${IMG}/temperature.svg`,
+    alt: "Low vs high temperature distributions",
+    caption: "temp 0 = တိကျ · temp 1 = တီထွင်",
+  },
+  "ai-fine-tuning": {
+    src: `${IMG}/fine-tuning.svg`,
+    alt: "Fine-tuning base model with domain data",
+    caption: "Base + ကိုယ့် data → အထူးပြု model",
+  },
+  "ai-transfer-learning": {
+    src: `${IMG}/transfer-learning.svg`,
+    alt: "Transfer learning freeze base add head",
+    caption: "Base freeze + head အသစ် သင် — data နည်းနည်းနဲ့ရ",
+  },
+  "ai-multimodal": {
+    src: `${IMG}/multimodal.svg`,
+    alt: "Multimodal image plus text input",
+    caption: "ပုံ + စာ တစ်ပြိုင်တည်း နားလည်",
+  },
+  "ai-rnn-lstm": {
+    src: `${IMG}/rnn-lstm.svg`,
+    alt: "RNN LSTM sequence with memory",
+    caption: "အစဉ်လိုက် + မှတ်ဉာဏ် → နောက်တစ်ဆင့် ခန့်မှန်း",
+  },
+  "ai-diffusion": {
+    src: `${IMG}/diffusion.svg`,
+    alt: "Diffusion denoise from noise to image",
+    caption: "ဆူညံသံ → တစ်ဆင့်ချင်း denoise → ပုံ",
+  },
+  "ai-image-generation": {
+    src: `${IMG}/image-generation.svg`,
+    alt: "Image generation prompt quality",
+    caption: "အကြောင်းအရာ + style + အလင်း + ထောင့် တိကျစွာ",
+  },
+  "ai-gans": {
+    src: `${IMG}/gan.svg`,
+    alt: "GAN generator vs discriminator",
+    caption: "အတုလုပ်သူ vs စစ်ဆေးသူ ပြိုင် — GAN",
+  },
+  "ai-speech-audio": {
+    src: `${IMG}/speech-audio.svg`,
+    alt: "Speech to text and text to speech",
+    caption: "အသံ → စာ (ASR) · စာ → အသံ (TTS)",
+  },
+  "ai-hallucination": {
+    src: `${IMG}/hallucination.svg`,
+    alt: "Hallucination confident wrong vs grounded",
+    caption: "ယုံကြည်စွာ လိမ်ဖြေ vs grounded — ကာကွယ်နည်း",
+  },
+  "ai-ethics": {
+    src: `${IMG}/bias-fairness.svg`,
+    alt: "Biased data leads to biased outcome",
+    caption: "စောင်းနေ data → မမျှတ အဖြေ — တာဝန်ရှိ AI",
+  },
+  "ai-bias-fairness": {
+    src: `${IMG}/bias-fairness.svg`,
+    alt: "Bias and fairness in models",
+    caption: "Bias ဘယ်ကလာ၊ ဘယ်လို လျှော့မလဲ",
+  },
+  "ai-privacy-data": {
+    src: `${IMG}/privacy.svg`,
+    alt: "Data privacy protections",
+    caption: "Consent · Anonymize · Minimize · On-device",
+  },
+  "ai-in-agriculture": {
+    src: `${IMG}/agriculture.svg`,
+    alt: "AI in agriculture sensors to decisions",
+    caption: "Sensor/ပုံ → AI → ရောဂါ/ရိတ်ရက်/ရေ ဆုံးဖြတ်",
+  },
+  "ai-ai-in-myanmar": {
+    src: `${IMG}/agriculture.svg`,
+    alt: "AI for Myanmar farmers",
+    caption: "မြန်မာ တောင်သူ — အထွက်တိုး · ကုန်ကျ လျော့",
+  },
+  "ai-recommendation": {
+    src: `${IMG}/recommendation.svg`,
+    alt: "Recommendation from similar users",
+    caption: "ဆင်တူသူ ဝယ်တာ ညွှန်း — collaborative",
+  },
+  "ai-anomaly-detection": {
+    src: `${IMG}/anomaly.svg`,
+    alt: "Anomaly flagged outside normal band",
+    caption: "ပုံမှန်ဘောင် (±3σ) ကျော် = ထူးခြားမှု ဖမ်း",
+  },
+  "ai-forecasting": {
+    src: `${IMG}/forecasting.svg`,
+    alt: "Forecast trend into the future",
+    caption: "Trend + ရာသီပုံစံ → အနာဂတ် ခန့်မှန်း",
+  },
+  "ai-decision-trees": {
+    src: `${IMG}/decision-tree.svg`,
+    alt: "Decision tree splits to classes",
+    caption: "မေးခွန်းလိုက် ကိုင်း → အဖြေ — လူ ဖတ်လို့ရ",
+  },
+  "ai-mlops": {
+    src: `${IMG}/mlops.svg`,
+    alt: "MLOps lifecycle loop",
+    caption: "Data→Train→Test→Deploy→Monitor→Retrain စက်ဝန်း",
+  },
+  "ai-explainability": {
+    src: `${IMG}/explainability.svg`,
+    alt: "Feature importance bar chart",
+    caption: "Model ဘာကို ကြည့်ဆုံးဖြတ်လဲ — feature importance",
+  },
+  "ai-edge-ai": {
+    src: `${IMG}/edge-ai.svg`,
+    alt: "Cloud AI vs edge AI on device",
+    caption: "Cloud vs Edge — internet မလိုဘဲ စက်ပေါ် run",
+  },
+  "ai-project-classifier": {
+    src: `${IMG}/project-pipeline.svg`,
+    alt: "End to end classifier project pipeline",
+    caption: "Data→Split→Train→Eval→Save — project အဆင့်ဆင့်",
+  },
 };
 
 const CODE: Record<string, CodeExtra> = {

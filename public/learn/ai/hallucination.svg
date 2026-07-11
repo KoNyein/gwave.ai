@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Hallucination — ယုံကြည်စွာ လိမ်ဖြေ</text>
+  <rect x="26" y="52" width="186" height="60" rx="9" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="119" y="72" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#991b1b">❌ Ground မရှိ</text>
+  <text x="119" y="90" text-anchor="middle" font-size="8.5" fill="#991b1b">"EC 8.5 ထားပါ" (မှား)</text>
+  <text x="119" y="104" text-anchor="middle" font-size="8.5" fill="#991b1b">သေချာသလို ဖြေ — ဒါ အန္တရာယ်</text>
+  <rect x="228" y="52" width="186" height="60" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="321" y="72" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#166534">✅ Grounded</text>
+  <text x="321" y="90" text-anchor="middle" font-size="8.5" fill="#166534">"စာရွက်အရ EC 1.2–1.8"</text>
+  <text x="321" y="104" text-anchor="middle" font-size="8.5" fill="#166534">မသိရင် "မသိပါ" ဖြေ</text>
+  <text x="30" y="138" font-size="9.5" font-weight="bold" fill="#334155">ကာကွယ်နည်း —</text>
+  <text x="42" y="156" font-size="9" fill="#334155">① RAG (မိမိ data ချည်း) ② citation ခိုင်း</text>
+  <text x="42" y="172" font-size="9" fill="#334155">③ temperature ချ ④ လူက ပြန်စစ် (human-in-loop)</text>
+  <text x="220" y="190" text-anchor="middle" font-size="9" fill="#64748b">အရေးကြီးရာ (ဆေး/ဥပဒေ) — အမြဲ ပြန်စစ်</text>
+</svg>

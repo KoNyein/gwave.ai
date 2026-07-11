@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="rc" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Recommendation — ဆင်တူသူ ဝယ်တာ ညွှန်း</text>
+  <text x="70" y="70" text-anchor="middle" font-size="16">🧑‍🌾</text>
+  <text x="70" y="88" text-anchor="middle" font-size="9" font-weight="bold" fill="#334155">သင်</text>
+  <text x="70" y="106" text-anchor="middle" font-size="8.5" fill="#2563eb">🌱 ⚡</text>
+  <text x="70" y="126" text-anchor="middle" font-size="16">🧑‍🌾</text>
+  <text x="70" y="144" text-anchor="middle" font-size="9" fill="#334155">ဆင်တူသူ</text>
+  <text x="70" y="162" text-anchor="middle" font-size="8.5" fill="#2563eb">🌱 ⚡ 🧪</text>
+  <line x1="110" y1="110" x2="176" y2="110" stroke="#64748b" stroke-width="2" marker-end="url(#rc)"/>
+  <text x="143" y="102" text-anchor="middle" font-size="8" fill="#334155">similarity</text>
+  <rect x="180" y="86" width="96" height="48" rx="9" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="228" y="108" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#6d28d9">ဆင်တူမှု တွက်</text>
+  <text x="228" y="123" text-anchor="middle" font-size="8" fill="#6d28d9">cosine</text>
+  <line x1="276" y1="110" x2="314" y2="110" stroke="#64748b" stroke-width="2" marker-end="url(#rc)"/>
+  <rect x="318" y="82" width="98" height="56" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="367" y="104" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#166534">ညွှန်း 🧪</text>
+  <text x="367" y="120" text-anchor="middle" font-size="8" fill="#166534">သူဝယ်ပြီး</text>
+  <text x="367" y="131" text-anchor="middle" font-size="8" fill="#166534">သင်မဝယ်ရသေး</text>
+  <text x="220" y="180" text-anchor="middle" font-size="10" fill="#334155">"ဒါဝယ်သူတွေ ဒါလည်း ဝယ်တယ်" — shop အရောင်းတိုး</text>
+</svg>

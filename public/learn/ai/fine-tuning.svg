@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="ft" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Fine-tuning — model ကို ကိုယ့်နယ်ပယ် သင်ထပ်</text>
+  <rect x="30" y="78" width="96" height="52" rx="9" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="78" y="100" text-anchor="middle" font-size="10" font-weight="bold" fill="#1e40af">Base Model</text>
+  <text x="78" y="116" text-anchor="middle" font-size="8.5" fill="#1e40af">ဗဟုသုတ ကျယ်</text>
+  <rect x="166" y="70" width="108" height="30" rx="7" fill="#fef3c7" stroke="#d97706"/>
+  <text x="220" y="90" text-anchor="middle" font-size="9" fill="#92400e">ကိုယ့် domain data</text>
+  <text x="220" y="118" text-anchor="middle" font-size="9" fill="#64748b">(example 100–1000+)</text>
+  <line x1="126" y1="104" x2="164" y2="90" stroke="#64748b" stroke-width="2" marker-end="url(#ft)"/>
+  <line x1="274" y1="90" x2="312" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#ft)"/>
+  <rect x="314" y="78" width="104" height="52" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="366" y="100" text-anchor="middle" font-size="10" font-weight="bold" fill="#166534">အထူးပြု Model</text>
+  <text x="366" y="116" text-anchor="middle" font-size="8.5" fill="#166534">ကိုယ့်စကားလို</text>
+  <text x="220" y="160" text-anchor="middle" font-size="10" fill="#334155">သတိ — RAG က ပိုမြန်/ပိုသက်သာ၊ များသောအားဖြင့် အရင်စမ်း</text>
+  <text x="220" y="180" text-anchor="middle" font-size="9.5" fill="#64748b">Fine-tune = ပုံစံ/လေယူလေသိမ်း သေချာ လိုတဲ့အခါ</text>
+</svg>

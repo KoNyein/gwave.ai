@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Forecasting — အတိတ်ကနေ အနာဂတ် ခန့်</text>
+  <rect x="34" y="56" width="372" height="96" fill="#f8fafc" stroke="#cbd5e1"/>
+  <line x1="256" y1="56" x2="256" y2="152" stroke="#cbd5e1" stroke-dasharray="4 3"/>
+  <polyline points="44,138 74,130 104,134 134,120 164,124 194,110 224,114 254,102" fill="none" stroke="#2563eb" stroke-width="2"/>
+  <polyline points="254,102 284,96 314,92 344,86 374,82" fill="none" stroke="#db2777" stroke-width="2" stroke-dasharray="5 3"/>
+  <path d="M254,102 L284,88 L314,80 L344,72 L374,66 L374,98 L344,100 L314,104 L284,104 Z" fill="#fbcfe8" opacity="0.4"/>
+  <text x="145" y="76" text-anchor="middle" font-size="9" fill="#1e40af">အတိတ် (သိပြီး)</text>
+  <text x="320" y="130" text-anchor="middle" font-size="9" fill="#9d174d">ခန့်မှန်း + range</text>
+  <text x="220" y="174" text-anchor="middle" font-size="10" fill="#334155">Trend + ရာသီပုံစံ (seasonality) — ရောင်းအား/အထွက် ကြိုတွက်</text>
+  <text x="220" y="192" text-anchor="middle" font-size="9" fill="#64748b">moving average · Prophet · ARIMA · LSTM</text>
+</svg>

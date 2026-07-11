@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Context Window — မှတ်ဉာဏ် အကန့်အသတ်</text>
+  <g font-size="8.5" text-anchor="middle">
+    <rect x="26" y="70" width="52" height="34" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/><text x="52" y="91" fill="#94a3b8">msg 1</text>
+    <rect x="84" y="70" width="52" height="34" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/><text x="110" y="91" fill="#94a3b8">msg 2</text>
+    <rect x="150" y="64" width="248" height="46" rx="9" fill="none" stroke="#2563eb" stroke-width="2" stroke-dasharray="5 3"/>
+    <rect x="156" y="70" width="52" height="34" rx="6" fill="#dbeafe" stroke="#2563eb"/><text x="182" y="91" fill="#1e40af">msg 6</text>
+    <rect x="214" y="70" width="52" height="34" rx="6" fill="#dbeafe" stroke="#2563eb"/><text x="240" y="91" fill="#1e40af">msg 7</text>
+    <rect x="272" y="70" width="52" height="34" rx="6" fill="#dcfce7" stroke="#16a34a"/><text x="298" y="91" fill="#166534">msg 8</text>
+    <rect x="330" y="70" width="62" height="34" rx="6" fill="#fef3c7" stroke="#d97706"/><text x="361" y="91" fill="#92400e">ယခု</text>
+  </g>
+  <text x="82" y="128" text-anchor="middle" font-size="9" fill="#94a3b8">ကျော်သွား — မမြင်တော့</text>
+  <text x="274" y="128" text-anchor="middle" font-size="9" fill="#1e40af">ဝင်းဒိုးထဲ — မြင်ရ</text>
+  <text x="220" y="158" text-anchor="middle" font-size="10" fill="#334155">Token ဘောင် (ဥပမာ 8k) ပြည့်ရင် အဟောင်း ကျန်ခဲ့</text>
+  <text x="220" y="180" text-anchor="middle" font-size="9.5" fill="#64748b">ဖြေ: အဟောင်း summary ချုံ့ · အရေးကြီးဆုံး ရှေ့ထား</text>
+</svg>

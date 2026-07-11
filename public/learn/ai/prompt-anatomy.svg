@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 210" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="208" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Prompt ကောင်းရဲ့ လေးပိုင်း</text>
+  <rect x="30" y="48" width="380" height="30" rx="7" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="46" y="67" font-size="10" font-weight="bold" fill="#1e40af">Role —</text>
+  <text x="108" y="67" font-size="9.5" fill="#1e40af">"သင်သည် စိုက်ပျိုးရေး ပညာရှင်"</text>
+  <rect x="30" y="84" width="380" height="30" rx="7" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="46" y="103" font-size="10" font-weight="bold" fill="#166534">Context —</text>
+  <text x="122" y="103" font-size="9.5" fill="#166534">"ခရမ်းချဉ် ၄ ပတ်၊ အောက်ရွက်ဝါ၊ EC 3.5"</text>
+  <rect x="30" y="120" width="380" height="30" rx="7" fill="#fef3c7" stroke="#d97706"/>
+  <text x="46" y="139" font-size="10" font-weight="bold" fill="#92400e">Task —</text>
+  <text x="108" y="139" font-size="9.5" fill="#92400e">"အကြောင်းရင်း ၃ ခု + ဖြေရှင်းနည်း"</text>
+  <rect x="30" y="156" width="380" height="30" rx="7" fill="#fce7f3" stroke="#db2777"/>
+  <text x="46" y="175" font-size="10" font-weight="bold" fill="#9d174d">Format —</text>
+  <text x="120" y="175" font-size="9.5" fill="#9d174d">"ဇယားပုံစံ၊ မြန်မာလို ဖြေပါ"</text>
+  <text x="220" y="202" text-anchor="middle" font-size="9.5" fill="#334155">တိကျ၊ ရှင်းလင်းလေ — အဖြေ ကောင်းလေ</text>
+</svg>

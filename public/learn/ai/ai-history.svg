@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">AI ရဲ့ ခရီးလမ်း — ၁၉၅၀ ကနေ ယနေ့</text>
+  <line x1="34" y1="108" x2="406" y2="108" stroke="#94a3b8" stroke-width="2"/>
+  <circle cx="60" cy="108" r="6" fill="#2563eb"/>
+  <text x="60" y="88" text-anchor="middle" font-size="10" font-weight="bold" fill="#1e40af">1950</text>
+  <text x="60" y="132" text-anchor="middle" font-size="8.5" fill="#334155">Turing test</text>
+  <circle cx="145" cy="108" r="6" fill="#7c3aed"/>
+  <text x="145" y="88" text-anchor="middle" font-size="10" font-weight="bold" fill="#6d28d9">1956</text>
+  <text x="145" y="132" text-anchor="middle" font-size="8.5" fill="#334155">"AI" ဝေါဟာရ</text>
+  <circle cx="230" cy="108" r="6" fill="#d97706"/>
+  <text x="230" y="88" text-anchor="middle" font-size="10" font-weight="bold" fill="#92400e">1997</text>
+  <text x="230" y="132" text-anchor="middle" font-size="8.5" fill="#334155">Deep Blue ♟</text>
+  <circle cx="315" cy="108" r="6" fill="#16a34a"/>
+  <text x="315" y="88" text-anchor="middle" font-size="10" font-weight="bold" fill="#166534">2012</text>
+  <text x="315" y="132" text-anchor="middle" font-size="8.5" fill="#334155">Deep learning</text>
+  <circle cx="392" cy="108" r="6" fill="#db2777"/>
+  <text x="392" y="88" text-anchor="middle" font-size="10" font-weight="bold" fill="#9d174d">2020s</text>
+  <text x="392" y="132" text-anchor="middle" font-size="8.5" fill="#334155">LLM/ChatGPT</text>
+  <text x="220" y="176" text-anchor="middle" font-size="10" fill="#334155">ဆယ်စုနှစ်များ ဖြည်းဖြည်း — data + computing တိုးမှ ရုတ်တရက် ရှေ့ရောက်</text>
+</svg>

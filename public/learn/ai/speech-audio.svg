@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="sa" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Speech AI — အသံ ⇄ စာသား</text>
+  <g stroke="#2563eb" stroke-width="2" fill="none">
+    <path d="M40 90 q6 -18 12 0 q6 20 12 0 q6 -14 12 0 q6 16 12 0 q6 -10 12 0"/>
+  </g>
+  <text x="70" y="120" text-anchor="middle" font-size="9" fill="#1e40af">🎙 အသံ</text>
+  <rect x="132" y="72" width="80" height="38" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="172" y="90" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#6d28d9">ASR</text>
+  <text x="172" y="104" text-anchor="middle" font-size="8" fill="#6d28d9">Whisper</text>
+  <line x1="112" y1="90" x2="130" y2="90" stroke="#64748b" stroke-width="2" marker-end="url(#sa)"/>
+  <line x1="212" y1="90" x2="238" y2="90" stroke="#64748b" stroke-width="2" marker-end="url(#sa)"/>
+  <rect x="240" y="72" width="94" height="38" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="287" y="95" text-anchor="middle" font-size="9.5" fill="#166534">"မင်္ဂလာပါ"</text>
+  <line x1="172" y1="128" x2="172" y2="150" stroke="#64748b" stroke-width="2" marker-end="url(#sa)"/>
+  <rect x="132" y="150" width="202" height="30" rx="8" fill="#fef3c7" stroke="#d97706"/>
+  <text x="233" y="169" text-anchor="middle" font-size="9" fill="#92400e">TTS — စာ → အသံ (ပြောင်းပြန်)</text>
+  <text x="70" y="150" text-anchor="middle" font-size="8.5" fill="#334155">မြန်မာ ရ</text>
+  <text x="390" y="90" text-anchor="middle" font-size="9" fill="#334155">စာသား</text>
+</svg>

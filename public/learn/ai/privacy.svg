@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Data Privacy — အချက်လက် ကာကွယ်</text>
+  <text x="80" y="70" text-anchor="middle" font-size="26">🔒</text>
+  <rect x="150" y="50" width="260" height="30" rx="7" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="164" y="69" font-size="9.5" fill="#1e40af">① Consent — ခွင့်ပြုချက် ယူမှ စု</text>
+  <rect x="150" y="86" width="260" height="30" rx="7" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="164" y="105" font-size="9.5" fill="#166534">② Anonymize — နာမည်/ID ဖျောက်</text>
+  <rect x="150" y="122" width="260" height="30" rx="7" fill="#fef3c7" stroke="#d97706"/>
+  <text x="164" y="141" font-size="9.5" fill="#92400e">③ Minimize — လိုသလောက်သာ သိမ်း</text>
+  <rect x="150" y="158" width="260" height="30" rx="7" fill="#fce7f3" stroke="#db2777"/>
+  <text x="164" y="177" font-size="9.5" fill="#9d174d">④ On-device — မဖြစ်မနေမှ cloud ပို့</text>
+  <text x="80" y="128" text-anchor="middle" font-size="8.5" fill="#334155">လူ့အချက်လက်</text>
+  <text x="80" y="142" text-anchor="middle" font-size="8.5" fill="#334155">= တာဝန်</text>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 210" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="208" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="mo" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">MLOps — model ရဲ့ ပတ်လည် စက်ဝန်း</text>
+  <g font-size="9" text-anchor="middle">
+    <rect x="176" y="46" width="88" height="30" rx="7" fill="#dbeafe" stroke="#2563eb"/><text x="220" y="65" fill="#1e40af">① Data</text>
+    <rect x="316" y="72" width="88" height="30" rx="7" fill="#ede9fe" stroke="#7c3aed"/><text x="360" y="91" fill="#6d28d9">② Train</text>
+    <rect x="316" y="128" width="88" height="30" rx="7" fill="#fef3c7" stroke="#d97706"/><text x="360" y="147" fill="#92400e">③ Test</text>
+    <rect x="176" y="156" width="88" height="30" rx="7" fill="#dcfce7" stroke="#16a34a"/><text x="220" y="175" fill="#166534">④ Deploy</text>
+    <rect x="36" y="128" width="88" height="30" rx="7" fill="#fce7f3" stroke="#db2777"/><text x="80" y="147" fill="#9d174d">⑤ Monitor</text>
+    <rect x="36" y="72" width="88" height="30" rx="7" fill="#e0f2fe" stroke="#0284c7"/><text x="80" y="91" fill="#075985">⑥ Retrain</text>
+  </g>
+  <path d="M264 60 Q315 62 340 70" stroke="#64748b" stroke-width="1.8" fill="none" marker-end="url(#mo)"/>
+  <path d="M360 102 L360 126" stroke="#64748b" stroke-width="1.8" marker-end="url(#mo)"/>
+  <path d="M336 158 Q290 175 266 174" stroke="#64748b" stroke-width="1.8" fill="none" marker-end="url(#mo)"/>
+  <path d="M176 174 Q120 175 104 160" stroke="#64748b" stroke-width="1.8" fill="none" marker-end="url(#mo)"/>
+  <path d="M80 128 L80 104" stroke="#64748b" stroke-width="1.8" marker-end="url(#mo)"/>
+  <path d="M104 74 Q150 60 174 60" stroke="#64748b" stroke-width="1.8" fill="none" marker-end="url(#mo)"/>
+  <text x="220" y="202" text-anchor="middle" font-size="9.5" fill="#334155">တစ်ခါသင်ပြီး မပြီး — drift ဖြစ်ရင် data အသစ်နဲ့ ပြန်သင်</text>
+</svg>

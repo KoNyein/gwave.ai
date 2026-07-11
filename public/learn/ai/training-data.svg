@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 210" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="208" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Training Data — Features (X) နဲ့ Label (y)</text>
+  <rect x="34" y="52" width="252" height="24" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="90" y="69" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#1e40af">အပူချိန်</text>
+  <text x="174" y="69" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#1e40af">စိုထိုင်း</text>
+  <text x="252" y="69" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#1e40af">EC</text>
+  <rect x="290" y="52" width="116" height="24" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="348" y="69" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#166534">ရိတ်ရက်</text>
+  <g font-size="9.5" fill="#334155" text-anchor="middle">
+    <rect x="34" y="76" width="252" height="22" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="90" y="91">28.5</text><text x="174" y="91">65</text><text x="252" y="91">1.8</text>
+    <rect x="290" y="76" width="116" height="22" fill="#f0fdf4" stroke="#e2e8f0"/>
+    <text x="348" y="91">62</text>
+    <rect x="34" y="98" width="252" height="22" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="90" y="113">31.0</text><text x="174" y="113">70</text><text x="252" y="113">2.1</text>
+    <rect x="290" y="98" width="116" height="22" fill="#f0fdf4" stroke="#e2e8f0"/>
+    <text x="348" y="113">58</text>
+    <rect x="34" y="120" width="252" height="22" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="90" y="135">26.2</text><text x="174" y="135">60</text><text x="252" y="135">1.5</text>
+    <rect x="290" y="120" width="116" height="22" fill="#f0fdf4" stroke="#e2e8f0"/>
+    <text x="348" y="135">67</text>
+  </g>
+  <text x="160" y="160" text-anchor="middle" font-size="10" font-weight="bold" fill="#1e40af">X — မေးခွန်း (features)</text>
+  <text x="348" y="160" text-anchor="middle" font-size="10" font-weight="bold" fill="#166534">y — အဖြေမှန်</text>
+  <text x="220" y="192" text-anchor="middle" font-size="10" fill="#334155">Data ညစ်ရင် model ညစ် — null/ထပ်/မှား အရင်ရှင်း၊ label မှန်အောင်</text>
+</svg>

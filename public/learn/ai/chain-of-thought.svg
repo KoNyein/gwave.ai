@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="co" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Chain-of-Thought — အဆင့်လိုက် တွေး</text>
+  <rect x="24" y="70" width="86" height="48" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="67" y="90" text-anchor="middle" font-size="9" fill="#1e40af">ဧက 3 ×</text>
+  <text x="67" y="104" text-anchor="middle" font-size="9" fill="#1e40af">ပင် 1200</text>
+  <rect x="128" y="70" width="86" height="48" rx="8" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="171" y="90" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#3730a3">= 3600</text>
+  <text x="171" y="105" text-anchor="middle" font-size="8.5" fill="#3730a3">စုစုပေါင်း</text>
+  <rect x="232" y="70" width="86" height="48" rx="8" fill="#fef3c7" stroke="#d97706"/>
+  <text x="275" y="90" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#92400e">15% ပျက်</text>
+  <text x="275" y="105" text-anchor="middle" font-size="8.5" fill="#92400e">= 540</text>
+  <rect x="336" y="70" width="82" height="48" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="377" y="90" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#166534">ကျန် 3060</text>
+  <text x="377" y="105" text-anchor="middle" font-size="8.5" fill="#166534">✓ အဖြေ</text>
+  <line x1="110" y1="94" x2="126" y2="94" stroke="#64748b" stroke-width="2" marker-end="url(#co)"/>
+  <line x1="214" y1="94" x2="230" y2="94" stroke="#64748b" stroke-width="2" marker-end="url(#co)"/>
+  <line x1="318" y1="94" x2="334" y2="94" stroke="#64748b" stroke-width="2" marker-end="url(#co)"/>
+  <text x="220" y="152" text-anchor="middle" font-size="10" fill="#334155">"အဆင့်လိုက် တွေးပြပါ" — တစ်ခါတည်း မဟုတ်ဘဲ တစ်ဆင့်ချင်း</text>
+  <text x="220" y="176" text-anchor="middle" font-size="9.5" fill="#64748b">→ သင်္ချာ/logic မှားမှု သိသိသာသာ လျော့</text>
+</svg>
