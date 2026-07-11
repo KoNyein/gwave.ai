@@ -712,6 +712,8 @@
     "newProduct": "New product",
     "editProduct": "Edit product",
     "productName": "Product name",
+    "photo": "Photo",
+    "profit": "Profit",
     "category": "Category",
     "uncategorized": "Uncategorized",
     "orNewCategory": "...or new category",

@@ -4,11 +4,13 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   Download,
+  ImageIcon,
   Loader2,
   Package,
   Pencil,
   Plus,
   Upload,
+  X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -30,6 +32,7 @@ import {
   setProductActive,
 } from "@/lib/actions/pos";
 import type { ProductWithStock } from "@/lib/db/pos";
+import { mediaUrl, uploadMedia } from "@/lib/media";
 import { cn } from "@/lib/utils";
 import type { PosCategory, Store } from "@/types/database";
 
@@ -182,7 +185,20 @@ export function InventoryManager({
                     !product.active && "opacity-50",
                   )}
                 >
-                  <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-3">
+                    {product.image_path ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={mediaUrl(product.image_path)}
+                        alt=""
+                        className="h-11 w-11 shrink-0 rounded-lg border object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border bg-muted text-muted-foreground">
+                        <ImageIcon className="h-5 w-5" />
+                      </span>
+                    )}
+                    <div className="min-w-0">
                     <p className="text-sm font-semibold">
                       {product.name}
                       {!product.active ? ` (${t("inactive")})` : ""}
@@ -202,6 +218,7 @@ export function InventoryManager({
                         </span>
                       ) : null}
                     </p>
+                    </div>
                   </div>
                   <div className="flex shrink-0 gap-2">
                     {product.track_stock ? (
@@ -278,8 +295,24 @@ function ProductDialog({
     String(product?.inventory?.low_stock_threshold ?? 5),
   );
   const [active, setActive] = React.useState(product?.active ?? true);
+  const [imagePath, setImagePath] = React.useState(product?.image_path ?? null);
+  const [uploading, setUploading] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
+
+  async function handlePhoto(file: File) {
+    setUploading(true);
+    setError(null);
+    try {
+      const uploaded = await uploadMedia(store.owner_id, file);
+      if (uploaded.media_type !== "image") throw new Error(t("productInvalid"));
+      setImagePath(uploaded.storage_path);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("importFailed"));
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function submit() {
     const priceValue = Number.parseFloat(price);
@@ -309,7 +342,7 @@ function ProductDialog({
         cost: Number.parseFloat(cost) || null,
         trackStock,
         lowStockThreshold: Number.parseFloat(threshold) || 0,
-        imagePath: product?.image_path ?? null,
+        imagePath,
       });
       if (!result.ok) {
         setError(result.error);
@@ -332,6 +365,55 @@ function ProductDialog({
           </DialogTitle>
         </DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
+          {/* Product photo */}
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>{t("photo")}</Label>
+            <div className="flex items-center gap-3">
+              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border bg-muted">
+                {imagePath ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={mediaUrl(imagePath)}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setImagePath(null)}
+                      className="absolute right-0.5 top-0.5 rounded-full bg-background/80 p-0.5 text-muted-foreground hover:text-foreground"
+                      aria-label={t("edit")}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center text-muted-foreground">
+                    <ImageIcon className="h-7 w-7" />
+                  </span>
+                )}
+              </div>
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted/50">
+                {uploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                {t("photo")}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void handlePhoto(f);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+          </div>
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="p-name">{t("productName")}</Label>
             <Input
@@ -387,6 +469,23 @@ function ProductDialog({
               value={cost}
               onChange={(event) => setCost(event.target.value)}
             />
+            {(() => {
+              const p = Number.parseFloat(price);
+              const c = Number.parseFloat(cost);
+              if (!Number.isFinite(p) || !Number.isFinite(c) || p <= 0) return null;
+              const profit = p - c;
+              const margin = Math.round((profit / p) * 100);
+              return (
+                <p
+                  className={cn(
+                    "text-[11px]",
+                    profit >= 0 ? "text-emerald-600" : "text-destructive",
+                  )}
+                >
+                  📈 {t("profit")}: {profit.toFixed(2)} {store.currency} ({margin}%)
+                </p>
+              );
+            })()}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="p-sku">SKU</Label>
