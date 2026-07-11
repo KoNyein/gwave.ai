@@ -19,6 +19,11 @@ export default async function CurrencyPage() {
       title={t("items.currency.name")}
       description={t("items.currency.description")}
       backLabel={t("backToTools")}
+      guide={[
+        "ငွေကြေး (from) နဲ့ (to) ကို ရွေးပါ။",
+        "ပမာဏ ရိုက်ထည့်ပါ။",
+        "နောက်ဆုံး နှုန်းဖြင့် တွက်ချက်ပေးသည်။",
+      ]}
     >
       <CurrencyConverter rates={rates ?? []} isAdmin={isAdmin} />
     </ToolPage>

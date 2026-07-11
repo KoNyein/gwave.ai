@@ -10,6 +10,11 @@ export default async function NutrientCalculatorPage() {
       title={t("items.nutrient.name")}
       description={t("items.nutrient.description")}
       backLabel={t("backToTools")}
+      guide={[
+        "ရေ ပမာဏ (လီတာ) နဲ့ လိုချင်သော EC ကို ထည့်ပါ။",
+        "အာဟာရ အမျိုးအစား / အချိုးကို ရွေးပါ။",
+        "ရလဒ်အတိုင်း အာဟာရ ရောစပ်ပါ။ ဖော်မြူလာကို သိမ်းထားနိုင်သည်။",
+      ]}
     >
       <NutrientCalculator />
     </ToolPage>

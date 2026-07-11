@@ -6,11 +6,12 @@ import { useTranslations } from "next-intl";
 import { ShareResultButton } from "@/components/tools/share-result-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePersistentState } from "@/lib/hooks/use-persistent-state";
 
 /** EC ↔ PPM(500) ↔ PPM(700) — editing any field recalculates the others. */
 export function EcConverter() {
   const t = useTranslations("tools.ec");
-  const [ec, setEc] = React.useState("1.6");
+  const [ec, setEc] = usePersistentState("tool.ec.value", "1.6");
 
   const ecValue = Number.parseFloat(ec);
   const valid = Number.isFinite(ecValue) && ecValue >= 0 && ecValue <= 20;

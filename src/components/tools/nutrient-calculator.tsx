@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { ShareResultButton } from "@/components/tools/share-result-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePersistentState } from "@/lib/hooks/use-persistent-state";
 
 /**
  * Two-part (A/B) nutrient mixing estimator: reservoir volume + target EC +
@@ -14,11 +15,11 @@ import { Label } from "@/components/ui/label";
  */
 export function NutrientCalculator() {
   const t = useTranslations("tools.nutrient");
-  const [liters, setLiters] = React.useState("100");
-  const [targetEc, setTargetEc] = React.useState("1.6");
-  const [ratioN, setRatioN] = React.useState("3");
-  const [ratioP, setRatioP] = React.useState("1");
-  const [ratioK, setRatioK] = React.useState("2");
+  const [liters, setLiters] = usePersistentState("tool.nutrient.liters", "100");
+  const [targetEc, setTargetEc] = usePersistentState("tool.nutrient.ec", "1.6");
+  const [ratioN, setRatioN] = usePersistentState("tool.nutrient.n", "3");
+  const [ratioP, setRatioP] = usePersistentState("tool.nutrient.p", "1");
+  const [ratioK, setRatioK] = usePersistentState("tool.nutrient.k", "2");
 
   const litersValue = Number.parseFloat(liters);
   const ecValue = Number.parseFloat(targetEc);

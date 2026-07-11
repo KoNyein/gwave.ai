@@ -10,6 +10,11 @@ export default async function VpdPage() {
       title={t("items.vpd.name")}
       description={t("items.vpd.description")}
       backLabel={t("backToTools")}
+      guide={[
+        "အပူချိန် (°C) နဲ့ စိုထိုင်းဆ (RH %) ကို ထည့်ပါ။",
+        "အရွက်အပူချိန် ကွာဟမှုကို ချိန်ညှိနိုင်သည်။",
+        "VPD (kPa) ရလဒ်ဖြင့် အပင်ပတ်ဝန်းကျင် သင့်တော်မှုကို စစ်ဆေးပါ။",
+      ]}
     >
       <VpdCalculator />
     </ToolPage>
