@@ -6,13 +6,16 @@ import type { ChessWager, LiveWager } from "@/types/database";
 /** The current open/active wager in a conversation, if any (RLS-scoped). */
 export async function getConversationWager(
   conversationId: string,
+  game?: "chess" | "kyar",
 ): Promise<ChessWager | null> {
   const supabase = await createClient();
-  const { data } = await supabase
+  let query = supabase
     .from("chess_wagers")
     .select("*")
     .eq("conversation_id", conversationId)
-    .in("status", ["open", "active"])
+    .in("status", ["open", "active"]);
+  if (game) query = query.eq("game", game);
+  const { data } = await query
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle<ChessWager>();

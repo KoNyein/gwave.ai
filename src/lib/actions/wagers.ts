@@ -11,15 +11,17 @@ import type { ChessWager, ChessWagerResult } from "@/types/database";
 /** Load the current open/active wager in a conversation (client-callable). */
 export async function loadConversationWager(
   conversationId: string,
+  game?: "chess" | "kyar",
 ): Promise<ChessWager | null> {
   if (!conversationId) return null;
-  return getConversationWager(conversationId);
+  return getConversationWager(conversationId, game);
 }
 
 const createSchema = z.object({
   conversationId: z.string().uuid(),
   stakeMmk: z.number().min(100).max(10_000_000),
   isLive: z.boolean().optional(),
+  game: z.enum(["chess", "kyar"]).optional(),
 });
 
 /** Open a chess wager — escrows the caller's stake from G-Pay. */
@@ -34,6 +36,7 @@ export async function createChessWager(
     p_conversation_id: d.conversationId,
     p_stake_mmk: d.stakeMmk,
     p_is_live: d.isLive ?? false,
+    p_game: d.game ?? "chess",
   });
   if (error) return { ok: false, error: error.message };
   revalidatePath("/gpay");

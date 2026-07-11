@@ -42,7 +42,8 @@ export default async function ArenaPage() {
                 <CardContent className="space-y-3 p-4">
                   <div className="flex items-center justify-between">
                     <span className="inline-flex items-center gap-1 rounded-full bg-red-600/10 px-2 py-0.5 text-xs font-semibold text-red-600">
-                      <Radio className="h-3 w-3" /> LIVE
+                      <Radio className="h-3 w-3" /> LIVE ·{" "}
+                      {w.game === "kyar" ? "🐯 ကျားထိုး" : "♟️ Chess"}
                     </span>
                     <span className="inline-flex items-center gap-1 text-sm font-semibold">
                       <Coins className="h-4 w-4 text-amber-600" />
