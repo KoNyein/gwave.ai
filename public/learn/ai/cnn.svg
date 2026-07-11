@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 220" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="218" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="o" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <rect x="26" y="70" width="70" height="70" fill="#f1f5f9" stroke="#64748b"/>
+  <g stroke="#e2e8f0"><line x1="49" y1="70" x2="49" y2="140"/><line x1="72" y1="70" x2="72" y2="140"/><line x1="26" y1="93" x2="96" y2="93"/><line x1="26" y1="116" x2="96" y2="116"/></g>
+  <rect x="33" y="77" width="30" height="30" fill="#fde68a" stroke="#d97706" stroke-width="2"/>
+  <text x="61" y="160" text-anchor="middle" font-size="9.5" fill="#334155">ပုံ + filter လှည့်ဖတ်</text>
+  <rect x="130" y="75" width="58" height="60" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="159" y="152" text-anchor="middle" font-size="9.5" fill="#1e40af">edge/ထောင့် တွေ့</text>
+  <rect x="222" y="82" width="46" height="46" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="245" y="146" text-anchor="middle" font-size="9.5" fill="#166534">pooling — ချုံ့</text>
+  <rect x="302" y="88" width="34" height="34" fill="#fce7f3" stroke="#db2777"/>
+  <text x="319" y="140" text-anchor="middle" font-size="9.5" fill="#9d174d">features</text>
+  <rect x="366" y="76" width="56" height="58" rx="8" fill="#fef3c7" stroke="#d97706"/>
+  <text x="394" y="100" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#92400e">"ပိုးကျ</text>
+  <text x="394" y="114" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#92400e">အရွက်"</text>
+  <line x1="96" y1="105" x2="126" y2="105" stroke="#64748b" stroke-width="2" marker-end="url(#o)"/>
+  <line x1="188" y1="105" x2="218" y2="105" stroke="#64748b" stroke-width="2" marker-end="url(#o)"/>
+  <line x1="268" y1="105" x2="298" y2="105" stroke="#64748b" stroke-width="2" marker-end="url(#o)"/>
+  <line x1="336" y1="105" x2="362" y2="105" stroke="#64748b" stroke-width="2" marker-end="url(#o)"/>
+  <text x="220" y="196" text-anchor="middle" font-size="10.5" fill="#334155">အလွှာတိုင်း ပိုရှုပ်တဲ့ ပုံစံမြင်လာ — စွန်း → ပုံသဏ္ဌာန် → အရာဝတ္ထု</text>
+  <text x="220" y="32" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">CNN — ပုံကို နားလည်တဲ့ network</text>
+</svg>

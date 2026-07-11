@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 230" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="228" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <g font-size="11" text-anchor="middle">
+    <rect x="40" y="140" width="66" height="30" rx="6" fill="#dbeafe" stroke="#2563eb"/><text x="73" y="159" fill="#1e40af">မိုး</text>
+    <rect x="120" y="140" width="66" height="30" rx="6" fill="#dbeafe" stroke="#2563eb"/><text x="153" y="159" fill="#1e40af">ရွာရင်</text>
+    <rect x="200" y="140" width="66" height="30" rx="6" fill="#dbeafe" stroke="#2563eb"/><text x="233" y="159" fill="#1e40af">ထီး</text>
+    <rect x="280" y="140" width="66" height="30" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="313" y="159" fill="#92400e">ဆောင်း</text>
+  </g>
+  <g stroke-linecap="round" fill="none">
+    <path d="M313,138 C300,100 90,95 73,135" stroke="#dc2626" stroke-width="4" opacity="0.75"/>
+    <path d="M313,138 C305,110 170,105 153,135" stroke="#dc2626" stroke-width="2" opacity="0.45"/>
+    <path d="M313,138 C308,118 250,115 233,135" stroke="#dc2626" stroke-width="6" opacity="0.9"/>
+  </g>
+  <text x="220" y="80" text-anchor="middle" font-size="10.5" fill="#dc2626" font-weight="bold">attention — ဘယ်စကားလုံးကို ဘယ်လောက် ဂရုစိုက်လဲ</text>
+  <text x="220" y="200" text-anchor="middle" font-size="10.5" fill="#334155">"ဆောင်း" က "ထီး" နဲ့ "မိုး" ကို ပြန်ကြည့်ပြီး အဓိပ္ပာယ် နားလည်</text>
+  <text x="220" y="32" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Transformer — Attention ယန္တရား</text>
+</svg>

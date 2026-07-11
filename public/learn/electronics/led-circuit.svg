@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 220" font-family="sans-serif">
+  <rect x="1" y="1" width="418" height="218" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <rect x="80" y="60" width="260" height="110" rx="8" fill="none" stroke="#334155" stroke-width="2"/>
+  <line x1="80" y1="115" x2="66" y2="115" stroke="#334155" stroke-width="2"/>
+  <line x1="60" y1="103" x2="60" y2="127" stroke="#334155" stroke-width="3"/>
+  <line x1="70" y1="108" x2="70" y2="122" stroke="#334155" stroke-width="1.5"/>
+  <text x="42" y="119" text-anchor="end" font-size="11" fill="#334155" font-weight="bold">5V</text>
+  <rect x="140" y="50" width="44" height="20" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="162" y="42" text-anchor="middle" font-size="10" fill="#92400e" font-weight="bold">220Ω</text>
+  <polygon points="255,50 255,70 275,60" fill="#dc2626"/>
+  <line x1="275" y1="50" x2="275" y2="70" stroke="#dc2626" stroke-width="2.5"/>
+  <g stroke="#f59e0b" stroke-width="1.5"><line x1="268" y1="42" x2="276" y2="32"/><line x1="278" y1="46" x2="288" y2="38"/></g>
+  <text x="265" y="88" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="bold">LED</text>
+  <text x="210" y="150" text-anchor="middle" font-size="10.5" fill="#334155">R = (5V − 2V) ÷ 0.015A ≈ 200Ω → 220Ω သုံး</text>
+  <text x="210" y="196" text-anchor="middle" font-size="10" fill="#64748b">Resistor မပါရင် LED ကျွမ်း — အမြဲ တွဲသုံး</text>
+  <text x="210" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">LED + Current-Limit Resistor</text>
+</svg>

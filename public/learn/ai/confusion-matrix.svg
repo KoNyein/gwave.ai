@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 250" font-family="sans-serif">
+  <rect x="1" y="1" width="418" height="248" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <rect x="120" y="70" width="90" height="70" fill="#dcfce7" stroke="#16a34a"/>
+  <rect x="210" y="70" width="90" height="70" fill="#fee2e2" stroke="#dc2626"/>
+  <rect x="120" y="140" width="90" height="70" fill="#fee2e2" stroke="#dc2626"/>
+  <rect x="210" y="140" width="90" height="70" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="165" y="100" text-anchor="middle" font-size="12" font-weight="bold" fill="#166534">TP 45</text>
+  <text x="165" y="118" text-anchor="middle" font-size="8.5" fill="#166534">ပိုးရှိ→ရှိလို့ပြော ✓</text>
+  <text x="255" y="100" text-anchor="middle" font-size="12" font-weight="bold" fill="#dc2626">FN 5</text>
+  <text x="255" y="118" text-anchor="middle" font-size="8.5" fill="#dc2626">ပိုးရှိ→လွတ်သွား ✗</text>
+  <text x="165" y="170" text-anchor="middle" font-size="12" font-weight="bold" fill="#dc2626">FP 10</text>
+  <text x="165" y="188" text-anchor="middle" font-size="8.5" fill="#dc2626">မရှိ→ရှိလို့ပြော ✗</text>
+  <text x="255" y="170" text-anchor="middle" font-size="12" font-weight="bold" fill="#166534">TN 40</text>
+  <text x="255" y="188" text-anchor="middle" font-size="8.5" fill="#166534">မရှိ→မရှိ ✓</text>
+  <text x="110" y="108" text-anchor="end" font-size="9.5" fill="#334155">တကယ် ရှိ</text>
+  <text x="110" y="178" text-anchor="end" font-size="9.5" fill="#334155">တကယ် မရှိ</text>
+  <text x="165" y="62" text-anchor="middle" font-size="9.5" fill="#334155">ခန့်မှန်း: ရှိ</text>
+  <text x="255" y="62" text-anchor="middle" font-size="9.5" fill="#334155">ခန့်မှန်း: မရှိ</text>
+  <text x="210" y="232" text-anchor="middle" font-size="10" fill="#334155">Precision = 45/(45+10) = 82% · Recall = 45/(45+5) = 90%</text>
+  <text x="210" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Confusion Matrix — ပိုးရောဂါ စစ်ဆေးမှု</text>
+</svg>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 230" font-family="sans-serif">
+  <rect x="1" y="1" width="418" height="228" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <rect x="60" y="50" width="300" height="140" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+  <line x1="60" y1="66" x2="360" y2="66" stroke="#dc2626" stroke-width="2"/>
+  <line x1="60" y1="80" x2="360" y2="80" stroke="#2563eb" stroke-width="2"/>
+  <text x="368" y="70" font-size="9" fill="#dc2626" font-weight="bold">+</text>
+  <text x="368" y="84" font-size="9" fill="#2563eb" font-weight="bold">−</text>
+  <g fill="#cbd5e1">
+    <circle cx="90" cy="105" r="3"/><circle cx="90" cy="117" r="3"/><circle cx="90" cy="129" r="3"/><circle cx="90" cy="141" r="3"/><circle cx="90" cy="153" r="3"/>
+    <circle cx="120" cy="105" r="3"/><circle cx="120" cy="117" r="3"/><circle cx="120" cy="129" r="3"/><circle cx="120" cy="141" r="3"/><circle cx="120" cy="153" r="3"/>
+    <circle cx="150" cy="105" r="3"/><circle cx="150" cy="117" r="3"/><circle cx="150" cy="129" r="3"/><circle cx="150" cy="141" r="3"/><circle cx="150" cy="153" r="3"/>
+    <circle cx="180" cy="105" r="3"/><circle cx="180" cy="117" r="3"/><circle cx="180" cy="129" r="3"/><circle cx="180" cy="141" r="3"/><circle cx="180" cy="153" r="3"/>
+    <circle cx="210" cy="105" r="3"/><circle cx="210" cy="117" r="3"/><circle cx="210" cy="129" r="3"/><circle cx="210" cy="141" r="3"/><circle cx="210" cy="153" r="3"/>
+    <circle cx="240" cy="105" r="3"/><circle cx="240" cy="117" r="3"/><circle cx="240" cy="129" r="3"/><circle cx="240" cy="141" r="3"/><circle cx="240" cy="153" r="3"/>
+    <circle cx="270" cy="105" r="3"/><circle cx="270" cy="117" r="3"/><circle cx="270" cy="129" r="3"/><circle cx="270" cy="141" r="3"/><circle cx="270" cy="153" r="3"/>
+    <circle cx="300" cy="105" r="3"/><circle cx="300" cy="117" r="3"/><circle cx="300" cy="129" r="3"/><circle cx="300" cy="141" r="3"/><circle cx="300" cy="153" r="3"/>
+    <circle cx="330" cy="105" r="3"/><circle cx="330" cy="117" r="3"/><circle cx="330" cy="129" r="3"/><circle cx="330" cy="141" r="3"/><circle cx="330" cy="153" r="3"/>
+  </g>
+  <rect x="115" y="100" width="10" height="58" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="90" y="175" font-size="9" fill="#166534">တိုင်တစ်တန်း = ဆက်နေ</text>
+  <text x="210" y="210" text-anchor="middle" font-size="10.5" fill="#334155">ဂဟေမဆော်ဘဲ circuit စမ်း — ဘေးတန်း +/− rail, အလယ် တိုင်လိုက်ဆက်</text>
+  <text x="210" y="32" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Breadboard အလုပ်လုပ်ပုံ</text>
+</svg>

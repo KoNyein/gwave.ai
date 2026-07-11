@@ -7,6 +7,7 @@ import { AGRI_EXTRA } from "@/lib/learn/agri-extra";
 import { AGRI_EXTRA2 } from "@/lib/learn/agri-extra2";
 import { ELECTRONICS_EXTRA } from "@/lib/learn/electronics-extra";
 import { ELECTRONICS_EXTRA2 } from "@/lib/learn/electronics-extra2";
+import { enrichElectronicsLessons } from "@/lib/learn/electronics-media";
 import { ROBOTICS_EXTRA } from "@/lib/learn/robotics-extra";
 import { ROBOTICS_EXTRA2 } from "@/lib/learn/robotics-extra2";
 import { enrichRoboticsLessons } from "@/lib/learn/robotics-media";
@@ -186,7 +187,7 @@ const electronicsTrack: Track = {
   description: "Sensors, circuits and connected devices for smart growing.",
   icon: "Cpu",
   bands: ["child", "preteen", "teen", "adult"],
-  lessons: [
+  lessons: enrichElectronicsLessons([
     {
       slug: "what-is-a-sensor",
       title: "What Is a Sensor?",
@@ -360,7 +361,7 @@ const electronicsTrack: Track = {
         },
       ],
     },
-  ],
+  ]),
 };
 
 // ─────────────────── Robotics & AI (all ages, banded) ──────────────────────

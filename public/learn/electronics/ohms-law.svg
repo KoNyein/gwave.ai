@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 230" font-family="sans-serif">
+  <rect x="1" y="1" width="418" height="228" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <polygon points="110,60 40,180 180,180" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+  <line x1="75" y1="120" x2="145" y2="120" stroke="#64748b"/>
+  <line x1="110" y1="120" x2="110" y2="180" stroke="#64748b"/>
+  <text x="110" y="105" text-anchor="middle" font-size="22" font-weight="bold" fill="#dc2626">V</text>
+  <text x="75" y="160" text-anchor="middle" font-size="20" font-weight="bold" fill="#2563eb">I</text>
+  <text x="145" y="160" text-anchor="middle" font-size="20" font-weight="bold" fill="#16a34a">R</text>
+  <text x="110" y="205" text-anchor="middle" font-size="11" fill="#64748b">ဖုံးထားတာ ရှာ — V=I×R · I=V/R · R=V/I</text>
+  <rect x="240" y="70" width="140" height="100" rx="8" fill="none" stroke="#334155" stroke-width="2"/>
+  <line x1="240" y1="120" x2="228" y2="120" stroke="#334155" stroke-width="2"/>
+  <text x="222" y="112" text-anchor="end" font-size="11" fill="#dc2626" font-weight="bold">9V</text>
+  <rect x="292" y="60" width="36" height="20" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="310" y="52" text-anchor="middle" font-size="11" fill="#92400e" font-weight="bold">R = 450Ω</text>
+  <text x="310" y="195" text-anchor="middle" font-size="11" fill="#2563eb" font-weight="bold">I = 9V ÷ 450Ω = 0.02A (20mA)</text>
+  <text x="210" y="32" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Ohm's Law — V = I × R</text>
+</svg>
