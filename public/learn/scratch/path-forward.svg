@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="pf" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">ရှေ့ဆက် — Block ကနေ Text code သို့</text>
+  <rect x="30" y="76" width="150" height="70" rx="9" fill="#eff6ff" stroke="#2563eb"/>
+  <rect x="44" y="90" width="122" height="16" rx="3" fill="#FFAB19"/><text x="54" y="102" font-size="8" fill="#fff">🔁 10 ကြိမ်</text>
+  <rect x="52" y="110" width="114" height="16" rx="3" fill="#4C97FF"/><text x="62" y="122" font-size="8" fill="#fff">ခြေလှမ်း ရှေ့</text>
+  <text x="105" y="140" text-anchor="middle" font-size="8.5" fill="#1e40af">Scratch block</text>
+  <line x1="184" y1="110" x2="256" y2="110" stroke="#64748b" stroke-width="2" marker-end="url(#pf)"/>
+  <text x="220" y="102" text-anchor="middle" font-size="8.5" fill="#334155">logic တူ</text>
+  <rect x="260" y="76" width="156" height="70" rx="9" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="272" y="98" font-family="monospace" font-size="9" fill="#166534">for i in range(10):</text>
+  <text x="284" y="114" font-family="monospace" font-size="9" fill="#166534">move(10)</text>
+  <text x="338" y="140" text-anchor="middle" font-size="8.5" fill="#166534">Python text code</text>
+  <text x="220" y="176" text-anchor="middle" font-size="10" fill="#334155">loop · if · event — Python/JS/Web မှာလည်း တူညီ</text>
+</svg>

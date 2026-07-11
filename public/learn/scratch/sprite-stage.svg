@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Free Build — Sprite + Stage + Script</text>
+  <rect x="24" y="50" width="150" height="118" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="99" y="68" text-anchor="middle" font-size="9" font-weight="bold" fill="#334155">Script (block တွေ)</text>
+  <rect x="36" y="76" width="126" height="18" rx="3" fill="#FFBF00"/><text x="46" y="89" font-size="8" fill="#7a5c00">🏁 flag</text>
+  <rect x="36" y="96" width="126" height="18" rx="3" fill="#FFAB19"/><text x="46" y="109" font-size="8" fill="#fff">forever</text>
+  <rect x="44" y="116" width="118" height="18" rx="3" fill="#4C97FF"/><text x="54" y="129" font-size="8" fill="#fff">ခြေလှမ်း ရှေ့</text>
+  <rect x="44" y="136" width="118" height="18" rx="3" fill="#9966FF"/><text x="54" y="149" font-size="8" fill="#fff">အသွင် ပြောင်း</text>
+  <rect x="196" y="50" width="220" height="94" rx="8" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="306" y="66" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e40af">Stage (ဇာတ်ခုံ)</text>
+  <text x="240" y="110" font-size="22">🐱</text>
+  <text x="360" y="128" font-size="18">🎈</text>
+  <text x="300" y="90" font-size="14">☁️</text>
+  <rect x="196" y="150" width="220" height="20" rx="5" fill="#dbeafe"/>
+  <text x="306" y="164" text-anchor="middle" font-size="8.5" fill="#1e40af">Sprite အများ · costume · backdrop</text>
+  <text x="99" y="184" text-anchor="middle" font-size="8.5" fill="#64748b">တပ်ဆင် → Run → ကြည့်</text>
+</svg>

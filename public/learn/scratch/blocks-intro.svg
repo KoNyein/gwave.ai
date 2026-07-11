@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Block coding — ပဟေဠိလို ဆက်တပ်</text>
+  <g>
+    <path d="M90 60 h130 v10 h-14 v8 h-24 v-8 h-78 v22 h14 v8 h24 v-8 h40 v22 h-92 z" fill="#FFBF00" stroke="#CC9900"/>
+    <text x="120" y="76" font-size="10" font-weight="bold" fill="#7a5c00">🏁 Flag နှိပ်ရင်</text>
+    <rect x="90" y="94" width="150" height="26" rx="4" fill="#4C97FF" stroke="#3373CC"/>
+    <text x="102" y="111" font-size="10" font-weight="bold" fill="#fff">ခြေလှမ်း 10 ရှေ့သွား</text>
+    <rect x="90" y="120" width="150" height="26" rx="4" fill="#9966FF" stroke="#774DCB"/>
+    <text x="102" y="137" font-size="10" font-weight="bold" fill="#fff">"မင်္ဂလာပါ" ပြော</text>
+  </g>
+  <rect x="272" y="70" width="130" height="76" rx="10" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="337" y="98" text-anchor="middle" font-size="26">🐱</text>
+  <text x="337" y="126" text-anchor="middle" font-size="9" fill="#166534">Sprite (ဇာတ်ကောင်)</text>
+  <text x="337" y="139" text-anchor="middle" font-size="8" fill="#64748b">Stage ပေါ်မှာ</text>
+  <text x="220" y="176" text-anchor="middle" font-size="10" fill="#334155">Code စာ မရိုက်ဘဲ — block ဆက်တပ်ရုံနဲ့ အမိန့်ပေး</text>
+  <text x="220" y="192" text-anchor="middle" font-size="9" fill="#64748b">ကိုက်တဲ့ block ချည်း ဆက်လို့ရ → syntax error မရှိ</text>
+</svg>

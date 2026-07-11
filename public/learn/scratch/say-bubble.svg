@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Looks — «ပြော» block</text>
+  <rect x="30" y="90" width="180" height="30" rx="5" fill="#9966FF" stroke="#774DCB"/>
+  <text x="42" y="110" font-size="10.5" font-weight="bold" fill="#fff">"မင်္ဂလာပါ" 2 စက္ကန့် ပြော</text>
+  <rect x="270" y="70" width="130" height="90" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <g>
+    <rect x="286" y="82" width="98" height="34" rx="10" fill="#fff" stroke="#94a3b8"/>
+    <path d="M300 116 l0 12 l12 -12 z" fill="#fff" stroke="#94a3b8"/>
+    <text x="335" y="104" text-anchor="middle" font-size="10" fill="#334155">မင်္ဂလာပါ</text>
+  </g>
+  <text x="330" y="150" text-anchor="middle" font-size="20">🐱</text>
+  <text x="220" y="178" text-anchor="middle" font-size="10" fill="#334155">ဇာတ်ကောင်ရဲ့ ခေါင်းပေါ်မှာ စကားပြော ပူဖောင်း ပေါ်လာ</text>
+</svg>
