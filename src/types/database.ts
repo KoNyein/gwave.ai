@@ -371,63 +371,13 @@ export interface Profile {
   suspend_reason: string | null;
   birth_date: string | null;
   is_teacher: boolean;
-  // Opted in to earning play-money from live wager spectators / reels.
+  // Opted in to earning play-money from reels.
   monetization_enabled: boolean;
   terms_accepted_version: string | null;
   privacy_accepted_version: string | null;
   terms_accepted_at: string | null;
   created_at: string;
   updated_at: string;
-}
-
-export type ChessWagerStatus =
-  | "open"
-  | "active"
-  | "settled"
-  | "cancelled"
-  | "disputed";
-export type ChessWagerResult = "host_win" | "guest_win" | "draw";
-
-export type WagerGame = "chess" | "kyar";
-
-export interface ChessWager {
-  id: string;
-  conversation_id: string;
-  game: WagerGame;
-  host_id: string;
-  guest_id: string | null;
-  stake_mmk: number;
-  rake_bps: number;
-  status: ChessWagerStatus;
-  is_live: boolean;
-  host_result: ChessWagerResult | null;
-  guest_result: ChessWagerResult | null;
-  result: ChessWagerResult | null;
-  pot_mmk: number;
-  rake_mmk: number;
-  payout_mmk: number;
-  spectators: number;
-  created_at: string;
-  updated_at: string;
-  settled_at: string | null;
-}
-
-/** A live wager row from list_live_wagers, with both players resolved. */
-export interface LiveWager {
-  id: string;
-  conversation_id: string;
-  host_id: string;
-  host_name: string | null;
-  host_username: string | null;
-  host_avatar: string | null;
-  guest_id: string | null;
-  guest_name: string | null;
-  guest_username: string | null;
-  guest_avatar: string | null;
-  stake_mmk: number;
-  pot_mmk: number;
-  game: WagerGame;
-  created_at: string;
 }
 
 export interface Certificate {
