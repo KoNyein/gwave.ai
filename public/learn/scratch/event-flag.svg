@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Events — «ဘယ်အချိန် စမလဲ»</text>
+  <path d="M40 56 h150 v10 h-14 v8 h-24 v-8 h-98 v20 h150 v22 h-164 z" fill="#FFBF00" stroke="#CC9900"/>
+  <text x="54" y="72" font-size="10.5" font-weight="bold" fill="#7a5c00">🏁 flag နှိပ်ရင်</text>
+  <rect x="54" y="90" width="122" height="24" rx="4" fill="#4C97FF" stroke="#3373CC"/>
+  <text x="64" y="106" font-size="9" font-weight="bold" fill="#fff">ခြေလှမ်း 10 ရှေ့</text>
+  <path d="M240 56 h160 v10 h-14 v8 h-24 v-8 h-108 v20 h160 v22 h-174 z" fill="#FFBF00" stroke="#CC9900"/>
+  <text x="254" y="72" font-size="10.5" font-weight="bold" fill="#7a5c00">⎵ space key နှိပ်ရင်</text>
+  <rect x="254" y="90" width="132" height="24" rx="4" fill="#9966FF" stroke="#774DCB"/>
+  <text x="264" y="106" font-size="9" font-weight="bold" fill="#fff">"ခုန်!" ပြော</text>
+  <text x="220" y="150" text-anchor="middle" font-size="10" fill="#334155">Hat block = script ရဲ့ အစ — ဖြစ်ရပ် (event) ဖြစ်မှ စ run</text>
+  <text x="220" y="174" text-anchor="middle" font-size="9.5" fill="#64748b">flag · key press · sprite နှိပ် · message ရ — trigger အမျိုးမျိုး</text>
+</svg>

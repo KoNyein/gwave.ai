@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Forever — အဆုံးမရှိ loop</text>
+  <path d="M60 56 h150 v22 h-150 v66 h150 v18 h-170 z" fill="#FFAB19" stroke="#CF8B17"/>
+  <text x="74" y="72" font-size="11" font-weight="bold" fill="#fff">♾ forever</text>
+  <rect x="82" y="86" width="140" height="24" rx="4" fill="#4C97FF" stroke="#3373CC"/>
+  <text x="92" y="102" font-size="9.5" font-weight="bold" fill="#fff">ခြေလှမ်း 10 ရှေ့</text>
+  <rect x="82" y="112" width="140" height="24" rx="4" fill="#FFAB19" stroke="#CF8B17"/>
+  <text x="92" y="128" font-size="9.5" font-weight="bold" fill="#fff">အနားထိရင် ↩ ပြန်</text>
+  <text x="310" y="80" text-anchor="middle" font-size="10" fill="#334155">ရပ်တဲ့အထိ</text>
+  <text x="310" y="98" text-anchor="middle" font-size="9" fill="#64748b">မပြတ် ထပ်လုပ်</text>
+  <text x="310" y="120" text-anchor="middle" font-size="9" fill="#64748b">ဂိမ်း loop၊</text>
+  <text x="310" y="134" text-anchor="middle" font-size="9" fill="#64748b">animation အတွက်</text>
+  <text x="220" y="176" text-anchor="middle" font-size="10" fill="#334155">"repeat N" = အကြိမ်ရေ သတ်မှတ် · "forever" = အမြဲ</text>
+</svg>

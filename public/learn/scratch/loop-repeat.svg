@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Loop — «ကြိမ် ထပ်လုပ်»</text>
+  <path d="M60 56 h150 v22 h-150 v70 h150 v22 h-170 z" fill="#FFAB19" stroke="#CF8B17"/>
+  <text x="74" y="72" font-size="11" font-weight="bold" fill="#fff">🔁 4 ကြိမ် ထပ်လုပ်</text>
+  <rect x="82" y="86" width="140" height="26" rx="4" fill="#4C97FF" stroke="#3373CC"/>
+  <text x="94" y="103" font-size="10" font-weight="bold" fill="#fff">ခြေလှမ်း 50 ရှေ့</text>
+  <rect x="82" y="114" width="140" height="26" rx="4" fill="#4C97FF" stroke="#3373CC"/>
+  <text x="94" y="131" font-size="10" font-weight="bold" fill="#fff">↻ 90° လှည့်</text>
+  <text x="300" y="80" text-anchor="middle" font-size="10" fill="#334155">ထပ်ခါထပ်ခါ</text>
+  <text x="300" y="98" text-anchor="middle" font-size="9" fill="#64748b">block တွေ များများ</text>
+  <text x="300" y="112" text-anchor="middle" font-size="9" fill="#64748b">မထည့်ဘဲ —</text>
+  <text x="300" y="130" text-anchor="middle" font-size="9" fill="#64748b">loop က တစ်ခါတည်း</text>
+  <text x="300" y="144" text-anchor="middle" font-size="9" fill="#64748b">အကြိမ်ကြိမ် လုပ်ပေး</text>
+  <text x="220" y="178" text-anchor="middle" font-size="10" fill="#334155">"4 ကြိမ် [ရှေ့ + လှည့်]" = စတုဂံ တစ်ခု ဆွဲပြီး</text>
+</svg>

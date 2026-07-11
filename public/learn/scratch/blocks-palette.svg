@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Block အုပ်စုများ — အရောင်လိုက် မှတ်</text>
+  <g font-size="9.5" font-weight="bold" fill="#fff">
+    <rect x="30" y="50" width="180" height="24" rx="5" fill="#4C97FF"/><text x="42" y="66">Motion — ရွှေ့/လှည့်</text>
+    <rect x="30" y="80" width="180" height="24" rx="5" fill="#9966FF"/><text x="42" y="96">Looks — ပြော/အသွင်</text>
+    <rect x="30" y="110" width="180" height="24" rx="5" fill="#CF63CF"/><text x="42" y="126">Sound — အသံ</text>
+    <rect x="30" y="140" width="180" height="24" rx="5" fill="#FFBF00"/><text x="42" y="156" fill="#7a5c00">Events — flag/key</text>
+    <rect x="230" y="50" width="180" height="24" rx="5" fill="#FFAB19"/><text x="242" y="66">Control — loop/if</text>
+    <rect x="230" y="80" width="180" height="24" rx="5" fill="#5CB1D6"/><text x="242" y="96">Sensing — touch/ask</text>
+    <rect x="230" y="110" width="180" height="24" rx="5" fill="#59C059"/><text x="242" y="126">Operators — +−×÷</text>
+    <rect x="230" y="140" width="180" height="24" rx="5" fill="#FF8C1A"/><text x="242" y="156">Variables — score</text>
+  </g>
+  <text x="220" y="186" text-anchor="middle" font-size="9.5" fill="#334155">အရောင်တူ = အုပ်စုတူ — ဘယ်ဘက် palette က ဆွဲယူ</text>
+</svg>

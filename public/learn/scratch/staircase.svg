@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">လှေကား ပုံစံ — pattern ကို loop</text>
+  <path d="M30 56 h150 v20 h-150 v56 h150 v20 h-166 z" fill="#FFAB19" stroke="#CF8B17"/>
+  <text x="42" y="71" font-size="10" font-weight="bold" fill="#fff">🔁 5 ကြိမ်</text>
+  <rect x="46" y="82" width="128" height="22" rx="4" fill="#4C97FF" stroke="#3373CC"/>
+  <text x="56" y="98" font-size="9" font-weight="bold" fill="#fff">x ကို 20 တိုး</text>
+  <rect x="46" y="106" width="128" height="22" rx="4" fill="#4C97FF" stroke="#3373CC"/>
+  <text x="56" y="122" font-size="9" font-weight="bold" fill="#fff">y ကို 20 တိုး</text>
+  <g fill="#dbeafe" stroke="#2563eb">
+    <rect x="250" y="140" width="24" height="24"/>
+    <rect x="274" y="116" width="24" height="24"/>
+    <rect x="298" y="92" width="24" height="24"/>
+    <rect x="322" y="68" width="24" height="24"/>
+    <rect x="346" y="44" width="24" height="24"/>
+  </g>
+  <text x="330" y="185" text-anchor="middle" font-size="9" fill="#334155">တစ်ဆင့်ချင်း အထက် — လှေကား ဖြစ်လာ</text>
+  <text x="150" y="185" text-anchor="middle" font-size="9.5" fill="#64748b">ပုံစံ ထပ်တာကို loop နဲ့</text>
+</svg>

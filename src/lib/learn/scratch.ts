@@ -3,8 +3,9 @@
 // Pure data — safe to import from server components.
 
 import type { Track } from "@/lib/learn/lessons";
+import { enrichScratchLessons } from "@/lib/learn/scratch-media";
 
-export const scratchTrack: Track = {
+const rawScratchTrack: Track = {
   slug: "scratch",
   title: "Scratch: Block Coding",
   description:
@@ -475,4 +476,10 @@ export const scratchTrack: Track = {
       ],
     },
   ],
+};
+
+/** Scratch track with block diagrams and teaching videos merged in. */
+export const scratchTrack: Track = {
+  ...rawScratchTrack,
+  lessons: enrichScratchLessons(rawScratchTrack.lessons),
 };

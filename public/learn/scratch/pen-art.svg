@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Pen — ရွှေ့ရင်း ပုံဆွဲ</text>
+  <rect x="30" y="70" width="150" height="24" rx="4" fill="#0FBD8C" stroke="#0B8E69"/>
+  <text x="42" y="87" font-size="10" font-weight="bold" fill="#fff">🖊 pen down</text>
+  <rect x="30" y="98" width="150" height="24" rx="4" fill="#0FBD8C" stroke="#0B8E69"/>
+  <text x="42" y="115" font-size="10" font-weight="bold" fill="#fff">အရောင် ▮ ပြောင်း</text>
+  <rect x="30" y="126" width="150" height="24" rx="4" fill="#4C97FF" stroke="#3373CC"/>
+  <text x="42" y="143" font-size="10" font-weight="bold" fill="#fff">ခြေလှမ်း 100 ရှေ့</text>
+  <rect x="240" y="56" width="170" height="120" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <path d="M270 150 Q300 70 325 150 T390 130" fill="none" stroke="#CF63CF" stroke-width="3"/>
+  <path d="M270 150 L325 90 L390 150" fill="none" stroke="#FFAB19" stroke-width="3"/>
+  <text x="325" y="72" text-anchor="middle" font-size="9" fill="#64748b">pen down ဆိုရင် သွားရာ လမ်း မှတ်</text>
+  <text x="220" y="192" text-anchor="middle" font-size="9.5" fill="#334155">pen up = ခဏ ရပ် · clear = ဖျက် — ပန်းချီ ဆွဲလို့ရ</text>
+</svg>

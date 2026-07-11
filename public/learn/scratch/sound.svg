@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Sound — အသံ ထည့်</text>
+  <rect x="30" y="86" width="180" height="30" rx="5" fill="#CF63CF" stroke="#A63FA6"/>
+  <text x="42" y="106" font-size="10.5" font-weight="bold" fill="#fff">🔊 "Meow" အသံ ဖွင့်</text>
+  <rect x="30" y="124" width="180" height="30" rx="5" fill="#CF63CF" stroke="#A63FA6"/>
+  <text x="42" y="144" font-size="10.5" font-weight="bold" fill="#fff">♪ note 60 · 0.5 ကြိမ်</text>
+  <g stroke="#CF63CF" stroke-width="2.5" fill="none">
+    <path d="M270 105 q10 -26 20 0 q10 26 20 0 q10 -20 20 0 q10 20 20 0 q10 -14 20 0"/>
+  </g>
+  <text x="330" y="140" text-anchor="middle" font-size="18">🐱🎵</text>
+  <text x="330" y="86" text-anchor="middle" font-size="9" fill="#64748b">အသံလှိုင်း</text>
+  <text x="220" y="178" text-anchor="middle" font-size="10" fill="#334155">Meow၊ drum၊ တေးသွား — ဂိမ်း/ကာတွန်း ပိုအသက်ဝင်</text>
+</svg>

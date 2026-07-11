@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Pen — စတုဂံ ဆွဲ</text>
+  <rect x="30" y="52" width="150" height="24" rx="4" fill="#0FBD8C" stroke="#0B8E69"/>
+  <text x="42" y="69" font-size="10" font-weight="bold" fill="#fff">🖊 pen down</text>
+  <path d="M30 80 h150 v20 h-150 v56 h150 v20 h-166 z" fill="#FFAB19" stroke="#CF8B17"/>
+  <text x="42" y="95" font-size="10" font-weight="bold" fill="#fff">🔁 4 ကြိမ်</text>
+  <rect x="46" y="104" width="128" height="22" rx="4" fill="#4C97FF" stroke="#3373CC"/>
+  <text x="56" y="120" font-size="9" font-weight="bold" fill="#fff">ခြေလှမ်း 80 ရှေ့</text>
+  <rect x="46" y="128" width="128" height="22" rx="4" fill="#4C97FF" stroke="#3373CC"/>
+  <text x="56" y="144" font-size="9" font-weight="bold" fill="#fff">↻ 90° လှည့်</text>
+  <rect x="250" y="60" width="150" height="110" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <rect x="290" y="86" width="70" height="70" fill="none" stroke="#0FBD8C" stroke-width="3"/>
+  <text x="325" y="80" text-anchor="middle" font-size="9" fill="#0B8E69">🐱 က ဆွဲတဲ့ လမ်း</text>
+</svg>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Conditionals — «အကယ်၍ ... ဆိုရင်»</text>
+  <path d="M40 52 h230 v22 h-176 v40 h176 v20 h-176 v34 h176 v18 h-230 z" fill="#FFAB19" stroke="#CF8B17"/>
+  <text x="54" y="68" font-size="10" font-weight="bold" fill="#fff">အကယ်၍ ⬡ အနားထိ ⬡ ဆိုရင်</text>
+  <rect x="60" y="80" width="200" height="24" rx="4" fill="#9966FF" stroke="#774DCB"/>
+  <text x="70" y="96" font-size="9" font-weight="bold" fill="#fff">"အနားရောက်ပြီ!" ပြော</text>
+  <text x="54" y="132" font-size="10" font-weight="bold" fill="#fff">သို့မဟုတ် (else)</text>
+  <rect x="60" y="140" width="200" height="24" rx="4" fill="#4C97FF" stroke="#3373CC"/>
+  <text x="70" y="156" font-size="9" font-weight="bold" fill="#fff">ခြေလှမ်း 10 ဆက်ရှေ့</text>
+  <text x="350" y="90" text-anchor="middle" font-size="10" fill="#334155">အခြေအနေ</text>
+  <text x="350" y="106" text-anchor="middle" font-size="9" fill="#64748b">မှန် → အပေါ်</text>
+  <text x="350" y="122" text-anchor="middle" font-size="9" fill="#64748b">မှား → အောက်</text>
+  <text x="350" y="150" text-anchor="middle" font-size="9" fill="#64748b">ဆုံးဖြတ်ချက်</text>
+  <text x="220" y="188" text-anchor="middle" font-size="9.5" fill="#334155">sensing block (touch/key) ကို condition အဖြစ် သုံး</text>
+</svg>
