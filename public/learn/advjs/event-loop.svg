@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="el" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Event Loop — async ဘယ်လို အလုပ်လုပ်လဲ</text>
+  <rect x="34" y="60" width="110" height="90" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="89" y="78" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e40af">Call Stack</text>
+  <rect x="46" y="86" width="86" height="18" fill="#93c5fd"/><text x="89" y="99" text-anchor="middle" font-size="8" fill="#1e3a8a">main()</text>
+  <rect x="46" y="106" width="86" height="18" fill="#93c5fd"/><text x="89" y="119" text-anchor="middle" font-size="8" fill="#1e3a8a">fn()</text>
+  <rect x="296" y="60" width="110" height="90" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="351" y="78" text-anchor="middle" font-size="9" font-weight="bold" fill="#166534">Callback Queue</text>
+  <rect x="308" y="88" width="86" height="18" fill="#86efac"/><text x="351" y="101" text-anchor="middle" font-size="8" fill="#14532d">timer cb</text>
+  <rect x="308" y="110" width="86" height="18" fill="#86efac"/><text x="351" y="123" text-anchor="middle" font-size="8" fill="#14532d">fetch cb</text>
+  <circle cx="220" cy="105" r="30" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="220" y="102" text-anchor="middle" font-size="8" font-weight="bold" fill="#6d28d9">Event</text>
+  <text x="220" y="113" text-anchor="middle" font-size="8" font-weight="bold" fill="#6d28d9">Loop</text>
+  <path d="M296 130 Q250 150 190 120" stroke="#64748b" stroke-width="1.8" fill="none" marker-end="url(#el)"/>
+  <text x="220" y="178" text-anchor="middle" font-size="9.5" fill="#334155">stack ဗလာဖြစ်မှ — queue ကနေ callback တစ်ခု ယူတင်</text>
+  <text x="220" y="193" text-anchor="middle" font-size="8.5" fill="#64748b">single thread ဖြစ်ပေမယ့် — block မဖြစ်ဘဲ အလုပ်လုပ်</text>
+</svg>

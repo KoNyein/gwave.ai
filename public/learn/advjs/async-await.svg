@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="aw" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">async / await — promise ကို လှလှ ရေး</text>
+  <g font-family="monospace" font-size="9.5" fill="#334155">
+    <text x="40" y="66">async function load() {</text>
+    <text x="60" y="90">const r = await fetch(url);  ⏸</text>
+    <text x="60" y="114">const d = await r.json();    ⏸</text>
+    <text x="60" y="138">return d;</text>
+    <text x="40" y="162">}</text>
+  </g>
+  <rect x="300" y="76" width="110" height="26" rx="6" fill="#fef3c7" stroke="#d97706"/>
+  <text x="355" y="93" text-anchor="middle" font-size="8" fill="#92400e">စောင့် (မ block)</text>
+  <rect x="300" y="104" width="110" height="26" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="355" y="121" text-anchor="middle" font-size="8" fill="#166534">ရလာမှ ဆက်</text>
+  <line x1="230" y1="86" x2="298" y2="88" stroke="#64748b" stroke-width="1.5" marker-end="url(#aw)"/>
+  <line x1="230" y1="110" x2="298" y2="116" stroke="#64748b" stroke-width="1.5" marker-end="url(#aw)"/>
+  <text x="220" y="186" text-anchor="middle" font-size="9" fill="#64748b">await = promise ရလဒ် ရတဲ့အထိ ခဏရပ် — .then() အစား ဖတ်ရလွယ်</text>
+</svg>

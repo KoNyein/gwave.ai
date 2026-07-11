@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="hf" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">map · filter · reduce</text>
+  <text x="60" y="60" font-size="11">[1, 2, 3, 4]</text>
+  <rect x="30" y="72" width="120" height="30" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="90" y="92" text-anchor="middle" font-size="9" fill="#1e40af">map(x =&gt; x*2)</text>
+  <line x1="90" y1="66" x2="90" y2="70" stroke="#64748b" marker-end="url(#hf)"/>
+  <text x="60" y="122" font-size="10" fill="#166534">[2, 4, 6, 8]</text>
+  <rect x="30" y="130" width="120" height="30" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="90" y="150" text-anchor="middle" font-size="9" fill="#166534">filter(x =&gt; x&gt;4)</text>
+  <text x="60" y="180" font-size="10" fill="#92400e">[6, 8]</text>
+  <rect x="250" y="80" width="150" height="34" rx="8" fill="#fef3c7" stroke="#d97706"/>
+  <text x="325" y="101" text-anchor="middle" font-size="9" fill="#92400e">reduce((a,x)=&gt;a+x, 0)</text>
+  <text x="325" y="140" text-anchor="middle" font-size="14" font-weight="bold" fill="#92400e">= 10</text>
+  <text x="325" y="164" text-anchor="middle" font-size="8.5" fill="#64748b">တစ်လုံးတည်း စုစည်း</text>
+  <text x="220" y="192" text-anchor="middle" font-size="8.5" fill="#64748b">function ကို argument အဖြစ်ပေး — higher-order function</text>
+</svg>

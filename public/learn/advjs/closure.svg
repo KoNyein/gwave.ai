@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Closure — အတွင်း function က ဗားရီ မှတ်</text>
+  <rect x="40" y="52" width="360" height="100" rx="10" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="56" y="72" font-size="10" font-weight="bold" fill="#1e40af">outer() — count = 0</text>
+  <rect x="66" y="82" width="308" height="56" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="82" y="102" font-size="10" font-weight="bold" fill="#166534">inner() { count++ }</text>
+  <text x="82" y="122" font-size="8.5" fill="#166534">outer ပြီးသွားလည်း count ကို မှတ်ထား 🔒</text>
+  <text x="220" y="172" text-anchor="middle" font-size="10" fill="#334155">function က သူ့ဖန်တီးရာ scope ရဲ့ variable တွေ ဆက်ကိုင်ထား</text>
+  <text x="220" y="190" text-anchor="middle" font-size="9" fill="#64748b">counter · private data · callback — closure ရဲ့ အသုံး</text>
+</svg>
