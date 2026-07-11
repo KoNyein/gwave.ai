@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   ArrowLeft,
   FileText,
+  Gamepad2,
   ImagePlus,
   Loader2,
   MapPin,
@@ -17,6 +18,7 @@ import {
 import { useTranslations } from "next-intl";
 
 import { CallUI } from "@/components/messenger/call-ui";
+import { GamesPanel } from "@/components/messenger/games-panel";
 import { useCall } from "@/components/messenger/use-call";
 import { LocationMap } from "@/components/social/location-map";
 import { UserAvatar } from "@/components/social/user-avatar";
@@ -81,6 +83,7 @@ export function Messenger({
   const [input, setInput] = React.useState("");
   const [sending, setSending] = React.useState(false);
   const [peerTyping, setPeerTyping] = React.useState(false);
+  const [gamesOpen, setGamesOpen] = React.useState(false);
   const [peerLastReadAt, setPeerLastReadAt] = React.useState<string | null>(
     null,
   );
@@ -622,6 +625,17 @@ export function Messenger({
                     variant="ghost"
                     size="icon"
                     className="rounded-full"
+                    onClick={() => setGamesOpen((v) => !v)}
+                    aria-label="ဂိမ်း"
+                  >
+                    <Gamepad2
+                      className={gamesOpen ? "h-5 w-5 text-primary" : "h-5 w-5 text-accent"}
+                    />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full"
                     onClick={() => call.startCall(peer, active.id, false)}
                     disabled={call.status !== "idle"}
                     aria-label={t("audioCall")}
@@ -641,6 +655,14 @@ export function Messenger({
                 </>
               ) : null}
             </div>
+
+            {gamesOpen ? (
+              <GamesPanel
+                conversationId={active.id}
+                currentUserId={currentUser.id}
+                onClose={() => setGamesOpen(false)}
+              />
+            ) : null}
 
             {/* Messages */}
             <div className="flex-1 space-y-1 overflow-y-auto p-4">
