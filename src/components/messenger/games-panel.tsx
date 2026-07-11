@@ -4,10 +4,11 @@ import * as React from "react";
 import { X } from "lucide-react";
 
 import { ChessGame } from "@/components/messenger/chess-game";
+import { KyarGame } from "@/components/messenger/kyar-game";
 import { TicTacToeGame } from "@/components/messenger/tictactoe-game";
 import { cn } from "@/lib/utils";
 
-type Game = "chess" | "ttt";
+type Game = "chess" | "kyar" | "ttt";
 
 /**
  * In-conversation two-player games. Both players open the panel and pick the
@@ -31,6 +32,7 @@ export function GamesPanel({
           {(
             [
               { k: "chess", label: "♟️ Chess" },
+              { k: "kyar", label: "🐯 ကျားထိုး" },
               { k: "ttt", label: "❌⭕ ဆယ်ကွက်" },
             ] as const
           ).map(({ k, label }) => (
@@ -59,6 +61,8 @@ export function GamesPanel({
 
       {game === "chess" ? (
         <ChessGame conversationId={conversationId} currentUserId={currentUserId} />
+      ) : game === "kyar" ? (
+        <KyarGame conversationId={conversationId} currentUserId={currentUserId} />
       ) : (
         <TicTacToeGame conversationId={conversationId} currentUserId={currentUserId} />
       )}
