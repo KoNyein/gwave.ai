@@ -12,6 +12,7 @@ import {
 import { HTML_EXTRA2 } from "@/lib/learn/webdev-html2";
 import { HTML_EXTRA3 } from "@/lib/learn/webdev-html3";
 import { CSS_EXTRA2 } from "@/lib/learn/webdev-css2";
+import { CSS_EXTRA3 } from "@/lib/learn/webdev-css3";
 import { JS_EXTRA2 } from "@/lib/learn/webdev-js2";
 import { JS_EXTRA3 } from "@/lib/learn/webdev-js3";
 import { PY_EXTRA2 } from "@/lib/learn/webdev-py2";
@@ -456,6 +457,7 @@ export const cssTrack: Track = {
     },
     ...CSS_EXTRA,
     ...CSS_EXTRA2,
+    ...CSS_EXTRA3,
     {
       slug: "css-quiz",
       title: "CSS Quiz",
