@@ -3,12 +3,17 @@
 // lesson data at track-assembly time. Keeping the enrichment in one file
 // makes the media/code coverage easy to review and extend. Pure data.
 
-import type { Lesson, LessonSection } from "@/lib/learn/lessons";
+import type { Lesson } from "@/lib/learn/lessons";
+import {
+  enrichLessons,
+  type CodeExtra,
+  type LessonImage,
+} from "@/lib/learn/media-enrich";
 
 const IMG = "/learn/robotics";
 
 /** Diagram attached to the first section of the lesson with this slug. */
-const IMAGES: Record<string, NonNullable<LessonSection["image"]>> = {
+const IMAGES: Record<string, LessonImage> = {
   "what-is-a-robot": {
     src: `${IMG}/sense-think-act.svg`,
     alt: "Sense, Think, Act loop diagram",
@@ -145,12 +150,6 @@ const IMAGES: Record<string, NonNullable<LessonSection["image"]>> = {
     caption: "Project — sensor ဖတ် → ဆုံးဖြတ် → motor မောင်း စက်ဝန်းအပြည့်",
   },
 };
-
-interface CodeExtra {
-  heading: string;
-  body: string;
-  code: string;
-}
 
 /** A hands-on code section appended to the lesson with this slug. */
 const CODE: Record<string, CodeExtra> = {
@@ -406,28 +405,7 @@ const CODE: Record<string, CodeExtra> = {
   },
 };
 
-/**
- * Merge diagrams and code sections into the robotics lessons. Applied once
- * at track-assembly time in lessons.ts; lessons without an entry pass
- * through unchanged.
- */
+/** Merge diagrams and code sections into the robotics lessons. */
 export function enrichRoboticsLessons(lessons: Lesson[]): Lesson[] {
-  return lessons.map((lesson) => {
-    const image = IMAGES[lesson.slug];
-    const extra = CODE[lesson.slug];
-    if (!image && !extra) return lesson;
-
-    let sections = lesson.sections ? [...lesson.sections] : [];
-    if (image && sections.length > 0) {
-      const first = sections[0]!;
-      sections[0] = first.image ? first : { ...first, image };
-    }
-    if (extra) {
-      sections = [
-        ...sections,
-        { heading: extra.heading, body: extra.body, code: extra.code },
-      ];
-    }
-    return { ...lesson, sections };
-  });
+  return enrichLessons(lessons, IMAGES, CODE);
 }

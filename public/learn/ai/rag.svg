@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 220" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="218" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="q" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <rect x="24" y="80" width="76" height="50" rx="8" fill="#fce7f3" stroke="#db2777"/>
+  <text x="62" y="102" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#9d174d">မေးခွန်း</text>
+  <text x="62" y="117" text-anchor="middle" font-size="9" fill="#9d174d">"EC ဘယ်လောက်ထား?"</text>
+  <rect x="124" y="80" width="84" height="50" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="166" y="102" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#1e40af">Retrieve</text>
+  <text x="166" y="117" text-anchor="middle" font-size="9" fill="#1e40af">စာကြည့်တိုက်က ရှာ</text>
+  <rect x="124" y="150" width="84" height="42" rx="8" fill="#f1f5f9" stroke="#64748b"/>
+  <text x="166" y="168" text-anchor="middle" font-size="9.5" fill="#334155">Vector DB</text>
+  <text x="166" y="182" text-anchor="middle" font-size="8.5" fill="#64748b">ကိုယ့် docs များ</text>
+  <rect x="232" y="80" width="84" height="50" rx="8" fill="#fef3c7" stroke="#d97706"/>
+  <text x="274" y="102" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#92400e">Augment</text>
+  <text x="274" y="117" text-anchor="middle" font-size="9" fill="#92400e">တွေ့တာ + မေးခွန်း</text>
+  <rect x="340" y="80" width="80" height="50" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="380" y="102" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#166534">LLM ဖြေ</text>
+  <text x="380" y="117" text-anchor="middle" font-size="9" fill="#166534">အထောက်ထား ပါ</text>
+  <line x1="100" y1="105" x2="120" y2="105" stroke="#64748b" stroke-width="2" marker-end="url(#q)"/>
+  <line x1="166" y1="146" x2="166" y2="134" stroke="#64748b" stroke-width="2" marker-end="url(#q)"/>
+  <line x1="208" y1="105" x2="228" y2="105" stroke="#64748b" stroke-width="2" marker-end="url(#q)"/>
+  <line x1="316" y1="105" x2="336" y2="105" stroke="#64748b" stroke-width="2" marker-end="url(#q)"/>
+  <text x="220" y="208" text-anchor="middle" font-size="10" fill="#334155">Model မသိတာကို ကိုယ့် data ထဲက ရှာထည့်ပေး — hallucination လျော့</text>
+  <text x="220" y="32" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">RAG — Retrieval-Augmented Generation</text>
+</svg>

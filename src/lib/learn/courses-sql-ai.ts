@@ -7,6 +7,7 @@
 
 import { AI_EXTRA } from "@/lib/learn/ai-extra";
 import { AI_EXTRA2 } from "@/lib/learn/ai-extra2";
+import { enrichAiLessons } from "@/lib/learn/ai-media";
 import { SQL_EXTRA } from "@/lib/learn/courses-sql-ai-extra";
 import { SQL_EXTRA2 } from "@/lib/learn/courses-sql-extra2";
 import {
@@ -373,7 +374,7 @@ const aiTrack: Track = {
     "How machines learn, what neural networks and generative AI are, and how to use AI responsibly.",
   icon: "BrainCircuit",
   bands: ["teen", "adult"],
-  lessons: [
+  lessons: enrichAiLessons([
     {
       slug: "ai-intro",
       title: "What Is Artificial Intelligence?",
@@ -643,7 +644,7 @@ const aiTrack: Track = {
         },
       ],
     },
-  ],
+  ]),
 };
 
 export const SQL_AI_TRACKS: Track[] = [sqlTrack, aiTrack];

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 240" font-family="sans-serif">
+  <rect x="1" y="1" width="418" height="238" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <g stroke="#16a34a" stroke-width="2.5" fill="none">
+    <path d="M40,90 h20 v-30 h10 v30 h30 v-30 h10 v30 h30 v-30 h10 v30 h30"/>
+  </g>
+  <text x="330" y="80" font-size="11" fill="#166534" font-weight="bold">25% duty — မှိန်</text>
+  <g stroke="#2563eb" stroke-width="2.5" fill="none">
+    <path d="M40,170 h10 v-30 h30 v30 h10 v-30 h30 v30 h10 v-30 h30 v30 h10"/>
+  </g>
+  <text x="330" y="160" font-size="11" fill="#1e40af" font-weight="bold">75% duty — လင်း</text>
+  <line x1="40" y1="200" x2="300" y2="200" stroke="#94a3b8"/>
+  <text x="170" y="220" text-anchor="middle" font-size="10.5" fill="#334155">ON ချိန် အချိုး (duty cycle) = ပျမ်းမျှ ပါဝါ — LED အလင်း / motor အမြန် ထိန်း</text>
+  <text x="210" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">PWM — Pulse Width Modulation</text>
+</svg>

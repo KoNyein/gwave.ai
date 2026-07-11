@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 250" font-family="sans-serif">
+  <rect x="1" y="1" width="418" height="248" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="60" y="62" font-size="11" font-weight="bold" fill="#2563eb">UART</text>
+  <line x1="115" y1="50" x2="330" y2="50" stroke="#2563eb" stroke-width="2"/><text x="340" y="54" font-size="9" fill="#64748b">TX→RX</text>
+  <line x1="115" y1="66" x2="330" y2="66" stroke="#2563eb" stroke-width="2"/><text x="340" y="70" font-size="9" fill="#64748b">RX←TX</text>
+  <text x="222" y="86" text-anchor="middle" font-size="9.5" fill="#64748b">၂ ကြိုး · ၁-ချိတ်-၁ · GPS, module များ</text>
+  <text x="60" y="122" font-size="11" font-weight="bold" fill="#16a34a">I2C</text>
+  <line x1="115" y1="110" x2="330" y2="110" stroke="#16a34a" stroke-width="2"/><text x="340" y="114" font-size="9" fill="#64748b">SDA</text>
+  <line x1="115" y1="126" x2="330" y2="126" stroke="#16a34a" stroke-width="2"/><text x="340" y="130" font-size="9" fill="#64748b">SCL</text>
+  <g fill="#dcfce7" stroke="#16a34a"><rect x="150" y="103" width="26" height="30" rx="4"/><rect x="210" y="103" width="26" height="30" rx="4"/><rect x="270" y="103" width="26" height="30" rx="4"/></g>
+  <text x="222" y="150" text-anchor="middle" font-size="9.5" fill="#64748b">၂ ကြိုးတည်းနဲ့ device များစွာ (address စီ) · sensor, OLED</text>
+  <text x="60" y="188" font-size="11" font-weight="bold" fill="#d97706">SPI</text>
+  <line x1="115" y1="172" x2="330" y2="172" stroke="#d97706" stroke-width="2"/><text x="340" y="176" font-size="9" fill="#64748b">MOSI</text>
+  <line x1="115" y1="186" x2="330" y2="186" stroke="#d97706" stroke-width="2"/><text x="340" y="190" font-size="9" fill="#64748b">MISO</text>
+  <line x1="115" y1="200" x2="330" y2="200" stroke="#d97706" stroke-width="2"/><text x="340" y="204" font-size="9" fill="#64748b">SCK+CS</text>
+  <text x="222" y="222" text-anchor="middle" font-size="9.5" fill="#64748b">ကြိုးများပေမယ့် အမြန်ဆုံး · SD card, display</text>
+  <text x="210" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">UART · I2C · SPI နှိုင်းယှဉ်</text>
+</svg>
