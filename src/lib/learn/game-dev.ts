@@ -412,6 +412,29 @@ export const gameDevTrack: Track = {
       ),
     },
 
+    {
+      slug: "touch-controls",
+      title: "Phase 4 · Touch & Mobile Controls",
+      summary: "Touch event နှင့် virtual joystick — ဖုန်းမှာ ကစားနိုင်အောင်။",
+      minutes: 10,
+      kind: "code",
+      youtubeQuery: "javascript touch controls virtual joystick canvas game",
+      sections: [
+        {
+          heading: "keyboard မရှိတဲ့ device အတွက်",
+          body: "ကစားသူ အများစုက ဖုန်းနဲ့ ကစားကြတယ် — keyboard မရှိဘူး။ `touchstart`, `touchmove`, `touchend` event တွေက touch ကို ဖမ်းပေးတယ်။ `e.touches` array က လက်ချောင်း အများ (multi-touch) ကို ထောက်ပံ့တယ် — ဘယ်လက်နဲ့ ရွေ့ရင်း ညာလက်နဲ့ ပစ်လို့ရတယ်။ ပုံမှန် pattern — screen ဘယ်ခြမ်းမှာ **virtual joystick** (ထိတဲ့နေရာနဲ့ ဆွဲတဲ့နေရာကြား vector = direction)၊ ညာခြမ်းမှာ ခလုတ်။ mouse ရော touch ရော နှစ်မျိုးလုံး ထောက်ပံ့ရင် — device တိုင်း ကစားနိုင်တယ်။",
+          image: {
+            src: `${IMG}/touch-controls.svg`,
+            alt: "Virtual joystick and buttons on a phone screen",
+            caption: "ဘယ် joystick · ညာ ခလုတ် — e.touches[i]",
+          },
+        },
+      ],
+      code: canvas(
+        "const cv = document.getElementById('game'), ctx = cv.getContext('2d');\nconst p = { x: 160, y: 100 };\nlet stick = null; // {sx,sy,dx,dy}\nfunction pos(e) {\n  const r = cv.getBoundingClientRect();\n  const t = e.touches ? e.touches[0] : e;\n  return { x: t.clientX - r.left, y: t.clientY - r.top };\n}\nfunction start(e) { e.preventDefault(); const q = pos(e);\n  stick = { sx: q.x, sy: q.y, dx: 0, dy: 0 }; }\nfunction move(e)  { if (!stick) return; e.preventDefault(); const q = pos(e);\n  stick.dx = (q.x - stick.sx) / 30; stick.dy = (q.y - stick.sy) / 30; }\nfunction end()    { stick = null; }\n// touch + mouse နှစ်မျိုးလုံး\ncv.addEventListener('touchstart', start); cv.addEventListener('mousedown', start);\ncv.addEventListener('touchmove', move);   cv.addEventListener('mousemove', move);\ncv.addEventListener('touchend', end);     cv.addEventListener('mouseup', end);\nfunction loop() {\n  if (stick) {\n    p.x = Math.max(10, Math.min(310, p.x + stick.dx));\n    p.y = Math.max(10, Math.min(190, p.y + stick.dy));\n  }\n  ctx.clearRect(0, 0, 320, 200);\n  if (stick) { // joystick ဆွဲပြ\n    ctx.strokeStyle = '#475569';\n    ctx.beginPath(); ctx.arc(stick.sx, stick.sy, 24, 0, 7); ctx.stroke();\n    ctx.fillStyle = '#38bdf8';\n    ctx.beginPath();\n    ctx.arc(stick.sx + stick.dx*8, stick.sy + stick.dy*8, 10, 0, 7); ctx.fill();\n  }\n  ctx.fillStyle = '#4ade80'; ctx.fillRect(p.x - 10, p.y - 10, 20, 20);\n  requestAnimationFrame(loop);\n}\nloop(); // canvas ကို ဖိဆွဲ (touch/mouse) — joystick",
+      ),
+    },
+
     // ── Master Projects ──────────────────────────────────────────────────────
     {
       slug: "project-topdown",
@@ -464,6 +487,35 @@ export const gameDevTrack: Track = {
       code: canvas(
         "const ctx = document.getElementById('game').getContext('2d');\nconst keys = {};\naddEventListener('keydown', e => keys[e.key] = true);\naddEventListener('keyup',   e => keys[e.key] = false);\nconst G = 0.6;\nconst plats = [ {x:0,y:180,w:400,h:20}, {x:120,y:140,w:70,h:12},\n  {x:240,y:110,w:70,h:12}, {x:380,y:150,w:90,h:12},\n  {x:520,y:120,w:80,h:12}, {x:640,y:170,w:200,h:20} ];\nconst p = { x: 20, y: 150, w: 22, h: 28, vx: 0, vy: 0, onGround: false };\nfunction loop() {\n  if (keys['ArrowLeft'])  p.vx = -3;\n  else if (keys['ArrowRight']) p.vx = 3; else p.vx = 0;\n  if (keys[' '] && p.onGround) { p.vy = -11; p.onGround = false; }\n  p.vy += G; p.x += p.vx; p.y += p.vy; p.onGround = false;\n  for (const t of plats) {\n    if (p.x < t.x+t.w && p.x+p.w > t.x &&\n        p.y+p.h > t.y && p.y+p.h < t.y+t.h+16 && p.vy >= 0) {\n      p.y = t.y - p.h; p.vy = 0; p.onGround = true; // platform ပေါ် ရပ်\n    }\n  }\n  if (p.y > 260) { p.x = 20; p.y = 150; p.vy = 0; } // ကျ → reset\n  const cam = Math.max(0, p.x - 140);\n  ctx.fillStyle = '#0f172a'; ctx.fillRect(0,0,320,200);\n  ctx.save(); ctx.translate(-cam, 0);\n  ctx.fillStyle = '#a16207';\n  for (const t of plats) ctx.fillRect(t.x, t.y, t.w, t.h);\n  ctx.fillStyle = '#22c55e'; ctx.fillRect(p.x, p.y, p.w, p.h);\n  ctx.restore();\n  requestAnimationFrame(loop);\n}\nloop(); // click → ← → run, Space jump",
       ),
+    },
+
+    {
+      slug: "deployment",
+      title: "Deployment — ဂိမ်း တင်ပြီး Share",
+      summary: "GitHub Pages / Vercel မှာ တင်၍ သူငယ်ချင်းများဆီ link ပို့ခြင်း။",
+      minutes: 9,
+      kind: "reading",
+      youtubeQuery: "deploy html game github pages vercel",
+      sections: [
+        {
+          heading: "ဂိမ်းက static site — တင်ရ လွယ်",
+          body: "Canvas ဂိမ်းက HTML + JS ဖိုင်တွေပဲ — server မလိုတဲ့ **static site** ဖြစ်လို့ အခမဲ့ hosting တွေမှာ တင်လို့ရတယ်။ ဖိုင်ဖွဲ့စည်းပုံ ရိုးရိုး — `index.html` (canvas tag ပါ), `game.js` (ဂိမ်း code), `assets/` (ပုံ/အသံ)။ index.html ထဲက `<script src=\"game.js\"></script>` နဲ့ ချိတ်ရုံပါ။",
+          image: {
+            src: `${IMG}/deployment.svg`,
+            alt: "Game files to GitHub to Pages or Vercel",
+            caption: "ဖိုင် → GitHub → Pages/Vercel → URL 🔗",
+          },
+        },
+        {
+          heading: "GitHub Pages — အဆင့် ၄ ဆင့်",
+          body: "(၁) github.com မှာ repo အသစ် ဆောက် (ဥပမာ `my-game`)။ (၂) ဂိမ်းဖိုင်တွေ upload သို့ `git push`။ (၃) repo ရဲ့ **Settings → Pages** မှာ Source ကို `main` branch ရွေးပြီး Save။ (၄) မိနစ်အနည်းငယ်အတွင်း — `https://username.github.io/my-game/` မှာ ဂိမ်း live ဖြစ်သွားပြီ။ code ပြင်ပြီး push တိုင်း အလိုအလျောက် update ဖြစ်တယ်။",
+          code: "# terminal ကနေ တင်နည်း\ngit init\ngit add index.html game.js assets/\ngit commit -m \"my first game\"\ngit remote add origin https://github.com/USER/my-game.git\ngit push -u origin main\n# ပြီးရင် — Settings → Pages → Source: main → Save",
+        },
+        {
+          heading: "Vercel — drag & drop",
+          body: "vercel.com မှာ account ဖွင့်ပြီး — **Add New Project** → GitHub repo ချိတ် (သို့ folder ကို drag-drop) → Deploy။ စက္ကန့်ပိုင်းအတွင်း `my-game.vercel.app` URL ရတယ်။ GitHub ချိတ်ထားရင် push တိုင်း auto-deploy။ ဖုန်းမှာ ကစားလို့ရအောင် — `<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">` ထည့်ပြီး touch controls (အရင် lesson) ပါ ထည့်ဖို့ မမေ့ပါနဲ့။ URL ရပြီဆို — messenger/social မှာ share ပြီး ကိုယ့်ဂိမ်းကို ကမ္ဘာက ကစားစေပါ! 🎉",
+        },
+      ],
     },
 
     // ── Final quiz ───────────────────────────────────────────────────────────
@@ -519,6 +571,28 @@ export const gameDevTrack: Track = {
           options: ["variable ထဲ", "localStorage", "canvas ပေါ်", "array ထဲ"],
           answer: 1,
           explain: "localStorage က browser ထဲ တည်တံ့စွာ သိမ်းပေးတယ် — reload လည်း ကျန်တယ်။",
+        },
+        {
+          q: "ဖုန်း touch ကို ဖမ်းဖို့ ဘယ် event တွေ သုံးလဲ။",
+          options: [
+            "keydown / keyup",
+            "touchstart / touchmove / touchend",
+            "click တစ်ခုတည်း",
+            "scroll",
+          ],
+          answer: 1,
+          explain: "touch event ၃ မျိုးနဲ့ ဖမ်းပြီး e.touches array က multi-touch ထောက်ပံ့တယ်။",
+        },
+        {
+          q: "Canvas ဂိမ်းကို အခမဲ့ တင်ဖို့ ဘယ်ဟာ သင့်တော်လဲ။",
+          options: [
+            "database server ငှား",
+            "GitHub Pages / Vercel (static hosting)",
+            "USB နဲ့ ပေး",
+            "မတင်နိုင်",
+          ],
+          answer: 1,
+          explain: "HTML+JS ဖိုင်သက်သက်မို့ — static hosting မှာ အခမဲ့ တင်ပြီး URL share လို့ရတယ်။",
         },
       ],
     },
