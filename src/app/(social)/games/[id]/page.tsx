@@ -3,10 +3,11 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Play } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
+import { GameEngagement } from "@/components/games/game-engagement";
 import { GamePlayer } from "@/components/games/game-player";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { getCurrentProfile } from "@/lib/auth";
-import { getGame } from "@/lib/db/games";
+import { getGame, getGameEngagement } from "@/lib/db/games";
 import { displayName } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,16 @@ export default async function PlayGamePage({
   const t = await getTranslations("games");
 
   const isAuthor = game.author_id === profile.id;
+  const isModerator = ["moderator", "admin", "super_admin"].includes(
+    profile.role,
+  );
+  const engagement = await getGameEngagement(game.id, profile.id);
+  const currentUser = {
+    id: profile.id,
+    username: profile.username,
+    full_name: profile.full_name,
+    avatar_url: profile.avatar_url,
+  };
 
   return (
     <div className="space-y-4">
@@ -72,6 +83,31 @@ export default async function PlayGamePage({
         code={game.code}
         title={game.title}
         countPlay={game.status === "approved" && !isAuthor}
+      />
+
+      {/* Developer analytics — author sees a stats strip of their game. */}
+      {isAuthor ? (
+        <div className="grid grid-cols-3 gap-2 text-center">
+          {[
+            ["ကစားသူ", game.plays_count],
+            ["Reaction", game.reactions_count],
+            ["မှတ်ချက်", game.comments_count],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-lg border p-3">
+              <p className="text-xl font-bold tabular-nums">{value}</p>
+              <p className="text-[11px] text-muted-foreground">{label}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <GameEngagement
+        gameId={game.id}
+        currentUser={currentUser}
+        isModerator={isModerator}
+        initialBreakdown={engagement.breakdown}
+        initialMine={engagement.mine}
+        initialComments={engagement.comments}
       />
     </div>
   );

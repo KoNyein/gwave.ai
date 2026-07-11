@@ -6,7 +6,7 @@ import { GameReviewActions } from "@/components/games/game-review-actions";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireRole } from "@/lib/auth";
-import { getGamesForReview } from "@/lib/db/games";
+import { getGamesForReview, getPopularGames } from "@/lib/db/games";
 import { displayName, timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { GameStatus } from "@/types/database";
@@ -23,14 +23,69 @@ const STATUS_STYLE: Record<GameStatus, string> = {
 /** Moderation queue for community game submissions. */
 export default async function AdminGamesPage() {
   await requireRole("admin");
-  const [t, games] = await Promise.all([
+  const [t, games, popular] = await Promise.all([
     getTranslations("games"),
     getGamesForReview(),
+    getPopularGames(20),
   ]);
 
   return (
     <div className="space-y-3">
-      <h1 className="text-lg font-bold">{t("adminTitle")}</h1>
+      {/* Popularity dashboard */}
+      <h1 className="text-lg font-bold">🏆 လူကြိုက်များသော ဂိမ်းများ</h1>
+      {popular.length === 0 ? (
+        <Card>
+          <CardContent className="p-4 text-center text-sm text-muted-foreground">
+            အတည်ပြုပြီး ဂိမ်း မရှိသေးပါ။
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="overflow-x-auto p-0">
+            <table className="w-full min-w-[520px] text-sm">
+              <thead className="border-b text-left text-xs text-muted-foreground">
+                <tr>
+                  <th className="p-2.5">#</th>
+                  <th className="p-2.5">ဂိမ်း</th>
+                  <th className="p-2.5">ဆော့သူ</th>
+                  <th className="p-2.5 text-right">ကစားသူ</th>
+                  <th className="p-2.5 text-right">Reaction</th>
+                  <th className="p-2.5 text-right">မှတ်ချက်</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {popular.map((g, i) => (
+                  <tr key={g.id} className="hover:bg-muted/50">
+                    <td className="p-2.5 text-muted-foreground">{i + 1}</td>
+                    <td className="p-2.5">
+                      <Link
+                        href={`/games/${g.id}`}
+                        className="font-medium hover:underline"
+                      >
+                        {g.emoji} {g.title}
+                      </Link>
+                    </td>
+                    <td className="p-2.5 text-muted-foreground">
+                      {displayName(g.author)}
+                    </td>
+                    <td className="p-2.5 text-right tabular-nums">
+                      {g.plays_count.toLocaleString("en-US")}
+                    </td>
+                    <td className="p-2.5 text-right tabular-nums">
+                      {g.reactions_count}
+                    </td>
+                    <td className="p-2.5 text-right tabular-nums">
+                      {g.comments_count}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
+
+      <h1 className="pt-2 text-lg font-bold">{t("adminTitle")}</h1>
       {games.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-center text-sm text-muted-foreground">
