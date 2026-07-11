@@ -7,6 +7,7 @@
 
 import { AI_EXTRA } from "@/lib/learn/ai-extra";
 import { SQL_EXTRA } from "@/lib/learn/courses-sql-ai-extra";
+import { SQL_EXTRA2 } from "@/lib/learn/courses-sql-extra2";
 import {
   GROUP_BY_SVG,
   JOIN_SVG,
@@ -252,6 +253,7 @@ const sqlTrack: Track = {
         "INSERT INTO growers VALUES (6, 'Thida', 'Bago', 9);\nSELECT * FROM growers;",
     },
     ...SQL_EXTRA,
+    ...SQL_EXTRA2,
     {
       slug: "sql-quiz",
       title: "SQL Quiz",
