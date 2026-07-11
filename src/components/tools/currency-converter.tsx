@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePersistentState } from "@/lib/hooks/use-persistent-state";
 import { updateCurrencyRate } from "@/lib/actions/tools";
 import { timeAgo } from "@/lib/format";
 import type { CurrencyRate } from "@/types/database";
@@ -20,9 +21,9 @@ export function CurrencyConverter({
   isAdmin: boolean;
 }) {
   const t = useTranslations("tools.currency");
-  const [amount, setAmount] = React.useState("100");
-  const [from, setFrom] = React.useState("USD");
-  const [to, setTo] = React.useState("THB");
+  const [amount, setAmount] = usePersistentState("tool.currency.amount", "100");
+  const [from, setFrom] = usePersistentState("tool.currency.from", "USD");
+  const [to, setTo] = usePersistentState("tool.currency.to", "THB");
 
   const rateMap = new Map(rates.map((rate) => [rate.code, Number(rate.rate_per_usd)]));
   const input = Number.parseFloat(amount);

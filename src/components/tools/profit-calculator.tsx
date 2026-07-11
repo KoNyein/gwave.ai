@@ -6,12 +6,16 @@ import { useTranslations } from "next-intl";
 import { ShareResultButton } from "@/components/tools/share-result-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePersistentState } from "@/lib/hooks/use-persistent-state";
 
 export function ProfitCalculator() {
   const t = useTranslations("tools.profit");
-  const [cost, setCost] = React.useState("6");
-  const [price, setPrice] = React.useState("10");
-  const [fixedCosts, setFixedCosts] = React.useState("1200");
+  const [cost, setCost] = usePersistentState("tool.profit.cost", "6");
+  const [price, setPrice] = usePersistentState("tool.profit.price", "10");
+  const [fixedCosts, setFixedCosts] = usePersistentState(
+    "tool.profit.fixed",
+    "1200",
+  );
 
   const costValue = Number.parseFloat(cost);
   const priceValue = Number.parseFloat(price);

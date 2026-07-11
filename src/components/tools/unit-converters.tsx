@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePersistentState } from "@/lib/hooks/use-persistent-state";
 import { cn } from "@/lib/utils";
 
 type Category = "weight" | "area" | "temperature";
@@ -41,10 +42,13 @@ const UNITS: Record<Category, string[]> = {
 
 export function UnitConverters() {
   const t = useTranslations("tools.units");
-  const [category, setCategory] = React.useState<Category>("weight");
-  const [value, setValue] = React.useState("100");
-  const [from, setFrom] = React.useState("g");
-  const [to, setTo] = React.useState("oz");
+  const [category, setCategory] = usePersistentState<Category>(
+    "tool.units.category",
+    "weight",
+  );
+  const [value, setValue] = usePersistentState("tool.units.value", "100");
+  const [from, setFrom] = usePersistentState("tool.units.from", "g");
+  const [to, setTo] = usePersistentState("tool.units.to", "oz");
 
   function switchCategory(next: Category) {
     setCategory(next);

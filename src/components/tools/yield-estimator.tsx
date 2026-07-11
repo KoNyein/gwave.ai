@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { ShareResultButton } from "@/components/tools/share-result-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePersistentState } from "@/lib/hooks/use-persistent-state";
 import { cn } from "@/lib/utils";
 
 const METHODS = [
@@ -19,9 +20,10 @@ const PER_PLANT_CAP_G = 500;
 /** Rough grams-per-watt yield estimate by growing method. */
 export function YieldEstimator() {
   const t = useTranslations("tools.yield");
-  const [watts, setWatts] = React.useState("400");
-  const [plants, setPlants] = React.useState("4");
-  const [method, setMethod] = React.useState<(typeof METHODS)[number]>(
+  const [watts, setWatts] = usePersistentState("tool.yield.watts", "400");
+  const [plants, setPlants] = usePersistentState("tool.yield.plants", "4");
+  const [method, setMethod] = usePersistentState<(typeof METHODS)[number]>(
+    "tool.yield.method",
     METHODS[1],
   );
 
