@@ -4,6 +4,7 @@
 
 import type { AgeBand } from "@/lib/age";
 import { AGRI_EXTRA } from "@/lib/learn/agri-extra";
+import { AGRI_EXTRA2 } from "@/lib/learn/agri-extra2";
 import { ELECTRONICS_EXTRA } from "@/lib/learn/electronics-extra";
 import { ELECTRONICS_EXTRA2 } from "@/lib/learn/electronics-extra2";
 import { ROBOTICS_EXTRA } from "@/lib/learn/robotics-extra";
@@ -679,6 +680,7 @@ const agriTrack: Track = {
       ],
     },
     ...AGRI_EXTRA,
+    ...AGRI_EXTRA2,
     {
       slug: "agri-quiz",
       title: "Agri-Science Quiz",
