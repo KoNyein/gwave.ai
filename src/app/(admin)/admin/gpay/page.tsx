@@ -1,9 +1,7 @@
 import { Banknote, Users, Wallet } from "lucide-react";
 
 import { GpayLedger } from "@/components/admin/gpay-ledger";
-import { WagerDisputes } from "@/components/admin/wager-disputes";
 import { getAllGpayAccounts, getAllGpayTransactions } from "@/lib/db/gpay";
-import { getDisputedWagersWithPlayers } from "@/lib/db/wagers";
 
 export const metadata = { title: "G-Pay ledger" };
 export const dynamic = "force-dynamic";
@@ -13,10 +11,9 @@ function mmk(n: number): string {
 }
 
 export default async function AdminGpayPage() {
-  const [accounts, transactions, disputes] = await Promise.all([
+  const [accounts, transactions] = await Promise.all([
     getAllGpayAccounts(),
     getAllGpayTransactions(500),
-    getDisputedWagersWithPlayers(),
   ]);
 
   const active = accounts.filter((a) => a.status === "active").length;
@@ -52,8 +49,6 @@ export default async function AdminGpayPage() {
           </div>
         ))}
       </div>
-
-      <WagerDisputes wagers={disputes} />
 
       <GpayLedger transactions={transactions} />
     </div>

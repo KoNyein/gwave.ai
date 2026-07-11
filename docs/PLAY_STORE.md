@@ -95,6 +95,5 @@ comma ခံပြီး route ကို ချဲ့နိုင်သည်။
   သွင်းနိုင်ပြီးသား (App Store တင်ချင်ရင် နောက်တစ်ဆင့်အနေနဲ့ Capacitor သုံးနိုင်)
 - WebRTC (calls/meet), camera, GPS, notifications — TWA ထဲမှာ Chrome
   engine အပြည့်မို့ အကုန် အလုပ်လုပ်သည်
-- G-Pay လောင်းကြေး feature ပါသောကြောင့် Play Console content rating မှာ
-  simulated gambling / real-money အမေးများကို ဂရုတစိုက် ဖြေပါ —
-  ဒေသဆိုင်ရာ ဥပဒေနှင့် Play policy အလိုက် ကန့်သတ်ချက် ရှိနိုင်သည်
+- လောင်းကစား feature များ ဖယ်ရှားပြီးဖြစ်၍ (games အားလုံး အခမဲ့)
+  content rating မှာ gambling အမေးများကို "No" ဖြေနိုင်ပါပြီ

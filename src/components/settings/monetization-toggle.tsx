@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Coins, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { setMonetization } from "@/lib/actions/wagers";
+import { setMonetization } from "@/lib/actions/monetization";
 import { cn } from "@/lib/utils";
 
 export function MonetizationToggle({ enabled }: { enabled: boolean }) {
