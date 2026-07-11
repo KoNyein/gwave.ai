@@ -67,3 +67,35 @@ export async function sendPushToUser(
     await admin.from("push_subscriptions").delete().in("id", stale);
   }
 }
+
+/**
+ * Convenience: push a social event to a recipient, resolving the actor's
+ * display name. Skips self-notifications. Best-effort; never throws.
+ */
+export async function pushSocial(
+  recipientId: string,
+  actorId: string,
+  body: (actorName: string) => string,
+  url: string,
+): Promise<void> {
+  if (!recipientId || recipientId === actorId) return;
+  try {
+    const admin = createAdminClient();
+    const { data: actor } = await admin
+      .from("profiles")
+      .select("full_name, username")
+      .eq("id", actorId)
+      .maybeSingle();
+    const name =
+      (actor?.full_name as string | null) ||
+      (actor?.username as string | null) ||
+      "Someone";
+    await sendPushToUser(recipientId, {
+      title: "gwave.ai",
+      body: body(name),
+      url,
+    });
+  } catch {
+    /* best-effort */
+  }
+}

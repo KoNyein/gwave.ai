@@ -232,6 +232,26 @@ export async function setReaction(
     type,
   });
   if (error) return { ok: false, error: error.message };
+
+  // Push the post owner (only on a fresh post reaction).
+  if ("postId" in target) {
+    void (async () => {
+      const { data: post } = await supabase
+        .from("posts")
+        .select("author_id")
+        .eq("id", target.postId)
+        .maybeSingle();
+      if (post?.author_id) {
+        const { pushSocial } = await import("@/lib/push");
+        await pushSocial(
+          post.author_id as string,
+          userId,
+          (n) => `${n} က သင့်ပို့စ်ကို ${type} ပြုလုပ်လိုက်သည်`,
+          "/notifications",
+        );
+      }
+    })();
+  }
   return { ok: true, data: undefined };
 }
 
@@ -264,6 +284,24 @@ export async function addComment(
   if (error || !comment) {
     return { ok: false, error: error?.message ?? "Failed to comment." };
   }
+
+  // Push the post owner about the new comment.
+  void (async () => {
+    const { data: post } = await supabase
+      .from("posts")
+      .select("author_id")
+      .eq("id", parsed.data.postId)
+      .maybeSingle();
+    if (post?.author_id) {
+      const { pushSocial } = await import("@/lib/push");
+      await pushSocial(
+        post.author_id as string,
+        userId,
+        (n) => `${n} က သင့်ပို့စ်ကို comment ရေးလိုက်သည်`,
+        "/notifications",
+      );
+    }
+  })();
   return { ok: true, data: { commentId: comment.id } };
 }
 

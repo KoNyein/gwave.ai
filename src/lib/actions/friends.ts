@@ -45,6 +45,15 @@ export async function sendFriendRequest(
     }
     return { ok: false, error: error.message };
   }
+  void (async () => {
+    const { pushSocial } = await import("@/lib/push");
+    await pushSocial(
+      profileId,
+      userId,
+      (n) => `${n} က သင့်ကို မိတ်ဆွေဖွဲ့ရန် တောင်းဆိုသည်`,
+      "/notifications",
+    );
+  })();
   revalidateSocial();
   return { ok: true, data: undefined };
 }
@@ -101,6 +110,17 @@ export async function followUser(profileId: string): Promise<ActionResult> {
   });
   if (error && error.code !== "23505") {
     return { ok: false, error: error.message };
+  }
+  if (!error) {
+    void (async () => {
+      const { pushSocial } = await import("@/lib/push");
+      await pushSocial(
+        profileId,
+        userId,
+        (n) => `${n} က သင့်ကို စတင် စောင့်ကြည့်လိုက်သည်`,
+        "/notifications",
+      );
+    })();
   }
   revalidateSocial();
   return { ok: true, data: undefined };

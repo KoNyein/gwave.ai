@@ -268,12 +268,35 @@ export async function updateOrderStatus(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("shop_orders")
     .update({ status })
     .eq("id", orderId)
-    .eq("seller_id", userId);
+    .eq("seller_id", userId)
+    .select("buyer_id")
+    .maybeSingle();
   if (error) return { ok: false, error: error.message };
+
+  // Push the buyer about the status change (shipped / delivered matter most).
+  if (updated?.buyer_id) {
+    const LABEL: Record<string, string> = {
+      forwarded: "လက်ခံ / ပြင်ဆင်ဆဲ",
+      shipped: "🚚 ပို့ဆောင်ပြီ",
+      delivered: "📦 ရောက်ရှိပြီ",
+      cancelled: "❌ ပယ်ဖျက်",
+    };
+    const label = LABEL[status];
+    if (label) {
+      void (async () => {
+        const { sendPushToUser } = await import("@/lib/push");
+        await sendPushToUser(updated.buyer_id as string, {
+          title: "အော်ဒါ အခြေအနေ",
+          body: `သင့်အော်ဒါ — ${label}`,
+          url: "/shop/orders",
+        });
+      })();
+    }
+  }
   revalidatePath("/shop/sales");
   return { ok: true, data: undefined };
 }
