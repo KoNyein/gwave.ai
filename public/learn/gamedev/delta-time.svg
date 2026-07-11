@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Delta Time — စက်အနှေး/အမြန် မတူလည်း တူ</text>
+  <text x="118" y="54" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#2563eb">မြန်တဲ့ PC (120fps)</text>
+  <text x="322" y="54" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#16a34a">နှေးတဲ့ PC (30fps)</text>
+  <line x1="30" y1="90" x2="200" y2="90" stroke="#cbd5e1"/>
+  <g fill="#2563eb"><circle cx="40" cy="90" r="3"/><circle cx="60" cy="90" r="3"/><circle cx="80" cy="90" r="3"/><circle cx="100" cy="90" r="3"/><circle cx="120" cy="90" r="3"/><circle cx="140" cy="90" r="3"/><circle cx="160" cy="90" r="3"/><circle cx="180" cy="90" r="3"/></g>
+  <line x1="240" y1="90" x2="410" y2="90" stroke="#cbd5e1"/>
+  <g fill="#16a34a"><circle cx="250" cy="90" r="4"/><circle cx="300" cy="90" r="4"/><circle cx="350" cy="90" r="4"/><circle cx="400" cy="90" r="4"/></g>
+  <rect x="30" y="112" width="380" height="30" rx="6" fill="#fef3c7" stroke="#d97706"/>
+  <text x="220" y="132" text-anchor="middle" font-size="10" font-family="monospace" fill="#92400e">x += speed * dt</text>
+  <text x="220" y="166" text-anchor="middle" font-size="10" fill="#334155">frame များ/နည်း — dt နဲ့ မြှောက်တော့ တစ်စက္ကန့်မှာ တူညီ ရွေ့</text>
+  <text x="220" y="186" text-anchor="middle" font-size="9" fill="#64748b">dt မသုံးရင် — မြန်တဲ့စက်မှာ ဇာတ်ကောင် ၂ဆ မြန်</text>
+</svg>

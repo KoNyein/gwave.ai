@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Object Pooling — ပြန်သုံး၍ memory ချွေ</text>
+  <text x="118" y="54" text-anchor="middle" font-size="10" font-weight="bold" fill="#dc2626">❌ အသစ် ဖန်တီးမြဲ</text>
+  <g fill="#fecaca" stroke="#dc2626"><rect x="40" y="66" width="20" height="20"/><rect x="66" y="66" width="20" height="20"/><rect x="92" y="66" width="20" height="20"/><rect x="118" y="66" width="20" height="20"/><rect x="144" y="66" width="20" height="20"/><rect x="170" y="66" width="20" height="20"/></g>
+  <text x="118" y="104" text-anchor="middle" font-size="8" fill="#991b1b">new bullet မြဲ → GC နှေး</text>
+  <text x="322" y="54" text-anchor="middle" font-size="10" font-weight="bold" fill="#16a34a">✓ pool ကနေ ပြန်သုံး</text>
+  <g fill="#bbf7d0" stroke="#16a34a"><rect x="255" y="66" width="20" height="20"/><rect x="281" y="66" width="20" height="20"/><rect x="307" y="66" width="20" height="20"/></g>
+  <g fill="#e2e8f0" stroke="#94a3b8"><rect x="333" y="66" width="20" height="20"/><rect x="359" y="66" width="20" height="20"/></g>
+  <text x="322" y="104" text-anchor="middle" font-size="8" fill="#166534">active=green · idle=grey ပြန်သုံး</text>
+  <g font-size="9" font-family="monospace" fill="#334155">
+    <text x="60" y="140">const b = pool.find(p =&gt; !p.active);</text>
+    <text x="60" y="158">b.active = true;  b.reset(x, y);</text>
+    <text x="60" y="176">// သေရင် — b.active = false (ဖျက်စရာမလို)</text>
+  </g>
+</svg>

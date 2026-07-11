@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">AABB Collision — လေးထောင့် ဝင်တိုက်</text>
+  <text x="118" y="52" text-anchor="middle" font-size="10" font-weight="bold" fill="#16a34a">ထိတယ် (overlap)</text>
+  <rect x="50" y="66" width="70" height="60" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <rect x="96" y="92" width="70" height="60" fill="#fecaca" stroke="#dc2626" stroke-width="2" fill-opacity="0.7"/>
+  <rect x="96" y="92" width="24" height="34" fill="#a78bfa" fill-opacity="0.6"/>
+  <text x="322" y="52" text-anchor="middle" font-size="10" font-weight="bold" fill="#dc2626">မထိ</text>
+  <rect x="250" y="66" width="60" height="54" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <rect x="336" y="92" width="60" height="54" fill="#fecaca" stroke="#dc2626" stroke-width="2" fill-opacity="0.7"/>
+  <text x="220" y="176" text-anchor="middle" font-size="9" font-family="monospace" fill="#334155">a.x &lt; b.x+b.w &amp;&amp; a.x+a.w &gt; b.x &amp;&amp; a.y &lt; b.y+b.h &amp;&amp; a.y+a.h &gt; b.y</text>
+  <text x="220" y="192" text-anchor="middle" font-size="9" fill="#64748b">ဝင်ရိုး ၂ ခုစလုံး ထပ်မှ — တကယ် ဝင်တိုက်</text>
+</svg>

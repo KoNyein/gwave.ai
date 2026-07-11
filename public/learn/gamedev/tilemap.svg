@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="tm" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Tile-based Map — 2D array → မြေပုံ</text>
+  <g font-size="10" font-family="monospace" fill="#334155">
+    <text x="36" y="70">[1,1,1,1,1]</text>
+    <text x="36" y="88">[1,0,0,0,1]</text>
+    <text x="36" y="106">[1,0,2,0,1]</text>
+    <text x="36" y="124">[1,1,1,1,1]</text>
+  </g>
+  <line x1="150" y1="96" x2="196" y2="96" stroke="#64748b" stroke-width="2" marker-end="url(#tm)"/>
+  <g stroke="#94a3b8">
+    <g fill="#92400e"><rect x="210" y="56" width="24" height="24"/><rect x="234" y="56" width="24" height="24"/><rect x="258" y="56" width="24" height="24"/><rect x="282" y="56" width="24" height="24"/><rect x="306" y="56" width="24" height="24"/></g>
+    <g fill="#dbeafe"><rect x="234" y="80" width="24" height="24"/><rect x="258" y="80" width="24" height="24"/><rect x="282" y="80" width="24" height="24"/></g>
+    <rect x="210" y="80" width="24" height="24" fill="#92400e"/><rect x="306" y="80" width="24" height="24" fill="#92400e"/>
+    <g fill="#dbeafe"><rect x="234" y="104" width="24" height="24"/><rect x="282" y="104" width="24" height="24"/></g>
+    <rect x="258" y="104" width="24" height="24" fill="#fbbf24"/>
+    <rect x="210" y="104" width="24" height="24" fill="#92400e"/><rect x="306" y="104" width="24" height="24" fill="#92400e"/>
+    <g fill="#92400e"><rect x="210" y="128" width="24" height="24"/><rect x="234" y="128" width="24" height="24"/><rect x="258" y="128" width="24" height="24"/><rect x="282" y="128" width="24" height="24"/><rect x="306" y="128" width="24" height="24"/></g>
+  </g>
+  <text x="270" y="150" text-anchor="middle" font-size="8" fill="#334155">1=အုတ် · 0=ဟာ · 2=item</text>
+  <text x="220" y="182" text-anchor="middle" font-size="9.5" fill="#64748b">ဂဏန်း တစ်လုံးစီ = tile — level ဖန်တီး/သိမ်း လွယ်</text>
+</svg>

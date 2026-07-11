@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Camera System — player ကို လိုက်</text>
+  <rect x="30" y="60" width="380" height="80" rx="4" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="46" y="54" font-size="8" fill="#64748b">whole world (ကျယ်)</text>
+  <rect x="150" y="66" width="120" height="68" rx="4" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="210" y="60" text-anchor="middle" font-size="8.5" fill="#1e40af">viewport (screen)</text>
+  <circle cx="210" cy="100" r="10" fill="#fbbf24" stroke="#d97706"/>
+  <text x="210" y="104" text-anchor="middle" font-size="9">🧍</text>
+  <text x="90" y="104" text-anchor="middle" font-size="12">🌳</text><text x="330" y="104" text-anchor="middle" font-size="12">🏔</text>
+  <g font-size="9" font-family="monospace" fill="#334155">
+    <text x="60" y="164">cam.x = player.x − screenW/2</text>
+    <text x="60" y="180">ctx.translate(−cam.x, −cam.y) // ကမ္ဘာ ရွှေ့</text>
+  </g>
+</svg>
