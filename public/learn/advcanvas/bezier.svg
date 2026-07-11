@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Paths &amp; Bézier Curves</text>
+  <path d="M60 150 C 120 40, 260 40, 320 150" fill="none" stroke="#2563eb" stroke-width="3"/>
+  <circle cx="60" cy="150" r="5" fill="#16a34a"/><circle cx="320" cy="150" r="5" fill="#16a34a"/>
+  <circle cx="120" cy="40" r="5" fill="#dc2626"/><circle cx="260" cy="40" r="5" fill="#dc2626"/>
+  <line x1="60" y1="150" x2="120" y2="40" stroke="#cbd5e1" stroke-dasharray="3 2"/>
+  <line x1="320" y1="150" x2="260" y2="40" stroke="#cbd5e1" stroke-dasharray="3 2"/>
+  <text x="120" y="32" text-anchor="middle" font-size="8" fill="#dc2626">control pt</text>
+  <text x="60" y="168" text-anchor="middle" font-size="8" fill="#166534">start</text>
+  <text x="320" y="168" text-anchor="middle" font-size="8" fill="#166534">end</text>
+  <text x="220" y="188" text-anchor="middle" font-size="9" font-family="monospace" fill="#64748b">ctx.bezierCurveTo(cp1x,cp1y, cp2x,cp2y, x,y)</text>
+</svg>

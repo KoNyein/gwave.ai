@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Transforms — translate · rotate · scale</text>
+  <g>
+    <rect x="40" y="70" width="80" height="60" fill="#f8fafc" stroke="#cbd5e1"/>
+    <rect x="55" y="85" width="30" height="30" fill="#38bdf8"/>
+    <text x="80" y="150" text-anchor="middle" font-size="8.5" fill="#334155">translate(x,y)</text>
+    <rect x="150" y="70" width="80" height="60" fill="#f8fafc" stroke="#cbd5e1"/>
+    <g transform="rotate(20 190 100)"><rect x="172" y="82" width="34" height="34" fill="#4ade80"/></g>
+    <text x="190" y="150" text-anchor="middle" font-size="8.5" fill="#334155">rotate(θ)</text>
+    <rect x="260" y="70" width="140" height="60" fill="#f8fafc" stroke="#cbd5e1"/>
+    <rect x="275" y="85" width="20" height="20" fill="#fbbf24"/>
+    <rect x="305" y="80" width="40" height="40" fill="#f59e0b"/>
+    <text x="330" y="150" text-anchor="middle" font-size="8.5" fill="#334155">scale(sx,sy)</text>
+  </g>
+  <text x="220" y="178" text-anchor="middle" font-size="9.5" fill="#64748b">canvas ရဲ့ coordinate system ကို ရွှေ့/လှည့်/ချုံ့ — ဆွဲမှုအားလုံး လိုက်ပြောင်း</text>
+</svg>

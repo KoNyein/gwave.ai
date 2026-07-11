@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="px" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Pixel Manipulation — getImageData</text>
+  <rect x="40" y="66" width="80" height="70" rx="6" fill="#f59e0b"/>
+  <circle cx="80" cy="90" r="10" fill="#fde68a"/>
+  <text x="80" y="152" text-anchor="middle" font-size="8" fill="#334155">မူရင်း</text>
+  <line x1="124" y1="100" x2="160" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#px)"/>
+  <rect x="168" y="66" width="104" height="70" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="220" y="96" text-anchor="middle" font-size="8" font-family="monospace" fill="#334155">data[i]   = R</text>
+  <text x="220" y="110" text-anchor="middle" font-size="8" font-family="monospace" fill="#334155">data[i+1] = G</text>
+  <text x="220" y="124" text-anchor="middle" font-size="8" font-family="monospace" fill="#334155">data[i+2] = B</text>
+  <line x1="276" y1="100" x2="312" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#px)"/>
+  <rect x="320" y="66" width="80" height="70" rx="6" fill="#78716c"/>
+  <circle cx="360" cy="90" r="10" fill="#d6d3d1"/>
+  <text x="360" y="152" text-anchor="middle" font-size="8" fill="#334155">grayscale</text>
+  <text x="220" y="182" text-anchor="middle" font-size="9" fill="#64748b">pixel array (RGBA) တိုက်ရိုက် ပြင် → filter (gray/invert/blur)</text>
+</svg>
