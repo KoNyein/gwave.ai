@@ -6,6 +6,7 @@
 // Pure data, safe to import from server and client.
 
 import { AI_EXTRA } from "@/lib/learn/ai-extra";
+import { AI_EXTRA2 } from "@/lib/learn/ai-extra2";
 import { SQL_EXTRA } from "@/lib/learn/courses-sql-ai-extra";
 import { SQL_EXTRA2 } from "@/lib/learn/courses-sql-extra2";
 import {
@@ -528,6 +529,7 @@ const aiTrack: Track = {
       ],
     },
     ...AI_EXTRA,
+    ...AI_EXTRA2,
     {
       slug: "ai-quiz",
       title: "AI Quiz",
