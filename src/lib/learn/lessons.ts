@@ -9,6 +9,7 @@ import { ELECTRONICS_EXTRA } from "@/lib/learn/electronics-extra";
 import { ELECTRONICS_EXTRA2 } from "@/lib/learn/electronics-extra2";
 import { ROBOTICS_EXTRA } from "@/lib/learn/robotics-extra";
 import { ROBOTICS_EXTRA2 } from "@/lib/learn/robotics-extra2";
+import { enrichRoboticsLessons } from "@/lib/learn/robotics-media";
 import { STEM_EXTRA } from "@/lib/learn/stem-extra";
 
 export type LessonKind =
@@ -371,7 +372,7 @@ const roboticsTrack: Track = {
     "How robots sense, think and move — with a hands-on robot programming game.",
   icon: "Bot",
   bands: ["child", "preteen", "teen", "adult"],
-  lessons: [
+  lessons: enrichRoboticsLessons([
     {
       slug: "what-is-a-robot",
       title: "What Is a Robot?",
@@ -553,7 +554,7 @@ const roboticsTrack: Track = {
         },
       ],
     },
-  ],
+  ]),
 };
 
 // ─────────────────── Adults: applied agri-science ──────────────────────────
