@@ -5,6 +5,7 @@
 import type { AgeBand } from "@/lib/age";
 import { AGRI_EXTRA } from "@/lib/learn/agri-extra";
 import { ELECTRONICS_EXTRA } from "@/lib/learn/electronics-extra";
+import { ELECTRONICS_EXTRA2 } from "@/lib/learn/electronics-extra2";
 import { ROBOTICS_EXTRA } from "@/lib/learn/robotics-extra";
 import { STEM_EXTRA } from "@/lib/learn/stem-extra";
 
@@ -241,6 +242,7 @@ const electronicsTrack: Track = {
       ],
     },
     ...ELECTRONICS_EXTRA,
+    ...ELECTRONICS_EXTRA2,
     {
       slug: "electronics-iot-quiz",
       title: "Electronics & IoT Quiz",
