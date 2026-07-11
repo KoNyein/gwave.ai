@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="sm" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Game State Machine</text>
+  <rect x="30" y="80" width="86" height="40" rx="9" fill="#dbeafe" stroke="#2563eb"/><text x="73" y="104" text-anchor="middle" font-size="10" font-weight="bold" fill="#1e40af">MENU</text>
+  <rect x="170" y="80" width="86" height="40" rx="9" fill="#dcfce7" stroke="#16a34a"/><text x="213" y="104" text-anchor="middle" font-size="10" font-weight="bold" fill="#166534">PLAY</text>
+  <rect x="310" y="42" width="100" height="38" rx="9" fill="#fef3c7" stroke="#d97706"/><text x="360" y="65" text-anchor="middle" font-size="10" font-weight="bold" fill="#92400e">PAUSE</text>
+  <rect x="310" y="118" width="100" height="38" rx="9" fill="#fee2e2" stroke="#dc2626"/><text x="360" y="141" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#991b1b">GAME OVER</text>
+  <line x1="116" y1="100" x2="168" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#sm)"/><text x="142" y="93" text-anchor="middle" font-size="7.5" fill="#334155">Start</text>
+  <line x1="256" y1="90" x2="308" y2="70" stroke="#64748b" stroke-width="2" marker-end="url(#sm)"/><text x="285" y="72" text-anchor="middle" font-size="7.5" fill="#334155">Esc</text>
+  <line x1="308" y1="66" x2="256" y2="94" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3 2" marker-end="url(#sm)"/>
+  <line x1="256" y1="110" x2="308" y2="132" stroke="#64748b" stroke-width="2" marker-end="url(#sm)"/><text x="285" y="128" text-anchor="middle" font-size="7.5" fill="#334155">သေ</text>
+  <path d="M360 118 Q400 100 380 80" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-dasharray="3 2"/>
+  <text x="220" y="180" text-anchor="middle" font-size="9.5" fill="#64748b">state တစ်ခုချင်း update/render ကွဲ — ရှင်းရှင်းလင်းလင်း ကူးပြောင်း</text>
+</svg>

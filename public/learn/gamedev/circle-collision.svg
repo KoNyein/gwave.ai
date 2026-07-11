@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Circle Collision — အကွာအဝေး တိုင်း</text>
+  <circle cx="150" cy="105" r="38" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <circle cx="255" cy="120" r="30" fill="#fecaca" stroke="#dc2626" stroke-width="2"/>
+  <circle cx="150" cy="105" r="3" fill="#2563eb"/><circle cx="255" cy="120" r="3" fill="#dc2626"/>
+  <line x1="150" y1="105" x2="255" y2="120" stroke="#7c3aed" stroke-width="2"/>
+  <text x="200" y="104" text-anchor="middle" font-size="9" fill="#6d28d9">dist</text>
+  <line x1="150" y1="105" x2="188" y2="105" stroke="#2563eb" stroke-dasharray="3 2"/><text x="165" y="120" font-size="8" fill="#2563eb">r1</text>
+  <text x="220" y="166" text-anchor="middle" font-size="9.5" font-family="monospace" fill="#334155">dx=x2−x1, dy=y2−y1 → dist=√(dx²+dy²)</text>
+  <text x="220" y="186" text-anchor="middle" font-size="9.5" fill="#64748b">dist &lt; r1+r2 ဆိုရင် ထိ — Pythagorean theorem</text>
+</svg>

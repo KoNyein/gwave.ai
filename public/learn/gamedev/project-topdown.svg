@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Project 1 — Top-Down Shooter</text>
+  <rect x="30" y="48" width="230" height="120" rx="6" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="145" y="42" text-anchor="middle" font-size="8" fill="#64748b">bird-eye view</text>
+  <text x="120" y="118" font-size="18">🧍</text>
+  <line x1="132" y1="112" x2="200" y2="80" stroke="#dc2626" stroke-width="2" stroke-dasharray="3 2"/>
+  <circle cx="200" cy="80" r="4" fill="#dc2626"/>
+  <text x="210" y="70" font-size="16">👾</text><text x="70" y="80" font-size="16">👾</text><text x="220" y="150" font-size="16">👾</text>
+  <g stroke="#7c3aed" stroke-width="1" stroke-dasharray="2 2"><line x1="215" y1="76" x2="140" y2="110"/><line x1="80" y1="86" x2="132" y2="112"/></g>
+  <g font-size="9" fill="#334155">
+    <text x="278" y="70">• 360° ရွေ့ (X+Y)</text>
+    <text x="278" y="92">• friction ရပ်</text>
+    <text x="278" y="114">• ရန်သူ AI — လိုက်</text>
+    <text x="278" y="136">• ကျည် pool + circle hit</text>
+  </g>
+  <text x="220" y="186" text-anchor="middle" font-size="9" fill="#64748b">Phase 1–4 အားလုံး ပေါင်းစပ် — အပေါ်စီး ပစ်ခတ် ဂိမ်း</text>
+</svg>

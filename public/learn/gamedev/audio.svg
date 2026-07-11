@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="au2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Web Audio API — BGM နှင့် SFX</text>
+  <rect x="30" y="70" width="96" height="40" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="78" y="88" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e40af">🎵 BGM</text>
+  <text x="78" y="102" text-anchor="middle" font-size="8" fill="#1e40af">loop နောက်ခံ</text>
+  <rect x="30" y="120" width="96" height="40" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="78" y="138" text-anchor="middle" font-size="9" font-weight="bold" fill="#166534">💥 SFX</text>
+  <text x="78" y="152" text-anchor="middle" font-size="8" fill="#166534">ခုန်/ပစ်/သေ</text>
+  <line x1="126" y1="90" x2="170" y2="105" stroke="#64748b" stroke-width="2" marker-end="url(#au2)"/>
+  <line x1="126" y1="140" x2="170" y2="120" stroke="#64748b" stroke-width="2" marker-end="url(#au2)"/>
+  <rect x="174" y="90" width="96" height="44" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="222" y="110" text-anchor="middle" font-size="9" font-weight="bold" fill="#6d28d9">AudioContext</text>
+  <text x="222" y="124" text-anchor="middle" font-size="8" fill="#6d28d9">gain (volume)</text>
+  <line x1="270" y1="112" x2="314" y2="112" stroke="#64748b" stroke-width="2" marker-end="url(#au2)"/>
+  <g stroke="#7c3aed" stroke-width="2" fill="none"><path d="M320 112 q8 -16 16 0 q8 16 16 0 q8 -12 16 0 q8 12 16 0"/></g>
+  <text x="388" y="130" text-anchor="middle" font-size="14">🔊</text>
+  <text x="220" y="170" text-anchor="middle" font-size="9.5" fill="#334155">ဖိုင် load → decode → play — event နဲ့ trigger</text>
+  <text x="220" y="188" text-anchor="middle" font-size="8.5" fill="#64748b">user click ပြီးမှ audio စ (browser policy)</text>
+</svg>

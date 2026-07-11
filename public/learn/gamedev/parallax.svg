@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Parallax — အလွှာ မတူ အမြန် → 3D ဆန်</text>
+  <rect x="30" y="50" width="380" height="30" rx="4" fill="#dbeafe"/>
+  <text x="46" y="70" font-size="10">☁ far — နှေး (×0.2)</text>
+  <text x="380" y="70" font-size="8" fill="#2563eb">→</text>
+  <rect x="30" y="86" width="380" height="30" rx="4" fill="#bbf7d0"/>
+  <text x="46" y="106" font-size="10">🌳 mid — ×0.5</text>
+  <text x="380" y="106" font-size="10" fill="#16a34a">→→</text>
+  <rect x="30" y="122" width="380" height="34" rx="4" fill="#fde68a"/>
+  <text x="46" y="144" font-size="10">🌿 near / ground — မြန် (×1.0)</text>
+  <text x="372" y="144" font-size="11" fill="#d97706">→→→</text>
+  <text x="220" y="180" text-anchor="middle" font-size="9.5" fill="#64748b">အနီးက အလွှာ မြန်မြန် · အဝေးက နှေးနှေး → အနက် ခံစားရ</text>
+</svg>
