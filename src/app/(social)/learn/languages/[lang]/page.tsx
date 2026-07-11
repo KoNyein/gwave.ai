@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronRight } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
+import { getTypingSummary } from "@/lib/db/typing";
 import { getLangCourse } from "@/lib/learn/languages";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,8 @@ export default async function LanguageCoursePage({
   const course = getLangCourse(params.lang);
   if (!course) notFound();
 
+  const typing = await getTypingSummary(profile.id, course.slug);
+
   return (
     <div className="space-y-4">
       <Link
@@ -42,6 +45,25 @@ export default async function LanguageCoursePage({
           <p className="text-sm text-muted-foreground">{course.description}</p>
         </div>
       </div>
+
+      {typing.attempts > 0 ? (
+        <Card>
+          <CardContent className="flex items-center justify-around gap-2 p-3 text-center">
+            <div>
+              <p className="text-lg font-bold">🏆 {typing.bestWpm}</p>
+              <p className="text-[11px] text-muted-foreground">အမြန်ဆုံး WPM</p>
+            </div>
+            <div>
+              <p className="text-lg font-bold">🎯 {typing.avgAccuracy}%</p>
+              <p className="text-[11px] text-muted-foreground">ပျမ်းမျှ တိကျမှု</p>
+            </div>
+            <div>
+              <p className="text-lg font-bold">⌨️ {typing.attempts}</p>
+              <p className="text-[11px] text-muted-foreground">လေ့ကျင့်ကြိမ်</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="space-y-2">
         {course.units.map((unit) => (

@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { recordTypingScore } from "@/lib/actions/typing";
 import { MY_UI, type LangUiStrings, type Phrase } from "@/lib/learn/languages";
 import {
   getRecognitionCtor,
@@ -45,10 +46,16 @@ export function LanguageTrainer({
   items,
   lang,
   ui,
+  langSlug,
+  initialBestWpm = 0,
 }: {
   items: Phrase[];
   lang: string;
   ui: LangUiStrings;
+  /** Course slug (e.g. "english") used to record typing scores. */
+  langSlug?: string;
+  /** The learner's best WPM so far in this language. */
+  initialBestWpm?: number;
 }) {
   const [mode, setMode] = React.useState<Mode>("listen");
 
@@ -86,7 +93,13 @@ export function LanguageTrainer({
       ) : mode === "speak" ? (
         <SpeakMode items={items} lang={lang} ui={ui} />
       ) : (
-        <TypeMode items={items} lang={lang} ui={ui} />
+        <TypeMode
+          items={items}
+          lang={lang}
+          ui={ui}
+          langSlug={langSlug}
+          initialBestWpm={initialBestWpm}
+        />
       )}
     </div>
   );
@@ -321,22 +334,54 @@ function TypeMode({
   items,
   lang,
   ui,
+  langSlug,
+  initialBestWpm = 0,
 }: {
   items: Phrase[];
   lang: string;
   ui: LangUiStrings;
+  langSlug?: string;
+  initialBestWpm?: number;
 }) {
   const t = useTranslations("lang");
   const [index, setIndex] = React.useState(0);
   const [value, setValue] = React.useState("");
+  const [best, setBest] = React.useState(initialBestWpm);
+  const [result, setResult] = React.useState<{ wpm: number; acc: number } | null>(
+    null,
+  );
   const item = items[index] ?? items[0]!;
+
+  // Per-exercise typing measurement.
+  const startRef = React.useRef<number | null>(null);
+  const keystrokesRef = React.useRef(0);
+  const errorsRef = React.useRef(0);
+  const recordedRef = React.useRef(false);
 
   const go = (next: number) => {
     setValue("");
+    setResult(null);
+    startRef.current = null;
+    keystrokesRef.current = 0;
+    errorsRef.current = 0;
+    recordedRef.current = false;
     setIndex(next);
   };
 
   const target = item.target;
+
+  function onType(next: string) {
+    // Count forward keystrokes + mistakes against the target position.
+    if (next.length > value.length) {
+      if (startRef.current === null) startRef.current = Date.now();
+      for (let i = value.length; i < next.length; i++) {
+        keystrokesRef.current += 1;
+        if (next[i] !== target[i]) errorsRef.current += 1;
+      }
+    }
+    setValue(next);
+  }
+
   const score = value ? similarity(value, target) : null;
   // Accept on the same normalized basis as the score (similarity() lowercases
   // and strips punctuation), so e.g. "hello" for "Hello" — which scores 100% —
@@ -347,6 +392,28 @@ function TypeMode({
     value.length < target.length ? (target[value.length] ?? null) : null;
   // The on-screen keyboard hint only makes sense for Latin-script targets.
   const showKeyboard = lang.startsWith("en");
+
+  // On completion, compute WPM + accuracy once and record it.
+  React.useEffect(() => {
+    if (!correct || recordedRef.current || startRef.current === null) return;
+    recordedRef.current = true;
+    const elapsedSec = (Date.now() - startRef.current) / 1000;
+    const ks = keystrokesRef.current;
+    if (elapsedSec < 0.3 || ks === 0) return;
+    const wpm = Math.max(
+      0,
+      Math.round(target.length / 5 / (elapsedSec / 60)),
+    );
+    const acc = Math.max(
+      0,
+      Math.min(100, Math.round(((ks - errorsRef.current) / ks) * 100)),
+    );
+    setResult({ wpm, acc });
+    if (wpm > best) setBest(wpm);
+    if (langSlug) {
+      void recordTypingScore({ lang: langSlug, wpm, accuracy: acc, chars: target.length });
+    }
+  }, [correct, target, best, langSlug]);
 
   return (
     <Card>
@@ -406,10 +473,19 @@ function TypeMode({
           autoFocus
           value={value}
           lang={lang}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => onType(e.target.value)}
           placeholder={t("typePlaceholder")}
           className="w-full rounded-lg border bg-background px-3 py-2 text-center text-lg"
         />
+
+        {/* Typing speed record */}
+        <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+          <span>
+            ⌨️ {result ? result.wpm : "–"} <b>WPM</b>
+          </span>
+          <span>🎯 {result ? `${result.acc}%` : "–"} တိကျမှု</span>
+          <span>🏆 အမြန်ဆုံး {best} WPM</span>
+        </div>
 
         {showKeyboard ? <KeyboardHint nextChar={nextChar} /> : null}
 
