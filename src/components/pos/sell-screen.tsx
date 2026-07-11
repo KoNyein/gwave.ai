@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { checkout, createCustomer, openShift } from "@/lib/actions/pos";
 import type { ProductWithStock } from "@/lib/db/pos";
+import { mediaUrl } from "@/lib/media";
 import {
   cartSubtotal,
   lineTotal,
@@ -146,8 +147,16 @@ export function SellScreen({
                 key={product.id}
                 type="button"
                 onClick={() => cart.addProduct(product)}
-                className="flex min-h-[92px] flex-col justify-between rounded-xl border bg-background p-3 text-left transition-all hover:border-primary hover:shadow-sm active:scale-[0.98]"
+                className="flex min-h-[92px] flex-col justify-between overflow-hidden rounded-xl border bg-background p-3 text-left transition-all hover:border-primary hover:shadow-sm active:scale-[0.98]"
               >
+                {product.image_path ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={mediaUrl(product.image_path)}
+                    alt=""
+                    className="mb-1.5 h-16 w-full rounded-lg object-cover"
+                  />
+                ) : null}
                 <span className="line-clamp-2 text-sm font-semibold">
                   {product.name}
                 </span>

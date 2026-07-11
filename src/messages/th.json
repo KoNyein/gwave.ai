@@ -712,6 +712,8 @@
     "newProduct": "New product",
     "editProduct": "Edit product",
     "productName": "Product name",
+    "photo": "รูปภาพ",
+    "profit": "กำไร",
     "category": "Category",
     "uncategorized": "Uncategorized",
     "orNewCategory": "...or new category",
