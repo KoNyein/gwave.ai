@@ -21,6 +21,7 @@ import {
   Rocket,
   Sprout,
   Terminal,
+  Trophy,
   type LucideIcon,
 } from "lucide-react";
 
@@ -93,8 +94,14 @@ export default async function LearnPage() {
 
       {/* Your learning level — grows with every completed lesson and quiz. */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="space-y-3 p-4">
           <LevelBadge points={points} />
+          <Link
+            href="/learn/leaderboard"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+          >
+            <Trophy className="h-4 w-4" /> 🏆 ထိပ်တန်း သင်ယူသူများ
+          </Link>
         </CardContent>
       </Card>
 
