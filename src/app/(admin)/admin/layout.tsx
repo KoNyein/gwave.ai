@@ -23,6 +23,7 @@ export default async function AdminLayout({
     { href: "/admin/games", label: t("navGames") },
     { href: "/admin/teachers", label: t("navTeachers") },
     { href: "/admin/membership", label: t("navMembership") },
+    { href: "/admin/gpay", label: "G-Pay" },
     { href: "/admin/settings", label: t("navSettings") },
   ];
 
