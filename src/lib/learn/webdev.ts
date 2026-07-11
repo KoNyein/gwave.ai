@@ -13,6 +13,7 @@ import { HTML_EXTRA2 } from "@/lib/learn/webdev-html2";
 import { CSS_EXTRA2 } from "@/lib/learn/webdev-css2";
 import { JS_EXTRA2 } from "@/lib/learn/webdev-js2";
 import { PY_EXTRA2 } from "@/lib/learn/webdev-py2";
+import { PY_EXTRA3 } from "@/lib/learn/webdev-py3";
 import {
   BOX_MODEL_SVG,
   FLEXBOX_SVG,
@@ -973,6 +974,7 @@ export const pythonTrack: Track = {
     },
     ...PY_EXTRA,
     ...PY_EXTRA2,
+    ...PY_EXTRA3,
     {
       slug: "py-quiz",
       title: "Python Quiz",
