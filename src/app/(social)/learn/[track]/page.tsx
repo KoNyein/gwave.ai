@@ -16,7 +16,9 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { getLocale } from "next-intl/server";
 
+import { CertificateClaim } from "@/components/learn/certificate-claim";
 import { ageBandOf, getCurrentProfile } from "@/lib/auth";
+import { getCertificatesForUser } from "@/lib/db/certificates";
 import { getTrackProgress } from "@/lib/db/learn";
 import { localizeTrack } from "@/lib/learn/i18n";
 import { getTrack, tracksForBand, type LessonKind } from "@/lib/learn/lessons";
@@ -60,7 +62,17 @@ export default async function TrackPage({
 
   const locale = await getLocale();
   const track = localizeTrack(rawTrack, locale);
-  const progress = await getTrackProgress(profile.id, track.slug);
+  const [progress, certificates] = await Promise.all([
+    getTrackProgress(profile.id, track.slug),
+    getCertificatesForUser(profile.id),
+  ]);
+
+  const completedCount = track.lessons.filter(
+    (l) => progress.get(l.slug)?.status === "completed",
+  ).length;
+  const allDone = completedCount >= track.lessons.length;
+  const certificate =
+    certificates.find((c) => c.track_slug === track.slug) ?? null;
 
   return (
     <div className="space-y-4">
@@ -74,6 +86,18 @@ export default async function TrackPage({
         <h1 className="text-xl font-bold">{track.title}</h1>
         <p className="text-sm text-muted-foreground">{track.description}</p>
       </div>
+
+      {allDone || certificate ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-50 p-3 dark:bg-amber-500/10">
+          <p className="text-sm font-medium">
+            🎉 သင်တန်း ပြီးမြောက်ပါပြီ ({completedCount}/{track.lessons.length})
+          </p>
+          <CertificateClaim
+            trackSlug={track.slug}
+            certificateId={certificate?.id ?? null}
+          />
+        </div>
+      ) : null}
 
       <div className="space-y-2">
         {track.lessons.map((lesson, i) => {

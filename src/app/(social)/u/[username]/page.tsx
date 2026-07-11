@@ -20,6 +20,7 @@ import {
   isFollowing,
 } from "@/lib/db/friends";
 import { LevelBadge } from "@/components/learn/level-badge";
+import { getCertificatesForUser } from "@/lib/db/certificates";
 import { getLearningPoints, getProjectsForUser } from "@/lib/db/learn";
 import { getProfilePhotos, getProfilePosts } from "@/lib/db/posts";
 import { PRESENCE } from "@/lib/presence";
@@ -74,9 +75,10 @@ export default async function ProfilePage({
   const initiallyBlocked = Boolean(blockRow && "data" in blockRow && blockRow.data);
 
   // Learning projects are private — only shown on your own profile.
-  const [projects, learningPoints] = await Promise.all([
+  const [projects, learningPoints, certificates] = await Promise.all([
     isSelf ? getProjectsForUser(viewer.id, 6) : Promise.resolve([]),
     getLearningPoints(profile.id),
+    getCertificatesForUser(profile.id),
   ]);
 
   // Extra profile stats + the public pages this person runs.
@@ -250,6 +252,26 @@ export default async function ProfilePage({
                     loading="lazy"
                     className="h-full w-full object-cover transition-transform hover:scale-105"
                   />
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {/* Course completion certificates — public, like a trophy shelf */}
+      {certificates.length > 0 ? (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            <p className="font-semibold">🎓 အောင်လက်မှတ်များ</p>
+            <div className="flex flex-wrap gap-2">
+              {certificates.map((cert) => (
+                <Link
+                  key={cert.id}
+                  href={`/learn/certificate/${cert.id}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-50 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/20"
+                >
+                  🏅 {cert.track_title}
                 </Link>
               ))}
             </div>
