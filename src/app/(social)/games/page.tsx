@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Gamepad2, Play, Upload } from "lucide-react";
+import { Gamepad2, Play, Radio, Upload } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { GameCatalog } from "@/components/games/game-catalog";
@@ -63,11 +63,18 @@ export default async function GamesPage() {
           </h1>
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <Button asChild size="sm">
-          <Link href="/games/submit">
-            <Upload className="mr-1 h-4 w-4" /> {t("submitCta")}
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link href="/arena">
+              <Radio className="mr-1 h-4 w-4 text-red-600" /> Live Arena
+            </Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link href="/games/submit">
+              <Upload className="mr-1 h-4 w-4" /> {t("submitCta")}
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Built-in games */}
