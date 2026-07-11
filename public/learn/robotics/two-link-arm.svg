@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 260" font-family="sans-serif">
+  <rect x="1" y="1" width="418" height="258" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <rect x="60" y="210" width="80" height="14" rx="4" fill="#334155"/>
+  <line x1="100" y1="210" x2="200" y2="130" stroke="#2563eb" stroke-width="10" stroke-linecap="round"/>
+  <line x1="200" y1="130" x2="320" y2="110" stroke="#16a34a" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="100" cy="210" r="12" fill="#f1f5f9" stroke="#334155" stroke-width="2"/>
+  <circle cx="200" cy="130" r="10" fill="#f1f5f9" stroke="#334155" stroke-width="2"/>
+  <circle cx="320" cy="110" r="7" fill="#dc2626"/>
+  <text x="332" y="103" font-size="12" fill="#dc2626" font-weight="bold">(x, y)</text>
+  <line x1="100" y1="210" x2="180" y2="210" stroke="#94a3b8" stroke-dasharray="4"/>
+  <path d="M140,210 A40,40 0 0 0 132,184" fill="none" stroke="#d97706" stroke-width="2"/>
+  <text x="150" y="196" font-size="12" fill="#d97706" font-weight="bold">θ1</text>
+  <line x1="200" y1="130" x2="270" y2="74" stroke="#94a3b8" stroke-dasharray="4"/>
+  <path d="M245,94 A32,32 0 0 1 252,120" fill="none" stroke="#d97706" stroke-width="2"/>
+  <text x="262" y="105" font-size="12" fill="#d97706" font-weight="bold">θ2</text>
+  <text x="140" y="180" font-size="11" fill="#1e40af" font-weight="bold">L1</text>
+  <text x="255" y="132" font-size="11" fill="#166534" font-weight="bold">L2</text>
+  <text x="210" y="238" text-anchor="middle" font-size="11" fill="#334155">x = L1·cosθ1 + L2·cos(θ1+θ2) · y = L1·sinθ1 + L2·sin(θ1+θ2)</text>
+  <text x="210" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">2-Link Arm — Forward Kinematics</text>
+</svg>

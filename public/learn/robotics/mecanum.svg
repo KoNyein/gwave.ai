@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 260" font-family="sans-serif">
+  <rect x="1" y="1" width="418" height="258" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <rect x="160" y="80" width="100" height="120" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+  <g fill="#334155">
+    <rect x="138" y="86" width="18" height="42" rx="6"/><rect x="264" y="86" width="18" height="42" rx="6"/>
+    <rect x="138" y="152" width="18" height="42" rx="6"/><rect x="264" y="152" width="18" height="42" rx="6"/>
+  </g>
+  <g stroke="#94a3b8" stroke-width="2">
+    <line x1="140" y1="94" x2="154" y2="104"/><line x1="140" y1="108" x2="154" y2="118"/>
+    <line x1="266" y1="104" x2="280" y2="94"/><line x1="266" y1="118" x2="280" y2="108"/>
+    <line x1="140" y1="170" x2="154" y2="160"/><line x1="140" y1="184" x2="154" y2="174"/>
+    <line x1="266" y1="160" x2="280" y2="170"/><line x1="266" y1="174" x2="280" y2="184"/>
+  </g>
+  <defs><marker id="l" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#16a34a"/></marker></defs>
+  <line x1="210" y1="140" x2="330" y2="140" stroke="#16a34a" stroke-width="3" marker-end="url(#l)"/>
+  <text x="338" y="144" font-size="11" fill="#166534" font-weight="bold">ဘေးတိုက်</text>
+  <text x="210" y="236" text-anchor="middle" font-size="10.5" fill="#334155">roller ၄၅° စောင်းတပ်ထား — ဘီးလေးလုံး အလှည့်ပေါင်းစပ်ရင် ဘယ်ဘက်မဆို ရွေ့နိုင်</text>
+  <text x="210" y="34" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Mecanum Wheels — Omnidirectional</text>
+</svg>

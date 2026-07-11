@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 240" font-family="sans-serif">
+  <rect x="1" y="1" width="418" height="238" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <path d="M60,220 C130,160 290,160 360,60" fill="none" stroke="#1e293b" stroke-width="22" stroke-linecap="round"/>
+  <rect x="160" y="120" width="100" height="76" rx="12" fill="#f1f5f9" stroke="#64748b" stroke-width="2" opacity="0.95"/>
+  <circle cx="185" cy="132" r="8" fill="#dc2626"/>
+  <circle cx="235" cy="132" r="8" fill="#16a34a"/>
+  <text x="185" y="118" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="bold">L</text>
+  <text x="235" y="118" text-anchor="middle" font-size="10" fill="#166534" font-weight="bold">R</text>
+  <rect x="150" y="150" width="12" height="36" rx="5" fill="#334155"/>
+  <rect x="258" y="150" width="12" height="36" rx="5" fill="#334155"/>
+  <text x="210" y="216" text-anchor="middle" font-size="10.5" fill="#334155">L=အနက် → ဘယ်ကွေ့ · R=အနက် → ညာကွေ့ · နှစ်ခုလုံး အဖြူ → တည့်တည့်</text>
+  <text x="210" y="34" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Line Follower — IR Sensor နှစ်လုံး</text>
+</svg>

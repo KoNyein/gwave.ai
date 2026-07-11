@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 220" font-family="sans-serif">
+  <rect x="1" y="1" width="418" height="218" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <rect x="30" y="80" width="100" height="52" rx="10" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="80" y="102" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e40af">Sense</text>
+  <text x="80" y="120" text-anchor="middle" font-size="11" fill="#334155">အာရုံခံ</text>
+  <rect x="160" y="80" width="100" height="52" rx="10" fill="#fef3c7" stroke="#d97706"/>
+  <text x="210" y="102" text-anchor="middle" font-size="14" font-weight="bold" fill="#92400e">Think</text>
+  <text x="210" y="120" text-anchor="middle" font-size="11" fill="#334155">ဆုံးဖြတ်</text>
+  <rect x="290" y="80" width="100" height="52" rx="10" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="340" y="102" text-anchor="middle" font-size="14" font-weight="bold" fill="#166534">Act</text>
+  <text x="340" y="120" text-anchor="middle" font-size="11" fill="#334155">လှုပ်ရှား</text>
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <line x1="130" y1="106" x2="156" y2="106" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="260" y1="106" x2="286" y2="106" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <path d="M340,132 C340,180 80,180 80,136" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <text x="210" y="172" text-anchor="middle" font-size="11" fill="#64748b">တစ်စက္ကန့်မှာ အကြိမ်များစွာ ထပ်ခါ ပတ်နေသည်</text>
+  <text x="210" y="40" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Robot Loop — Sense → Think → Act</text>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 240" font-family="sans-serif">
+  <rect x="1" y="1" width="418" height="238" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <circle cx="200" cy="130" r="14" fill="#16a34a"/>
+  <g stroke="#93c5fd" stroke-width="1.5">
+    <line x1="200" y1="130" x2="90" y2="60"/><line x1="200" y1="130" x2="150" y2="45"/>
+    <line x1="200" y1="130" x2="230" y2="42"/><line x1="200" y1="130" x2="300" y2="60"/>
+    <line x1="200" y1="130" x2="345" y2="110"/><line x1="200" y1="130" x2="340" y2="180"/>
+    <line x1="200" y1="130" x2="250" y2="205"/><line x1="200" y1="130" x2="120" y2="200"/>
+    <line x1="200" y1="130" x2="70" y2="140"/>
+  </g>
+  <g fill="#1e293b">
+    <circle cx="90" cy="60" r="4"/><circle cx="150" cy="45" r="4"/><circle cx="230" cy="42" r="4"/>
+    <circle cx="300" cy="60" r="4"/><circle cx="345" cy="110" r="4"/><circle cx="340" cy="180" r="4"/>
+    <circle cx="250" cy="205" r="4"/><circle cx="120" cy="200" r="4"/><circle cx="70" cy="140" r="4"/>
+  </g>
+  <path d="M70,140 L90,60 L150,45 L230,42 L300,60 L345,110" fill="none" stroke="#64748b" stroke-width="2" stroke-dasharray="4"/>
+  <text x="200" y="160" text-anchor="middle" font-size="10" fill="#166534" font-weight="bold">robot</text>
+  <text x="210" y="228" text-anchor="middle" font-size="10.5" fill="#334155">အလင်းရောင်ခြည် (rays) ထိမှတ်များ → နံရံမြေပုံ ဖြစ်လာ (SLAM)</text>
+  <text x="210" y="26" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">LiDAR Scan → Map</text>
+</svg>

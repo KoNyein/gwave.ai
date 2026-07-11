@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 260" font-family="sans-serif">
+  <rect x="1" y="1" width="418" height="258" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <g>
+    <rect x="70" y="50" width="280" height="160" fill="#f8fafc" stroke="#cbd5e1"/>
+    <g stroke="#e2e8f0"><line x1="110" y1="50" x2="110" y2="210"/><line x1="150" y1="50" x2="150" y2="210"/><line x1="190" y1="50" x2="190" y2="210"/><line x1="230" y1="50" x2="230" y2="210"/><line x1="270" y1="50" x2="270" y2="210"/><line x1="310" y1="50" x2="310" y2="210"/>
+    <line x1="70" y1="90" x2="350" y2="90"/><line x1="70" y1="130" x2="350" y2="130"/><line x1="70" y1="170" x2="350" y2="170"/></g>
+    <rect x="150" y="90" width="40" height="80" fill="#334155"/>
+    <rect x="230" y="130" width="40" height="80" fill="#334155"/>
+    <rect x="70" y="130" width="40" height="40" fill="#16a34a"/>
+    <text x="90" y="155" text-anchor="middle" font-size="10" fill="#fff" font-weight="bold">Start</text>
+    <rect x="310" y="50" width="40" height="40" fill="#dc2626"/>
+    <text x="330" y="74" text-anchor="middle" font-size="10" fill="#fff" font-weight="bold">Goal</text>
+    <g fill="#facc15"><rect x="110" y="130" width="40" height="40" opacity="0.8"/><rect x="110" y="90" width="40" height="40" opacity="0.8"/><rect x="110" y="50" width="40" height="40" opacity="0.8"/><rect x="150" y="50" width="40" height="40" opacity="0.8"/><rect x="190" y="50" width="40" height="40" opacity="0.8"/><rect x="230" y="50" width="40" height="40" opacity="0.8"/><rect x="270" y="50" width="40" height="40" opacity="0.8"/></g>
+  </g>
+  <text x="210" y="236" text-anchor="middle" font-size="10.5" fill="#334155">f(n) = g(n) စရိတ် + h(n) ခန့်မှန်း — အနည်းဆုံး f ကို အရင်စစ် → အတိုဆုံးလမ်း</text>
+  <text x="210" y="32" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">A* — Grid ပေါ်မှာ လမ်းရှာခြင်း</text>
+</svg>

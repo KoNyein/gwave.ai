@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 240" font-family="sans-serif">
+  <rect x="1" y="1" width="418" height="238" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <g transform="translate(210,130)">
+    <polygon points="-70,-20 30,-45 90,-10 -10,15" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+    <polygon points="-70,-20 -10,15 -10,45 -70,10" fill="#e2e8f0" stroke="#64748b" stroke-width="2"/>
+    <polygon points="-10,15 90,-10 90,20 -10,45" fill="#cbd5e1" stroke="#64748b" stroke-width="2"/>
+    <defs><marker id="i" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#dc2626"/></marker>
+    <marker id="j" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#16a34a"/></marker>
+    <marker id="k" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#2563eb"/></marker></defs>
+    <line x1="0" y1="0" x2="110" y2="-14" stroke="#dc2626" stroke-width="2.5" marker-end="url(#i)"/>
+    <text x="118" y="-12" font-size="12" fill="#dc2626" font-weight="bold">Roll (X)</text>
+    <line x1="0" y1="0" x2="-95" y2="-28" stroke="#16a34a" stroke-width="2.5" marker-end="url(#j)"/>
+    <text x="-165" y="-30" font-size="12" fill="#166534" font-weight="bold">Pitch (Y)</text>
+    <line x1="0" y1="0" x2="0" y2="-95" stroke="#2563eb" stroke-width="2.5" marker-end="url(#k)"/>
+    <text x="8" y="-90" font-size="12" fill="#1e40af" font-weight="bold">Yaw (Z)</text>
+  </g>
+  <text x="210" y="225" text-anchor="middle" font-size="10.5" fill="#334155">Gyro = လည်နှုန်း · Accelerometer = အရှိန် + ဆွဲငင်အား → ပေါင်း၍ ဦးတည်ချက် သိ</text>
+  <text x="210" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">IMU — Roll / Pitch / Yaw</text>
+</svg>
