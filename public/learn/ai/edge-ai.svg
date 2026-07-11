@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Edge AI — စက်ပေါ်မှာ တိုက်ရိုက် run</text>
+  <text x="118" y="56" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#0284c7">☁ Cloud AI</text>
+  <rect x="40" y="66" width="156" height="92" rx="9" fill="#e0f2fe" stroke="#0284c7"/>
+  <text x="118" y="92" text-anchor="middle" font-size="9" fill="#075985">ပုံ → internet → server</text>
+  <text x="118" y="110" text-anchor="middle" font-size="9" fill="#075985">→ အဖြေ ပြန်</text>
+  <text x="118" y="132" text-anchor="middle" font-size="8.5" fill="#dc2626">✗ signal လို ✗ နှေး</text>
+  <text x="118" y="148" text-anchor="middle" font-size="8.5" fill="#16a34a">✓ model ကြီးရ</text>
+  <text x="322" y="56" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#16a34a">📱 Edge AI</text>
+  <rect x="244" y="66" width="156" height="92" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="322" y="92" text-anchor="middle" font-size="9" fill="#166534">model ချုံ့ (TFLite)</text>
+  <text x="322" y="110" text-anchor="middle" font-size="9" fill="#166534">ဖုန်း/board ပေါ် run</text>
+  <text x="322" y="132" text-anchor="middle" font-size="8.5" fill="#16a34a">✓ internet မလို ✓ မြန်</text>
+  <text x="322" y="148" text-anchor="middle" font-size="8.5" fill="#16a34a">✓ privacy ✓ လယ်ကွင်း</text>
+  <text x="220" y="182" text-anchor="middle" font-size="10" fill="#334155">15MB → 4MB quantize — signal မမီတဲ့ လယ်ထဲ ရောဂါစစ်နိုင်</text>
+</svg>

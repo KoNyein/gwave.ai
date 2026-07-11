@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="mm" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Multimodal — ပုံ + စာ တစ်ပြိုင်တည်း</text>
+  <rect x="30" y="66" width="96" height="40" rx="8" fill="#fef3c7" stroke="#d97706"/>
+  <text x="78" y="90" text-anchor="middle" font-size="10" fill="#92400e">🖼 အရွက်ပုံ</text>
+  <rect x="30" y="116" width="96" height="40" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="78" y="140" text-anchor="middle" font-size="9.5" fill="#1e40af">"ဘာဖြစ်နေလဲ?"</text>
+  <rect x="168" y="80" width="104" height="62" rx="10" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="220" y="107" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#6d28d9">Multimodal</text>
+  <text x="220" y="123" text-anchor="middle" font-size="9" fill="#6d28d9">Model</text>
+  <rect x="314" y="86" width="104" height="50" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="366" y="107" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#166534">ရောဂါ + ကုနည်း</text>
+  <text x="366" y="123" text-anchor="middle" font-size="8.5" fill="#166534">စာသား ဖြေ</text>
+  <line x1="126" y1="86" x2="166" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#mm)"/>
+  <line x1="126" y1="136" x2="166" y2="122" stroke="#64748b" stroke-width="2" marker-end="url(#mm)"/>
+  <line x1="272" y1="111" x2="312" y2="111" stroke="#64748b" stroke-width="2" marker-end="url(#mm)"/>
+  <text x="220" y="180" text-anchor="middle" font-size="10" fill="#334155">ပုံ၊ စာ၊ အသံ — အမျိုးမျိုး input တစ်ပြိုင်နက် နားလည်</text>
+</svg>

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="np" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">NLP — စာသားကို စက်နားလည်အောင်</text>
+  <rect x="20" y="78" width="82" height="48" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="61" y="98" text-anchor="middle" font-size="10" font-weight="bold" fill="#1e40af">စာသား</text>
+  <text x="61" y="114" text-anchor="middle" font-size="8.5" fill="#1e40af">"အရွက်ဝါ"</text>
+  <rect x="118" y="78" width="82" height="48" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="159" y="98" text-anchor="middle" font-size="10" font-weight="bold" fill="#6d28d9">Token</text>
+  <text x="159" y="114" text-anchor="middle" font-size="8.5" fill="#6d28d9">အပိုင်း ခွဲ</text>
+  <rect x="216" y="78" width="82" height="48" rx="8" fill="#fef3c7" stroke="#d97706"/>
+  <text x="257" y="98" text-anchor="middle" font-size="10" font-weight="bold" fill="#92400e">Embedding</text>
+  <text x="257" y="114" text-anchor="middle" font-size="8.5" fill="#92400e">ဂဏန်း vector</text>
+  <rect x="314" y="78" width="104" height="48" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="366" y="98" text-anchor="middle" font-size="10" font-weight="bold" fill="#166534">Model နားလည်</text>
+  <text x="366" y="114" text-anchor="middle" font-size="8.5" fill="#166534">ခွဲ/ဘာသာပြန်/ဖြေ</text>
+  <line x1="102" y1="102" x2="116" y2="102" stroke="#64748b" stroke-width="2" marker-end="url(#np)"/>
+  <line x1="200" y1="102" x2="214" y2="102" stroke="#64748b" stroke-width="2" marker-end="url(#np)"/>
+  <line x1="298" y1="102" x2="312" y2="102" stroke="#64748b" stroke-width="2" marker-end="url(#np)"/>
+  <text x="220" y="170" text-anchor="middle" font-size="10" fill="#334155">Sentiment ခွဲ · ဘာသာပြန် · ချုံ့ · မေးဖြေ — အားလုံး ဒီ pipeline ပေါ်</text>
+</svg>

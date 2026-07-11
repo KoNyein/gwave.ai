@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">System Prompt — အမြဲ အပေါ်ဆုံး</text>
+  <rect x="60" y="48" width="320" height="46" rx="9" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="220" y="68" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#6d28d9">System — AI ရဲ့ စည်းမျဉ်း/ကိုယ်ရည်</text>
+  <text x="220" y="85" text-anchor="middle" font-size="9" fill="#6d28d9">"မြန်မာလို ဖြေ · ဆေးအကြံမပေး · မသေချာရင် ပြန်ညွှန်း"</text>
+  <rect x="60" y="102" width="320" height="34" rx="9" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="220" y="123" text-anchor="middle" font-size="10" fill="#1e40af">User — "EC ဘယ်လောက်ထားရမလဲ"</text>
+  <rect x="60" y="144" width="320" height="34" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="220" y="165" text-anchor="middle" font-size="10" fill="#166534">Assistant — စည်းမျဉ်းအတိုင်း မြန်မာလို ဖြေ</text>
+  <text x="30" y="72" font-size="16">🔒</text>
+</svg>

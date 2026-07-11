@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="fe" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Feature Engineering — ကုန်ကြမ်းကို အသုံးဝင်အောင်</text>
+  <rect x="24" y="70" width="120" height="70" rx="8" fill="#f1f5f9" stroke="#64748b"/>
+  <text x="84" y="90" text-anchor="middle" font-size="10" font-weight="bold" fill="#334155">ကုန်ကြမ်း</text>
+  <text x="84" y="107" text-anchor="middle" font-size="8.5" fill="#64748b">စိုက်ရက်စွဲ</text>
+  <text x="84" y="120" text-anchor="middle" font-size="8.5" fill="#64748b">ရိတ်ရက်စွဲ</text>
+  <text x="84" y="133" text-anchor="middle" font-size="8.5" fill="#64748b">မိုး mm</text>
+  <rect x="176" y="70" width="120" height="70" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="236" y="90" text-anchor="middle" font-size="10" font-weight="bold" fill="#6d28d9">ဖန်တီး</text>
+  <text x="236" y="107" text-anchor="middle" font-size="8.5" fill="#6d28d9">grow_days</text>
+  <text x="236" y="120" text-anchor="middle" font-size="8.5" fill="#6d28d9">rain/day</text>
+  <text x="236" y="133" text-anchor="middle" font-size="8.5" fill="#6d28d9">is_monsoon</text>
+  <rect x="328" y="70" width="90" height="70" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="373" y="98" text-anchor="middle" font-size="10" font-weight="bold" fill="#166534">Model</text>
+  <text x="373" y="115" text-anchor="middle" font-size="8.5" fill="#166534">ပိုနားလည်</text>
+  <text x="373" y="128" text-anchor="middle" font-size="8.5" fill="#166534">ပို accurate</text>
+  <line x1="144" y1="105" x2="174" y2="105" stroke="#64748b" stroke-width="2" marker-end="url(#fe)"/>
+  <line x1="296" y1="105" x2="326" y2="105" stroke="#64748b" stroke-width="2" marker-end="url(#fe)"/>
+  <text x="220" y="172" text-anchor="middle" font-size="10" fill="#334155">"Data 80% + model 20%" — feature ကောင်းမှ model ကောင်း</text>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Explainability — model ဘာကို ကြည့်လဲ</text>
+  <g font-size="9.5">
+    <text x="120" y="66" text-anchor="end" fill="#334155">EC</text>
+    <rect x="130" y="56" width="240" height="16" rx="3" fill="#16a34a"/>
+    <text x="378" y="68" fill="#166534">0.43</text>
+    <text x="120" y="94" text-anchor="end" fill="#334155">စိုထိုင်း</text>
+    <rect x="130" y="84" width="156" height="16" rx="3" fill="#2563eb"/>
+    <text x="294" y="96" fill="#1e40af">0.28</text>
+    <text x="120" y="122" text-anchor="end" fill="#334155">အပူချိန်</text>
+    <rect x="130" y="112" width="118" height="16" rx="3" fill="#d97706"/>
+    <text x="256" y="124" fill="#92400e">0.21</text>
+    <text x="120" y="150" text-anchor="end" fill="#334155">အလင်း</text>
+    <rect x="130" y="140" width="46" height="16" rx="3" fill="#94a3b8"/>
+    <text x="184" y="152" fill="#64748b">0.08</text>
+  </g>
+  <text x="250" y="178" text-anchor="middle" font-size="10" fill="#334155">EC က အဓိက ဆုံးဖြတ်ချက် — feature importance</text>
+  <text x="250" y="194" text-anchor="middle" font-size="9" fill="#64748b">တစ်ခုချင်း ရှင်းလိုရင် — SHAP</text>
+</svg>

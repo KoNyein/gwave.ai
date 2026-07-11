@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 210" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="208" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Clustering — label မပါဘဲ အုပ်စုဖွဲ့</text>
+  <rect x="150" y="46" width="140" height="122" fill="#f8fafc" stroke="#cbd5e1"/>
+  <ellipse cx="185" cy="80" rx="30" ry="26" fill="#dbeafe" fill-opacity="0.6" stroke="#2563eb" stroke-dasharray="4 3"/>
+  <g fill="#2563eb"><circle cx="178" cy="72" r="4"/><circle cx="192" cy="80" r="4"/><circle cx="182" cy="90" r="4"/><circle cx="196" cy="70" r="4"/></g>
+  <ellipse cx="250" cy="135" rx="32" ry="26" fill="#dcfce7" fill-opacity="0.6" stroke="#16a34a" stroke-dasharray="4 3"/>
+  <g fill="#16a34a"><circle cx="242" cy="128" r="4"/><circle cx="258" cy="138" r="4"/><circle cx="248" cy="148" r="4"/><circle cx="262" cy="126" r="4"/></g>
+  <ellipse cx="200" cy="135" rx="24" ry="22" fill="#fce7f3" fill-opacity="0.6" stroke="#db2777" stroke-dasharray="4 3"/>
+  <g fill="#db2777"><circle cx="194" cy="130" r="4"/><circle cx="206" cy="140" r="4"/><circle cx="198" cy="145" r="4"/></g>
+  <rect x="30" y="66" width="104" height="24" rx="6" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="82" y="82" text-anchor="middle" font-size="9" fill="#3730a3">ဖောက်သည် data</text>
+  <text x="82" y="112" text-anchor="middle" font-size="9" fill="#334155">အဖြေမှန် မပေးရ —</text>
+  <text x="82" y="127" text-anchor="middle" font-size="9" fill="#334155">စက်က ဆင်တူချင်း</text>
+  <text x="82" y="142" text-anchor="middle" font-size="9" fill="#334155">ကိုယ်တိုင် စုပေး</text>
+  <text x="220" y="192" text-anchor="middle" font-size="10" fill="#334155">Unsupervised — VIP/သာမန် အုပ်စု အလိုအလျောက် ပေါ်လာ</text>
+</svg>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="fs" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Few-shot — နမူနာ ပြ၍ ပုံစံ သင်</text>
+  <rect x="28" y="48" width="188" height="112" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="122" y="66" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#334155">နမူနာများ ပြ</text>
+  <text x="44" y="88" font-size="9.5" fill="#2563eb">tomato → ခရမ်းချဉ်သီး</text>
+  <text x="44" y="108" font-size="9.5" fill="#2563eb">lettuce → ဆလတ်ရွက်</text>
+  <text x="44" y="128" font-size="9.5" fill="#2563eb">chili → ငရုတ်သီး</text>
+  <text x="44" y="150" font-size="9.5" font-weight="bold" fill="#334155">cucumber → ?</text>
+  <line x1="216" y1="104" x2="256" y2="104" stroke="#64748b" stroke-width="2" marker-end="url(#fs)"/>
+  <rect x="260" y="80" width="152" height="48" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="336" y="102" text-anchor="middle" font-size="10" font-weight="bold" fill="#166534">သခွားသီး</text>
+  <text x="336" y="118" text-anchor="middle" font-size="8.5" fill="#166534">ပုံစံ လိုက်ပြီး ဖြေ</text>
+  <text x="220" y="182" text-anchor="middle" font-size="10" fill="#334155">Example ၂-၃ ခုက format/style ကို တိတိကျကျ လမ်းညွှန်ပေး</text>
+</svg>

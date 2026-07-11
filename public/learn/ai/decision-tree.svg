@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 210" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="208" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="dt" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#94a3b8"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Decision Tree — မေးခွန်းလိုက် ဆုံးဖြတ်</text>
+  <rect x="168" y="46" width="104" height="34" rx="8" fill="#fef3c7" stroke="#d97706"/>
+  <text x="220" y="67" text-anchor="middle" font-size="10" font-weight="bold" fill="#92400e">စိုထိုင်း &gt; 82%?</text>
+  <line x1="192" y1="80" x2="120" y2="104" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#dt)"/>
+  <text x="150" y="94" font-size="8.5" fill="#64748b">မဟုတ်</text>
+  <line x1="248" y1="80" x2="320" y2="104" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#dt)"/>
+  <text x="288" y="94" font-size="8.5" fill="#64748b">ဟုတ်</text>
+  <rect x="66" y="108" width="104" height="32" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="118" y="128" text-anchor="middle" font-size="10" font-weight="bold" fill="#166534">✓ ကျန်းမာ</text>
+  <rect x="278" y="108" width="112" height="34" rx="8" fill="#fef3c7" stroke="#d97706"/>
+  <text x="334" y="129" text-anchor="middle" font-size="10" font-weight="bold" fill="#92400e">အပူ &lt; 24°?</text>
+  <line x1="310" y1="142" x2="270" y2="166" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#dt)"/>
+  <line x1="360" y1="142" x2="392" y2="166" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#dt)"/>
+  <rect x="214" y="168" width="76" height="28" rx="7" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="252" y="187" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#991b1b">🍄 မှို</text>
+  <rect x="352" y="168" width="72" height="28" rx="7" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="388" y="187" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#991b1b">🐛 ပိုး</text>
+  <text x="120" y="188" text-anchor="middle" font-size="9.5" fill="#334155">လူ ဖတ်လို့ရ — ဘာကြောင့်ဆို ရှင်းပြနိုင်</text>
+</svg>

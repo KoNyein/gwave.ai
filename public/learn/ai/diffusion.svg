@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs>
+    <marker id="df" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker>
+    <pattern id="noise" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#94a3b8"/><circle cx="1" cy="1" r="0.8" fill="#475569"/><circle cx="3" cy="3" r="0.8" fill="#cbd5e1"/></pattern>
+  </defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Diffusion — ဆူညံသံကနေ ပုံ ပေါ်လာ</text>
+  <rect x="32" y="70" width="60" height="60" rx="8" fill="url(#noise)" stroke="#64748b"/>
+  <text x="62" y="148" text-anchor="middle" font-size="8.5" fill="#334155">ဆူညံသံ</text>
+  <rect x="126" y="70" width="60" height="60" rx="8" fill="url(#noise)" stroke="#64748b" opacity="0.7"/>
+  <rect x="130" y="90" width="52" height="30" rx="4" fill="#86efac" opacity="0.4"/>
+  <text x="156" y="148" text-anchor="middle" font-size="8.5" fill="#334155">မှုန်ဝါး</text>
+  <rect x="220" y="70" width="60" height="60" rx="8" fill="#dcfce7" stroke="#16a34a" opacity="0.85"/>
+  <circle cx="250" cy="95" r="10" fill="#4ade80"/>
+  <rect x="232" y="106" width="36" height="16" rx="3" fill="#22c55e"/>
+  <text x="250" y="148" text-anchor="middle" font-size="8.5" fill="#334155">ပီပြင်လာ</text>
+  <rect x="314" y="70" width="60" height="60" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <circle cx="344" cy="92" r="11" fill="#16a34a"/>
+  <rect x="326" y="104" width="36" height="18" rx="3" fill="#15803d"/>
+  <text x="344" y="148" text-anchor="middle" font-size="8.5" fill="#166534">ကြည်လင်</text>
+  <line x1="92" y1="100" x2="124" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#df)"/>
+  <line x1="186" y1="100" x2="218" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#df)"/>
+  <line x1="280" y1="100" x2="312" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#df)"/>
+  <text x="220" y="176" text-anchor="middle" font-size="10" fill="#334155">တစ်ဆင့်ချင်း noise ဖြုတ် (denoise) — prompt အတိုင်း ပုံ ဖြစ်လာ</text>
+</svg>

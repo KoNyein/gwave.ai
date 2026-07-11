@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="pp" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Project — အပင်ရောဂါ Classifier အဆင့်ဆင့်</text>
+  <g font-size="9" text-anchor="middle">
+    <rect x="24" y="70" width="72" height="50" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="60" y="90" font-weight="bold" fill="#1e40af">① Data</text><text x="60" y="105" fill="#1e40af" font-size="8">ပုံ စု + label</text>
+    <rect x="112" y="70" width="72" height="50" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+    <text x="148" y="90" font-weight="bold" fill="#6d28d9">② Split</text><text x="148" y="105" fill="#6d28d9" font-size="8">80/20</text>
+    <rect x="200" y="70" width="72" height="50" rx="8" fill="#fef3c7" stroke="#d97706"/>
+    <text x="236" y="90" font-weight="bold" fill="#92400e">③ Train</text><text x="236" y="105" fill="#92400e" font-size="8">CNN fit</text>
+    <rect x="288" y="70" width="72" height="50" rx="8" fill="#fce7f3" stroke="#db2777"/>
+    <text x="324" y="90" font-weight="bold" fill="#9d174d">④ Eval</text><text x="324" y="105" fill="#9d174d" font-size="8">report</text>
+    <rect x="376" y="70" width="42" height="50" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="397" y="90" font-weight="bold" fill="#166534">⑤</text><text x="397" y="105" fill="#166534" font-size="8">သိမ်း</text>
+  </g>
+  <line x1="96" y1="95" x2="110" y2="95" stroke="#64748b" stroke-width="2" marker-end="url(#pp)"/>
+  <line x1="184" y1="95" x2="198" y2="95" stroke="#64748b" stroke-width="2" marker-end="url(#pp)"/>
+  <line x1="272" y1="95" x2="286" y2="95" stroke="#64748b" stroke-width="2" marker-end="url(#pp)"/>
+  <line x1="360" y1="95" x2="374" y2="95" stroke="#64748b" stroke-width="2" marker-end="url(#pp)"/>
+  <text x="220" y="152" text-anchor="middle" font-size="10" fill="#334155">သင်ယူထားသမျှ ပေါင်းစပ် — data ကနေ ထုတ်သုံးရ model အထိ</text>
+  <text x="220" y="176" text-anchor="middle" font-size="9.5" fill="#64748b">ကျန်းမာ / ပိုးကျ / မှိုတက် — အရွက်ပုံ ခွဲခြားပေးမယ့် project</text>
+</svg>
