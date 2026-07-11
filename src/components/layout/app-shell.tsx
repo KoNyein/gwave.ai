@@ -2,6 +2,7 @@ import { LeftSidebar } from "@/components/layout/left-sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Navbar } from "@/components/layout/navbar";
 import { RightSidebar } from "@/components/layout/right-sidebar";
+import { ChatDock } from "@/components/messenger/chat-dock";
 import { getCurrentProfile } from "@/lib/auth";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
@@ -18,6 +19,16 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         <RightSidebar />
       </div>
       <MobileNav />
+      {profile ? (
+        <ChatDock
+          currentUser={{
+            id: profile.id,
+            username: profile.username,
+            full_name: profile.full_name,
+            avatar_url: profile.avatar_url,
+          }}
+        />
+      ) : null}
     </div>
   );
 }
