@@ -42,6 +42,9 @@ export function MyGameCard({ game }: { game: Game }) {
               {t(`status_${game.status}`)}
             </span>
             {t("plays", { count: game.plays_count })}
+            <span className="ml-2">
+              👍 {game.reactions_count} · 💬 {game.comments_count}
+            </span>
           </p>
           {game.status === "rejected" && game.review_note ? (
             <p className="mt-1 text-xs text-destructive">

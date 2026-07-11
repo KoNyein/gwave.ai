@@ -128,3 +128,70 @@ export async function recordGamePlay(gameId: string): Promise<void> {
   const supabase = await createClient();
   await supabase.rpc("record_game_play", { gid: gameId });
 }
+
+const REACTION_KINDS = ["like", "love", "fun", "interested", "wow"] as const;
+
+/** Set (or clear, when kind is null) the caller's reaction to a game. */
+export async function setGameReaction(
+  gameId: string,
+  kind: (typeof REACTION_KINDS)[number] | null,
+): Promise<ActionResult> {
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in." };
+  const supabase = await createClient();
+  if (kind === null) {
+    const { error } = await supabase
+      .from("game_reactions")
+      .delete()
+      .match({ game_id: gameId, user_id: userId });
+    if (error) return { ok: false, error: error.message };
+  } else {
+    if (!REACTION_KINDS.includes(kind))
+      return { ok: false, error: "Invalid reaction." };
+    const { error } = await supabase
+      .from("game_reactions")
+      .upsert(
+        { game_id: gameId, user_id: userId, kind },
+        { onConflict: "game_id,user_id" },
+      );
+    if (error) return { ok: false, error: error.message };
+  }
+  revalidatePath(`/games/${gameId}`);
+  return { ok: true, data: undefined };
+}
+
+/** Post a comment on a game. */
+export async function addGameComment(
+  gameId: string,
+  body: string,
+): Promise<ActionResult> {
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in." };
+  const clean = body.trim();
+  if (!clean || clean.length > 1000)
+    return { ok: false, error: "မှတ်ချက် ၁–၁၀၀၀ လုံး ဖြစ်ရမည်။" };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("game_comments")
+    .insert({ game_id: gameId, user_id: userId, body: clean });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/games/${gameId}`);
+  return { ok: true, data: undefined };
+}
+
+/** Delete one of the caller's own comments (moderators may delete any). */
+export async function deleteGameComment(
+  commentId: string,
+  gameId: string,
+): Promise<ActionResult> {
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in." };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("game_comments")
+    .delete()
+    .eq("id", commentId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/games/${gameId}`);
+  return { ok: true, data: undefined };
+}
