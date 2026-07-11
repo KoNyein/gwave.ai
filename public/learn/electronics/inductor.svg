@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Inductor — စက်ကွင်း သိမ်းတဲ့ ကွိုင်</text>
+  <line x1="40" y1="100" x2="120" y2="100" stroke="#334155" stroke-width="2.5"/>
+  <path d="M120 100 a10 10 0 0 1 20 0 a10 10 0 0 1 20 0 a10 10 0 0 1 20 0 a10 10 0 0 1 20 0" fill="none" stroke="#7c3aed" stroke-width="3"/>
+  <line x1="200" y1="100" x2="280" y2="100" stroke="#334155" stroke-width="2.5"/>
+  <g stroke="#2563eb" stroke-width="1.5" fill="none" opacity="0.6"><ellipse cx="160" cy="100" rx="46" ry="24"/><ellipse cx="160" cy="100" rx="30" ry="15"/></g>
+  <text x="160" y="82" text-anchor="middle" font-size="8" fill="#2563eb">သံလိုက်စက်ကွင်း</text>
+  <text x="330" y="86" text-anchor="middle" font-size="9" fill="#334155">current ရုတ်တရက်</text>
+  <text x="330" y="100" text-anchor="middle" font-size="9" fill="#334155">ပြောင်းမှု ဆန့်ကျင်</text>
+  <text x="220" y="150" text-anchor="middle" font-size="10" fill="#334155">current စီးရင် သံလိုက်စက်ကွင်း သိမ်း — ရုတ်တရက်ပြောင်းမှု ချော</text>
+  <text x="220" y="172" text-anchor="middle" font-size="9" fill="#64748b">filter · power supply · motor — capacitor ရဲ့ ဆန့်ကျင်ဘက်</text>
+</svg>

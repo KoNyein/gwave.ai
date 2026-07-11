@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Multimeter — တိုင်းတာ ကိရိယာ</text>
+  <rect x="150" y="50" width="140" height="120" rx="10" fill="#fde68a" stroke="#d97706" stroke-width="2"/>
+  <rect x="166" y="62" width="108" height="30" rx="4" fill="#0f172a"/>
+  <text x="220" y="84" text-anchor="middle" font-size="14" font-family="monospace" fill="#4ade80">4.98V</text>
+  <circle cx="220" cy="128" r="26" fill="#fff" stroke="#334155" stroke-width="2"/>
+  <line x1="220" y1="128" x2="238" y2="112" stroke="#dc2626" stroke-width="3"/>
+  <text x="180" y="120" font-size="7" fill="#334155">V</text>
+  <text x="256" y="120" font-size="7" fill="#334155">Ω</text>
+  <text x="180" y="150" font-size="7" fill="#334155">A</text>
+  <circle cx="180" cy="176" r="4" fill="#000"/><circle cx="260" cy="176" r="4" fill="#dc2626"/>
+  <g font-size="9" fill="#334155">
+    <text x="40" y="70">🔴 V — voltage (ဗို့)</text>
+    <text x="40" y="100">🟠 A — current (အမ်ပီယာ)</text>
+    <text x="40" y="130">🟢 Ω — resistance</text>
+    <text x="40" y="160">🔔 continuity — ဆက်/မဆက်</text>
+  </g>
+  <text x="360" y="130" text-anchor="middle" font-size="8.5" fill="#64748b">fault ရှာဖို့</text>
+  <text x="360" y="144" text-anchor="middle" font-size="8.5" fill="#64748b">မရှိမဖြစ်</text>
+</svg>

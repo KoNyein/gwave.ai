@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">LoRa — ကီလိုမီတာ အကွာ ကြိုးမဲ့</text>
+  <rect x="30" y="86" width="70" height="40" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="65" y="103" text-anchor="middle" font-size="8.5" font-weight="bold" fill="#166534">field node</text>
+  <text x="65" y="116" text-anchor="middle" font-size="8" fill="#166534">🌱 sensor</text>
+  <line x1="65" y1="86" x2="65" y2="68" stroke="#334155" stroke-width="2"/>
+  <g stroke="#7c3aed" stroke-width="1.5" fill="none"><path d="M110 96 q16 -6 0 -14"/><path d="M130 100 q28 -10 0 -22"/><path d="M150 104 q40 -14 0 -30"/></g>
+  <text x="220" y="80" text-anchor="middle" font-size="9" fill="#7c3aed">📡 ~2–15 km</text>
+  <line x1="180" y1="106" x2="330" y2="106" stroke="#94a3b8" stroke-dasharray="5 4"/>
+  <rect x="336" y="86" width="74" height="40" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="373" y="103" text-anchor="middle" font-size="8.5" font-weight="bold" fill="#1e40af">gateway</text>
+  <text x="373" y="116" text-anchor="middle" font-size="8" fill="#1e40af">→ internet</text>
+  <text x="220" y="152" text-anchor="middle" font-size="10" fill="#334155">Wi-Fi မမီတဲ့ ဝေးလံ လယ်ကွင်း — power နည်း၊ ဒေတာသေး</text>
+  <text x="220" y="172" text-anchor="middle" font-size="9" fill="#64748b">တစ်ကွက်ချင်း data တို ပို့ — battery နှစ်ချီ ခံ</text>
+</svg>

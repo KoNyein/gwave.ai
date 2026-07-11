@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Static (ESD) Protection</text>
+  <text x="80" y="80" font-size="24">🖐</text>
+  <path d="M110 74 l14 -6 l-6 10 l12 -2 l-16 12 l6 -10 z" fill="#fbbf24" stroke="#d97706"/>
+  <rect x="150" y="66" width="70" height="40" rx="4" fill="#1f2937"/>
+  <text x="185" y="90" text-anchor="middle" font-size="9" fill="#fff">chip</text>
+  <text x="185" y="122" text-anchor="middle" font-size="8" fill="#dc2626">⚡ ဓာတ်တိုး → ပျက်နိုင်</text>
+  <g font-size="9" fill="#166534">
+    <rect x="256" y="60" width="158" height="24" rx="5" fill="#dcfce7" stroke="#16a34a"/><text x="266" y="76">✓ anti-static wrist strap</text>
+    <rect x="256" y="90" width="158" height="24" rx="5" fill="#dcfce7" stroke="#16a34a"/><text x="266" y="106">✓ ground mat သုံး</text>
+    <rect x="256" y="120" width="158" height="24" rx="5" fill="#dcfce7" stroke="#16a34a"/><text x="266" y="136">✓ ESD bag ထဲ သိမ်း</text>
+  </g>
+  <text x="220" y="170" text-anchor="middle" font-size="9.5" fill="#64748b">လူ့ကိုယ်က static ဓာတ် — မမြင်ရဘဲ chip ကို ဖျက်နိုင်</text>
+</svg>

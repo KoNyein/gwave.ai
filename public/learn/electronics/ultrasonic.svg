@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Ultrasonic — အသံ ပဲ့တင်နဲ့ အကွာအဝေး</text>
+  <rect x="30" y="80" width="50" height="46" rx="6" fill="#334155"/>
+  <circle cx="45" cy="103" r="9" fill="#64748b"/><circle cx="65" cy="103" r="9" fill="#64748b"/>
+  <g stroke="#2563eb" stroke-width="1.5" fill="none"><path d="M90 90 q20 4 0 8"/><path d="M110 86 q30 8 0 16"/><path d="M130 82 q40 12 0 24"/></g>
+  <line x1="88" y1="102" x2="300" y2="102" stroke="#94a3b8" stroke-dasharray="4 3"/>
+  <path d="M300 102 l-8 -5 v10 z" fill="#94a3b8"/>
+  <rect x="304" y="66" width="20" height="72" rx="3" fill="#a16207" opacity="0.5"/>
+  <text x="314" y="152" text-anchor="middle" font-size="8" fill="#334155">object/ရေမျက်နှာ</text>
+  <text x="190" y="94" text-anchor="middle" font-size="8.5" fill="#1e40af">အသံ ပို့ → ပြန်ရောက်ချိန်</text>
+  <text x="220" y="166" text-anchor="middle" font-size="9.5" fill="#334155">အကွာ = အသံအမြန် × အချိန် ÷ 2 (အသွား+အပြန်)</text>
+  <text x="220" y="182" text-anchor="middle" font-size="8.5" fill="#64748b">ရေကန် အမြင့် · အတား ရှောင် robot — HC-SR04</text>
+</svg>

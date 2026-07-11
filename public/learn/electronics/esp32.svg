@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">ESP32 / ESP8266 — Wi-Fi ပါ IoT board</text>
+  <rect x="150" y="66" width="140" height="70" rx="6" fill="#1f2937" stroke="#0f172a"/>
+  <rect x="200" y="76" width="40" height="26" rx="2" fill="#374151"/>
+  <text x="220" y="94" text-anchor="middle" font-size="8" fill="#e5e7eb">ESP32</text>
+  <rect x="160" y="72" width="26" height="18" rx="2" fill="#9ca3af"/>
+  <text x="173" y="85" text-anchor="middle" font-size="6.5" fill="#111">ANT</text>
+  <g stroke="#7c3aed" stroke-width="2" fill="none"><path d="M150 66 q-12 -10 0 -22"/><path d="M144 70 q-18 -14 0 -30"/></g>
+  <g fill="#334155"><rect x="156" y="136" width="6" height="8"/><rect x="176" y="136" width="6" height="8"/><rect x="196" y="136" width="6" height="8"/><rect x="216" y="136" width="6" height="8"/><rect x="236" y="136" width="6" height="8"/><rect x="256" y="136" width="6" height="8"/></g>
+  <g font-size="9" fill="#334155">
+    <text x="310" y="76">📶 Wi-Fi + Bluetooth</text>
+    <text x="310" y="100">⚡ ဈေးသက်သာ</text>
+    <text x="310" y="124">🔋 low power (deep sleep)</text>
+  </g>
+  <text x="220" y="166" text-anchor="middle" font-size="9.5" fill="#334155">sensor ဖတ် → Wi-Fi နဲ့ cloud ပို့ — field node အတွက် အကောင်းဆုံး</text>
+</svg>

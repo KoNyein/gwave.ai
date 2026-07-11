@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Capacitor — အားနည်းငယ် သိမ်း၊ ချောမွေ့စေ</text>
+  <line x1="60" y1="90" x2="200" y2="90" stroke="#334155" stroke-width="2.5"/>
+  <line x1="200" y1="66" x2="200" y2="114" stroke="#2563eb" stroke-width="3.5"/>
+  <line x1="214" y1="66" x2="214" y2="114" stroke="#dc2626" stroke-width="3.5"/>
+  <line x1="214" y1="90" x2="360" y2="90" stroke="#334155" stroke-width="2.5"/>
+  <g fill="#2563eb"><circle cx="180" cy="80" r="3"/><circle cx="180" cy="100" r="3"/><circle cx="188" cy="90" r="3"/></g>
+  <text x="207" y="58" text-anchor="middle" font-size="8.5" fill="#334155">အားသိုလှောင်</text>
+  <path d="M280 130 q20 -30 40 0 q20 30 40 0" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+  <path d="M280 150 h80" stroke="#16a34a" stroke-width="2"/>
+  <text x="320" y="168" text-anchor="middle" font-size="8" fill="#166534">လှိုင်း → ညီညာ (smooth)</text>
+  <text x="150" y="150" text-anchor="middle" font-size="10" fill="#334155">ရုတ်တရက် ဗို့ကျရင် ဖြည့်ပေး</text>
+  <text x="220" y="180" text-anchor="middle" font-size="9" fill="#64748b">ပါဝါ ချောမွေ့စေ · timing · filter အတွက် သုံး</text>
+</svg>

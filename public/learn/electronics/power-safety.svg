@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Power &amp; Safety — လျှပ်စစ် ဘေးကင်း</text>
+  <text x="60" y="60" font-size="22">⚡</text>
+  <g font-size="9.5">
+    <rect x="30" y="70" width="384" height="26" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="44" y="87" fill="#166534">✓ မှန်တဲ့ voltage သုံး (5V board ကို 12V မထိုး)</text>
+    <rect x="30" y="102" width="384" height="26" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="44" y="119" fill="#166534">✓ လက် ခြောက်စွာ · ground ချိတ် · fuse ထည့်</text>
+    <rect x="30" y="134" width="384" height="26" rx="6" fill="#fee2e2" stroke="#dc2626"/>
+    <text x="44" y="151" fill="#991b1b">✗ 220V mains — အတွေ့အကြုံမရှိဘဲ မကိုင်</text>
+  </g>
+  <text x="220" y="178" text-anchor="middle" font-size="9.5" fill="#64748b">short circuit → မီးလောင်နိုင် — polarity (+/−) မှန်အောင် စစ်</text>
+</svg>

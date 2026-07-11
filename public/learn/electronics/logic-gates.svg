@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Logic Gates — digital ဆုံးဖြတ်ချက်</text>
+  <g stroke="#334155" stroke-width="2" fill="#dbeafe">
+    <path d="M60 60 h20 a24 24 0 0 1 0 48 h-20 z"/>
+  </g>
+  <text x="72" y="128" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e40af">AND</text>
+  <text x="72" y="142" text-anchor="middle" font-size="7.5" fill="#334155">နှစ်ခုလုံး 1</text>
+  <g stroke="#334155" stroke-width="2" fill="#dcfce7">
+    <path d="M180 60 q20 24 0 48 q30 -6 44 -24 q-14 -18 -44 -24 z"/>
+  </g>
+  <text x="196" y="128" text-anchor="middle" font-size="9" font-weight="bold" fill="#166534">OR</text>
+  <text x="200" y="142" text-anchor="middle" font-size="7.5" fill="#334155">တစ်ခုခု 1</text>
+  <g stroke="#334155" stroke-width="2" fill="#fee2e2">
+    <path d="M300 60 l40 24 l-40 24 z"/><circle cx="346" cy="84" r="5" fill="#fff"/>
+  </g>
+  <text x="318" y="128" text-anchor="middle" font-size="9" font-weight="bold" fill="#991b1b">NOT</text>
+  <text x="322" y="142" text-anchor="middle" font-size="7.5" fill="#334155">ပြောင်းပြန်</text>
+  <text x="220" y="168" text-anchor="middle" font-size="9.5" fill="#64748b">0/1 input → rule → 0/1 output — CPU တွေ ဒီ gate သန်းချီနဲ့</text>
+</svg>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="c1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Sensor → Cloud → ဖုန်း</text>
+  <g font-size="8.5" text-anchor="middle" fill="#334155">
+    <rect x="20" y="76" width="72" height="46" rx="8" fill="#dcfce7" stroke="#16a34a"/><text x="56" y="96" font-weight="bold" fill="#166534">Sensor</text><text x="56" y="112">တိုင်း</text>
+    <rect x="110" y="76" width="72" height="46" rx="8" fill="#dbeafe" stroke="#2563eb"/><text x="146" y="96" font-weight="bold" fill="#1e40af">Board</text><text x="146" y="112">ESP32</text>
+    <rect x="200" y="76" width="72" height="46" rx="8" fill="#ede9fe" stroke="#7c3aed"/><text x="236" y="96" font-weight="bold" fill="#6d28d9">Wi-Fi</text><text x="236" y="112">ပို့</text>
+    <rect x="290" y="76" width="60" height="46" rx="8" fill="#e0f2fe" stroke="#0284c7"/><text x="320" y="94" font-weight="bold" fill="#075985">☁</text><text x="320" y="112">Cloud</text>
+    <rect x="368" y="76" width="52" height="46" rx="8" fill="#fef3c7" stroke="#d97706"/><text x="394" y="94" font-weight="bold" fill="#92400e">📱</text><text x="394" y="112">chart</text>
+  </g>
+  <line x1="92" y1="99" x2="108" y2="99" stroke="#64748b" stroke-width="2" marker-end="url(#c1)"/>
+  <line x1="182" y1="99" x2="198" y2="99" stroke="#64748b" stroke-width="2" marker-end="url(#c1)"/>
+  <line x1="272" y1="99" x2="288" y2="99" stroke="#64748b" stroke-width="2" marker-end="url(#c1)"/>
+  <line x1="350" y1="99" x2="366" y2="99" stroke="#64748b" stroke-width="2" marker-end="url(#c1)"/>
+  <text x="220" y="160" text-anchor="middle" font-size="10" fill="#334155">လယ်ကွင်းက ဖတ်ချက် — internet ဖြတ်ပြီး ဖုန်းပေါ် chart ဖြစ်လာ</text>
+  <text x="220" y="182" text-anchor="middle" font-size="9" fill="#64748b">ဒါပဲ IoT (Internet of Things) ရဲ့ အနှစ်ချုပ်</text>
+</svg>

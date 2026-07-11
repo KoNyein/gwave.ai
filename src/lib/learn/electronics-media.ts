@@ -28,13 +28,13 @@ const IMAGES: Record<string, LessonImage> = {
     caption: "တန်းဆက် — လမ်းတစ်ခု · ပြိုင်ဆက် — လမ်းများစွာ",
   },
   "circuit-components": {
-    src: `${IMG}/led-circuit.svg`,
-    alt: "Simple LED circuit",
-    caption: "Circuit အခြေခံ — ပါဝါ၊ resistor၊ LED လမ်းကြောင်းပြည့်",
+    src: `${IMG}/components.svg`,
+    alt: "Common circuit components and their symbols",
+    caption: "Resistor · LED · capacitor · switch · battery · diode",
   },
   resistors: {
-    src: `${IMG}/led-circuit.svg`,
-    alt: "LED with current limiting resistor",
+    src: `${IMG}/resistor.svg`,
+    alt: "Resistor colour bands limiting current to an LED",
     caption: "Resistor က လျှပ်စီး ကန့်သတ်ပေး — LED မကျွမ်းအောင်",
   },
   "leds-diodes": {
@@ -48,14 +48,14 @@ const IMAGES: Record<string, LessonImage> = {
     caption: "Breadboard အတွင်း ဘယ်အပေါက်တွေ ဆက်နေလဲ",
   },
   "switches-buttons": {
-    src: `${IMG}/pullup.svg`,
-    alt: "Button with pull-up resistor",
-    caption: "ခလုတ် + pull-up — pin တန်ဖိုး တည်ငြိမ်စေ",
+    src: `${IMG}/switch.svg`,
+    alt: "Open vs closed switch controlling an LED",
+    caption: "ဆက် = current စီး မီးလင်း · ဖြတ် = ပြတ် မီးမလင်း",
   },
   "gpio-inputs-outputs": {
-    src: `${IMG}/pullup.svg`,
-    alt: "GPIO input with pull-up resistor",
-    caption: "Input pin ကို pull-up နဲ့ တည်ငြိမ်အောင် ထိန်းခြင်း",
+    src: `${IMG}/gpio.svg`,
+    alt: "GPIO input and output pins",
+    caption: "Input pin = ဖတ် · Output pin = ထိန်း",
   },
   "elec-pull-up-down": {
     src: `${IMG}/pullup.svg`,
@@ -73,9 +73,9 @@ const IMAGES: Record<string, LessonImage> = {
     caption: "GPIO အားနည်းနဲ့ 12V load အားကြီးကို ခလုတ်လုပ်ခြင်း",
   },
   "relays-switching": {
-    src: `${IMG}/transistor-switch.svg`,
-    alt: "Switching a high-power load",
-    caption: "အားနည်း signal → အားကြီး load ထိန်း — relay/transistor သဘော",
+    src: `${IMG}/relay.svg`,
+    alt: "Relay lets a small signal switch a big load",
+    caption: "signal သေး → 220V load ကြီး ဖွင့်/ပိတ်",
   },
   "elec-pwm": {
     src: `${IMG}/pwm-duty.svg`,
@@ -83,9 +83,9 @@ const IMAGES: Record<string, LessonImage> = {
     caption: "ON ချိန်အချိုး ကွာရင် ပျမ်းမျှပါဝါ ကွာ — မှိန်/လင်း",
   },
   "motors-servos": {
-    src: `${IMG}/pwm-duty.svg`,
-    alt: "PWM signal for motor speed",
-    caption: "Motor အမြန်နှုန်းကို PWM နဲ့ ထိန်း",
+    src: `${IMG}/motor-servo.svg`,
+    alt: "DC motor spins, servo holds an angle",
+    caption: "DC motor = အမြဲလည် · servo = တိကျ ထောင့်",
   },
   "elec-i2c": {
     src: `${IMG}/buses.svg`,
@@ -108,14 +108,204 @@ const IMAGES: Record<string, LessonImage> = {
     caption: "Sensor → MCU → MQTT → Cloud → App — အလွှာလိုက် စီးဆင်းပုံ",
   },
   "mqtt-messaging": {
-    src: `${IMG}/iot-stack.svg`,
-    alt: "MQTT in the IoT stack",
-    caption: "MQTT broker က စာတိုက်လို — publish/subscribe ကြားခံ",
+    src: `${IMG}/mqtt.svg`,
+    alt: "MQTT publish/subscribe through a broker",
+    caption: "topic ကို publish → subscribe သူတိုင်း ရ",
   },
   "sending-data-to-the-cloud": {
-    src: `${IMG}/iot-stack.svg`,
-    alt: "Sensor data path to the cloud",
-    caption: "စိုက်ခင်း sensor ကနေ ဖုန်း app ထိ ဒေတာခရီး",
+    src: `${IMG}/cloud-data.svg`,
+    alt: "Sensor to board to Wi-Fi to cloud to phone",
+    caption: "Sensor → board → Wi-Fi → cloud → ဖုန်း chart",
+  },
+  "what-is-a-sensor": {
+    src: `${IMG}/sensor-basics.svg`,
+    alt: "A sensor turns the physical world into numbers",
+    caption: "ရုပ်ပိုင်းလောက → signal → ဂဏန်း — sensor",
+  },
+  "build-a-circuit": {
+    src: `${IMG}/circuit-loop.svg`,
+    alt: "Battery, wire, switch and LED in a closed loop",
+    caption: "loop ပြည့်မှ current စီး → မီးလင်း",
+  },
+  "electricity-flow": {
+    src: `${IMG}/electron-flow.svg`,
+    alt: "Electrons flowing from minus to plus in a wire",
+    caption: "(−) → (+) အီလက်ထရွန် တွန်းစီး = current",
+  },
+  "conductors-insulators": {
+    src: `${IMG}/conductor-insulator.svg`,
+    alt: "Conductors let current through, insulators block it",
+    caption: "ကြေး/သံ = စီး · ရော်ဘာ/ပလတ်စတစ် = မစီး",
+  },
+  "battery-power": {
+    src: `${IMG}/battery.svg`,
+    alt: "A battery provides the voltage that pushes current",
+    caption: "Battery = တွန်းအား (V) ရဲ့ အရင်း — ဓာတု→လျှပ်စစ်",
+  },
+  capacitors: {
+    src: `${IMG}/capacitor.svg`,
+    alt: "A capacitor stores a little charge and smooths power",
+    caption: "အားနည်းငယ် သိမ်း → ပါဝါ ချောမွေ့စေ",
+  },
+  "reading-schematics": {
+    src: `${IMG}/schematic.svg`,
+    alt: "Circuit schematic symbols and connections",
+    caption: "စံ symbol တွေ = circuit ရဲ့ မြေပုံ",
+  },
+  microcontrollers: {
+    src: `${IMG}/microcontroller.svg`,
+    alt: "A microcontroller reads inputs and drives outputs",
+    caption: "input ဖတ် → code တွက် → output ထိန်း — circuit ဦးနှောက်",
+  },
+  "digital-analog-signals": {
+    src: `${IMG}/digital-analog.svg`,
+    alt: "Smooth analog wave vs digital on/off steps",
+    caption: "Analog = ချောမွေ့ · Digital = 0/1 နှစ်ဆင့်",
+  },
+  "temperature-sensors": {
+    src: `${IMG}/temp-sensor.svg`,
+    alt: "A temperature sensor turns warmth into a number",
+    caption: "အပူ → DHT22/LM35 → 28.5°C",
+  },
+  "light-sensors": {
+    src: `${IMG}/light-sensor.svg`,
+    alt: "An LDR changes resistance with brightness",
+    caption: "LDR — အလင်းများ R နည်း · မှောင် R များ",
+  },
+  "moisture-sensors": {
+    src: `${IMG}/moisture-sensor.svg`,
+    alt: "Two probes read how wet the soil is",
+    caption: "probe ၂ ချောင်း — မြေစို/ခြောက် တိကျ",
+  },
+  "power-safety": {
+    src: `${IMG}/power-safety.svg`,
+    alt: "Working with electricity safely",
+    caption: "မှန်တဲ့ voltage · ground · fuse — 220V သတိ",
+  },
+  "wifi-networks": {
+    src: `${IMG}/wifi.svg`,
+    alt: "A device joins a router to reach the internet",
+    caption: "Device → router (SSID) → internet → cloud",
+  },
+  "automation-logic": {
+    src: `${IMG}/automation.svg`,
+    alt: "If this reading, then that action",
+    caption: "IF စိုထိုင်း>70% THEN fan ဖွင့် — လူမလို",
+  },
+  "soldering-troubleshooting": {
+    src: `${IMG}/soldering.svg`,
+    alt: "A good shiny solder joint vs a cold joint",
+    caption: "တောက်ပ joint = ကောင်း · multimeter နဲ့ fault ရှာ",
+  },
+  "elec-inductors": {
+    src: `${IMG}/inductor.svg`,
+    alt: "An inductor coil stores a magnetic field",
+    caption: "current → သံလိုက်စက်ကွင်း သိမ်း — capacitor ရဲ့ ဆန့်ကျင်ဘက်",
+  },
+  "elec-diodes-types": {
+    src: `${IMG}/diode-types.svg`,
+    alt: "Forward vs reverse diode, LED, Zener, rectifier",
+    caption: "current တစ်လမ်းသွား — LED · Zener · rectifier",
+  },
+  "elec-adc-dac": {
+    src: `${IMG}/adc-dac.svg`,
+    alt: "ADC turns analog to digital, DAC the reverse",
+    caption: "ADC — analog→digital ဖတ် · DAC — digital→analog ထုတ်",
+  },
+  "elec-multimeter": {
+    src: `${IMG}/multimeter.svg`,
+    alt: "A multimeter measuring voltage, current, resistance",
+    caption: "V · A · Ω · continuity — fault ရှာ ကိရိယာ",
+  },
+  "elec-logic-gates": {
+    src: `${IMG}/logic-gates.svg`,
+    alt: "AND, OR and NOT logic gates",
+    caption: "AND · OR · NOT — digital ဆုံးဖြတ်ချက် အခြေခံ",
+  },
+  "elec-arduino": {
+    src: `${IMG}/arduino.svg`,
+    alt: "An Arduino board with pins and USB",
+    caption: "USB နဲ့ program · beginner board အကောင်းဆုံး",
+  },
+  "elec-esp32": {
+    src: `${IMG}/esp32.svg`,
+    alt: "ESP32 board with built-in Wi-Fi",
+    caption: "Wi-Fi + Bluetooth ပါ · IoT field node အတွက်",
+  },
+  "elec-raspberry-pi": {
+    src: `${IMG}/raspberry-pi.svg`,
+    alt: "A Raspberry Pi single-board computer",
+    caption: "Linux run · CCTV/AI/server — MCU ထက် အားကြီး",
+  },
+  "elec-ph-sensor": {
+    src: `${IMG}/ph-sensor.svg`,
+    alt: "pH probe reading on a 0-14 scale",
+    caption: "0 အက်ဆစ် ↔ 14 အယ်ကာလိ — အပင် 5.5–6.5",
+  },
+  "elec-ec-sensor": {
+    src: `${IMG}/ec-sensor.svg`,
+    alt: "EC/TDS probe reading nutrient strength",
+    caption: "ဓာတ်ဆား များ → EC မြင့် — အာဟာရ ပြင်းအား",
+  },
+  "elec-flow-sensor": {
+    src: `${IMG}/flow-sensor.svg`,
+    alt: "A water flow sensor turbine counting pulses",
+    caption: "ဘီးလည် → pulse ရေတွက် = ရေ ပမာဏ (L/min)",
+  },
+  "elec-ultrasonic": {
+    src: `${IMG}/ultrasonic.svg`,
+    alt: "Ultrasonic sensor measuring distance by echo",
+    caption: "အသံ ပဲ့တင် အချိန် → အကွာအဝေး/ရေကန် အမြင့်",
+  },
+  "elec-oled-display": {
+    src: `${IMG}/oled-display.svg`,
+    alt: "An OLED screen showing sensor values",
+    caption: "internet မလိုဘဲ တန်ဖိုးတွေ device ပေါ်တင် ဖတ်",
+  },
+  "elec-sd-logging": {
+    src: `${IMG}/sd-logging.svg`,
+    alt: "Logging sensor readings to an SD card CSV",
+    caption: "offline မှာ data.csv ထဲ မှတ်တမ်းတင်",
+  },
+  "elec-solar-power": {
+    src: `${IMG}/solar-power.svg`,
+    alt: "Solar panel to charge controller to battery to node",
+    caption: "panel → controller → battery → ESP32 — 24/7 field",
+  },
+  "elec-voltage-regulator": {
+    src: `${IMG}/voltage-regulator.svg`,
+    alt: "A regulator turning unstable voltage into a steady rail",
+    caption: "မတည်ငြိမ် → တိကျ တည်ငြိမ် voltage (7805/buck)",
+  },
+  "elec-lora": {
+    src: `${IMG}/lora.svg`,
+    alt: "LoRa sending sensor data kilometres to a gateway",
+    caption: "Wi-Fi မမီ ဝေးလံ လယ် — km ချီ · power နည်း",
+  },
+  "elec-home-assistant": {
+    src: `${IMG}/home-assistant.svg`,
+    alt: "Home Assistant / Node-RED hub tying devices together",
+    caption: "device မျိုးစုံ တစ်နေရာ — dashboard + rule",
+  },
+  "elec-ota": {
+    src: `${IMG}/ota.svg`,
+    alt: "Over-the-air firmware update over Wi-Fi",
+    caption: "ကြိုးမချိတ်ဘဲ code အသစ် အဝေးက တင်",
+  },
+  "elec-enclosure": {
+    src: `${IMG}/enclosure.svg`,
+    alt: "A weatherproof IP65 enclosure protecting a board",
+    caption: "IP65 — မိုး/နေ/ဖုန်/ပိုး ဒဏ်မှ ကာကွယ်",
+  },
+  "elec-esd-static": {
+    src: `${IMG}/esd.svg`,
+    alt: "ESD protection: wrist strap, ground mat, anti-static bag",
+    caption: "static ဓာတ်တိုး → chip ပျက် — strap/mat/bag နဲ့ ကာ",
+  },
+  "elec-project-soil-monitor": {
+    src: `${IMG}/soil-monitor.svg`,
+    alt: "A complete soil-monitor IoT node end to end",
+    caption: "sensor + board + power + Wi-Fi + cloud — အားလုံးပေါင်း",
   },
 };
 

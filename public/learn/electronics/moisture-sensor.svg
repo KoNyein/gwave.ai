@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Moisture Sensor — မြေစို ဖတ်</text>
+  <rect x="40" y="86" width="180" height="70" rx="4" fill="#a16207" opacity="0.35"/>
+  <rect x="90" y="60" width="12" height="80" fill="#94a3b8"/>
+  <rect x="130" y="60" width="12" height="80" fill="#94a3b8"/>
+  <text x="116" y="52" text-anchor="middle" font-size="9" fill="#334155">probe ၂ ချောင်း</text>
+  <text x="116" y="172" text-anchor="middle" font-size="8.5" fill="#166534">မြေ 🌱</text>
+  <rect x="256" y="70" width="150" height="30" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="331" y="90" text-anchor="middle" font-size="9" fill="#1e40af">စိုလေ → conduct ကောင်းလေ</text>
+  <rect x="256" y="108" width="150" height="30" rx="6" fill="#fef3c7" stroke="#d97706"/>
+  <text x="331" y="128" text-anchor="middle" font-size="9" fill="#92400e">ခြောက်ရင် → ရေလောင်း သတိပေး</text>
+  <text x="220" y="180" text-anchor="middle" font-size="9.5" fill="#334155">မှန်းဆမနေတော့ဘဲ — အပင် ရေလိုတာ တိကျစွာ သိ</text>
+</svg>

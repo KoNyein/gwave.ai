@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Light Sensor (LDR) — အလင်း တိုင်း</text>
+  <circle cx="90" cy="70" r="16" fill="#fde68a" stroke="#d97706"/>
+  <g stroke="#d97706" stroke-width="2"><line x1="90" y1="46" x2="90" y2="38"/><line x1="112" y1="60" x2="120" y2="54"/><line x1="68" y1="60" x2="60" y2="54"/></g>
+  <text x="90" y="74" text-anchor="middle" font-size="10">☀</text>
+  <rect x="150" y="86" width="140" height="40" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <path d="M162 106 l10 0 l6 -10 l8 20 l8 -20 l6 10 l12 0" fill="none" stroke="#334155" stroke-width="2"/>
+  <text x="220" y="80" text-anchor="middle" font-size="9" font-weight="bold" fill="#334155">LDR</text>
+  <text x="150" y="150" text-anchor="middle" font-size="8.5" fill="#334155">အလင်းများ → R နည်း</text>
+  <text x="150" y="164" text-anchor="middle" font-size="8.5" fill="#334155">မှောင် → R များ</text>
+  <rect x="320" y="86" width="90" height="40" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="365" y="103" text-anchor="middle" font-size="9" fill="#1e40af">တန်ဖိုး</text>
+  <text x="365" y="117" text-anchor="middle" font-size="8" fill="#1e40af">ADC ဖတ်</text>
+  <text x="220" y="182" text-anchor="middle" font-size="9.5" fill="#64748b">အမှောင်ကျ → မီးအလိုအလျောက်ဖွင့် · အလင်းတိုင်း</text>
+</svg>

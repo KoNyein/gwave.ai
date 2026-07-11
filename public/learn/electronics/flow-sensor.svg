@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Water Flow Sensor — ရေစီးနှုန်း တိုင်း</text>
+  <rect x="40" y="90" width="360" height="24" rx="4" fill="#bae6fd" stroke="#0284c7"/>
+  <g fill="#0284c7"><circle cx="70" cy="102" r="3"/><circle cx="120" cy="102" r="3"/><circle cx="330" cy="102" r="3"/><circle cx="380" cy="102" r="3"/></g>
+  <text x="60" y="86" font-size="12" fill="#0284c7">→</text>
+  <text x="380" y="86" font-size="12" fill="#0284c7">→</text>
+  <circle cx="210" cy="102" r="22" fill="#fff" stroke="#334155" stroke-width="2"/>
+  <g stroke="#16a34a" stroke-width="3"><line x1="210" y1="102" x2="210" y2="82"/><line x1="210" y1="102" x2="227" y2="112"/><line x1="210" y1="102" x2="193" y2="112"/></g>
+  <path d="M228 88 A24 24 0 0 1 232 108" fill="none" stroke="#d97706" stroke-width="2" marker-end="url(#fl)"/>
+  <defs><marker id="fl" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#d97706"/></marker></defs>
+  <text x="210" y="140" text-anchor="middle" font-size="8" fill="#334155">ဘီး လည် → pulse</text>
+  <text x="220" y="162" text-anchor="middle" font-size="9.5" fill="#334155">ရေစီးရင် ဘီးလေး လည် — pulse ရေတွက် = ပမာဏ (L/min)</text>
+  <text x="220" y="180" text-anchor="middle" font-size="8.5" fill="#64748b">ရေလောင်း ဘယ်လောက်ပေးပြီလဲ တိကျစွာ သိ</text>
+</svg>

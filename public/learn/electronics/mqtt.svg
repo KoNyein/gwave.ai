@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="mq" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">MQTT — device တွေအတွက် စာတိုပို့</text>
+  <rect x="160" y="80" width="120" height="44" rx="9" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="220" y="100" text-anchor="middle" font-size="10" font-weight="bold" fill="#6d28d9">Broker</text>
+  <text x="220" y="115" text-anchor="middle" font-size="8" fill="#6d28d9">စာတိုက်</text>
+  <rect x="28" y="60" width="96" height="36" rx="7" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="76" y="82" text-anchor="middle" font-size="8.5" fill="#166534">🌡 sensor (publish)</text>
+  <rect x="28" y="110" width="96" height="36" rx="7" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="76" y="132" text-anchor="middle" font-size="8.5" fill="#166534">💧 sensor (publish)</text>
+  <line x1="124" y1="78" x2="158" y2="92" stroke="#64748b" stroke-width="2" marker-end="url(#mq)"/>
+  <line x1="124" y1="128" x2="158" y2="110" stroke="#64748b" stroke-width="2" marker-end="url(#mq)"/>
+  <rect x="316" y="60" width="96" height="36" rx="7" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="364" y="82" text-anchor="middle" font-size="8.5" fill="#1e40af">📱 app (subscribe)</text>
+  <rect x="316" y="110" width="96" height="36" rx="7" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="364" y="132" text-anchor="middle" font-size="8.5" fill="#1e40af">💾 DB (subscribe)</text>
+  <line x1="280" y1="92" x2="314" y2="78" stroke="#64748b" stroke-width="2" marker-end="url(#mq)"/>
+  <line x1="280" y1="110" x2="314" y2="128" stroke="#64748b" stroke-width="2" marker-end="url(#mq)"/>
+  <text x="220" y="164" text-anchor="middle" font-size="9.5" fill="#334155">topic ("farm/temp") ကို publish → subscribe သူတိုင်း ရ</text>
+  <text x="220" y="184" text-anchor="middle" font-size="9" fill="#64748b">ပေါ့ပါး · bandwidth နည်း — IoT အတွက် အသင့်တော်ဆုံး</text>
+</svg>
