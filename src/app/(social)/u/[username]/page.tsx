@@ -22,6 +22,8 @@ import {
 import { LevelBadge } from "@/components/learn/level-badge";
 import { getLearningPoints, getProjectsForUser } from "@/lib/db/learn";
 import { getProfilePhotos, getProfilePosts } from "@/lib/db/posts";
+import { PRESENCE } from "@/lib/presence";
+import type { PresenceStatus } from "@/types/database";
 import { displayName, initials } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
 import { createClient } from "@/lib/supabase/server";
@@ -148,9 +150,18 @@ export default async function ProfilePage({
                 </AvatarFallback>
               </Avatar>
               <div className="pb-1">
-                <h1 className="flex items-center gap-2 text-2xl font-bold">
+                <h1 className="flex flex-wrap items-center gap-2 text-2xl font-bold">
                   {displayName(profile)}
                   <MemberBadge role={profile.role} />
+                  {profile.presence_status &&
+                  profile.presence_status !== "invisible" ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      <span
+                        className={`h-2 w-2 rounded-full ${PRESENCE[profile.presence_status as PresenceStatus].dot}`}
+                      />
+                      {PRESENCE[profile.presence_status as PresenceStatus].label}
+                    </span>
+                  ) : null}
                 </h1>
                 <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   @{profile.username} · {t("friendCount", { count: friendCount })}

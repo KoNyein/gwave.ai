@@ -339,6 +339,13 @@ export interface GpayTransaction {
 
 export type WellnessKind = "dhamma" | "meditation" | "radio" | "health";
 
+export type PresenceStatus =
+  | "available"
+  | "busy"
+  | "away"
+  | "sleep"
+  | "invisible";
+
 export interface Profile {
   id: string;
   username: string | null;
@@ -346,6 +353,7 @@ export interface Profile {
   avatar_url: string | null;
   cover_url: string | null;
   bio: string | null;
+  presence_status: PresenceStatus;
   role: UserRole;
   suspended_until: string | null;
   suspend_reason: string | null;
