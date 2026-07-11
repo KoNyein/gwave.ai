@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { MineralMedia } from "@/components/knowledge/mineral-media";
 import { getMineralBySlug } from "@/lib/db/knowledge";
 
 export default async function MineralDetailPage({
@@ -67,6 +68,24 @@ export default async function MineralDetailPage({
               {mineral.description}
             </p>
           ) : null}
+        </CardContent>
+      </Card>
+
+      {/* Media — HTML5 specimen, audio read-aloud, video */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">📸 ရုပ်ပုံ · အသံ · ဗီဒီယို</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MineralMedia
+            name={mineral.name}
+            category={mineral.category}
+            description={mineral.description}
+            hardnessMohs={mineral.hardness_mohs}
+            colorText={mineral.properties.color ?? mineral.properties.colour}
+            imageUrl={mineral.image_url}
+            youtubeQuery={mineral.youtube_query}
+          />
         </CardContent>
       </Card>
 
