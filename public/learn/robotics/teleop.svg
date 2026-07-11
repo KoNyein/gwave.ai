@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="tp" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Teleoperation — အဝေးက ထိန်းချုပ်</text>
+  <text x="70" y="106" text-anchor="middle" font-size="30">🎮</text>
+  <text x="70" y="132" text-anchor="middle" font-size="8.5" fill="#334155">operator</text>
+  <g stroke="#2563eb" stroke-width="1.5" fill="none"><path d="M120 88 q16 -6 0 -12"/><path d="M138 92 q26 -10 0 -20"/></g>
+  <line x1="110" y1="100" x2="290" y2="100" stroke="#94a3b8" stroke-dasharray="5 4" marker-end="url(#tp)"/>
+  <text x="200" y="90" text-anchor="middle" font-size="8.5" fill="#334155">command →</text>
+  <line x1="290" y1="116" x2="110" y2="116" stroke="#16a34a" stroke-dasharray="5 4" marker-end="url(#tp)"/>
+  <text x="200" y="132" text-anchor="middle" font-size="8.5" fill="#166534">← video/sensor</text>
+  <text x="330" y="106" text-anchor="middle" font-size="30">🤖</text>
+  <text x="330" y="132" text-anchor="middle" font-size="8.5" fill="#334155">robot (ဝေး)</text>
+  <text x="220" y="166" text-anchor="middle" font-size="9.5" fill="#64748b">အန္တရာယ်/ဝေးလံ နေရာ — လူက အဝေးက တိုက်ရိုက် မောင်း</text>
+</svg>

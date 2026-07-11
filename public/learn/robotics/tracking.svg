@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="tk" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#dc2626"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Vision Tracking — ရွေ့နေတာ လိုက်</text>
+  <rect x="60" y="52" width="320" height="96" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <circle cx="130" cy="120" r="12" fill="#fde68a" stroke="#d97706"/>
+  <rect x="116" y="106" width="28" height="28" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="3 2"/>
+  <circle cx="220" cy="95" r="12" fill="#fde68a" stroke="#d97706"/>
+  <rect x="206" y="81" width="28" height="28" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="3 2"/>
+  <circle cx="320" cy="78" r="12" fill="#fbbf24" stroke="#d97706"/>
+  <rect x="306" y="64" width="28" height="28" fill="none" stroke="#dc2626" stroke-width="2"/>
+  <path d="M130 120 Q175 100 220 95 T320 78" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#tk)"/>
+  <text x="220" y="168" text-anchor="middle" font-size="10" fill="#334155">frame တိုင်း object နေရာ ရှာ → လမ်းကြောင်း ခန့်မှန်း → လိုက်</text>
+</svg>

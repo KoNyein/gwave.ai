@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="sq" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Sequencing — အဆင့်လိုက် အမိန့်</text>
+  <g text-anchor="middle" font-size="8.5">
+    <rect x="26" y="82" width="80" height="40" rx="7" fill="#dbeafe" stroke="#2563eb"/><text x="66" y="100" font-weight="bold" fill="#1e40af">① ရှေ့သွား</text><text x="66" y="114" fill="#1e40af">2 sec</text>
+    <rect x="122" y="82" width="80" height="40" rx="7" fill="#ede9fe" stroke="#7c3aed"/><text x="162" y="100" font-weight="bold" fill="#6d28d9">② လက် ဆွဲ</text><text x="162" y="114" fill="#6d28d9">grip</text>
+    <rect x="218" y="82" width="80" height="40" rx="7" fill="#fef3c7" stroke="#d97706"/><text x="258" y="100" font-weight="bold" fill="#92400e">③ လှည့်</text><text x="258" y="114" fill="#92400e">90°</text>
+    <rect x="314" y="82" width="90" height="40" rx="7" fill="#dcfce7" stroke="#16a34a"/><text x="359" y="100" font-weight="bold" fill="#166534">④ ချ</text><text x="359" y="114" fill="#166534">release</text>
+  </g>
+  <line x1="106" y1="102" x2="120" y2="102" stroke="#64748b" stroke-width="2" marker-end="url(#sq)"/>
+  <line x1="202" y1="102" x2="216" y2="102" stroke="#64748b" stroke-width="2" marker-end="url(#sq)"/>
+  <line x1="298" y1="102" x2="312" y2="102" stroke="#64748b" stroke-width="2" marker-end="url(#sq)"/>
+  <text x="220" y="158" text-anchor="middle" font-size="10" fill="#334155">အစီအစဉ် အတိအကျ တစ်ဆင့်ပြီး တစ်ဆင့် — order အရေးကြီး</text>
+  <text x="220" y="178" text-anchor="middle" font-size="9" fill="#64748b">ဆွဲမှ လှည့်ရ · မလှည့်ခင် ဆွဲရ — ပြောင်းရင် မှား</text>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">GPS Navigation — ကွင်းပြင် လမ်းညွှန်</text>
+  <g font-size="12"><text x="90" y="58">🛰</text><text x="220" y="50">🛰</text><text x="350" y="58">🛰</text></g>
+  <g stroke="#7c3aed" stroke-width="1" stroke-dasharray="3 2"><line x1="96" y1="62" x2="220" y2="120"/><line x1="226" y1="54" x2="220" y2="120"/><line x1="356" y1="62" x2="220" y2="120"/></g>
+  <rect x="60" y="120" width="320" height="52" rx="8" fill="#f0fdf4" stroke="#16a34a"/>
+  <path d="M80 160 h280" stroke="#16a34a" stroke-width="1" stroke-dasharray="4 3"/>
+  <path d="M80 160 q70 -30 140 0 t140 0" fill="none" stroke="#2563eb" stroke-width="2"/>
+  <text x="220" y="118" text-anchor="middle" font-size="14">🚜</text>
+  <g font-size="9"><text x="90" y="140" fill="#166534">A</text><text x="350" y="140" fill="#166534">B</text></g>
+  <text x="220" y="185" text-anchor="middle" font-size="9" fill="#64748b">ဂြိုဟ်တု ၃+ လုံးက တည်နေရာ တွက် — waypoint လိုက် အလိုအလျောက်</text>
+</svg>

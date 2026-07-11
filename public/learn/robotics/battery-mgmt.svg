@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Battery Management — အားအိုး စီမံ</text>
+  <rect x="40" y="80" width="150" height="50" rx="6" fill="#f8fafc" stroke="#334155"/>
+  <rect x="190" y="94" width="10" height="22" rx="2" fill="#334155"/>
+  <rect x="48" y="88" width="40" height="34" fill="#4ade80"/>
+  <rect x="92" y="88" width="40" height="34" fill="#4ade80"/>
+  <rect x="136" y="88" width="40" height="34" fill="#fca5a5"/>
+  <text x="115" y="146" text-anchor="middle" font-size="8" fill="#334155">cell တွေ balance</text>
+  <g font-size="9" fill="#334155">
+    <text x="240" y="76">🔋 charge % တိုင်း</text>
+    <text x="240" y="98">🌡 အပူ စောင့် (မလောင်စေ)</text>
+    <text x="240" y="120">⚖ cell balance — အညီ</text>
+    <text x="240" y="142">🔻 low → ရပ်/ပြန်အားသွင်း</text>
+  </g>
+  <text x="220" y="172" text-anchor="middle" font-size="9" fill="#64748b">LiPo battery — မှားရင် မီးလောင်နိုင် · BMS က ကာကွယ်</text>
+</svg>

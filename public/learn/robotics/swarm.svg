@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Swarm — robot အများ ပူးပေါင်း</text>
+  <g font-size="16" text-anchor="middle">
+    <text x="150" y="80">🤖</text><text x="200" y="70">🤖</text><text x="250" y="82">🤖</text>
+    <text x="175" y="115">🤖</text><text x="225" y="118">🤖</text><text x="270" y="112">🤖</text>
+  </g>
+  <g stroke="#7c3aed" stroke-width="1" opacity="0.5">
+    <line x1="150" y1="75" x2="200" y2="65"/><line x1="200" y1="65" x2="250" y2="77"/>
+    <line x1="150" y1="75" x2="175" y2="108"/><line x1="200" y1="65" x2="225" y2="110"/>
+    <line x1="250" y1="77" x2="270" y2="105"/><line x1="175" y1="108" x2="225" y2="110"/>
+  </g>
+  <text x="350" y="90" text-anchor="middle" font-size="9" fill="#334155">ရိုးရှင်း rule</text>
+  <text x="350" y="106" text-anchor="middle" font-size="9" fill="#334155">တစ်ခုစီ →</text>
+  <text x="350" y="122" text-anchor="middle" font-size="9" fill="#334155">စုပေါင်း စွမ်း</text>
+  <text x="220" y="158" text-anchor="middle" font-size="10" fill="#334155">ပျားအုံလို — robot သေးသေး အများ ပေါင်း၍ ကွင်းကျယ် လုပ်</text>
+  <text x="220" y="178" text-anchor="middle" font-size="9" fill="#64748b">တစ်ခု ပျက်လည်း ကျန်တာ ဆက်လုပ် — fault tolerant</text>
+</svg>

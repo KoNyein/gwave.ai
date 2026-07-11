@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Depth Camera — အနက် (3D) မြင်</text>
+  <rect x="30" y="72" width="44" height="56" rx="6" fill="#334155"/>
+  <circle cx="45" cy="92" r="7" fill="#64748b"/><circle cx="60" cy="92" r="7" fill="#64748b"/>
+  <text x="52" y="146" text-anchor="middle" font-size="8" fill="#334155">stereo / ToF</text>
+  <g>
+    <rect x="110" y="66" width="30" height="66" fill="#dc2626" opacity="0.7"/>
+    <rect x="150" y="72" width="30" height="60" fill="#f97316" opacity="0.7"/>
+    <rect x="190" y="80" width="30" height="52" fill="#facc15" opacity="0.7"/>
+    <rect x="230" y="88" width="30" height="44" fill="#4ade80" opacity="0.7"/>
+    <rect x="270" y="96" width="30" height="36" fill="#22d3ee" opacity="0.7"/>
+    <rect x="310" y="104" width="30" height="28" fill="#2563eb" opacity="0.7"/>
+  </g>
+  <text x="125" y="150" text-anchor="middle" font-size="7.5" fill="#dc2626">နီး</text>
+  <text x="325" y="150" text-anchor="middle" font-size="7.5" fill="#2563eb">ဝေး</text>
+  <text x="375" y="100" text-anchor="middle" font-size="8.5" fill="#334155">depth map</text>
+  <text x="220" y="172" text-anchor="middle" font-size="9.5" fill="#64748b">pixel တိုင်း အကွာအဝေး သိ → အတား ရှောင် · အသီး ကိုင်</text>
+</svg>

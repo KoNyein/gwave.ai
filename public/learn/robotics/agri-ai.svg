@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="aa" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">AI က စိုက်ခင်းကို ဘယ်လို ကူညီလဲ</text>
+  <rect x="24" y="76" width="96" height="52" rx="9" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="72" y="97" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e40af">👁 မြင်/တိုင်း</text>
+  <text x="72" y="113" text-anchor="middle" font-size="8" fill="#1e40af">ပုံ · sensor</text>
+  <rect x="172" y="76" width="96" height="52" rx="9" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="220" y="97" text-anchor="middle" font-size="9" font-weight="bold" fill="#6d28d9">🧠 AI ဆုံးဖြတ်</text>
+  <text x="220" y="113" text-anchor="middle" font-size="8" fill="#6d28d9">ရောဂါ/ပေါင်း ခွဲ</text>
+  <rect x="320" y="76" width="96" height="52" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="368" y="97" text-anchor="middle" font-size="9" font-weight="bold" fill="#166534">🤖 လုပ်ဆောင်</text>
+  <text x="368" y="113" text-anchor="middle" font-size="8" fill="#166534">ရေ/ဆေး/ရိတ်</text>
+  <line x1="120" y1="102" x2="170" y2="102" stroke="#64748b" stroke-width="2" marker-end="url(#aa)"/>
+  <line x1="268" y1="102" x2="318" y2="102" stroke="#64748b" stroke-width="2" marker-end="url(#aa)"/>
+  <text x="220" y="158" text-anchor="middle" font-size="10" fill="#334155">ပိုးရောဂါ စောစီး ဖမ်း · ရေ/ဆေး ချွေ · အထွက် တိုး</text>
+  <text x="220" y="178" text-anchor="middle" font-size="9" fill="#64748b">လူ တစ်ယောက်တည်း စိုက်ခင်း ကျယ်ကျယ် စီမံနိုင်</text>
+</svg>

@@ -8,6 +8,7 @@ import {
   enrichLessons,
   type CodeExtra,
   type LessonImage,
+  type LessonVideo,
 } from "@/lib/learn/media-enrich";
 
 const IMG = "/learn/robotics";
@@ -148,6 +149,166 @@ const IMAGES: Record<string, LessonImage> = {
     src: `${IMG}/line-follower.svg`,
     alt: "Line follower project diagram",
     caption: "Project — sensor ဖတ် → ဆုံးဖြတ် → motor မောင်း စက်ဝန်းအပြည့်",
+  },
+  "program-a-robot": {
+    src: `${IMG}/sense-think-act.svg`,
+    alt: "Programming the sense-think-act loop",
+    caption: "အာရုံခံ → ဆုံးဖြတ် → လှုပ်ရှား — code ရေးတဲ့ ပုံစံ",
+  },
+  "how-ai-helps-farms": {
+    src: `${IMG}/agri-ai.svg`,
+    alt: "AI helping a farm: sense, decide, act",
+    caption: "မြင်/တိုင်း → AI ဆုံးဖြတ် → လုပ်ဆောင် — အထွက်တိုး",
+  },
+  "robot-history": {
+    src: `${IMG}/robot-history.svg`,
+    alt: "Timeline of robot milestones",
+    caption: "၁၉၂၀ 'robot' ကနေ ယနေ့ AI robot အထိ",
+  },
+  "robot-types": {
+    src: `${IMG}/robot-types.svg`,
+    alt: "Arm, mobile, aerial and humanoid robots",
+    caption: "arm · mobile · aerial · humanoid — လုပ်ငန်းအလိုက်",
+  },
+  "robot-actuators": {
+    src: `${IMG}/actuators.svg`,
+    alt: "DC motor, servo and linear actuator",
+    caption: "Actuator = robot ရဲ့ ကြွက်သား — motor/servo/linear",
+  },
+  "robot-sensors": {
+    src: `${IMG}/ultrasonic.svg`,
+    alt: "An ultrasonic distance sensor",
+    caption: "Sensor = robot ရဲ့ အာရုံ — အကွာအဝေး/အလင်း/အနား",
+  },
+  "robot-power": {
+    src: `${IMG}/robot-power.svg`,
+    alt: "Battery, regulator, logic and motor rails",
+    caption: "Battery → regulator → logic(5V) + motor(12V) ခွဲ",
+  },
+  "locomotion-legs": {
+    src: `${IMG}/locomotion.svg`,
+    alt: "Wheels vs tracks vs legs",
+    caption: "ဘီး = မြန် · track = ရွှံ့ · ခြေ = အတား ကျော်",
+  },
+  "grippers-end-effectors": {
+    src: `${IMG}/two-link-arm.svg`,
+    alt: "Robot arm end effector",
+    caption: "လက်ဖျား (gripper) — ကိုင်/ဆွဲ/ကိရိယာ တပ်",
+  },
+  "control-loops": {
+    src: `${IMG}/pid-loop.svg`,
+    alt: "PID control loop",
+    caption: "ပစ်မှတ်နဲ့ အမှား တိုင်း → ပြင် — PID feedback loop",
+  },
+  "sequencing-robots": {
+    src: `${IMG}/sequencing.svg`,
+    alt: "A robot task broken into ordered steps",
+    caption: "အဆင့်လိုက် အမိန့် — order မှားရင် အလုပ် မဖြစ်",
+  },
+  "loops-robots": {
+    src: `${IMG}/robot-loop.svg`,
+    alt: "A robot repeating actions in a loop",
+    caption: "forever loop — line-follower အမြဲ ထပ်လုပ်",
+  },
+  "conditionals-robots": {
+    src: `${IMG}/robot-conditional.svg`,
+    alt: "A robot branching on a sensor reading",
+    caption: "အနား နီးရင် ရှောင် · မဟုတ်ရင် ဆက် — sensor if/else",
+  },
+  "robot-navigation": {
+    src: `${IMG}/astar-grid.svg`,
+    alt: "Grid path planning with A*",
+    caption: "မြေပုံပေါ် အကောင်းဆုံး လမ်း ရှာ — A* path planning",
+  },
+  "computer-vision-robots": {
+    src: `${IMG}/cv-robot.svg`,
+    alt: "A robot detecting objects in a camera frame",
+    caption: "camera → CNN → object ရှာ → robot လက် ဆွဲ",
+  },
+  "robot-learning": {
+    src: `${IMG}/robot-learning.svg`,
+    alt: "A robot improving through reward and penalty",
+    caption: "စမ်း → ဆု/ဒဏ် → တော်လာ — reinforcement learning",
+  },
+  "agri-robots-drones": {
+    src: `${IMG}/quadcopter.svg`,
+    alt: "An agricultural drone quadcopter",
+    caption: "drone — ဓာတ်ပုံ · ဆေးဖျန်း · ကွင်း စောင့်ကြည့်",
+  },
+  "robot-safety-ethics": {
+    src: `${IMG}/robot-safety.svg`,
+    alt: "Robot safety: e-stop, guards, ethics",
+    caption: "E-stop · guard · privacy — ဒီဇိုင်းကတည်းက ဘေးကင်း",
+  },
+  "robo-vision-tracking": {
+    src: `${IMG}/tracking.svg`,
+    alt: "Tracking a moving object across frames",
+    caption: "frame တိုင်း နေရာ ရှာ → လမ်းကြောင်း ခန့် → လိုက်",
+  },
+  "robo-depth-camera": {
+    src: `${IMG}/depth-camera.svg`,
+    alt: "A depth camera producing a depth map",
+    caption: "pixel တိုင်း အကွာအဝေး (3D) → အတား ရှောင်/ကိုင်",
+  },
+  "robo-ros": {
+    src: `${IMG}/ros.svg`,
+    alt: "ROS nodes talking over topics",
+    caption: "node သီးသန့် — topic (publish/subscribe) နဲ့ ချိတ်",
+  },
+  "robo-simulation": {
+    src: `${IMG}/simulation.svg`,
+    alt: "Testing a robot in simulation before reality",
+    caption: "ကွန်ပျူတာထဲ အရင်စမ်း — ပျက်စီးမှု မရှိဘဲ ထောင်ကြိမ်",
+  },
+  "robo-swarm": {
+    src: `${IMG}/swarm.svg`,
+    alt: "Many simple robots cooperating as a swarm",
+    caption: "robot သေးသေး အများ — ရိုးရှင်း rule နဲ့ စုပေါင်း စွမ်း",
+  },
+  "robo-gps-navigation": {
+    src: `${IMG}/gps-nav.svg`,
+    alt: "GPS waypoint navigation across a field",
+    caption: "ဂြိုဟ်တု နဲ့ တည်နေရာ → waypoint လိုက် အလိုအလျောက်",
+  },
+  "robo-teleoperation": {
+    src: `${IMG}/teleop.svg`,
+    alt: "Remotely operating a robot with video feedback",
+    caption: "command ↔ video — အဝေးက တိုက်ရိုက် မောင်း",
+  },
+  "robo-force-control": {
+    src: `${IMG}/force-control.svg`,
+    alt: "Force control for gentle gripping",
+    caption: "ဖိအား တိုင်း → grip ချိန် — အသီး မထိခိုက်ဘဲ ကိုင်",
+  },
+  "robo-battery-management": {
+    src: `${IMG}/battery-mgmt.svg`,
+    alt: "Battery management: charge, temperature, balance",
+    caption: "charge% · အပူ · cell balance — LiPo ဘေးကင်း",
+  },
+  "robo-agri-weeding": {
+    src: `${IMG}/weeding.svg`,
+    alt: "A weeding robot targeting only weeds",
+    caption: "သီးနှံ မထိဘဲ ပေါင်းပင်ကိုသာ ဖယ် — ဆေး ၉၀% လျှော့",
+  },
+  "robo-agri-harvest": {
+    src: `${IMG}/harvest.svg`,
+    alt: "A harvesting robot picking ripe fruit",
+    caption: "ရှာ → depth → force ကိုင် → ခူး — CV+depth+force",
+  },
+  "robo-safety-standards": {
+    src: `${IMG}/robot-safety.svg`,
+    alt: "Robot safety standards and e-stop",
+    caption: "စံ safety — E-stop · guard · risk assessment",
+  },
+  "robo-fabrication": {
+    src: `${IMG}/fabrication.svg`,
+    alt: "Fabricating a robot: 3D print, laser cut, assemble",
+    caption: "3D print · laser cut · တပ်ဆင် — ကိုယ်ပိုင် robot",
+  },
+  "robo-open-source": {
+    src: `${IMG}/open-source.svg`,
+    alt: "Open-source robotics sharing code and designs",
+    caption: "code/CAD အခမဲ့ မျှ — Arduino/ROS/FarmBot",
   },
 };
 
@@ -405,7 +566,12 @@ const CODE: Record<string, CodeExtra> = {
   },
 };
 
-/** Merge diagrams and code sections into the robotics lessons. */
+/** Teaching videos for lessons that don't pin their own. */
+const VIDEOS: Record<string, LessonVideo> = {
+  "program-a-robot": { youtubeQuery: "how to program a robot for beginners" },
+};
+
+/** Merge diagrams, code sections and teaching videos into the robotics lessons. */
 export function enrichRoboticsLessons(lessons: Lesson[]): Lesson[] {
-  return enrichLessons(lessons, IMAGES, CODE);
+  return enrichLessons(lessons, IMAGES, CODE, VIDEOS);
 }

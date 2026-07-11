@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="rlp" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Loops — robot ကို ထပ်ခိုင်း</text>
+  <rect x="60" y="56" width="150" height="22" rx="5" fill="#FFAB19" stroke="#CF8B17"/>
+  <text x="72" y="72" font-size="10" font-weight="bold" fill="#fff">🔁 forever</text>
+  <rect x="76" y="86" width="130" height="22" rx="4" fill="#2563eb"/>
+  <text x="88" y="102" font-size="9" font-weight="bold" fill="#fff">ခြေလှမ်း ရှေ့</text>
+  <rect x="76" y="112" width="130" height="22" rx="4" fill="#7c3aed"/>
+  <text x="88" y="128" font-size="9" font-weight="bold" fill="#fff">အနားထိ? → လှည့်</text>
+  <path d="M280 92 a44 44 0 1 1 0 0.1" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#rlp)"/>
+  <text x="324" y="70" font-size="9" fill="#334155">လမ်းလိုက်</text>
+  <text x="324" y="118" font-size="9" fill="#334155">ထပ်ခါထပ်ခါ</text>
+  <text x="220" y="162" text-anchor="middle" font-size="10" fill="#334155">"အမြဲ [မောင်း၊ အနားရှောင်]" — line-follower loop</text>
+  <text x="220" y="180" text-anchor="middle" font-size="9" fill="#64748b">code တစ်ကြိမ်ရေး → robot က ရပ်တဲ့အထိ ထပ်လုပ်</text>
+</svg>

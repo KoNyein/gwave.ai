@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Robot ရဲ့ သမိုင်း</text>
+  <line x1="40" y1="104" x2="404" y2="104" stroke="#94a3b8" stroke-width="2"/>
+  <circle cx="70" cy="104" r="6" fill="#2563eb"/><text x="70" y="86" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#1e40af">1920</text><text x="70" y="128" text-anchor="middle" font-size="8" fill="#334155">"robot" ဝေါဟာရ</text>
+  <circle cx="160" cy="104" r="6" fill="#7c3aed"/><text x="160" y="86" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#6d28d9">1961</text><text x="160" y="128" text-anchor="middle" font-size="8" fill="#334155">စက်ရုံ arm</text>
+  <circle cx="250" cy="104" r="6" fill="#d97706"/><text x="250" y="86" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#92400e">1997</text><text x="250" y="128" text-anchor="middle" font-size="8" fill="#334155">Mars rover</text>
+  <circle cx="330" cy="104" r="6" fill="#16a34a"/><text x="330" y="86" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#166534">2010s</text><text x="330" y="128" text-anchor="middle" font-size="8" fill="#334155">drone · self-drive</text>
+  <circle cx="392" cy="104" r="6" fill="#db2777"/><text x="392" y="86" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#9d174d">ယနေ့</text><text x="392" y="128" text-anchor="middle" font-size="8" fill="#334155">AI robot</text>
+  <text x="220" y="166" text-anchor="middle" font-size="9.5" fill="#64748b">စက်ရုံကနေ လယ်ကွင်း/အာကာသ အထိ — တဖြည်းဖြည်း စွမ်းရည်တိုး</text>
+</svg>
