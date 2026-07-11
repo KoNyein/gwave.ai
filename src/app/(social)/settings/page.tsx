@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { MonetizationToggle } from "@/components/settings/monetization-toggle";
 import { ProfileEditor } from "@/components/settings/profile-editor";
+import { PushManager } from "@/components/pwa/push-manager";
 import { PrivacySettings } from "@/components/social/privacy-settings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
@@ -41,6 +42,15 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <ProfileEditor profile={profile} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">🔔 Notifications</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PushManager />
         </CardContent>
       </Card>
 

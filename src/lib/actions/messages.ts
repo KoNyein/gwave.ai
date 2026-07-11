@@ -81,7 +81,57 @@ export async function sendMessage(
   if (error || !message) {
     return { ok: false, error: error?.message ?? "Failed to send." };
   }
+
+  // Push the other participants (best-effort, non-blocking on failure).
+  void notifyConversation(
+    parsed.data.conversationId,
+    user.id,
+    parsed.data.content.trim() || (parsed.data.imagePath ? "📷 ဓာတ်ပုံ" : "📎 ဖိုင်"),
+  );
+
   return { ok: true, data: { messageId: message.id } };
+}
+
+/** Web-push the peers of a conversation about a new message. */
+async function notifyConversation(
+  conversationId: string,
+  senderId: string,
+  preview: string,
+): Promise<void> {
+  try {
+    const { sendPushToUser } = await import("@/lib/push");
+    const supabase = await createClient();
+    const [{ data: parts }, { data: sender }] = await Promise.all([
+      supabase
+        .from("conversation_participants")
+        .select("user_id")
+        .eq("conversation_id", conversationId),
+      supabase
+        .from("profiles")
+        .select("full_name, username")
+        .eq("id", senderId)
+        .maybeSingle(),
+    ]);
+    const name =
+      (sender?.full_name as string | null) ||
+      (sender?.username as string | null) ||
+      "Someone";
+    const recipients = (parts ?? [])
+      .map((p) => p.user_id as string)
+      .filter((id) => id !== senderId);
+    await Promise.all(
+      recipients.map((id) =>
+        sendPushToUser(id, {
+          title: name,
+          body: preview.slice(0, 120),
+          url: "/messages",
+          tag: `msg:${conversationId}`,
+        }),
+      ),
+    );
+  } catch {
+    /* push is best-effort */
+  }
 }
 
 /** Marks a conversation as read up to now (read receipt). */
