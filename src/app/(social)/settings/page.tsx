@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
+import { MonetizationToggle } from "@/components/settings/monetization-toggle";
 import { ProfileEditor } from "@/components/settings/profile-editor";
 import { PrivacySettings } from "@/components/social/privacy-settings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +41,15 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <ProfileEditor profile={profile} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">💰 Monetization</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MonetizationToggle enabled={profile.monetization_enabled} />
         </CardContent>
       </Card>
 
