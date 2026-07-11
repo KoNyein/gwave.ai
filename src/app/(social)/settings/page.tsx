@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
+import { ProfileEditor } from "@/components/settings/profile-editor";
 import { PrivacySettings } from "@/components/social/privacy-settings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
@@ -32,6 +33,15 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">{t("title")}</h1>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">👤 Profile</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ProfileEditor profile={profile} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
