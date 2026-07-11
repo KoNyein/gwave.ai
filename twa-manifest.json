@@ -1,0 +1,29 @@
+{
+  "$comment": "Bubblewrap template for the gwave.ai Play Store (TWA) build. Replace host with your production domain, then run: npx @bubblewrap/cli init --manifest=https://YOUR_DOMAIN/manifest.webmanifest (it will merge these values) or bubblewrap build in a directory containing this file. See docs/PLAY_STORE.md.",
+  "packageId": "ai.gwave.app",
+  "host": "app.gwave.ai",
+  "name": "gwave.ai",
+  "launcherName": "gwave",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#3B6D11",
+  "backgroundColor": "#EAF3DE",
+  "navigationColor": "#3B6D11",
+  "startUrl": "/feed",
+  "iconUrl": "https://app.gwave.ai/icon-512.png",
+  "maskableIconUrl": "https://app.gwave.ai/icon-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "enableNotifications": true,
+  "isChromeOSOnly": false,
+  "shortcuts": [
+    { "name": "Feed", "short_name": "Feed", "url": "/feed" },
+    { "name": "Messenger", "short_name": "Chat", "url": "/messages" },
+    { "name": "Learn", "short_name": "Learn", "url": "/learn" },
+    { "name": "Shop", "short_name": "Shop", "url": "/shop" }
+  ],
+  "fallbackType": "customtabs",
+  "enableSiteSettingsShortcut": true,
+  "minSdkVersion": 21,
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1
+}
