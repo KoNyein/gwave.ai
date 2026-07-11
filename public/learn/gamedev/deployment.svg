@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="dp" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Deployment — ဂိမ်းကို ကမ္ဘာသိအောင် တင်</text>
+  <rect x="28" y="76" width="96" height="52" rx="9" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="76" y="98" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e40af">📁 ဂိမ်းဖိုင်</text>
+  <text x="76" y="114" text-anchor="middle" font-size="8" fill="#1e40af">index.html + js</text>
+  <line x1="124" y1="102" x2="160" y2="102" stroke="#64748b" stroke-width="2" marker-end="url(#dp)"/>
+  <rect x="164" y="76" width="112" height="52" rx="9" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="220" y="98" text-anchor="middle" font-size="9" font-weight="bold" fill="#6d28d9">GitHub repo</text>
+  <text x="220" y="114" text-anchor="middle" font-size="8" fill="#6d28d9">git push</text>
+  <line x1="276" y1="102" x2="312" y2="102" stroke="#64748b" stroke-width="2" marker-end="url(#dp)"/>
+  <rect x="316" y="60" width="100" height="36" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="366" y="83" text-anchor="middle" font-size="8.5" fill="#166534">GitHub Pages</text>
+  <rect x="316" y="104" width="100" height="36" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="366" y="127" text-anchor="middle" font-size="8.5" fill="#166534">Vercel</text>
+  <text x="220" y="164" text-anchor="middle" font-size="10" fill="#334155">🔗 URL ရ → သူငယ်ချင်းတိုင်း ဖုန်း/PC ကနေ ကစားနိုင်</text>
+  <text x="220" y="184" text-anchor="middle" font-size="8.5" fill="#64748b">static site — server မလို · အခမဲ့ · push တိုင်း auto-deploy</text>
+</svg>

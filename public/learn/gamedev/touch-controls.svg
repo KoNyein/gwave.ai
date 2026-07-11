@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Touch Controls — ဖုန်းအတွက် ဂိမ်း</text>
+  <rect x="60" y="46" width="320" height="120" rx="12" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+  <circle cx="120" cy="126" r="26" fill="#1e293b" stroke="#475569"/>
+  <circle cx="128" cy="118" r="12" fill="#38bdf8" opacity="0.9"/>
+  <text x="120" y="166" text-anchor="middle" font-size="7.5" fill="#94a3b8">virtual joystick</text>
+  <circle cx="330" cy="112" r="17" fill="#dc2626" opacity="0.85"/>
+  <text x="330" y="117" text-anchor="middle" font-size="9" font-weight="bold" fill="#fff">A</text>
+  <circle cx="368" cy="138" r="15" fill="#16a34a" opacity="0.85"/>
+  <text x="368" y="143" text-anchor="middle" font-size="9" font-weight="bold" fill="#fff">B</text>
+  <text x="240" y="90" text-anchor="middle" font-size="14">🧍</text>
+  <text x="220" y="184" text-anchor="middle" font-size="9" fill="#64748b">touchstart / touchmove / touchend — e.touches[i] နဲ့ လက်ချောင်း အများ</text>
+</svg>
