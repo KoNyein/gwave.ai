@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { LanguageTrainer } from "@/components/learn/language-trainer";
 import { getCurrentProfile } from "@/lib/auth";
+import { getTypingSummary } from "@/lib/db/typing";
 import { getLangUi, getLangUnit } from "@/lib/learn/languages";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,8 @@ export default async function LanguageUnitPage({
   const found = getLangUnit(params.lang, params.unit);
   if (!found) notFound();
   const { course, unit } = found;
+
+  const typing = await getTypingSummary(profile.id, course.slug);
 
   return (
     <div className="space-y-4">
@@ -54,6 +57,8 @@ export default async function LanguageUnitPage({
         items={unit.items}
         lang={course.bcp47}
         ui={getLangUi(course.slug)}
+        langSlug={course.slug}
+        initialBestWpm={typing.bestWpm}
       />
     </div>
   );
