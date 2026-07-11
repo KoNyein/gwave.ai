@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, Languages } from "lucide-react";
+import { ArrowLeft, Keyboard, Languages } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,6 +31,20 @@ export default async function LanguagesHubPage() {
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
       </div>
+
+      <Link href="/learn/languages/typing" className="block">
+        <Card className="border-primary/30 bg-primary/5 transition-colors hover:bg-primary/10">
+          <CardContent className="flex items-center gap-3 p-4">
+            <Keyboard className="h-8 w-8 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <p className="font-semibold">Typing Tutor ⌨️</p>
+              <p className="text-xs text-muted-foreground">
+                စက်လုံးရိုက် လေ့ကျင့်ခန်း — ထိုင်နည်း၊ လက်ချောင်းမြေပုံ၊ WPM နဲ့ combo စိန်ခေါ်မှု။
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
 
       <div className="grid gap-3 sm:grid-cols-3">
         {LANG_COURSES.map((course) => {
