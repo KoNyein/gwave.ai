@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Schematic — circuit ရဲ့ မြေပုံ</text>
+  <rect x="60" y="52" width="320" height="96" fill="none" stroke="#334155" stroke-width="2"/>
+  <line x1="60" y1="100" x2="90" y2="100" stroke="#334155" stroke-width="2"/>
+  <line x1="90" y1="88" x2="90" y2="112" stroke="#334155" stroke-width="3"/>
+  <line x1="98" y1="94" x2="98" y2="106" stroke="#334155" stroke-width="1.5"/>
+  <text x="94" y="128" text-anchor="middle" font-size="7.5" fill="#334155">battery</text>
+  <line x1="98" y1="100" x2="180" y2="100" stroke="#334155" stroke-width="2"/>
+  <path d="M180 100 l6 -8 l8 16 l8 -16 l8 16 l6 -8 h6" fill="none" stroke="#334155" stroke-width="2"/>
+  <text x="205" y="82" text-anchor="middle" font-size="7.5" fill="#334155">resistor</text>
+  <line x1="222" y1="100" x2="300" y2="100" stroke="#334155" stroke-width="2"/>
+  <circle cx="315" cy="100" r="12" fill="none" stroke="#334155" stroke-width="2"/>
+  <line x1="309" y1="94" x2="321" y2="106" stroke="#334155" stroke-width="1.5"/><line x1="321" y1="94" x2="309" y2="106" stroke="#334155" stroke-width="1.5"/>
+  <text x="315" y="128" text-anchor="middle" font-size="7.5" fill="#334155">LED</text>
+  <line x1="327" y1="100" x2="380" y2="100" stroke="#334155" stroke-width="2"/>
+  <text x="220" y="172" text-anchor="middle" font-size="10" fill="#334155">သင်္ကေတ တစ်ခုစီ = component တစ်ခု — ကြိုးချင်း ဘယ်လိုဆက်</text>
+  <text x="220" y="190" text-anchor="middle" font-size="9" fill="#64748b">ဓာတ်ပုံ မဟုတ်ဘဲ စံ symbol — ဘယ်သူဆွဲဆွဲ ဖတ်လို့ရ</text>
+</svg>

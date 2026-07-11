@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Digital vs Analog Signal</text>
+  <text x="118" y="54" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#2563eb">Analog — ချောမွေ့</text>
+  <rect x="30" y="62" width="176" height="70" fill="#f8fafc" stroke="#cbd5e1"/>
+  <path d="M38 110 q22 -44 44 0 q22 44 44 0 q22 -44 44 0 q10 20 18 24" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+  <text x="118" y="150" text-anchor="middle" font-size="8.5" fill="#334155">တန်ဖိုး အဆက်မပြတ် (အပူ၊ အသံ)</text>
+  <text x="322" y="54" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#16a34a">Digital — 0/1</text>
+  <rect x="234" y="62" width="176" height="70" fill="#f8fafc" stroke="#cbd5e1"/>
+  <path d="M242 120 v-40 h30 v40 h30 v-40 h30 v40 h30 v-40 h24" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+  <text x="322" y="150" text-anchor="middle" font-size="8.5" fill="#334155">မြင့်/နိမ့် နှစ်ဆင့်တည်း (ON/OFF)</text>
+  <text x="220" y="176" text-anchor="middle" font-size="9.5" fill="#64748b">ကွန်ပျူတာက digital — analog ကို ADC နဲ့ ပြောင်းဖတ်</text>
+</svg>

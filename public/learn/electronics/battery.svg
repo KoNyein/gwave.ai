@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Battery — တွန်းအား (Voltage) ရဲ့ အရင်း</text>
+  <rect x="120" y="66" width="150" height="66" rx="8" fill="#fef3c7" stroke="#d97706"/>
+  <rect x="270" y="86" width="12" height="26" rx="2" fill="#d97706"/>
+  <text x="150" y="94" font-size="11" font-weight="bold" fill="#92400e">🔋 1.5V</text>
+  <text x="140" y="118" font-size="20" font-weight="bold" fill="#dc2626">−</text>
+  <text x="250" y="118" font-size="20" font-weight="bold" fill="#2563eb">+</text>
+  <text x="192" y="118" text-anchor="middle" font-size="9" fill="#92400e">ဓာတု → လျှပ်စစ်</text>
+  <path d="M300 99 q20 -14 40 0" fill="none" stroke="#16a34a" stroke-width="2" marker-end="url(#b1)"/>
+  <defs><marker id="b1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#16a34a"/></marker></defs>
+  <text x="360" y="94" font-size="9" fill="#166534">တွန်းအား</text>
+  <text x="220" y="158" text-anchor="middle" font-size="10" fill="#334155">Battery က current ကို တွန်းပေး — V မြင့်လေ တွန်းအား ကြီးလေ</text>
+  <text x="220" y="178" text-anchor="middle" font-size="9" fill="#64748b">ဓာတု ကုန်ရင် — တွန်းအား ကျ → "battery သေ"</text>
+</svg>

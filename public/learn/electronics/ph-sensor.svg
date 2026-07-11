@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">pH Sensor — အက်ဆစ်/အယ်ကာလိ တိုင်း</text>
+  <defs><linearGradient id="ph" x1="0" x2="1"><stop offset="0" stop-color="#dc2626"/><stop offset="0.5" stop-color="#16a34a"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs>
+  <rect x="40" y="70" width="360" height="20" rx="4" fill="url(#ph)"/>
+  <text x="46" y="106" font-size="9" fill="#dc2626">0 အက်ဆစ်</text>
+  <text x="212" y="106" text-anchor="middle" font-size="9" fill="#166534">7 ကြားနေ</text>
+  <text x="394" y="106" text-anchor="end" font-size="9" fill="#7c3aed">14 အယ်ကာလိ</text>
+  <line x1="180" y1="66" x2="180" y2="94" stroke="#0f172a" stroke-width="2"/>
+  <text x="180" y="60" text-anchor="middle" font-size="9" font-weight="bold" fill="#0f172a">5.8</text>
+  <rect x="150" y="128" width="140" height="34" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="220" y="150" text-anchor="middle" font-size="9" fill="#1e40af">probe → board → pH ဖတ်</text>
+  <text x="90" y="150" text-anchor="middle" font-size="9" fill="#334155">အပင်များ pH 5.5–6.5</text>
+  <text x="360" y="150" text-anchor="middle" font-size="8.5" fill="#64748b">လွဲရင် အာဟာရ မစုပ်</text>
+</svg>

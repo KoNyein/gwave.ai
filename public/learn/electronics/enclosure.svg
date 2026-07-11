@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Weatherproof Enclosure — အခွံ ကာကွယ်</text>
+  <rect x="150" y="60" width="140" height="90" rx="10" fill="#e2e8f0" stroke="#334155" stroke-width="3"/>
+  <rect x="166" y="78" width="108" height="54" rx="4" fill="#f0fdf4" stroke="#16a34a"/>
+  <rect x="180" y="90" width="40" height="30" rx="3" fill="#1f2937"/>
+  <text x="200" y="109" text-anchor="middle" font-size="8" fill="#fff">board</text>
+  <rect x="232" y="92" width="30" height="26" rx="3" fill="#374151"/>
+  <text x="220" y="146" text-anchor="middle" font-size="8" fill="#334155">gland (ကြိုးဝင်ပေါက် အိပ်စက်)</text>
+  <text x="60" y="70" font-size="18">🌧</text>
+  <text x="60" y="100" font-size="18">☀</text>
+  <text x="60" y="130" font-size="16">🐜</text>
+  <g font-size="9" fill="#334155">
+    <text x="316" y="80">IP65+ —</text>
+    <text x="316" y="98">💧 မိုးဒဏ်ခံ</text>
+    <text x="316" y="116">☀ UV ခံ</text>
+    <text x="316" y="134">🐜 ဖုန်/ပိုး ကာ</text>
+  </g>
+  <text x="220" y="176" text-anchor="middle" font-size="9.5" fill="#64748b">field device တွေ ကြာရှည် ခံနိုင်ဖို့ — အခွံ အရေးကြီး</text>
+</svg>

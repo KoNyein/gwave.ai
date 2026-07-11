@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="w1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Wi-Fi &amp; Networks — internet ဆက်</text>
+  <rect x="30" y="82" width="80" height="44" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="70" y="102" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e40af">ESP32</text>
+  <text x="70" y="117" text-anchor="middle" font-size="8" fill="#1e40af">device</text>
+  <g stroke="#7c3aed" stroke-width="2" fill="none"><path d="M124 104 q10 -12 20 0"/><path d="M120 110 q14 -18 28 0"/></g>
+  <rect x="170" y="82" width="90" height="44" rx="8" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="215" y="102" text-anchor="middle" font-size="9" font-weight="bold" fill="#6d28d9">Router</text>
+  <text x="215" y="117" text-anchor="middle" font-size="8" fill="#6d28d9">📶 SSID+password</text>
+  <line x1="260" y1="104" x2="300" y2="104" stroke="#64748b" stroke-width="2" marker-end="url(#w1)"/>
+  <circle cx="345" cy="104" r="26" fill="#e0f2fe" stroke="#0284c7"/>
+  <text x="345" y="100" text-anchor="middle" font-size="9" font-weight="bold" fill="#075985">☁</text>
+  <text x="345" y="114" text-anchor="middle" font-size="8" fill="#075985">Internet</text>
+  <text x="220" y="158" text-anchor="middle" font-size="10" fill="#334155">Device → router (SSID+password) → internet → cloud</text>
+  <text x="220" y="178" text-anchor="middle" font-size="9" fill="#64748b">IP address = ကွန်ရက်ထဲ device ရဲ့ လိပ်စာ</text>
+</svg>

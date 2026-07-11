@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Circuit — ပတ်လမ်း ပိတ်မှ လျှပ်စစ် စီး</text>
+  <rect x="90" y="60" width="260" height="90" fill="none" stroke="#334155" stroke-width="2.5"/>
+  <rect x="70" y="92" width="40" height="26" fill="#fde68a" stroke="#d97706"/>
+  <text x="90" y="109" text-anchor="middle" font-size="9" font-weight="bold" fill="#92400e">🔋</text>
+  <text x="90" y="135" text-anchor="middle" font-size="8" fill="#334155">Battery</text>
+  <g><line x1="210" y1="52" x2="230" y2="52" stroke="#334155" stroke-width="2.5"/><circle cx="220" cy="60" r="9" fill="#fff" stroke="#334155" stroke-width="2"/><line x1="220" y1="60" x2="236" y2="46" stroke="#334155" stroke-width="2"/></g>
+  <text x="220" y="44" text-anchor="middle" font-size="8" fill="#334155">Switch</text>
+  <circle cx="330" cy="105" r="12" fill="#fca5a5" stroke="#dc2626" stroke-width="2"/>
+  <text x="330" y="109" text-anchor="middle" font-size="10">💡</text>
+  <text x="358" y="109" font-size="8" fill="#334155">LED</text>
+  <text x="220" y="176" text-anchor="middle" font-size="10" fill="#334155">Battery → wire → switch → LED → ပြန်ဆုံ — loop ပြည့်မှ မီးလင်း</text>
+  <text x="220" y="192" text-anchor="middle" font-size="9" fill="#64748b">switch ဖွင့် (ဖြတ်) ရင် — current မစီး၊ မီးမလင်း</text>
+</svg>

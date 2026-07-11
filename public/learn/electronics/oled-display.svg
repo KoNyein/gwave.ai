@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">OLED / LCD — ကိန်းဂဏန်း ပြသ</text>
+  <rect x="150" y="56" width="140" height="90" rx="8" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+  <text x="220" y="86" text-anchor="middle" font-size="13" font-family="monospace" fill="#4ade80">Temp 28.5C</text>
+  <text x="220" y="108" text-anchor="middle" font-size="13" font-family="monospace" fill="#4ade80">Humid 65%</text>
+  <text x="220" y="130" text-anchor="middle" font-size="13" font-family="monospace" fill="#38bdf8">EC 1.8</text>
+  <g font-size="9" fill="#334155">
+    <text x="40" y="80">🔌 I2C — wire ၂ ချောင်း</text>
+    <text x="40" y="104">🔋 power သက်သာ (OLED)</text>
+    <text x="316" y="90">📟 screen မလို —</text>
+    <text x="316" y="106">device ပေါ်တင် ဖတ်</text>
+  </g>
+  <text x="220" y="170" text-anchor="middle" font-size="9.5" fill="#64748b">internet မလိုဘဲ တန်ဖိုးတွေ တိုက်ရိုက် မြင်ရ</text>
+</svg>

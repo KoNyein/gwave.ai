@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="ha" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Home Assistant / Node-RED — စုစည်း စီမံ</text>
+  <g font-size="8" text-anchor="middle" fill="#166534">
+    <rect x="24" y="60" width="70" height="24" rx="5" fill="#dcfce7" stroke="#16a34a"/><text x="59" y="76">🌡 temp</text>
+    <rect x="24" y="92" width="70" height="24" rx="5" fill="#dcfce7" stroke="#16a34a"/><text x="59" y="108">💧 moisture</text>
+    <rect x="24" y="124" width="70" height="24" rx="5" fill="#dcfce7" stroke="#16a34a"/><text x="59" y="140">🔌 relay</text>
+  </g>
+  <rect x="150" y="80" width="120" height="48" rx="9" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="210" y="100" text-anchor="middle" font-size="10" font-weight="bold" fill="#6d28d9">Hub / Flow</text>
+  <text x="210" y="116" text-anchor="middle" font-size="8" fill="#6d28d9">rule + dashboard</text>
+  <line x1="94" y1="72" x2="148" y2="92" stroke="#64748b" stroke-width="1.8" marker-end="url(#ha)"/>
+  <line x1="94" y1="104" x2="148" y2="104" stroke="#64748b" stroke-width="1.8" marker-end="url(#ha)"/>
+  <line x1="94" y1="136" x2="148" y2="116" stroke="#64748b" stroke-width="1.8" marker-end="url(#ha)"/>
+  <rect x="316" y="72" width="94" height="30" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="363" y="91" text-anchor="middle" font-size="8.5" fill="#1e40af">📱 dashboard</text>
+  <rect x="316" y="108" width="94" height="30" rx="6" fill="#fef3c7" stroke="#d97706"/>
+  <text x="363" y="127" text-anchor="middle" font-size="8.5" fill="#92400e">⚙ auto rule</text>
+  <line x1="270" y1="98" x2="314" y2="88" stroke="#64748b" stroke-width="1.8" marker-end="url(#ha)"/>
+  <line x1="270" y1="112" x2="314" y2="122" stroke="#64748b" stroke-width="1.8" marker-end="url(#ha)"/>
+  <text x="220" y="168" text-anchor="middle" font-size="9.5" fill="#64748b">device မျိုးစုံ တစ်နေရာတည်းက ကြည့် · rule ဆွဲ · ထိန်း</text>
+</svg>

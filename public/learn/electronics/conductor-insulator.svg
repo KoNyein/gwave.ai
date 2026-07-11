@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Conductor vs Insulator</text>
+  <text x="118" y="54" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#16a34a">Conductor — စီးတယ်</text>
+  <rect x="34" y="64" width="168" height="60" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+  <g fill="#166534"><circle cx="70" cy="94" r="5"/><circle cx="100" cy="94" r="5"/><circle cx="130" cy="94" r="5"/><circle cx="160" cy="94" r="5"/></g>
+  <text x="185" y="98" font-size="13" fill="#16a34a">→</text>
+  <text x="118" y="116" text-anchor="middle" font-size="8.5" fill="#166534">ကြေး · သံ · ရေ (ဆားပါ)</text>
+  <text x="322" y="54" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#dc2626">Insulator — မစီး</text>
+  <rect x="238" y="64" width="168" height="60" rx="9" fill="#fee2e2" stroke="#dc2626"/>
+  <g fill="#991b1b" opacity="0.5"><circle cx="274" cy="94" r="5"/></g>
+  <line x1="300" y1="80" x2="360" y2="108" stroke="#dc2626" stroke-width="3"/>
+  <line x1="360" y1="80" x2="300" y2="108" stroke="#dc2626" stroke-width="3"/>
+  <text x="322" y="116" text-anchor="middle" font-size="8.5" fill="#991b1b">ရော်ဘာ · ပလတ်စတစ် · ဖန်</text>
+  <text x="220" y="152" text-anchor="middle" font-size="10" fill="#334155">အီလက်ထရွန် လွတ်လွတ်လပ်လပ် ရွှေ့နိုင်မှ conductor</text>
+  <text x="220" y="172" text-anchor="middle" font-size="9" fill="#64748b">ဒါကြောင့် wire ကို plastic နဲ့ အုပ် — လက်ကို ကာကွယ်</text>
+</svg>

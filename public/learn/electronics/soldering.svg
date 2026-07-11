@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Soldering &amp; Troubleshooting</text>
+  <rect x="60" y="90" width="130" height="16" rx="3" fill="#166534" opacity="0.3"/>
+  <circle cx="100" cy="98" r="6" fill="#cbd5e1" stroke="#64748b"/>
+  <circle cx="150" cy="98" r="7" fill="#fbbf24" stroke="#d97706"/>
+  <line x1="150" y1="60" x2="150" y2="92" stroke="#94a3b8" stroke-width="3"/>
+  <path d="M195 70 l40 18 l-8 6 l6 6 l-40 -18 z" fill="#dc2626"/>
+  <text x="150" y="128" text-anchor="middle" font-size="8" fill="#334155">solder joint (တောက်ပ = ကောင်း)</text>
+  <g font-size="9">
+    <rect x="250" y="60" width="160" height="24" rx="5" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="262" y="76" fill="#166534">✓ ချောမွေ့ တောက်ပ joint</text>
+    <rect x="250" y="90" width="160" height="24" rx="5" fill="#fee2e2" stroke="#dc2626"/>
+    <text x="262" y="106" fill="#991b1b">✗ မှုန် · ဆူး = cold joint</text>
+  </g>
+  <text x="220" y="150" text-anchor="middle" font-size="10" fill="#334155">မလုပ်ဖြစ်ရင် — multimeter နဲ့ continuity/voltage စစ်</text>
+  <text x="220" y="172" text-anchor="middle" font-size="9" fill="#64748b">ဆက်ကြိုး · polarity · ပါဝါ တစ်ဆင့်ချင်း စစ်ဆေး</text>
+</svg>

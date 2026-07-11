@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="ec" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">EC / TDS Sensor — အာဟာရ ပြင်းအား</text>
+  <rect x="40" y="70" width="120" height="70" rx="6" fill="#bae6fd" opacity="0.6" stroke="#0284c7"/>
+  <rect x="80" y="60" width="10" height="60" fill="#94a3b8"/>
+  <rect x="110" y="60" width="10" height="60" fill="#94a3b8"/>
+  <g fill="#0284c7"><circle cx="70" cy="110" r="3"/><circle cx="130" cy="100" r="3"/><circle cx="100" cy="125" r="3"/></g>
+  <text x="100" y="158" text-anchor="middle" font-size="8.5" fill="#075985">အာဟာရ ရည် 💧</text>
+  <line x1="160" y1="100" x2="196" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#ec)"/>
+  <rect x="200" y="80" width="90" height="40" rx="7" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="245" y="97" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e40af">EC ဖတ်</text>
+  <text x="245" y="112" text-anchor="middle" font-size="8" fill="#1e40af">ဓာတ်ဆား → conduct</text>
+  <line x1="290" y1="100" x2="326" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#ec)"/>
+  <rect x="330" y="80" width="80" height="40" rx="7" fill="#fef3c7" stroke="#d97706"/>
+  <text x="370" y="105" text-anchor="middle" font-size="11" font-weight="bold" fill="#92400e">1.8 mS</text>
+  <text x="220" y="162" text-anchor="middle" font-size="9.5" fill="#334155">ဓာတ်ဆား များလေ လျှပ်စစ် ကူးလေ → EC မြင့်</text>
+  <text x="220" y="180" text-anchor="middle" font-size="8.5" fill="#64748b">hydroponic — အာဟာရ မှန်မမှန် တိုက်ရိုက်ပြ</text>
+</svg>

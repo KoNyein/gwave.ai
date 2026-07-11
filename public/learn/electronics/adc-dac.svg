@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="ad" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">ADC / DAC — Analog ↔ Digital</text>
+  <path d="M30 100 q16 -30 32 0 q16 30 32 0" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+  <text x="62" y="128" text-anchor="middle" font-size="8.5" fill="#1e40af">analog လှိုင်း</text>
+  <rect x="112" y="82" width="60" height="36" rx="7" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="142" y="104" text-anchor="middle" font-size="10" font-weight="bold" fill="#1e40af">ADC</text>
+  <line x1="94" y1="100" x2="110" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#ad)"/>
+  <line x1="172" y1="100" x2="188" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#ad)"/>
+  <text x="220" y="96" text-anchor="middle" font-size="10" font-family="monospace" fill="#166534">0110 1011</text>
+  <text x="220" y="112" text-anchor="middle" font-size="8" fill="#334155">ဂဏန်း (digital)</text>
+  <line x1="252" y1="100" x2="268" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#ad)"/>
+  <rect x="270" y="82" width="60" height="36" rx="7" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="300" y="104" text-anchor="middle" font-size="10" font-weight="bold" fill="#166534">DAC</text>
+  <path d="M348 116 v-12 h10 v-14 h10 v20 h10 v-10 h8" fill="none" stroke="#16a34a" stroke-width="2" marker-end="url(#ad)"/>
+  <text x="220" y="160" text-anchor="middle" font-size="10" fill="#334155">ADC — sensor analog ဖတ် · DAC — digital ကနေ analog ထုတ်</text>
+  <text x="220" y="180" text-anchor="middle" font-size="9" fill="#64748b">resolution မြင့်လေ (bit များ) တိကျလေ</text>
+</svg>

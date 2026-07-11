@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="ot" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">OTA — ကြိုးမချိတ်ဘဲ firmware update</text>
+  <rect x="40" y="82" width="96" height="44" rx="7" fill="#e0f2fe" stroke="#0284c7"/>
+  <text x="88" y="100" text-anchor="middle" font-size="9" font-weight="bold" fill="#075985">☁ server</text>
+  <text x="88" y="114" text-anchor="middle" font-size="8" fill="#075985">firmware v2</text>
+  <g stroke="#7c3aed" stroke-width="1.5" fill="none"><path d="M200 96 q16 -6 0 -12"/><path d="M218 100 q26 -10 0 -20"/></g>
+  <line x1="136" y1="104" x2="300" y2="104" stroke="#94a3b8" stroke-dasharray="5 4" marker-end="url(#ot)"/>
+  <text x="230" y="128" text-anchor="middle" font-size="8.5" fill="#7c3aed">Wi-Fi</text>
+  <rect x="306" y="82" width="104" height="44" rx="7" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="358" y="100" text-anchor="middle" font-size="9" font-weight="bold" fill="#166534">device (လယ်ထဲ)</text>
+  <text x="358" y="114" text-anchor="middle" font-size="8" fill="#166534">v1 → v2 ✓</text>
+  <text x="220" y="156" text-anchor="middle" font-size="10" fill="#334155">device ဆီ ကိုယ်တိုင်မသွားဘဲ — code အသစ် အဝေးက တင်</text>
+  <text x="220" y="176" text-anchor="middle" font-size="9" fill="#64748b">device ရာချီ · ဝေးလံရာ — bug ပြင်/feature ထည့် လွယ်</text>
+</svg>

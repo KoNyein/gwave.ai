@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Switch — circuit ကို ဖွင့်/ပိတ်</text>
+  <text x="118" y="56" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#dc2626">OFF (ဖွင့်ထား = ဖြတ်)</text>
+  <line x1="40" y1="100" x2="90" y2="100" stroke="#334155" stroke-width="2.5"/>
+  <circle cx="90" cy="100" r="3" fill="#334155"/>
+  <line x1="90" y1="100" x2="132" y2="78" stroke="#334155" stroke-width="2.5"/>
+  <circle cx="150" cy="100" r="3" fill="#334155"/>
+  <line x1="150" y1="100" x2="196" y2="100" stroke="#334155" stroke-width="2.5"/>
+  <circle cx="118" cy="130" r="11" fill="#e2e8f0" stroke="#94a3b8"/><text x="118" y="134" text-anchor="middle" font-size="10">💡</text>
+  <text x="322" y="56" text-anchor="middle" font-size="10.5" font-weight="bold" fill="#16a34a">ON (ပိတ် = ဆက်)</text>
+  <line x1="244" y1="100" x2="294" y2="100" stroke="#334155" stroke-width="2.5"/>
+  <circle cx="294" cy="100" r="3" fill="#334155"/>
+  <line x1="294" y1="100" x2="354" y2="100" stroke="#16a34a" stroke-width="2.5"/>
+  <circle cx="354" cy="100" r="3" fill="#334155"/>
+  <line x1="354" y1="100" x2="400" y2="100" stroke="#334155" stroke-width="2.5"/>
+  <circle cx="322" cy="130" r="11" fill="#fde68a" stroke="#d97706"/><text x="322" y="134" text-anchor="middle" font-size="10">💡</text>
+  <text x="220" y="170" text-anchor="middle" font-size="10" fill="#334155">ဆက်ရင် current စီး → မီးလင်း · ဖြတ်ရင် ပြတ် → မီးမလင်း</text>
+</svg>

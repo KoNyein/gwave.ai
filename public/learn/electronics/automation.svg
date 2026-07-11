@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="au" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Automation — If This, Then That</text>
+  <rect x="30" y="76" width="150" height="52" rx="9" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="105" y="98" text-anchor="middle" font-size="10" font-weight="bold" fill="#1e40af">IF (အကယ်၍)</text>
+  <text x="105" y="115" text-anchor="middle" font-size="9" fill="#1e40af">စိုထိုင်း &gt; 70%</text>
+  <rect x="260" y="76" width="150" height="52" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="335" y="98" text-anchor="middle" font-size="10" font-weight="bold" fill="#166534">THEN (ဆိုရင်)</text>
+  <text x="335" y="115" text-anchor="middle" font-size="9" fill="#166534">🌀 fan ဖွင့်</text>
+  <line x1="180" y1="102" x2="258" y2="102" stroke="#64748b" stroke-width="2.5" marker-end="url(#au)"/>
+  <text x="219" y="94" text-anchor="middle" font-size="8.5" fill="#334155">rule</text>
+  <text x="220" y="156" text-anchor="middle" font-size="10" fill="#334155">Sensor ဖတ်ချက် → လူ မလိုဘဲ ကိရိယာ အလိုအလျောက် တုံ့ပြန်</text>
+  <text x="220" y="176" text-anchor="middle" font-size="9" fill="#64748b">မြေခြောက် → ရေလောင်း · အပူတက် → fan — ၂၄/၇ စောင့်</text>
+</svg>

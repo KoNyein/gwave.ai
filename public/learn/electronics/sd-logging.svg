@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="sd" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">SD Card Logging — ဒေတာ ဖိုင်ထဲ မှတ်</text>
+  <rect x="30" y="80" width="90" height="40" rx="7" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="75" y="97" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e40af">sensor</text>
+  <text x="75" y="111" text-anchor="middle" font-size="8" fill="#1e40af">တိုင်း</text>
+  <line x1="120" y1="100" x2="156" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#sd)"/>
+  <path d="M160 78 h60 l12 12 v40 h-72 z" fill="#334155" stroke="#0f172a"/>
+  <text x="196" y="104" text-anchor="middle" font-size="9" fill="#fff">SD 💾</text>
+  <line x1="244" y1="100" x2="280" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#sd)"/>
+  <rect x="284" y="74" width="126" height="52" rx="6" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="294" y="92" font-family="monospace" font-size="8" fill="#166534">time,temp,ec</text>
+  <text x="294" y="105" font-family="monospace" font-size="8" fill="#166534">08:00,28.5,1.8</text>
+  <text x="294" y="118" font-family="monospace" font-size="8" fill="#166534">09:00,29.1,1.9</text>
+  <text x="220" y="152" text-anchor="middle" font-size="10" fill="#334155">internet မရှိလည်း — data.csv ထဲ မှတ်တမ်းတင်</text>
+  <text x="220" y="172" text-anchor="middle" font-size="9" fill="#64748b">နောက်မှ ကွန်ပျူတာနဲ့ ဖွင့် · chart ဆွဲ · သုံးသပ်</text>
+</svg>
