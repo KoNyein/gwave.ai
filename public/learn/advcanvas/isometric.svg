@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="iso" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Isometric Projection — 2.5D</text>
+  <g fill="#dbeafe" stroke="#2563eb"><rect x="40" y="70" width="30" height="30"/><rect x="72" y="70" width="30" height="30"/><rect x="40" y="102" width="30" height="30"/><rect x="72" y="102" width="30" height="30"/></g>
+  <text x="72" y="150" text-anchor="middle" font-size="8" fill="#334155">grid (2D array)</text>
+  <line x1="120" y1="105" x2="156" y2="105" stroke="#64748b" stroke-width="2" marker-end="url(#iso)"/>
+  <g fill="#4ade80" stroke="#16a34a">
+    <polygon points="280,72 310,87 280,102 250,87"/>
+    <polygon points="312,89 342,104 312,119 282,104"/>
+    <polygon points="248,89 278,104 248,119 218,104"/>
+    <polygon points="280,106 310,121 280,136 250,121"/>
+  </g>
+  <text x="280" y="158" text-anchor="middle" font-size="8" fill="#334155">isometric ပုံစံ</text>
+  <text x="220" y="184" text-anchor="middle" font-size="8.5" font-family="monospace" fill="#64748b">sx=(c−r)*w/2  ·  sy=(c+r)*h/2</text>
+</svg>

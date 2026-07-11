@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs>
+    <linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#2563eb"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+    <radialGradient id="rg"><stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#d97706"/></radialGradient>
+  </defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Gradients — linear · radial</text>
+  <rect x="40" y="60" width="150" height="90" rx="8" fill="url(#lg)"/>
+  <text x="115" y="168" text-anchor="middle" font-size="8.5" fill="#334155">createLinearGradient</text>
+  <circle cx="315" cy="105" r="46" fill="url(#rg)"/>
+  <text x="315" y="168" text-anchor="middle" font-size="8.5" fill="#334155">createRadialGradient</text>
+  <text x="220" y="188" text-anchor="middle" font-size="9" fill="#64748b">addColorStop(offset, color) နဲ့ အရောင် အဆင့်ဆင့် — sky, glow, metal</text>
+</svg>

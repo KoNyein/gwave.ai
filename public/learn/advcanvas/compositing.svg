@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Compositing — globalCompositeOperation</text>
+  <g>
+    <text x="90" y="56" text-anchor="middle" font-size="9" fill="#334155">source-over (default)</text>
+    <circle cx="75" cy="100" r="28" fill="#2563eb"/><circle cx="105" cy="100" r="28" fill="#f59e0b"/>
+    <text x="230" y="56" text-anchor="middle" font-size="9" fill="#334155">lighter (glow)</text>
+    <circle cx="215" cy="100" r="28" fill="#2563eb" style="mix-blend-mode:screen"/><circle cx="245" cy="100" r="28" fill="#f59e0b" style="mix-blend-mode:screen"/>
+    <text x="365" y="56" text-anchor="middle" font-size="9" fill="#334155">multiply</text>
+    <circle cx="350" cy="100" r="28" fill="#2563eb" style="mix-blend-mode:multiply"/><circle cx="380" cy="100" r="28" fill="#f59e0b" style="mix-blend-mode:multiply"/>
+  </g>
+  <text x="220" y="160" text-anchor="middle" font-size="9.5" fill="#334155">အလွှာတွေ ဘယ်လို ပေါင်းစပ်မလဲ ထိန်း — glow, mask, shadow effect</text>
+  <text x="220" y="180" text-anchor="middle" font-size="8.5" fill="#64748b">+ globalAlpha နဲ့ ဖောက်ထင်း (transparency)</text>
+</svg>

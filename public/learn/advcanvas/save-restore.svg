@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="sr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">save() / restore() — state stack</text>
+  <g font-family="monospace" font-size="9.5" fill="#334155">
+    <text x="30" y="66">ctx.save();          // state သိမ်း ⬇</text>
+    <text x="30" y="90">ctx.translate(x, y);</text>
+    <text x="30" y="114">ctx.rotate(a);</text>
+    <text x="30" y="138">drawSprite();</text>
+    <text x="30" y="162">ctx.restore();       // ပြန်ယူ ⬆</text>
+  </g>
+  <g>
+    <rect x="330" y="60" width="80" height="20" fill="#dbeafe" stroke="#2563eb"/><text x="370" y="74" text-anchor="middle" font-size="8" fill="#1e40af">state 2</text>
+    <rect x="330" y="82" width="80" height="20" fill="#bfdbfe" stroke="#2563eb"/><text x="370" y="96" text-anchor="middle" font-size="8" fill="#1e40af">state 1</text>
+    <rect x="330" y="104" width="80" height="20" fill="#93c5fd" stroke="#2563eb"/><text x="370" y="118" text-anchor="middle" font-size="8" fill="#1e3a8a">base</text>
+    <text x="370" y="140" text-anchor="middle" font-size="8" fill="#64748b">stack</text>
+  </g>
+  <text x="220" y="186" text-anchor="middle" font-size="9" fill="#64748b">transform ပြီးရင် restore နဲ့ ပြန်ရှင်း — sprite တစ်ခုစီ သီးသန့်</text>
+</svg>
