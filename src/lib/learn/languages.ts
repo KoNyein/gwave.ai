@@ -2268,6 +2268,13 @@ const LANG_EXTRA_UNITS: Record<string, LangUnit[]> = {
         { target: "My father is a farmer.", roman: "မိုင် ဖါးသာ အီးဇ် အ ဖါမာ", my: "အဖေက လယ်သမားပါ။", emoji: "🌾" },
         { target: "My mother is a teacher.", roman: "မိုင် မသာ အီးဇ် အ တီချာ", my: "အမေက ဆရာမပါ။", emoji: "👩‍🏫" },
         { target: "I love my family.", roman: "အိုင် လပ်ဗ် မိုင် ဖမ်မလီ", my: "မိသားစုကို ချစ်ပါတယ်။", emoji: "❤️" },
+        {
+          target:
+            "My name is Aung and I live in Yangon with my family. My father is a farmer and my mother is a teacher. Every morning I help on the farm, then I study hard at school because I want a good future.",
+          roman: "စာပိုဒ် အပြည့် — typing test",
+          my: "စာပိုဒ်တစ်ပုဒ်လုံး ရိုက်ကြည့်ပါ (typing skill လေ့ကျင့်ရန်)။",
+          emoji: "⌨️",
+        },
       ],
     },
   ],
@@ -2312,6 +2319,13 @@ const LANG_EXTRA_UNITS: Record<string, LangUnit[]> = {
         { target: "พ่อเป็นชาวนา", roman: "pho pen chao naa", my: "အဖေက လယ်သမားပါ။", emoji: "🌾" },
         { target: "แม่เป็นครู", roman: "mae pen khruu", my: "အမေက ဆရာမပါ။", emoji: "👩‍🏫" },
         { target: "ผมรักครอบครัว", roman: "phom rak khropkhrua", my: "မိသားစုကို ချစ်ပါတယ်။", emoji: "❤️" },
+        {
+          target:
+            "ผมชื่อออง ผมอยู่ที่ย่างกุ้งกับครอบครัวของผม พ่อของผมเป็นชาวนาและแม่ของผมเป็นครู ทุกเช้าผมช่วยงานที่ไร่นา แล้วผมตั้งใจเรียนหนังสือที่โรงเรียนเพราะผมอยากมีอนาคตที่ดี",
+          roman: "စာပိုဒ် အပြည့် — typing test",
+          my: "စာပိုဒ်တစ်ပုဒ်လုံး ရိုက်ကြည့်ပါ (typing skill လေ့ကျင့်ရန်)။",
+          emoji: "⌨️",
+        },
       ],
     },
   ],
@@ -2356,6 +2370,13 @@ const LANG_EXTRA_UNITS: Record<string, LangUnit[]> = {
         { target: "爸爸是农民", roman: "bàba shì nóngmín", my: "အဖေက လယ်သမားပါ။", emoji: "🌾" },
         { target: "妈妈是老师", roman: "māma shì lǎoshī", my: "အမေက ဆရာမပါ။", emoji: "👩‍🏫" },
         { target: "我爱我的家", roman: "wǒ ài wǒ de jiā", my: "မိသားစုကို ချစ်ပါတယ်။", emoji: "❤️" },
+        {
+          target:
+            "我叫昂，和家人一起住在仰光。我的爸爸是农民，我的妈妈是老师。每天早上我都在农场帮忙，然后在学校努力学习，因为我想要一个美好的未来。",
+          roman: "စာပိုဒ် အပြည့် — typing test",
+          my: "စာပိုဒ်တစ်ပုဒ်လုံး ရိုက်ကြည့်ပါ (typing skill လေ့ကျင့်ရန်)။",
+          emoji: "⌨️",
+        },
       ],
     },
   ],
@@ -2400,6 +2421,13 @@ const LANG_EXTRA_UNITS: Record<string, LangUnit[]> = {
         { target: "父は農家です", roman: "chichi wa nōka desu", my: "အဖေက လယ်သမားပါ။", emoji: "🌾" },
         { target: "母は先生です", roman: "haha wa sensei desu", my: "အမေက ဆရာမပါ။", emoji: "👩‍🏫" },
         { target: "家族が大好きです", roman: "kazoku ga daisuki desu", my: "မိသားစုကို ချစ်ပါတယ်။", emoji: "❤️" },
+        {
+          target:
+            "私の名前はアウンです。私は家族と一緒にヤンゴンに住んでいます。父は農家で、母は先生です。毎朝、畑を手伝ってから、良い未来のために学校で一生懸命勉強します。",
+          roman: "စာပိုဒ် အပြည့် — typing test",
+          my: "စာပိုဒ်တစ်ပုဒ်လုံး ရိုက်ကြည့်ပါ (typing skill လေ့ကျင့်ရန်)။",
+          emoji: "⌨️",
+        },
       ],
     },
   ],
@@ -2444,6 +2472,13 @@ const LANG_EXTRA_UNITS: Record<string, LangUnit[]> = {
         { target: "아버지는 농부예요", roman: "abeojineun nongbuyeyo", my: "အဖေက လယ်သမားပါ။", emoji: "🌾" },
         { target: "어머니는 선생님이에요", roman: "eomeonineun seonsaengnim-ieyo", my: "အမေက ဆရာမပါ။", emoji: "👩‍🏫" },
         { target: "저는 가족을 사랑해요", roman: "jeoneun gajogeul saranghaeyo", my: "မိသားစုကို ချစ်ပါတယ်။", emoji: "❤️" },
+        {
+          target:
+            "제 이름은 아웅입니다. 저는 가족과 함께 양곤에 삽니다. 아버지는 농부이고 어머니는 선생님입니다. 매일 아침 농장에서 일을 돕고, 좋은 미래를 위해 학교에서 열심히 공부합니다.",
+          roman: "စာပိုဒ် အပြည့် — typing test",
+          my: "စာပိုဒ်တစ်ပုဒ်လုံး ရိုက်ကြည့်ပါ (typing skill လေ့ကျင့်ရန်)။",
+          emoji: "⌨️",
+        },
       ],
     },
   ],
