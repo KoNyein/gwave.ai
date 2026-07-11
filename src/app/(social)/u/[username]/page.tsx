@@ -231,6 +231,32 @@ export default async function ProfilePage({
         </Card>
       ) : null}
 
+      {/* Photos preview — always visible on the overview */}
+      {photos.length > 0 ? (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            <p className="font-semibold">📷 ဓာတ်ပုံများ</p>
+            <div className="grid grid-cols-4 gap-1 sm:grid-cols-6">
+              {photos.slice(0, 12).map((photo) => (
+                <Link
+                  key={`ov-${photo.post_id}-${photo.storage_path}`}
+                  href={`/p/${photo.post_id}`}
+                  className="relative aspect-square overflow-hidden rounded-md bg-muted"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={mediaUrl(photo.storage_path)}
+                    alt=""
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform hover:scale-105"
+                  />
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* My learning projects (own profile only) */}
       {isSelf && projects.length > 0 ? (
         <Card>
