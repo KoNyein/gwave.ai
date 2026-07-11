@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="hv" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Harvest Robot — အသီး ရိတ်သိမ်း</text>
+  <g font-size="8.5" text-anchor="middle">
+    <rect x="26" y="80" width="86" height="40" rx="7" fill="#dbeafe" stroke="#2563eb"/><text x="69" y="98" font-weight="bold" fill="#1e40af">👁 ရှာ</text><text x="69" y="112" fill="#1e40af">ရင့်တဲ့ အသီး</text>
+    <rect x="128" y="80" width="86" height="40" rx="7" fill="#ede9fe" stroke="#7c3aed"/><text x="171" y="98" font-weight="bold" fill="#6d28d9">📐 depth</text><text x="171" y="112" fill="#6d28d9">နေရာ 3D</text>
+    <rect x="230" y="80" width="86" height="40" rx="7" fill="#fef3c7" stroke="#d97706"/><text x="273" y="98" font-weight="bold" fill="#92400e">🦾 ကိုင်</text><text x="273" y="112" fill="#92400e">force ညင်</text>
+    <rect x="332" y="80" width="82" height="40" rx="7" fill="#dcfce7" stroke="#16a34a"/><text x="373" y="98" font-weight="bold" fill="#166534">🧺 ခူး</text><text x="373" y="112" fill="#166534">ခြင်းထဲ</text>
+  </g>
+  <line x1="112" y1="100" x2="126" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#hv)"/>
+  <line x1="214" y1="100" x2="228" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#hv)"/>
+  <line x1="316" y1="100" x2="330" y2="100" stroke="#64748b" stroke-width="2" marker-end="url(#hv)"/>
+  <text x="220" y="152" text-anchor="middle" font-size="10" fill="#334155">ရင့်မှည့်တာ ရွေး → နူးညံ့စွာ ကိုင် → မထိခိုက်ဘဲ ခူး</text>
+  <text x="220" y="172" text-anchor="middle" font-size="9" fill="#64748b">CV + depth + force control အားလုံး ပေါင်းစပ် အသုံးချ</text>
+</svg>

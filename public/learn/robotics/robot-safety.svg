@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Robot Safety &amp; Ethics</text>
+  <text x="66" y="72" font-size="24">⚠</text>
+  <g font-size="9">
+    <rect x="30" y="52" width="384" height="26" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="100" y="69" fill="#166534">✓ E-stop ခလုတ် — ချက်ချင်း ရပ်နိုင်</text>
+    <rect x="30" y="84" width="384" height="26" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="44" y="101" fill="#166534">✓ လူ နီးရင် နှေး/ရပ် (sensor) · guard ကာ</text>
+    <rect x="30" y="116" width="384" height="26" rx="6" fill="#fef3c7" stroke="#d97706"/>
+    <text x="44" y="133" fill="#92400e">⚖ တာဝန် — အလုပ်နေရာ · privacy · ဆုံးဖြတ်ချက်</text>
+  </g>
+  <text x="220" y="166" text-anchor="middle" font-size="9.5" fill="#64748b">robot က အားကြီး/မြန် — ဒီဇိုင်းကတည်းက ဘေးကင်းအောင်</text>
+</svg>

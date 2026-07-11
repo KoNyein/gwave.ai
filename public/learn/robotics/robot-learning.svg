@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="rl3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Robot Learning — စမ်း၍ တော်လာ</text>
+  <rect x="60" y="82" width="110" height="46" rx="9" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="115" y="103" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#1e40af">စမ်းလုပ်</text>
+  <text x="115" y="118" text-anchor="middle" font-size="8" fill="#1e40af">action</text>
+  <rect x="270" y="82" width="110" height="46" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="325" y="103" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#166534">ဆု/ဒဏ်</text>
+  <text x="325" y="118" text-anchor="middle" font-size="8" fill="#166534">reward</text>
+  <path d="M170 96 L268 96" stroke="#64748b" stroke-width="2" marker-end="url(#rl3)"/>
+  <path d="M268 116 L172 116" stroke="#d97706" stroke-width="2" marker-end="url(#rl3)"/>
+  <text x="220" y="92" text-anchor="middle" font-size="8" fill="#334155">လုပ်ကြည့်</text>
+  <text x="220" y="130" text-anchor="middle" font-size="8" fill="#92400e">ရလဒ်က သင်ပေး</text>
+  <text x="220" y="160" text-anchor="middle" font-size="10" fill="#334155">အောင်မြင် → ထပ်လုပ် · ကျ → ရှောင် — reinforcement learning</text>
+  <text x="220" y="180" text-anchor="middle" font-size="9" fill="#64748b">လမ်းလျှောက်/ကိုင်တွယ် — ကြိမ်ဖန်များ လေ့ကျင့်ပြီး ကျွမ်း</text>
+</svg>

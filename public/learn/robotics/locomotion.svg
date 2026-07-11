@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Locomotion — ရွေ့လျားနည်းများ</text>
+  <g text-anchor="middle">
+    <rect x="28" y="56" width="120" height="94" rx="9" fill="#eff6ff" stroke="#2563eb"/>
+    <circle cx="70" cy="112" r="12" fill="#94a3b8" stroke="#334155"/><circle cx="106" cy="112" r="12" fill="#94a3b8" stroke="#334155"/><rect x="62" y="86" width="52" height="16" rx="3" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="88" y="140" font-size="9" font-weight="bold" fill="#1e40af">Wheels</text>
+    <rect x="160" y="56" width="120" height="94" rx="9" fill="#f0fdf4" stroke="#16a34a"/>
+    <ellipse cx="220" cy="112" rx="44" ry="12" fill="none" stroke="#166534" stroke-width="3"/><rect x="196" y="90" width="48" height="14" rx="3" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="220" y="140" font-size="9" font-weight="bold" fill="#166534">Tracks</text>
+    <rect x="292" y="56" width="120" height="94" rx="9" fill="#fef3c7" stroke="#d97706"/>
+    <rect x="336" y="80" width="30" height="16" rx="3" fill="#fde68a" stroke="#d97706"/>
+    <path d="M340 96 l-8 20 M362 96 l8 20 M348 96 l-4 22 M356 96 l4 22" stroke="#92400e" stroke-width="2"/>
+    <text x="351" y="140" font-size="9" font-weight="bold" fill="#92400e">Legs</text>
+  </g>
+  <text x="220" y="172" text-anchor="middle" font-size="9.5" fill="#64748b">ဘီး = မြေပြန့် မြန် · track = ရွှံ့/မညီ · ခြေ = အတားများ ကျော်</text>
+</svg>

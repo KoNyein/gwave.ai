@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Robot အမျိုးအစားများ</text>
+  <g text-anchor="middle">
+    <rect x="24" y="54" width="94" height="96" rx="9" fill="#eff6ff" stroke="#2563eb"/>
+    <text x="71" y="96" font-size="30">🦾</text><text x="71" y="120" font-size="9" font-weight="bold" fill="#1e40af">Arm</text><text x="71" y="134" font-size="7.5" fill="#334155">စက်ရုံ · ရိတ်</text>
+    <rect x="126" y="54" width="94" height="96" rx="9" fill="#f0fdf4" stroke="#16a34a"/>
+    <text x="173" y="96" font-size="30">🚗</text><text x="173" y="120" font-size="9" font-weight="bold" fill="#166534">Mobile</text><text x="173" y="134" font-size="7.5" fill="#334155">rover · AGV</text>
+    <rect x="228" y="54" width="94" height="96" rx="9" fill="#fef3c7" stroke="#d97706"/>
+    <text x="275" y="96" font-size="30">🚁</text><text x="275" y="120" font-size="9" font-weight="bold" fill="#92400e">Aerial</text><text x="275" y="134" font-size="7.5" fill="#334155">drone</text>
+    <rect x="330" y="54" width="86" height="96" rx="9" fill="#fce7f3" stroke="#db2777"/>
+    <text x="373" y="96" font-size="30">🤖</text><text x="373" y="120" font-size="9" font-weight="bold" fill="#9d174d">Humanoid</text><text x="373" y="134" font-size="7.5" fill="#334155">legs</text>
+  </g>
+  <text x="220" y="172" text-anchor="middle" font-size="9.5" fill="#64748b">လုပ်ငန်းအလိုက် ပုံစံ ကွဲ — arm/mobile/aerial/humanoid</text>
+</svg>

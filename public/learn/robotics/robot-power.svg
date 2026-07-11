@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="rp" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Robot Power — အားသွင်း စနစ်</text>
+  <rect x="30" y="82" width="86" height="44" rx="7" fill="#fef3c7" stroke="#d97706"/>
+  <text x="73" y="100" text-anchor="middle" font-size="9" font-weight="bold" fill="#92400e">🔋 Battery</text>
+  <text x="73" y="114" text-anchor="middle" font-size="8" fill="#92400e">LiPo · Li-ion</text>
+  <line x1="116" y1="104" x2="150" y2="104" stroke="#64748b" stroke-width="2" marker-end="url(#rp)"/>
+  <rect x="154" y="82" width="96" height="44" rx="7" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="202" y="100" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e40af">Regulator</text>
+  <text x="202" y="114" text-anchor="middle" font-size="8" fill="#1e40af">5V logic · 12V motor</text>
+  <line x1="250" y1="96" x2="284" y2="82" stroke="#64748b" stroke-width="2" marker-end="url(#rp)"/>
+  <line x1="250" y1="112" x2="284" y2="126" stroke="#64748b" stroke-width="2" marker-end="url(#rp)"/>
+  <rect x="288" y="66" width="120" height="32" rx="6" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="348" y="86" text-anchor="middle" font-size="8.5" fill="#6d28d9">🧠 controller (5V)</text>
+  <rect x="288" y="110" width="120" height="32" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="348" y="130" text-anchor="middle" font-size="8.5" fill="#166534">⚙ motor (12V)</text>
+  <text x="220" y="166" text-anchor="middle" font-size="9.5" fill="#64748b">motor က current များစား — logic နဲ့ ခွဲ · capacity (mAh) = ကြာချိန်</text>
+</svg>

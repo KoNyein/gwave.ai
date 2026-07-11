@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Fabrication — robot ကို ကိုယ်တိုင် ဆောက်</text>
+  <g font-size="9" text-anchor="middle">
+    <rect x="28" y="60" width="120" height="44" rx="8" fill="#eff6ff" stroke="#2563eb"/><text x="88" y="80" font-weight="bold" fill="#1e40af">🖨 3D print</text><text x="88" y="95" fill="#334155" font-size="8">chassis · bracket</text>
+    <rect x="160" y="60" width="120" height="44" rx="8" fill="#f0fdf4" stroke="#16a34a"/><text x="220" y="80" font-weight="bold" fill="#166534">✂ laser cut</text><text x="220" y="95" fill="#334155" font-size="8">plate · gear</text>
+    <rect x="292" y="60" width="120" height="44" rx="8" fill="#fef3c7" stroke="#d97706"/><text x="352" y="80" font-weight="bold" fill="#92400e">🔩 assemble</text><text x="352" y="95" fill="#334155" font-size="8">screw · wire</text>
+  </g>
+  <rect x="120" y="118" width="200" height="34" rx="8" fill="#fce7f3" stroke="#db2777"/>
+  <text x="220" y="139" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#9d174d">🤖 ကိုယ်ပိုင် robot</text>
+  <text x="220" y="172" text-anchor="middle" font-size="9" fill="#64748b">CAD ဒီဇိုင်း → print/cut → တပ်ဆင် — idea ကနေ တကယ့်စက်</text>
+</svg>

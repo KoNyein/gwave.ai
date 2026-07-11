@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="ros" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">ROS — node တွေ topic နဲ့ စကားပြော</text>
+  <rect x="30" y="60" width="80" height="30" rx="7" fill="#dcfce7" stroke="#16a34a"/><text x="70" y="79" text-anchor="middle" font-size="8.5" fill="#166534">camera node</text>
+  <rect x="30" y="118" width="80" height="30" rx="7" fill="#dcfce7" stroke="#16a34a"/><text x="70" y="137" text-anchor="middle" font-size="8.5" fill="#166534">lidar node</text>
+  <rect x="175" y="88" width="90" height="34" rx="8" fill="#ede9fe" stroke="#7c3aed"/><text x="220" y="104" text-anchor="middle" font-size="9" font-weight="bold" fill="#6d28d9">/topic</text><text x="220" y="116" text-anchor="middle" font-size="7.5" fill="#6d28d9">message bus</text>
+  <rect x="330" y="60" width="84" height="30" rx="7" fill="#dbeafe" stroke="#2563eb"/><text x="372" y="79" text-anchor="middle" font-size="8.5" fill="#1e40af">planner node</text>
+  <rect x="330" y="118" width="84" height="30" rx="7" fill="#fef3c7" stroke="#d97706"/><text x="372" y="137" text-anchor="middle" font-size="8.5" fill="#92400e">motor node</text>
+  <line x1="110" y1="75" x2="173" y2="95" stroke="#64748b" stroke-width="1.8" marker-end="url(#ros)"/>
+  <line x1="110" y1="133" x2="173" y2="112" stroke="#64748b" stroke-width="1.8" marker-end="url(#ros)"/>
+  <line x1="265" y1="100" x2="328" y2="80" stroke="#64748b" stroke-width="1.8" marker-end="url(#ros)"/>
+  <line x1="265" y1="110" x2="328" y2="130" stroke="#64748b" stroke-width="1.8" marker-end="url(#ros)"/>
+  <text x="220" y="172" text-anchor="middle" font-size="9.5" fill="#64748b">အစိတ်အပိုင်း သီးသန့် node — publish/subscribe နဲ့ ချိတ်</text>
+</svg>

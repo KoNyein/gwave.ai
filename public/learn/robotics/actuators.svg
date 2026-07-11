@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="188" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Actuators — robot ရဲ့ ကြွက်သား</text>
+  <g text-anchor="middle">
+    <rect x="30" y="58" width="120" height="88" rx="9" fill="#eff6ff" stroke="#2563eb"/>
+    <circle cx="90" cy="92" r="20" fill="#dbeafe" stroke="#2563eb"/><path d="M90 92 L90 76 M90 92 L104 100" stroke="#2563eb" stroke-width="3"/>
+    <text x="90" y="126" font-size="9" font-weight="bold" fill="#1e40af">DC Motor</text><text x="90" y="139" font-size="7.5" fill="#334155">လည် — ဘီး</text>
+    <rect x="160" y="58" width="120" height="88" rx="9" fill="#f0fdf4" stroke="#16a34a"/>
+    <rect x="190" y="82" width="60" height="24" rx="4" fill="#dcfce7" stroke="#16a34a"/><path d="M220 94 L220 72" stroke="#16a34a" stroke-width="3"/>
+    <text x="220" y="126" font-size="9" font-weight="bold" fill="#166534">Servo</text><text x="220" y="139" font-size="7.5" fill="#334155">တိကျ ထောင့်</text>
+    <rect x="290" y="58" width="120" height="88" rx="9" fill="#fef3c7" stroke="#d97706"/>
+    <rect x="316" y="88" width="50" height="12" fill="#fde68a" stroke="#d97706"/><rect x="366" y="84" width="24" height="20" fill="#fbbf24" stroke="#d97706"/>
+    <text x="350" y="126" font-size="9" font-weight="bold" fill="#92400e">Linear</text><text x="350" y="139" font-size="7.5" fill="#334155">တွန်း/ဆွဲ</text>
+  </g>
+  <text x="220" y="172" text-anchor="middle" font-size="9.5" fill="#64748b">signal → ရုပ်ပိုင်း လှုပ်ရှား — sensor ရဲ့ ဆန့်ကျင်ဘက်</text>
+</svg>
