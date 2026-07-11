@@ -82,7 +82,7 @@ export function ChessGame({
   const reportedRef = React.useRef<string | null>(null);
 
   const refreshWager = React.useCallback(async () => {
-    const w = await loadConversationWager(conversationId);
+    const w = await loadConversationWager(conversationId, "chess");
     setWager(w);
     return w;
   }, [conversationId]);

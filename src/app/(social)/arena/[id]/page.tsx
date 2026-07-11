@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
+import { KyarSpectator } from "@/components/messenger/kyar-spectator";
 import { WagerSpectator } from "@/components/messenger/wager-spectator";
 import { getCurrentProfile } from "@/lib/auth";
 import { getWager } from "@/lib/db/wagers";
@@ -36,15 +37,21 @@ export default async function ArenaMatchPage({
       : Promise.resolve({ data: null }),
   ]);
 
+  const spectatorProps = {
+    wagerId: wager.id,
+    potMmk: wager.pot_mmk,
+    stakeMmk: wager.stake_mmk,
+    hostName: host?.full_name || host?.username || "Host",
+    guestName: guest?.full_name || guest?.username || "Guest",
+  };
+
   return (
     <div className="mx-auto max-w-md space-y-4">
-      <WagerSpectator
-        wagerId={wager.id}
-        potMmk={wager.pot_mmk}
-        stakeMmk={wager.stake_mmk}
-        hostName={host?.full_name || host?.username || "Host"}
-        guestName={guest?.full_name || guest?.username || "Guest"}
-      />
+      {wager.game === "kyar" ? (
+        <KyarSpectator {...spectatorProps} />
+      ) : (
+        <WagerSpectator {...spectatorProps} />
+      )}
     </div>
   );
 }

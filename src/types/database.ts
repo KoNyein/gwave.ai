@@ -388,9 +388,12 @@ export type ChessWagerStatus =
   | "disputed";
 export type ChessWagerResult = "host_win" | "guest_win" | "draw";
 
+export type WagerGame = "chess" | "kyar";
+
 export interface ChessWager {
   id: string;
   conversation_id: string;
+  game: WagerGame;
   host_id: string;
   guest_id: string | null;
   stake_mmk: number;
@@ -423,6 +426,7 @@ export interface LiveWager {
   guest_avatar: string | null;
   stake_mmk: number;
   pot_mmk: number;
+  game: WagerGame;
   created_at: string;
 }
 
