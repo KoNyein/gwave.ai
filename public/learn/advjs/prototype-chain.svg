@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="pc" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Prototype Chain — inheritance</text>
+  <rect x="30" y="80" width="96" height="44" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="78" y="100" text-anchor="middle" font-size="9" font-weight="bold" fill="#166534">dog</text>
+  <text x="78" y="115" text-anchor="middle" font-size="8" fill="#166534">{ name }</text>
+  <rect x="172" y="80" width="96" height="44" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="220" y="100" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e40af">Animal.proto</text>
+  <text x="220" y="115" text-anchor="middle" font-size="8" fill="#1e40af">speak()</text>
+  <rect x="314" y="80" width="96" height="44" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="362" y="100" text-anchor="middle" font-size="9" font-weight="bold" fill="#334155">Object.proto</text>
+  <text x="362" y="115" text-anchor="middle" font-size="8" fill="#64748b">toString()</text>
+  <line x1="126" y1="102" x2="170" y2="102" stroke="#64748b" stroke-width="2" marker-end="url(#pc)"/>
+  <line x1="268" y1="102" x2="312" y2="102" stroke="#64748b" stroke-width="2" marker-end="url(#pc)"/>
+  <text x="148" y="94" text-anchor="middle" font-size="7.5" fill="#334155">__proto__</text>
+  <text x="220" y="158" text-anchor="middle" font-size="9.5" fill="#334155">dog.speak() — dog မှာမရှိ → prototype ဆီ တက်ရှာ</text>
+  <text x="220" y="178" text-anchor="middle" font-size="9" fill="#64748b">null ရောက်တဲ့အထိ ရှာ — class extends က ဒီအပေါ် တည်</text>
+</svg>

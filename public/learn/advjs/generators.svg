@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <defs><marker id="gn2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#64748b"/></marker></defs>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">Generators — yield နဲ့ ရပ်/ဆက်</text>
+  <g font-family="monospace" font-size="9.5" fill="#334155">
+    <text x="30" y="64">function* gen() {</text>
+    <text x="48" y="84">yield 1;  ⏸</text>
+    <text x="48" y="104">yield 2;  ⏸</text>
+    <text x="48" y="124">yield 3;  ⏸</text>
+    <text x="30" y="144">}</text>
+  </g>
+  <g font-size="9">
+    <rect x="250" y="58" width="160" height="22" rx="5" fill="#dbeafe" stroke="#2563eb"/><text x="262" y="74" fill="#1e40af">g.next() → {value:1}</text>
+    <rect x="250" y="84" width="160" height="22" rx="5" fill="#dbeafe" stroke="#2563eb"/><text x="262" y="100" fill="#1e40af">g.next() → {value:2}</text>
+    <rect x="250" y="110" width="160" height="22" rx="5" fill="#dbeafe" stroke="#2563eb"/><text x="262" y="126" fill="#1e40af">g.next() → {value:3}</text>
+    <rect x="250" y="136" width="160" height="22" rx="5" fill="#f1f5f9" stroke="#94a3b8"/><text x="262" y="152" fill="#64748b">g.next() → {done:true}</text>
+  </g>
+  <text x="220" y="184" text-anchor="middle" font-size="9" fill="#64748b">function ကို ကြားမှာ ရပ်ထား၊ next() ခေါ်မှ တစ်ဆင့်ဆက် — lazy</text>
+</svg>

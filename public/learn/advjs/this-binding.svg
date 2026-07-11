@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" font-family="sans-serif">
+  <rect x="1" y="1" width="438" height="198" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="220" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#334155">this — ဘယ်လို ခေါ်လဲအပေါ် မူတည်</text>
+  <g font-size="9">
+    <rect x="30" y="50" width="380" height="26" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="42" y="67" fill="#1e40af">obj.fn() — this = obj (method call)</text>
+    <rect x="30" y="82" width="380" height="26" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="42" y="99" fill="#166534">fn.call(x) / fn.apply(x) — this = x (ချက်ချင်း)</text>
+    <rect x="30" y="114" width="380" height="26" rx="6" fill="#fef3c7" stroke="#d97706"/>
+    <text x="42" y="131" fill="#92400e">fn.bind(x) — this = x အမြဲ (function အသစ် ပြန်ရ)</text>
+    <rect x="30" y="146" width="380" height="26" rx="6" fill="#ede9fe" stroke="#7c3aed"/>
+    <text x="42" y="163" fill="#6d28d9">arrow () => — this = ဖန်တီးရာ scope ရဲ့ this</text>
+  </g>
+  <text x="220" y="190" text-anchor="middle" font-size="8.5" fill="#64748b">call/apply/bind နဲ့ this ကို ကိုယ်တိုင် သတ်မှတ်နိုင်</text>
+</svg>

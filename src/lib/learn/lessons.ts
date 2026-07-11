@@ -825,6 +825,7 @@ import { SQL_AI_TRACKS } from "@/lib/learn/courses-sql-ai";
 import { pseudocodeTrack } from "@/lib/learn/pseudocode";
 import { scratchTrack } from "@/lib/learn/scratch";
 import { gameDevTrack } from "@/lib/learn/game-dev";
+import { advancedJsTrack } from "@/lib/learn/advanced-js";
 
 export const TRACKS: Track[] = [
   stemTrack,
@@ -833,6 +834,7 @@ export const TRACKS: Track[] = [
   roboticsTrack,
   pseudocodeTrack,
   ...WEBDEV_TRACKS,
+  advancedJsTrack,
   gameDevTrack,
   ...SQL_AI_TRACKS,
   agriTrack,
