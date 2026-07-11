@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Award, BadgeCheck } from "lucide-react";
 
+import { PrintButton } from "@/components/learn/print-button";
 import { ShareResultButton } from "@/components/tools/share-result-button";
 import { getCertificate } from "@/lib/db/certificates";
 
@@ -38,7 +39,7 @@ export default async function CertificatePage({
       </Link>
 
       {/* The certificate itself — print-friendly */}
-      <div className="rounded-2xl border-4 border-double border-amber-500/60 bg-card p-8 text-center shadow-sm">
+      <div className="print-certificate rounded-2xl border-4 border-double border-amber-500/60 bg-card p-8 text-center shadow-sm">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/20">
           <Award className="h-9 w-9 text-amber-600" />
         </div>
@@ -70,10 +71,8 @@ export default async function CertificatePage({
       </div>
 
       <div className="flex flex-wrap items-center gap-3 print:hidden">
+        <PrintButton />
         <ShareResultButton content={shareText} />
-        <p className="text-xs text-muted-foreground">
-          🖨️ Print / PDF — browser ရဲ့ Print (Ctrl+P) ကို သုံးပါ
-        </p>
       </div>
     </div>
   );

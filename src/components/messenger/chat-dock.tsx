@@ -203,7 +203,10 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
   const activePeer = active ? peerOf(active, currentUser.id) : null;
 
   return (
-    <div className="fixed bottom-20 right-3 z-40 flex flex-col items-end gap-2 md:bottom-4 md:right-4">
+    <div
+      data-no-print
+      className="fixed bottom-20 right-3 z-40 flex flex-col items-end gap-2 md:bottom-4 md:right-4"
+    >
       {/* Open chat window */}
       {activeId && active ? (
         <div
