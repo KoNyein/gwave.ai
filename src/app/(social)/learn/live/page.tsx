@@ -57,6 +57,21 @@ export default async function LearnLivePage() {
         )}
       </div>
 
+      <Link href="/meet" className="block">
+        <Card className="border-primary/30 bg-primary/5 transition-colors hover:bg-primary/10">
+          <CardContent className="flex items-center gap-3 p-4">
+            <GraduationCap className="h-8 w-8 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <p className="font-semibold">🎥 Live Class Room (Zoom/Meet ပုံစံ)</p>
+              <p className="text-xs text-muted-foreground">
+                ဆရာနှင့် ကျောင်းသားများ တိုက်ရိုက် video grid ဖြင့် ဆွေးနွေး/သင်ကြား —
+                screen share ပါ။
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+
       {classes.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-center text-sm text-muted-foreground">
