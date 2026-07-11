@@ -48,3 +48,38 @@ export async function getDisputedWagers(): Promise<ChessWager[]> {
     .returns<ChessWager[]>();
   return data ?? [];
 }
+
+export interface DisputedWager extends ChessWager {
+  host_name: string | null;
+  guest_name: string | null;
+}
+
+/** Disputed wagers with both players' display names resolved. */
+export async function getDisputedWagersWithPlayers(): Promise<
+  DisputedWager[]
+> {
+  const wagers = await getDisputedWagers();
+  if (wagers.length === 0) return [];
+
+  const ids = [
+    ...new Set(
+      wagers.flatMap((w) => [w.host_id, w.guest_id]).filter(Boolean),
+    ),
+  ] as string[];
+  const supabase = await createClient();
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, display_name, username")
+    .in("id", ids);
+  const names = new Map(
+    (profiles ?? []).map((p) => [
+      p.id as string,
+      (p.display_name as string | null) ?? (p.username as string | null),
+    ]),
+  );
+  return wagers.map((w) => ({
+    ...w,
+    host_name: names.get(w.host_id) ?? null,
+    guest_name: w.guest_id ? (names.get(w.guest_id) ?? null) : null,
+  }));
+}
