@@ -10,8 +10,10 @@ import {
   PY_EXTRA,
 } from "@/lib/learn/webdev-extra";
 import { HTML_EXTRA2 } from "@/lib/learn/webdev-html2";
+import { HTML_EXTRA3 } from "@/lib/learn/webdev-html3";
 import { CSS_EXTRA2 } from "@/lib/learn/webdev-css2";
 import { JS_EXTRA2 } from "@/lib/learn/webdev-js2";
+import { JS_EXTRA3 } from "@/lib/learn/webdev-js3";
 import { PY_EXTRA2 } from "@/lib/learn/webdev-py2";
 import { PY_EXTRA3 } from "@/lib/learn/webdev-py3";
 import {
@@ -177,6 +179,7 @@ export const htmlTrack: Track = {
     },
     ...HTML_EXTRA,
     ...HTML_EXTRA2,
+    ...HTML_EXTRA3,
     {
       slug: "html-quiz",
       title: "HTML Quiz",
@@ -708,6 +711,7 @@ export const javascriptTrack: Track = {
     },
     ...JS_EXTRA,
     ...JS_EXTRA2,
+    ...JS_EXTRA3,
     {
       slug: "js-quiz",
       title: "JavaScript Quiz",
