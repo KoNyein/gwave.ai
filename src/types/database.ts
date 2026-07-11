@@ -426,6 +426,15 @@ export interface LiveWager {
   created_at: string;
 }
 
+export interface Certificate {
+  id: string;
+  user_id: string;
+  track_slug: string;
+  track_title: string;
+  lessons_completed: number;
+  issued_at: string;
+}
+
 export interface Report {
   id: string;
   reporter_id: string;
