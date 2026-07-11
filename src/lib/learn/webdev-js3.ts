@@ -697,4 +697,51 @@ export const JS_EXTRA3: Lesson[] = [
       ],
     ],
   ),
+  js(
+    "js-random",
+    "Math.random နဲ့ ဂိမ်းလုပ်ခြင်း",
+    "ကျပန်းဂဏန်း — ဂိမ်း၊ simulation၊ နမူနာ data။",
+    9,
+    "javascript math random number guessing game",
+    "// ၁ မှ ၆ ထိ အံစာတုံး\nconst roll = () => Math.floor(Math.random() * 6) + 1;\nlog('အံစာ: ' + roll() + ', ' + roll() + ', ' + roll());\n\n// ဂဏန်းမှန်း ဂိမ်း (၁-၁၀)\nconst secret = Math.floor(Math.random() * 10) + 1;\nfor (let guess = 1; guess <= 10; guess++) {\n  if (guess === secret) { log(guess + ' → မှန်ပြီ! 🎉'); break; }\n  log(guess + ' → မဟုတ်သေး');\n}",
+    [
+      [
+        "Math.random() အလုပ်လုပ်ပုံ",
+        "`Math.random()` က 0 (ပါ) မှ 1 (မပါ) ကြား ကျပန်း ဒဿမ ပြန်ပေးသည်။ အပိုင်းအခြားတစ်ခုက ကိန်းပြည့် လိုချင်ရင် `Math.floor(Math.random() * n) + min` ပုံစံ သုံးသည် — playground မှာ Run နှိပ်တိုင်း ရလဒ် ပြောင်းတာ သတိထားကြည့်ပါ။",
+        "Math.random();                        // 0 ≤ x < 1\nMath.floor(Math.random() * 6) + 1;    // 1–6 (အံစာ)\nMath.floor(Math.random() * 100);      // 0–99",
+      ],
+      [
+        "array ထဲက ကျပန်း ရွေး",
+        "`arr[Math.floor(Math.random() * arr.length)]` က array ထဲက item တစ်ခု ကျပန်း ရွေးသည် — ကျပန်း quote, ကျပန်း အရောင်, ကျပန်း မေးခွန်း (quiz) လိုမျိုး နေရာတိုင်း သုံးသည်။",
+        "const crops = ['စပါး', 'ပြောင်း', 'ပဲ', 'နှမ်း'];\nconst pick = crops[Math.floor(Math.random() * crops.length)];",
+      ],
+      [
+        "ဂိမ်း logic",
+        "ကျပန်းဂဏန်း + loop + condition ပေါင်းရင် ဂိမ်းရပြီ — ဂဏန်းမှန်းဂိမ်း, အံစာဂိမ်း, ကံစမ်းမဲ။ စမ်းရန်: playground ထဲက ဂိမ်းကို 1–100 အထိ ချဲ့ပြီး binary search (ထက်ဝက်ခွဲ မှန်းနည်း) နဲ့ ဘယ်နှကြိမ်နဲ့ မှန်နိုင်လဲ စမ်းကြည့်ပါ။",
+      ],
+    ],
+  ),
+  js(
+    "js-animation",
+    "requestAnimationFrame နဲ့ Animation",
+    "frame တစ်ခုချင်း ချောမွေ့စွာ ရွေ့လျားစေခြင်း။",
+    10,
+    "javascript requestAnimationFrame animation tutorial",
+    "const box = document.createElement('div');\nbox.style.cssText = 'width:40px;height:40px;background:#22c55e;border-radius:8px;position:relative;';\ndocument.body.appendChild(box);\n\nlet x = 0, dir = 1, frames = 0;\nfunction tick() {\n  x += 3 * dir;\n  if (x > 220 || x < 0) dir = -dir;   // အနားထိရင် ပြန်ကန်\n  box.style.left = x + 'px';\n  if (++frames < 300) requestAnimationFrame(tick);\n  else log('animation ပြီးပြီ (' + frames + ' frames)');\n}\nrequestAnimationFrame(tick);\nlog('စိမ်းတဲ့ လေးထောင့် ရွေ့နေတာ ကြည့်ပါ…');",
+    [
+      [
+        "ဘာကြောင့် rAF",
+        "`requestAnimationFrame(fn)` က browser ရဲ့ နောက် repaint (ပုံမှန် စက္ကန့်တစ်ခုမှာ ၆၀ ကြိမ်) မတိုင်ခင် `fn` ကို တစ်ကြိမ် ခေါ်ပေးသည်။ `setInterval` ထက် ချောမွေ့ပြီး tab မမြင်ရချိန် အလိုအလျောက် ရပ်လို့ ဘက်ထရီ ချွေတာသည်။",
+        "function tick() {\n  // frame တစ်ခုစာ update\n  requestAnimationFrame(tick); // နောက် frame ပြန်တောင်း\n}\nrequestAnimationFrame(tick);",
+      ],
+      [
+        "animation loop ပုံစံ",
+        "frame တိုင်းမှာ ① state update (x += speed) ② နယ်နိမိတ် စစ် (ထိရင် ပြန်ကန်/ရပ်) ③ DOM/canvas မှာ ဆွဲ — ဒီသုံးဆင့်က ဂိမ်းတိုင်းရဲ့ core loop ပါပဲ။ `js-canvas-basics` နဲ့ ပေါင်းရင် canvas ဂိမ်း ရပြီ။",
+      ],
+      [
+        "CSS transition နဲ့ ခွဲသုံး",
+        "ရိုးရိုး UI လှုပ်ရှားမှု (hover, ပေါ်လာ/ပျောက်သွား) က CSS `transition`/`animation` နဲ့ လုံလောက်ပြီး ပိုမြန်သည်။ JS rAF ကို logic ပါတဲ့ လှုပ်ရှားမှု (ဂိမ်း, ဂရပ်, ဒြပ်စင်တွေ တုံ့ပြန်တာ) မှာသာ သုံးပါ — မှန်ကန်တဲ့ tool ကို မှန်ကန်တဲ့ နေရာမှာ။",
+      ],
+    ],
+  ),
 ];

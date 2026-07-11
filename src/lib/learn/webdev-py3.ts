@@ -727,4 +727,28 @@ export const PY_EXTRA3: Lesson[] = [
       ],
     ],
   ),
+  py(
+    "py-random",
+    "random module — ကျပန်းနဲ့ Simulation",
+    "ကျပန်းဂဏန်း၊ ကျပန်းရွေးချယ်မှု၊ simulation။",
+    9,
+    "python random module tutorial",
+    "import random\n\n# အံစာတုံး ၂ လုံး\nprint('အံစာ:', random.randint(1, 6), random.randint(1, 6))\n\n# ကျပန်း ရွေး / ရောမွှေ\ncrops = ['စပါး', 'ပြောင်း', 'ပဲ', 'နှမ်း']\nprint('ဒီရာသီ စမ်းစိုက်ရန်:', random.choice(crops))\nrandom.shuffle(crops)\nprint('ရောမွှေပြီး:', crops)\n\n# simulation — အံစာ ၁၀၀၀ ကြိမ် ပစ်ရင် ၆ ဘယ်နှခါ ကျလဲ\nsixes = sum(1 for _ in range(1000) if random.randint(1, 6) == 6)\nprint('၆ ကျတဲ့ အကြိမ်:', sixes, '(~167 လောက် ဖြစ်သင့်)')",
+    [
+      [
+        "အဓိက function များ",
+        "`random.random()` (0–1 ဒဿမ), `randint(a, b)` (a မှ b ကိန်းပြည့် — နှစ်ဖက်ပါ), `choice(seq)` (တစ်ခု ကျပန်းရွေး), `sample(seq, k)` (k ခု မထပ်ရွေး), `shuffle(seq)` (နေရာ ရောမွှေ)။ Run နှိပ်တိုင်း ရလဒ် ပြောင်းတာ playground မှာ စမ်းကြည့်ပါ။",
+        "import random\nrandom.randint(1, 6)          # 1–6\nrandom.choice(['a', 'b'])     # တစ်ခု\nrandom.sample(range(50), 6)   # ထီဂဏန်း ၆ လုံး",
+      ],
+      [
+        "seed — ထပ်ခါ ရနိုင်တဲ့ ကျပန်း",
+        "`random.seed(42)` သတ်မှတ်ရင် 'ကျပန်း' ဂဏန်းတွေက အကြိမ်တိုင်း တူညီစွာ ထွက်သည် — test ရေးတဲ့အခါ၊ experiment ကို ပြန်ထပ်လုပ်ပြချင်တဲ့အခါ (reproducibility) မရှိမဖြစ်။ data science/AI မှာ အမြဲတွေ့ရမယ့် အလေ့အထ။",
+        "import random\nrandom.seed(42)\nprint(random.randint(1, 100))  # အမြဲ တူတူ ထွက်",
+      ],
+      [
+        "simulation တွေးနည်း",
+        "ဖြစ်နိုင်ခြေ မေးခွန်းကို သင်္ချာနဲ့ မတွက်တတ်ရင် — အကြိမ် ထောင်ချီ ကျပန်း စမ်း (Monte Carlo simulation) ပြီး ရာခိုင်နှုန်း ကြည့်လို့ရသည်။ ဥပမာ — မိုးရွာနိုင်ခြေ 30% ရက် ၁၀ ရက်မှာ အနည်းဆုံး ၃ ရက် ရွာဖို့ ဘယ်လောက် သေချာလဲ။ playground ထဲက အံစာ simulation ကို ဒီပုံစံ ချဲ့စမ်းကြည့်ပါ။",
+      ],
+    ],
+  ),
 ];
