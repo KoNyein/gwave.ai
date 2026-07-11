@@ -6,6 +6,7 @@ import {
   FileText,
   Gamepad2,
   ImagePlus,
+  Languages,
   Loader2,
   MapPin,
   MessageCircle,
@@ -15,7 +16,7 @@ import {
   SquarePen,
   Video,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { CallUI } from "@/components/messenger/call-ui";
 import { GamesPanel } from "@/components/messenger/games-panel";
@@ -34,6 +35,8 @@ import {
   openDirectConversation,
   sendMessage,
 } from "@/lib/actions/messages";
+import { translateText } from "@/lib/actions/translate";
+import { usePersistentState } from "@/lib/hooks/use-persistent-state";
 import { displayName, timeAgo } from "@/lib/format";
 import { getCurrentPosition } from "@/lib/geolocation";
 import { mediaUrl, uploadFile, uploadMedia } from "@/lib/media";
@@ -71,9 +74,20 @@ export function Messenger({
   initialActiveId,
 }: MessengerProps) {
   const t = useTranslations("messenger");
+  const locale = useLocale();
   const [conversations, setConversations] = React.useState(
     initialConversations,
   );
+  // Auto-translate incoming messages into the viewer's language.
+  const [autoTranslate, setAutoTranslate] = usePersistentState(
+    "gw:msg-autotranslate",
+    false,
+  );
+  const [translations, setTranslations] = React.useState<
+    Record<string, { text: string; loading: boolean; failed?: boolean }>
+  >({});
+  const translationsRef = React.useRef(translations);
+  translationsRef.current = translations;
   const [activeId, setActiveId] = React.useState<string | null>(
     initialActiveId ?? null,
   );
@@ -250,6 +264,33 @@ export function Messenger({
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, peerTyping]);
+
+  const translateMessage = React.useCallback(
+    async (id: string, content: string) => {
+      if (!content.trim()) return;
+      if (translationsRef.current[id]?.text) return;
+      setTranslations((prev) => ({
+        ...prev,
+        [id]: { text: prev[id]?.text ?? "", loading: true },
+      }));
+      const res = await translateText(content, locale);
+      setTranslations((prev) => ({
+        ...prev,
+        [id]: { text: res.text, loading: false, failed: !res.ok },
+      }));
+    },
+    [locale],
+  );
+
+  // Auto-translate the other person's messages when the toggle is on.
+  React.useEffect(() => {
+    if (!autoTranslate || !messages) return;
+    for (const m of messages) {
+      if (!m.content || m.sender_id === currentUser.id) continue;
+      if (translationsRef.current[m.id]) continue;
+      void translateMessage(m.id, m.content);
+    }
+  }, [autoTranslate, messages, currentUser.id, translateMessage]);
 
   function broadcastTyping() {
     if (!activeId) return;
@@ -619,6 +660,26 @@ export function Messenger({
                   <p className="text-xs text-primary">{t("typing")}</p>
                 ) : null}
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+                onClick={() => setAutoTranslate((v) => !v)}
+                aria-label="Auto-translate"
+                title={
+                  autoTranslate
+                    ? "Auto ဘာသာပြန် — ဖွင့်ထားသည်"
+                    : "Auto ဘာသာပြန် — ပိတ်ထားသည်"
+                }
+              >
+                <Languages
+                  className={
+                    autoTranslate
+                      ? "h-5 w-5 text-primary"
+                      : "h-5 w-5 text-muted-foreground"
+                  }
+                />
+              </Button>
               {peer ? (
                 <>
                   <Button
@@ -756,9 +817,44 @@ export function Messenger({
                             </a>
                           ) : null}
                           {message.content ? (
-                            <p className="whitespace-pre-wrap break-words px-3 py-2 text-sm">
-                              {message.content}
-                            </p>
+                            <div className="px-3 py-2">
+                              <p className="whitespace-pre-wrap break-words text-sm">
+                                {message.content}
+                              </p>
+                              {translations[message.id]?.text ? (
+                                <p
+                                  className={cn(
+                                    "mt-1 whitespace-pre-wrap break-words border-t pt-1 text-sm italic",
+                                    isMine
+                                      ? "border-primary-foreground/30 text-primary-foreground/80"
+                                      : "border-border text-muted-foreground",
+                                  )}
+                                >
+                                  🌐 {translations[message.id]?.text}
+                                </p>
+                              ) : null}
+                              {!isMine ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void translateMessage(
+                                      message.id,
+                                      message.content,
+                                    )
+                                  }
+                                  className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:underline"
+                                >
+                                  {translations[message.id]?.loading ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Languages className="h-3 w-3" />
+                                  )}
+                                  {translations[message.id]?.text
+                                    ? "ဘာသာပြန်ပြီး"
+                                    : "ဘာသာပြန်"}
+                                </button>
+                              ) : null}
+                            </div>
                           ) : null}
                         </div>
                       </div>
