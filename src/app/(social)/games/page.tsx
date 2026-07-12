@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Gamepad2, Play, Upload } from "lucide-react";
+import { Gamepad2, Play, Trophy, Upload } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { GameCatalog } from "@/components/games/game-catalog";
@@ -64,6 +64,11 @@ export default async function GamesPage() {
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <div className="flex gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link href="/games/creators">
+              <Trophy className="mr-1 h-4 w-4" /> ထိပ်တန်း Creators
+            </Link>
+          </Button>
           <Button asChild size="sm">
             <Link href="/games/submit">
               <Upload className="mr-1 h-4 w-4" /> {t("submitCta")}
