@@ -31,15 +31,32 @@ const POST_SELECT = `
   page:pages!posts_page_id_fkey(id, name, slug, avatar_url)
 `;
 
+/** Placeholder author when the profile embed comes back empty (deleted or
+ *  hidden profile) — the card renders a plain name instead of crashing. */
+function fallbackAuthor(authorId: string) {
+  return {
+    id: authorId,
+    username: "",
+    full_name: "အသုံးပြုသူ",
+    avatar_url: null,
+    role: "user",
+  } as FeedPost["author"];
+}
+
 function sortMedia(post: FeedPost): FeedPost {
   // PostgREST can omit an embed entirely (e.g. right after a schema change,
-  // before its cache reloads) — a missing array must degrade to "no media",
-  // never crash the whole feed.
+  // before its cache reloads) or return a null author (deleted/hidden
+  // profile) — a post must degrade gracefully, never crash the whole feed.
   post.media = (post.media ?? []).sort((a, b) => a.position - b.position);
+  if (!post.author) post.author = fallbackAuthor(post.author_id);
+  post.my_reaction = post.my_reaction ?? [];
   if (post.shared_post) {
     post.shared_post.media = (post.shared_post.media ?? []).sort(
       (a, b) => a.position - b.position,
     );
+    if (!post.shared_post.author) {
+      post.shared_post.author = fallbackAuthor(post.shared_post.author_id);
+    }
   }
   return post;
 }
@@ -433,5 +450,11 @@ export async function getComments(
     .returns<CommentWithAuthor[]>();
 
   if (error) throw new Error(`Failed to load comments: ${error.message}`);
-  return data ?? [];
+  return (data ?? []).map((c) => ({
+    ...c,
+    // Same degradation as posts: a deleted/hidden profile must not crash
+    // the thread.
+    author: c.author ?? fallbackAuthor(c.author_id),
+    my_reaction: c.my_reaction ?? [],
+  }));
 }
