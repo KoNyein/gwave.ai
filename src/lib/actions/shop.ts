@@ -249,6 +249,33 @@ export async function placeOrder(
   return { ok: true, data: { orderId: data as string } };
 }
 
+/** Place a dropship order and pay for it instantly from the buyer's G-Pay. */
+export async function placeOrderWithGpay(
+  input: OrderInput,
+): Promise<ActionResult<{ orderId: string }>> {
+  const parsed = orderSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.errors[0]?.message ?? "Invalid." };
+  }
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not authenticated." };
+
+  const v = parsed.data;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("place_dropship_order_gpay", {
+    p_product_id: v.productId,
+    p_quantity: v.quantity,
+    p_ship_name: v.shipName,
+    p_ship_phone: v.shipPhone,
+    p_ship_address: v.shipAddress,
+    p_note: v.note || null,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/shop/orders");
+  revalidatePath("/gpay");
+  return { ok: true, data: { orderId: data as string } };
+}
+
 const ORDER_STATUSES = [
   "pending",
   "forwarded",

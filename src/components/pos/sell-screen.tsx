@@ -15,6 +15,7 @@ import {
   Search,
   Trash2,
   UserPlus,
+  Wallet,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -454,6 +455,7 @@ const METHOD_ICONS: Record<PaymentMethod, typeof Banknote> = {
   cash: Banknote,
   card: CreditCard,
   qr: QrCode,
+  gpay: Wallet,
 };
 
 function ChargeDialog({
@@ -549,8 +551,8 @@ function ChargeDialog({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-2">
-              {(["cash", "card", "qr"] as const).map((option) => {
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {(["cash", "card", "qr", "gpay"] as const).map((option) => {
                 const Icon = METHOD_ICONS[option];
                 return (
                   <button

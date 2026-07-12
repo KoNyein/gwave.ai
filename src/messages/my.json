@@ -693,7 +693,8 @@
     "methods": {
       "cash": "ငွေသား",
       "card": "ကတ်",
-      "qr": "QR"
+      "qr": "QR",
+      "gpay": "G-Pay"
     },
     "amountTendered": "လက်ခံငွေ",
     "changeDue": "ပြန်အမ်းငွေ",
@@ -1110,7 +1111,14 @@
     "status_forwarded": "ဆက်ပို့ပြီး",
     "status_shipped": "ပို့ဆောင်ပြီး",
     "status_delivered": "ရောက်ရှိပြီး",
-    "status_cancelled": "ပယ်ဖျက်"
+    "status_cancelled": "ပယ်ဖျက်",
+    "payCod": "အိမ်ရောက်ငွေချေ",
+    "payCodHint": "ပစ္စည်းရောက်မှ ပေး",
+    "payGpay": "G-Pay ဖြင့်ပေး",
+    "payGpayNow": "G-Pay ဖြင့် ချက်ချင်းပေးမည်",
+    "gpayBalance": "လက်ကျန်",
+    "gpayInsufficient": "လက်ကျန် မလုံလောက်ပါ",
+    "gpayPayHint": "သင့် G-Pay wallet မှ ချက်ချင်း နုတ်ယူပါမည်။"
   },
   "finance": {
     "title": "လုပ်ငန်း ငွေစာရင်း",

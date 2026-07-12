@@ -693,7 +693,8 @@
     "methods": {
       "cash": "Cash",
       "card": "Card",
-      "qr": "QR"
+      "qr": "QR",
+      "gpay": "G-Pay"
     },
     "amountTendered": "Amount tendered",
     "changeDue": "Change due",
@@ -1110,7 +1111,14 @@
     "status_forwarded": "ส่งต่อแล้ว",
     "status_shipped": "จัดส่งแล้ว",
     "status_delivered": "ส่งถึงแล้ว",
-    "status_cancelled": "ยกเลิก"
+    "status_cancelled": "ยกเลิก",
+    "payCod": "เก็บเงินปลายทาง",
+    "payCodHint": "จ่ายเมื่อสินค้ามาถึง",
+    "payGpay": "จ่ายด้วย G-Pay",
+    "payGpayNow": "จ่ายด้วย G-Pay ตอนนี้",
+    "gpayBalance": "ยอดคงเหลือ",
+    "gpayInsufficient": "ยอดคงเหลือไม่พอ",
+    "gpayPayHint": "หักจากกระเป๋า G-Pay ของคุณทันที"
   },
   "finance": {
     "title": "การเงินธุรกิจ",

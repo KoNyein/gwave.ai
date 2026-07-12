@@ -693,7 +693,8 @@
     "methods": {
       "cash": "Cash",
       "card": "Card",
-      "qr": "QR"
+      "qr": "QR",
+      "gpay": "G-Pay"
     },
     "amountTendered": "Amount tendered",
     "changeDue": "Change due",
@@ -1110,7 +1111,14 @@
     "status_forwarded": "已转发",
     "status_shipped": "已发货",
     "status_delivered": "已送达",
-    "status_cancelled": "已取消"
+    "status_cancelled": "已取消",
+    "payCod": "货到付款",
+    "payCodHint": "收到货时付款",
+    "payGpay": "用 G-Pay 支付",
+    "payGpayNow": "立即用 G-Pay 支付",
+    "gpayBalance": "余额",
+    "gpayInsufficient": "余额不足",
+    "gpayPayHint": "将立即从您的 G-Pay 钱包扣款。"
   },
   "finance": {
     "title": "商业财务",

@@ -10,8 +10,11 @@ import { KindBadge } from "@/components/shop/product-card";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
+import { getActiveCurrencies } from "@/lib/db/currency";
+import { getMyGpayAccount } from "@/lib/db/gpay";
 import { getMyReview, getReviews, getReviewStats } from "@/lib/db/reviews";
 import { getShopProduct } from "@/lib/db/shop";
+import { currencyToGpay, toRateMap } from "@/lib/currency";
 import { displayName, formatPrice } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +44,27 @@ export default async function ProductPage({
     getReviews("shop_product", product.id),
     getMyReview("shop_product", product.id),
   ]);
+
+  // G-Pay checkout eligibility: the buyer needs an active wallet and the
+  // listing currency must be convertible to G-Pay. Whether the *seller* accepts
+  // G-Pay is enforced by the RPC (their wallet isn't buyer-readable under RLS).
+  let gpay: { unitPrice: number; balance: number } | null = null;
+  if (product.kind === "dropship" && product.price != null) {
+    const [myGpay, currencies] = await Promise.all([
+      getMyGpayAccount(),
+      getActiveCurrencies(),
+    ]);
+    if (myGpay?.status === "active") {
+      const unit = currencyToGpay(
+        product.price,
+        product.currency,
+        toRateMap(currencies),
+      );
+      if (unit != null && unit > 0) {
+        gpay = { unitPrice: unit, balance: Number(myGpay.balance) };
+      }
+    }
+  }
 
   const t = await getTranslations("shop");
   const kindLabels = { affiliate: t("affiliate"), dropship: t("dropship") };
@@ -104,6 +128,7 @@ export default async function ProductPage({
               productId={product.id}
               price={product.price}
               currency={product.currency}
+              gpay={gpay}
             />
           ) : null}
         </div>

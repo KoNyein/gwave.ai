@@ -693,7 +693,8 @@
     "methods": {
       "cash": "Cash",
       "card": "Card",
-      "qr": "QR"
+      "qr": "QR",
+      "gpay": "G-Pay"
     },
     "amountTendered": "Amount tendered",
     "changeDue": "Change due",
@@ -1110,7 +1111,14 @@
     "status_forwarded": "Forwarded",
     "status_shipped": "Shipped",
     "status_delivered": "Delivered",
-    "status_cancelled": "Cancelled"
+    "status_cancelled": "Cancelled",
+    "payCod": "Cash on delivery",
+    "payCodHint": "Pay when it arrives",
+    "payGpay": "Pay with G-Pay",
+    "payGpayNow": "Pay now with G-Pay",
+    "gpayBalance": "Balance",
+    "gpayInsufficient": "Insufficient balance",
+    "gpayPayHint": "Charged instantly from your G-Pay wallet."
   },
   "finance": {
     "title": "Business finance",
