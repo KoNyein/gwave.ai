@@ -345,6 +345,141 @@
     --input: 22 25% 20%;
     --ring: 24 85% 55%;
   }
+
+  /* ------------------------------------------------------------------
+   * Personal eye-friendly themes (see lib/appearance.ts). Applied as a
+   * data-theme on <html> from a per-user localStorage choice. Each is a
+   * self-contained low-strain dark palette: no pure-white text, no
+   * pure-black bg, softened contrast, and a frosted-glass card (below).
+   * color-scheme:dark makes native controls/scrollbars match.
+   * ------------------------------------------------------------------ */
+  [data-theme="sage-mist"] {
+    color-scheme: dark;
+    --background: 150 14% 8%;
+    --foreground: 140 12% 82%;
+    --card: 150 13% 11%;
+    --card-foreground: 140 12% 85%;
+    --popover: 150 13% 11%;
+    --popover-foreground: 140 12% 85%;
+    --primary: 145 38% 52%;
+    --primary-foreground: 150 25% 8%;
+    --secondary: 150 12% 16%;
+    --secondary-foreground: 140 12% 85%;
+    --muted: 150 10% 15%;
+    --muted-foreground: 140 8% 62%;
+    --accent: 160 35% 45%;
+    --accent-foreground: 140 20% 92%;
+    --destructive: 0 55% 50%;
+    --destructive-foreground: 0 0% 96%;
+    --border: 150 10% 19%;
+    --input: 150 10% 19%;
+    --ring: 145 38% 52%;
+  }
+
+  [data-theme="dim-slate"] {
+    color-scheme: dark;
+    --background: 215 18% 11%;
+    --foreground: 213 14% 80%;
+    --card: 215 16% 14%;
+    --card-foreground: 213 14% 83%;
+    --popover: 215 16% 14%;
+    --popover-foreground: 213 14% 83%;
+    --primary: 210 42% 60%;
+    --primary-foreground: 215 30% 10%;
+    --secondary: 215 14% 19%;
+    --secondary-foreground: 213 14% 83%;
+    --muted: 215 12% 18%;
+    --muted-foreground: 213 10% 60%;
+    --accent: 200 38% 52%;
+    --accent-foreground: 213 20% 92%;
+    --destructive: 0 50% 52%;
+    --destructive-foreground: 0 0% 96%;
+    --border: 215 12% 23%;
+    --input: 215 12% 23%;
+    --ring: 210 42% 60%;
+  }
+
+  [data-theme="hacker"] {
+    color-scheme: dark;
+    --background: 128 22% 4%;
+    --foreground: 128 42% 68%;
+    --card: 128 20% 7%;
+    --card-foreground: 128 42% 72%;
+    --popover: 128 20% 7%;
+    --popover-foreground: 128 42% 72%;
+    --primary: 130 62% 48%;
+    --primary-foreground: 128 30% 6%;
+    --secondary: 128 16% 12%;
+    --secondary-foreground: 128 42% 74%;
+    --muted: 128 12% 11%;
+    --muted-foreground: 128 22% 52%;
+    --accent: 96 52% 46%;
+    --accent-foreground: 128 30% 92%;
+    --destructive: 8 68% 54%;
+    --destructive-foreground: 0 0% 96%;
+    --border: 128 24% 15%;
+    --input: 128 24% 15%;
+    --ring: 130 62% 48%;
+  }
+
+  [data-theme="amber-noir"] {
+    color-scheme: dark;
+    --background: 50 10% 6%;
+    --foreground: 48 22% 80%;
+    --card: 48 12% 9%;
+    --card-foreground: 48 22% 83%;
+    --popover: 48 12% 9%;
+    --popover-foreground: 48 22% 83%;
+    --primary: 45 86% 55%;
+    --primary-foreground: 45 45% 10%;
+    --secondary: 48 10% 15%;
+    --secondary-foreground: 48 22% 83%;
+    --muted: 48 8% 14%;
+    --muted-foreground: 48 14% 60%;
+    --accent: 142 48% 46%;
+    --accent-foreground: 142 25% 92%;
+    --destructive: 6 66% 54%;
+    --destructive-foreground: 0 0% 96%;
+    --border: 48 12% 18%;
+    --input: 48 12% 18%;
+    --ring: 45 86% 55%;
+  }
+
+  [data-theme="deep-ocean"] {
+    color-scheme: dark;
+    --background: 200 28% 9%;
+    --foreground: 195 16% 80%;
+    --card: 200 26% 12%;
+    --card-foreground: 195 16% 83%;
+    --popover: 200 26% 12%;
+    --popover-foreground: 195 16% 83%;
+    --primary: 185 50% 52%;
+    --primary-foreground: 200 30% 9%;
+    --secondary: 200 22% 17%;
+    --secondary-foreground: 195 16% 83%;
+    --muted: 200 18% 16%;
+    --muted-foreground: 195 12% 60%;
+    --accent: 172 44% 48%;
+    --accent-foreground: 195 20% 92%;
+    --destructive: 0 52% 52%;
+    --destructive-foreground: 0 0% 96%;
+    --border: 200 18% 21%;
+    --input: 200 18% 21%;
+    --ring: 185 50% 52%;
+  }
+
+  /* Frosted-glass cards for the personal dark themes: translucent card fill
+   * over a soft blur, so panels read like frosted glass at night. The
+   * theme-scoped selector out-specifies Tailwind's plain .bg-card. */
+  [data-theme="sage-mist"] .bg-card,
+  [data-theme="dim-slate"] .bg-card,
+  [data-theme="hacker"] .bg-card,
+  [data-theme="amber-noir"] .bg-card,
+  [data-theme="deep-ocean"] .bg-card {
+    background-color: hsl(var(--card) / 0.72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
 }
 
 @layer base {

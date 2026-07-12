@@ -57,6 +57,13 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className={inter.className}>
+        {/* Apply a per-user eye-friendly theme before paint (no flash). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('gwave-appearance');if(t){document.documentElement.setAttribute('data-theme',t);}}catch(e){}",
+          }}
+        />
         <NextIntlClientProvider messages={messages}>
           {children}
         </NextIntlClientProvider>
