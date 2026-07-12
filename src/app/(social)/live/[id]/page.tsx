@@ -7,13 +7,22 @@ import { DoubleTapHeart } from "@/components/live/double-tap-heart";
 import { HostPanel } from "@/components/live/host-panel";
 import { LiveChat, type ChatEntry } from "@/components/live/live-chat";
 import { LivePlayer } from "@/components/live/live-player";
+import { LiveSaleManager } from "@/components/live/live-sale-manager";
+import { LiveSalePanel } from "@/components/live/live-sale-panel";
 import { ReactionBar } from "@/components/live/reaction-bar";
 import { StreamStatusWatcher } from "@/components/live/stream-status-watcher";
 import { ViewerCount } from "@/components/live/viewer-count";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
+import { currencyToGpay, toRateMap } from "@/lib/currency";
+import { getActiveCurrencies } from "@/lib/db/currency";
+import { getMyGpayAccount } from "@/lib/db/gpay";
 import { getRecentChat, getStream, getStreamKey } from "@/lib/db/live";
+import {
+  getLiveProducts,
+  getMySellableProducts,
+} from "@/lib/db/live-products";
 import { displayName, timeAgo } from "@/lib/format";
 import { MUX_RTMP_URL } from "@/lib/mux";
 
@@ -38,6 +47,34 @@ export default async function LiveStreamPage({
   // RLS returns the key only to the host; null for everyone else.
   const streamKey = isHost ? await getStreamKey(stream.id) : null;
   const chat = (await getRecentChat(stream.id)) as ChatEntry[];
+
+  // Live Sale — products pinned to this stream, and (for buyers) their G-Pay
+  // price/eligibility. Buying reuses the dropship + G-Pay order path.
+  const liveProducts = await getLiveProducts(stream.id);
+  const gpayByProduct: Record<
+    string,
+    { unitPrice: number; balance: number } | null
+  > = {};
+  const buyable = liveProducts.filter(
+    (p) => p.kind === "dropship" && p.price != null,
+  );
+  if (buyable.length > 0) {
+    const [myGpay, currencies] = await Promise.all([
+      getMyGpayAccount(),
+      getActiveCurrencies(),
+    ]);
+    if (myGpay?.status === "active") {
+      const rates = toRateMap(currencies);
+      const balance = Number(myGpay.balance);
+      for (const p of buyable) {
+        const unit = currencyToGpay(p.price as number, p.currency, rates);
+        gpayByProduct[p.id] =
+          unit != null && unit > 0 ? { unitPrice: unit, balance } : null;
+      }
+    }
+  }
+  const myProducts = isHost ? await getMySellableProducts(profile.id) : [];
+  const pinnedIds = liveProducts.map((p) => p.id);
 
   const currentUser = {
     id: profile.id,
@@ -104,6 +141,16 @@ export default async function LiveStreamPage({
           status={stream.status}
           rtmpUrl={MUX_RTMP_URL}
           streamKey={streamKey}
+        />
+      )}
+
+      {/* Live Sale — viewers buy pinned products; host manages the pins */}
+      <LiveSalePanel products={liveProducts} gpayByProduct={gpayByProduct} />
+      {isHost && (
+        <LiveSaleManager
+          streamId={stream.id}
+          myProducts={myProducts}
+          pinnedIds={pinnedIds}
         />
       )}
 
