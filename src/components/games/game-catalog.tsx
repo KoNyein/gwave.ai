@@ -14,11 +14,13 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ViewToggle, useViewMode } from "@/components/ui/view-toggle";
 import {
   addCatalogGame,
   deleteCatalogGame,
 } from "@/lib/actions/game-catalog";
 import { isGameEmbeddable } from "@/lib/game-frame";
+import { cn } from "@/lib/utils";
 import type { GameCatalogItem } from "@/types/database";
 
 /** Database-driven grid of external educational games with a modal iframe
@@ -33,6 +35,7 @@ export function GameCatalog({
   const t = useTranslations("games");
   const router = useRouter();
   const [active, setActive] = React.useState<GameCatalogItem | null>(null);
+  const [view, setView] = useViewMode("games.catalog", "grid");
 
   // Lock body scroll while the modal is open.
   React.useEffect(() => {
@@ -53,10 +56,11 @@ export function GameCatalog({
 
   return (
     <section className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-muted-foreground">
           {t("catalogHeading")}
         </h2>
+        {games.length > 0 ? <ViewToggle value={view} onChange={setView} /> : null}
       </div>
 
       {isStaff ? <AdminAddGame /> : null}
@@ -66,25 +70,42 @@ export function GameCatalog({
           {t("catalogEmpty")}
         </p>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div
+          className={cn(
+            view === "grid"
+              ? "grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+              : "flex flex-col gap-2",
+          )}
+        >
           {games.map((game) => (
             <div
               key={game.id}
-              className="group relative overflow-hidden rounded-xl border bg-card transition-colors hover:bg-muted/40"
+              className={cn(
+                "group relative overflow-hidden rounded-xl border bg-card transition-colors hover:bg-muted/40",
+                view === "list" && "flex items-center",
+              )}
             >
               <button
                 type="button"
                 onClick={() => setActive(game)}
-                className="block w-full text-left"
+                className={cn(
+                  "text-left",
+                  view === "list" ? "flex w-full items-center gap-3" : "block w-full",
+                )}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={game.thumbnail_url}
                   alt={game.title}
                   loading="lazy"
-                  className="h-32 w-full bg-muted object-cover"
+                  className={cn(
+                    "bg-muted object-cover",
+                    view === "list"
+                      ? "h-16 w-16 shrink-0 rounded-lg"
+                      : "h-32 w-full",
+                  )}
                 />
-                <div className="p-3">
+                <div className={cn(view === "list" ? "min-w-0 py-2 pr-3" : "p-3")}>
                   <p className="truncate font-semibold">{game.title}</p>
                   <span className="mt-1 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
                     {game.category}
