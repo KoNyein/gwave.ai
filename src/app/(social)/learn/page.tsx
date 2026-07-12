@@ -2,27 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ArrowRight,
-  Blocks,
   BookOpen,
-  Bot,
-  Braces,
-  BrainCircuit,
-  Code2,
-  Cpu,
-  Database,
-  FileCode2,
-  FlaskConical,
   Gamepad2,
   Languages,
-  ListChecks,
-  Palette,
   GraduationCap,
   Play,
   Rocket,
-  Sprout,
-  Terminal,
   Trophy,
-  type LucideIcon,
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,6 +16,7 @@ import { ageBandOf, getCurrentProfile } from "@/lib/auth";
 import { getLocale } from "next-intl/server";
 
 import { LevelBadge } from "@/components/learn/level-badge";
+import { TrackList } from "@/components/learn/track-list";
 import {
   getLearningPoints,
   getProgressForUser,
@@ -40,22 +27,6 @@ import { headingForBand, tracksForBand } from "@/lib/learn/lessons";
 
 export const metadata = { title: "Learn" };
 export const dynamic = "force-dynamic";
-
-const ICONS: Record<string, LucideIcon> = {
-  Blocks,
-  FlaskConical,
-  Cpu,
-  Bot,
-  Code2,
-  Sprout,
-  FileCode2,
-  Palette,
-  Braces,
-  Terminal,
-  Database,
-  BrainCircuit,
-  ListChecks,
-};
 
 export default async function LearnPage() {
   const profile = await getCurrentProfile();
@@ -206,54 +177,16 @@ export default async function LearnPage() {
         </Link>
       )}
 
-      <div className="space-y-3">
-        {tracks.map((track) => {
-          const Icon = ICONS[track.icon] ?? BookOpen;
-          const done = Math.min(
-            completedByTrack.get(track.slug) ?? 0,
-            track.lessons.length,
-          );
-          const pct = Math.round((done / track.lessons.length) * 100);
-          return (
-            <Link key={track.slug} href={`/learn/${track.slug}`} className="block">
-              <Card className="transition-colors hover:bg-muted/50">
-                <CardContent className="flex items-start gap-3 p-4">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Icon className="h-6 w-6" />
-                  </span>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-semibold">{track.title}</p>
-                      <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
-                        {done > 0
-                          ? `${done}/${track.lessons.length} lessons`
-                          : `${track.lessons.length} lessons`}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-sm text-muted-foreground">
-                      {track.description}
-                    </p>
-                    {done > 0 && (
-                      <div
-                        className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted"
-                        role="progressbar"
-                        aria-valuenow={pct}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                      >
-                        <div
-                          className="h-full rounded-full bg-primary transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
-      </div>
+      <TrackList
+        tracks={tracks.map((track) => ({
+          slug: track.slug,
+          icon: track.icon,
+          title: track.title,
+          description: track.description,
+          lessonCount: track.lessons.length,
+          done: completedByTrack.get(track.slug) ?? 0,
+        }))}
+      />
 
       <Card>
         <CardContent className="p-4 text-center text-sm text-muted-foreground">
