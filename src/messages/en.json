@@ -114,7 +114,8 @@
     "takePhoto": "Take a photo",
     "editTitle": "Edit post",
     "saveChanges": "Save changes",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "editPhoto": "Edit"
   },
   "post": {
     "comment": "Comment",
