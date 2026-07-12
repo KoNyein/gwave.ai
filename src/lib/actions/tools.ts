@@ -7,8 +7,10 @@ import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "@/lib/actions/posts";
 
 const rateSchema = z.object({
-  code: z.enum(["USD", "THB", "MMK"]),
-  ratePerUsd: z.number().positive().max(1_000_000),
+  // Any ISO-4217 fiat or crypto ticker (3–6 uppercase letters); RLS still
+  // limits writes to admins and the row must already exist.
+  code: z.string().regex(/^[A-Z]{3,6}$/),
+  ratePerUsd: z.number().positive().max(100_000_000),
 });
 
 /** Admin: update a currency rate in the manual table (RLS enforces admin). */
@@ -20,6 +22,8 @@ export async function updateCurrencyRate(
   if (parsed.data.code === "USD" && parsed.data.ratePerUsd !== 1) {
     return { ok: false, error: "USD is the base currency (rate 1)." };
   }
+  // The G-Pay peg is fixed: 1 G-Pay = 1 MMK. MMK's USD rate may move, but it
+  // must stay a positive number — the peg itself is enforced in code, not here.
 
   const supabase = await createClient();
   const { error } = await supabase

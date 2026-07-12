@@ -898,6 +898,12 @@ export interface SalePayment {
 export interface CurrencyRate {
   code: string;
   rate_per_usd: number;
+  name: string | null;
+  symbol: string | null;
+  kind: "fiat" | "crypto";
+  decimals: number;
+  flag: string | null;
+  is_active: boolean;
   updated_at: string;
 }
 
