@@ -387,7 +387,8 @@
     "cameraOff": "ကင်မရာပိတ်",
     "endCall": "ခေါ်ဆိုမှုရပ်မည်",
     "shareLocation": "တည်နေရာ မျှဝေရန်",
-    "sharedLocation": "မျှဝေထားသော တည်နေရာ"
+    "sharedLocation": "မျှဝေထားသော တည်နေရာ",
+    "goLive": "Live လွှင့်ရန်"
   },
   "stories": {
     "createStory": "စတိုရီဖန်တီးရန်",
