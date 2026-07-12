@@ -1,0 +1,56 @@
+{
+  "//": "gwave.ai — ECS Fargate task definition template. Replace <ACCOUNT>, <REGION>, and the secret ARNs, then register with: aws ecs register-task-definition --cli-input-json file://deploy/ecs-task-definition.json",
+  "family": "gwave-web",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT>:role/gwaveEcsExecutionRole",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT>:role/gwaveEcsTaskRole",
+  "runtimePlatform": { "cpuArchitecture": "X86_64", "operatingSystemFamily": "LINUX" },
+  "containerDefinitions": [
+    {
+      "name": "web",
+      "image": "<ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/gwave-web:latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 3000, "protocol": "tcp" }],
+      "environment": [
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "NEXT_PUBLIC_SITE_URL", "value": "https://app.yourdomain.com" },
+        { "name": "NEXT_PUBLIC_CCTV_APP", "value": "LiveApp" }
+      ],
+      "//secrets": "Store real values in AWS Secrets Manager / SSM and reference them here so they never sit in the task definition or the image.",
+      "secrets": [
+        { "name": "SUPABASE_SERVICE_ROLE_KEY", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT>:secret:gwave/SUPABASE_SERVICE_ROLE_KEY" },
+        { "name": "MUX_TOKEN_ID", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT>:secret:gwave/MUX_TOKEN_ID" },
+        { "name": "MUX_TOKEN_SECRET", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT>:secret:gwave/MUX_TOKEN_SECRET" },
+        { "name": "MUX_WEBHOOK_SECRET", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT>:secret:gwave/MUX_WEBHOOK_SECRET" },
+        { "name": "STRIPE_SECRET_KEY", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT>:secret:gwave/STRIPE_SECRET_KEY" },
+        { "name": "STRIPE_WEBHOOK_SECRET", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT>:secret:gwave/STRIPE_WEBHOOK_SECRET" },
+        { "name": "CCTV_MEDIA_API_URL", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT>:secret:gwave/CCTV_MEDIA_API_URL" },
+        { "name": "CCTV_MEDIA_API_TOKEN", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT>:secret:gwave/CCTV_MEDIA_API_TOKEN" },
+        { "name": "TWILIO_ACCOUNT_SID", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT>:secret:gwave/TWILIO_ACCOUNT_SID" },
+        { "name": "TWILIO_AUTH_TOKEN", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT>:secret:gwave/TWILIO_AUTH_TOKEN" },
+        { "name": "TWILIO_FROM", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT>:secret:gwave/TWILIO_FROM" },
+        { "name": "VAPID_PRIVATE_KEY", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT>:secret:gwave/VAPID_PRIVATE_KEY" },
+        { "name": "VAPID_SUBJECT", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT>:secret:gwave/VAPID_SUBJECT" }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 20
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/gwave-web",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "web",
+          "awslogs-create-group": "true"
+        }
+      }
+    }
+  ]
+}
