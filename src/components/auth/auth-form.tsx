@@ -64,6 +64,16 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               {state.error}
             </p>
           ) : null}
+          {mode === "login" ? (
+            <p className="text-right text-sm">
+              <Link
+                href="/forgot-password"
+                className="text-muted-foreground hover:text-primary hover:underline"
+              >
+                {t("forgotPassword")}
+              </Link>
+            </p>
+          ) : null}
           <SubmitButton
             label={mode === "login" ? t("login") : t("register")}
             pendingLabel={mode === "login" ? t("loggingIn") : t("registering")}
