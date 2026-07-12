@@ -114,7 +114,8 @@
     "takePhoto": "ถ่ายรูป",
     "editTitle": "แก้ไขโพสต์",
     "saveChanges": "บันทึก",
-    "saving": "กำลังบันทึก…"
+    "saving": "กำลังบันทึก…",
+    "editPhoto": "แก้ไข"
   },
   "post": {
     "comment": "แสดงความคิดเห็น",

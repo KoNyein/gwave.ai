@@ -114,7 +114,8 @@
     "takePhoto": "ဓာတ်ပုံရိုက်ရန်",
     "editTitle": "Post ပြင်ရန်",
     "saveChanges": "သိမ်းမည်",
-    "saving": "သိမ်းနေသည်…"
+    "saving": "သိမ်းနေသည်…",
+    "editPhoto": "တည်းဖြတ်"
   },
   "post": {
     "comment": "မှတ်ချက်",

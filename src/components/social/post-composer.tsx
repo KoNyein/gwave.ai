@@ -10,10 +10,12 @@ import {
   Lock,
   MapPin,
   Users,
+  Wand2,
   X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { PhotoEditor } from "@/components/media/photo-editor";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,6 +73,7 @@ export function PostComposer({
   const [content, setContent] = React.useState("");
   const [visibility, setVisibility] = React.useState<PostVisibility>("public");
   const [files, setFiles] = React.useState<SelectedFile[]>([]);
+  const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [location, setLocation] = React.useState<{
@@ -152,6 +155,23 @@ export function PostComposer({
       if (target) URL.revokeObjectURL(target.previewUrl);
       return previous.filter((_, i) => i !== index);
     });
+  }
+
+  /** Swap in the edited version of an image and close the editor. */
+  function applyEdit(index: number, edited: File) {
+    setFiles((previous) => {
+      const target = previous[index];
+      if (!target) return previous;
+      URL.revokeObjectURL(target.previewUrl);
+      const next = [...previous];
+      next[index] = {
+        file: edited,
+        previewUrl: URL.createObjectURL(edited),
+        isVideo: false,
+      };
+      return next;
+    });
+    setEditingIndex(null);
   }
 
   async function handleSubmit() {
@@ -293,6 +313,16 @@ export function PostComposer({
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
+                    {!selected.isVideo ? (
+                      <button
+                        type="button"
+                        onClick={() => setEditingIndex(index)}
+                        className="absolute bottom-1 right-1 flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[11px] font-medium text-white hover:bg-black/80"
+                        aria-label={t("editPhoto")}
+                      >
+                        <Wand2 className="h-3 w-3" /> {t("editPhoto")}
+                      </button>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -389,6 +419,14 @@ export function PostComposer({
           </DialogContent>
         </Dialog>
       </CardContent>
+
+      {editingIndex !== null && files[editingIndex] ? (
+        <PhotoEditor
+          file={files[editingIndex]!.file}
+          onDone={(edited) => applyEdit(editingIndex, edited)}
+          onCancel={() => setEditingIndex(null)}
+        />
+      ) : null}
     </Card>
   );
 }

@@ -114,7 +114,8 @@
     "takePhoto": "拍照",
     "editTitle": "编辑帖子",
     "saveChanges": "保存",
-    "saving": "保存中…"
+    "saving": "保存中…",
+    "editPhoto": "编辑"
   },
   "post": {
     "comment": "评论",
