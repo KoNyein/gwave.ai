@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
+import { sendSms, smsConfigured } from "@/lib/sms";
 import { createClient } from "@/lib/supabase/server";
 import type { GpayStatus } from "@/types/database";
 
@@ -44,6 +45,70 @@ const kycSchema = z
 
 export type GpayKycInput = z.infer<typeof kycSchema>;
 
+const phoneSchema = z
+  .string()
+  .trim()
+  .min(5)
+  .max(20)
+  .regex(/^[0-9+\-\s]+$/, "Enter a valid phone number.");
+
+/** Send a one-time verification code by SMS to the phone being registered. */
+export async function requestGpayPhoneOtp(phone: string): Promise<ActionResult> {
+  const parsed = phoneSchema.safeParse(phone);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid phone" };
+  }
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+  if (!smsConfigured()) {
+    return {
+      ok: false,
+      error: "SMS OTP is not set up yet. Ask the admin to configure it.",
+    };
+  }
+
+  // 6-digit code; stored bcrypt-hashed by the DB function (never persisted raw).
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("gpay_start_phone_otp", {
+    p_phone: parsed.data,
+    p_code: code,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  try {
+    await sendSms(parsed.data, `gwave G-Pay verification code: ${code}`);
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not send the SMS.",
+    };
+  }
+  return { ok: true, data: undefined };
+}
+
+/** Verify the SMS code for the registering phone. */
+export async function verifyGpayPhoneOtp(
+  phone: string,
+  code: string,
+): Promise<ActionResult> {
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+  if (!/^[0-9]{6}$/.test(code)) {
+    return { ok: false, error: "Enter the 6-digit code." };
+  }
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("gpay_verify_phone_otp", {
+    p_phone: phone,
+    p_code: code,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (data !== true) {
+    return { ok: false, error: "Wrong or expired code." };
+  }
+  return { ok: true, data: undefined };
+}
+
 /** Register or update the caller's KYC. A new account starts pending. */
 export async function saveGpayKyc(input: GpayKycInput): Promise<ActionResult> {
   const parsed = kycSchema.safeParse(input);
@@ -54,6 +119,28 @@ export async function saveGpayKyc(input: GpayKycInput): Promise<ActionResult> {
   if (!userId) return { ok: false, error: "Not signed in" };
 
   const v = parsed.data;
+
+  const supabase0 = await createClient();
+  const { data: existing } = await supabase0
+    .from("gpay_accounts")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle<{ id: string }>();
+
+  // A first registration must have a phone confirmed by SMS OTP — but only
+  // when SMS is actually configured, so the flow still works before an operator
+  // wires up a provider.
+  if (!existing && smsConfigured()) {
+    const { data: verified } = await supabase0.rpc("gpay_phone_verified", {
+      p_phone: v.phone,
+    });
+    if (verified !== true) {
+      return {
+        ok: false,
+        error: "Please verify your phone number with the SMS code first.",
+      };
+    }
+  }
   const row: Record<string, unknown> = {
     user_id: userId,
     full_name: v.fullName,
