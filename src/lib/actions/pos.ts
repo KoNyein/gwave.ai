@@ -344,7 +344,7 @@ const checkoutSchema = z.object({
   payments: z
     .array(
       z.object({
-        method: z.enum(["cash", "card", "qr"]),
+        method: z.enum(["cash", "card", "qr", "gpay"]),
         amount: z.number().positive(),
       }),
     )

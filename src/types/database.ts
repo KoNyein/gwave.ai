@@ -49,7 +49,7 @@ export type CommandStatus = "pending" | "sent" | "acked" | "failed";
 
 export type StoreRole = "staff" | "manager";
 
-export type PaymentMethod = "cash" | "card" | "qr";
+export type PaymentMethod = "cash" | "card" | "qr" | "gpay";
 
 export type SaleStatus = "completed" | "refunded";
 
