@@ -34,7 +34,12 @@
     "family": "Family",
     "map": "Map",
     "finance": "Finance",
-    "reels": "Reels"
+    "reels": "Reels",
+    "sectionSocial": "Social",
+    "sectionLearn": "Learning",
+    "sectionFarm": "Farm & Home",
+    "sectionBusiness": "Shop & Business",
+    "sectionKnowledge": "Knowledge & Tools"
   },
   "auth": {
     "login": "Log in",

@@ -34,7 +34,12 @@
     "family": "家庭",
     "map": "地图",
     "finance": "财务",
-    "reels": "Reels 短视频"
+    "reels": "Reels 短视频",
+    "sectionSocial": "社交",
+    "sectionLearn": "学习",
+    "sectionFarm": "农场与家居",
+    "sectionBusiness": "商店与商业",
+    "sectionKnowledge": "知识与工具"
   },
   "auth": {
     "login": "登录",

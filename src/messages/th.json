@@ -34,7 +34,12 @@
     "family": "ครอบครัว",
     "map": "แผนที่",
     "finance": "การเงิน",
-    "reels": "Reels"
+    "reels": "Reels",
+    "sectionSocial": "โซเชียล",
+    "sectionLearn": "การเรียนรู้",
+    "sectionFarm": "ฟาร์มและบ้าน",
+    "sectionBusiness": "ร้านค้าและธุรกิจ",
+    "sectionKnowledge": "ความรู้และเครื่องมือ"
   },
   "auth": {
     "login": "เข้าสู่ระบบ",
