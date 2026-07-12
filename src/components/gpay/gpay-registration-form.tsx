@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, ShieldCheck, Upload, Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { FaceCapture } from "@/components/gpay/face-capture";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,28 +37,47 @@ export function GpayRegistrationForm({
   const [error, setError] = React.useState<string | null>(null);
   const [slip, setSlip] = React.useState<File | null>(null);
   const slipInputRef = React.useRef<HTMLInputElement>(null);
+  // KYC face scan: required for a first registration, optional (replace) on edit.
+  const [face, setFace] = React.useState<File | null>(null);
+  const hasExistingFace = Boolean(account?.face_path);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    // A face scan must be captured before the account can be submitted.
+    if (!face && !hasExistingFace) {
+      setError(t("faceRequired"));
+      return;
+    }
+
     setPending(true);
     setError(null);
     const fd = new FormData(e.currentTarget);
+    const supabase = createClient();
 
-    // Upload a newly chosen payment slip to the private "slips" bucket first;
-    // we store only its path. Editing without picking a new file keeps the old.
+    // Upload a newly chosen payment slip + face scan to the private "slips"
+    // bucket first; we store only their paths. Editing without a new capture
+    // keeps the old one.
     let slipPath = "";
+    let facePath = "";
     try {
       if (slip) {
         const prepared = await prepareMedia(slip);
         if (prepared.mediaType !== "image") throw new Error(t("slipImageOnly"));
         slipPath = `${userId}/gpay/${crypto.randomUUID()}.${prepared.extension}`;
-        const supabase = createClient();
         const { error: upErr } = await supabase.storage
           .from("slips")
           .upload(slipPath, prepared.blob, {
             contentType: prepared.contentType,
           });
         if (upErr) throw new Error(upErr.message);
+      }
+      if (face) {
+        facePath = `${userId}/gpay/face-${crypto.randomUUID()}.jpg`;
+        const { error: faceErr } = await supabase.storage
+          .from("slips")
+          .upload(facePath, face, { contentType: "image/jpeg" });
+        if (faceErr) throw new Error(faceErr.message);
       }
     } catch (err) {
       setPending(false);
@@ -76,6 +96,7 @@ export function GpayRegistrationForm({
       viber: String(fd.get("viber") ?? ""),
       address: String(fd.get("address") ?? ""),
       slipPath,
+      facePath,
     });
     setPending(false);
     if (!res.ok) {
@@ -83,6 +104,7 @@ export function GpayRegistrationForm({
       return;
     }
     setSlip(null);
+    setFace(null);
     router.refresh();
   }
 
@@ -129,6 +151,9 @@ export function GpayRegistrationForm({
       <p className="text-xs text-muted-foreground">{t("contactHint")}</p>
 
       {field("address", t("address"), { required: true })}
+
+      {/* KYC face scan — required before the account can be submitted */}
+      <FaceCapture onCapture={setFace} hasExisting={hasExistingFace} />
 
       {/* Deposit instruction + payment-slip upload */}
       <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">

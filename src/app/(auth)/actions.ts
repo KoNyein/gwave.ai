@@ -111,6 +111,18 @@ export async function logout() {
   redirect("/login");
 }
 
+/**
+ * Security: sign out of *every* device by revoking all of the user's refresh
+ * tokens (global scope). Use after a suspected compromise or a password change
+ * to lock out any other active session.
+ */
+export async function signOutEverywhere() {
+  const supabase = await createClient();
+  await supabase.auth.signOut({ scope: "global" });
+  revalidatePath("/", "layout");
+  redirect("/login");
+}
+
 export type RecoveryState = { error: string } | { ok: true } | null;
 
 /**

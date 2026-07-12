@@ -1,5 +1,10 @@
 // gwave.ai service worker — Web Push notifications for the PWA/TWA.
 // Intentionally minimal: no offline caching (the app is dynamic), just push.
+//
+// SW_VERSION is bumped on each release so a browser's periodic sw.js re-fetch
+// (and Settings → Software update's manual check) sees changed bytes and
+// installs the new worker. Keep it in sync with APP_VERSION in src/lib/version.ts.
+const SW_VERSION = "1.0.0";
 
 self.addEventListener("push", (event) => {
   let data = {};
@@ -42,3 +47,9 @@ self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) =>
   event.waitUntil(self.clients.claim()),
 );
+
+// Let a page ask a freshly-installed worker to take over immediately
+// (Settings → Software update triggers a reload right after).
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
+});

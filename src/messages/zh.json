@@ -1210,7 +1210,20 @@
     "slipImageOnly": "凭证必须是图片。",
     "slipUploadFailed": "凭证上传失败，请重试。",
     "viewSlip": "查看凭证",
-    "noSlip": "未上传凭证"
+    "noSlip": "未上传凭证",
+    "faceTitle": "人脸扫描 (KYC)",
+    "faceHint": "用摄像头扫描您的面部以验证身份。请在光线良好的环境中正视摄像头。",
+    "faceStart": "打开摄像头",
+    "faceCapture": "拍摄",
+    "faceRetake": "重拍",
+    "faceReplace": "重新扫描人脸",
+    "faceCaptured": "已拍摄人脸",
+    "faceOnFile": "已存档",
+    "faceRequired": "注册需要进行人脸扫描。请打开摄像头并拍照。",
+    "faceCameraError": "无法打开摄像头。请检查浏览器是否已允许使用摄像头。",
+    "faceUploadFailed": "无法上传人脸照片。请重试。",
+    "viewFace": "查看人脸",
+    "noFace": "无人脸扫描"
   },
   "lang": {
     "title": "语言",

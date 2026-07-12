@@ -1210,7 +1210,20 @@
     "slipImageOnly": "Slip သည် ဓာတ်ပုံဖြစ်ရပါမည်။",
     "slipUploadFailed": "Slip တင်၍ မရပါ။ ထပ်ကြိုးစားပါ။",
     "viewSlip": "Slip ကြည့်ရန်",
-    "noSlip": "Slip မတင်ရသေးပါ"
+    "noSlip": "Slip မတင်ရသေးပါ",
+    "faceTitle": "မျက်နှာ Scan (KYC)",
+    "faceHint": "အတည်ပြုရန် သင့်မျက်နှာကို ကင်မရာဖြင့် scan ဖတ်ပါ။ အလင်းရောင်ရှိရာတွင် ကင်မရာကို တည့်တည့်ကြည့်ပါ။",
+    "faceStart": "ကင်မရာ ဖွင့်မည်",
+    "faceCapture": "ဓာတ်ပုံ ရိုက်မည်",
+    "faceRetake": "ပြန်ရိုက်မည်",
+    "faceReplace": "မျက်နှာ ပြန် scan",
+    "faceCaptured": "မျက်နှာ scan ပြီးပါပြီ",
+    "faceOnFile": "scan ရှိပြီး",
+    "faceRequired": "မှတ်ပုံတင်ရန် မျက်နှာ scan လိုအပ်ပါသည်။ ကင်မရာ ဖွင့်ပြီး ဓာတ်ပုံ ရိုက်ပါ။",
+    "faceCameraError": "ကင်မရာ ဖွင့်၍ မရပါ။ Browser တွင် ကင်မရာ ခွင့်ပြုချက် ပေးထားမှု စစ်ဆေးပါ။",
+    "faceUploadFailed": "မျက်နှာ ပုံ တင်၍ မရပါ။ ထပ်ကြိုးစားပါ။",
+    "viewFace": "မျက်နှာ ကြည့်ရန်",
+    "noFace": "မျက်နှာ scan မရှိ"
   },
   "lang": {
     "title": "ဘာသာစကားများ",

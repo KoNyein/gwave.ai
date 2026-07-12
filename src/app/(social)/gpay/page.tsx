@@ -33,17 +33,26 @@ export default async function GpayPage() {
       ? await getGpayTransactions(account.id)
       : [];
 
-  // Signed URLs for admins to view each account's KPay slip (private bucket).
+  // Signed URLs for admins to view each account's KPay slip + KYC face scan
+  // (private bucket).
   const slipUrls: Record<string, string> = {};
+  const faceUrls: Record<string, string> = {};
   if (isAdmin && adminAccounts.length > 0) {
     const supabase = await createClient();
     await Promise.all(
       adminAccounts.map(async (a) => {
-        if (!a.slip_path) return;
-        const { data } = await supabase.storage
-          .from("slips")
-          .createSignedUrl(a.slip_path, 3600);
-        if (data?.signedUrl) slipUrls[a.id] = data.signedUrl;
+        if (a.slip_path) {
+          const { data } = await supabase.storage
+            .from("slips")
+            .createSignedUrl(a.slip_path, 3600);
+          if (data?.signedUrl) slipUrls[a.id] = data.signedUrl;
+        }
+        if (a.face_path) {
+          const { data } = await supabase.storage
+            .from("slips")
+            .createSignedUrl(a.face_path, 3600);
+          if (data?.signedUrl) faceUrls[a.id] = data.signedUrl;
+        }
       }),
     );
   }
@@ -110,7 +119,11 @@ export default async function GpayPage() {
 
       {/* Admin review queue */}
       {isAdmin && adminAccounts.length > 0 ? (
-        <GpayAdminPanel accounts={adminAccounts} slipUrls={slipUrls} />
+        <GpayAdminPanel
+          accounts={adminAccounts}
+          slipUrls={slipUrls}
+          faceUrls={faceUrls}
+        />
       ) : null}
     </div>
   );

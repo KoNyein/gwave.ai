@@ -336,6 +336,8 @@ export interface GpayAccount {
   address: string;
   // Storage path (in the private "slips" bucket) of the KPay payment slip.
   slip_path: string | null;
+  // Storage path (private "slips" bucket) of the KYC face-scan selfie.
+  face_path: string | null;
   // Set the first time the account is approved; gates the one-time bonus.
   welcomed_at: string | null;
   balance: number;
