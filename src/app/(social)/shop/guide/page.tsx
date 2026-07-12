@@ -147,6 +147,12 @@ export default async function ShopGuidePage() {
           <Truck className="h-4 w-4 text-primary" /> Dropship — အဆင့်ဆင့်
         </h2>
         <StepList steps={DROPSHIP_STEPS} />
+        <Link
+          href="/shop/guide/dropship"
+          className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+        >
+          📖 Dropship အသေးစိတ် လမ်းညွှန် (ဈေးတွက်နည်း၊ FAQ) →
+        </Link>
       </div>
 
       {/* Affiliate steps */}
@@ -155,6 +161,12 @@ export default async function ShopGuidePage() {
           <Link2 className="h-4 w-4 text-primary" /> Affiliate — အဆင့်ဆင့်
         </h2>
         <StepList steps={AFFILIATE_STEPS} />
+        <Link
+          href="/shop/guide/affiliate"
+          className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+        >
+          📖 Affiliate အသေးစိတ် လမ်းညွှန် (link ရနည်း၊ FAQ) →
+        </Link>
       </div>
 
       {/* Rules */}
