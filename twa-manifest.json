@@ -18,25 +18,25 @@
   "shortcuts": [
     {
       "name": "Feed",
-      "short_name": "Feed",
+      "shortName": "Feed",
       "url": "/feed",
       "chosenIconUrl": "https://gwave-ai.vercel.app/icon-512.png"
     },
     {
       "name": "Messenger",
-      "short_name": "Chat",
+      "shortName": "Chat",
       "url": "/messages",
       "chosenIconUrl": "https://gwave-ai.vercel.app/icon-512.png"
     },
     {
       "name": "Learn",
-      "short_name": "Learn",
+      "shortName": "Learn",
       "url": "/learn",
       "chosenIconUrl": "https://gwave-ai.vercel.app/icon-512.png"
     },
     {
       "name": "Shop",
-      "short_name": "Shop",
+      "shortName": "Shop",
       "url": "/shop",
       "chosenIconUrl": "https://gwave-ai.vercel.app/icon-512.png"
     }
