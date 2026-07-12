@@ -395,6 +395,51 @@ export interface Certificate {
   issued_at: string;
 }
 
+export interface Job {
+  id: string;
+  employer_id: string;
+  title: string;
+  category: string;
+  employment_type:
+    | "full_time"
+    | "part_time"
+    | "contract"
+    | "internship"
+    | "temporary"
+    | "remote";
+  company: string | null;
+  location: string | null;
+  description: string;
+  requirements: string | null;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_currency: string;
+  contact: string | null;
+  // Employer's custom application questions.
+  questions: string[];
+  status: "open" | "closed";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JobApplication {
+  id: string;
+  job_id: string;
+  applicant_id: string;
+  full_name: string;
+  phone: string;
+  email: string | null;
+  cover_letter: string | null;
+  expected_salary: number | null;
+  experience_years: number | null;
+  resume_url: string | null;
+  // Answers to the job's custom questions.
+  answers: { q: string; a: string }[];
+  status: "submitted" | "shortlisted" | "rejected" | "hired";
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Report {
   id: string;
   reporter_id: string;

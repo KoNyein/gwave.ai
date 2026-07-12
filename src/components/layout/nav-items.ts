@@ -8,6 +8,7 @@ import {
   Flower2,
   Gamepad2,
   Gem,
+  Briefcase,
   Home,
   LayoutGrid,
   Landmark,
@@ -82,6 +83,7 @@ export const NAV_SECTIONS: NavSection[] = [
     headingKey: "sectionBusiness",
     items: [
       { href: "/shop", labelKey: "shop", icon: Store },
+      { href: "/jobs", labelKey: "jobs", icon: Briefcase },
       { href: "/pos", labelKey: "pos", icon: ShoppingCart },
       { href: "/boost", labelKey: "boost", icon: Rocket },
       { href: "/gpay", labelKey: "gpay", icon: Wallet },

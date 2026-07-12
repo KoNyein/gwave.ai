@@ -40,7 +40,8 @@
     "sectionFarm": "ฟาร์มและบ้าน",
     "sectionBusiness": "ร้านค้าและธุรกิจ",
     "sectionKnowledge": "ความรู้และเครื่องมือ",
-    "dashboard": "แดชบอร์ดของฉัน"
+    "dashboard": "แดชบอร์ดของฉัน",
+    "jobs": "งาน"
   },
   "auth": {
     "login": "เข้าสู่ระบบ",

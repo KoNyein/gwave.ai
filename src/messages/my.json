@@ -40,7 +40,8 @@
     "sectionFarm": "စိုက်ပျိုးရေးနှင့် အိမ်",
     "sectionBusiness": "ဈေးဝယ်နှင့် စီးပွား",
     "sectionKnowledge": "အချက်အလက်နှင့် Tools",
-    "dashboard": "ကျွန်ုပ်၏ Dashboard"
+    "dashboard": "ကျွန်ုပ်၏ Dashboard",
+    "jobs": "အလုပ်အကိုင်"
   },
   "auth": {
     "login": "ဝင်ရန်",
