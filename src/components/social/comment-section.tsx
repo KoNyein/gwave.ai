@@ -203,7 +203,7 @@ function CommentItem({
       <UserAvatar profile={comment.author} className="h-8 w-8" />
       <div className="min-w-0 flex-1">
         <div className="inline-block max-w-full rounded-2xl bg-muted px-3 py-2">
-          {comment.author.username ? (
+          {comment.author?.username ? (
             <Link
               href={`/u/${comment.author.username}`}
               className="text-xs font-semibold hover:underline"

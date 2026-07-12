@@ -13,7 +13,8 @@ export function UserAvatar({
   linked = true,
   status,
 }: {
-  profile: AuthorSummary;
+  /** Nullable: a deleted/hidden profile renders a plain placeholder. */
+  profile: AuthorSummary | null | undefined;
   className?: string;
   linked?: boolean;
   /** Optional presence badge shown at the avatar's corner. */
@@ -23,10 +24,10 @@ export function UserAvatar({
   const avatar = (
     <span className="relative inline-block shrink-0">
       <Avatar className={cn("h-10 w-10", className)}>
-        {profile.avatar_url ? (
+        {profile?.avatar_url ? (
           <AvatarImage src={profile.avatar_url} alt="" />
         ) : null}
-        <AvatarFallback>{initials(profile)}</AvatarFallback>
+        <AvatarFallback>{profile ? initials(profile) : "U"}</AvatarFallback>
       </Avatar>
       {showDot ? (
         <span
@@ -40,7 +41,7 @@ export function UserAvatar({
     </span>
   );
 
-  if (linked && profile.username) {
+  if (linked && profile?.username) {
     return (
       <Link href={`/u/${profile.username}`} className="shrink-0">
         {avatar}

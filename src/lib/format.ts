@@ -31,19 +31,23 @@ export function formatPrice(
   })} ${currency}`;
 }
 
-/** Display name with username fallback. */
-export function displayName(profile: {
-  full_name: string | null;
-  username: string | null;
-}): string {
-  return profile.full_name || profile.username || "Unknown user";
+/** Display name with username fallback; tolerates a missing profile. */
+export function displayName(
+  profile: {
+    full_name: string | null;
+    username: string | null;
+  } | null | undefined,
+): string {
+  return profile?.full_name || profile?.username || "Unknown user";
 }
 
-export function initials(profile: {
-  full_name: string | null;
-  username: string | null;
-}): string {
-  const source = profile.full_name || profile.username || "U";
+export function initials(
+  profile: {
+    full_name: string | null;
+    username: string | null;
+  } | null | undefined,
+): string {
+  const source = profile?.full_name || profile?.username || "U";
   return source
     .split(/\s+/)
     .map((part) => part[0])
