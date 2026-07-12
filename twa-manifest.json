@@ -19,22 +19,26 @@
     {
       "name": "Feed",
       "short_name": "Feed",
-      "url": "/feed"
+      "url": "/feed",
+      "chosenIconUrl": "https://gwave-ai.vercel.app/icon-512.png"
     },
     {
       "name": "Messenger",
       "short_name": "Chat",
-      "url": "/messages"
+      "url": "/messages",
+      "chosenIconUrl": "https://gwave-ai.vercel.app/icon-512.png"
     },
     {
       "name": "Learn",
       "short_name": "Learn",
-      "url": "/learn"
+      "url": "/learn",
+      "chosenIconUrl": "https://gwave-ai.vercel.app/icon-512.png"
     },
     {
       "name": "Shop",
       "short_name": "Shop",
-      "url": "/shop"
+      "url": "/shop",
+      "chosenIconUrl": "https://gwave-ai.vercel.app/icon-512.png"
     }
   ],
   "fallbackType": "customtabs",
