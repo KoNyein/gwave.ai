@@ -32,9 +32,14 @@ const POST_SELECT = `
 `;
 
 function sortMedia(post: FeedPost): FeedPost {
-  post.media.sort((a, b) => a.position - b.position);
+  // PostgREST can omit an embed entirely (e.g. right after a schema change,
+  // before its cache reloads) — a missing array must degrade to "no media",
+  // never crash the whole feed.
+  post.media = (post.media ?? []).sort((a, b) => a.position - b.position);
   if (post.shared_post) {
-    post.shared_post.media.sort((a, b) => a.position - b.position);
+    post.shared_post.media = (post.shared_post.media ?? []).sort(
+      (a, b) => a.position - b.position,
+    );
   }
   return post;
 }
@@ -392,7 +397,7 @@ export async function getProfilePhotos(
 
   const photos: ProfilePhoto[] = [];
   for (const post of data ?? []) {
-    const images = post.media
+    const images = (post.media ?? [])
       .filter((m) => m.media_type === "image")
       .sort((a, b) => a.position - b.position);
     for (const image of images) {
