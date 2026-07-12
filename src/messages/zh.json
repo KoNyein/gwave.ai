@@ -387,7 +387,8 @@
     "cameraOff": "关闭摄像头",
     "endCall": "挂断",
     "shareLocation": "分享位置",
-    "sharedLocation": "分享的位置"
+    "sharedLocation": "分享的位置",
+    "goLive": "开始直播"
   },
   "stories": {
     "createStory": "创建快拍",

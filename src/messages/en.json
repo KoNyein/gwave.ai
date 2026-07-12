@@ -387,7 +387,8 @@
     "cameraOff": "Turn camera off",
     "endCall": "End call",
     "shareLocation": "Share location",
-    "sharedLocation": "Shared location"
+    "sharedLocation": "Shared location",
+    "goLive": "Go Live"
   },
   "stories": {
     "createStory": "Create story",

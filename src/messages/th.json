@@ -387,7 +387,8 @@
     "cameraOff": "ปิดกล้อง",
     "endCall": "วางสาย",
     "shareLocation": "แชร์ตำแหน่ง",
-    "sharedLocation": "ตำแหน่งที่แชร์"
+    "sharedLocation": "ตำแหน่งที่แชร์",
+    "goLive": "ไลฟ์สด"
   },
   "stories": {
     "createStory": "สร้างสตอรี่",

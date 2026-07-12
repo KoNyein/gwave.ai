@@ -12,6 +12,7 @@ import {
   MessageCircle,
   Paperclip,
   Phone,
+  Radio,
   SendHorizonal,
   SquarePen,
   Video,
@@ -712,6 +713,17 @@ export function Messenger({
                     aria-label={t("videoCall")}
                   >
                     <Video className="h-5 w-5 text-accent" />
+                  </Button>
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full"
+                    aria-label={t("goLive")}
+                  >
+                    <a href="/live/new">
+                      <Radio className="h-5 w-5 text-destructive" />
+                    </a>
                   </Button>
                 </>
               ) : null}
