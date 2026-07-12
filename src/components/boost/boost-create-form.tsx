@@ -56,6 +56,10 @@ export function BoostCreateForm({
   const [budget, setBudget] = React.useState(1000);
   const [days, setDays] = React.useState(7);
   const [bid, setBid] = React.useState(50);
+  // Targeting — who/where the ad is shown to.
+  const [region, setRegion] = React.useState("");
+  const [tagsInput, setTagsInput] = React.useState("");
+  const [adultOnly, setAdultOnly] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -83,6 +87,11 @@ export function BoostCreateForm({
       return;
     }
     setBusy(true);
+    const tags = tagsInput
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 20);
     const res = await createBoost({
       target_type: type,
       target_id: targetId,
@@ -91,6 +100,11 @@ export function BoostCreateForm({
       daily_cap_mmk: Math.min(dailyCap, budget),
       bid_mmk: bid,
       days,
+      audience: {
+        adult: adultOnly || undefined,
+        region: region.trim() || undefined,
+        tags: tags.length ? tags : undefined,
+      },
     });
     setBusy(false);
     if (res.ok) {
@@ -168,6 +182,44 @@ export function BoostCreateForm({
           placeholder="ဥပမာ — ရာသီအလိုက် လျှော့စျေး"
           onChange={(e) => setHeadline(e.target.value)}
         />
+      </div>
+
+      {/* Targeting — location + interests + audience */}
+      <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+        <p className="text-sm font-semibold">🎯 ပစ်မှတ် (ဘယ်သူ့ကို ပြမလဲ)</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="boost-region">📍 တည်နေရာ (တိုင်း/မြို့)</Label>
+            <Input
+              id="boost-region"
+              value={region}
+              maxLength={80}
+              placeholder="ဥပမာ — ရန်ကုန် (အားလုံးဆိုရင် ကွက်လပ်ထား)"
+              onChange={(e) => setRegion(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="boost-tags">💡 စိတ်ဝင်စားမှု (interest)</Label>
+            <Input
+              id="boost-tags"
+              value={tagsInput}
+              placeholder="comma ခြား — ဥပမာ: စိုက်ပျိုးရေး, နည်းပညာ"
+              onChange={(e) => setTagsInput(e.target.value)}
+            />
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={adultOnly}
+            onChange={(e) => setAdultOnly(e.target.checked)}
+            className="h-4 w-4 accent-primary"
+          />
+          အသက် ၁၈ နှစ်ပြည့် (adult) ကိုသာ ပြရန်
+        </label>
+        <p className="text-[11px] text-muted-foreground">
+          တည်နေရာ/စိတ်ဝင်စားမှု ရွေးထားရင် သက်ဆိုင်ရာ ပရိသတ်ကိုသာ ဦးစားပေး ပြပါမည်။
+        </p>
       </div>
 
       {/* Budget / days / bid */}

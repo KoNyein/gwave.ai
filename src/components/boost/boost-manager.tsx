@@ -63,6 +63,11 @@ const TARGET_ICON: Record<BoostTarget, string> = {
 };
 
 export function BoostManager({ boosts }: { boosts: ManagerBoost[] }) {
+  const totalBudget = boosts.reduce((s, b) => s + Number(b.budget_mmk), 0);
+  const totalSpent = boosts.reduce((s, b) => s + Number(b.spent_mmk), 0);
+  const remaining = Math.max(0, totalBudget - totalSpent);
+  const fmt = (n: number) => `${Math.round(n).toLocaleString("en-US")} Ks`;
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -76,6 +81,24 @@ export function BoostManager({ boosts }: { boosts: ManagerBoost[] }) {
           </Link>
         </Button>
       </div>
+
+      {/* Finance summary across all campaigns */}
+      {boosts.length > 0 ? (
+        <div className="grid grid-cols-3 gap-2 rounded-xl border bg-card p-3 text-center">
+          <div>
+            <p className="text-[11px] text-muted-foreground">စုစုပေါင်း ဘတ်ဂျက်</p>
+            <p className="text-sm font-bold">{fmt(totalBudget)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-muted-foreground">သုံးပြီး</p>
+            <p className="text-sm font-bold text-primary">{fmt(totalSpent)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-muted-foreground">ကျန် (escrow)</p>
+            <p className="text-sm font-bold">{fmt(remaining)}</p>
+          </div>
+        </div>
+      ) : null}
 
       {boosts.length === 0 ? (
         <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
