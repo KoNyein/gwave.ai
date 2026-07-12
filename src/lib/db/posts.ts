@@ -47,6 +47,15 @@ function sortMedia(post: FeedPost): FeedPost {
   // PostgREST can omit an embed entirely (e.g. right after a schema change,
   // before its cache reloads) or return a null author (deleted/hidden
   // profile) — a post must degrade gracefully, never crash the whole feed.
+  //
+  // The self-referencing shared_post embed may also arrive as an ARRAY
+  // (PostgREST resolves the self-join as to-many on some versions) — an
+  // empty [] is truthy and rendered a phantom "shared post" block with no
+  // author/date, and [].media crashed the feed. Coerce to object-or-null.
+  const sp = post.shared_post as unknown;
+  post.shared_post = Array.isArray(sp)
+    ? ((sp[0] ?? null) as FeedPost["shared_post"])
+    : ((sp ?? null) as FeedPost["shared_post"]);
   post.media = (post.media ?? []).sort((a, b) => a.position - b.position);
   if (!post.author) post.author = fallbackAuthor(post.author_id);
   post.my_reaction = post.my_reaction ?? [];
