@@ -9,7 +9,11 @@ import { FaceCapture } from "@/components/gpay/face-capture";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { saveGpayKyc } from "@/lib/actions/gpay";
+import {
+  requestGpayPhoneOtp,
+  saveGpayKyc,
+  verifyGpayPhoneOtp,
+} from "@/lib/actions/gpay";
 import {
   GPAY_PLATFORM_KPAY,
   GPAY_REGISTER_FEE_MMK,
@@ -142,6 +146,8 @@ export function GpayRegistrationForm({
         placeholder: "12/ABCDEF(N)123456",
       })}
       {field("phone", t("kpayNo"), { required: true, placeholder: "09xxxxxxxxx" })}
+      {/* Phone OTP verification — required on a first registration */}
+      {!account ? <PhoneOtp /> : null}
       {field("email", t("email"), { type: "email", required: true })}
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -204,5 +210,106 @@ export function GpayRegistrationForm({
         {account ? t("updateDetails") : t("submitKyc")}
       </Button>
     </form>
+  );
+}
+
+/**
+ * Phone verification: sends a 6-digit SMS code to the number in the phone field
+ * and confirms it before the account can be opened. Reads the phone value from
+ * the sibling input by id.
+ */
+function PhoneOtp() {
+  const [sent, setSent] = React.useState(false);
+  const [code, setCode] = React.useState("");
+  const [verified, setVerified] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [msg, setMsg] = React.useState<string | null>(null);
+  const [err, setErr] = React.useState<string | null>(null);
+
+  function readPhone(): string {
+    const el = document.getElementById("phone") as HTMLInputElement | null;
+    return (el?.value ?? "").trim();
+  }
+
+  async function send() {
+    const phone = readPhone();
+    setErr(null);
+    setMsg(null);
+    if (phone.length < 5) {
+      setErr("ဖုန်းနံပါတ် အရင်ဖြည့်ပါ။");
+      return;
+    }
+    setBusy(true);
+    const res = await requestGpayPhoneOtp(phone);
+    setBusy(false);
+    if (!res.ok) {
+      setErr(res.error);
+      return;
+    }
+    setSent(true);
+    setMsg("SMS ဖြင့် ကုဒ် ပို့ပြီးပါပြီ။");
+  }
+
+  async function verify() {
+    setErr(null);
+    setBusy(true);
+    const res = await verifyGpayPhoneOtp(readPhone(), code);
+    setBusy(false);
+    if (!res.ok) {
+      setErr(res.error);
+      return;
+    }
+    setVerified(true);
+    setMsg(null);
+  }
+
+  return (
+    <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <p className="flex items-center gap-1.5 text-sm font-medium">
+        <ShieldCheck className="h-4 w-4 text-primary" /> ဖုန်း အတည်ပြုခြင်း (OTP)
+        {verified ? <span className="text-primary"> ✓ အတည်ပြုပြီး</span> : null}
+      </p>
+      {!verified ? (
+        <>
+          <p className="text-xs text-muted-foreground">
+            အထက်က ဖုန်းနံပါတ်သို့ SMS ကုဒ် ပို့ပြီး အတည်ပြုပါ။
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={send}
+              disabled={busy}
+            >
+              {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+              {sent ? "ကုဒ် ပြန်ပို့" : "ကုဒ် ပို့ရန်"}
+            </Button>
+            {sent ? (
+              <>
+                <Input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="6-digit"
+                  className="h-9 w-28"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={verify}
+                  disabled={busy || code.length !== 6}
+                >
+                  အတည်ပြု
+                </Button>
+              </>
+            ) : null}
+          </div>
+        </>
+      ) : null}
+      {msg ? <p className="text-xs text-primary">{msg}</p> : null}
+      {err ? <p className="text-xs text-destructive">{err}</p> : null}
+    </div>
   );
 }
