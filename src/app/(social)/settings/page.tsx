@@ -9,6 +9,7 @@ import { PushManager } from "@/components/pwa/push-manager";
 import { PrivacySettings } from "@/components/social/privacy-settings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
+import { getSiteTheme } from "@/lib/db/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Settings" };
@@ -18,6 +19,7 @@ export default async function SettingsPage() {
   const t = await getTranslations("settings");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
+  const adminTheme = await getSiteTheme();
 
   const supabase = await createClient();
   const [{ data: deletion }, { data: invoices }] = await Promise.all([
@@ -48,7 +50,7 @@ export default async function SettingsPage() {
           <CardTitle className="text-base">⚙️ General · အထွေထွေ</CardTitle>
         </CardHeader>
         <CardContent>
-          <GeneralSettings />
+          <GeneralSettings adminTheme={adminTheme} />
         </CardContent>
       </Card>
 

@@ -6,19 +6,23 @@ import { LayoutDashboard } from "lucide-react";
 import { useLocale } from "next-intl";
 
 import { setLocale } from "@/app/actions/locale";
+import { AppearancePicker } from "@/components/settings/appearance-picker";
 import { LOCALE_LABELS, locales } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 
 /**
  * Settings → General: app-wide preferences that aren't tied to the profile
- * row — display language (stored in the locale cookie) and quick links.
+ * row — display language (locale cookie), a personal eye-friendly theme, and
+ * quick links.
  */
-export function GeneralSettings() {
+export function GeneralSettings({ adminTheme }: { adminTheme: string }) {
   const locale = useLocale();
   const [isPending, startTransition] = useTransition();
 
   return (
     <div className="space-y-4">
+      <AppearancePicker adminTheme={adminTheme} />
+
       <div>
         <p className="mb-2 text-sm font-medium">🌐 ဘာသာစကား (Language)</p>
         <div className="flex flex-wrap gap-2">
