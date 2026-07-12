@@ -395,6 +395,16 @@ export interface Certificate {
   issued_at: string;
 }
 
+export interface LiveGift {
+  id: string;
+  code: string;
+  name: string;
+  emoji: string;
+  price_mmk: number;
+  sort: number;
+  is_active: boolean;
+}
+
 export interface Job {
   id: string;
   employer_id: string;
