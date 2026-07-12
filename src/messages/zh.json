@@ -40,7 +40,8 @@
     "sectionFarm": "农场与家居",
     "sectionBusiness": "商店与商业",
     "sectionKnowledge": "知识与工具",
-    "dashboard": "我的仪表板"
+    "dashboard": "我的仪表板",
+    "jobs": "招聘"
   },
   "auth": {
     "login": "登录",

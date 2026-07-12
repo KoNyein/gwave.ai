@@ -40,7 +40,8 @@
     "sectionFarm": "Farm & Home",
     "sectionBusiness": "Shop & Business",
     "sectionKnowledge": "Knowledge & Tools",
-    "dashboard": "My Dashboard"
+    "dashboard": "My Dashboard",
+    "jobs": "Jobs"
   },
   "auth": {
     "login": "Log in",
