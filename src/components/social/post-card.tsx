@@ -60,8 +60,34 @@ const VISIBILITY_ICONS: Record<PostVisibility, typeof Globe> = {
   members: BadgeCheck,
 };
 
+/** Last line of defense: a post arriving without its author embed (deleted
+ *  or hidden profile) must render as an anonymous card, never crash. */
+function withAuthorFallback(post: FeedPost): FeedPost {
+  const fallback = (id: string): FeedPost["author"] => ({
+    id,
+    username: "",
+    full_name: "အသုံးပြုသူ",
+    avatar_url: null,
+    role: "user",
+  });
+  return {
+    ...post,
+    author: post.author ?? fallback(post.author_id),
+    media: post.media ?? [],
+    my_reaction: post.my_reaction ?? [],
+    shared_post: post.shared_post
+      ? {
+          ...post.shared_post,
+          author:
+            post.shared_post.author ?? fallback(post.shared_post.author_id),
+          media: post.shared_post.media ?? [],
+        }
+      : post.shared_post,
+  };
+}
+
 export function PostCard({
-  post,
+  post: rawPost,
   currentUser,
   onDeleted,
   onShared,
@@ -71,6 +97,7 @@ export function PostCard({
   onDeleted: (postId: string) => void;
   onShared: () => void;
 }) {
+  const post = withAuthorFallback(rawPost);
   const t = useTranslations("post");
   const router = useRouter();
   const [, startBlock] = React.useTransition();

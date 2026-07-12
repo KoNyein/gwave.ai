@@ -182,10 +182,10 @@ function ReelItem({ reel }: { reel: ReelWithAuthor }) {
       {/* Author + caption */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 pb-6 text-white">
         <Link
-          href={reel.author.username ? `/u/${reel.author.username}` : "#"}
+          href={reel.author?.username ? `/u/${reel.author.username}` : "#"}
           className="font-semibold drop-shadow hover:underline"
         >
-          @{reel.author.username ?? reel.author.full_name ?? "user"}
+          @{reel.author?.username ?? reel.author?.full_name ?? "user"}
         </Link>
         {reel.caption ? (
           <p className="mt-1 line-clamp-2 text-sm drop-shadow">{reel.caption}</p>

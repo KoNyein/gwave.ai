@@ -32,6 +32,9 @@ export async function getStoryGroups(userId: string): Promise<StoryGroup[]> {
 
   for (const story of storiesRes.data ?? []) {
     const { author, ...rest } = story;
+    // A story whose author profile is gone (deleted/hidden) can't be
+    // grouped or opened — skip it rather than crash the story bar.
+    if (!author) continue;
     let group = byAuthor.get(author.id);
     if (!group) {
       group = { author, stories: [], allViewed: true };
