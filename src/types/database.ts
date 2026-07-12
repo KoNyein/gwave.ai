@@ -395,6 +395,15 @@ export interface Certificate {
   issued_at: string;
 }
 
+export interface CohostRoom {
+  id: string;
+  code: string;
+  host_id: string;
+  title: string;
+  created_at: string;
+  ended_at: string | null;
+}
+
 export interface LiveGift {
   id: string;
   code: string;
