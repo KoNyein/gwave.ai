@@ -1234,7 +1234,21 @@
     "faceCameraError": "Could not open the camera. Check that camera permission is allowed in your browser.",
     "faceUploadFailed": "Could not upload the face photo. Please try again.",
     "viewFace": "View face",
-    "noFace": "No face scan"
+    "noFace": "No face scan",
+    "pinLabel": "Transaction PIN",
+    "pinTitle": "Transaction PIN (security)",
+    "pinHint": "Requires a PIN for every outgoing transfer to keep your wallet safe. Never share your PIN.",
+    "pinOn": "On",
+    "pinOff": "Not set",
+    "pinSaved": "PIN saved ✓",
+    "pinNew": "New PIN (4–6 digits)",
+    "pinConfirm": "Confirm PIN",
+    "pinSave": "Save",
+    "pinSet": "Set PIN",
+    "pinChange": "Change PIN",
+    "pinRule": "PIN must be 4–6 digits.",
+    "pinMismatch": "PINs do not match.",
+    "cancel": "Cancel"
   },
   "lang": {
     "title": "Languages",

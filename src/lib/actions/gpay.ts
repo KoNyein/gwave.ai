@@ -91,6 +91,9 @@ const transferSchema = z.object({
   toPhone: z.string().trim().min(5).max(20),
   amount: z.number().min(0.01).max(100_000_000).multipleOf(0.01),
   note: z.string().trim().max(200).optional(),
+  pin: z.string().trim().regex(/^[0-9]{4,6}$/).optional().or(z.literal("")),
+  // Idempotency key: a retry with the same key won't double-send.
+  clientRef: z.string().trim().max(64).optional(),
 });
 
 /** Send money to another active account by its KPay/phone number. */
@@ -98,6 +101,8 @@ export async function transferGpay(input: {
   toPhone: string;
   amount: number;
   note?: string;
+  pin?: string;
+  clientRef?: string;
 }): Promise<ActionResult> {
   const parsed = transferSchema.safeParse(input);
   if (!parsed.success) {
@@ -111,7 +116,27 @@ export async function transferGpay(input: {
     p_to_phone: parsed.data.toPhone,
     p_amount: parsed.data.amount,
     p_note: parsed.data.note ?? null,
+    p_pin: parsed.data.pin ? parsed.data.pin : null,
+    p_client_ref: parsed.data.clientRef ?? null,
   });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/gpay");
+  return { ok: true, data: undefined };
+}
+
+const pinSchema = z.string().trim().regex(/^[0-9]{4,6}$/, "PIN must be 4–6 digits");
+
+/** Set or change the caller's transaction PIN. */
+export async function setGpayPin(pin: string): Promise<ActionResult> {
+  const parsed = pinSchema.safeParse(pin);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid PIN" };
+  }
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("gpay_set_pin", { p_pin: parsed.data });
   if (error) return { ok: false, error: error.message };
   revalidatePath("/gpay");
   return { ok: true, data: undefined };

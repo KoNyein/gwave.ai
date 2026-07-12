@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  KeyRound,
   Loader2,
   Send,
+  ShieldCheck,
   Wallet,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -15,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { transferGpay } from "@/lib/actions/gpay";
+import { setGpayPin, transferGpay } from "@/lib/actions/gpay";
 import type { GpayAccount, GpayTransaction } from "@/types/database";
 
 function formatMMK(amount: number): string {
@@ -27,15 +29,20 @@ function formatMMK(amount: number): string {
 export function GpayWallet({
   account,
   transactions,
+  hasPin,
 }: {
   account: GpayAccount;
   transactions: GpayTransaction[];
+  hasPin: boolean;
 }) {
   const t = useTranslations("gpay");
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [ok, setOk] = React.useState(false);
+  // Stable idempotency key per compose; regenerated after a successful send so
+  // a genuine second transfer isn't collapsed into the first.
+  const [clientRef, setClientRef] = React.useState(() => crypto.randomUUID());
 
   async function send(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -49,6 +56,8 @@ export function GpayWallet({
       toPhone: String(fd.get("toPhone") ?? ""),
       amount: Number.isFinite(amount) ? amount : 0,
       note: String(fd.get("note") ?? "") || undefined,
+      pin: String(fd.get("pin") ?? "") || undefined,
+      clientRef,
     });
     setPending(false);
     if (!res.ok) {
@@ -56,6 +65,7 @@ export function GpayWallet({
       return;
     }
     setOk(true);
+    setClientRef(crypto.randomUUID());
     form.reset();
     router.refresh();
   }
@@ -113,6 +123,21 @@ export function GpayWallet({
               <Label htmlFor="note">{t("noteOptional")}</Label>
               <Input id="note" name="note" maxLength={200} />
             </div>
+            {hasPin ? (
+              <div className="space-y-1">
+                <Label htmlFor="pin">{t("pinLabel")}</Label>
+                <Input
+                  id="pin"
+                  name="pin"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  required
+                  maxLength={6}
+                  placeholder="••••"
+                />
+              </div>
+            ) : null}
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             {ok ? <p className="text-sm text-primary">{t("sentOk")}</p> : null}
             <Button type="submit" disabled={pending} className="w-full">
@@ -126,6 +151,9 @@ export function GpayWallet({
           </form>
         </CardContent>
       </Card>
+
+      {/* Transaction PIN */}
+      <PinManager hasPin={hasPin} />
 
       {/* History */}
       <Card>
@@ -183,5 +211,115 @@ export function GpayWallet({
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/** Set or change the transaction PIN that guards outgoing transfers. */
+function PinManager({ hasPin }: { hasPin: boolean }) {
+  const t = useTranslations("gpay");
+  const router = useRouter();
+  const [open, setOpen] = React.useState(false);
+  const [pin, setPin] = React.useState("");
+  const [confirm, setConfirm] = React.useState("");
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [ok, setOk] = React.useState(false);
+
+  async function save() {
+    setError(null);
+    if (!/^[0-9]{4,6}$/.test(pin)) {
+      setError(t("pinRule"));
+      return;
+    }
+    if (pin !== confirm) {
+      setError(t("pinMismatch"));
+      return;
+    }
+    setPending(true);
+    const res = await setGpayPin(pin);
+    setPending(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    setOk(true);
+    setPin("");
+    setConfirm("");
+    setOpen(false);
+    router.refresh();
+  }
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <p className="flex items-center gap-1.5 font-semibold">
+            <ShieldCheck className="h-4 w-4 text-primary" /> {t("pinTitle")}
+          </p>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+              hasPin
+                ? "bg-primary/10 text-primary"
+                : "bg-amber-500/10 text-amber-600"
+            }`}
+          >
+            {hasPin ? t("pinOn") : t("pinOff")}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground">{t("pinHint")}</p>
+
+        {ok ? <p className="text-sm text-primary">{t("pinSaved")}</p> : null}
+
+        {open ? (
+          <div className="space-y-2">
+            <div className="space-y-1">
+              <Label htmlFor="new-pin">{t("pinNew")}</Label>
+              <Input
+                id="new-pin"
+                type="password"
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={6}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                placeholder="••••"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="confirm-pin">{t("pinConfirm")}</Label>
+              <Input
+                id="confirm-pin"
+                type="password"
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={6}
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value.replace(/\D/g, ""))}
+                placeholder="••••"
+              />
+            </div>
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            <div className="flex gap-2">
+              <Button size="sm" onClick={save} disabled={pending}>
+                {pending ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <KeyRound className="mr-1.5 h-4 w-4" />
+                )}
+                {t("pinSave")}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+                {t("cancel")}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+            <KeyRound className="mr-1.5 h-4 w-4" />
+            {hasPin ? t("pinChange") : t("pinSet")}
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }

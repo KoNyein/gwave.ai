@@ -1234,7 +1234,21 @@
     "faceCameraError": "无法打开摄像头。请检查浏览器是否已允许使用摄像头。",
     "faceUploadFailed": "无法上传人脸照片。请重试。",
     "viewFace": "查看人脸",
-    "noFace": "无人脸扫描"
+    "noFace": "无人脸扫描",
+    "pinLabel": "交易 PIN",
+    "pinTitle": "交易 PIN（安全）",
+    "pinHint": "每次转出都需要 PIN 码以保护钱包安全。请勿告诉任何人您的 PIN。",
+    "pinOn": "已开启",
+    "pinOff": "未设置",
+    "pinSaved": "PIN 已保存 ✓",
+    "pinNew": "新 PIN（4–6 位）",
+    "pinConfirm": "确认 PIN",
+    "pinSave": "保存",
+    "pinSet": "设置 PIN",
+    "pinChange": "修改 PIN",
+    "pinRule": "PIN 必须为 4–6 位数字。",
+    "pinMismatch": "两次 PIN 不一致。",
+    "cancel": "取消"
   },
   "lang": {
     "title": "语言",

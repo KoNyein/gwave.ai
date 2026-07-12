@@ -33,6 +33,14 @@ export default async function GpayPage() {
       ? await getGpayTransactions(account.id)
       : [];
 
+  // Whether the caller has a transaction PIN set (gates outgoing transfers).
+  let hasPin = false;
+  if (account?.status === "active") {
+    const supabase = await createClient();
+    const { data } = await supabase.rpc("gpay_has_pin");
+    hasPin = data === true;
+  }
+
   // Signed URLs for admins to view each account's KPay slip + KYC face scan
   // (private bucket).
   const slipUrls: Record<string, string> = {};
@@ -104,7 +112,11 @@ export default async function GpayPage() {
           </CardContent>
         </Card>
       ) : (
-        <GpayWallet account={account} transactions={transactions} />
+        <GpayWallet
+          account={account}
+          transactions={transactions}
+          hasPin={hasPin}
+        />
       )}
 
       {/* Owner can review / edit their KYC once submitted */}
