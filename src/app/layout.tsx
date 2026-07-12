@@ -25,7 +25,12 @@ export const metadata: Metadata = {
     "mobile-web-app-capable": "yes",
   },
   icons: {
-    icon: "/favicon.svg",
+    // Browsers request /favicon.ico unconditionally, so that file must
+    // exist; the SVG serves crisp icons where supported.
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
     apple: "/icon-192.png",
   },
 };
