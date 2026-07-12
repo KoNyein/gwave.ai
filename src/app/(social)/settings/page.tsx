@@ -3,7 +3,8 @@ import { getTranslations } from "next-intl/server";
 
 import { MonetizationToggle } from "@/components/settings/monetization-toggle";
 import { ProfileEditor } from "@/components/settings/profile-editor";
-import { UpdatePasswordForm } from "@/components/auth/password-reset";
+import { AccountSecurity } from "@/components/settings/account-security";
+import { AppUpdate } from "@/components/settings/app-update";
 import { GeneralSettings } from "@/components/settings/general-settings";
 import { PushManager } from "@/components/pwa/push-manager";
 import { PrivacySettings } from "@/components/social/privacy-settings";
@@ -22,6 +23,9 @@ export default async function SettingsPage() {
   const adminTheme = await getSiteTheme();
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const [{ data: deletion }, { data: invoices }] = await Promise.all([
     supabase
       .from("deletion_requests")
@@ -75,13 +79,26 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            🔐 Security · စကားဝှက် ပြောင်းရန်
+            🔐 Account Security · အကောင့် လုံခြုံရေး
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="max-w-sm">
-            <UpdatePasswordForm compact />
-          </div>
+          <AccountSecurity
+            email={user?.email ?? "—"}
+            emailVerified={Boolean(user?.email_confirmed_at)}
+            lastSignInAt={user?.last_sign_in_at ?? null}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            🚀 Software Update · အက်ပ် ဗားရှင်း
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AppUpdate />
         </CardContent>
       </Card>
 

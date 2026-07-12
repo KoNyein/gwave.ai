@@ -71,6 +71,10 @@ const csp = [
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
+  // No plugins/Flash/embeds — shrinks the attack surface for legacy vectors.
+  "object-src 'none'",
+  // Belt-and-braces: any http:// subresource that slips in is auto-upgraded.
+  "upgrade-insecure-requests",
 ].join("; ");
 
 const securityHeaders = [
@@ -83,11 +87,21 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
-    // camera/microphone (calls) and geolocation (location share) stay
-    // same-origin only.
+    // camera/microphone (calls + G-Pay face scan) and geolocation (location
+    // share) stay same-origin only; everything else is denied outright.
     key: "Permissions-Policy",
-    value: "camera=(self), microphone=(self), geolocation=(self)",
+    value:
+      "camera=(self), microphone=(self), geolocation=(self), " +
+      "payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), " +
+      "interest-cohort=()",
   },
+  // Don't leak internal URLs via DNS prefetch; block cross-domain policy files.
+  { key: "X-DNS-Prefetch-Control", value: "off" },
+  { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
+  // Isolate this origin's browsing context group (Spectre-class mitigation).
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+  // Give each origin its own agent cluster.
+  { key: "Origin-Agent-Cluster", value: "?1" },
 ];
 
 /** @type {import('next').NextConfig} */

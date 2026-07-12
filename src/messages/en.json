@@ -1210,7 +1210,20 @@
     "slipImageOnly": "The slip must be an image.",
     "slipUploadFailed": "Couldn't upload the slip. Please try again.",
     "viewSlip": "View slip",
-    "noSlip": "No slip uploaded"
+    "noSlip": "No slip uploaded",
+    "faceTitle": "Face scan (KYC)",
+    "faceHint": "Scan your face with the camera to verify your identity. Look straight at the camera in good light.",
+    "faceStart": "Open camera",
+    "faceCapture": "Capture",
+    "faceRetake": "Retake",
+    "faceReplace": "Rescan face",
+    "faceCaptured": "Face captured",
+    "faceOnFile": "on file",
+    "faceRequired": "A face scan is required to register. Open the camera and capture a photo.",
+    "faceCameraError": "Could not open the camera. Check that camera permission is allowed in your browser.",
+    "faceUploadFailed": "Could not upload the face photo. Please try again.",
+    "viewFace": "View face",
+    "noFace": "No face scan"
   },
   "lang": {
     "title": "Languages",
