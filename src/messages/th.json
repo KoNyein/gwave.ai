@@ -1248,7 +1248,14 @@
     "pinChange": "เปลี่ยน PIN",
     "pinRule": "PIN ต้องเป็นตัวเลข 4–6 หลัก",
     "pinMismatch": "PIN ไม่ตรงกัน",
-    "cancel": "ยกเลิก"
+    "cancel": "ยกเลิก",
+    "receiveMoney": "รับเงิน",
+    "receiveHint": "แสดง QR / หมายเลขนี้เพื่อรับเงิน",
+    "topupTitle": "เติมเงิน",
+    "topupAmount": "จำนวนที่เติม (Ks)",
+    "topupPay": "จ่ายด้วยบัตร",
+    "topupHint": "ชำระอย่างปลอดภัยด้วยบัตร/ธนาคารต่างประเทศผ่าน Stripe",
+    "topupMin": "เติมขั้นต่ำ 1,000 Ks"
   },
   "lang": {
     "title": "ภาษา",

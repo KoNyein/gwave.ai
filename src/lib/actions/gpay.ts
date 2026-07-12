@@ -1,12 +1,21 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
 import { sendSms, smsConfigured } from "@/lib/sms";
+import { getStripe, isStripeConfigured } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
 import type { GpayStatus } from "@/types/database";
+
+async function requestOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  return host ? `${proto}://${host}` : "http://localhost:3000";
+}
 
 async function getUserId(): Promise<string | null> {
   const supabase = await createClient();
@@ -172,6 +181,80 @@ export async function saveGpayKyc(input: GpayKycInput): Promise<ActionResult> {
   }
   revalidatePath("/gpay");
   return { ok: true, data: undefined };
+}
+
+/**
+ * Cash-in: start a Stripe Checkout to top up the caller's wallet by `amountMmk`
+ * G-Pay (= MMK). The card is charged the USD equivalent (Stripe accepts
+ * international cards/banks); the webhook credits the wallet on success.
+ */
+export async function createGpayTopupCheckout(
+  amountMmk: number,
+): Promise<ActionResult<{ url: string }>> {
+  const amount = Math.round(Number(amountMmk));
+  if (!Number.isFinite(amount) || amount < 1000 || amount > 10_000_000) {
+    return { ok: false, error: "Enter an amount between 1,000 and 10,000,000." };
+  }
+  if (!isStripeConfigured()) {
+    return { ok: false, error: "Card top-up is not set up yet." };
+  }
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const supabase = await createClient();
+  // Must have an active wallet to credit.
+  const { data: acct } = await supabase
+    .from("gpay_accounts")
+    .select("status")
+    .eq("user_id", userId)
+    .maybeSingle<{ status: GpayStatus }>();
+  if (acct?.status !== "active") {
+    return { ok: false, error: "Your G-Pay account is not active yet." };
+  }
+
+  // Convert MMK → USD for the card charge (Stripe minimum ~$0.50).
+  const { data: usd } = await supabase.rpc("gpay_convert", {
+    amount,
+    from_code: "MMK",
+    to_code: "USD",
+  });
+  const usdAmount = Number(usd);
+  if (!Number.isFinite(usdAmount) || usdAmount <= 0) {
+    return { ok: false, error: "Currency rate unavailable. Try again later." };
+  }
+  const cents = Math.max(50, Math.round(usdAmount * 100));
+
+  const origin = await requestOrigin();
+  try {
+    const stripe = getStripe();
+    // Omitting payment_method_types lets Stripe offer every method enabled in
+    // the dashboard (international cards, bank debits, wallets).
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            unit_amount: cents,
+            product_data: {
+              name: `G-Pay top-up · ${amount.toLocaleString("en-US")} Ks`,
+            },
+          },
+        },
+      ],
+      metadata: { type: "gpay_topup", user_id: userId, amount_mmk: String(amount) },
+      success_url: `${origin}/gpay?topup=success`,
+      cancel_url: `${origin}/gpay?topup=cancel`,
+    });
+    if (!session.url) return { ok: false, error: "Could not start checkout." };
+    return { ok: true, data: { url: session.url } };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Checkout failed.",
+    };
+  }
 }
 
 const transferSchema = z.object({

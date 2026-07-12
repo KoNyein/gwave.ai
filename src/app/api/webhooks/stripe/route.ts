@@ -39,6 +39,27 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object;
+
+        // G-Pay wallet top-up (cash-in) — credit the wallet and stop.
+        if (session.metadata?.type === "gpay_topup") {
+          const topupUser = session.metadata.user_id;
+          const amountMmk = Number(session.metadata.amount_mmk);
+          if (
+            topupUser &&
+            Number.isFinite(amountMmk) &&
+            amountMmk > 0 &&
+            session.payment_status === "paid"
+          ) {
+            // Idempotent on the Stripe session id (stored as the txn reference).
+            await admin.rpc("gpay_stripe_topup", {
+              p_user: topupUser,
+              p_amount: amountMmk,
+              p_ref: session.id,
+            });
+          }
+          break;
+        }
+
         const userId =
           session.metadata?.user_id ?? session.client_reference_id;
         const planId = session.metadata?.plan_id;
