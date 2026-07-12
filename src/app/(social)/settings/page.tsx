@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { MonetizationToggle } from "@/components/settings/monetization-toggle";
 import { ProfileEditor } from "@/components/settings/profile-editor";
 import { UpdatePasswordForm } from "@/components/auth/password-reset";
+import { GeneralSettings } from "@/components/settings/general-settings";
 import { PushManager } from "@/components/pwa/push-manager";
 import { PrivacySettings } from "@/components/social/privacy-settings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +42,15 @@ export default async function SettingsPage() {
           📖 အကူအညီ
         </a>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">⚙️ General · အထွေထွေ</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <GeneralSettings />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

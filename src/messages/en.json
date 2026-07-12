@@ -39,7 +39,8 @@
     "sectionLearn": "Learning",
     "sectionFarm": "Farm & Home",
     "sectionBusiness": "Shop & Business",
-    "sectionKnowledge": "Knowledge & Tools"
+    "sectionKnowledge": "Knowledge & Tools",
+    "dashboard": "My Dashboard"
   },
   "auth": {
     "login": "Log in",

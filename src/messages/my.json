@@ -39,7 +39,8 @@
     "sectionLearn": "သင်ယူရေး",
     "sectionFarm": "စိုက်ပျိုးရေးနှင့် အိမ်",
     "sectionBusiness": "ဈေးဝယ်နှင့် စီးပွား",
-    "sectionKnowledge": "အချက်အလက်နှင့် Tools"
+    "sectionKnowledge": "အချက်အလက်နှင့် Tools",
+    "dashboard": "ကျွန်ုပ်၏ Dashboard"
   },
   "auth": {
     "login": "ဝင်ရန်",
