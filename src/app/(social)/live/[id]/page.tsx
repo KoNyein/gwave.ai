@@ -6,10 +6,12 @@ import { z } from "zod";
 import { DoubleTapHeart } from "@/components/live/double-tap-heart";
 import { HostPanel } from "@/components/live/host-panel";
 import { LiveChat, type ChatEntry } from "@/components/live/live-chat";
+import { LiveGifts } from "@/components/live/live-gifts";
 import { LivePlayer } from "@/components/live/live-player";
 import { LiveSaleManager } from "@/components/live/live-sale-manager";
 import { LiveSalePanel } from "@/components/live/live-sale-panel";
 import { ReactionBar } from "@/components/live/reaction-bar";
+import { TopGifters } from "@/components/live/top-gifters";
 import { StreamStatusWatcher } from "@/components/live/stream-status-watcher";
 import { ViewerCount } from "@/components/live/viewer-count";
 import { UserAvatar } from "@/components/social/user-avatar";
@@ -19,10 +21,12 @@ import { currencyToGpay, toRateMap } from "@/lib/currency";
 import { getActiveCurrencies } from "@/lib/db/currency";
 import { getMyGpayAccount } from "@/lib/db/gpay";
 import { getRecentChat, getStream, getStreamKey } from "@/lib/db/live";
+import { getLiveGifts, getTopGifters } from "@/lib/db/live-gifts";
 import {
   getLiveProducts,
   getMySellableProducts,
 } from "@/lib/db/live-products";
+import { createClient } from "@/lib/supabase/server";
 import { displayName, timeAgo } from "@/lib/format";
 import { MUX_RTMP_URL } from "@/lib/mux";
 
@@ -75,6 +79,24 @@ export default async function LiveStreamPage({
   }
   const myProducts = isHost ? await getMySellableProducts(profile.id) : [];
   const pinnedIds = liveProducts.map((p) => p.id);
+
+  // Live gifts (G-Pay powered) + top supporters.
+  const [liveGifts, topGifters] = await Promise.all([
+    getLiveGifts(),
+    getTopGifters(stream.id),
+  ]);
+  const giftSupabase = await createClient();
+  const { data: myGpayGift } = await giftSupabase
+    .from("gpay_accounts")
+    .select("status")
+    .eq("user_id", profile.id)
+    .maybeSingle<{ status: string }>();
+  const canGift = myGpayGift?.status === "active" && !isHost;
+  let giftHasPin = false;
+  if (canGift) {
+    const { data } = await giftSupabase.rpc("gpay_has_pin");
+    giftHasPin = data === true;
+  }
 
   const currentUser = {
     id: profile.id,
@@ -129,11 +151,21 @@ export default async function LiveStreamPage({
         <p className="text-sm text-muted-foreground">{stream.description}</p>
       )}
 
-      <ReactionBar
-        streamId={stream.id}
-        userId={profile.id}
-        disabled={stream.status === "ended"}
-      />
+      <div className="flex items-center gap-1">
+        <ReactionBar
+          streamId={stream.id}
+          userId={profile.id}
+          disabled={stream.status === "ended"}
+        />
+        <LiveGifts
+          streamId={stream.id}
+          gifts={liveGifts}
+          hasPin={giftHasPin}
+          canGift={canGift}
+        />
+      </div>
+
+      <TopGifters gifters={topGifters} />
 
       {isHost && (
         <HostPanel
