@@ -1248,7 +1248,14 @@
     "pinChange": "修改 PIN",
     "pinRule": "PIN 必须为 4–6 位数字。",
     "pinMismatch": "两次 PIN 不一致。",
-    "cancel": "取消"
+    "cancel": "取消",
+    "receiveMoney": "收款",
+    "receiveHint": "出示此二维码/号码以收款。",
+    "topupTitle": "充值",
+    "topupAmount": "充值金额 (Ks)",
+    "topupPay": "用银行卡支付",
+    "topupHint": "通过 Stripe 使用国际银行卡/银行安全支付。",
+    "topupMin": "最低充值 1,000 Ks。"
   },
   "lang": {
     "title": "语言",

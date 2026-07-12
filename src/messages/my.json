@@ -1248,7 +1248,14 @@
     "pinChange": "PIN ပြောင်းရန်",
     "pinRule": "PIN သည် ဂဏန်း ၄–၆ လုံး ဖြစ်ရမည်။",
     "pinMismatch": "PIN နှစ်ခု မတူညီပါ။",
-    "cancel": "ပယ်ဖျက်"
+    "cancel": "ပယ်ဖျက်",
+    "receiveMoney": "ငွေလက်ခံ",
+    "receiveHint": "ဒီ QR / နံပါတ်ကို ပြပြီး ငွေလက်ခံပါ။",
+    "topupTitle": "ငွေဖြည့်",
+    "topupAmount": "ဖြည့်မည့် ပမာဏ (Ks)",
+    "topupPay": "Card ဖြင့် ငွေဖြည့်မည်",
+    "topupHint": "နိုင်ငံတကာ card/bank များဖြင့် Stripe မှတဆင့် လုံခြုံစွာ ပေးချေနိုင်ပါသည်။",
+    "topupMin": "အနည်းဆုံး ၁,၀၀၀ Ks ဖြည့်ပါ။"
   },
   "lang": {
     "title": "ဘာသာစကားများ",

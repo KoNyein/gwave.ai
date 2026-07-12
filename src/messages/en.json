@@ -1248,7 +1248,14 @@
     "pinChange": "Change PIN",
     "pinRule": "PIN must be 4–6 digits.",
     "pinMismatch": "PINs do not match.",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "receiveMoney": "Receive",
+    "receiveHint": "Show this QR / number to get paid.",
+    "topupTitle": "Top up",
+    "topupAmount": "Amount to add (Ks)",
+    "topupPay": "Pay with card",
+    "topupHint": "Pay securely with an international card/bank via Stripe.",
+    "topupMin": "Minimum top-up is 1,000 Ks."
   },
   "lang": {
     "title": "Languages",
