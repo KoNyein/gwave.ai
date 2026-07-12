@@ -1,12 +1,29 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { publicEnv } from "@/lib/env";
 import { checkAuthRateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
+
+/**
+ * The site origin as seen by the current request. Auth emails and OAuth
+ * redirects must point at the real deployed host — deriving it from the
+ * request means they work even when NEXT_PUBLIC_SITE_URL is unset (its
+ * localhost default would otherwise end up inside recovery emails).
+ */
+async function siteOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (host) {
+    const proto = h.get("x-forwarded-proto") ?? "https";
+    return `${proto}://${host}`;
+  }
+  return publicEnv.NEXT_PUBLIC_SITE_URL;
+}
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -60,7 +77,7 @@ export async function register(
   const { error } = await supabase.auth.signUp({
     ...parsed.data,
     options: {
-      emailRedirectTo: `${publicEnv.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      emailRedirectTo: `${await siteOrigin()}/auth/callback`,
     },
   });
   if (error) {
@@ -76,7 +93,7 @@ export async function signInWithGoogle(): Promise<void> {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${publicEnv.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      redirectTo: `${await siteOrigin()}/auth/callback`,
     },
   });
   if (error) {
@@ -115,9 +132,15 @@ export async function requestPasswordReset(
   }
 
   const supabase = await createClient();
-  await supabase.auth.resetPasswordForEmail(parsed.data, {
-    redirectTo: `${publicEnv.NEXT_PUBLIC_SITE_URL}/auth/callback?next=/reset-password`,
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
+    redirectTo: `${await siteOrigin()}/auth/callback?next=/reset-password`,
   });
+  // Operational failures (SMTP not configured, provider rate limit) must be
+  // visible — silently claiming success would strand the user. Supabase does
+  // not reveal whether the email exists, so this leaks nothing.
+  if (error) {
+    return { error: error.message };
+  }
   return { ok: true };
 }
 

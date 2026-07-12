@@ -34,7 +34,12 @@
     "family": "မိသားစု",
     "map": "မြေပုံ",
     "finance": "ငွေစာရင်း",
-    "reels": "Reels (ဗီဒီယိုတို)"
+    "reels": "Reels (ဗီဒီယိုတို)",
+    "sectionSocial": "လူမှုကွန်ရက်",
+    "sectionLearn": "သင်ယူရေး",
+    "sectionFarm": "စိုက်ပျိုးရေးနှင့် အိမ်",
+    "sectionBusiness": "ဈေးဝယ်နှင့် စီးပွား",
+    "sectionKnowledge": "အချက်အလက်နှင့် Tools"
   },
   "auth": {
     "login": "ဝင်ရန်",

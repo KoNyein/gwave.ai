@@ -6,11 +6,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import {
-  PRIMARY_NAV,
-  TOOL_NAV,
-  visibleNav,
-} from "@/components/layout/nav-items";
+import { NAV_SECTIONS, visibleNav } from "@/components/layout/nav-items";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ageBandOf } from "@/lib/age";
 import { cn } from "@/lib/utils";
@@ -27,8 +23,10 @@ export function MobileMenu({ profile }: { profile: Profile | null }) {
   const [open, setOpen] = React.useState(false);
 
   const isAdult = ageBandOf(profile?.birth_date ?? null) === "adult";
-  const primary = visibleNav(PRIMARY_NAV, isAdult);
-  const tools = visibleNav(TOOL_NAV, isAdult);
+  const sections = NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: visibleNav(section.items, isAdult),
+  })).filter((section) => section.items.length > 0);
   const initials = (profile?.username ?? "U").slice(0, 2).toUpperCase();
 
   // Close on route change + lock body scroll while open.
@@ -45,7 +43,7 @@ export function MobileMenu({ profile }: { profile: Profile | null }) {
     };
   }, [open]);
 
-  const renderItem = (item: (typeof primary)[number]) => {
+  const renderItem = (item: (typeof NAV_SECTIONS)[number]["items"][number]) => {
     const active =
       pathname === item.href || pathname.startsWith(`${item.href}/`);
     const Icon = item.icon;
@@ -113,9 +111,24 @@ export function MobileMenu({ profile }: { profile: Profile | null }) {
             </div>
 
             <nav className="space-y-1 p-2">
-              {primary.map(renderItem)}
+              {sections.map((section) => (
+                <div key={section.headingKey}>
+                  <p className="mt-3 px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t(section.headingKey)}
+                  </p>
+                  {section.items.map(renderItem)}
+                </div>
+              ))}
               <div className="my-2 border-t" />
-              {tools.map(renderItem)}
+              <Link
+                href="/help"
+                className="flex items-center gap-3 rounded-lg px-2 py-2 font-medium transition-colors hover:bg-muted"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-primary">
+                  📖
+                </span>
+                အကူအညီ (Help)
+              </Link>
             </nav>
           </div>
         </div>

@@ -55,3 +55,23 @@ Hosting မှာ နောက်ဆုံး `main` ကို deploy — Vercel
 - App icon 512×512: `public/icon-512.png`
 - `bubblewrap build` → `.aab` → Play Console upload
 - Content rating: gambling မေးခွန်း "No" (လောင်းကစား ဖယ်ပြီး)
+
+## ၆။ Recovery / အကောင့် email များ တကယ် ရောက်အောင် (SMTP — မဖြစ်မနေ)
+
+Supabase ရဲ့ built-in email က **စမ်းသပ်ရေးသက်သက်** (တစ်နာရီ ၂–၃ စောင်သာ၊
+deliverability မသေချာ) မို့ — password reset / signup email တွေ တကယ်ရောက်ဖို့
+**custom SMTP** ချိတ်ပါ။
+
+1. Supabase Dashboard → **Project Settings → Auth → SMTP Settings** → Enable
+2. အလွယ်ဆုံး ရွေးချယ်စရာ ၂ ခု —
+   - **Resend** (အခမဲ့ ၃၀၀၀ စောင်/လ): resend.com မှာ account ဖွင့် → API key ယူ →
+     Host `smtp.resend.com`, Port `465`, User `resend`, Password = API key
+   - **Gmail**: Google Account → Security → 2-Step Verification ဖွင့် →
+     App passwords မှာ password ထုတ် → Host `smtp.gmail.com`, Port `465`,
+     User = သင့် gmail, Password = app password
+3. Sender email/name ဖြည့် → Save
+4. **Auth → URL Configuration** မှာ —
+   - Site URL: `https://gwave-ai.vercel.app`
+   - Redirect URLs: `https://gwave-ai.vercel.app/auth/callback` ထည့်
+5. (optional) **Auth → Email Templates → Reset Password** မှာ စာသား မြန်မာလို ပြင်
+6. Vercel env: `NEXT_PUBLIC_SITE_URL=https://gwave-ai.vercel.app` သတ်မှတ်ပြီး redeploy

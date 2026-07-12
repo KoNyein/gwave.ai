@@ -35,7 +35,12 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">{t("title")}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold">{t("title")}</h1>
+        <a href="/help" className="text-sm font-medium text-primary hover:underline">
+          📖 အကူအညီ
+        </a>
+      </div>
 
       <Card>
         <CardHeader>
