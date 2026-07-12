@@ -1,5 +1,6 @@
 import {
   BadgeCheck,
+  LayoutDashboard,
   BookOpen,
   Calculator,
   Clapperboard,
@@ -49,6 +50,7 @@ export const NAV_SECTIONS: NavSection[] = [
     headingKey: "sectionSocial",
     items: [
       { href: "/feed", labelKey: "home", icon: Home },
+      { href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard },
       { href: "/friends", labelKey: "friends", icon: Users },
       { href: "/groups", labelKey: "groups", icon: LayoutGrid },
       { href: "/pages", labelKey: "pages", icon: Flag },
