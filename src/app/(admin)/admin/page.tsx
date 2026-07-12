@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 
 import { AdminCharts } from "@/components/admin/admin-charts";
+import { AdminGuide } from "@/components/admin/admin-nav";
+import { AdminInfographics } from "@/components/admin/admin-infographics";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAdminActivityStats, getAdminStats } from "@/lib/db/admin";
 import { getRevenueByMonth } from "@/lib/db/membership";
@@ -61,11 +63,28 @@ export default async function AdminOverviewPage() {
         ))}
       </div>
 
+      {/* Infographic summary — donut + funnels */}
+      <AdminInfographics
+        totalUsers={stats.totalUsers}
+        activeMembers={stats.activeMembers}
+        dau={activity.dau}
+        wau={activity.wau}
+        mau={activity.mau}
+        totalOrders={activity.total_orders}
+        orders30d={activity.orders_30d}
+        deliveredOrders={activity.delivered_orders}
+        lessonsCompleted={activity.lessons_completed}
+        certificatesIssued={activity.certificates_issued}
+        activeLearners30d={activity.active_learners_30d}
+      />
+
       <AdminCharts
         signupsByDay={stats.signupsByDay}
         postsByDay={stats.postsByDay}
         revenue={revenue}
       />
+
+      <AdminGuide />
     </div>
   );
 }
