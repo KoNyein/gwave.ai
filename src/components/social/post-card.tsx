@@ -70,19 +70,24 @@ function withAuthorFallback(post: FeedPost): FeedPost {
     avatar_url: null,
     role: "user",
   });
+  // The self-referencing shared_post embed can arrive as an array from
+  // PostgREST — [] is truthy and would render a phantom shared-post block.
+  const rawShared = post.shared_post as unknown;
+  const shared = (
+    Array.isArray(rawShared) ? (rawShared[0] ?? null) : (rawShared ?? null)
+  ) as FeedPost["shared_post"];
   return {
     ...post,
     author: post.author ?? fallback(post.author_id),
     media: post.media ?? [],
     my_reaction: post.my_reaction ?? [],
-    shared_post: post.shared_post
+    shared_post: shared
       ? {
-          ...post.shared_post,
-          author:
-            post.shared_post.author ?? fallback(post.shared_post.author_id),
-          media: post.shared_post.media ?? [],
+          ...shared,
+          author: shared.author ?? fallback(shared.author_id),
+          media: shared.media ?? [],
         }
-      : post.shared_post,
+      : null,
   };
 }
 
