@@ -10,6 +10,51 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createCamera } from "@/lib/actions/cctv";
 
+/**
+ * RTSP URL templates for common CCTV brands. GreenWave plays any camera that
+ * speaks RTSP (the universal IP-camera standard), so this list is just a
+ * convenience: pick a brand and the correct path is filled in — replace
+ * USER / PASS / the IP with your camera's own values.
+ */
+const RTSP_PRESETS: ReadonlyArray<{
+  label: string;
+  template: string;
+  note: string;
+}> = [
+  {
+    label: "Tapo / TP-Link",
+    template: "rtsp://USER:PASS@192.168.1.100:554/stream1",
+    note: "Tapo app → Advanced Settings → Camera Account မှာ USER/PASS ဆောက်ပါ (cloud email မဟုတ်)။ HD=/stream1, SD=/stream2",
+  },
+  {
+    label: "Hikvision",
+    template: "rtsp://USER:PASS@192.168.1.100:554/Streaming/Channels/101",
+    note: "101 = main stream, 102 = sub stream",
+  },
+  {
+    label: "Dahua",
+    template:
+      "rtsp://USER:PASS@192.168.1.100:554/cam/realmonitor?channel=1&subtype=0",
+    note: "subtype=0 main, subtype=1 sub",
+  },
+  {
+    label: "Reolink",
+    template: "rtsp://USER:PASS@192.168.1.100:554/h264Preview_01_main",
+    note: "_main = HD, _sub = SD",
+  },
+  {
+    label: "Amcrest",
+    template:
+      "rtsp://USER:PASS@192.168.1.100:554/cam/realmonitor?channel=1&subtype=0",
+    note: "Dahua-based format",
+  },
+  {
+    label: "ONVIF / Generic",
+    template: "rtsp://USER:PASS@192.168.1.100:554/onvif1",
+    note: "brand အလိုက် path ကွဲတယ် — camera doc/ONVIF Device Manager ကြည့်ပါ",
+  },
+];
+
 /** Register a new camera — a phone/PC (WebRTC) or a real CCTV (RTSP). */
 export function AddCameraForm() {
   const t = useTranslations("cctv");
@@ -18,6 +63,7 @@ export function AddCameraForm() {
   const [title, setTitle] = React.useState("");
   const [cameraType, setCameraType] = React.useState<"webrtc" | "rtsp">("webrtc");
   const [rtspUrl, setRtspUrl] = React.useState("");
+  const [presetNote, setPresetNote] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -92,13 +138,33 @@ export function AddCameraForm() {
       {cameraType === "rtsp" ? (
         <div className="space-y-1">
           <Label htmlFor="cam-rtsp">{t("rtspLabel")}</Label>
+          {/* Works with any RTSP camera — these presets just fill the correct
+              path for common brands; replace USER / PASS / IP with yours. */}
+          <div className="flex flex-wrap gap-1.5 pb-1">
+            {RTSP_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => {
+                  setRtspUrl(p.template);
+                  setPresetNote(p.note);
+                }}
+                className="rounded-full border px-2.5 py-1 text-xs transition-colors hover:bg-muted/60"
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
           <Input
             id="cam-rtsp"
             value={rtspUrl}
             onChange={(e) => setRtspUrl(e.target.value)}
-            placeholder="rtsp://192.168.1.10:554/stream"
+            placeholder="rtsp://USER:PASS@192.168.1.100:554/stream1"
             maxLength={500}
           />
+          {presetNote ? (
+            <p className="text-xs text-primary">{presetNote}</p>
+          ) : null}
           <p className="text-xs text-muted-foreground">{t("rtspHint")}</p>
         </div>
       ) : null}
