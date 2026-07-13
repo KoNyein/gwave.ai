@@ -370,6 +370,7 @@
     "sentPhoto": "ส่งรูปภาพแล้ว",
     "sentVideo": "ส่งวิดีโอแล้ว",
     "sentFile": "ส่งไฟล์แล้ว",
+    "sentVoice": "ส่งข้อความเสียงแล้ว",
     "sendAttachment": "ส่งวิดีโอหรือไฟล์",
     "file": "ไฟล์",
     "typing": "กำลังพิมพ์...",
@@ -390,7 +391,8 @@
     "endCall": "วางสาย",
     "shareLocation": "แชร์ตำแหน่ง",
     "sharedLocation": "ตำแหน่งที่แชร์",
-    "goLive": "ไลฟ์สด"
+    "goLive": "ไลฟ์สด",
+    "recordVoice": "อัดข้อความเสียง"
   },
   "stories": {
     "createStory": "สร้างสตอรี่",

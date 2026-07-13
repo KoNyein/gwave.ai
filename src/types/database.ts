@@ -669,10 +669,12 @@ export interface Message {
   image_path: string | null;
   latitude: number | null;
   longitude: number | null;
-  // Generic attachment: a video or an arbitrary file in the "media" bucket.
+  // Generic attachment in the "media" bucket: a video, an arbitrary file, or a
+  // voice note. Voice notes carry duration_seconds and nothing else does.
   file_path: string | null;
-  file_kind: "video" | "file" | null;
+  file_kind: "video" | "file" | "audio" | null;
   file_name: string | null;
+  duration_seconds: number | null;
   created_at: string;
 }
 

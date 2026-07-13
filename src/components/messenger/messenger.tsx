@@ -10,6 +10,7 @@ import {
   Loader2,
   MapPin,
   MessageCircle,
+  Mic,
   Paperclip,
   Phone,
   Radio,
@@ -22,6 +23,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { CallUI } from "@/components/messenger/call-ui";
 import { GamesPanel } from "@/components/messenger/games-panel";
 import { useCall } from "@/components/messenger/use-call";
+import { VoiceMessage } from "@/components/messenger/voice-message";
+import { VoiceRecorder } from "@/components/messenger/voice-recorder";
 import { LocationMap } from "@/components/social/location-map";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -40,7 +43,7 @@ import { translateText } from "@/lib/actions/translate";
 import { usePersistentState } from "@/lib/hooks/use-persistent-state";
 import { displayName, timeAgo } from "@/lib/format";
 import { getCurrentPosition } from "@/lib/geolocation";
-import { mediaUrl, uploadFile, uploadMedia } from "@/lib/media";
+import { mediaUrl, uploadFile, uploadMedia, uploadVoice } from "@/lib/media";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/types/database";
@@ -108,6 +111,7 @@ export function Messenger({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const attachInputRef = React.useRef<HTMLInputElement>(null);
   const [uploadError, setUploadError] = React.useState<string | null>(null);
+  const [recording, setRecording] = React.useState(false);
   const typingSentAt = React.useRef(0);
   const typingTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -331,6 +335,7 @@ export function Messenger({
         file_path: null,
         file_kind: null,
         file_name: null,
+        duration_seconds: null,
         created_at: new Date().toISOString(),
         sender: currentUser,
       };
@@ -400,6 +405,7 @@ export function Messenger({
         file_path: filePath,
         file_kind: kind,
         file_name: fileName,
+        duration_seconds: null,
         created_at: new Date().toISOString(),
         sender: currentUser,
       };
@@ -446,6 +452,71 @@ export function Messenger({
     }
   }
 
+  /** A finished recording: upload it, then send it as an 'audio' attachment. */
+  async function handleSendVoice(blob: Blob, seconds: number) {
+    if (!activeId || sending) return;
+    setSending(true);
+    try {
+      const { storage_path: filePath } = await uploadVoice(currentUser.id, blob);
+
+      const optimistic: MessageWithSender = {
+        id: `optimistic-${Date.now()}`,
+        conversation_id: activeId,
+        sender_id: currentUser.id,
+        content: "",
+        image_path: null,
+        latitude: null,
+        longitude: null,
+        file_path: filePath,
+        file_kind: "audio",
+        file_name: null,
+        duration_seconds: seconds,
+        created_at: new Date().toISOString(),
+        sender: currentUser,
+      };
+      setMessages((previous) => [...(previous ?? []), optimistic]);
+      setConversations((previous) =>
+        previous
+          .map((c) =>
+            c.id === activeId
+              ? {
+                  ...c,
+                  last_message: optimistic,
+                  last_message_at: optimistic.created_at,
+                }
+              : c,
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.last_message_at).getTime() -
+              new Date(a.last_message_at).getTime(),
+          ),
+      );
+      setRecording(false);
+
+      const result = await sendMessage({
+        conversationId: activeId,
+        content: "",
+        imagePath: null,
+        filePath,
+        fileKind: "audio",
+        durationSeconds: seconds,
+      });
+      setMessages((previous) => {
+        if (!previous) return previous;
+        if (!result.ok) return previous.filter((m) => m.id !== optimistic.id);
+        return previous.map((m) =>
+          m.id === optimistic.id ? { ...m, id: result.data.messageId } : m,
+        );
+      });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+      setRecording(false);
+    } finally {
+      setSending(false);
+    }
+  }
+
   async function shareLocation() {
     if (!activeId || sending) return;
     setSending(true);
@@ -462,6 +533,7 @@ export function Messenger({
         file_path: null,
         file_kind: null,
         file_name: null,
+        duration_seconds: null,
         created_at: new Date().toISOString(),
         sender: currentUser,
       };
@@ -582,9 +654,11 @@ export function Messenger({
                       ? t("sharedLocation")
                       : conversation.last_message.file_kind === "video"
                         ? t("sentVideo")
-                        : conversation.last_message.file_kind === "file"
-                          ? t("sentFile")
-                          : "")
+                        : conversation.last_message.file_kind === "audio"
+                          ? t("sentVoice")
+                          : conversation.last_message.file_kind === "file"
+                            ? t("sentFile")
+                            : "")
                 : t("noMessagesYet");
               return (
                 <button
@@ -814,6 +888,15 @@ export function Messenger({
                               className="max-h-72 w-full bg-black"
                             />
                           ) : null}
+                          {message.file_path && message.file_kind === "audio" ? (
+                            <div className="px-2.5 py-2">
+                              <VoiceMessage
+                                path={message.file_path}
+                                duration={message.duration_seconds ?? 0}
+                                mine={isMine}
+                              />
+                            </div>
+                          ) : null}
                           {message.file_path && message.file_kind === "file" ? (
                             <a
                               href={mediaUrl(message.file_path)}
@@ -904,36 +987,63 @@ export function Messenger({
 
             {/* Composer */}
             <div className="flex items-center gap-2 border-t p-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={sending}
-                aria-label={t("sendPhoto")}
-              >
-                <ImagePlus className="h-5 w-5 text-accent" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full"
-                onClick={() => attachInputRef.current?.click()}
-                disabled={sending}
-                aria-label={t("sendAttachment")}
-              >
-                <Paperclip className="h-5 w-5 text-accent" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full"
-                onClick={() => void shareLocation()}
-                disabled={sending}
-                aria-label={t("shareLocation")}
-              >
-                <MapPin className="h-5 w-5 text-destructive" />
-              </Button>
+              {recording ? (
+                <VoiceRecorder
+                  busy={sending}
+                  onSend={(blob, seconds) => void handleSendVoice(blob, seconds)}
+                  onCancel={() => setRecording(false)}
+                  onError={(message) => {
+                    setUploadError(message);
+                    setRecording(false);
+                  }}
+                />
+              ) : (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={sending}
+                    aria-label={t("sendPhoto")}
+                  >
+                    <ImagePlus className="h-5 w-5 text-accent" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full"
+                    onClick={() => attachInputRef.current?.click()}
+                    disabled={sending}
+                    aria-label={t("sendAttachment")}
+                  >
+                    <Paperclip className="h-5 w-5 text-accent" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full"
+                    onClick={() => void shareLocation()}
+                    disabled={sending}
+                    aria-label={t("shareLocation")}
+                  >
+                    <MapPin className="h-5 w-5 text-destructive" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full"
+                    onClick={() => {
+                      setUploadError(null);
+                      setRecording(true);
+                    }}
+                    disabled={sending}
+                    aria-label={t("recordVoice")}
+                  >
+                    <Mic className="h-5 w-5 text-primary" />
+                  </Button>
+                </>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -962,35 +1072,39 @@ export function Messenger({
                   event.target.value = "";
                 }}
               />
-              <input
-                value={input}
-                onChange={(event) => {
-                  setInput(event.target.value);
-                  broadcastTyping();
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    void handleSend();
-                  }
-                }}
-                placeholder={t("placeholder")}
-                maxLength={4000}
-                className="flex-1 rounded-full bg-muted px-4 py-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
-              />
-              <Button
-                size="icon"
-                className="rounded-full"
-                onClick={() => void handleSend()}
-                disabled={sending || !input.trim()}
-                aria-label={t("send")}
-              >
-                {sending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <SendHorizonal className="h-4 w-4" />
-                )}
-              </Button>
+              {recording ? null : (
+                <>
+                  <input
+                    value={input}
+                    onChange={(event) => {
+                      setInput(event.target.value);
+                      broadcastTyping();
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        void handleSend();
+                      }
+                    }}
+                    placeholder={t("placeholder")}
+                    maxLength={4000}
+                    className="flex-1 rounded-full bg-muted px-4 py-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
+                  />
+                  <Button
+                    size="icon"
+                    className="rounded-full"
+                    onClick={() => void handleSend()}
+                    disabled={sending || !input.trim()}
+                    aria-label={t("send")}
+                  >
+                    {sending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <SendHorizonal className="h-4 w-4" />
+                    )}
+                  </Button>
+                </>
+              )}
             </div>
           </>
         )}

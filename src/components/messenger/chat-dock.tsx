@@ -175,6 +175,7 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
       file_path: null,
       file_kind: null,
       file_name: null,
+      duration_seconds: null,
       created_at: new Date().toISOString(),
       sender: currentUser,
     };

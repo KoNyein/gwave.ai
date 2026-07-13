@@ -33,8 +33,10 @@ const sendMessageSchema = z
     latitude: z.number().min(-90).max(90).nullish(),
     longitude: z.number().min(-180).max(180).nullish(),
     filePath: z.string().max(500).nullish(),
-    fileKind: z.enum(["video", "file"]).nullish(),
+    fileKind: z.enum(["video", "file", "audio"]).nullish(),
     fileName: z.string().max(200).nullish(),
+    // Voice notes only: how long the clip runs. The DB enforces the same pairing.
+    durationSeconds: z.number().int().min(1).max(600).nullish(),
   })
   .refine(
     (input) =>
@@ -49,7 +51,20 @@ const sendMessageSchema = z
   })
   .refine((input) => (input.filePath == null) === (input.fileKind == null), {
     message: "Attachment needs a kind.",
-  });
+  })
+  .refine(
+    (input) => (input.fileKind === "audio") === (input.durationSeconds != null),
+    { message: "A voice message needs a duration, and only a voice message." },
+  );
+
+/** What a wordless message reads as in a push notification. */
+function previewFor(input: z.infer<typeof sendMessageSchema>): string {
+  if (input.imagePath) return "📷 ဓာတ်ပုံ";
+  if (input.fileKind === "audio") return "🎤 အသံ မက်ဆေ့ခ်ျ";
+  if (input.fileKind === "video") return "🎥 ဗီဒီယို";
+  if (input.latitude != null) return "📍 တည်နေရာ";
+  return "📎 ဖိုင်";
+}
 
 export async function sendMessage(
   input: z.infer<typeof sendMessageSchema>,
@@ -75,6 +90,7 @@ export async function sendMessage(
       file_path: parsed.data.filePath ?? null,
       file_kind: parsed.data.fileKind ?? null,
       file_name: parsed.data.fileName ?? null,
+      duration_seconds: parsed.data.durationSeconds ?? null,
     })
     .select("id")
     .single();
@@ -86,7 +102,7 @@ export async function sendMessage(
   void notifyConversation(
     parsed.data.conversationId,
     user.id,
-    parsed.data.content.trim() || (parsed.data.imagePath ? "📷 ဓာတ်ပုံ" : "📎 ဖိုင်"),
+    parsed.data.content.trim() || previewFor(parsed.data),
   );
 
   return { ok: true, data: { messageId: message.id } };

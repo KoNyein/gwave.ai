@@ -9,6 +9,23 @@ export const TARGET_IMAGE_BYTES = 600 * 1024; // ~0.6 MB
 export const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
 export const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB for chat documents
 
+/** Longest voice message we record; the DB rejects anything over 600s too. */
+export const MAX_VOICE_SECONDS = 300; // 5 minutes
+/** Opus at ~32 kbps is ~4 kB/s, so 5 minutes is ~1.2 MB. 10 MB is generous. */
+export const MAX_VOICE_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Container the browser actually gave us → file extension. Chrome/Firefox/Android
+ * record Opus in a WebM container; Safari (iOS included) only offers MP4/AAC.
+ */
+const VOICE_EXTENSIONS: Record<string, string> = {
+  "audio/webm": "webm",
+  "audio/ogg": "ogg",
+  "audio/mp4": "m4a",
+  "audio/mpeg": "mp3",
+  "audio/aac": "aac",
+};
+
 /** Public URL for a file in the "media" storage bucket. */
 export function mediaUrl(storagePath: string): string {
   return `${publicEnv.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${storagePath}`;
@@ -165,4 +182,30 @@ export async function uploadFile(
   if (error) throw new Error(error.message);
 
   return { storage_path: path, file_name: file.name };
+}
+
+/**
+ * Uploads a recorded voice note. MediaRecorder hands back a Blob, not a File,
+ * and its MIME type carries a codec suffix ("audio/webm;codecs=opus") that must
+ * not end up in the object's extension — hence a separate helper rather than
+ * squeezing it through uploadFile.
+ */
+export async function uploadVoice(
+  userId: string,
+  blob: Blob,
+): Promise<{ storage_path: string }> {
+  if (blob.size > MAX_VOICE_BYTES) {
+    throw new Error("Voice message is too large.");
+  }
+  const mime = blob.type.split(";")[0] || "audio/webm";
+  const ext = VOICE_EXTENSIONS[mime] ?? "webm";
+  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+
+  const supabase = createClient();
+  const { error } = await supabase.storage
+    .from("media")
+    .upload(path, blob, { contentType: mime, cacheControl: "31536000" });
+  if (error) throw new Error(error.message);
+
+  return { storage_path: path };
 }

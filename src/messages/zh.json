@@ -370,6 +370,7 @@
     "sentPhoto": "发送了一张照片",
     "sentVideo": "发送了一个视频",
     "sentFile": "发送了一个文件",
+    "sentVoice": "发送了一条语音消息",
     "sendAttachment": "发送视频或文件",
     "file": "文件",
     "typing": "正在输入...",
@@ -390,7 +391,8 @@
     "endCall": "挂断",
     "shareLocation": "分享位置",
     "sharedLocation": "分享的位置",
-    "goLive": "开始直播"
+    "goLive": "开始直播",
+    "recordVoice": "录制语音消息"
   },
   "stories": {
     "createStory": "创建快拍",
