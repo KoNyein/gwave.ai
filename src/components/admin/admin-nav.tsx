@@ -10,6 +10,7 @@ import {
   GraduationCap,
   ShieldAlert,
   Settings as SettingsIcon,
+  Activity,
   Users,
   Wallet,
   type LucideIcon,
@@ -63,6 +64,7 @@ const SECTIONS: AdminNavSection[] = [
     links: [
       { href: "/admin/gpay", label: "G-Pay", icon: Wallet },
       { href: "/admin/settings", label: "Settings", icon: SettingsIcon },
+      { href: "/admin/system", label: "System", icon: Activity },
     ],
   },
 ];
