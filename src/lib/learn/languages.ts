@@ -6,6 +6,8 @@
 // (speechSynthesis for text-to-speech, SpeechRecognition for pronunciation
 // scoring), so a lesson works offline once the page has loaded.
 
+import { phraseUnitsFor } from "./language-phrases";
+
 /** A single vocabulary item / phrase in a unit. */
 export interface Phrase {
   /** The word or phrase in the target language (what TTS speaks). */
@@ -2484,10 +2486,12 @@ const LANG_EXTRA_UNITS: Record<string, LangUnit[]> = {
   ],
 };
 
-// Append the extra units to each course (words first, then structure).
+// Append the extra units to each course (words first, then structure), then
+// the twenty themed "useful phrases" lessons shared across every language.
 for (const course of LANG_COURSES) {
   const extra = LANG_EXTRA_UNITS[course.slug];
   if (extra) course.units.push(...extra);
+  course.units.push(...phraseUnitsFor(course.slug));
 }
 
 export function getLangCourse(slug: string): LangCourse | undefined {

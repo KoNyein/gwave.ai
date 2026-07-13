@@ -8,6 +8,8 @@ import {
   Play,
   Plus,
   Power,
+  Star,
+  Timer,
   Trash2,
   Wand2,
   WifiOff,
@@ -44,9 +46,114 @@ import { cn } from "@/lib/utils";
 import type { Device } from "@/types/database";
 
 const DAY_LABELS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+const FAVORITES_KEY = "gw:home:favorites";
 
 function isOn(device: Device): boolean {
   return (device.state as { power?: string }).power === "on";
+}
+
+/** One switch tile: tap the body to toggle power, tap the star to favorite. */
+function SwitchTile({
+  device,
+  pending,
+  favorite,
+  timerLeft,
+  onToggle,
+  onToggleFavorite,
+  onCycleTimer,
+  labels,
+}: {
+  device: Device;
+  pending: boolean;
+  favorite: boolean;
+  /** Minutes until the auto-off timer fires, or null when none is set. */
+  timerLeft: number | null;
+  onToggle: () => void;
+  onToggleFavorite: () => void;
+  onCycleTimer: () => void;
+  labels: {
+    on: string;
+    off: string;
+    waiting: string;
+    favorite: string;
+    autoOff: string;
+    offInMin: (m: number) => string;
+  };
+}) {
+  const on = isOn(device);
+  return (
+    <div
+      className={cn(
+        "relative flex flex-col items-start gap-3 rounded-xl border p-4 transition-all",
+        on ? "border-primary bg-secondary shadow-sm" : "bg-background",
+      )}
+    >
+      <div className="absolute right-2 top-2 flex items-center gap-1">
+        {on ? (
+          <button
+            type="button"
+            onClick={onCycleTimer}
+            aria-label={labels.autoOff}
+            className={cn(
+              "transition-colors hover:text-primary",
+              timerLeft ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            <Timer className="h-4 w-4" />
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={onToggleFavorite}
+          aria-label={labels.favorite}
+          aria-pressed={favorite}
+          className="text-muted-foreground transition-colors hover:text-amber-500"
+        >
+          <Star
+            className={cn("h-4 w-4", favorite && "fill-amber-400 text-amber-500")}
+          />
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={pending}
+        className="flex w-full flex-col items-start gap-3 text-left"
+      >
+        <span
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-full",
+            on
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground",
+          )}
+        >
+          {pending ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <Power className="h-5 w-5" />
+          )}
+        </span>
+        <span>
+          <span className="flex items-center gap-1.5 pr-10 text-sm font-semibold">
+            {device.name}
+            {!device.online ? (
+              <WifiOff className="h-3.5 w-3.5 text-muted-foreground" />
+            ) : null}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {timerLeft
+              ? labels.offInMin(timerLeft)
+              : pending
+                ? labels.waiting
+                : on
+                  ? labels.on
+                  : labels.off}
+          </span>
+        </span>
+      </button>
+    </div>
+  );
 }
 
 export function SmartHome({
@@ -62,6 +169,91 @@ export function SmartHome({
   const [switches, setSwitches] = React.useState(initialSwitches);
   // Devices with an optimistic (unconfirmed) toggle in flight.
   const [pendingIds, setPendingIds] = React.useState<Set<string>>(new Set());
+  // Pinned favourites (per browser — a lightweight quick-access, no server row).
+  const [favorites, setFavorites] = React.useState<Set<string>>(new Set());
+
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FAVORITES_KEY);
+      if (raw) setFavorites(new Set(JSON.parse(raw) as string[]));
+    } catch {
+      /* ignore malformed/absent storage */
+    }
+  }, []);
+
+  function toggleFavorite(id: string) {
+    setFavorites((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      try {
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
+      } catch {
+        /* ignore quota/private-mode errors */
+      }
+      return next;
+    });
+  }
+
+  // Client "sleep timer": auto-off deadlines per device (epoch ms). Fires while
+  // the app is open — a lightweight fan/light timer, not a server schedule.
+  const [timers, setTimers] = React.useState<Record<string, number>>({});
+  const [, forceTick] = React.useState(0);
+
+  React.useEffect(() => {
+    if (Object.keys(timers).length === 0) return;
+    const iv = setInterval(() => {
+      forceTick((n) => n + 1);
+      const now = Date.now();
+      const due = Object.entries(timers).filter(([, at]) => now >= at);
+      if (due.length === 0) return;
+      setSwitches((previous) => {
+        due.forEach(([id]) => {
+          const device = previous.find((d) => d.id === id);
+          if (device && isOn(device)) void sendDeviceCommand(id, { power: "off" });
+        });
+        return previous.map((d) =>
+          due.some(([id]) => id === d.id)
+            ? { ...d, state: { ...d.state, power: "off" } }
+            : d,
+        );
+      });
+      setTimers((previous) => {
+        const next = { ...previous };
+        due.forEach(([id]) => delete next[id]);
+        return next;
+      });
+    }, 10_000);
+    return () => clearInterval(iv);
+  }, [timers]);
+
+  function cycleTimer(id: string) {
+    setTimers((previous) => {
+      const current = previous[id];
+      const curMin = current
+        ? Math.round((current - Date.now()) / 60_000)
+        : 0;
+      const nextMin = curMin <= 0 ? 15 : curMin <= 15 ? 30 : curMin <= 30 ? 60 : 0;
+      const next = { ...previous };
+      if (nextMin === 0) delete next[id];
+      else next[id] = Date.now() + nextMin * 60_000;
+      return next;
+    });
+  }
+
+  function timerLeft(id: string): number | null {
+    const at = timers[id];
+    return at ? Math.max(1, Math.ceil((at - Date.now()) / 60_000)) : null;
+  }
+
+  const tileLabels = {
+    on: t("on"),
+    off: t("off"),
+    waiting: t("waiting"),
+    favorite: t("favorites"),
+    autoOff: t("autoOff"),
+    offInMin: (m: number) => t("offInMin", { m }),
+  };
 
   // Confirm optimistic toggles when the device echoes its state.
   React.useEffect(() => {
@@ -118,10 +310,108 @@ export function SmartHome({
     }
   }
 
+  // One-tap "leaving home / arriving home": flip every switch at once.
+  async function setAll(next: "on" | "off") {
+    const targets = switches.filter((device) => isOn(device) !== (next === "on"));
+    if (targets.length === 0) return;
+    setSwitches((previous) =>
+      previous.map((entry) =>
+        targets.some((d) => d.id === entry.id)
+          ? { ...entry, state: { ...entry.state, power: next } }
+          : entry,
+      ),
+    );
+    setPendingIds((previous) => {
+      const nextSet = new Set(previous);
+      targets.forEach((d) => nextSet.add(d.id));
+      return nextSet;
+    });
+    await Promise.all(
+      targets.map((device) => sendDeviceCommand(device.id, { power: next })),
+    );
+  }
+
   const zones = [...new Set(switches.map((device) => device.zone))];
+  const onCount = switches.filter(isOn).length;
+  const offlineCount = switches.filter((device) => !device.online).length;
 
   return (
     <div className="space-y-6">
+      {/* Home status + one-tap master controls (like a "leaving/arriving" routine) */}
+      {switches.length > 0 ? (
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="flex items-center gap-2 text-sm">
+              <span
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-full",
+                  onCount > 0
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                <Power className="h-4 w-4" />
+              </span>
+              <span className="font-medium">
+                {onCount > 0 ? t("statusOn", { count: onCount }) : t("statusAllOff")}
+                {offlineCount > 0 ? (
+                  <span className="ml-1 text-muted-foreground">
+                    · {t("statusOffline", { count: offlineCount })}
+                  </span>
+                ) : null}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void setAll("on")}
+                disabled={onCount === switches.length}
+              >
+                <Power className="mr-1 h-4 w-4" />
+                {t("allOn")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void setAll("off")}
+                disabled={onCount === 0}
+              >
+                <Power className="mr-1 h-4 w-4" />
+                {t("allOff")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {/* Favourites — quick access to the switches you pin (per browser) */}
+      {switches.some((device) => favorites.has(device.id)) ? (
+        <section>
+          <h2 className="mb-2 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase text-muted-foreground">
+            <Star className="h-4 w-4 fill-amber-400 text-amber-500" />
+            {t("favorites")}
+          </h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {switches
+              .filter((device) => favorites.has(device.id))
+              .map((device) => (
+                <SwitchTile
+                  key={device.id}
+                  device={device}
+                  pending={pendingIds.has(device.id)}
+                  favorite
+                  timerLeft={timerLeft(device.id)}
+                  onToggle={() => void toggle(device)}
+                  onToggleFavorite={() => toggleFavorite(device.id)}
+                  onCycleTimer={() => cycleTimer(device.id)}
+                  labels={tileLabels}
+                />
+              ))}
+          </div>
+        </section>
+      ) : null}
+
       {/* Switches */}
       {switches.length === 0 ? (
         <Card>
@@ -138,54 +428,19 @@ export function SmartHome({
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {switches
                 .filter((device) => device.zone === zone)
-                .map((device) => {
-                  const on = isOn(device);
-                  const pending = pendingIds.has(device.id);
-                  return (
-                    <button
-                      key={device.id}
-                      type="button"
-                      onClick={() => void toggle(device)}
-                      disabled={pending}
-                      className={cn(
-                        "flex flex-col items-start gap-3 rounded-xl border p-4 text-left transition-all",
-                        on
-                          ? "border-primary bg-secondary shadow-sm"
-                          : "bg-background hover:bg-muted",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "flex h-10 w-10 items-center justify-center rounded-full",
-                          on
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground",
-                        )}
-                      >
-                        {pending ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : (
-                          <Power className="h-5 w-5" />
-                        )}
-                      </span>
-                      <span>
-                        <span className="flex items-center gap-1.5 text-sm font-semibold">
-                          {device.name}
-                          {!device.online ? (
-                            <WifiOff className="h-3.5 w-3.5 text-muted-foreground" />
-                          ) : null}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {pending
-                            ? t("waiting")
-                            : on
-                              ? t("on")
-                              : t("off")}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
+                .map((device) => (
+                  <SwitchTile
+                    key={device.id}
+                    device={device}
+                    pending={pendingIds.has(device.id)}
+                    favorite={favorites.has(device.id)}
+                    timerLeft={timerLeft(device.id)}
+                    onToggle={() => void toggle(device)}
+                    onToggleFavorite={() => toggleFavorite(device.id)}
+                    onCycleTimer={() => cycleTimer(device.id)}
+                    labels={tileLabels}
+                  />
+                ))}
             </div>
           </section>
         ))
@@ -199,6 +454,7 @@ export function SmartHome({
           </h2>
           <CreateSceneDialog switches={switches} />
         </div>
+        {switches.length > 0 ? <QuickScenes switches={switches} /> : null}
         {scenes.length === 0 ? (
           <Card>
             <CardContent className="p-6 text-center text-sm text-muted-foreground">
@@ -213,6 +469,52 @@ export function SmartHome({
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+/** One-tap starter scenes — create a whole-home "all on / all off" routine. */
+const SCENE_TEMPLATES = [
+  { key: "sceneMorning", emoji: "☀️", power: "on" },
+  { key: "sceneLeaving", emoji: "🚪", power: "off" },
+  { key: "sceneNight", emoji: "🌙", power: "off" },
+] as const;
+
+function QuickScenes({ switches }: { switches: Device[] }) {
+  const t = useTranslations("home");
+  const router = useRouter();
+  const [pendingKey, setPendingKey] = React.useState<string | null>(null);
+
+  function create(key: string, power: "on" | "off") {
+    setPendingKey(key);
+    void (async () => {
+      await createScene({
+        name: t(key),
+        actions: switches.map((device) => ({ deviceId: device.id, power })),
+      });
+      setPendingKey(null);
+      router.refresh();
+    })();
+  }
+
+  return (
+    <div className="mb-3 flex flex-wrap gap-2">
+      {SCENE_TEMPLATES.map((tpl) => (
+        <button
+          key={tpl.key}
+          type="button"
+          disabled={pendingKey !== null}
+          onClick={() => create(tpl.key, tpl.power)}
+          className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors hover:bg-muted disabled:opacity-50"
+        >
+          {pendingKey === tpl.key ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <span aria-hidden>{tpl.emoji}</span>
+          )}
+          {t(tpl.key)}
+        </button>
+      ))}
     </div>
   );
 }
@@ -488,6 +790,22 @@ function ScheduleDialog({ sceneId }: { sceneId: string }) {
               value={runAt}
               onChange={(event) => setRunAt(event.target.value)}
             />
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setRunAt("06:00")}
+                className="rounded-full border px-3 py-1 text-xs transition-colors hover:bg-muted"
+              >
+                🌅 {t("sunrise")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRunAt("18:30")}
+                className="rounded-full border px-3 py-1 text-xs transition-colors hover:bg-muted"
+              >
+                🌇 {t("sunset")}
+              </button>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>{t("daysOfWeek")}</Label>
