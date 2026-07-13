@@ -36,6 +36,34 @@ export default async function CohostLobbyPage() {
         </div>
       </div>
 
+      <Card className="border-primary/30 bg-primary/5">
+        <CardContent className="space-y-2 p-4">
+          <p className="text-sm font-semibold">ဘယ်လို အလုပ်လုပ်လဲ — ၃ ဆင့်</p>
+          <ol className="space-y-1.5 text-sm text-muted-foreground">
+            <li>
+              <span className="font-semibold text-foreground">၁.</span> ခေါင်းစဉ်
+              ထည့်ပြီး <span className="font-medium">“Live စတင်မည်”</span> နှိပ်ပါ။
+              အခန်း ပွင့်သွားပါမယ်။
+            </li>
+            <li>
+              <span className="font-semibold text-foreground">၂.</span> အခန်းထဲမှာ{" "}
+              <span className="font-medium">“Link မျှဝေရန်”</span> နဲ့ လူခေါ်ပါ။
+              ပြီးရင် <span className="font-medium">“Co-host ထည့်ရန်”</span> ကနေ
+              နာမည်ရှာပြီး ဖိတ်ခေါ်လိုက်ပါ — သူတို့ ကင်မရာ ပွင့်လာပါမယ်။
+            </li>
+            <li>
+              <span className="font-semibold text-foreground">၃.</span> ကြည့်နေသူက
+              ကိုယ်တိုင် <span className="font-medium">“Co-host ဝင်ရန် တောင်းမည်”</span>{" "}
+              (လက်ထောင်) လည်း နှိပ်လို့ရတယ် — သင်က ✓ ခွင့်ပြုပေးရုံပါပဲ။
+            </li>
+          </ol>
+          <p className="text-xs text-muted-foreground">
+            ကြည့်ရှုသူ အရေအတွက် ကန့်သတ်ချက် မရှိပါ။ ကင်မရာ ဖွင့်ခွင့်က host
+            ခွင့်ပြုထားသူတွေ ပဲ ရပါတယ်။
+          </p>
+        </CardContent>
+      </Card>
+
       <CohostStart />
 
       <div>

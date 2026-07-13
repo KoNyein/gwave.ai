@@ -31,26 +31,49 @@ export default async function LivePage() {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/live/cohost"
-            className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted/50"
-          >
-            <Users className="h-4 w-4" /> Co-host
-          </Link>
-          <Link
-            href="/live/dashboard"
-            className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted/50"
-          >
-            <LayoutDashboard className="h-4 w-4" /> Dashboard
-          </Link>
-          <Link
-            href="/live/new"
-            className="flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" /> Go live
-          </Link>
-        </div>
+        <Link
+          href="/live/dashboard"
+          className="flex shrink-0 items-center gap-1 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted/50"
+        >
+          <LayoutDashboard className="h-4 w-4" /> Dashboard
+        </Link>
+      </div>
+
+      {/* The two ways to broadcast, given equal weight. Co-host used to hide in
+          a small outlined link here and almost nobody found it. */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Link href="/live/new" className="block">
+          <Card className="h-full border-primary/40 transition-colors hover:bg-muted/50">
+            <CardContent className="flex items-start gap-3 p-4">
+              <span className="rounded-lg bg-primary/10 p-2 text-primary">
+                <Plus className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="font-semibold">Go live — တစ်ယောက်တည်း</p>
+                <p className="text-xs text-muted-foreground">
+                  ကိုယ်တိုင် တစ်ယောက်တည်း လွှင့်ပြီး ပရိသတ်နဲ့ စကားပြောပါ။
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/live/cohost" className="block">
+          <Card className="h-full border-primary/40 transition-colors hover:bg-muted/50">
+            <CardContent className="flex items-start gap-3 p-4">
+              <span className="rounded-lg bg-primary/10 p-2 text-primary">
+                <Users className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="font-semibold">Co-host Live — အတူတူ 👥</p>
+                <p className="text-xs text-muted-foreground">
+                  သူငယ်ချင်း/ဧည့်သည်တွေကို ဖိတ်ခေါ်ပြီး video grid နဲ့ အတူ
+                  လွှင့်ပါ။
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {liveNow.length > 0 && (

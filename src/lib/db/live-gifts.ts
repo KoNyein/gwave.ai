@@ -1,6 +1,5 @@
 import "server-only";
 
-import { createAnonClient } from "@/lib/supabase/anon";
 import { createClient } from "@/lib/supabase/server";
 import type { LiveGift } from "@/types/database";
 
@@ -13,9 +12,15 @@ export interface TopGifter {
   gift_count: number;
 }
 
-/** The active gift catalog, cheapest first. */
+/**
+ * The active gift catalog, cheapest first.
+ *
+ * Must use the cookie-bound client: the only policy on `live_gifts` is granted
+ * to `authenticated` (see 20260712100000_live_gifts.sql), so reading it as the
+ * `anon` role returns zero rows and silently renders an empty gift picker.
+ */
 export async function getLiveGifts(): Promise<LiveGift[]> {
-  const supabase = createAnonClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("live_gifts")
     .select("*")
