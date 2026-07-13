@@ -577,10 +577,39 @@ export const javascriptTrack: Track = {
   slug: "javascript",
   title: "JavaScript Course",
   description:
-    "Variables, functions, loops, the DOM and events — make pages think.",
+    "Start from zero: your first line of code, decisions, loops, the DOM and events.",
   icon: "Braces",
-  bands: ["teen", "adult"],
+  bands: ["preteen", "teen", "adult"],
   lessons: [
+    {
+      slug: "js-start",
+      title: "Your First Code",
+      summary: "What JavaScript is, and printing your very first message.",
+      minutes: 8,
+      kind: "code",
+      youtubeQuery: "JavaScript for absolute beginners hello world",
+      sections: [
+        {
+          heading: "What is JavaScript?",
+          body: "JavaScript is a language you use to give a computer instructions, one line at a time. The computer does exactly what each line says, from top to bottom — like following the steps in a recipe. Let's write our very first instruction together.",
+        },
+        {
+          heading: "Show a message",
+          body: "The instruction `log(\"...\")` shows a message on the screen. Put the words you want to show inside the quotes. Press Run and you will see them appear. Then change the words to your own name and Run again — the screen changes with you.",
+          code: 'log("Hello!");\nlog("My name is Mai");',
+        },
+        {
+          heading: "One line, then the next",
+          body: "Each line runs, then the next line runs after it — always in order, top to bottom. Add as many `log` lines as you like and the messages appear in the same order you wrote them. That is the whole secret of code: small steps, one after another.",
+          code: 'log("I am learning to code 🌱");\nlog("This is fun!");',
+        },
+      ],
+      code: {
+        html: '<h2>Output</h2>\n<pre id="out"></pre>',
+        css: "body{font-family:sans-serif;padding:1.5rem}h2{color:#3B6D11}pre{background:#f4f4f4;padding:1rem;border-radius:8px;white-space:pre-wrap}",
+        js: 'const log = (m) => document.getElementById("out").textContent += m + "\\n";\n\nlog("Hello! 👋");\nlog("My name is Mai");\nlog("I am learning JavaScript 🌱");\n\n// Your turn: change "Mai" to your own name.\n// Then add one more log line of your own below, and press Run.',
+      },
+    },
     {
       slug: "js-variables",
       title: "Variables & Types",
@@ -629,6 +658,41 @@ export const javascriptTrack: Track = {
         html: '<h2>Nutrient mixer</h2>\n<pre id="out"></pre>',
         css: "body { font-family: sans-serif; padding: 1.5rem; }\npre { background: #f4f4f4; padding: 1rem; border-radius: 8px; }",
         js: "const log = (m) => document.getElementById('out').textContent += m + '\\n';\n\nfunction mlForLitres(litres, mlPerLitre) {\n  return litres * mlPerLitre;\n}\n\nconst strength = (ec) => ec < 1 ? 'gentle' : ec < 2 ? 'medium' : 'strong';\n\nlog(`10 L at 2 ml/L needs ${mlForLitres(10, 2)} ml`);\nlog(`EC 0.8 is ${strength(0.8)}`);\nlog(`EC 2.4 is ${strength(2.4)}`);",
+      },
+    },
+    {
+      slug: "js-if-else",
+      title: "If / Else — Making Decisions",
+      summary: "Run code only when something is true, and pick between two paths.",
+      minutes: 12,
+      kind: "code",
+      youtubeQuery: "JavaScript if else statement for beginners",
+      sections: [
+        {
+          heading: "Making a decision",
+          body: "Sometimes code should only run when something is true. `if` asks a yes/no question inside its ( ). If the answer is yes (true), the code inside the { } runs. If the answer is no, that code is skipped and nothing happens.",
+          code: 'const temperature = 30;\n\nif (temperature > 28) {\n  log("It is hot 🥵");\n}',
+        },
+        {
+          heading: "The other path: else",
+          body: "Add `else` to say what should happen when the `if` question is NOT true. Now exactly one of the two blocks always runs — never both, never none. Think of a fork in the road: the answer decides which way you walk.",
+          code: 'const water = 2;\n\nif (water > 0) {\n  log("The plant has water 🌿");\n} else {\n  log("Time to water 💧");\n}',
+        },
+        {
+          heading: "Asking the question",
+          body: "Inside the ( ) you compare two values with these signs:\n\n`>` bigger than · `<` smaller than · `>=` bigger or equal · `<=` smaller or equal · `===` exactly the same · `!==` not the same.\n\nImportant: use `===` (three equals) to check if two things are equal. A single `=` means 'store a value', not 'compare' — a very common beginner mix-up.",
+          code: 'if (age === 10) {\n  log("You are ten");\n}\nif (score !== 0) {\n  log("You have points");\n}',
+        },
+        {
+          heading: "More than two choices: else if",
+          body: "When there are several cases, chain them with `else if`. JavaScript checks each question from the top and runs the FIRST one that is true, then stops and ignores the rest. A final plain `else` catches everything left over.",
+          code: 'const ec = 1.8;\n\nif (ec < 1) {\n  log("gentle");\n} else if (ec < 2) {\n  log("medium");\n} else {\n  log("strong");\n}',
+        },
+      ],
+      code: {
+        html: '<h2>Watering helper</h2>\n<pre id="out"></pre>',
+        css: "body{font-family:sans-serif;padding:1.5rem}h2{color:#3B6D11}pre{background:#f4f4f4;padding:1rem;border-radius:8px;white-space:pre-wrap}",
+        js: 'const log = (m) => document.getElementById("out").textContent += m + "\\n";\n\nconst soilMoisture = 20;  // 0 = dry, 100 = very wet\n\nif (soilMoisture < 30) {\n  log("Soil is dry — water now 💧");\n} else if (soilMoisture < 70) {\n  log("Soil is just right 🌿");\n} else {\n  log("Soil is very wet — wait ⛅");\n}\n\n// Your turn: change soilMoisture to 50, then to 90, and press Run\n// each time. Watch which message the if/else chooses.',
       },
     },
     {

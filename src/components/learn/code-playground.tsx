@@ -6,6 +6,7 @@ import { Play, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CodeEditor } from "@/components/learn/code-editor";
 import {
+  reportLessonComplete,
   useProjectAutosave,
   type LessonRef,
 } from "@/components/learn/use-learn-progress";
@@ -68,10 +69,17 @@ export function CodePlayground({
 
   useProjectAutosave(lesson, "code", title, code);
 
-  const run = React.useCallback((next: CodeState) => {
-    setSrcDoc(buildDoc(next));
-    setRunKey((k) => k + 1);
-  }, []);
+  const run = React.useCallback(
+    (next: CodeState) => {
+      setSrcDoc(buildDoc(next));
+      setRunKey((k) => k + 1);
+      // Running the lesson's code counts as practising it — mark it complete so
+      // the course shows a ✓ and progresses toward the certificate. No-ops on
+      // the standalone practice page (no lesson ref).
+      reportLessonComplete(lesson);
+    },
+    [lesson],
+  );
 
   const TABS: { id: Tab; label: string }[] = [
     { id: "html", label: "HTML" },
