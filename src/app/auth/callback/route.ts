@@ -9,7 +9,15 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/feed";
+
+  // `next` is attacker-reachable (it rides in the OAuth redirect). Only a plain
+  // relative path may through — "//evil.com" is a protocol-relative URL and
+  // would otherwise walk straight out of our origin.
+  const requested = searchParams.get("next") ?? "/feed";
+  const next =
+    requested.startsWith("/") && !requested.startsWith("//")
+      ? requested
+      : "/feed";
 
   if (code) {
     const supabase = await createClient();

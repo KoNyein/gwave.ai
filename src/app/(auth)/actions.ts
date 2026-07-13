@@ -88,12 +88,24 @@ export async function register(
   redirect("/onboarding");
 }
 
-export async function signInWithGoogle(): Promise<void> {
+export async function signInWithGoogle(formData?: FormData): Promise<void> {
   const supabase = await createClient();
+
+  // Carry the page the user was heading for through Google and back. Without
+  // this, someone deep-linked to /login?redirectTo=… who signs in with Google
+  // always lands on the feed instead of where they were going. Only a relative
+  // path is accepted, so the round-trip can't be turned into an open redirect.
+  const requested = String(formData?.get("redirectTo") ?? "");
+  const next =
+    requested.startsWith("/") && !requested.startsWith("//") ? requested : "/feed";
+
+  const callback = new URL(`${await siteOrigin()}/auth/callback`);
+  callback.searchParams.set("next", next);
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${await siteOrigin()}/auth/callback`,
+      redirectTo: callback.toString(),
     },
   });
   if (error) {

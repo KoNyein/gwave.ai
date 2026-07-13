@@ -67,7 +67,8 @@ const csp = [
   "default-src 'self'",
   // cdn.jsdelivr.net serves Pyodide (Python-in-WebAssembly) for the Python
   // playground; 'wasm-unsafe-eval' lets its WASM compile.
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net",
+  // accounts.google.com serves Google Identity Services (One Tap sign-in).
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://accounts.google.com",
   // Blob-URL Web Workers run Pyodide/sql.js off the main thread so runaway
   // learner code can't freeze the tab; importScripts inside them is covered
   // by script-src above.
@@ -80,10 +81,10 @@ const csp = [
   `media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com${cctvHlsSrc}`,
   "font-src 'self' data:",
   // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net${cctvHlsSrc}${livekitConnectSrc}`,
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com${cctvHlsSrc}${livekitConnectSrc}`,
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
-  `frame-src 'self' https://www.youtube-nocookie.com${cctvFrameSrc}${gameFrameSrc}${googleMapsSrc}`,
+  `frame-src 'self' https://www.youtube-nocookie.com https://accounts.google.com${cctvFrameSrc}${gameFrameSrc}${googleMapsSrc}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

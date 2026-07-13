@@ -6,6 +6,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { useTranslations } from "next-intl";
 
 import { login, register, signInWithGoogle, type AuthState } from "@/app/(auth)/actions";
+import { GoogleOneTap } from "@/components/auth/google-one-tap";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -90,10 +91,15 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         </div>
 
         <form action={signInWithGoogle}>
+          <input type="hidden" name="redirectTo" value={redirectTo} />
           <Button type="submit" variant="outline" className="w-full">
             {t("continueWithGoogle")}
           </Button>
         </form>
+
+        {/* Offers a returning Google user their account straight away; renders
+            nothing when One Tap isn't configured or the browser suppresses it. */}
+        <GoogleOneTap redirectTo={redirectTo} />
 
         <p className="text-center text-sm text-muted-foreground">
           {mode === "login" ? t("noAccount") : t("haveAccount")}{" "}
