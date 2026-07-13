@@ -178,4 +178,8 @@ end $$;
 reset role;
 rollback;
 
-\echo 'RLS audit passed — every forbidden operation was denied.'
+-- Plain SQL (works in psql AND the Supabase SQL Editor; `\echo` is psql-only).
+-- NOTE: this script inserts seed fixtures and is meant for a LOCAL reset DB
+-- (`supabase db reset`), not a live project. To check a live database use the
+-- read-only scripts/rls-check.sql instead.
+select 'RLS audit passed — every forbidden operation was denied.' as result;
