@@ -6,6 +6,10 @@ import type { AuthorSummary } from "@/types/social";
 
 export interface LiveStreamWithHost extends LiveStream {
   host: AuthorSummary;
+  /** Game-stream extras (nullable; added by the live_game_goal migration). */
+  game_name?: string | null;
+  goal_amount?: number | null;
+  goal_label?: string | null;
 }
 
 const HOST_SELECT =
