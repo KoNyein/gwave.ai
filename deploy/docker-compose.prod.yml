@@ -1,0 +1,65 @@
+# Production stack for the gwave.ai app on your own AWS server (GitHub -> Docker).
+#
+#   app   — the Next.js app (from the repo Dockerfile), listening on :3000 inside
+#           the Docker network (not published to the internet directly)
+#   caddy — HTTPS reverse proxy: auto Let's Encrypt cert for gwave.cc, proxies
+#           to the app. This is what makes https://gwave.cc work.
+#
+# The database, auth, storage and realtime live on Supabase (supabase.com);
+# this box only runs the app and talks to Supabase over the network.
+#
+# Deploy on the box (see deploy/server-deploy.sh for the one-command version):
+#   cp deploy/.env.server.example .env      # then fill it in
+#   docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d --build
+
+name: gwave
+
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_* are inlined into the client bundle at BUILD time, so they
+        # must be interpolated here from --env-file. Server secrets are injected
+        # at runtime via env_file below.
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://gwave.cc}
+        NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-}
+        NEXT_PUBLIC_TURN_URL: ${NEXT_PUBLIC_TURN_URL:-}
+        NEXT_PUBLIC_TURN_USERNAME: ${NEXT_PUBLIC_TURN_USERNAME:-}
+        NEXT_PUBLIC_TURN_CREDENTIAL: ${NEXT_PUBLIC_TURN_CREDENTIAL:-}
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}
+        NEXT_PUBLIC_CCTV_PLAYER_ORIGIN: ${NEXT_PUBLIC_CCTV_PLAYER_ORIGIN:-}
+        NEXT_PUBLIC_CCTV_HLS_ORIGINS: ${NEXT_PUBLIC_CCTV_HLS_ORIGINS:-}
+        NEXT_PUBLIC_CCTV_APP: ${NEXT_PUBLIC_CCTV_APP:-LiveApp}
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+        NEXT_PUBLIC_GAME_FRAME_ORIGINS: ${NEXT_PUBLIC_GAME_FRAME_ORIGINS:-}
+        NEXT_PUBLIC_GPAY_KPAY_NUMBER: ${NEXT_PUBLIC_GPAY_KPAY_NUMBER:-}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+    # Runtime secrets (Supabase service role, Stripe, LiveKit, Twilio, web-push …).
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+    expose:
+      - "3000"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  caddy_data:
+  caddy_config:
