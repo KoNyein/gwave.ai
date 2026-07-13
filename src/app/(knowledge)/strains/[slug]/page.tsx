@@ -4,6 +4,7 @@ import { ArrowLeft, Sprout } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { StrainTypeBadge } from "@/components/knowledge/strain-card";
+import { strainPhoto } from "@/lib/strain-photo";
 import {
   Card,
   CardContent,
@@ -66,7 +67,13 @@ export default async function StrainDetailPage({
       </Link>
 
       {/* Header */}
-      <Card>
+      <Card className="overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={strainPhoto(strain)}
+          alt={strain.name}
+          className="max-h-64 w-full object-cover"
+        />
         <CardContent className="flex flex-col gap-3 p-6">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold">{strain.name}</h1>
