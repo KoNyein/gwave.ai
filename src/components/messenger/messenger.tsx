@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   ArrowLeft,
+  FileImage,
   FileText,
   Gamepad2,
   ImagePlus,
@@ -13,8 +14,10 @@ import {
   Mic,
   Paperclip,
   Phone,
+  Plus,
   Radio,
   SendHorizonal,
+  Smile,
   SquarePen,
   Video,
 } from "lucide-react";
@@ -22,6 +25,7 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { CallUI } from "@/components/messenger/call-ui";
 import { GamesPanel } from "@/components/messenger/games-panel";
+import { EmojiPicker } from "@/components/messenger/emoji-picker";
 import { useCall } from "@/components/messenger/use-call";
 import { VoiceMessage } from "@/components/messenger/voice-message";
 import { VoiceRecorder } from "@/components/messenger/voice-recorder";
@@ -58,6 +62,19 @@ interface MessengerProps {
   currentUser: AuthorSummary;
   friends: AuthorSummary[];
   initialActiveId?: string;
+}
+
+/**
+ * A message that is nothing but a few emoji renders large and bare, the way
+ * every other chat app does it — a 👍 shouldn't arrive wrapped in a bubble.
+ */
+const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|\s)+$/u;
+
+function isEmojiOnly(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed || !EMOJI_ONLY.test(trimmed)) return false;
+  return [...trimmed].filter((c) => /\p{Extended_Pictographic}/u.test(c))
+    .length <= 3;
 }
 
 /** Display info for a conversation from the viewer's perspective. */
@@ -112,6 +129,9 @@ export function Messenger({
   const attachInputRef = React.useRef<HTMLInputElement>(null);
   const [uploadError, setUploadError] = React.useState<string | null>(null);
   const [recording, setRecording] = React.useState(false);
+  const [emojiOpen, setEmojiOpen] = React.useState(false);
+  const gifInputRef = React.useRef<HTMLInputElement>(null);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const typingSentAt = React.useRef(0);
   const typingTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -120,6 +140,17 @@ export function Messenger({
   activeIdRef.current = activeId;
   const conversationsRef = React.useRef(conversations);
   conversationsRef.current = conversations;
+
+  // Grow the box with the text, up to the max-height the CSS caps it at.
+  React.useEffect(() => {
+    const box = textareaRef.current;
+    if (!box) return;
+    box.style.height = "auto";
+    box.style.height = `${box.scrollHeight}px`;
+  }, [input]);
+
+  // Don't leave the picker hanging over a different conversation.
+  React.useEffect(() => setEmojiOpen(false), [activeId]);
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
   const peer = active ? conversationPeer(active, currentUser.id) : null;
@@ -829,6 +860,12 @@ export function Messenger({
                     isLastMine &&
                     peerLastReadAt !== null &&
                     new Date(peerLastReadAt) >= new Date(message.created_at);
+                  // Emoji on their own get no bubble — just the glyphs, big.
+                  const bare =
+                    !message.image_path &&
+                    !message.file_path &&
+                    message.latitude == null &&
+                    isEmojiOnly(message.content);
                   return (
                     <div key={message.id}>
                       <div
@@ -846,10 +883,17 @@ export function Messenger({
                         ) : null}
                         <div
                           className={cn(
-                            "max-w-[70%] overflow-hidden rounded-2xl",
-                            isMine
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted",
+                            "max-w-[70%] overflow-hidden",
+                            bare
+                              ? "px-1"
+                              : cn(
+                                  "rounded-2xl shadow-sm",
+                                  // Square off the corner nearest the sender —
+                                  // the classic chat "tail" without an SVG.
+                                  isMine
+                                    ? "rounded-br-md bg-primary text-primary-foreground"
+                                    : "rounded-bl-md bg-muted",
+                                ),
                           )}
                         >
                           {message.image_path ? (
@@ -912,8 +956,13 @@ export function Messenger({
                             </a>
                           ) : null}
                           {message.content ? (
-                            <div className="px-3 py-2">
-                              <p className="whitespace-pre-wrap break-words text-sm">
+                            <div className={cn(bare ? "py-0.5" : "px-3 py-2")}>
+                              <p
+                                className={cn(
+                                  "whitespace-pre-wrap break-words",
+                                  bare ? "text-[2.75rem] leading-tight" : "text-sm",
+                                )}
+                              >
                                 {message.content}
                               </p>
                               {translations[message.id]?.text ? (
@@ -986,64 +1035,142 @@ export function Messenger({
             ) : null}
 
             {/* Composer */}
-            <div className="flex items-center gap-2 border-t p-3">
-              {recording ? (
-                <VoiceRecorder
-                  busy={sending}
-                  onSend={(blob, seconds) => void handleSendVoice(blob, seconds)}
-                  onCancel={() => setRecording(false)}
-                  onError={(message) => {
-                    setUploadError(message);
-                    setRecording(false);
-                  }}
-                />
-              ) : (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={sending}
-                    aria-label={t("sendPhoto")}
-                  >
-                    <ImagePlus className="h-5 w-5 text-accent" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full"
-                    onClick={() => attachInputRef.current?.click()}
-                    disabled={sending}
-                    aria-label={t("sendAttachment")}
-                  >
-                    <Paperclip className="h-5 w-5 text-accent" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full"
-                    onClick={() => void shareLocation()}
-                    disabled={sending}
-                    aria-label={t("shareLocation")}
-                  >
-                    <MapPin className="h-5 w-5 text-destructive" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full"
-                    onClick={() => {
-                      setUploadError(null);
-                      setRecording(true);
+            <div className="border-t p-3">
+              <div className="relative">
+                {emojiOpen ? (
+                  <EmojiPicker
+                    onClose={() => setEmojiOpen(false)}
+                    onPick={(emoji) => {
+                      setInput((previous) => (previous + emoji).slice(0, 4000));
+                      broadcastTyping();
+                      textareaRef.current?.focus();
                     }}
-                    disabled={sending}
-                    aria-label={t("recordVoice")}
-                  >
-                    <Mic className="h-5 w-5 text-primary" />
-                  </Button>
-                </>
-              )}
+                  />
+                ) : null}
+
+                <div
+                  className={cn(
+                    "flex items-end gap-1 rounded-3xl border bg-muted/40 p-1.5 shadow-sm transition-colors",
+                    "focus-within:border-primary/40 focus-within:bg-background focus-within:shadow-md",
+                    recording && "border-destructive/40 bg-background",
+                  )}
+                >
+                  {recording ? (
+                    <VoiceRecorder
+                      busy={sending}
+                      onSend={(blob, seconds) =>
+                        void handleSendVoice(blob, seconds)
+                      }
+                      onCancel={() => setRecording(false)}
+                      onError={(message) => {
+                        setUploadError(message);
+                        setRecording(false);
+                      }}
+                    />
+                  ) : (
+                    <>
+                      {/* Everything you can attach, behind one button — four
+                          icons in a row crowded the box on a phone. */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={sending}
+                            aria-label={t("sendAttachment")}
+                            className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                          >
+                            <Plus className="h-5 w-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-48">
+                          <DropdownMenuItem
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            <ImagePlus className="mr-2 h-4 w-4 text-accent" />
+                            {t("sendPhoto")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => gifInputRef.current?.click()}
+                          >
+                            <FileImage className="mr-2 h-4 w-4 text-primary" />
+                            {t("sendGif")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => attachInputRef.current?.click()}
+                          >
+                            <Paperclip className="mr-2 h-4 w-4 text-accent" />
+                            {t("sendAttachment")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => void shareLocation()}>
+                            <MapPin className="mr-2 h-4 w-4 text-destructive" />
+                            {t("shareLocation")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      <textarea
+                        ref={textareaRef}
+                        rows={1}
+                        value={input}
+                        onChange={(event) => {
+                          setInput(event.target.value);
+                          broadcastTyping();
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+                            void handleSend();
+                          }
+                        }}
+                        placeholder={t("placeholder")}
+                        maxLength={4000}
+                        className="max-h-32 flex-1 resize-none self-center bg-transparent px-1.5 py-2 text-sm outline-none placeholder:text-muted-foreground"
+                      />
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEmojiOpen((open) => !open)}
+                        disabled={sending}
+                        aria-label={t("emoji")}
+                        className={cn(
+                          "h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground",
+                          emojiOpen && "bg-primary/10 text-primary",
+                        )}
+                      >
+                        <Smile className="h-5 w-5" />
+                      </Button>
+
+                      {/* One button, two jobs: nothing typed → record; typed → send. */}
+                      <Button
+                        size="icon"
+                        onClick={() => {
+                          if (input.trim()) {
+                            void handleSend();
+                            return;
+                          }
+                          setUploadError(null);
+                          setEmojiOpen(false);
+                          setRecording(true);
+                        }}
+                        disabled={sending}
+                        aria-label={input.trim() ? t("send") : t("recordVoice")}
+                        className="h-9 w-9 shrink-0 rounded-full"
+                      >
+                        {sending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : input.trim() ? (
+                          <SendHorizonal className="h-4 w-4" />
+                        ) : (
+                          <Mic className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+
               <input
                 ref={fileInputRef}
                 type="file"
@@ -1051,7 +1178,24 @@ export function Messenger({
                 hidden
                 onChange={(event) => {
                   const file = event.target.files?.[0];
-                  if (file) void handleSend(file);
+                  if (file) {
+                    setUploadError(null);
+                    void handleSend(file);
+                  }
+                  event.target.value = "";
+                }}
+              />
+              <input
+                ref={gifInputRef}
+                type="file"
+                accept="image/gif,image/webp"
+                hidden
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) {
+                    setUploadError(null);
+                    void handleSend(file);
+                  }
                   event.target.value = "";
                 }}
               />
@@ -1072,39 +1216,6 @@ export function Messenger({
                   event.target.value = "";
                 }}
               />
-              {recording ? null : (
-                <>
-                  <input
-                    value={input}
-                    onChange={(event) => {
-                      setInput(event.target.value);
-                      broadcastTyping();
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                        void handleSend();
-                      }
-                    }}
-                    placeholder={t("placeholder")}
-                    maxLength={4000}
-                    className="flex-1 rounded-full bg-muted px-4 py-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
-                  />
-                  <Button
-                    size="icon"
-                    className="rounded-full"
-                    onClick={() => void handleSend()}
-                    disabled={sending || !input.trim()}
-                    aria-label={t("send")}
-                  >
-                    {sending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <SendHorizonal className="h-4 w-4" />
-                    )}
-                  </Button>
-                </>
-              )}
             </div>
           </>
         )}

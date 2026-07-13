@@ -392,7 +392,9 @@
     "shareLocation": "แชร์ตำแหน่ง",
     "sharedLocation": "ตำแหน่งที่แชร์",
     "goLive": "ไลฟ์สด",
-    "recordVoice": "อัดข้อความเสียง"
+    "recordVoice": "อัดข้อความเสียง",
+    "sendGif": "ส่ง GIF",
+    "emoji": "อีโมจิ"
   },
   "stories": {
     "createStory": "สร้างสตอรี่",

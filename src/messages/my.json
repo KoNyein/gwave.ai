@@ -392,7 +392,9 @@
     "shareLocation": "တည်နေရာ မျှဝေရန်",
     "sharedLocation": "မျှဝေထားသော တည်နေရာ",
     "goLive": "Live လွှင့်ရန်",
-    "recordVoice": "အသံ မက်ဆေ့ခ်ျ သွင်းရန်"
+    "recordVoice": "အသံ မက်ဆေ့ခ်ျ သွင်းရန်",
+    "sendGif": "GIF ပို့ရန်",
+    "emoji": "အီမိုဂျီ"
   },
   "stories": {
     "createStory": "စတိုရီဖန်တီးရန်",

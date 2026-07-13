@@ -392,7 +392,9 @@
     "shareLocation": "分享位置",
     "sharedLocation": "分享的位置",
     "goLive": "开始直播",
-    "recordVoice": "录制语音消息"
+    "recordVoice": "录制语音消息",
+    "sendGif": "发送 GIF",
+    "emoji": "表情"
   },
   "stories": {
     "createStory": "创建快拍",

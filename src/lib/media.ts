@@ -9,6 +9,11 @@ export const TARGET_IMAGE_BYTES = 600 * 1024; // ~0.6 MB
 export const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
 export const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB for chat documents
 
+/** GIFs are stored as-is (see prepareMedia), so they get their own budget. */
+export const MAX_GIF_BYTES = 8 * 1024 * 1024;
+/** Image types whose animation the canvas would destroy. */
+const ANIMATED_IMAGE_TYPES = new Set(["image/gif", "image/webp"]);
+
 /** Longest voice message we record; the DB rejects anything over 600s too. */
 export const MAX_VOICE_SECONDS = 300; // 5 minutes
 /** Opus at ~32 kbps is ~4 kB/s, so 5 minutes is ~1.2 MB. 10 MB is generous. */
@@ -85,6 +90,23 @@ export async function prepareMedia(file: File): Promise<PreparedMedia> {
   }
   if (!file.type.startsWith("image/")) {
     throw new Error("Unsupported file type.");
+  }
+
+  // An animated image must never go through the canvas: createImageBitmap only
+  // ever gives us frame one, so compressing a GIF would silently flatten it into
+  // a still JPEG. Pass it through and cap the size instead.
+  if (ANIMATED_IMAGE_TYPES.has(file.type)) {
+    if (file.size > MAX_GIF_BYTES) {
+      throw new Error("GIF is too large (max 8 MB).");
+    }
+    return {
+      blob: file,
+      contentType: file.type,
+      extension: file.type === "image/webp" ? "webp" : "gif",
+      mediaType: "image",
+      width: null,
+      height: null,
+    };
   }
 
   const bitmap = await createImageBitmap(file);

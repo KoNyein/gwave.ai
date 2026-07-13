@@ -392,7 +392,9 @@
     "shareLocation": "Share location",
     "sharedLocation": "Shared location",
     "goLive": "Go Live",
-    "recordVoice": "Record a voice message"
+    "recordVoice": "Record a voice message",
+    "sendGif": "Send a GIF",
+    "emoji": "Emoji"
   },
   "stories": {
     "createStory": "Create story",
