@@ -118,6 +118,23 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ id: row.id }, { status: 201 });
   } catch (error) {
+    // Mux rejected the request. A 401/403 means the MUX_TOKEN_ID /
+    // MUX_TOKEN_SECRET on this deployment are missing, wrong, or from a
+    // different Mux environment — surface a clean, actionable message instead
+    // of leaking Mux's raw error JSON to the viewer.
+    const status =
+      error && typeof error === "object" && "status" in error
+        ? (error as { status?: number }).status
+        : undefined;
+    if (status === 401 || status === 403) {
+      return NextResponse.json(
+        {
+          error:
+            "Live streaming credentials are invalid. Set a valid MUX_TOKEN_ID and MUX_TOKEN_SECRET, then redeploy.",
+        },
+        { status: 503 },
+      );
+    }
     const message =
       error instanceof Error ? error.message : "Mux request failed.";
     return NextResponse.json({ error: message }, { status: 502 });
