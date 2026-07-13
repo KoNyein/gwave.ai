@@ -27,7 +27,7 @@ export function Navbar({ profile }: { profile: Profile | null }) {
           <MobileMenu profile={profile} />
           <Link href="/feed" className="flex items-center gap-1.5 text-primary">
             <Leaf className="h-8 w-8" />
-            <span className="hidden text-lg font-bold sm:inline">gwave.ai</span>
+            <span className="hidden text-lg font-bold sm:inline">Gwave</span>
           </Link>
           <GlobalSearch />
         </div>

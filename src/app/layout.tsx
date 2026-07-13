@@ -11,7 +11,7 @@ import { DEFAULT_THEME } from "@/lib/theme";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "gwave.ai",
+  title: "Gwave",
   description: "The social super-app for growers",
   manifest: "/manifest.webmanifest",
   appleWebApp: {

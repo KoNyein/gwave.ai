@@ -18,6 +18,8 @@ import { Loader2, Radio } from "lucide-react";
 import { getLiveStageToken, goLive } from "@/lib/actions/live";
 import type { LiveStreamStatus } from "@/types/database";
 
+import { LiveMediaShare } from "./live-media-share";
+
 interface Conn {
   url: string;
   token: string;
@@ -125,16 +127,19 @@ function Stage({ isHost }: { isHost: boolean }) {
         )}
       </div>
       {isHost ? (
-        <ControlBar
-          variation="minimal"
-          controls={{
-            microphone: true,
-            camera: true,
-            screenShare: true,
-            chat: false,
-            leave: false,
-          }}
-        />
+        <>
+          <LiveMediaShare />
+          <ControlBar
+            variation="minimal"
+            controls={{
+              microphone: true,
+              camera: true,
+              screenShare: true,
+              chat: false,
+              leave: false,
+            }}
+          />
+        </>
       ) : null}
     </div>
   );
