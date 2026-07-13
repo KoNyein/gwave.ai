@@ -12,20 +12,36 @@ const HOST_SELECT =
   "*, host:profiles!live_streams_host_id_fkey(id, username, full_name, avatar_url)";
 
 /** Live broadcasts first, then the most recent past streams. */
+/**
+ * Streams for the /live index: everything still broadcasting, then the past ones.
+ *
+ * A row only leaves `status='live'` when the host ends it or the LiveKit webhook
+ * fires. If both miss — webhook misconfigured, delivery dropped — the row would
+ * sit at the top of the page under a pulsing LIVE badge forever, sending viewers
+ * into an empty room. So anything still "live" after this long is treated as a
+ * past broadcast in the UI regardless of its status column.
+ */
+const STALE_LIVE_HOURS = 12;
+
 export async function listStreams(limit = 30): Promise<LiveStreamWithHost[]> {
   const supabase = await createClient();
+  const staleCutoff = new Date(
+    Date.now() - STALE_LIVE_HOURS * 60 * 60 * 1000,
+  ).toISOString();
+
   const [liveRes, pastRes] = await Promise.all([
     supabase
       .from("live_streams")
       .select(HOST_SELECT)
       .eq("status", "live")
+      .gte("started_at", staleCutoff)
       .order("started_at", { ascending: false })
       .limit(limit)
       .returns<LiveStreamWithHost[]>(),
     supabase
       .from("live_streams")
       .select(HOST_SELECT)
-      .neq("status", "live")
+      .or(`status.neq.live,started_at.lt.${staleCutoff}`)
       .order("created_at", { ascending: false })
       .limit(limit)
       .returns<LiveStreamWithHost[]>(),

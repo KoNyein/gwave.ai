@@ -28,3 +28,12 @@ turn:
 
 logging:
   level: info
+
+# Tell the app when a room really ends. Without this, a broadcast is only marked
+# ended when the host taps "End stream" — a host who closes the tab or loses
+# signal would show as LIVE forever, sending viewers into an empty room.
+# The app verifies the signature with the matching API secret.
+webhook:
+  api_key: APIgwave
+  urls:
+    - https://gwave.cc/api/live/livekit-webhook
