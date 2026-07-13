@@ -92,8 +92,9 @@ export interface LiveStream {
   title: string;
   description: string | null;
   status: LiveStreamStatus;
-  mux_stream_id: string;
+  mux_stream_id: string | null;
   mux_playback_id: string | null;
+  livekit_room: string | null;
   viewer_count: number;
   kind: "stream" | "class";
   track_slug: string | null;

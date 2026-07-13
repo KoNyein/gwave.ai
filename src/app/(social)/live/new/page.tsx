@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { GoLiveForm } from "@/components/live/go-live-form";
 import { getCurrentProfile } from "@/lib/auth";
+import { livekitConfigured } from "@/lib/livekit";
 
 export const metadata = { title: "Go live" };
 export const dynamic = "force-dynamic";
@@ -11,6 +12,8 @@ export const dynamic = "force-dynamic";
 export default async function NewLivePage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
+
+  const browserBroadcast = livekitConfigured();
 
   return (
     <div className="space-y-4">
@@ -23,10 +26,12 @@ export default async function NewLivePage() {
       <div>
         <h1 className="text-xl font-bold">Go live</h1>
         <p className="text-sm text-muted-foreground">
-          Name your broadcast, then stream to it with OBS or any RTMP app.
+          {browserBroadcast
+            ? "Name your broadcast, then go live straight from your camera."
+            : "Name your broadcast, then stream to it with OBS or any RTMP app."}
         </p>
       </div>
-      <GoLiveForm />
+      <GoLiveForm browserBroadcast={browserBroadcast} />
     </div>
   );
 }
