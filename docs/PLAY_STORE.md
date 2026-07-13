@@ -50,7 +50,7 @@ keytool -list -v -keystore android.keystore | grep SHA256
 
 ဒီအဆင့် မလုပ်ရင် app ဖွင့်တိုင်း browser bar ပေါ်နေပါမည်။
 
-Server (Vercel/hosting) ရဲ့ environment variables မှာ ထည့်ပါ —
+Server (AWS `.env`) ရဲ့ environment variables မှာ ထည့်ပါ —
 
 ```
 TWA_PACKAGE_NAME=ai.gwave.app

@@ -17,6 +17,7 @@ import { displayName } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 import type { CallApi } from "./use-call";
+import { useRingtone } from "./use-ringtone";
 
 function MediaStreamVideo({
   stream,
@@ -53,6 +54,8 @@ function formatDuration(totalSeconds: number): string {
 /** Incoming-call banner + in-call overlay, driven entirely by useCall(). */
 export function CallUI({ call }: { call: CallApi }) {
   const t = useTranslations("messenger");
+  // Ring the callee (and ringback the caller) while the call is pending.
+  useRingtone(call.status, call.peer ? displayName(call.peer) : null, call.video);
 
   if (call.status === "idle" || !call.peer) return null;
 

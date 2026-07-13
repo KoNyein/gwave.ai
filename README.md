@@ -99,8 +99,8 @@ Facebook-Live-style broadcasting at `/live` is powered by
 
 1. Create a Mux account and, under **Settings → Access Tokens**, generate a
    token with **Mux Video** permission. Put the ID/secret in
-   `MUX_TOKEN_ID` / `MUX_TOKEN_SECRET` (server-only env vars — on Vercel:
-   Project → Settings → Environment Variables).
+   `MUX_TOKEN_ID` / `MUX_TOKEN_SECRET` (server-only env vars — on the AWS server `.env`:
+   see docs/AWS_DEPLOY.md).
 2. Under **Settings → Webhooks**, add an endpoint pointing at
    `https://<your-domain>/api/live/webhook` and copy its **signing secret**
    into `MUX_WEBHOOK_SECRET`. The webhook flips streams between
