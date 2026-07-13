@@ -287,7 +287,11 @@
     "allOff": "All off",
     "statusOn": "{count} on",
     "statusOffline": "{count} offline",
-    "statusAllOff": "All off"
+    "statusAllOff": "All off",
+    "cameras": "Cameras",
+    "allCameras": "All cameras",
+    "cameraLive": "Live",
+    "favorites": "Favorites"
   },
   "profile": {
     "tabPosts": "Posts",

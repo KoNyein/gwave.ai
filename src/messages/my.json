@@ -287,7 +287,11 @@
     "allOff": "အားလုံးပိတ်",
     "statusOn": "{count} ဖွင့်ထား",
     "statusOffline": "{count} offline",
-    "statusAllOff": "အားလုံး ပိတ်ထား"
+    "statusAllOff": "အားလုံး ပိတ်ထား",
+    "cameras": "ကင်မရာများ",
+    "allCameras": "ကင်မရာအားလုံး",
+    "cameraLive": "Live",
+    "favorites": "အကြိုက်ဆုံးများ"
   },
   "profile": {
     "tabPosts": "ပို့စ်များ",

@@ -8,6 +8,7 @@ import {
   Play,
   Plus,
   Power,
+  Star,
   Trash2,
   Wand2,
   WifiOff,
@@ -44,9 +45,84 @@ import { cn } from "@/lib/utils";
 import type { Device } from "@/types/database";
 
 const DAY_LABELS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+const FAVORITES_KEY = "gw:home:favorites";
 
 function isOn(device: Device): boolean {
   return (device.state as { power?: string }).power === "on";
+}
+
+/** One switch tile: tap the body to toggle power, tap the star to favorite. */
+function SwitchTile({
+  device,
+  pending,
+  favorite,
+  onToggle,
+  onToggleFavorite,
+  labels,
+}: {
+  device: Device;
+  pending: boolean;
+  favorite: boolean;
+  onToggle: () => void;
+  onToggleFavorite: () => void;
+  labels: { on: string; off: string; waiting: string; favorite: string };
+}) {
+  const on = isOn(device);
+  return (
+    <div
+      className={cn(
+        "relative flex flex-col items-start gap-3 rounded-xl border p-4 transition-all",
+        on ? "border-primary bg-secondary shadow-sm" : "bg-background",
+      )}
+    >
+      <button
+        type="button"
+        onClick={onToggleFavorite}
+        aria-label={labels.favorite}
+        aria-pressed={favorite}
+        className="absolute right-2 top-2 text-muted-foreground transition-colors hover:text-amber-500"
+      >
+        <Star
+          className={cn(
+            "h-4 w-4",
+            favorite && "fill-amber-400 text-amber-500",
+          )}
+        />
+      </button>
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={pending}
+        className="flex w-full flex-col items-start gap-3 text-left"
+      >
+        <span
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-full",
+            on
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground",
+          )}
+        >
+          {pending ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <Power className="h-5 w-5" />
+          )}
+        </span>
+        <span>
+          <span className="flex items-center gap-1.5 pr-5 text-sm font-semibold">
+            {device.name}
+            {!device.online ? (
+              <WifiOff className="h-3.5 w-3.5 text-muted-foreground" />
+            ) : null}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {pending ? labels.waiting : on ? labels.on : labels.off}
+          </span>
+        </span>
+      </button>
+    </div>
+  );
 }
 
 export function SmartHome({
@@ -62,6 +138,38 @@ export function SmartHome({
   const [switches, setSwitches] = React.useState(initialSwitches);
   // Devices with an optimistic (unconfirmed) toggle in flight.
   const [pendingIds, setPendingIds] = React.useState<Set<string>>(new Set());
+  // Pinned favourites (per browser — a lightweight quick-access, no server row).
+  const [favorites, setFavorites] = React.useState<Set<string>>(new Set());
+
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FAVORITES_KEY);
+      if (raw) setFavorites(new Set(JSON.parse(raw) as string[]));
+    } catch {
+      /* ignore malformed/absent storage */
+    }
+  }, []);
+
+  function toggleFavorite(id: string) {
+    setFavorites((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      try {
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
+      } catch {
+        /* ignore quota/private-mode errors */
+      }
+      return next;
+    });
+  }
+
+  const tileLabels = {
+    on: t("on"),
+    off: t("off"),
+    waiting: t("waiting"),
+    favorite: t("favorites"),
+  };
 
   // Confirm optimistic toggles when the device echoes its state.
   React.useEffect(() => {
@@ -193,6 +301,31 @@ export function SmartHome({
         </Card>
       ) : null}
 
+      {/* Favourites — quick access to the switches you pin (per browser) */}
+      {switches.some((device) => favorites.has(device.id)) ? (
+        <section>
+          <h2 className="mb-2 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase text-muted-foreground">
+            <Star className="h-4 w-4 fill-amber-400 text-amber-500" />
+            {t("favorites")}
+          </h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {switches
+              .filter((device) => favorites.has(device.id))
+              .map((device) => (
+                <SwitchTile
+                  key={device.id}
+                  device={device}
+                  pending={pendingIds.has(device.id)}
+                  favorite
+                  onToggle={() => void toggle(device)}
+                  onToggleFavorite={() => toggleFavorite(device.id)}
+                  labels={tileLabels}
+                />
+              ))}
+          </div>
+        </section>
+      ) : null}
+
       {/* Switches */}
       {switches.length === 0 ? (
         <Card>
@@ -209,54 +342,17 @@ export function SmartHome({
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {switches
                 .filter((device) => device.zone === zone)
-                .map((device) => {
-                  const on = isOn(device);
-                  const pending = pendingIds.has(device.id);
-                  return (
-                    <button
-                      key={device.id}
-                      type="button"
-                      onClick={() => void toggle(device)}
-                      disabled={pending}
-                      className={cn(
-                        "flex flex-col items-start gap-3 rounded-xl border p-4 text-left transition-all",
-                        on
-                          ? "border-primary bg-secondary shadow-sm"
-                          : "bg-background hover:bg-muted",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "flex h-10 w-10 items-center justify-center rounded-full",
-                          on
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground",
-                        )}
-                      >
-                        {pending ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : (
-                          <Power className="h-5 w-5" />
-                        )}
-                      </span>
-                      <span>
-                        <span className="flex items-center gap-1.5 text-sm font-semibold">
-                          {device.name}
-                          {!device.online ? (
-                            <WifiOff className="h-3.5 w-3.5 text-muted-foreground" />
-                          ) : null}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {pending
-                            ? t("waiting")
-                            : on
-                              ? t("on")
-                              : t("off")}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
+                .map((device) => (
+                  <SwitchTile
+                    key={device.id}
+                    device={device}
+                    pending={pendingIds.has(device.id)}
+                    favorite={favorites.has(device.id)}
+                    onToggle={() => void toggle(device)}
+                    onToggleFavorite={() => toggleFavorite(device.id)}
+                    labels={tileLabels}
+                  />
+                ))}
             </div>
           </section>
         ))

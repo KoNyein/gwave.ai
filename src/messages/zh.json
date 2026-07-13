@@ -287,7 +287,11 @@
     "allOff": "全部关",
     "statusOn": "{count} 开",
     "statusOffline": "{count} 离线",
-    "statusAllOff": "全部关闭"
+    "statusAllOff": "全部关闭",
+    "cameras": "摄像头",
+    "allCameras": "所有摄像头",
+    "cameraLive": "直播",
+    "favorites": "收藏"
   },
   "profile": {
     "tabPosts": "帖子",

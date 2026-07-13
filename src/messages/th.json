@@ -287,7 +287,11 @@
     "allOff": "ปิดทั้งหมด",
     "statusOn": "เปิด {count}",
     "statusOffline": "ออฟไลน์ {count}",
-    "statusAllOff": "ปิดทั้งหมด"
+    "statusAllOff": "ปิดทั้งหมด",
+    "cameras": "กล้อง",
+    "allCameras": "กล้องทั้งหมด",
+    "cameraLive": "สด",
+    "favorites": "รายการโปรด"
   },
   "profile": {
     "tabPosts": "โพสต์",
