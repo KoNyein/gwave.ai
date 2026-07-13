@@ -9,6 +9,7 @@ import {
   Plus,
   Power,
   Star,
+  Timer,
   Trash2,
   Wand2,
   WifiOff,
@@ -56,16 +57,28 @@ function SwitchTile({
   device,
   pending,
   favorite,
+  timerLeft,
   onToggle,
   onToggleFavorite,
+  onCycleTimer,
   labels,
 }: {
   device: Device;
   pending: boolean;
   favorite: boolean;
+  /** Minutes until the auto-off timer fires, or null when none is set. */
+  timerLeft: number | null;
   onToggle: () => void;
   onToggleFavorite: () => void;
-  labels: { on: string; off: string; waiting: string; favorite: string };
+  onCycleTimer: () => void;
+  labels: {
+    on: string;
+    off: string;
+    waiting: string;
+    favorite: string;
+    autoOff: string;
+    offInMin: (m: number) => string;
+  };
 }) {
   const on = isOn(device);
   return (
@@ -75,20 +88,32 @@ function SwitchTile({
         on ? "border-primary bg-secondary shadow-sm" : "bg-background",
       )}
     >
-      <button
-        type="button"
-        onClick={onToggleFavorite}
-        aria-label={labels.favorite}
-        aria-pressed={favorite}
-        className="absolute right-2 top-2 text-muted-foreground transition-colors hover:text-amber-500"
-      >
-        <Star
-          className={cn(
-            "h-4 w-4",
-            favorite && "fill-amber-400 text-amber-500",
-          )}
-        />
-      </button>
+      <div className="absolute right-2 top-2 flex items-center gap-1">
+        {on ? (
+          <button
+            type="button"
+            onClick={onCycleTimer}
+            aria-label={labels.autoOff}
+            className={cn(
+              "transition-colors hover:text-primary",
+              timerLeft ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            <Timer className="h-4 w-4" />
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={onToggleFavorite}
+          aria-label={labels.favorite}
+          aria-pressed={favorite}
+          className="text-muted-foreground transition-colors hover:text-amber-500"
+        >
+          <Star
+            className={cn("h-4 w-4", favorite && "fill-amber-400 text-amber-500")}
+          />
+        </button>
+      </div>
       <button
         type="button"
         onClick={onToggle}
@@ -110,14 +135,20 @@ function SwitchTile({
           )}
         </span>
         <span>
-          <span className="flex items-center gap-1.5 pr-5 text-sm font-semibold">
+          <span className="flex items-center gap-1.5 pr-10 text-sm font-semibold">
             {device.name}
             {!device.online ? (
               <WifiOff className="h-3.5 w-3.5 text-muted-foreground" />
             ) : null}
           </span>
           <span className="text-xs text-muted-foreground">
-            {pending ? labels.waiting : on ? labels.on : labels.off}
+            {timerLeft
+              ? labels.offInMin(timerLeft)
+              : pending
+                ? labels.waiting
+                : on
+                  ? labels.on
+                  : labels.off}
           </span>
         </span>
       </button>
@@ -164,11 +195,64 @@ export function SmartHome({
     });
   }
 
+  // Client "sleep timer": auto-off deadlines per device (epoch ms). Fires while
+  // the app is open — a lightweight fan/light timer, not a server schedule.
+  const [timers, setTimers] = React.useState<Record<string, number>>({});
+  const [, forceTick] = React.useState(0);
+
+  React.useEffect(() => {
+    if (Object.keys(timers).length === 0) return;
+    const iv = setInterval(() => {
+      forceTick((n) => n + 1);
+      const now = Date.now();
+      const due = Object.entries(timers).filter(([, at]) => now >= at);
+      if (due.length === 0) return;
+      setSwitches((previous) => {
+        due.forEach(([id]) => {
+          const device = previous.find((d) => d.id === id);
+          if (device && isOn(device)) void sendDeviceCommand(id, { power: "off" });
+        });
+        return previous.map((d) =>
+          due.some(([id]) => id === d.id)
+            ? { ...d, state: { ...d.state, power: "off" } }
+            : d,
+        );
+      });
+      setTimers((previous) => {
+        const next = { ...previous };
+        due.forEach(([id]) => delete next[id]);
+        return next;
+      });
+    }, 10_000);
+    return () => clearInterval(iv);
+  }, [timers]);
+
+  function cycleTimer(id: string) {
+    setTimers((previous) => {
+      const current = previous[id];
+      const curMin = current
+        ? Math.round((current - Date.now()) / 60_000)
+        : 0;
+      const nextMin = curMin <= 0 ? 15 : curMin <= 15 ? 30 : curMin <= 30 ? 60 : 0;
+      const next = { ...previous };
+      if (nextMin === 0) delete next[id];
+      else next[id] = Date.now() + nextMin * 60_000;
+      return next;
+    });
+  }
+
+  function timerLeft(id: string): number | null {
+    const at = timers[id];
+    return at ? Math.max(1, Math.ceil((at - Date.now()) / 60_000)) : null;
+  }
+
   const tileLabels = {
     on: t("on"),
     off: t("off"),
     waiting: t("waiting"),
     favorite: t("favorites"),
+    autoOff: t("autoOff"),
+    offInMin: (m: number) => t("offInMin", { m }),
   };
 
   // Confirm optimistic toggles when the device echoes its state.
@@ -317,8 +401,10 @@ export function SmartHome({
                   device={device}
                   pending={pendingIds.has(device.id)}
                   favorite
+                  timerLeft={timerLeft(device.id)}
                   onToggle={() => void toggle(device)}
                   onToggleFavorite={() => toggleFavorite(device.id)}
+                  onCycleTimer={() => cycleTimer(device.id)}
                   labels={tileLabels}
                 />
               ))}
@@ -348,8 +434,10 @@ export function SmartHome({
                     device={device}
                     pending={pendingIds.has(device.id)}
                     favorite={favorites.has(device.id)}
+                    timerLeft={timerLeft(device.id)}
                     onToggle={() => void toggle(device)}
                     onToggleFavorite={() => toggleFavorite(device.id)}
+                    onCycleTimer={() => cycleTimer(device.id)}
                     labels={tileLabels}
                   />
                 ))}
@@ -366,6 +454,7 @@ export function SmartHome({
           </h2>
           <CreateSceneDialog switches={switches} />
         </div>
+        {switches.length > 0 ? <QuickScenes switches={switches} /> : null}
         {scenes.length === 0 ? (
           <Card>
             <CardContent className="p-6 text-center text-sm text-muted-foreground">
@@ -380,6 +469,52 @@ export function SmartHome({
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+/** One-tap starter scenes — create a whole-home "all on / all off" routine. */
+const SCENE_TEMPLATES = [
+  { key: "sceneMorning", emoji: "☀️", power: "on" },
+  { key: "sceneLeaving", emoji: "🚪", power: "off" },
+  { key: "sceneNight", emoji: "🌙", power: "off" },
+] as const;
+
+function QuickScenes({ switches }: { switches: Device[] }) {
+  const t = useTranslations("home");
+  const router = useRouter();
+  const [pendingKey, setPendingKey] = React.useState<string | null>(null);
+
+  function create(key: string, power: "on" | "off") {
+    setPendingKey(key);
+    void (async () => {
+      await createScene({
+        name: t(key),
+        actions: switches.map((device) => ({ deviceId: device.id, power })),
+      });
+      setPendingKey(null);
+      router.refresh();
+    })();
+  }
+
+  return (
+    <div className="mb-3 flex flex-wrap gap-2">
+      {SCENE_TEMPLATES.map((tpl) => (
+        <button
+          key={tpl.key}
+          type="button"
+          disabled={pendingKey !== null}
+          onClick={() => create(tpl.key, tpl.power)}
+          className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors hover:bg-muted disabled:opacity-50"
+        >
+          {pendingKey === tpl.key ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <span aria-hidden>{tpl.emoji}</span>
+          )}
+          {t(tpl.key)}
+        </button>
+      ))}
     </div>
   );
 }
@@ -655,6 +790,22 @@ function ScheduleDialog({ sceneId }: { sceneId: string }) {
               value={runAt}
               onChange={(event) => setRunAt(event.target.value)}
             />
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setRunAt("06:00")}
+                className="rounded-full border px-3 py-1 text-xs transition-colors hover:bg-muted"
+              >
+                🌅 {t("sunrise")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRunAt("18:30")}
+                className="rounded-full border px-3 py-1 text-xs transition-colors hover:bg-muted"
+              >
+                🌇 {t("sunset")}
+              </button>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>{t("daysOfWeek")}</Label>

@@ -291,7 +291,16 @@
     "cameras": "ကင်မရာများ",
     "allCameras": "ကင်မရာအားလုံး",
     "cameraLive": "Live",
-    "favorites": "အကြိုက်ဆုံးများ"
+    "favorites": "အကြိုက်ဆုံးများ",
+    "quickScenes": "အမြန် Scene",
+    "sceneMorning": "မင်္ဂလာနံနက်ခင်း",
+    "sceneLeaving": "အိမ်ကထွက်",
+    "sceneNight": "ညချမ်းသာ",
+    "sunrise": "နေထွက်",
+    "sunset": "နေဝင်",
+    "autoOff": "အလိုအလျောက်ပိတ်",
+    "offInMin": "{m} မိနစ်ပြီးပိတ်",
+    "timerWhileOpen": "app ဖွင့်ထားစဉ်သာ အလုပ်လုပ်"
   },
   "profile": {
     "tabPosts": "ပို့စ်များ",

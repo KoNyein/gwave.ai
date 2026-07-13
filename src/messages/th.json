@@ -291,7 +291,16 @@
     "cameras": "กล้อง",
     "allCameras": "กล้องทั้งหมด",
     "cameraLive": "สด",
-    "favorites": "รายการโปรด"
+    "favorites": "รายการโปรด",
+    "quickScenes": "ฉากด่วน",
+    "sceneMorning": "อรุณสวัสดิ์",
+    "sceneLeaving": "กำลังออกไป",
+    "sceneNight": "ราตรีสวัสดิ์",
+    "sunrise": "พระอาทิตย์ขึ้น",
+    "sunset": "พระอาทิตย์ตก",
+    "autoOff": "ปิดอัตโนมัติ",
+    "offInMin": "ปิดใน {m} นาที",
+    "timerWhileOpen": "ทำงานขณะเปิดแอป"
   },
   "profile": {
     "tabPosts": "โพสต์",
