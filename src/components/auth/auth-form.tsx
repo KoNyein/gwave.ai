@@ -31,6 +31,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const t = useTranslations("auth");
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") ?? "/feed";
+  const oauthError = searchParams.get("error");
+  const oauthReason = searchParams.get("reason");
 
   const action = mode === "login" ? login : register;
   const [state, formAction] = useFormState<AuthState, FormData>(action, null);
@@ -44,6 +46,21 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         <CardDescription>{t(mode === "login" ? "login" : "register")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* An OAuth failure used to be invisible: the callback set ?error= and
+            nothing ever rendered it, so Google refusing the sign-in looked
+            exactly like nothing happening. Show it, with Google's own reason. */}
+        {oauthError ? (
+          <div
+            role="alert"
+            className="space-y-1 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm"
+          >
+            <p className="font-medium text-destructive">{t("oauthFailed")}</p>
+            {oauthReason ? (
+              <p className="text-xs text-muted-foreground">{oauthReason}</p>
+            ) : null}
+          </div>
+        ) : null}
+
         <form action={formAction} className="space-y-4">
           <input type="hidden" name="redirectTo" value={redirectTo} />
           <div className="space-y-2">

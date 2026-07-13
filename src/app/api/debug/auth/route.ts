@@ -70,7 +70,7 @@ export async function GET() {
         ? "PROFILE_MISSING — the account has no profile row; finish onboarding (/onboarding)."
         : "AUTH_OK — the database sees your session. Posting should work; if it still fails, send me the exact error."
       : profileRowExists
-        ? "SESSION_NOT_REACHING_DB — the login works but the database sees you as anonymous. In Vercel, set NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY to the LEGACY eyJ… keys (Supabase → Settings → API Keys → Legacy API Keys), then Redeploy and log in again."
+        ? "SESSION_NOT_REACHING_DB — the login works but the database sees you as anonymous. Check NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY in the app's environment, then redeploy and log in again."
         : "PROFILE_MISSING_OR_KEYS — profile row not found and/or session not reaching the database. Check the key kinds below and finish onboarding.";
 
   return NextResponse.json({

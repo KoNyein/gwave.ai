@@ -71,7 +71,8 @@
     "passwordUpdated": "เปลี่ยนรหัสผ่านแล้ว",
     "passwordsDontMatch": "รหัสผ่านไม่ตรงกัน",
     "recoverySessionExpired": "ลิงก์หมดอายุ — ขอลิงก์รีเซ็ตใหม่",
-    "goToFeed": "ไปที่ฟีด"
+    "goToFeed": "ไปที่ฟีด",
+    "oauthFailed": "เข้าสู่ระบบด้วย Google ไม่สำเร็จ"
   },
   "onboarding": {
     "title": "ตั้งค่าโปรไฟล์ของคุณ",

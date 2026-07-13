@@ -71,7 +71,8 @@
     "passwordUpdated": "密码已更新。",
     "passwordsDontMatch": "两次输入的密码不一致。",
     "recoverySessionExpired": "链接已过期——请重新申请重置链接。",
-    "goToFeed": "前往动态"
+    "goToFeed": "前往动态",
+    "oauthFailed": "Google 登录未成功。"
   },
   "onboarding": {
     "title": "设置您的个人资料",

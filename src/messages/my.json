@@ -71,7 +71,8 @@
     "passwordUpdated": "စကားဝှက် ပြောင်းပြီးပါပြီ။",
     "passwordsDontMatch": "စကားဝှက် နှစ်ခု မတူပါ။",
     "recoverySessionExpired": "Link သက်တမ်းကုန်သွားပါပြီ — reset link အသစ် ပြန်တောင်းပါ။",
-    "goToFeed": "Feed သို့ သွားမည်"
+    "goToFeed": "Feed သို့ သွားမည်",
+    "oauthFailed": "Google ဖြင့် ဝင်၍ မရပါ။"
   },
   "onboarding": {
     "title": "သင့်ပရိုဖိုင်ကို ပြင်ဆင်ပါ",

@@ -1,7 +1,7 @@
 {
   "$comment": "Bubblewrap manifest for the gwave.ai Play Store (TWA) build. Built automatically by .github/workflows/build-apk.yml (Actions -> Build Android APK). See docs/PLAY_STORE.md.",
   "packageId": "ai.gwave.app",
-  "host": "gwave-ai.vercel.app",
+  "host": "gwave.cc",
   "name": "gwave.ai",
   "launcherName": "gwave",
   "display": "standalone",
@@ -10,8 +10,8 @@
   "backgroundColor": "#EAF3DE",
   "navigationColor": "#3B6D11",
   "startUrl": "/feed",
-  "iconUrl": "https://gwave-ai.vercel.app/icon-512.png",
-  "maskableIconUrl": "https://gwave-ai.vercel.app/icon-512.png",
+  "iconUrl": "https://gwave.cc/icon-512.png",
+  "maskableIconUrl": "https://gwave.cc/icon-512.png",
   "splashScreenFadeOutDuration": 300,
   "enableNotifications": true,
   "isChromeOSOnly": false,
@@ -20,25 +20,25 @@
       "name": "Feed",
       "shortName": "Feed",
       "url": "/feed",
-      "chosenIconUrl": "https://gwave-ai.vercel.app/icon-512.png"
+      "chosenIconUrl": "https://gwave.cc/icon-512.png"
     },
     {
       "name": "Messenger",
       "shortName": "Chat",
       "url": "/messages",
-      "chosenIconUrl": "https://gwave-ai.vercel.app/icon-512.png"
+      "chosenIconUrl": "https://gwave.cc/icon-512.png"
     },
     {
       "name": "Learn",
       "shortName": "Learn",
       "url": "/learn",
-      "chosenIconUrl": "https://gwave-ai.vercel.app/icon-512.png"
+      "chosenIconUrl": "https://gwave.cc/icon-512.png"
     },
     {
       "name": "Shop",
       "shortName": "Shop",
       "url": "/shop",
-      "chosenIconUrl": "https://gwave-ai.vercel.app/icon-512.png"
+      "chosenIconUrl": "https://gwave.cc/icon-512.png"
     }
   ],
   "fallbackType": "customtabs",
@@ -46,8 +46,8 @@
   "minSdkVersion": 21,
   "appVersionName": "1.0.0",
   "appVersionCode": 1,
-  "webManifestUrl": "https://gwave-ai.vercel.app/manifest.webmanifest",
-  "fullScopeUrl": "https://gwave-ai.vercel.app/",
+  "webManifestUrl": "https://gwave.cc/manifest.webmanifest",
+  "fullScopeUrl": "https://gwave.cc/",
   "signingKey": {
     "path": "./android.keystore",
     "alias": "gwave"

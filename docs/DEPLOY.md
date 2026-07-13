@@ -71,7 +71,10 @@ deliverability မသေချာ) မို့ — password reset / signup emai
      User = သင့် gmail, Password = app password
 3. Sender email/name ဖြည့် → Save
 4. **Auth → URL Configuration** မှာ —
-   - Site URL: `https://gwave-ai.vercel.app`
-   - Redirect URLs: `https://gwave-ai.vercel.app/auth/callback` ထည့်
+   - Site URL: `https://gwave.cc`
+   - Redirect URLs: `https://gwave.cc/auth/callback` နဲ့
+     `https://www.gwave.cc/auth/callback` ထည့်
+   - ⚠️ Site URL မှားရင် Google login ပြီးတာနဲ့ အဲဒီ URL ဆီ ပြန်ပို့ခံရမယ် —
+     redirect URL က allowlist ထဲ မရှိရင် Supabase က Site URL ကို သုံးလို့ပါ
 5. (optional) **Auth → Email Templates → Reset Password** မှာ စာသား မြန်မာလို ပြင်
-6. Vercel env: `NEXT_PUBLIC_SITE_URL=https://gwave-ai.vercel.app` သတ်မှတ်ပြီး redeploy
+6. App env: `NEXT_PUBLIC_SITE_URL=https://gwave.cc` (build arg) သတ်မှတ်ပြီး redeploy
