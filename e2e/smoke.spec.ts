@@ -5,9 +5,14 @@ import { expect, test } from "@playwright/test";
  * verifies routing, auth guards, public pages and security headers.
  */
 
-test("root redirects unauthenticated visitors to /login", async ({ page }) => {
+test("root redirects unauthenticated visitors to the marketing page", async ({
+  page,
+}) => {
   await page.goto("/");
-  await expect(page).toHaveURL(/\/login/);
+  // Signed-in members land on /feed; visitors see the /welcome landing page,
+  // which links on to /login and /register.
+  await expect(page).toHaveURL(/\/welcome/);
+  await expect(page.locator('a[href="/login"]').first()).toBeVisible();
 });
 
 test("login page renders the auth form", async ({ page }) => {
