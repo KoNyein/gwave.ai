@@ -31,7 +31,7 @@ export const htmlTrack: Track = {
   description:
     "The language of every web page — from your first tag to full page layouts.",
   icon: "FileCode2",
-  bands: ["teen", "adult"],
+  bands: ["preteen", "teen", "adult"],
   lessons: [
     {
       slug: "html-intro",
@@ -300,7 +300,7 @@ export const cssTrack: Track = {
   description:
     "Colours, spacing, flexbox, grid and animation — make pages beautiful.",
   icon: "Palette",
-  bands: ["teen", "adult"],
+  bands: ["preteen", "teen", "adult"],
   lessons: [
     {
       slug: "css-selectors",
@@ -895,7 +895,7 @@ export const pythonTrack: Track = {
   description:
     "The friendliest programming language — data, logic and automation.",
   icon: "Terminal",
-  bands: ["teen", "adult"],
+  bands: ["preteen", "teen", "adult"],
   lessons: [
     {
       slug: "py-intro",
