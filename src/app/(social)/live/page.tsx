@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LayoutDashboard, Plus, Radio } from "lucide-react";
+import { LayoutDashboard, Plus, Radio, Users } from "lucide-react";
 
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,7 +31,13 @@ export default async function LivePage() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/live/cohost"
+            className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted/50"
+          >
+            <Users className="h-4 w-4" /> Co-host
+          </Link>
           <Link
             href="/live/dashboard"
             className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted/50"
