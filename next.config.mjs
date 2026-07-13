@@ -44,6 +44,22 @@ const googleMapsSrc = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
   ? " https://www.google.com"
   : "";
 
+// Co-host Live connects to the LiveKit SFU over a secure WebSocket
+// (NEXT_PUBLIC_LIVEKIT_URL, e.g. wss://live.yourdomain.com). The signalling
+// socket and the HTTPS region/ICE lookups both target that host, so allow-list
+// both the wss:// and https:// forms of its origin in connect-src. WebRTC media
+// itself flows over UDP and is not governed by CSP. Empty by default.
+const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL?.trim() ?? "";
+const livekitConnectSrc = (() => {
+  if (!livekitUrl) return "";
+  try {
+    const host = new URL(livekitUrl).host;
+    return ` wss://${host} https://${host}`;
+  } catch {
+    return "";
+  }
+})();
+
 // Content-Security-Policy: 'unsafe-inline'/'unsafe-eval' are required by
 // Next.js hydration + dev tooling; everything else is locked to self and
 // the Supabase project (REST, storage, realtime websockets).
@@ -64,7 +80,7 @@ const csp = [
   `media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com${cctvHlsSrc}`,
   "font-src 'self' data:",
   // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net${cctvHlsSrc}`,
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net${cctvHlsSrc}${livekitConnectSrc}`,
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
   `frame-src 'self' https://www.youtube-nocookie.com${cctvFrameSrc}${gameFrameSrc}${googleMapsSrc}`,
