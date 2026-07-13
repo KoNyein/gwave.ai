@@ -28,12 +28,19 @@ export function LiveLocationMessage({
   startLongitude,
   liveUntil,
   mine,
+  onStopped,
 }: {
   messageId: string;
   startLatitude: number;
   startLongitude: number;
   liveUntil: string;
   mine: boolean;
+  /**
+   * Stopping from the bubble has to stop the GPS watch too. Without this it only
+   * wrote stopped_at: the watch kept running for the full duration, the banner
+   * kept counting down, and a reload resumed the whole thing.
+   */
+  onStopped?: (messageId: string) => void;
 }) {
   const t = useTranslations("messenger");
   const supabase = React.useMemo(() => createClient(), []);
@@ -93,6 +100,7 @@ export function LiveLocationMessage({
         ? { ...previous, stopped_at: new Date().toISOString() }
         : previous,
     );
+    onStopped?.(messageId);
     setStopping(false);
   }
 

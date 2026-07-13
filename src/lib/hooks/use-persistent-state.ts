@@ -18,11 +18,25 @@ export function usePersistentState<T>(
   React.useEffect(() => {
     try {
       const raw = localStorage.getItem(key);
-      if (raw != null) setState(JSON.parse(raw) as T);
+      if (raw != null) {
+        const parsed = JSON.parse(raw) as unknown;
+        // JSON.parse succeeds on "null" and on the wrong shape entirely, and a
+        // value of the wrong type then blows up wherever it's used (`.map` of
+        // null took the whole app shell down). Only accept something that looks
+        // like what the caller asked for.
+        const sameShape =
+          parsed !== null &&
+          typeof parsed === typeof initial &&
+          Array.isArray(parsed) === Array.isArray(initial);
+        if (sameShape) setState(parsed as T);
+      }
     } catch {
       // Ignore malformed/blocked storage — fall back to `initial`.
     }
     loaded.current = true;
+    // `initial` is only read for its shape; re-running on a new object identity
+    // would clobber state the user has already changed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
   React.useEffect(() => {

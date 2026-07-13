@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import type { Message } from "@/types/database";
 import type {
   ConversationSummary,
   MessageWithSender,
@@ -30,25 +31,22 @@ export async function getConversations(
   const conversations = data ?? [];
   if (conversations.length === 0) return [];
 
-  // Latest message per conversation (one query; grouped client-side).
+  // The latest message *per conversation*. This used to be one global
+  // `order by created_at desc limit ids.length * 8`, which is a single window
+  // across every conversation at once: one chatty thread could fill it and starve
+  // all the others, and those conversations then rendered as "No messages yet"
+  // with their unread dot cleared. DISTINCT ON in the database gives exactly one
+  // row each, and RLS still applies (the function is security invoker).
   const ids = conversations.map((c) => c.id);
-  const { data: recent } = await supabase
-    .from("messages")
-    .select(
-      "id, conversation_id, sender_id, content, image_path, latitude, file_kind, created_at",
-    )
-    .in("conversation_id", ids)
-    .order("created_at", { ascending: false })
-    .limit(ids.length * 8);
+  const { data: lastMessages } = await supabase.rpc(
+    "conversation_last_messages",
+    { ids },
+  );
+  const recent = (lastMessages ?? []) as unknown as Message[];
 
-  const latest = new Map<
-    string,
-    NonNullable<typeof recent>[number]
-  >();
-  for (const message of recent ?? []) {
-    if (!latest.has(message.conversation_id)) {
-      latest.set(message.conversation_id, message);
-    }
+  const latest = new Map<string, Message>();
+  for (const message of recent) {
+    latest.set(message.conversation_id, message);
   }
 
   return conversations.map((conversation) => {

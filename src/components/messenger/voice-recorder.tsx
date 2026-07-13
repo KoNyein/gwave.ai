@@ -184,13 +184,24 @@ export function VoiceRecorder({
 
   React.useEffect(() => {
     if (!ready) return;
+    // Elapsed time is read from the clock, not counted by the interval: a hidden
+    // tab throttles timers to about one tick a minute while MediaRecorder keeps
+    // recording at full speed, so a counter would report 0:35 for a 3-minute
+    // clip — and the cap would never fire.
+    const startedAt = Date.now();
     const timer = window.setInterval(() => {
-      secondsRef.current += 1;
-      setSeconds(secondsRef.current);
-      if (secondsRef.current >= MAX_VOICE_SECONDS) {
-        recorderRef.current?.stop();
+      const elapsed = (Date.now() - startedAt) / 1000;
+      secondsRef.current = elapsed;
+      setSeconds(Math.floor(elapsed));
+      if (elapsed >= MAX_VOICE_SECONDS) {
+        window.clearInterval(timer);
+        // Guard the state: once stopped, stop() throws InvalidStateError, and
+        // the interval used to keep firing it every second.
+        if (recorderRef.current?.state === "recording") {
+          recorderRef.current.stop();
+        }
       }
-    }, 1000);
+    }, 250);
     return () => window.clearInterval(timer);
   }, [ready]);
 
@@ -216,8 +227,11 @@ export function VoiceRecorder({
       <button
         type="button"
         onClick={cancel}
+        // Once the clip is uploading, discarding is a lie — the message is
+        // already on its way. Disable rather than pretend.
+        disabled={busy}
         aria-label="Discard voice message"
-        className="shrink-0 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"
+        className="shrink-0 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-40"
       >
         <Trash2 className="h-4 w-4" />
       </button>

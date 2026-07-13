@@ -138,6 +138,10 @@ export function Messenger({
   const [starting, startTransition] = React.useTransition();
 
   const bottomRef = React.useRef<HTMLDivElement>(null);
+  const listRef = React.useRef<HTMLDivElement>(null);
+  // Realtime messages that arrived while the thread was still loading. They'd
+  // otherwise be dropped: the in-flight fetch's snapshot predates them.
+  const pendingRef = React.useRef<MessageWithSender[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const attachInputRef = React.useRef<HTMLInputElement>(null);
   const [uploadError, setUploadError] = React.useState<string | null>(null);
@@ -164,8 +168,13 @@ export function Messenger({
     box.style.height = `${box.scrollHeight}px`;
   }, [input]);
 
-  // Don't leave the picker hanging over a different conversation.
-  React.useEffect(() => setEmojiOpen(false), [activeId]);
+  // Don't leave the picker — or a game board — hanging over a different
+  // conversation. The chess board used to carry over to the next chat and then
+  // save itself under *that* conversation's key.
+  React.useEffect(() => {
+    setEmojiOpen(false);
+    setGamesOpen(false);
+  }, [activeId]);
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
   const peer = active ? conversationPeer(active, currentUser.id) : null;
@@ -181,6 +190,46 @@ export function Messenger({
     setConversations(payload.conversations);
   }, []);
 
+  /**
+   * Fetch a thread and fold in anything that arrived while we were fetching —
+   * realtime events parked in `pendingRef`, and our own optimistic bubbles the
+   * server snapshot predates. A plain overwrite lost both.
+   */
+  const reloadThread = React.useCallback(async (conversationId: string) => {
+    const response = await fetch(
+      `/api/messages?conversation=${conversationId}`,
+    );
+    const payload: { messages?: MessageWithSender[] } = await response
+      .json()
+      .catch(() => ({}));
+    const fetched = payload.messages ?? [];
+
+    // The user may have switched threads while this was in flight; a late
+    // response must never paint the wrong conversation.
+    if (activeIdRef.current !== conversationId) return;
+
+    const parked = pendingRef.current.filter(
+      (m) => m.conversation_id === conversationId,
+    );
+    pendingRef.current = pendingRef.current.filter(
+      (m) => m.conversation_id !== conversationId,
+    );
+
+    setMessages((previous) => {
+      const inFlight = (previous ?? []).filter(
+        (m) => !fetched.some((f) => f.id === m.id),
+      );
+      const merged = [...fetched, ...inFlight, ...parked].filter(
+        (m, i, all) => all.findIndex((x) => x.id === m.id) === i,
+      );
+      merged.sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      );
+      return merged;
+    });
+  }, []);
+
   // Load messages when the active conversation changes.
   React.useEffect(() => {
     if (!activeId) {
@@ -190,14 +239,10 @@ export function Messenger({
     let cancelled = false;
     setMessages(null);
     setPeerTyping(false);
-    fetch(`/api/messages?conversation=${activeId}`)
-      .then((response) => response.json())
-      .then((payload: { messages?: MessageWithSender[] }) => {
-        if (!cancelled) setMessages(payload.messages ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setMessages([]);
-      });
+    pendingRef.current = [];
+    void reloadThread(activeId).catch(() => {
+      if (!cancelled) setMessages([]);
+    });
     void markConversationRead(activeId);
     setConversations((previous) =>
       previous.map((c) => (c.id === activeId ? { ...c, unread: false } : c)),
@@ -276,13 +321,25 @@ export function Messenger({
           if (isActive) {
             const sender =
               conversationPeer(known, currentUser.id) ?? currentUser;
-            setMessages((previous) =>
-              previous && !previous.some((m) => m.id === message.id)
-                ? [...previous, { ...message, sender }]
-                : previous,
-            );
+            setMessages((previous) => {
+              if (previous === null) {
+                // The thread is still loading. The fetch already in flight took
+                // its snapshot before this row existed, so dropping the event
+                // here lost the message outright — park it and let the fetch
+                // merge it in when it lands.
+                pendingRef.current.push({ ...message, sender });
+                return previous;
+              }
+              return previous.some((m) => m.id === message.id)
+                ? previous
+                : [...previous, { ...message, sender }];
+            });
             setPeerTyping(false);
-            void markConversationRead(message.conversation_id);
+            // Don't claim we read it while the tab is in the background — that
+            // sends the peer a "Seen" for something nobody looked at.
+            if (document.visibilityState === "visible") {
+              void markConversationRead(message.conversation_id);
+            }
           }
 
           setConversations((previous) =>
@@ -305,14 +362,50 @@ export function Messenger({
           );
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        // postgres_changes never replays what was missed while the socket was
+        // down — a laptop that slept, a tunnel, a suspended tab. Without this the
+        // thread just looks silent and the user replies into a conversation they
+        // think is idle. Re-read on every (re)join.
+        if (status === "SUBSCRIBED") {
+          void refreshConversations();
+          const open = activeIdRef.current;
+          if (open) void reloadThread(open);
+        }
+      });
 
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [currentUser, refreshConversations]);
+  }, [currentUser, refreshConversations, reloadThread]);
+
+  // Same gap, different trigger: coming back to a backgrounded tab or regaining
+  // the network are both moments where we may have missed events.
+  React.useEffect(() => {
+    function resync() {
+      if (document.visibilityState !== "visible") return;
+      void refreshConversations();
+      const open = activeIdRef.current;
+      if (open) void reloadThread(open);
+    }
+    document.addEventListener("visibilitychange", resync);
+    window.addEventListener("online", resync);
+    return () => {
+      document.removeEventListener("visibilitychange", resync);
+      window.removeEventListener("online", resync);
+    };
+  }, [refreshConversations, reloadThread]);
 
   React.useEffect(() => {
+    // Only follow the conversation down if the user is already at the bottom.
+    // Unconditional scrolling yanked people away mid-read — the peer merely
+    // *starting to type* was enough to do it.
+    const list = listRef.current;
+    if (list) {
+      const distanceFromBottom =
+        list.scrollHeight - list.scrollTop - list.clientHeight;
+      if (distanceFromBottom > 160) return;
+    }
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, peerTyping]);
 
@@ -419,6 +512,18 @@ export function Messenger({
           m.id === optimistic.id ? { ...m, id: result.data.messageId } : m,
         );
       });
+      if (!result.ok) {
+        // Give the words back. Dropping the bubble and silently eating what the
+        // user typed is the worst possible failure for a chat app.
+        setUploadError(result.error);
+        setInput((current) => current || content);
+      }
+    } catch (err) {
+      // uploadMedia throws (too large, unsupported, storage down) and this was
+      // the one send path with no catch: the spinner stopped, nothing sent, no
+      // error shown, and the typed caption was already gone.
+      setUploadError(err instanceof Error ? err.message : "Failed to send.");
+      setInput((current) => current || content);
     } finally {
       setSending(false);
     }
@@ -923,6 +1028,9 @@ export function Messenger({
 
             {gamesOpen ? (
               <GamesPanel
+                // Remount per conversation: without a key the chess board kept
+                // its state and was then persisted under the new conversation.
+                key={active.id}
                 conversationId={active.id}
                 currentUserId={currentUser.id}
                 onClose={() => setGamesOpen(false)}
@@ -930,7 +1038,7 @@ export function Messenger({
             ) : null}
 
             {/* Messages */}
-            <div className="flex-1 space-y-1 overflow-y-auto p-4">
+            <div ref={listRef} className="flex-1 space-y-1 overflow-y-auto p-4">
               {messages === null ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -1001,6 +1109,11 @@ export function Messenger({
                               startLongitude={message.longitude}
                               liveUntil={message.live_until}
                               mine={isMine}
+                              onStopped={(id) => {
+                                if (liveShare.share?.messageId === id) {
+                                  void liveShare.stop();
+                                }
+                              }}
                             />
                           ) : message.latitude != null &&
                             message.longitude != null ? (
@@ -1289,6 +1402,7 @@ export function Messenger({
                       <Button
                         variant="ghost"
                         size="icon"
+                        data-emoji-toggle
                         onClick={() => setEmojiOpen((open) => !open)}
                         disabled={sending}
                         aria-label={t("emoji")}

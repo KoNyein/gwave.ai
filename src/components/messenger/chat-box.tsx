@@ -17,6 +17,16 @@ import { mediaUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
 import type { AuthorSummary, MessageWithSender } from "@/types/social";
 
+/** What a message with no text and no image actually is. */
+export function summarise(message: MessageWithSender): string | null {
+  if (message.file_kind === "audio") return "🎤 အသံ မက်ဆေ့ခ်ျ";
+  if (message.file_kind === "video") return "🎥 ဗီဒီယို";
+  if (message.file_kind === "file") return "📎 ဖိုင်";
+  if (message.live_until) return "📍 တည်နေရာ တိုက်ရိုက်";
+  if (message.latitude != null) return "📍 တည်နေရာ";
+  return null;
+}
+
 /**
  * One floating conversation, Facebook-style: several of these sit side by side
  * along the bottom of the screen, each with its own thread, input and unread
@@ -190,6 +200,15 @@ export function ChatBox({
                       className="max-h-40 w-full object-cover"
                     />
                   ) : null}
+                  {/* A voice note, file or location has no text and no image, so
+                      the dock used to render it as a blank grey rectangle. The
+                      dock is deliberately compact — say what arrived and send
+                      them to the full messenger to act on it. */}
+                  {summarise(message) ? (
+                    <p className="flex items-center gap-1.5 px-3 py-1.5 text-sm">
+                      {summarise(message)}
+                    </p>
+                  ) : null}
                   {message.content ? (
                     <p className="whitespace-pre-wrap break-words px-3 py-1.5 text-sm">
                       {message.content}
@@ -215,6 +234,7 @@ export function ChatBox({
         ) : null}
         <button
           type="button"
+          data-emoji-toggle
           onClick={() => setEmojiOpen((open) => !open)}
           aria-label="Emoji"
           className={cn(

@@ -91,6 +91,8 @@ interface Session {
   ringTimer: ReturnType<typeof setTimeout> | null;
   durationTimer: ReturnType<typeof setInterval> | null;
   connectedAt: number | null;
+  /** The peer actively declined, as opposed to never picking up. */
+  declined?: boolean;
   /** ICE candidates that arrived before the remote description was set. */
   pendingIce: RTCIceCandidateInit[];
 }
@@ -139,7 +141,9 @@ export function useCall(currentUser: AuthorSummary): CallApi {
           const kind = s.video ? "video" : "audio";
           const content = s.connectedAt
             ? `📞 ${kind === "video" ? "Video" : "Audio"} call · ${formatDuration(Math.round((Date.now() - s.connectedAt) / 1000))}`
-            : `📞 Missed ${kind} call`;
+            : s.declined
+              ? `📞 Declined ${kind} call`
+              : `📞 Missed ${kind} call`;
           void sendMessage({
             conversationId: s.conversationId,
             content,
@@ -209,8 +213,11 @@ export function useCall(currentUser: AuthorSummary): CallApi {
           }
           patch({ status: "active" });
         } else if (
+          // "disconnected" is transient — a Wi-Fi/LTE handover or a couple of
+          // lost packets routinely lands here and then recovers on its own.
+          // Treating it as terminal hung up the call after a two-second blip
+          // (and wrote a call-log message about it). Only "failed" is final.
           (pc.connectionState === "failed" ||
-            pc.connectionState === "disconnected" ||
             pc.connectionState === "closed") &&
           session.current === s
         ) {
@@ -319,7 +326,10 @@ export function useCall(currentUser: AuthorSummary): CallApi {
           }
         })
         .on("broadcast", { event: "decline" }, () => {
-          if (session.current === s) cleanup(true);
+          if (session.current === s) {
+            s.declined = true;
+            cleanup(true);
+          }
         })
         .on("broadcast", { event: "hangup" }, () => {
           if (session.current === s) cleanup(s.isCaller);

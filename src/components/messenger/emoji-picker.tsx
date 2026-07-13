@@ -71,7 +71,12 @@ export function EmojiPicker({
   // Click-away and Escape both close, like every other picker on the web.
   React.useEffect(() => {
     function onPointerDown(event: MouseEvent) {
-      if (!boxRef.current?.contains(event.target as Node)) onClose();
+      const target = event.target as HTMLElement;
+      // The toggle button lives outside the picker, so a plain outside-click
+      // close fought with it: mousedown closed the picker, then the button's
+      // click re-opened it, and the smiley could never close what it opened.
+      if (target.closest("[data-emoji-toggle]")) return;
+      if (!boxRef.current?.contains(target)) onClose();
     }
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();

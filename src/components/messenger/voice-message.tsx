@@ -11,6 +11,13 @@ const BARS = 40;
 const SPEEDS = [1, 1.5, 2] as const;
 
 /**
+ * The voice note currently playing. Each bubble owns its own <audio>, so
+ * without this two of them happily play over each other — every other messenger
+ * pauses the first.
+ */
+let nowPlaying: HTMLAudioElement | null = null;
+
+/**
  * Peaks for the waveform, computed from the decoded audio the first time it
  * plays. We don't store peaks with the message, and decoding on mount would
  * download every clip in the thread just to draw it — so until then the bars
@@ -84,6 +91,8 @@ export function VoiceMessage({
       audio.pause();
       return;
     }
+    if (nowPlaying && nowPlaying !== audio) nowPlaying.pause();
+    nowPlaying = audio;
     void audio.play().catch(() => setPlaying(false));
     if (!peaksLoadedRef.current) {
       peaksLoadedRef.current = true;

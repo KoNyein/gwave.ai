@@ -48,7 +48,16 @@ function metresBetween(
  * lapses on its own at expires_at. Recipients see the last known position and
  * how long ago it was updated, which is the honest thing to show.
  */
-export function useLiveLocationShare(onError?: (message: string) => void) {
+export function useLiveLocationShare(
+  onError?: (message: string) => void,
+  /**
+   * Set false where another mount of this hook is already driving the share.
+   * Two watchers would both push the pin; none at all (which is what happened
+   * when the messenger unmounted on navigation) leaves the recipients staring at
+   * a LIVE badge on a pin that has quietly stopped moving.
+   */
+  enabled = true,
+) {
   const [share, setShare] = usePersistentState<LiveShare | null>(
     "gw:live-location-share",
     null,
@@ -70,6 +79,12 @@ export function useLiveLocationShare(onError?: (message: string) => void) {
       if (share && expired) setShare(null);
       return;
     }
+    if (!enabled) return;
+
+    // A fresh share must not inherit the previous one's throttle state, or its
+    // first fix is suppressed for up to 45 seconds.
+    lastSentAt.current = 0;
+    lastFix.current = null;
 
     const stopWatching = watchPosition(
       (fix) => {
@@ -105,7 +120,7 @@ export function useLiveLocationShare(onError?: (message: string) => void) {
       stopWatching();
       window.clearTimeout(timer);
     };
-  }, [share, expired, setShare]);
+  }, [share, expired, setShare, enabled]);
 
   const stop = React.useCallback(async () => {
     if (!share) return;

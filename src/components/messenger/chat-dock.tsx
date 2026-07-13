@@ -3,9 +3,10 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageCircle, X } from "lucide-react";
+import { MessageCircle, Navigation, X } from "lucide-react";
 
-import { ChatBox } from "@/components/messenger/chat-box";
+import { ChatBox, summarise } from "@/components/messenger/chat-box";
+import { useLiveLocationShare } from "@/components/messenger/use-live-location-share";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { markConversationRead, sendMessage } from "@/lib/actions/messages";
 import { displayName } from "@/lib/format";
@@ -71,6 +72,22 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
   openIdsRef.current = openIds;
   const minimizedRef = React.useRef(minimized);
   minimizedRef.current = minimized;
+  // Which threads we've already fetched. A ref, not a dep: `threads` changes on
+  // every message, and hanging openChat's identity off it tore down and re-joined
+  // the realtime channel on each one — any message landing in the re-join window
+  // was lost.
+  const loadedRef = React.useRef<Set<string>>(new Set());
+
+  // The full messenger owns the conversation on /messages: keep this one inert
+  // there rather than running a second realtime subscription, re-fetching every
+  // thread, and — worst — marking conversations read from a dock nobody can see.
+  const inert = Boolean(pathname?.startsWith("/messages"));
+
+  // Live location keeps running wherever you are. The watcher used to live only
+  // in the full messenger, so navigating to any other page silently killed the
+  // share while everyone watching still saw a pulsing LIVE badge. On /messages
+  // the messenger drives it, so stand down there.
+  const liveShare = useLiveLocationShare(undefined, !inert);
 
   const loadConversations = React.useCallback(async () => {
     const response = await fetch("/api/conversations");
@@ -83,10 +100,12 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
   // The dock needs the list up front now, not on first click: a box can pop up
   // on its own when a message lands, and it needs the peer's name and avatar.
   React.useEffect(() => {
+    if (inert) return;
     void loadConversations();
-  }, [loadConversations]);
+  }, [loadConversations, inert]);
 
   const loadThread = React.useCallback(async (conversationId: string) => {
+    loadedRef.current.add(conversationId);
     setThreads((previous) =>
       conversationId in previous
         ? previous
@@ -96,10 +115,15 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
     const payload: { messages?: MessageWithSender[] } = await response
       .json()
       .catch(() => ({}));
-    setThreads((previous) => ({
-      ...previous,
-      [conversationId]: payload.messages ?? [],
-    }));
+    const fetched = payload.messages ?? [];
+    setThreads((previous) => {
+      // Anything sent (or received) while the fetch was in flight isn't in the
+      // snapshot — overwriting the slot outright made a just-sent message vanish.
+      const pending = (previous[conversationId] ?? []).filter(
+        (m) => !fetched.some((f) => f.id === m.id),
+      );
+      return { ...previous, [conversationId]: [...fetched, ...pending] };
+    });
   }, []);
 
   const openChat = React.useCallback(
@@ -109,7 +133,13 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
           ...previous.filter((id) => id !== conversationId),
           conversationId,
         ];
-        return next.slice(-MAX_OPEN);
+        const kept = next.slice(-MAX_OPEN);
+        // Whatever got evicted must not linger in `minimized` forever.
+        const dropped = next.filter((id) => !kept.includes(id));
+        if (dropped.length > 0) {
+          setMinimized((mins) => mins.filter((id) => !dropped.includes(id)));
+        }
+        return kept;
       });
       setMinimized((previous) =>
         collapsed
@@ -119,7 +149,7 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
           : previous.filter((id) => id !== conversationId),
       );
       setListOpen(false);
-      if (!(conversationId in threads)) void loadThread(conversationId);
+      if (!loadedRef.current.has(conversationId)) void loadThread(conversationId);
       if (!collapsed) {
         void markConversationRead(conversationId);
         setConversations((previous) =>
@@ -129,7 +159,7 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
         );
       }
     },
-    [loadThread, setMinimized, setOpenIds, threads],
+    [loadThread, setMinimized, setOpenIds],
   );
 
   const closeChat = React.useCallback(
@@ -144,15 +174,15 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
 
   // Restore threads for boxes that a reload brought back.
   React.useEffect(() => {
+    if (inert) return;
     for (const id of openIds) {
-      if (!(id in threads)) void loadThread(id);
+      if (!loadedRef.current.has(id)) void loadThread(id);
     }
-    // Only react to the set of open boxes; `threads` is checked, not depended on.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openIds, loadThread]);
+  }, [openIds, loadThread, inert]);
 
   // Global realtime: every message this user can see.
   React.useEffect(() => {
+    if (inert) return;
     const supabase = createClient();
     const channel = supabase
       .channel(`dock:${currentUser.id}`)
@@ -219,11 +249,16 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
           );
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        // postgres_changes does not replay what was missed while the socket was
+        // down (sleep, tunnel, tab suspended). Re-read the list on every (re)join
+        // so a reconnect can't leave the dock quietly stale.
+        if (status === "SUBSCRIBED") void loadConversations();
+      });
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [currentUser, loadConversations, openChat]);
+  }, [currentUser, loadConversations, openChat, inert]);
 
   async function send(conversationId: string, content: string) {
     const optimistic: MessageWithSender = {
@@ -268,7 +303,7 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
   }
 
   // Don't duplicate the dock on the full messenger page.
-  if (pathname?.startsWith("/messages")) return null;
+  if (inert) return null;
 
   const unreadTotal = conversations.filter((c) => c.unread).length;
   const openConversations = openIds
@@ -318,6 +353,32 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
         );
       })}
 
+      {/* Sharing your location follows you across the whole app, so the way to
+          stop it has to as well. */}
+      {liveShare.share ? (
+        <div className="pointer-events-auto mb-3 flex items-center gap-2 rounded-full border bg-background/95 px-3 py-1.5 text-xs shadow-lg md:mb-4">
+          <span className="flex h-2 w-2 shrink-0 animate-pulse rounded-full bg-destructive" />
+          <Navigation className="h-3.5 w-3.5 shrink-0 text-destructive" />
+          <span className="whitespace-nowrap">
+            {Math.max(
+              0,
+              Math.round(
+                (new Date(liveShare.share.expiresAt).getTime() - Date.now()) /
+                  60_000,
+              ),
+            )}{" "}
+            min
+          </span>
+          <button
+            type="button"
+            onClick={() => void liveShare.stop()}
+            className="rounded-full bg-destructive px-2 py-0.5 font-medium text-destructive-foreground hover:bg-destructive/90"
+          >
+            Stop
+          </button>
+        </div>
+      ) : null}
+
       {/* Conversation list + launcher */}
       <div className="pointer-events-auto mb-3 flex flex-col items-end gap-2 md:mb-4">
         {listOpen ? (
@@ -340,11 +401,13 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
               ) : (
                 conversations.map((conversation) => {
                   const other = peerOf(conversation, currentUser.id);
+                  const last = conversation.last_message;
                   const preview =
-                    conversation.last_message?.content ||
-                    (conversation.last_message?.image_path
+                    last?.content ||
+                    (last?.image_path
                       ? "📷 ဓာတ်ပုံ"
-                      : "…");
+                      : (last ? summarise(last as MessageWithSender) : null) ??
+                        "…");
                   return (
                     <button
                       key={conversation.id}

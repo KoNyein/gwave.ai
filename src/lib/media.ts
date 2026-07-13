@@ -9,10 +9,31 @@ export const TARGET_IMAGE_BYTES = 600 * 1024; // ~0.6 MB
 export const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
 export const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB for chat documents
 
-/** GIFs are stored as-is (see prepareMedia), so they get their own budget. */
+/** Animated images are stored as-is (see prepareMedia), so they get their own budget. */
 export const MAX_GIF_BYTES = 8 * 1024 * 1024;
-/** Image types whose animation the canvas would destroy. */
-const ANIMATED_IMAGE_TYPES = new Set(["image/gif", "image/webp"]);
+
+/**
+ * Is this image actually animated?
+ *
+ * Type alone isn't enough. Most WebP is a plain photo — it's the default camera
+ * and screenshot export on much of Android and Windows — so treating every WebP
+ * as animated skipped compression for ordinary photos and rejected them with a
+ * nonsensical "GIF is too large". WebP declares animation in its VP8X chunk, so
+ * read the header: bytes 0-3 "RIFF", 8-11 "WEBP", 12-15 the chunk id, and for
+ * VP8X the ANIM flag is bit 1 of the first flag byte.
+ */
+async function isAnimatedImage(file: File): Promise<boolean> {
+  if (file.type === "image/gif") return true;
+  if (file.type !== "image/webp") return false;
+  try {
+    const header = new Uint8Array(await file.slice(0, 21).arrayBuffer());
+    const tag = String.fromCharCode(...header.slice(12, 16));
+    if (tag !== "VP8X") return false;
+    return ((header[20] ?? 0) & 0x02) !== 0;
+  } catch {
+    return false;
+  }
+}
 
 /** Longest voice message we record; the DB rejects anything over 600s too. */
 export const MAX_VOICE_SECONDS = 300; // 5 minutes
@@ -95,9 +116,9 @@ export async function prepareMedia(file: File): Promise<PreparedMedia> {
   // An animated image must never go through the canvas: createImageBitmap only
   // ever gives us frame one, so compressing a GIF would silently flatten it into
   // a still JPEG. Pass it through and cap the size instead.
-  if (ANIMATED_IMAGE_TYPES.has(file.type)) {
+  if (await isAnimatedImage(file)) {
     if (file.size > MAX_GIF_BYTES) {
-      throw new Error("GIF is too large (max 8 MB).");
+      throw new Error("Animated image is too large (max 8 MB).");
     }
     return {
       blob: file,
