@@ -8,6 +8,7 @@ import { HostPanel } from "@/components/live/host-panel";
 import { LiveChat, type ChatEntry } from "@/components/live/live-chat";
 import { LiveGifts } from "@/components/live/live-gifts";
 import { LivePlayer } from "@/components/live/live-player";
+import { LiveStage } from "@/components/live/live-stage";
 import { LiveSaleManager } from "@/components/live/live-sale-manager";
 import { LiveSalePanel } from "@/components/live/live-sale-panel";
 import { ReactionBar } from "@/components/live/reaction-bar";
@@ -48,8 +49,11 @@ export default async function LiveStreamPage({
   if (!stream) notFound();
 
   const isHost = stream.host_id === profile.id;
+  // LiveKit streams broadcast from the browser (no RTMP key); Mux streams
+  // ingest from OBS via a key.
+  const isLivekit = Boolean(stream.livekit_room);
   // RLS returns the key only to the host; null for everyone else.
-  const streamKey = isHost ? await getStreamKey(stream.id) : null;
+  const streamKey = isHost && !isLivekit ? await getStreamKey(stream.id) : null;
   const chat = (await getRecentChat(stream.id)) as ChatEntry[];
 
   // Live Sale — products pinned to this stream, and (for buyers) their G-Pay
@@ -117,11 +121,19 @@ export default async function LiveStreamPage({
       </Link>
 
       <div className="relative overflow-hidden rounded-xl">
-        <LivePlayer
-          playbackId={stream.mux_playback_id}
-          status={stream.status}
-          title={stream.title}
-        />
+        {isLivekit ? (
+          <LiveStage
+            streamId={stream.id}
+            isHost={isHost}
+            status={stream.status}
+          />
+        ) : (
+          <LivePlayer
+            playbackId={stream.mux_playback_id}
+            status={stream.status}
+            title={stream.title}
+          />
+        )}
         {stream.status === "live" ? (
           <DoubleTapHeart streamId={stream.id} userId={profile.id} />
         ) : null}

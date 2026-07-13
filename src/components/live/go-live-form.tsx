@@ -11,7 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 /** Create a stream via /api/live/create, then jump to the host view. */
-export function GoLiveForm() {
+export function GoLiveForm({
+  browserBroadcast = false,
+}: {
+  browserBroadcast?: boolean;
+}) {
   const router = useRouter();
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
@@ -84,8 +88,9 @@ export function GoLiveForm() {
             Create stream
           </Button>
           <p className="text-xs text-muted-foreground">
-            You&apos;ll get an RTMP URL and a private stream key for OBS or any
-            streaming app on the next screen.
+            {browserBroadcast
+              ? "You'll broadcast straight from this device's camera and mic on the next screen — no extra app needed."
+              : "You'll get an RTMP URL and a private stream key for OBS or any streaming app on the next screen."}
           </p>
         </form>
       </CardContent>

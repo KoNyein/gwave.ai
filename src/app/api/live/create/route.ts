@@ -2,8 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentProfile } from "@/lib/auth";
+import { livekitConfigured } from "@/lib/livekit";
 import { getMux } from "@/lib/mux";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+/** Short, unguessable-enough LiveKit room name. */
+function newLivekitRoom(): string {
+  return `live-${crypto.randomUUID().slice(0, 12)}`;
+}
 
 const bodySchema = z.object({
   title: z.string().min(1).max(120),
@@ -51,6 +57,38 @@ export async function POST(request: Request) {
     }
   }
 
+  // Preferred path: LiveKit SFU. The host broadcasts from the browser
+  // (camera/mic) — no Mux, no RTMP key. A row with livekit_room set (and
+  // mux_stream_id null) is a LiveKit stream.
+  if (livekitConfigured()) {
+    const admin = createAdminClient();
+    const { data: row, error } = await admin
+      .from("live_streams")
+      .insert({
+        host_id: profile.id,
+        title: parsed.data.title.trim(),
+        description: parsed.data.description?.trim() || null,
+        livekit_room: newLivekitRoom(),
+        kind: parsed.data.kind,
+        track_slug:
+          parsed.data.kind === "class" ? parsed.data.trackSlug || null : null,
+        scheduled_at:
+          parsed.data.kind === "class"
+            ? parsed.data.scheduledAt || null
+            : null,
+      })
+      .select("id")
+      .single();
+    if (error || !row) {
+      return NextResponse.json(
+        { error: error?.message ?? "Failed to save the stream." },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json({ id: row.id }, { status: 201 });
+  }
+
+  // Fallback: Mux (RTMP ingest from OBS).
   let mux;
   try {
     mux = getMux();
