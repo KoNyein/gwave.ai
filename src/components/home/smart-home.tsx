@@ -118,10 +118,81 @@ export function SmartHome({
     }
   }
 
+  // One-tap "leaving home / arriving home": flip every switch at once.
+  async function setAll(next: "on" | "off") {
+    const targets = switches.filter((device) => isOn(device) !== (next === "on"));
+    if (targets.length === 0) return;
+    setSwitches((previous) =>
+      previous.map((entry) =>
+        targets.some((d) => d.id === entry.id)
+          ? { ...entry, state: { ...entry.state, power: next } }
+          : entry,
+      ),
+    );
+    setPendingIds((previous) => {
+      const nextSet = new Set(previous);
+      targets.forEach((d) => nextSet.add(d.id));
+      return nextSet;
+    });
+    await Promise.all(
+      targets.map((device) => sendDeviceCommand(device.id, { power: next })),
+    );
+  }
+
   const zones = [...new Set(switches.map((device) => device.zone))];
+  const onCount = switches.filter(isOn).length;
+  const offlineCount = switches.filter((device) => !device.online).length;
 
   return (
     <div className="space-y-6">
+      {/* Home status + one-tap master controls (like a "leaving/arriving" routine) */}
+      {switches.length > 0 ? (
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="flex items-center gap-2 text-sm">
+              <span
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-full",
+                  onCount > 0
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                <Power className="h-4 w-4" />
+              </span>
+              <span className="font-medium">
+                {onCount > 0 ? t("statusOn", { count: onCount }) : t("statusAllOff")}
+                {offlineCount > 0 ? (
+                  <span className="ml-1 text-muted-foreground">
+                    · {t("statusOffline", { count: offlineCount })}
+                  </span>
+                ) : null}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void setAll("on")}
+                disabled={onCount === switches.length}
+              >
+                <Power className="mr-1 h-4 w-4" />
+                {t("allOn")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void setAll("off")}
+                disabled={onCount === 0}
+              >
+                <Power className="mr-1 h-4 w-4" />
+                {t("allOff")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* Switches */}
       {switches.length === 0 ? (
         <Card>

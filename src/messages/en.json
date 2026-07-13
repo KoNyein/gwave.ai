@@ -282,7 +282,12 @@
     "daysOfWeek": "Days",
     "scheduleInvalid": "Pick at least one day.",
     "deleteSchedule": "Delete schedule",
-    "save": "Save"
+    "save": "Save",
+    "allOn": "All on",
+    "allOff": "All off",
+    "statusOn": "{count} on",
+    "statusOffline": "{count} offline",
+    "statusAllOff": "All off"
   },
   "profile": {
     "tabPosts": "Posts",

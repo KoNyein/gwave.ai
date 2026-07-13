@@ -282,7 +282,12 @@
     "daysOfWeek": "Days",
     "scheduleInvalid": "Pick at least one day.",
     "deleteSchedule": "Delete schedule",
-    "save": "Save"
+    "save": "Save",
+    "allOn": "全部开",
+    "allOff": "全部关",
+    "statusOn": "{count} 开",
+    "statusOffline": "{count} 离线",
+    "statusAllOff": "全部关闭"
   },
   "profile": {
     "tabPosts": "帖子",

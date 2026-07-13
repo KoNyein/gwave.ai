@@ -282,7 +282,12 @@
     "daysOfWeek": "Days",
     "scheduleInvalid": "Pick at least one day.",
     "deleteSchedule": "Delete schedule",
-    "save": "Save"
+    "save": "Save",
+    "allOn": "เปิดทั้งหมด",
+    "allOff": "ปิดทั้งหมด",
+    "statusOn": "เปิด {count}",
+    "statusOffline": "ออฟไลน์ {count}",
+    "statusAllOff": "ปิดทั้งหมด"
   },
   "profile": {
     "tabPosts": "โพสต์",

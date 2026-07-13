@@ -282,7 +282,12 @@
     "daysOfWeek": "နေ့များ",
     "scheduleInvalid": "အနည်းဆုံး တစ်ရက် ရွေးပါ။",
     "deleteSchedule": "အချိန်ဇယား ဖျက်ရန်",
-    "save": "သိမ်းရန်"
+    "save": "သိမ်းရန်",
+    "allOn": "အားလုံးဖွင့်",
+    "allOff": "အားလုံးပိတ်",
+    "statusOn": "{count} ဖွင့်ထား",
+    "statusOffline": "{count} offline",
+    "statusAllOff": "အားလုံး ပိတ်ထား"
   },
   "profile": {
     "tabPosts": "ပို့စ်များ",
