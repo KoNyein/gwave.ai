@@ -3616,4 +3616,17 @@ export const MY_OVERLAY: LearnOverlay = {
       },
     },
   },
+  // Advanced tracks are authored natively in Burmese (summaries + section
+  // bodies + descriptions). Only the English course-card titles need an
+  // overlay so the /learn grid reads fully Burmese; technical concept lesson
+  // titles (Closures, Promises…) stay in English, as Burmese devs use them.
+  "advanced-js": {
+    title: "အဆင့်မြင့် JavaScript",
+  },
+  "game-dev": {
+    title: "JavaScript ဂိမ်း ရေးသားခြင်း သင်တန်း",
+  },
+  "advanced-canvas": {
+    title: "အဆင့်မြင့် Canvas ဂရပ်ဖစ်",
+  },
 };
