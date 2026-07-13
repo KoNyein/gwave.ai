@@ -79,7 +79,7 @@ export function NotificationsButton({ userId }: { userId: string }) {
       }
       lastPushedId.current = n.id;
       try {
-        const notif = new Notification("gwave.ai", {
+        const notif = new Notification("Gwave", {
           body: messageOf(n),
           icon: "/icon-192.png",
           badge: "/icon-192.png",
