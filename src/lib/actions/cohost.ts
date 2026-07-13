@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
+import { livekitConfigured, livekitUrl, mintLivekitToken } from "@/lib/livekit";
 import { createClient } from "@/lib/supabase/server";
 
 /** Readable, unguessable-enough room code. */
@@ -59,5 +60,133 @@ export async function endCohostRoom(code: string): Promise<ActionResult> {
     .eq("host_id", user.id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/live/cohost");
+  return { ok: true, data: undefined };
+}
+
+// --- SFU (LiveKit) --------------------------------------------------------
+
+export interface CohostStageToken {
+  url: string;
+  token: string;
+  canPublish: boolean;
+  isHost: boolean;
+}
+
+/**
+ * Mint a LiveKit access token for the current user to join a co-host room.
+ * The host and any approved co-hosts get a publish token; everyone else gets a
+ * subscribe-only token, which is what lets a room scale to thousands of
+ * viewers. Returns an error when LiveKit isn't configured so the caller can
+ * fall back to the mesh room.
+ */
+export async function getCohostStageToken(
+  code: string,
+): Promise<ActionResult<CohostStageToken>> {
+  if (!livekitConfigured()) {
+    return { ok: false, error: "SFU not configured" };
+  }
+  const url = livekitUrl();
+  if (!url) return { ok: false, error: "SFU not configured" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in" };
+
+  const { data: room } = await supabase
+    .from("cohost_rooms")
+    .select("id, host_id, ended_at")
+    .eq("code", code)
+    .maybeSingle();
+  if (!room) return { ok: false, error: "Room not found" };
+  if (room.ended_at) return { ok: false, error: "This room has ended." };
+
+  const isHost = room.host_id === user.id;
+  let canPublish = isHost;
+  if (!canPublish) {
+    const { data: guest } = await supabase
+      .from("cohost_guests")
+      .select("user_id")
+      .eq("room_id", room.id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    canPublish = Boolean(guest);
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, username")
+    .eq("id", user.id)
+    .maybeSingle();
+  const name =
+    profile?.full_name?.trim() ||
+    profile?.username?.trim() ||
+    "Guest";
+
+  const token = await mintLivekitToken({
+    room: `cohost-${code}`,
+    identity: user.id,
+    name,
+    canPublish,
+  });
+  return { ok: true, data: { url, token, canPublish, isHost } };
+}
+
+/** Host promotes a viewer to co-host (grants them a publish token on rejoin). */
+export async function approveCohost(
+  code: string,
+  userId: string,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in" };
+
+  const { data: room } = await supabase
+    .from("cohost_rooms")
+    .select("id, host_id")
+    .eq("code", code)
+    .maybeSingle();
+  if (!room) return { ok: false, error: "Room not found" };
+  if (room.host_id !== user.id) {
+    return { ok: false, error: "Only the host can add co-hosts." };
+  }
+
+  const { error } = await supabase.from("cohost_guests").upsert(
+    { room_id: room.id, user_id: userId, added_by: user.id },
+    { onConflict: "room_id,user_id" },
+  );
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: undefined };
+}
+
+/** Host removes a co-host, or a co-host steps down themselves. */
+export async function removeCohost(
+  code: string,
+  userId: string,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in" };
+
+  const { data: room } = await supabase
+    .from("cohost_rooms")
+    .select("id")
+    .eq("code", code)
+    .maybeSingle();
+  if (!room) return { ok: false, error: "Room not found" };
+
+  // RLS enforces that only the host, an admin, or the co-host themselves can
+  // delete the row.
+  const { error } = await supabase
+    .from("cohost_guests")
+    .delete()
+    .eq("room_id", room.id)
+    .eq("user_id", userId);
+  if (error) return { ok: false, error: error.message };
   return { ok: true, data: undefined };
 }

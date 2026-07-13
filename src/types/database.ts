@@ -404,6 +404,13 @@ export interface CohostRoom {
   ended_at: string | null;
 }
 
+export interface CohostGuest {
+  room_id: string;
+  user_id: string;
+  added_by: string;
+  created_at: string;
+}
+
 export interface LiveGift {
   id: string;
   code: string;

@@ -50,7 +50,8 @@ export function CohostStart() {
           Live စတင်မည်
         </Button>
         <p className="text-[11px] text-muted-foreground">
-          💡 co-host ~၆ ဦးအထိ တစ်ပြိုင်နက် video grid (mesh)။ ကင်မရာ/မိုက် ခွင့်ပြုချက် လိုအပ်သည်။
+          💡 SFU (media server) ဖြင့် ပရိသတ် ထောင်ဂဏန်း ကြည့်နိုင်ပြီး co-host များစွာ
+          တစ်ပြိုင်နက် ကင်မရာ ဖွင့်နိုင်သည်။ ကြည့်ရှုသူများ လက်ထောင်၍ co-host ဝင်ခွင့် တောင်းနိုင်သည်။
         </p>
       </CardContent>
     </Card>

@@ -3,11 +3,13 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Users } from "lucide-react";
 
 import { CohostEnd } from "@/components/live/cohost-end";
+import { CohostStage } from "@/components/live/cohost-stage";
 import { MeetRoomClient } from "@/components/live/meet-room-client";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { getCurrentProfile } from "@/lib/auth";
 import { getCohostRoom } from "@/lib/db/cohost";
 import { displayName } from "@/lib/format";
+import { livekitConfigured } from "@/lib/livekit";
 
 export const metadata = { title: "Co-host Live" };
 export const dynamic = "force-dynamic";
@@ -26,6 +28,7 @@ export default async function CohostRoomPage({
 
   const isHost = room.host_id === profile.id;
   const ended = Boolean(room.ended_at);
+  const useSfu = livekitConfigured();
 
   return (
     <div className="space-y-3">
@@ -56,8 +59,19 @@ export default async function CohostRoomPage({
         <div className="rounded-xl border p-8 text-center text-sm text-muted-foreground">
           ဒီ Co-host Live ပြီးဆုံးသွားပါပြီ။
         </div>
+      ) : useSfu ? (
+        // LiveKit SFU: a few publishers broadcast to thousands of viewers.
+        <CohostStage
+          code={room.code}
+          currentUser={{
+            id: profile.id,
+            username: profile.username,
+            full_name: profile.full_name,
+            avatar_url: profile.avatar_url,
+          }}
+        />
       ) : (
-        // Reuse the existing WebRTC mesh grid room for the multi-guest video.
+        // Fallback: WebRTC mesh grid (no media server; best for ~6 co-hosts).
         <MeetRoomClient
           roomId={`cohost-${room.code}`}
           currentUser={{

@@ -1,0 +1,30 @@
+# LiveKit server config for gwave.ai co-host Live (SFU).
+# Installed by deploy/livekit-setup.sh. Docs: https://docs.livekit.io/home/self-hosting/
+#
+# Replace API key/secret before running (or let the setup script generate them).
+# The app needs the SAME key/secret as LIVEKIT_API_KEY / LIVEKIT_API_SECRET.
+
+port: 7880
+rtc:
+  # UDP port range for media. Open these on the security group / firewall.
+  port_range_start: 50000
+  port_range_end: 60000
+  tcp_port: 7881
+  # Set to the server's public IP if it sits behind NAT (EC2 with an Elastic IP).
+  use_external_ip: true
+
+keys:
+  # key: secret  — must match the app's LIVEKIT_API_KEY / LIVEKIT_API_SECRET.
+  APIgwave: REPLACE_WITH_A_LONG_RANDOM_SECRET
+
+# TURN for viewers on restrictive networks. LiveKit's embedded TURN over TLS
+# reuses the same domain cert (see the Caddy/TLS note in AWS_DEPLOY.md).
+turn:
+  enabled: true
+  domain: live.yourdomain.com
+  tls_port: 5349
+  udp_port: 3478
+  external_tls: true
+
+logging:
+  level: info
