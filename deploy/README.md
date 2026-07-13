@@ -11,6 +11,7 @@ AWS deployment scripts for gwave.ai. Full walkthrough: **`docs/AWS_DEPLOY.md`**.
 | `livekit-cloudformation.yaml` | **One-click AWS**: EC2 + Elastic IP + security group + LiveKit auto-installed. |
 | `livekit-aws-deploy.sh` | Wrapper that deploys the CloudFormation stack from your machine. |
 | `livekit.yaml` | LiveKit server config (ports, keys, embedded TURN). |
+| `app-tls-setup.sh` | Put **HTTPS (Caddy)** in front of the app on a raw EC2/Lightsail box for a custom domain. |
 | `ecs-task-definition.json` | ECS Fargate task definition template for the Next.js app. |
 
 The app image is built from the repo-root **`Dockerfile`** (Next.js standalone).
