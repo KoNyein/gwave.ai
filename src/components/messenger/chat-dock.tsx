@@ -3,23 +3,13 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  ChevronDown,
-  Gamepad2,
-  Loader2,
-  MessageCircle,
-  SendHorizonal,
-  X,
-} from "lucide-react";
+import { MessageCircle, X } from "lucide-react";
 
-import { GamesPanel } from "@/components/messenger/games-panel";
+import { ChatBox } from "@/components/messenger/chat-box";
 import { UserAvatar } from "@/components/social/user-avatar";
-import {
-  markConversationRead,
-  sendMessage,
-} from "@/lib/actions/messages";
+import { markConversationRead, sendMessage } from "@/lib/actions/messages";
 import { displayName } from "@/lib/format";
-import { mediaUrl } from "@/lib/media";
+import { usePersistentState } from "@/lib/hooks/use-persistent-state";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/types/database";
@@ -28,6 +18,13 @@ import type {
   ConversationSummary,
   MessageWithSender,
 } from "@/types/social";
+
+/**
+ * How many conversations can be open at once. Four 19rem boxes plus the
+ * launcher is about what a 1280px screen holds; beyond that they'd overlap the
+ * page. Opening a fifth closes the one you touched least recently.
+ */
+const MAX_OPEN = 4;
 
 function peerOf(
   conversation: ConversationSummary,
@@ -40,9 +37,13 @@ function peerOf(
 }
 
 /**
- * Facebook-style floating chat. A round launcher docked bottom-right on every
- * page opens a compact conversation list; picking one opens a small chat popup
- * with realtime send/receive — without leaving the current page.
+ * Facebook-style floating chat, docked bottom-right on every page.
+ *
+ * Several conversations stay open side by side, each its own box with its own
+ * thread and input — talk to three people at once without leaving the page. A
+ * message from someone you don't have open pops their box up (collapsed, with an
+ * unread count, so it never steals what you're typing). Which boxes are open is
+ * persisted, so it survives a reload.
  */
 export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
   const pathname = usePathname();
@@ -50,58 +51,107 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
   const [conversations, setConversations] = React.useState<
     ConversationSummary[]
   >([]);
-  const [activeId, setActiveId] = React.useState<string | null>(null);
-  const [messages, setMessages] = React.useState<MessageWithSender[] | null>(
-    null,
+  // Most-recently-focused last: that's the one that survives on a phone, and
+  // the one dropped when a fifth box opens is the head of this list.
+  const [openIds, setOpenIds] = usePersistentState<string[]>(
+    "gw:chat-open",
+    [],
   );
-  const [input, setInput] = React.useState("");
-  const [sending, setSending] = React.useState(false);
-  const [gamesOpen, setGamesOpen] = React.useState(false);
-  const bottomRef = React.useRef<HTMLDivElement>(null);
-  const activeIdRef = React.useRef(activeId);
-  activeIdRef.current = activeId;
-  const convRef = React.useRef(conversations);
-  convRef.current = conversations;
+  const [minimized, setMinimized] = usePersistentState<string[]>(
+    "gw:chat-minimized",
+    [],
+  );
+  const [threads, setThreads] = React.useState<
+    Record<string, MessageWithSender[] | null>
+  >({});
+
+  const conversationsRef = React.useRef(conversations);
+  conversationsRef.current = conversations;
+  const openIdsRef = React.useRef(openIds);
+  openIdsRef.current = openIds;
+  const minimizedRef = React.useRef(minimized);
+  minimizedRef.current = minimized;
 
   const loadConversations = React.useCallback(async () => {
-    const res = await fetch("/api/conversations");
-    if (!res.ok) return;
-    const payload: { conversations: ConversationSummary[] } = await res.json();
+    const response = await fetch("/api/conversations");
+    if (!response.ok) return;
+    const payload: { conversations: ConversationSummary[] } =
+      await response.json();
     setConversations(payload.conversations);
   }, []);
 
-  // Load the conversation list once the dock is first opened.
+  // The dock needs the list up front now, not on first click: a box can pop up
+  // on its own when a message lands, and it needs the peer's name and avatar.
   React.useEffect(() => {
-    if (listOpen && conversations.length === 0) void loadConversations();
-  }, [listOpen, conversations.length, loadConversations]);
+    void loadConversations();
+  }, [loadConversations]);
 
-  // Load a thread when opened.
-  React.useEffect(() => {
-    setGamesOpen(false);
-    if (!activeId) {
-      setMessages(null);
-      return;
-    }
-    let cancelled = false;
-    setMessages(null);
-    fetch(`/api/messages?conversation=${activeId}`)
-      .then((r) => r.json())
-      .then((p: { messages?: MessageWithSender[] }) => {
-        if (!cancelled) setMessages(p.messages ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setMessages([]);
-      });
-    void markConversationRead(activeId);
-    setConversations((prev) =>
-      prev.map((c) => (c.id === activeId ? { ...c, unread: false } : c)),
+  const loadThread = React.useCallback(async (conversationId: string) => {
+    setThreads((previous) =>
+      conversationId in previous
+        ? previous
+        : { ...previous, [conversationId]: null },
     );
-    return () => {
-      cancelled = true;
-    };
-  }, [activeId]);
+    const response = await fetch(`/api/messages?conversation=${conversationId}`);
+    const payload: { messages?: MessageWithSender[] } = await response
+      .json()
+      .catch(() => ({}));
+    setThreads((previous) => ({
+      ...previous,
+      [conversationId]: payload.messages ?? [],
+    }));
+  }, []);
 
-  // Global realtime: incoming messages for this user.
+  const openChat = React.useCallback(
+    (conversationId: string, collapsed = false) => {
+      setOpenIds((previous) => {
+        const next = [
+          ...previous.filter((id) => id !== conversationId),
+          conversationId,
+        ];
+        return next.slice(-MAX_OPEN);
+      });
+      setMinimized((previous) =>
+        collapsed
+          ? previous.includes(conversationId)
+            ? previous
+            : [...previous, conversationId]
+          : previous.filter((id) => id !== conversationId),
+      );
+      setListOpen(false);
+      if (!(conversationId in threads)) void loadThread(conversationId);
+      if (!collapsed) {
+        void markConversationRead(conversationId);
+        setConversations((previous) =>
+          previous.map((c) =>
+            c.id === conversationId ? { ...c, unread: false } : c,
+          ),
+        );
+      }
+    },
+    [loadThread, setMinimized, setOpenIds, threads],
+  );
+
+  const closeChat = React.useCallback(
+    (conversationId: string) => {
+      setOpenIds((previous) => previous.filter((id) => id !== conversationId));
+      setMinimized((previous) =>
+        previous.filter((id) => id !== conversationId),
+      );
+    },
+    [setMinimized, setOpenIds],
+  );
+
+  // Restore threads for boxes that a reload brought back.
+  React.useEffect(() => {
+    for (const id of openIds) {
+      if (!(id in threads)) void loadThread(id);
+    }
+    // Only react to the set of open boxes; `threads` is checked, not depended on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openIds, loadThread]);
+
+  // Global realtime: every message this user can see.
   React.useEffect(() => {
     const supabase = createClient();
     const channel = supabase
@@ -112,32 +162,52 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
         (payload) => {
           const message = payload.new as Message;
           if (message.sender_id === currentUser.id) return;
-          const known = convRef.current.find(
+
+          const known = conversationsRef.current.find(
             (c) => c.id === message.conversation_id,
           );
           if (!known) {
-            void loadConversations();
+            // A brand-new conversation: fetch it, then pop it up collapsed.
+            void loadConversations().then(() =>
+              openChat(message.conversation_id, true),
+            );
             return;
           }
-          const isActive = activeIdRef.current === message.conversation_id;
-          if (isActive) {
+
+          const isOpen = openIdsRef.current.includes(message.conversation_id);
+          const isCollapsed = minimizedRef.current.includes(
+            message.conversation_id,
+          );
+          const reading = isOpen && !isCollapsed;
+
+          if (reading) {
             const sender = peerOf(known, currentUser.id) ?? currentUser;
-            setMessages((prev) =>
-              prev && !prev.some((m) => m.id === message.id)
-                ? [...prev, { ...message, sender }]
-                : prev,
-            );
+            setThreads((previous) => {
+              const thread = previous[message.conversation_id];
+              if (!thread || thread.some((m) => m.id === message.id)) {
+                return previous;
+              }
+              return {
+                ...previous,
+                [message.conversation_id]: [...thread, { ...message, sender }],
+              };
+            });
             void markConversationRead(message.conversation_id);
+          } else if (!isOpen) {
+            // Someone new is talking to you — open their box, collapsed, so it
+            // announces itself without hijacking a box you're typing in.
+            openChat(message.conversation_id, true);
           }
-          setConversations((prev) =>
-            prev
+
+          setConversations((previous) =>
+            previous
               .map((c) =>
                 c.id === message.conversation_id
                   ? {
                       ...c,
                       last_message: message,
                       last_message_at: message.created_at,
-                      unread: !isActive,
+                      unread: !reading,
                     }
                   : c,
               )
@@ -153,20 +223,12 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [currentUser, loadConversations]);
+  }, [currentUser, loadConversations, openChat]);
 
-  React.useEffect(() => {
-    bottomRef.current?.scrollIntoView();
-  }, [messages]);
-
-  async function send() {
-    const content = input.trim();
-    if (!content || !activeId || sending) return;
-    setSending(true);
-    setInput("");
+  async function send(conversationId: string, content: string) {
     const optimistic: MessageWithSender = {
       id: `o-${Date.now()}`,
-      conversation_id: activeId,
+      conversation_id: conversationId,
       sender_id: currentUser.id,
       content,
       image_path: null,
@@ -180,255 +242,170 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
       created_at: new Date().toISOString(),
       sender: currentUser,
     };
-    setMessages((prev) => [...(prev ?? []), optimistic]);
-    const res = await sendMessage({
-      conversationId: activeId,
+    setThreads((previous) => ({
+      ...previous,
+      [conversationId]: [...(previous[conversationId] ?? []), optimistic],
+    }));
+
+    const result = await sendMessage({
+      conversationId,
       content,
       imagePath: null,
     });
-    setMessages((prev) => {
-      if (!prev) return prev;
-      if (!res.ok) return prev.filter((m) => m.id !== optimistic.id);
-      return prev.map((m) =>
-        m.id === optimistic.id ? { ...m, id: res.data.messageId } : m,
-      );
+    setThreads((previous) => {
+      const thread = previous[conversationId];
+      if (!thread) return previous;
+      return {
+        ...previous,
+        [conversationId]: result.ok
+          ? thread.map((m) =>
+              m.id === optimistic.id ? { ...m, id: result.data.messageId } : m,
+            )
+          : thread.filter((m) => m.id !== optimistic.id),
+      };
     });
     void loadConversations();
-    setSending(false);
   }
 
   // Don't duplicate the dock on the full messenger page.
   if (pathname?.startsWith("/messages")) return null;
 
-  const unread = conversations.filter((c) => c.unread).length;
-  const active = conversations.find((c) => c.id === activeId) ?? null;
-  const activePeer = active ? peerOf(active, currentUser.id) : null;
+  const unreadTotal = conversations.filter((c) => c.unread).length;
+  const openConversations = openIds
+    .map((id) => conversations.find((c) => c.id === id))
+    .filter((c): c is ConversationSummary => Boolean(c));
 
+  // bottom-16 clears the mobile bottom nav; on desktop the boxes sit on the very
+  // edge, the way a docked chat window should.
   return (
     <div
       data-no-print
-      className="fixed bottom-20 right-3 z-40 flex flex-col items-end gap-2 md:bottom-4 md:right-4"
+      className="pointer-events-none fixed bottom-16 right-3 z-40 flex items-end gap-3 md:bottom-0 md:right-4"
     >
-      {/* Open chat window */}
-      {activeId && active ? (
-        <div
-          className={cn(
-            "flex flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl",
-            gamesOpen
-              ? "h-[34rem] w-[22rem] max-w-[calc(100vw-1.5rem)]"
-              : "h-[26rem] w-[19rem]",
-          )}
-        >
-          <div className="flex items-center gap-2 border-b bg-card px-3 py-2">
-            {activePeer ? (
-              <UserAvatar
-                profile={activePeer}
-                linked={false}
-                className="h-7 w-7"
-              />
-            ) : null}
-            <span className="flex-1 truncate text-sm font-semibold">
-              {active.title ??
-                (activePeer ? displayName(activePeer) : "Chat")}
-            </span>
-            {activePeer ? (
-              <button
-                type="button"
-                onClick={() => setGamesOpen((v) => !v)}
-                className={cn(
-                  "rounded-full p-1 hover:bg-muted",
-                  gamesOpen ? "text-primary" : "text-muted-foreground",
-                )}
-                aria-label="ဂိမ်း"
-              >
-                <Gamepad2 className="h-4 w-4" />
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setActiveId(null)}
-              className="rounded-full p-1 text-muted-foreground hover:bg-muted"
-              aria-label="Minimise"
-            >
-              <ChevronDown className="h-4 w-4" />
-            </button>
-          </div>
-
-          {gamesOpen ? (
-            <div className="max-h-[22rem] overflow-y-auto">
-              <GamesPanel
-                conversationId={active.id}
-                currentUserId={currentUser.id}
-                onClose={() => setGamesOpen(false)}
-              />
-            </div>
-          ) : null}
-
-          <div className="flex-1 space-y-1.5 overflow-y-auto p-2.5">
-            {messages === null ? (
-              <div className="flex justify-center py-6">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : messages.length === 0 ? (
-              <p className="py-6 text-center text-xs text-muted-foreground">
-                စကားစပြောလိုက်ပါ 👋
-              </p>
-            ) : (
-              messages.map((m) => {
-                const mine = m.sender_id === currentUser.id;
-                return (
-                  <div
-                    key={m.id}
-                    className={cn("flex", mine ? "justify-end" : "justify-start")}
-                  >
-                    <div
-                      className={cn(
-                        "max-w-[80%] overflow-hidden rounded-2xl",
-                        mine
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted",
-                      )}
-                    >
-                      {m.image_path ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={mediaUrl(m.image_path)}
-                          alt=""
-                          loading="lazy"
-                          className="max-h-40 w-full object-cover"
-                        />
-                      ) : null}
-                      {m.content ? (
-                        <p className="whitespace-pre-wrap break-words px-3 py-1.5 text-sm">
-                          {m.content}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-            <div ref={bottomRef} />
-          </div>
-
-          <div className="flex items-center gap-2 border-t p-2">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void send();
-                }
+      {/* Open conversations, newest nearest the launcher. On a phone there's
+          only room for one, so all but the most recent stay hidden. */}
+      {openConversations.map((conversation, index) => {
+        const collapsed = minimized.includes(conversation.id);
+        const other = peerOf(conversation, currentUser.id);
+        const isLast = index === openConversations.length - 1;
+        return (
+          <div
+            key={conversation.id}
+            className={cn("mb-0", !isLast && "hidden sm:block")}
+          >
+            <ChatBox
+              conversationId={conversation.id}
+              currentUserId={currentUser.id}
+              title={
+                conversation.title ?? (other ? displayName(other) : "Chat")
+              }
+              peer={other}
+              messages={threads[conversation.id] ?? null}
+              minimized={collapsed}
+              unread={conversation.unread ? 1 : 0}
+              onSend={(content) => send(conversation.id, content)}
+              onClose={() => closeChat(conversation.id)}
+              onToggleMinimize={() =>
+                collapsed
+                  ? openChat(conversation.id)
+                  : setMinimized((previous) => [...previous, conversation.id])
+              }
+              onFocus={() => {
+                if (conversation.unread) openChat(conversation.id);
               }}
-              placeholder="Message…"
-              maxLength={4000}
-              className="flex-1 rounded-full bg-muted px-3 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
             />
-            <button
-              type="button"
-              onClick={() => void send()}
-              disabled={sending || !input.trim()}
-              className="rounded-full bg-primary p-2 text-primary-foreground disabled:opacity-50"
-              aria-label="Send"
-            >
-              {sending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        );
+      })}
+
+      {/* Conversation list + launcher */}
+      <div className="pointer-events-auto mb-3 flex flex-col items-end gap-2 md:mb-4">
+        {listOpen ? (
+          <div className="flex max-h-[26rem] w-[19rem] flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl">
+            <div className="flex items-center justify-between border-b bg-card px-3 py-2">
+              <span className="text-sm font-bold">Chats</span>
+              <Link
+                href="/messages"
+                className="text-xs text-primary hover:underline"
+                onClick={() => setListOpen(false)}
+              >
+                အားလုံးကြည့်
+              </Link>
+            </div>
+            <div className="overflow-y-auto p-1.5">
+              {conversations.length === 0 ? (
+                <p className="py-8 text-center text-xs text-muted-foreground">
+                  စကားပြောဆိုမှု မရှိသေးပါ။
+                </p>
               ) : (
-                <SendHorizonal className="h-4 w-4" />
+                conversations.map((conversation) => {
+                  const other = peerOf(conversation, currentUser.id);
+                  const preview =
+                    conversation.last_message?.content ||
+                    (conversation.last_message?.image_path
+                      ? "📷 ဓာတ်ပုံ"
+                      : "…");
+                  return (
+                    <button
+                      key={conversation.id}
+                      type="button"
+                      onClick={() => openChat(conversation.id)}
+                      className="flex w-full items-center gap-2 rounded-lg p-2 text-left hover:bg-muted"
+                    >
+                      {other ? (
+                        <UserAvatar
+                          profile={other}
+                          linked={false}
+                          className="h-9 w-9"
+                        />
+                      ) : (
+                        <div className="h-9 w-9 rounded-full bg-muted" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {conversation.title ??
+                            (other ? displayName(other) : "Chat")}
+                        </p>
+                        <p
+                          className={cn(
+                            "truncate text-xs",
+                            conversation.unread
+                              ? "font-semibold text-foreground"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {preview}
+                        </p>
+                      </div>
+                      {conversation.unread ? (
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />
+                      ) : null}
+                    </button>
+                  );
+                })
               )}
-            </button>
+            </div>
           </div>
-        </div>
-      ) : null}
-
-      {/* Conversation list */}
-      {listOpen && !activeId ? (
-        <div className="flex max-h-[26rem] w-[19rem] flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl">
-          <div className="flex items-center justify-between border-b bg-card px-3 py-2">
-            <span className="text-sm font-bold">Chats</span>
-            <Link
-              href="/messages"
-              className="text-xs text-primary hover:underline"
-              onClick={() => setListOpen(false)}
-            >
-              အားလုံးကြည့်
-            </Link>
-          </div>
-          <div className="overflow-y-auto p-1.5">
-            {conversations.length === 0 ? (
-              <p className="py-8 text-center text-xs text-muted-foreground">
-                စကားပြောဆိုမှု မရှိသေးပါ။
-              </p>
-            ) : (
-              conversations.map((c) => {
-                const other = peerOf(c, currentUser.id);
-                const preview =
-                  c.last_message?.content ||
-                  (c.last_message?.image_path ? "📷 ဓာတ်ပုံ" : "…");
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setActiveId(c.id)}
-                    className="flex w-full items-center gap-2 rounded-lg p-2 text-left hover:bg-muted"
-                  >
-                    {other ? (
-                      <UserAvatar profile={other} linked={false} className="h-9 w-9" />
-                    ) : (
-                      <div className="h-9 w-9 rounded-full bg-muted" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">
-                        {c.title ?? (other ? displayName(other) : "Chat")}
-                      </p>
-                      <p
-                        className={cn(
-                          "truncate text-xs",
-                          c.unread
-                            ? "font-semibold text-foreground"
-                            : "text-muted-foreground",
-                        )}
-                      >
-                        {preview}
-                      </p>
-                    </div>
-                    {c.unread ? (
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />
-                    ) : null}
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </div>
-      ) : null}
-
-      {/* Launcher */}
-      <button
-        type="button"
-        onClick={() => {
-          if (activeId) {
-            setActiveId(null);
-            setListOpen(false);
-          } else {
-            setListOpen((v) => !v);
-          }
-        }}
-        className="relative flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105"
-        aria-label="Chat"
-      >
-        {listOpen || activeId ? (
-          <X className="h-5 w-5" />
-        ) : (
-          <MessageCircle className="h-6 w-6" />
-        )}
-        {!listOpen && !activeId && unread > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white">
-            {unread > 9 ? "9+" : unread}
-          </span>
         ) : null}
-      </button>
+
+        <button
+          type="button"
+          onClick={() => setListOpen((open) => !open)}
+          aria-label="Chat"
+          className="relative flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105"
+        >
+          {listOpen ? (
+            <X className="h-5 w-5" />
+          ) : (
+            <MessageCircle className="h-6 w-6" />
+          )}
+          {!listOpen && unreadTotal > 0 ? (
+            <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white">
+              {unreadTotal > 9 ? "9+" : unreadTotal}
+            </span>
+          ) : null}
+        </button>
+      </div>
     </div>
   );
 }
