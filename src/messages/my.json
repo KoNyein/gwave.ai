@@ -394,7 +394,15 @@
     "goLive": "Live လွှင့်ရန်",
     "recordVoice": "အသံ မက်ဆေ့ခ်ျ သွင်းရန်",
     "sendGif": "GIF ပို့ရန်",
-    "emoji": "အီမိုဂျီ"
+    "emoji": "အီမိုဂျီ",
+    "shareLiveLocation": "တည်နေရာ တိုက်ရိုက် မျှဝေရန်",
+    "liveLocationHint": "သတ်မှတ်ချိန် ကုန်သည်အထိ သင် ရွှေ့သွားတာကို မြေပုံပေါ်မှာ မြင်နေရပါမယ်။ ဒီစာမျက်နှာကို ဖွင့်ထားပါ — browser က နောက်ကွယ်ကနေ မလိုက်နိုင်ပါ။",
+    "liveLocationFor": "{minutes} မိနစ်ကြာ",
+    "liveLocationActive": "တည်နေရာ တိုက်ရိုက် · {minutes} မိနစ် ကျန်",
+    "liveLocationEnded": "တည်နေရာ တိုက်ရိုက် မျှဝေမှု ပြီးဆုံးပြီ",
+    "stopSharing": "ရပ်ရန်",
+    "sentLiveLocation": "တည်နေရာ တိုက်ရိုက် မျှဝေခဲ့သည်",
+    "live": "တိုက်ရိုက်"
   },
   "stories": {
     "createStory": "စတိုရီဖန်တီးရန်",

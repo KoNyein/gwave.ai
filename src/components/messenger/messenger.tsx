@@ -12,6 +12,7 @@ import {
   MapPin,
   MessageCircle,
   Mic,
+  Navigation,
   Paperclip,
   Phone,
   Plus,
@@ -26,6 +27,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { CallUI } from "@/components/messenger/call-ui";
 import { GamesPanel } from "@/components/messenger/games-panel";
 import { EmojiPicker } from "@/components/messenger/emoji-picker";
+import { LiveLocationMessage } from "@/components/messenger/live-location-message";
+import { useLiveLocationShare } from "@/components/messenger/use-live-location-share";
 import { useCall } from "@/components/messenger/use-call";
 import { VoiceMessage } from "@/components/messenger/voice-message";
 import { VoiceRecorder } from "@/components/messenger/voice-recorder";
@@ -33,11 +36,21 @@ import { LocationMap } from "@/components/social/location-map";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  LIVE_LOCATION_MINUTES,
+  startLiveLocation,
+} from "@/lib/actions/live-location";
 import {
   markConversationRead,
   openDirectConversation,
@@ -130,6 +143,8 @@ export function Messenger({
   const [uploadError, setUploadError] = React.useState<string | null>(null);
   const [recording, setRecording] = React.useState(false);
   const [emojiOpen, setEmojiOpen] = React.useState(false);
+  const [liveLocationOpen, setLiveLocationOpen] = React.useState(false);
+  const liveShare = useLiveLocationShare((message) => setUploadError(message));
   const gifInputRef = React.useRef<HTMLInputElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const typingSentAt = React.useRef(0);
@@ -367,6 +382,7 @@ export function Messenger({
         file_kind: null,
         file_name: null,
         duration_seconds: null,
+        live_until: null,
         created_at: new Date().toISOString(),
         sender: currentUser,
       };
@@ -437,6 +453,7 @@ export function Messenger({
         file_kind: kind,
         file_name: fileName,
         duration_seconds: null,
+        live_until: null,
         created_at: new Date().toISOString(),
         sender: currentUser,
       };
@@ -502,6 +519,7 @@ export function Messenger({
         file_kind: "audio",
         file_name: null,
         duration_seconds: seconds,
+        live_until: null,
         created_at: new Date().toISOString(),
         sender: currentUser,
       };
@@ -548,6 +566,74 @@ export function Messenger({
     }
   }
 
+  /** Begin a live share: one message now, then the pin follows the sender. */
+  async function beginLiveLocation(minutes: (typeof LIVE_LOCATION_MINUTES)[number]) {
+    if (!activeId || sending) return;
+    setLiveLocationOpen(false);
+    setSending(true);
+    try {
+      const fix = await getCurrentPosition();
+      const result = await startLiveLocation({
+        conversationId: activeId,
+        latitude: fix.latitude,
+        longitude: fix.longitude,
+        accuracy: fix.accuracy,
+        minutes,
+      });
+      if (!result.ok) {
+        setUploadError(result.error);
+        return;
+      }
+
+      liveShare.start({
+        messageId: result.data.messageId,
+        conversationId: activeId,
+        expiresAt: result.data.expiresAt,
+      });
+
+      const optimistic: MessageWithSender = {
+        id: result.data.messageId,
+        conversation_id: activeId,
+        sender_id: currentUser.id,
+        content: "",
+        image_path: null,
+        latitude: fix.latitude,
+        longitude: fix.longitude,
+        file_path: null,
+        file_kind: null,
+        file_name: null,
+        duration_seconds: null,
+        live_until: result.data.expiresAt,
+        created_at: new Date().toISOString(),
+        sender: currentUser,
+      };
+      setMessages((previous) => [...(previous ?? []), optimistic]);
+      setConversations((previous) =>
+        previous
+          .map((c) =>
+            c.id === activeId
+              ? {
+                  ...c,
+                  last_message: optimistic,
+                  last_message_at: optimistic.created_at,
+                }
+              : c,
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.last_message_at).getTime() -
+              new Date(a.last_message_at).getTime(),
+          ),
+      );
+    } catch (err) {
+      setUploadError(
+        err instanceof Error ? err.message : "Couldn't get your location.",
+      );
+    } finally {
+      setSending(false);
+    }
+  }
+
   async function shareLocation() {
     if (!activeId || sending) return;
     setSending(true);
@@ -565,6 +651,7 @@ export function Messenger({
         file_kind: null,
         file_name: null,
         duration_seconds: null,
+        live_until: null,
         created_at: new Date().toISOString(),
         sender: currentUser,
       };
@@ -906,7 +993,17 @@ export function Messenger({
                             />
                           ) : null}
                           {message.latitude != null &&
-                          message.longitude != null ? (
+                          message.longitude != null &&
+                          message.live_until ? (
+                            <LiveLocationMessage
+                              messageId={message.id}
+                              startLatitude={message.latitude}
+                              startLongitude={message.longitude}
+                              liveUntil={message.live_until}
+                              mine={isMine}
+                            />
+                          ) : message.latitude != null &&
+                            message.longitude != null ? (
                             <a
                               href={`https://www.openstreetmap.org/?mlat=${message.latitude}&mlon=${message.longitude}#map=16/${message.latitude}/${message.longitude}`}
                               target="_blank"
@@ -1034,6 +1131,58 @@ export function Messenger({
               </p>
             ) : null}
 
+            {/* Sharing runs across conversations, so say so wherever you are. */}
+            {liveShare.share ? (
+              <div className="flex items-center gap-2 border-t bg-destructive/10 px-3 py-2 text-xs">
+                <span className="flex h-2 w-2 shrink-0 animate-pulse rounded-full bg-destructive" />
+                <Navigation className="h-3.5 w-3.5 shrink-0 text-destructive" />
+                <span className="min-w-0 flex-1">
+                  {t("liveLocationActive", {
+                    minutes: Math.max(
+                      0,
+                      Math.round(
+                        (new Date(liveShare.share.expiresAt).getTime() -
+                          Date.now()) /
+                          60_000,
+                      ),
+                    ),
+                  })}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void liveShare.stop()}
+                  className="shrink-0 rounded-full bg-destructive px-2.5 py-1 font-medium text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {t("stopSharing")}
+                </button>
+              </div>
+            ) : null}
+
+            <Dialog open={liveLocationOpen} onOpenChange={setLiveLocationOpen}>
+              <DialogContent className="max-w-xs">
+                <DialogHeader>
+                  <DialogTitle>{t("shareLiveLocation")}</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                  {t("liveLocationHint")}
+                </p>
+                <div className="space-y-2">
+                  {LIVE_LOCATION_MINUTES.map((minutes) => (
+                    <Button
+                      key={minutes}
+                      variant="outline"
+                      className="w-full justify-start"
+                      disabled={sending}
+                      onClick={() => void beginLiveLocation(minutes)}
+                    >
+                      <Navigation className="mr-2 h-4 w-4 text-destructive" />
+                      {t("liveLocationFor", { minutes })}
+                    </Button>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
+
             {/* Composer */}
             <div className="border-t p-3">
               <div className="relative">
@@ -1105,6 +1254,15 @@ export function Messenger({
                           <DropdownMenuItem onClick={() => void shareLocation()}>
                             <MapPin className="mr-2 h-4 w-4 text-destructive" />
                             {t("shareLocation")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setUploadError(null);
+                              setLiveLocationOpen(true);
+                            }}
+                          >
+                            <Navigation className="mr-2 h-4 w-4 text-destructive" />
+                            {t("shareLiveLocation")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

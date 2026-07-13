@@ -675,6 +675,26 @@ export interface Message {
   file_kind: "video" | "file" | "audio" | null;
   file_name: string | null;
   duration_seconds: number | null;
+  /**
+   * Set when latitude/longitude are the *start* of a live share rather than a
+   * fixed pin. The moving position lives in live_locations, keyed by this
+   * message; this is what tells the client to render the live map.
+   */
+  live_until: string | null;
+  created_at: string;
+}
+
+/** The moving pin behind a live-location message. */
+export interface LiveLocation {
+  message_id: string;
+  conversation_id: string;
+  user_id: string;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  expires_at: string;
+  stopped_at: string | null;
+  updated_at: string;
   created_at: string;
 }
 

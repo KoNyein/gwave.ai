@@ -394,7 +394,15 @@
     "goLive": "开始直播",
     "recordVoice": "录制语音消息",
     "sendGif": "发送 GIF",
-    "emoji": "表情"
+    "emoji": "表情",
+    "shareLiveLocation": "共享实时位置",
+    "liveLocationHint": "在结束前，好友会在地图上看到你的移动。请保持此页面打开——浏览器无法在后台跟踪位置。",
+    "liveLocationFor": "共 {minutes} 分钟",
+    "liveLocationActive": "实时位置 · 剩余 {minutes} 分钟",
+    "liveLocationEnded": "实时位置共享已结束",
+    "stopSharing": "停止",
+    "sentLiveLocation": "共享了实时位置",
+    "live": "实时"
   },
   "stories": {
     "createStory": "创建快拍",

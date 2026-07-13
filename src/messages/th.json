@@ -394,7 +394,15 @@
     "goLive": "ไลฟ์สด",
     "recordVoice": "อัดข้อความเสียง",
     "sendGif": "ส่ง GIF",
-    "emoji": "อีโมจิ"
+    "emoji": "อีโมจิ",
+    "shareLiveLocation": "แชร์ตำแหน่งแบบเรียลไทม์",
+    "liveLocationHint": "เพื่อนของคุณจะเห็นคุณเคลื่อนที่บนแผนที่จนกว่าจะสิ้นสุด เปิดหน้านี้ไว้ — เบราว์เซอร์ติดตามในเบื้องหลังไม่ได้",
+    "liveLocationFor": "เป็นเวลา {minutes} นาที",
+    "liveLocationActive": "ตำแหน่งเรียลไทม์ · เหลือ {minutes} นาที",
+    "liveLocationEnded": "สิ้นสุดการแชร์ตำแหน่งแล้ว",
+    "stopSharing": "หยุด",
+    "sentLiveLocation": "แชร์ตำแหน่งแบบเรียลไทม์",
+    "live": "สด"
   },
   "stories": {
     "createStory": "สร้างสตอรี่",

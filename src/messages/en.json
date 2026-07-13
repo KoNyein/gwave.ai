@@ -394,7 +394,15 @@
     "goLive": "Go Live",
     "recordVoice": "Record a voice message",
     "sendGif": "Send a GIF",
-    "emoji": "Emoji"
+    "emoji": "Emoji",
+    "shareLiveLocation": "Share live location",
+    "liveLocationHint": "Your friend will see you move on the map until it ends. Keep this page open — the browser can't track you in the background.",
+    "liveLocationFor": "For {minutes} minutes",
+    "liveLocationActive": "Live location · {minutes} min left",
+    "liveLocationEnded": "Live location ended",
+    "stopSharing": "Stop",
+    "sentLiveLocation": "Shared live location",
+    "live": "Live"
   },
   "stories": {
     "createStory": "Create story",
