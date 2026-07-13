@@ -97,3 +97,35 @@ export async function goLive(streamId: string): Promise<ActionResult> {
   revalidatePath(`/live/${streamId}`);
   return { ok: true, data: undefined };
 }
+
+/** Host sets the game tag + support goal for a game live stream. */
+export async function setStreamGameGoal(
+  streamId: string,
+  input: { gameName?: string; goalAmount?: number; goalLabel?: string },
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in" };
+
+  const gameName = (input.gameName ?? "").trim().slice(0, 60);
+  const goalLabel = (input.goalLabel ?? "").trim().slice(0, 80);
+  const goalAmount =
+    input.goalAmount != null && input.goalAmount > 0
+      ? Math.round(input.goalAmount)
+      : null;
+
+  const { error } = await supabase
+    .from("live_streams")
+    .update({
+      game_name: gameName || null,
+      goal_amount: goalAmount,
+      goal_label: goalLabel || null,
+    })
+    .eq("id", streamId)
+    .eq("host_id", user.id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/live/${streamId}`);
+  return { ok: true, data: undefined };
+}

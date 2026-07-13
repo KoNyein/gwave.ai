@@ -25,6 +25,13 @@ export async function getLiveGifts(): Promise<LiveGift[]> {
   return data ?? [];
 }
 
+/** Total G-Pay gifted to a stream — the numerator of the support-goal bar. */
+export async function getStreamGiftTotal(streamId: string): Promise<number> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("live_gift_total", { p_stream: streamId });
+  return Number(data ?? 0);
+}
+
 /** Top supporters of a stream, by total G-Pay gifted. */
 export async function getTopGifters(streamId: string): Promise<TopGifter[]> {
   const supabase = await createClient();

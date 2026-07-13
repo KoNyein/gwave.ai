@@ -22,7 +22,12 @@ import { currencyToGpay, toRateMap } from "@/lib/currency";
 import { getActiveCurrencies } from "@/lib/db/currency";
 import { getMyGpayAccount } from "@/lib/db/gpay";
 import { getRecentChat, getStream, getStreamKey } from "@/lib/db/live";
-import { getLiveGifts, getTopGifters } from "@/lib/db/live-gifts";
+import {
+  getLiveGifts,
+  getStreamGiftTotal,
+  getTopGifters,
+} from "@/lib/db/live-gifts";
+import { GameGoalBar } from "@/components/live/game-goal-bar";
 import {
   getLiveProducts,
   getMySellableProducts,
@@ -84,10 +89,11 @@ export default async function LiveStreamPage({
   const myProducts = isHost ? await getMySellableProducts(profile.id) : [];
   const pinnedIds = liveProducts.map((p) => p.id);
 
-  // Live gifts (G-Pay powered) + top supporters.
-  const [liveGifts, topGifters] = await Promise.all([
+  // Live gifts (G-Pay powered) + top supporters + goal progress.
+  const [liveGifts, topGifters, giftTotal] = await Promise.all([
     getLiveGifts(),
     getTopGifters(stream.id),
+    getStreamGiftTotal(stream.id),
   ]);
   const giftSupabase = await createClient();
   const { data: myGpayGift } = await giftSupabase
@@ -176,6 +182,15 @@ export default async function LiveStreamPage({
           canGift={canGift}
         />
       </div>
+
+      <GameGoalBar
+        streamId={stream.id}
+        isHost={isHost}
+        gameName={stream.game_name ?? null}
+        goalAmount={stream.goal_amount ?? null}
+        goalLabel={stream.goal_label ?? null}
+        gifted={giftTotal}
+      />
 
       <TopGifters gifters={topGifters} />
 
