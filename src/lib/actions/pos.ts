@@ -492,3 +492,35 @@ export async function closeShift(
   revalidatePath("/pos", "layout");
   return { ok: true, data: undefined };
 }
+
+/**
+ * Take real G-Pay at the counter. The customer authorises with their own
+ * transaction PIN; their wallet is debited and the store owner's wallet is
+ * credited atomically. Returns the G-Pay transaction id to attach to the sale.
+ */
+export async function settlePosGpay(input: {
+  storeId: string;
+  customerPhone: string;
+  amount: number;
+  pin: string;
+}): Promise<ActionResult<{ txnId: string }>> {
+  if (!uuid.safeParse(input.storeId).success) {
+    return { ok: false, error: "Invalid store." };
+  }
+  const phone = input.customerPhone.trim();
+  if (!phone) return { ok: false, error: "Enter the customer's G-Pay phone." };
+  if (!/^[0-9]{4,6}$/.test(input.pin)) {
+    return { ok: false, error: "PIN must be 4–6 digits." };
+  }
+  if (!(input.amount > 0)) return { ok: false, error: "Nothing to charge." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("pos_settle_gpay", {
+    p_store_id: input.storeId,
+    p_customer_phone: phone,
+    p_amount: input.amount,
+    p_pin: input.pin,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: { txnId: String(data) } };
+}
