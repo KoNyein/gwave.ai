@@ -7,7 +7,9 @@ AWS deployment scripts for gwave.ai. Full walkthrough: **`docs/AWS_DEPLOY.md`**.
 | `mediamtx-setup.sh` | Install MediaMTX + Caddy TLS on an EC2 — self-hosted **Live (RTMP→HLS)** + **CCTV (RTSP→HLS)**. |
 | `mediamtx.yml` | MediaMTX config (paths for live keys + CCTV cameras). |
 | `coturn-setup.sh` | Install coturn TURN/STUN on an EC2 — messenger **audio/video calls** through NATs. |
-| `livekit-setup.sh` | Install the **LiveKit SFU** + Caddy TLS on an EC2 — **co-host Live** scaled to thousands of viewers. |
+| `livekit-setup.sh` | Install the **LiveKit SFU** + Caddy TLS on an EC2 you already have. |
+| `livekit-cloudformation.yaml` | **One-click AWS**: EC2 + Elastic IP + security group + LiveKit auto-installed. |
+| `livekit-aws-deploy.sh` | Wrapper that deploys the CloudFormation stack from your machine. |
 | `livekit.yaml` | LiveKit server config (ports, keys, embedded TURN). |
 | `ecs-task-definition.json` | ECS Fargate task definition template for the Next.js app. |
 

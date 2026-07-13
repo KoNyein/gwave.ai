@@ -1,0 +1,189 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  gwave.ai — LiveKit SFU (media server) for co-host Live and single-broadcaster
+  Live. Provisions one Ubuntu 22.04 EC2 with an Elastic IP, a security group
+  with the ports LiveKit needs, and user-data that installs LiveKit + Caddy
+  (auto-TLS) on first boot. Outputs the wss:// URL to put in the app.
+
+Parameters:
+  DomainName:
+    Type: String
+    Description: DNS name for LiveKit (point its A record at this stack's Elastic IP).
+    Default: live.gwave.cc
+  LetsEncryptEmail:
+    Type: String
+    Description: Email for the Let's Encrypt TLS certificate.
+  LivekitApiKey:
+    Type: String
+    Description: LiveKit API key (also set as LIVEKIT_API_KEY in the app).
+    Default: APIgwave
+    MinLength: 3
+  LivekitApiSecret:
+    Type: String
+    Description: LiveKit API secret (also set as LIVEKIT_API_SECRET in the app). Use a long random string.
+    NoEcho: true
+    MinLength: 20
+  InstanceType:
+    Type: String
+    Default: t3.large
+    AllowedValues: [t3.medium, t3.large, t3.xlarge, c6i.large, c6i.xlarge]
+    Description: EC2 size. t3.large+ recommended for real audiences.
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Existing EC2 key pair for SSH access.
+  SshCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: CIDR allowed to SSH (port 22). Restrict to your IP/32 for safety.
+  LatestUbuntuAmi:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
+    Description: Ubuntu 22.04 LTS AMI (resolved automatically — leave as default).
+
+Resources:
+  LivekitSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: LiveKit SFU ingress
+      SecurityGroupIngress:
+        # SSH (restrict SshCidr to your IP in production)
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SshCidr
+        # HTTP — required by Caddy for the ACME (Let's Encrypt) challenge
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        # HTTPS/WSS — LiveKit signalling behind Caddy
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        # ICE/TCP fallback
+        - IpProtocol: tcp
+          FromPort: 7881
+          ToPort: 7881
+          CidrIp: 0.0.0.0/0
+        # Embedded TURN over TLS
+        - IpProtocol: tcp
+          FromPort: 5349
+          ToPort: 5349
+          CidrIp: 0.0.0.0/0
+        # Embedded TURN over UDP
+        - IpProtocol: udp
+          FromPort: 3478
+          ToPort: 3478
+          CidrIp: 0.0.0.0/0
+        # WebRTC media (UDP)
+        - IpProtocol: udp
+          FromPort: 50000
+          ToPort: 60000
+          CidrIp: 0.0.0.0/0
+
+  LivekitEip:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  LivekitInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref LatestUbuntuAmi
+      KeyName: !Ref KeyName
+      SecurityGroupIds:
+        - !Ref LivekitSecurityGroup
+      Tags:
+        - Key: Name
+          Value: gwave-livekit
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 20
+            VolumeType: gp3
+      UserData:
+        Fn::Base64: !Sub |
+          #!/usr/bin/env bash
+          set -euxo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -y
+          apt-get install -y curl debian-keyring debian-archive-keyring apt-transport-https
+
+          # --- LiveKit server ---
+          curl -fsSL https://get.livekit.io | bash
+
+          install -d /etc/livekit
+          cat >/etc/livekit/livekit.yaml <<EOF
+          port: 7880
+          rtc:
+            port_range_start: 50000
+            port_range_end: 60000
+            tcp_port: 7881
+            use_external_ip: true
+          keys:
+            ${LivekitApiKey}: ${LivekitApiSecret}
+          turn:
+            enabled: true
+            domain: ${DomainName}
+            tls_port: 5349
+            udp_port: 3478
+            external_tls: true
+          logging:
+            level: info
+          EOF
+
+          cat >/etc/systemd/system/livekit.service <<'UNIT'
+          [Unit]
+          Description=LiveKit Server
+          After=network.target
+          [Service]
+          ExecStart=/usr/local/bin/livekit-server --config /etc/livekit/livekit.yaml
+          Restart=always
+          User=root
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+          systemctl daemon-reload
+          systemctl enable --now livekit
+
+          # --- Caddy: HTTPS/WSS reverse proxy in front of :7880 ---
+          curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+            | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+          curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+            | tee /etc/apt/sources.list.d/caddy-stable.list
+          apt-get update -y && apt-get install -y caddy
+
+          cat >/etc/caddy/Caddyfile <<EOF
+          ${DomainName} {
+            tls ${LetsEncryptEmail}
+            reverse_proxy localhost:7880
+          }
+          EOF
+          systemctl restart caddy
+
+  LivekitEipAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt LivekitEip.AllocationId
+      InstanceId: !Ref LivekitInstance
+
+Outputs:
+  PublicIp:
+    Description: Elastic IP — create a DNS A record for DomainName pointing here.
+    Value: !Ref LivekitEip
+  LiveKitUrl:
+    Description: Set as NEXT_PUBLIC_LIVEKIT_URL in the app (after DNS + TLS are live).
+    Value: !Sub "wss://${DomainName}"
+  ApiKeyReminder:
+    Description: Set as LIVEKIT_API_KEY in the app.
+    Value: !Ref LivekitApiKey
+  NextSteps:
+    Description: What to do after the stack finishes.
+    Value: !Sub >
+      1) Point ${DomainName} A record at the PublicIp above.
+      2) Wait ~2 min for Caddy to issue TLS.
+      3) In the app set NEXT_PUBLIC_LIVEKIT_URL=wss://${DomainName},
+      LIVEKIT_API_KEY=${LivekitApiKey}, LIVEKIT_API_SECRET=(the secret you passed),
+      then redeploy.
