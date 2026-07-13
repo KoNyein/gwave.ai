@@ -146,8 +146,9 @@ export default async function AdminSystemPage() {
       </div>
 
       <p className="px-1 text-xs text-muted-foreground">
-        env var တွေကို hosting (Vercel / server <code>.env</code>) မှာ ထည့်ပြီး
-        redeploy လုပ်ပါ။ <code>NEXT_PUBLIC_*</code> ပြင်ရင် rebuild လိုပါတယ်။
+        env var တွေကို AWS server <code>.env</code> မှာ ထည့်ပြီး{" "}
+        <code>bash deploy/server-deploy.sh</code> နဲ့ redeploy လုပ်ပါ။
+        <code>NEXT_PUBLIC_*</code> ပြင်ရင် rebuild လိုပါတယ်။
       </p>
     </div>
   );

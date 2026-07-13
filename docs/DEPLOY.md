@@ -17,9 +17,11 @@
 
 > idempotent မို့ ထပ် run လည်း ဘေးကင်း။ ၈ ချက်စလုံး `PASS ✅` ဖြစ်ရမည်။
 
-## ၂။ Environment variables (hosting — Vercel/Netlify/...)
+## ၂။ Environment variables (AWS server — `deploy/.env`)
 
-ရှိပြီးသား Supabase/Stripe/Mux env များအပြင် အသစ် —
+Deployment target — **AWS တစ်ခုတည်း** (`gwave.cc`)။ env များကို server ရဲ့
+repo-root `.env` (`deploy/.env.server.example` ကို ကူးထားတာ) ထဲ ထည့်ပါ။
+ရှိပြီးသား Supabase/Stripe/LiveKit env များအပြင် အသစ် —
 
 ```
 # Web Push — chat မှာ ပို့ထားတဲ့ gwave-VAPID-keys.env ထဲက တန်ဖိုးများ
@@ -32,11 +34,17 @@ TWA_PACKAGE_NAME=ai.gwave.app
 TWA_SHA256_FINGERPRINT=...
 ```
 
-## ၃။ Redeploy
+## ၃။ Redeploy (AWS server)
 
-Hosting မှာ နောက်ဆုံး `main` ကို deploy — Vercel ဆို push တိုင်း auto-deploy
-ဖြစ်သင့်သည်။ Dashboard မှာ deployment commit မှန်မမှန် စစ်ပြီး ဖုန်း/browser
-မှာ hard refresh (Ctrl+Shift+R) လုပ်ပါ။
+AWS box (`gwave.cc`) မှာ နောက်ဆုံး `main` ကို ဆွဲပြီး redeploy —
+
+```bash
+cd ~/gwave.ai && bash deploy/server-deploy.sh
+```
+
+ဒါက `git pull` + app image rebuild + app & Caddy (auto-HTTPS) restart လုပ်ပေးသည်။
+ပြီးရင် ဖုန်း/browser မှာ hard refresh (Ctrl+Shift+R) လုပ်ပါ။ Config စစ်ချင်ရင်
+`/admin/system` ဖွင့်ကြည့်ပါ။
 
 ## ၄။ စစ်ဆေးရန် (deploy ပြီးနောက်)
 
@@ -71,7 +79,7 @@ deliverability မသေချာ) မို့ — password reset / signup emai
      User = သင့် gmail, Password = app password
 3. Sender email/name ဖြည့် → Save
 4. **Auth → URL Configuration** မှာ —
-   - Site URL: `https://gwave-ai.vercel.app`
-   - Redirect URLs: `https://gwave-ai.vercel.app/auth/callback` ထည့်
+   - Site URL: `https://gwave.cc`
+   - Redirect URLs: `https://gwave.cc/auth/callback` ထည့်
 5. (optional) **Auth → Email Templates → Reset Password** မှာ စာသား မြန်မာလို ပြင်
-6. Vercel env: `NEXT_PUBLIC_SITE_URL=https://gwave-ai.vercel.app` သတ်မှတ်ပြီး redeploy
+6. server `.env`: `NEXT_PUBLIC_SITE_URL=https://gwave.cc` သတ်မှတ်ပြီး redeploy
