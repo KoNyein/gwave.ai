@@ -4,7 +4,7 @@
 // SW_VERSION is bumped on each release so a browser's periodic sw.js re-fetch
 // (and Settings → Software update's manual check) sees changed bytes and
 // installs the new worker. Keep it in sync with APP_VERSION in src/lib/version.ts.
-const SW_VERSION = "1.0.1";
+const SW_VERSION = "1.0.2";
 
 self.addEventListener("push", (event) => {
   let data = {};
