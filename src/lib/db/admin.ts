@@ -186,3 +186,28 @@ export async function getSiteName(): Promise<string> {
     .maybeSingle();
   return (data?.value as { site_name?: string })?.site_name ?? "gwave.ai";
 }
+
+export interface DemographicRow {
+  label: string;
+  count: number;
+}
+
+/** User age distribution by band (admin-only RPC). */
+export async function getDemographicsAge(): Promise<DemographicRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("demographics_age");
+  return ((data as { band: string; count: number }[] | null) ?? []).map((r) => ({
+    label: r.band,
+    count: Number(r.count),
+  }));
+}
+
+/** User region distribution by timezone (admin-only RPC). */
+export async function getDemographicsRegion(): Promise<DemographicRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("demographics_region");
+  return ((data as { region: string; count: number }[] | null) ?? []).map((r) => ({
+    label: r.region,
+    count: Number(r.count),
+  }));
+}
