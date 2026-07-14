@@ -154,7 +154,7 @@ export function LiveGifts({
                     >
                       <span className="text-2xl">{g.emoji}</span>
                       <span className="text-[10px] font-medium">
-                        {Number(g.price_mmk).toLocaleString("en-US")}
+                        ${Number(g.price_mmk).toLocaleString("en-US", { maximumFractionDigits: 2 })}
                       </span>
                     </button>
                   ))}
@@ -185,7 +185,7 @@ export function LiveGifts({
                     {error ? <p className="text-sm text-destructive">{error}</p> : null}
                     <Button onClick={send} disabled={pending} className="w-full">
                       {pending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Gift className="mr-1.5 h-4 w-4" />}
-                      {(Number(selected.price_mmk) * qty).toLocaleString("en-US")} Ks — ပို့မည်
+                      ${(Number(selected.price_mmk) * qty).toLocaleString("en-US", { maximumFractionDigits: 2 })} — ပို့မည်
                     </Button>
                   </div>
                 ) : null}

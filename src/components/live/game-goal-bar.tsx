@@ -72,7 +72,7 @@ export function GameGoalBar({
           <Input
             value={amount}
             onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
-            placeholder="Goal (MMK)"
+            placeholder="Goal (USD)"
             inputMode="numeric"
             className="w-32"
           />
@@ -118,8 +118,8 @@ export function GameGoalBar({
               {goalLabel ?? "Goal"}
             </span>
             <span className="text-muted-foreground">
-              {Math.round(gifted).toLocaleString("en-US")} /{" "}
-              {Math.round(goalAmount!).toLocaleString("en-US")} · {percent}%
+              ${gifted.toLocaleString("en-US", { maximumFractionDigits: 2 })} /{" "}
+              ${goalAmount!.toLocaleString("en-US", { maximumFractionDigits: 2 })} · {percent}%
             </span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full bg-muted">

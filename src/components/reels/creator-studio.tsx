@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import type { CreatorSummary } from "@/types/database";
 
 function mmk(n: number): string {
-  return `${Math.round(n).toLocaleString("en-US")} Ks`;
+  return `$${n.toLocaleString("en-US", { maximumFractionDigits: 4 })}`;
 }
 
 /** Total seconds → "Hနာ Mမိ Sစ" (Burmese h/m/s). */
@@ -122,8 +122,8 @@ function RulesPanel() {
       {open ? (
         <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground">
           <li>
-            <b>ဝင်ငွေနှုန်း</b> — ကြည့်ရှုမှု ၁ ခု = <b>၁ Ks</b>၊ Like ၁ ခု ={" "}
-            <b>၃ Ks</b>၊ ကြည့်ချိန် ၁ မိနစ် = <b>၃ Ks</b> (စက္ကန့် ၁ ခု = ၀.၀၅ Ks)။ (play-money MMK)
+            <b>ဝင်ငွေနှုန်း</b> — ကြည့်ရှုမှု ၁ ခု = <b>$0.001</b>၊ Like ၁ ခု ={" "}
+            <b>$0.003</b>။ (USD)
           </li>
           <li>
             ကြည့်ရှုမှုကို <b>ကြည့်သူ တစ်ဦးလျှင် တစ်ကြိမ်သာ</b> ရေတွက်သည်။
