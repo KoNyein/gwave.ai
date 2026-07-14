@@ -7,6 +7,7 @@ import { ChessGame } from "@/components/messenger/chess-game";
 import { KyarGame } from "@/components/messenger/kyar-game";
 import { TicTacToeGame } from "@/components/messenger/tictactoe-game";
 import { cn } from "@/lib/utils";
+import type { AuthorSummary } from "@/types/social";
 
 type Game = "chess" | "kyar" | "ttt";
 
@@ -17,10 +18,13 @@ type Game = "chess" | "kyar" | "ttt";
 export function GamesPanel({
   conversationId,
   currentUserId,
+  peer,
   onClose,
 }: {
   conversationId: string;
   currentUserId: string;
+  /** The other player — the chess board shows their avatar and name. */
+  peer?: AuthorSummary | null;
   onClose: () => void;
 }) {
   const [game, setGame] = React.useState<Game>("chess");
@@ -60,7 +64,11 @@ export function GamesPanel({
       </div>
 
       {game === "chess" ? (
-        <ChessGame conversationId={conversationId} currentUserId={currentUserId} />
+        <ChessGame
+          conversationId={conversationId}
+          currentUserId={currentUserId}
+          peer={peer}
+        />
       ) : game === "kyar" ? (
         <KyarGame conversationId={conversationId} currentUserId={currentUserId} />
       ) : (

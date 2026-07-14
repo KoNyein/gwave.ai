@@ -1070,6 +1070,7 @@ export function Messenger({
                 key={active.id}
                 conversationId={active.id}
                 currentUserId={currentUser.id}
+                peer={peer}
                 onClose={() => setGamesOpen(false)}
               />
             ) : null}

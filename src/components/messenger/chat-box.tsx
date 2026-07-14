@@ -161,6 +161,7 @@ export function ChatBox({
           <GamesPanel
             conversationId={conversationId}
             currentUserId={currentUserId}
+            peer={peer}
             onClose={() => setGamesOpen(false)}
           />
         </div>
