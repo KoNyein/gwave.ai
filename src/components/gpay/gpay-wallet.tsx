@@ -33,6 +33,11 @@ import {
   setGpayPin,
   transferGpay,
 } from "@/lib/actions/gpay";
+import {
+  CurrencySwitcher,
+  useDisplayCurrency,
+} from "@/components/gpay/currency-switcher";
+import type { CurrencyMeta } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import type { GpayAccount, GpayTransaction } from "@/types/database";
 
@@ -57,14 +62,18 @@ export function GpayWallet({
   account,
   transactions,
   hasPin,
+  currencies,
 }: {
   account: GpayAccount;
   transactions: GpayTransaction[];
   hasPin: boolean;
+  currencies: CurrencyMeta[];
 }) {
   const t = useTranslations("gpay");
   const [panel, setPanel] = React.useState<Panel>(null);
   const [hidden, setHidden] = React.useState(false);
+  // Balance is USD-pegged; the viewer can display it in any currency.
+  const disp = useDisplayCurrency(currencies);
 
   const now = new Date();
   const monthly = transactions.reduce(
@@ -86,14 +95,24 @@ export function GpayWallet({
       {/* Balance header */}
       <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary/70 p-5 text-primary-foreground shadow-lg">
         <div className="flex items-center justify-center gap-2 text-sm opacity-90">
-          e-Wallet {t("balance")} (Ks)
+          e-Wallet {t("balance")}
+          <CurrencySwitcher
+            currencies={currencies}
+            value={disp.code}
+            onChange={disp.choose}
+          />
           <button type="button" onClick={() => setHidden((h) => !h)} aria-label="toggle">
             {hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
         <p className="mt-1 text-center text-4xl font-bold tabular-nums">
-          {hidden ? "••••••" : fmt(account.balance)}
+          {hidden ? "••••••" : disp.format(account.balance)}
         </p>
+        {disp.code !== "USD" ? (
+          <p className="mt-0.5 text-center text-xs opacity-80">
+            ${fmt(account.balance)} USD
+          </p>
+        ) : null}
         <p className="mt-1 text-center text-xs opacity-90">
           {t("myNumber")}: <span className="font-mono">{account.phone}</span>
         </p>
@@ -137,11 +156,11 @@ export function GpayWallet({
             <p className="text-[11px] text-muted-foreground">
               {t("received")} ({now.toLocaleDateString("en-US", { month: "short" })})
             </p>
-            <p className="font-bold text-primary">+{fmt(monthly.in)}</p>
+            <p className="font-bold text-primary">+{disp.format(monthly.in)}</p>
           </div>
           <div className="text-right">
             <p className="text-[11px] text-muted-foreground">{t("sent")}</p>
-            <p className="font-bold text-destructive">−{fmt(monthly.out)}</p>
+            <p className="font-bold text-destructive">−{disp.format(monthly.out)}</p>
           </div>
         </CardContent>
       </Card>
@@ -182,7 +201,7 @@ export function GpayWallet({
                       )}
                     >
                       {incoming ? "+" : "−"}
-                      {fmt(txn.amount)}
+                      {disp.format(Number(txn.amount))}
                     </span>
                   </li>
                 );
@@ -352,14 +371,15 @@ function SendPanel({ hasPin, onClose }: { hasPin: boolean; onClose: () => void }
 /** Cash-in via Stripe — enter an amount, redirect to Stripe Checkout. */
 function TopupPanel({ onClose }: { onClose: () => void }) {
   const t = useTranslations("gpay");
-  const [amount, setAmount] = React.useState("10000");
+  // G-Pay is USD-pegged, so top-up amounts are in USD.
+  const [amount, setAmount] = React.useState("10");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   async function pay() {
     setError(null);
     const value = Number(amount);
-    if (!Number.isFinite(value) || value < 1000) {
+    if (!Number.isFinite(value) || value < 1) {
       setError(t("topupMin"));
       return;
     }
@@ -381,22 +401,22 @@ function TopupPanel({ onClose }: { onClose: () => void }) {
         <Input
           id="topup-amount"
           type="number"
-          min="1000"
-          step="1000"
+          min="1"
+          step="1"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          inputMode="numeric"
+          inputMode="decimal"
         />
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {[5000, 10000, 50000, 100000].map((v) => (
+        {[5, 10, 50, 100].map((v) => (
           <button
             key={v}
             type="button"
             onClick={() => setAmount(String(v))}
             className="rounded-full border px-3 py-1 text-xs font-medium hover:bg-muted"
           >
-            {v.toLocaleString("en-US")}
+            ${v}
           </button>
         ))}
       </div>
