@@ -9,7 +9,7 @@ import type { CreatorStatBucket } from "@/types/database";
 type Metric = "earnings" | "views" | "likes" | "watchSeconds";
 
 const METRICS: { key: Metric; label: string; icon: React.ReactNode; color: string }[] = [
-  { key: "earnings", label: "ဝင်ငွေ (Ks)", icon: <Banknote className="h-4 w-4" />, color: "bg-emerald-500" },
+  { key: "earnings", label: "ဝင်ငွေ ($)", icon: <Banknote className="h-4 w-4" />, color: "bg-emerald-500" },
   { key: "views", label: "ကြည့်ရှုမှု", icon: <Eye className="h-4 w-4" />, color: "bg-blue-500" },
   { key: "likes", label: "Like", icon: <Heart className="h-4 w-4" />, color: "bg-rose-500" },
   { key: "watchSeconds", label: "ကြည့်ချိန်", icon: <Clock className="h-4 w-4" />, color: "bg-amber-500" },
@@ -22,7 +22,8 @@ function fmt(metric: Metric, v: number): string {
     const s = Math.floor(v % 60);
     return [h ? `${h}နာ` : "", m || h ? `${m}မိ` : "", `${s}စ`].filter(Boolean).join(" ");
   }
-  if (metric === "earnings") return `${Math.round(v).toLocaleString("en-US")} Ks`;
+  if (metric === "earnings")
+    return `$${v.toLocaleString("en-US", { maximumFractionDigits: 4 })}`;
   return v.toLocaleString("en-US");
 }
 
