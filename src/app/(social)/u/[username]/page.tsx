@@ -62,8 +62,13 @@ export default async function ProfilePage({
       isSelf ? Promise.resolve(false) : isFollowing(viewer.id, profile.id),
       getFriendCount(profile.id),
       getFriends(profile.id),
-      getProfilePosts(profile.id, viewer.id),
-      getProfilePhotos(profile.id),
+      // Posts/photos hit RLS-heavy queries — if one fails we still want the
+      // profile (and its Message button) to render, so degrade to empty.
+      getProfilePosts(profile.id, viewer.id).catch(() => ({
+        posts: [],
+        nextCursor: null,
+      })),
+      getProfilePhotos(profile.id).catch(() => []),
       isSelf
         ? Promise.resolve(null)
         : supabase
