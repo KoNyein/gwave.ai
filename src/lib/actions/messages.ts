@@ -1,7 +1,9 @@
 "use server";
 
 import { z } from "zod";
+import { getCurrentUser } from "@/lib/auth";
 
+import { notifyConversation } from "@/lib/notify-conversation";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "@/lib/actions/posts";
 
@@ -73,9 +75,7 @@ export async function sendMessage(
   if (!parsed.success) return { ok: false, error: "Invalid message." };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
   const { data: message, error } = await supabase
@@ -108,48 +108,6 @@ export async function sendMessage(
   return { ok: true, data: { messageId: message.id } };
 }
 
-/** Web-push the peers of a conversation about a new message. */
-async function notifyConversation(
-  conversationId: string,
-  senderId: string,
-  preview: string,
-): Promise<void> {
-  try {
-    const { sendPushToUser } = await import("@/lib/push");
-    const supabase = await createClient();
-    const [{ data: parts }, { data: sender }] = await Promise.all([
-      supabase
-        .from("conversation_participants")
-        .select("user_id")
-        .eq("conversation_id", conversationId),
-      supabase
-        .from("profiles")
-        .select("full_name, username")
-        .eq("id", senderId)
-        .maybeSingle(),
-    ]);
-    const name =
-      (sender?.full_name as string | null) ||
-      (sender?.username as string | null) ||
-      "Someone";
-    const recipients = (parts ?? [])
-      .map((p) => p.user_id as string)
-      .filter((id) => id !== senderId);
-    await Promise.all(
-      recipients.map((id) =>
-        sendPushToUser(id, {
-          title: name,
-          body: preview.slice(0, 120),
-          url: "/messages",
-          tag: `msg:${conversationId}`,
-        }),
-      ),
-    );
-  } catch {
-    /* push is best-effort */
-  }
-}
-
 /** Marks a conversation as read up to now (read receipt). */
 export async function markConversationRead(
   conversationId: string,
@@ -158,9 +116,7 @@ export async function markConversationRead(
     return { ok: false, error: "Invalid conversation." };
   }
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
   const { error } = await supabase

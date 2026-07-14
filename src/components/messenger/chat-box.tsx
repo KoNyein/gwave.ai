@@ -13,7 +13,7 @@ import {
 import { EmojiPicker } from "@/components/messenger/emoji-picker";
 import { GamesPanel } from "@/components/messenger/games-panel";
 import { UserAvatar } from "@/components/social/user-avatar";
-import { mediaUrl } from "@/lib/media";
+import { chatMediaUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
 import type { AuthorSummary, MessageWithSender } from "@/types/social";
 
@@ -195,7 +195,7 @@ export function ChatBox({
                   {message.image_path ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={mediaUrl(message.image_path)}
+                      src={chatMediaUrl(message.image_path)}
                       alt=""
                       loading="lazy"
                       className="max-h-40 w-full object-cover"

@@ -14,12 +14,22 @@ const S3_CDN = publicEnv.NEXT_PUBLIC_S3_CDN;
  * Supabase it uses the storage client. The key layout is identical either way,
  * so a stored path resolves under whichever backend is active.
  */
+/**
+ * Chat attachments live in their own PRIVATE bucket. The public "media" bucket is
+ * shared with posts/avatars/reels and cannot be locked down without breaking
+ * images app-wide, so chat photos, documents and voice notes go here instead and
+ * are read back through an authorizing route (see chatMediaUrl).
+ */
+export const CHAT_BUCKET = "chat-media";
+
+type Bucket = "media" | "slips" | typeof CHAT_BUCKET;
+
 async function putObject(
   userId: string,
   body: Blob,
   ext: string,
   contentType: string,
-  bucket: "media" | "slips" = "media",
+  bucket: Bucket = "media",
 ): Promise<string> {
   if (S3_CDN) {
     const res = await fetch("/api/storage/presign", {
@@ -104,6 +114,23 @@ const VOICE_EXTENSIONS: Record<string, string> = {
 export function mediaUrl(storagePath: string): string {
   if (S3_CDN) return `${S3_CDN}/${storagePath}`;
   return `${publicEnv.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${storagePath}`;
+}
+
+/**
+ * Read URL for a chat attachment. Points at our own route, which checks that the
+ * viewer is actually in the conversation and then redirects to a short-lived
+ * signed URL for the private bucket.
+ *
+ * Deliberately synchronous and pure, exactly like mediaUrl: it is used inline in
+ * JSX (`src={chatMediaUrl(path)}`), and signing in the browser instead would mean
+ * async state, a skeleton and a re-sign timer in every bubble.
+ */
+export function chatMediaUrl(
+  storagePath: string,
+  options?: { download?: boolean },
+): string {
+  const query = options?.download ? "?dl=1" : "";
+  return `/api/media/chat/${storagePath}${query}`;
 }
 
 export interface PreparedMedia {
@@ -282,6 +309,53 @@ export async function uploadVoice(
   }
   const mime = blob.type.split(";")[0] || "audio/webm";
   const ext = VOICE_EXTENSIONS[mime] ?? "webm";
-  const path = await putObject(userId, blob, ext, mime);
+  const path = await putObject(userId, blob, ext, mime, CHAT_BUCKET);
   return { storage_path: path };
+}
+
+// ---------------------------------------------------------------------------
+// Chat attachments. Separate wrappers rather than a `bucket` argument on the
+// three above: the bucket is the whole security boundary here, and an explicit
+// name is greppable and impossible for a call site to forget.
+// ---------------------------------------------------------------------------
+
+/** Photo or video sent in a chat. Compressed like uploadMedia, but kept private. */
+export async function uploadChatMedia(
+  userId: string,
+  file: File,
+): Promise<UploadedMedia> {
+  const prepared = await prepareMedia(file);
+  const path = await putObject(
+    userId,
+    prepared.blob,
+    prepared.extension,
+    prepared.contentType,
+    CHAT_BUCKET,
+  );
+
+  return {
+    storage_path: path,
+    media_type: prepared.mediaType,
+    width: prepared.width,
+    height: prepared.height,
+  };
+}
+
+/** Document sent in a chat (PDF, doc, zip, …), unmodified and private. */
+export async function uploadChatFile(
+  userId: string,
+  file: File,
+): Promise<UploadedFile> {
+  if (file.size > MAX_FILE_BYTES) {
+    throw new Error("File is too large (max 25 MB).");
+  }
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+  const path = await putObject(
+    userId,
+    file,
+    ext,
+    file.type || "application/octet-stream",
+    CHAT_BUCKET,
+  );
+  return { storage_path: path, file_name: file.name };
 }

@@ -4,7 +4,7 @@ import * as React from "react";
 import { Pause, Play } from "lucide-react";
 
 import { formatDuration } from "@/components/messenger/voice-recorder";
-import { mediaUrl } from "@/lib/media";
+import { chatMediaUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
 
 const BARS = 40;
@@ -69,7 +69,7 @@ export function VoiceMessage({
   duration: number;
   mine: boolean;
 }) {
-  const url = React.useMemo(() => mediaUrl(path), [path]);
+  const url = React.useMemo(() => chatMediaUrl(path), [path]);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const peaksLoadedRef = React.useRef(false);
 

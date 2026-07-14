@@ -3032,6 +3032,14 @@ export type Database = {
         Args: { cid: string };
         Returns: boolean;
       };
+      chat_object_meta: {
+        Args: { p_path: string };
+        Returns: { kind: string; file_name: string | null }[];
+      };
+      can_read_chat_object: {
+        Args: { p_path: string };
+        Returns: boolean;
+      };
       get_or_create_direct_conversation: {
         Args: { other_user: string };
         Returns: string;

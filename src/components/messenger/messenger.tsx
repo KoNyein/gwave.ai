@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   ArrowLeft,
   FileImage,
@@ -29,7 +30,7 @@ import { GamesPanel } from "@/components/messenger/games-panel";
 import { EmojiPicker } from "@/components/messenger/emoji-picker";
 import { LiveLocationMessage } from "@/components/messenger/live-location-message";
 import { useLiveLocationShare } from "@/components/messenger/use-live-location-share";
-import { useCall } from "@/components/messenger/use-call";
+import { useCall, type CallLogMessage } from "@/components/messenger/use-call";
 import { VoiceMessage } from "@/components/messenger/voice-message";
 import { VoiceRecorder } from "@/components/messenger/voice-recorder";
 import { LocationMap } from "@/components/social/location-map";
@@ -58,7 +59,12 @@ import { translateText } from "@/lib/actions/translate";
 import { usePersistentState } from "@/lib/hooks/use-persistent-state";
 import { displayName, timeAgo } from "@/lib/format";
 import { getCurrentPosition } from "@/lib/geolocation";
-import { mediaUrl, uploadFile, uploadMedia, uploadVoice } from "@/lib/media";
+import {
+  chatMediaUrl,
+  uploadChatFile,
+  uploadChatMedia,
+  uploadVoice,
+} from "@/lib/media";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/types/database";
@@ -138,6 +144,14 @@ function conversationPeer(
   );
 }
 
+/**
+ * Cache key for a translation. The locale belongs in the key: keyed by message id
+ * alone, switching the UI language served the previous language's translation.
+ */
+function translationKey(messageId: string, locale: string): string {
+  return `${messageId}:${locale}`;
+}
+
 export function Messenger({
   initialConversations,
   currentUser,
@@ -196,6 +210,10 @@ export function Messenger({
   activeIdRef.current = activeId;
   const conversationsRef = React.useRef(conversations);
   conversationsRef.current = conversations;
+  // The *subscribed* channel for the open conversation. Typing broadcasts reuse
+  // it; minting a fresh channel per burst sent the event over HTTP instead of
+  // the socket already open on this topic, and leaked the object every time.
+  const convoChannelRef = React.useRef<RealtimeChannel | null>(null);
 
   // Grow the box with the text, up to the max-height the CSS caps it at.
   React.useEffect(() => {
@@ -216,8 +234,60 @@ export function Messenger({
   const active = conversations.find((c) => c.id === activeId) ?? null;
   const peer = active ? conversationPeer(active, currentUser.id) : null;
 
+  /**
+   * The caller writes a "📞 Missed call" / "📞 Video call · 2:14" row when a call
+   * ends. That insert doesn't go through handleSend's optimistic path, and the
+   * realtime handler below ignores rows we sent ourselves — so nothing put it on
+   * screen and the caller only saw it after a reload. Append it here instead.
+   */
+  const handleCallLog = React.useCallback(
+    (log: CallLogMessage) => {
+      const message: MessageWithSender = {
+        id: log.id,
+        conversation_id: log.conversationId,
+        sender_id: currentUser.id,
+        content: log.content,
+        image_path: null,
+        latitude: null,
+        longitude: null,
+        file_path: null,
+        file_kind: null,
+        file_name: null,
+        duration_seconds: null,
+        live_until: null,
+        created_at: new Date().toISOString(),
+        sender: currentUser,
+      };
+      setMessages((previous) => {
+        if (previous === null) return previous;
+        if (activeIdRef.current !== log.conversationId) return previous;
+        return previous.some((m) => m.id === message.id)
+          ? previous
+          : [...previous, message];
+      });
+      setConversations((previous) =>
+        previous
+          .map((c) =>
+            c.id === log.conversationId
+              ? {
+                  ...c,
+                  last_message: message,
+                  last_message_at: message.created_at,
+                }
+              : c,
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.last_message_at).getTime() -
+              new Date(a.last_message_at).getTime(),
+          ),
+      );
+    },
+    [currentUser],
+  );
+
   // WebRTC audio/video calls (Supabase Realtime signaling).
-  const call = useCall(currentUser);
+  const call = useCall(currentUser, handleCallLog);
 
   const refreshConversations = React.useCallback(async () => {
     const response = await fetch("/api/conversations");
@@ -326,9 +396,11 @@ export function Messenger({
         },
       )
       .subscribe();
+    convoChannelRef.current = channel;
 
     return () => {
       cancelled = true;
+      convoChannelRef.current = null;
       void supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -449,37 +521,48 @@ export function Messenger({
   const translateMessage = React.useCallback(
     async (id: string, content: string) => {
       if (!content.trim()) return;
-      if (translationsRef.current[id]?.text) return;
+      const key = translationKey(id, locale);
+      const cached = translationsRef.current[key];
+      // Only a *successful* translation is a cache hit. A failed one has no text,
+      // so the retry button below can run this again.
+      if (cached?.loading || cached?.text) return;
       setTranslations((prev) => ({
         ...prev,
-        [id]: { text: prev[id]?.text ?? "", loading: true },
+        [key]: { text: "", loading: true },
       }));
       const res = await translateText(content, locale);
       setTranslations((prev) => ({
         ...prev,
-        [id]: { text: res.text, loading: false, failed: !res.ok },
+        [key]: res.ok
+          ? { text: res.text, loading: false }
+          : // translateText degrades to `{ok: false, text: <the original>}`.
+            // Storing that rendered the message as its own translation — and,
+            // because the guard above treats any text as a hit, it stuck.
+            { text: "", loading: false, failed: true },
       }));
     },
     [locale],
   );
 
-  // Auto-translate the other person's messages when the toggle is on.
+  // Auto-translate the other person's messages when the toggle is on. A failed
+  // entry counts as visited here so a broken API isn't retried on every render;
+  // the per-message button stays available to retry by hand.
   React.useEffect(() => {
     if (!autoTranslate || !messages) return;
     for (const m of messages) {
       if (!m.content || m.sender_id === currentUser.id) continue;
-      if (translationsRef.current[m.id]) continue;
+      if (translationsRef.current[translationKey(m.id, locale)]) continue;
       void translateMessage(m.id, m.content);
     }
-  }, [autoTranslate, messages, currentUser.id, translateMessage]);
+  }, [autoTranslate, messages, currentUser.id, locale, translateMessage]);
 
   function broadcastTyping() {
-    if (!activeId) return;
+    const channel = convoChannelRef.current;
+    if (!activeId || !channel) return;
     const now = Date.now();
     if (now - typingSentAt.current < 2000) return;
     typingSentAt.current = now;
-    const supabase = createClient();
-    void supabase.channel(`conversation:${activeId}`).send({
+    void channel.send({
       type: "broadcast",
       event: "typing",
       payload: { userId: currentUser.id },
@@ -496,7 +579,7 @@ export function Messenger({
     try {
       let imagePath: string | null = null;
       if (imageFile) {
-        const uploaded = await uploadMedia(currentUser.id, imageFile);
+        const uploaded = await uploadChatMedia(currentUser.id, imageFile);
         imagePath = uploaded.storage_path;
       }
 
@@ -556,9 +639,9 @@ export function Messenger({
         setInput((current) => current || content);
       }
     } catch (err) {
-      // uploadMedia throws (too large, unsupported, storage down) and this was
-      // the one send path with no catch: the spinner stopped, nothing sent, no
-      // error shown, and the typed caption was already gone.
+      // uploadChatMedia throws (too large, unsupported, storage down) and this
+      // was the one send path with no catch: the spinner stopped, nothing sent,
+      // no error shown, and the typed caption was already gone.
       setUploadError(err instanceof Error ? err.message : "Failed to send.");
       setInput((current) => current || content);
     } finally {
@@ -574,11 +657,11 @@ export function Messenger({
       let filePath: string;
       let fileName: string;
       if (kind === "video") {
-        const uploaded = await uploadMedia(currentUser.id, file);
+        const uploaded = await uploadChatMedia(currentUser.id, file);
         filePath = uploaded.storage_path;
         fileName = file.name;
       } else {
-        const uploaded = await uploadFile(currentUser.id, file);
+        const uploaded = await uploadChatFile(currentUser.id, file);
         filePath = uploaded.storage_path;
         fileName = uploaded.file_name;
       }
@@ -969,9 +1052,29 @@ export function Messenger({
         className={cn("flex min-w-0 flex-1 flex-col", !activeId && "hidden md:flex")}
       >
         {!active ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-muted-foreground">
-            <MessageCircle className="h-10 w-10" />
-            <p className="text-sm">{t("selectConversation")}</p>
+          <div className="flex flex-1 flex-col">
+            {/* On mobile the list is hidden whenever `activeId` is set, so a `?c=`
+                pointing at a conversation we don't have (deleted, not a member,
+                garbage) stranded the user on an empty pane with nothing to tap.
+                The back button lives in the `active` branch below, which never
+                renders in that state. */}
+            {activeId ? (
+              <div className="flex items-center gap-3 border-b p-3 md:hidden">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full"
+                  onClick={() => setActiveId(null)}
+                  aria-label={t("back")}
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              </div>
+            ) : null}
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-muted-foreground">
+              <MessageCircle className="h-10 w-10" />
+              <p className="text-sm">{t("selectConversation")}</p>
+            </div>
           </div>
         ) : (
           <>
@@ -1132,7 +1235,7 @@ export function Messenger({
                           {message.image_path ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
-                              src={mediaUrl(message.image_path)}
+                              src={chatMediaUrl(message.image_path)}
                               alt=""
                               loading="lazy"
                               className="max-h-72 w-full object-cover"
@@ -1174,7 +1277,7 @@ export function Messenger({
                           ) : null}
                           {message.file_path && message.file_kind === "video" ? (
                             <video
-                              src={mediaUrl(message.file_path)}
+                              src={chatMediaUrl(message.file_path)}
                               controls
                               playsInline
                               className="max-h-72 w-full bg-black"
@@ -1190,11 +1293,15 @@ export function Messenger({
                             </div>
                           ) : null}
                           {message.file_path && message.file_kind === "file" ? (
+                            // The `download` attribute is silently ignored on a
+                            // cross-origin href, so this only ever *opened* the
+                            // file. The route sets Content-Disposition from the
+                            // stored filename instead, which actually downloads it.
                             <a
-                              href={mediaUrl(message.file_path)}
-                              target="_blank"
+                              href={chatMediaUrl(message.file_path, {
+                                download: true,
+                              })}
                               rel="noopener noreferrer"
-                              download={message.file_name ?? true}
                               className="flex items-center gap-2 px-3 py-2 text-sm underline"
                             >
                               <FileText className="h-4 w-4 shrink-0" />
@@ -1213,7 +1320,8 @@ export function Messenger({
                               >
                                 {message.content}
                               </p>
-                              {translations[message.id]?.text ? (
+                              {translations[translationKey(message.id, locale)]
+                                ?.text ? (
                                 <p
                                   className={cn(
                                     "mt-1 whitespace-pre-wrap break-words border-t pt-1 text-sm italic",
@@ -1222,7 +1330,12 @@ export function Messenger({
                                       : "border-border text-muted-foreground",
                                   )}
                                 >
-                                  🌐 {translations[message.id]?.text}
+                                  🌐{" "}
+                                  {
+                                    translations[
+                                      translationKey(message.id, locale)
+                                    ]?.text
+                                  }
                                 </p>
                               ) : null}
                               {!isMine ? (
@@ -1236,14 +1349,22 @@ export function Messenger({
                                   }
                                   className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:underline"
                                 >
-                                  {translations[message.id]?.loading ? (
+                                  {translations[
+                                    translationKey(message.id, locale)
+                                  ]?.loading ? (
                                     <Loader2 className="h-3 w-3 animate-spin" />
                                   ) : (
                                     <Languages className="h-3 w-3" />
                                   )}
-                                  {translations[message.id]?.text
+                                  {translations[
+                                    translationKey(message.id, locale)
+                                  ]?.text
                                     ? "ဘာသာပြန်ပြီး"
-                                    : "ဘာသာပြန်"}
+                                    : translations[
+                                          translationKey(message.id, locale)
+                                        ]?.failed
+                                      ? "ဘာသာပြန်၍ မရပါ — ထပ်ကြိုးစားရန်"
+                                      : "ဘာသာပြန်"}
                                 </button>
                               ) : null}
                             </div>

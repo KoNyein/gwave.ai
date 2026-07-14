@@ -57,6 +57,25 @@ export interface CallApi extends CallState {
 
 const RING_TIMEOUT_MS = 45_000;
 
+/**
+ * Identifies this browser tab. Every tab a user has open subscribes to the same
+ * `calls:{userId}` channel and so receives the same ring, which is what let a
+ * second tab keep ringing after the first had answered — and answer the call a
+ * second time. Broadcasts between a user's own tabs carry this so a tab can tell
+ * itself apart from its siblings.
+ */
+const TAB_ID =
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2);
+
+/** A call-log message the caller just wrote, so the UI can show it immediately. */
+export interface CallLogMessage {
+  id: string;
+  conversationId: string;
+  content: string;
+}
+
 function iceServers(): RTCIceServer[] {
   const servers: RTCIceServer[] = [
     { urls: "stun:stun.l.google.com:19302" },
@@ -93,11 +112,22 @@ interface Session {
   connectedAt: number | null;
   /** The peer actively declined, as opposed to never picking up. */
   declined?: boolean;
+  /**
+   * An `accept` has been taken for this call. Set synchronously so a second
+   * `accept` — from another of the callee's tabs — can't start a second
+   * negotiation on top of a call that is already up.
+   */
+  accepted?: boolean;
+  /** In-flight setupMedia, so concurrent callers share one peer connection. */
+  mediaPromise?: Promise<RTCPeerConnection> | null;
   /** ICE candidates that arrived before the remote description was set. */
   pendingIce: RTCIceCandidateInit[];
 }
 
-export function useCall(currentUser: AuthorSummary): CallApi {
+export function useCall(
+  currentUser: AuthorSummary,
+  onCallLog?: (message: CallLogMessage) => void,
+): CallApi {
   const [state, setState] = React.useState<CallState>({
     status: "idle",
     peer: null,
@@ -116,9 +146,24 @@ export function useCall(currentUser: AuthorSummary): CallApi {
     from: AuthorSummary;
     video: boolean;
   } | null>(null);
+  /** Our subscribed `calls:{userId}` channel — also how we reach our own tabs. */
+  const ringInbox = React.useRef<RealtimeChannel | null>(null);
+  /** Stops the ring if the caller's tab dies without ever sending `cancel`. */
+  const incomingTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep the latest callback without making every useCallback below depend on it.
+  const onCallLogRef = React.useRef(onCallLog);
+  onCallLogRef.current = onCallLog;
 
   const patch = React.useCallback((update: Partial<CallState>) => {
     setState((previous) => ({ ...previous, ...update }));
+  }, []);
+
+  const clearIncomingTimer = React.useCallback(() => {
+    if (incomingTimer.current) {
+      clearTimeout(incomingTimer.current);
+      incomingTimer.current = null;
+    }
   }, []);
 
   /** Tear everything down and (as caller) log the call into the chat. */
@@ -127,6 +172,7 @@ export function useCall(currentUser: AuthorSummary): CallApi {
       const s = session.current;
       session.current = null;
       incoming.current = null;
+      clearIncomingTimer();
       if (s) {
         if (s.ringTimer) clearTimeout(s.ringTimer);
         if (s.durationTimer) clearInterval(s.durationTimer);
@@ -144,11 +190,25 @@ export function useCall(currentUser: AuthorSummary): CallApi {
             : s.declined
               ? `📞 Declined ${kind} call`
               : `📞 Missed ${kind} call`;
-          void sendMessage({
-            conversationId: s.conversationId,
-            content,
-            imagePath: null,
-          });
+          const conversationId = s.conversationId;
+          void (async () => {
+            const result = await sendMessage({
+              conversationId,
+              content,
+              imagePath: null,
+            });
+            // The messenger drops realtime INSERTs it sent itself (its optimistic
+            // path covers those), and this insert doesn't go through that path —
+            // so hand the row back or the caller won't see their own call log
+            // until they reload.
+            if (result.ok) {
+              onCallLogRef.current?.({
+                id: result.data.messageId,
+                conversationId,
+                content,
+              });
+            }
+          })();
         }
       }
       patch({
@@ -162,71 +222,92 @@ export function useCall(currentUser: AuthorSummary): CallApi {
         remoteStream: null,
       });
     },
-    [patch],
+    [clearIncomingTimer, patch],
   );
 
-  /** Create the RTCPeerConnection and local media for an accepted call. */
+  /**
+   * Create the RTCPeerConnection and local media for an accepted call.
+   *
+   * Exactly once per session. This used to blindly overwrite `s.pc`/`s.localStream`,
+   * so a second `accept` (a second tab answering) orphaned the first peer
+   * connection and its stream: cleanup could only ever stop the *last* one, and
+   * the camera light stayed on until the tab was closed.
+   */
   const setupMedia = React.useCallback(
-    async (s: Session): Promise<RTCPeerConnection> => {
-      const localStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
-        video: s.video
-          ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" }
-          : false,
-      });
-      const pc = new RTCPeerConnection({ iceServers: iceServers() });
-      s.pc = pc;
-      s.localStream = localStream;
-      localStream
-        .getTracks()
-        .forEach((track) => pc.addTrack(track, localStream));
+    (s: Session): Promise<RTCPeerConnection> => {
+      if (s.pc) return Promise.resolve(s.pc);
+      if (s.mediaPromise) return s.mediaPromise;
 
-      const remoteStream = new MediaStream();
-      pc.ontrack = (event) => {
-        event.streams[0]?.getTracks().forEach((track) => {
-          if (!remoteStream.getTracks().includes(track)) {
-            remoteStream.addTrack(track);
-          }
+      s.mediaPromise = (async () => {
+        const localStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true },
+          video: s.video
+            ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" }
+            : false,
         });
-        patch({ remoteStream });
-      };
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          void s.channel.send({
-            type: "broadcast",
-            event: "ice",
-            payload: { candidate: event.candidate.toJSON() },
-          });
+        // The call can end while the permission prompt is still up — declined,
+        // hung up, or the tab unmounted. cleanup() already ran and saw a null
+        // stream, so nothing will ever stop these tracks but us.
+        if (session.current !== s) {
+          localStream.getTracks().forEach((track) => track.stop());
+          throw new Error("Call ended before media was ready.");
         }
-      };
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === "connected" && session.current === s) {
-          s.connectedAt = s.connectedAt ?? Date.now();
-          if (!s.durationTimer) {
-            s.durationTimer = setInterval(() => {
-              if (s.connectedAt) {
-                patch({
-                  duration: Math.round((Date.now() - s.connectedAt) / 1000),
-                });
-              }
-            }, 1000);
-          }
-          patch({ status: "active" });
-        } else if (
-          // "disconnected" is transient — a Wi-Fi/LTE handover or a couple of
-          // lost packets routinely lands here and then recovers on its own.
-          // Treating it as terminal hung up the call after a two-second blip
-          // (and wrote a call-log message about it). Only "failed" is final.
-          (pc.connectionState === "failed" ||
-            pc.connectionState === "closed") &&
-          session.current === s
-        ) {
-          cleanup(true);
-        }
-      };
+        const pc = new RTCPeerConnection({ iceServers: iceServers() });
+        s.pc = pc;
+        s.localStream = localStream;
+        localStream
+          .getTracks()
+          .forEach((track) => pc.addTrack(track, localStream));
 
-      patch({ localStream });
-      return pc;
+        const remoteStream = new MediaStream();
+        pc.ontrack = (event) => {
+          event.streams[0]?.getTracks().forEach((track) => {
+            if (!remoteStream.getTracks().includes(track)) {
+              remoteStream.addTrack(track);
+            }
+          });
+          patch({ remoteStream });
+        };
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            void s.channel.send({
+              type: "broadcast",
+              event: "ice",
+              payload: { candidate: event.candidate.toJSON() },
+            });
+          }
+        };
+        pc.onconnectionstatechange = () => {
+          if (pc.connectionState === "connected" && session.current === s) {
+            s.connectedAt = s.connectedAt ?? Date.now();
+            if (!s.durationTimer) {
+              s.durationTimer = setInterval(() => {
+                if (s.connectedAt) {
+                  patch({
+                    duration: Math.round((Date.now() - s.connectedAt) / 1000),
+                  });
+                }
+              }, 1000);
+            }
+            patch({ status: "active" });
+          } else if (
+            // "disconnected" is transient — a Wi-Fi/LTE handover or a couple of
+            // lost packets routinely lands here and then recovers on its own.
+            // Treating it as terminal hung up the call after a two-second blip
+            // (and wrote a call-log message about it). Only "failed" is final.
+            (pc.connectionState === "failed" ||
+              pc.connectionState === "closed") &&
+            session.current === s
+          ) {
+            cleanup(true);
+          }
+        };
+
+        patch({ localStream });
+        return pc;
+      })();
+
+      return s.mediaPromise;
     },
     [cleanup, patch],
   );
@@ -266,6 +347,12 @@ export function useCall(currentUser: AuthorSummary): CallApi {
         .on("broadcast", { event: "accept" }, async () => {
           // Caller side: peer accepted → offer.
           if (!s.isCaller || session.current !== s) return;
+          // Take the first accept only. If the callee had two tabs open, both
+          // could answer, and this handler would run setupMedia a second time —
+          // renegotiating against the second tab and orphaning the peer
+          // connection (and camera) already established with the first.
+          if (s.accepted) return;
+          s.accepted = true;
           if (s.ringTimer) clearTimeout(s.ringTimer);
           patch({ status: "connecting" });
           try {
@@ -326,10 +413,14 @@ export function useCall(currentUser: AuthorSummary): CallApi {
           }
         })
         .on("broadcast", { event: "decline" }, () => {
-          if (session.current === s) {
-            s.declined = true;
-            cleanup(true);
-          }
+          // Only the caller acts on a decline — and only before the call is up.
+          // Both were bugs: the callee's own session also listened here, so a
+          // second (still-ringing) tab hitting Decline tore down the live call
+          // its sibling had already answered, and logged it as "Declined".
+          if (!s.isCaller || session.current !== s) return;
+          if (s.accepted || s.connectedAt) return;
+          s.declined = true;
+          cleanup(true);
         })
         .on("broadcast", { event: "hangup" }, () => {
           if (session.current === s) cleanup(s.isCaller);
@@ -395,6 +486,14 @@ export function useCall(currentUser: AuthorSummary): CallApi {
           // Re-check state: a call may have started while verifying.
           if (!verifiedCaller || session.current || incoming.current) return;
           incoming.current = { ...ring, from: verifiedCaller };
+          // The caller sends `cancel` when it gives up — but if the caller's tab
+          // dies first, nothing ever arrives and we ring forever. Time it out.
+          clearIncomingTimer();
+          incomingTimer.current = setTimeout(() => {
+            if (incoming.current?.callId !== ring.callId || session.current) return;
+            incoming.current = null;
+            patch({ status: "idle", peer: null, video: false });
+          }, RING_TIMEOUT_MS + 5_000);
           patch({
             status: "incoming",
             peer: verifiedCaller,
@@ -404,13 +503,29 @@ export function useCall(currentUser: AuthorSummary): CallApi {
       })
       .on("broadcast", { event: "cancel" }, (message) => {
         if (incoming.current?.callId === (message.payload as { callId?: string }).callId) {
+          clearIncomingTimer();
           incoming.current = null;
           if (!session.current) patch({ status: "idle", peer: null });
         }
       })
+      .on("broadcast", { event: "answered" }, (message) => {
+        // One of our *other* tabs picked this call up. `cancel` is only ever sent
+        // for a call that never connects, so without this we'd ring forever — and
+        // could answer the same call a second time on top of the live one.
+        const payload = message.payload as { callId?: string; tabId?: string };
+        if (payload.tabId === TAB_ID) return;
+        if (incoming.current?.callId !== payload.callId) return;
+        clearIncomingTimer();
+        incoming.current = null;
+        if (!session.current) {
+          patch({ status: "idle", peer: null, video: false });
+        }
+      })
       .subscribe();
+    ringInbox.current = channel;
 
     return () => {
+      ringInbox.current = null;
       void supabase.removeChannel(channel);
       cleanup(false);
     };
@@ -488,6 +603,15 @@ export function useCall(currentUser: AuthorSummary): CallApi {
   const accept = React.useCallback(() => {
     const ring = incoming.current;
     if (!ring || session.current) return;
+    clearIncomingTimer();
+    // Silence our other tabs. They're ringing the same call on the same shared
+    // `calls:{userId}` channel, and no `cancel` will ever come for a call that
+    // connects — so this is the only thing that stops them.
+    void ringInbox.current?.send({
+      type: "broadcast",
+      event: "answered",
+      payload: { callId: ring.callId, tabId: TAB_ID },
+    });
     const supabase = createClient();
     const s: Session = {
       callId: ring.callId,
@@ -513,11 +637,12 @@ export function useCall(currentUser: AuthorSummary): CallApi {
       }
     });
     patch({ status: "connecting" });
-  }, [joinCallChannel, patch]);
+  }, [clearIncomingTimer, joinCallChannel, patch]);
 
   const decline = React.useCallback(() => {
     const ring = incoming.current;
     incoming.current = null;
+    clearIncomingTimer();
     if (ring) {
       const supabase = createClient();
       const channel = supabase.channel(`call:${ring.callId}`);
@@ -530,7 +655,7 @@ export function useCall(currentUser: AuthorSummary): CallApi {
       });
     }
     patch({ status: "idle", peer: null, video: false });
-  }, [patch]);
+  }, [clearIncomingTimer, patch]);
 
   const hangUp = React.useCallback(() => {
     const s = session.current;

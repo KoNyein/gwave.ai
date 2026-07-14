@@ -1,8 +1,10 @@
 "use server";
 
 import { z } from "zod";
+import { getCurrentUser } from "@/lib/auth";
 
 import type { ActionResult } from "@/lib/actions/posts";
+import { notifyConversation } from "@/lib/notify-conversation";
 import { createClient } from "@/lib/supabase/server";
 
 const startSchema = z.object({
@@ -25,9 +27,7 @@ export async function startLiveLocation(
   if (!parsed.success) return { ok: false, error: "Invalid location." };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
   const expiresAt = new Date(
@@ -64,6 +64,15 @@ export async function startLiveLocation(
     await supabase.from("messages").delete().eq("id", message.id);
     return { ok: false, error: error.message };
   }
+
+  // This writes to `messages` directly rather than going through sendMessage(),
+  // and the push is attached to sendMessage() — not to a database trigger — so
+  // starting a share notified nobody. Best-effort, non-blocking, same as there.
+  void notifyConversation(
+    parsed.data.conversationId,
+    user.id,
+    "📍 တည်နေရာကို တိုက်ရိုက် မျှဝေနေပါတယ်",
+  );
 
   return { ok: true, data: { messageId: message.id, expiresAt } };
 }

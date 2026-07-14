@@ -20,7 +20,7 @@ import { getCurrentProfile } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
-  bucket: z.enum(["media", "slips"]).default("media"),
+  bucket: z.enum(["media", "slips", "chat-media"]).default("media"),
   ext: z
     .string()
     .regex(/^[a-z0-9]{1,10}$/i, "bad extension")
@@ -31,6 +31,7 @@ const bodySchema = z.object({
 const REGION = process.env.AWS_REGION ?? "ap-southeast-1";
 const MEDIA_BUCKET = process.env.AWS_S3_MEDIA_BUCKET;
 const SLIPS_BUCKET = process.env.AWS_S3_SLIPS_BUCKET;
+const CHAT_BUCKET = process.env.AWS_S3_CHAT_BUCKET;
 
 let client: S3Client | null = null;
 function s3(): S3Client {
@@ -56,7 +57,11 @@ export async function POST(request: NextRequest) {
   }
 
   const bucket =
-    parsed.data.bucket === "slips" ? SLIPS_BUCKET : MEDIA_BUCKET;
+    parsed.data.bucket === "slips"
+      ? SLIPS_BUCKET
+      : parsed.data.bucket === "chat-media"
+        ? CHAT_BUCKET
+        : MEDIA_BUCKET;
   if (!bucket) {
     return NextResponse.json({ error: "Bucket not configured." }, { status: 503 });
   }
