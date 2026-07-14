@@ -79,10 +79,10 @@ const csp = [
   // https: allows Shop product images, which come from arbitrary external
   // merchant hosts (affiliate/dropship listings imported from other sites).
   "img-src 'self' blob: data: https: https://*.supabase.co https://lh3.googleusercontent.com https://image.mux.com https://*.tile.openstreetmap.org",
-  `media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com${cctvHlsSrc}`,
+  `media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com https://d10t7bibe827e7.cloudfront.net${cctvHlsSrc}`,
   "font-src 'self' data:",
   // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com${cctvHlsSrc}${livekitConnectSrc}`,
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com https://gwave-media-8acd2816.s3.ap-southeast-1.amazonaws.com https://d10t7bibe827e7.cloudfront.net${cctvHlsSrc}${livekitConnectSrc}`,
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
   `frame-src 'self' https://www.youtube-nocookie.com https://accounts.google.com${cctvFrameSrc}${gameFrameSrc}${googleMapsSrc}`,

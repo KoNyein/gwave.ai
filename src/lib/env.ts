@@ -11,6 +11,12 @@ const publicSchema = z.object({
    * credentials. Unset simply means no One Tap.
    */
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: z.string().optional(),
+  /**
+   * CloudFront domain for media (e.g. https://xxxx.cloudfront.net). When set,
+   * the app reads and writes media on S3 instead of Supabase Storage. Unset =
+   * Supabase Storage (the default), so this flips the whole storage backend.
+   */
+  NEXT_PUBLIC_S3_CDN: z.string().url().optional(),
 });
 
 /**
@@ -22,6 +28,7 @@ export const publicEnv = publicSchema.parse({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+  NEXT_PUBLIC_S3_CDN: process.env.NEXT_PUBLIC_S3_CDN,
 });
 
 /**

@@ -1,6 +1,54 @@
 import { publicEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/client";
 
+/**
+ * When a CloudFront domain is configured the app reads and writes media on S3;
+ * otherwise it stays on Supabase Storage. One flag flips the whole storage
+ * backend, so the migration is reversible and testable without a code change.
+ */
+const S3_CDN = publicEnv.NEXT_PUBLIC_S3_CDN;
+
+/**
+ * Upload a blob under `<userId>/<uuid>.<ext>` and return that key. On S3 it asks
+ * the server for a presigned PUT (the browser uploads straight to S3); on
+ * Supabase it uses the storage client. The key layout is identical either way,
+ * so a stored path resolves under whichever backend is active.
+ */
+async function putObject(
+  userId: string,
+  body: Blob,
+  ext: string,
+  contentType: string,
+  bucket: "media" | "slips" = "media",
+): Promise<string> {
+  if (S3_CDN) {
+    const res = await fetch("/api/storage/presign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bucket, ext, contentType }),
+    });
+    if (!res.ok) {
+      throw new Error((await res.json().catch(() => ({})))?.error ?? "Upload failed.");
+    }
+    const { url, path } = (await res.json()) as { url: string; path: string };
+    const put = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": contentType },
+      body,
+    });
+    if (!put.ok) throw new Error("Upload to storage failed.");
+    return path;
+  }
+
+  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+  const supabase = createClient();
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(path, body, { contentType, cacheControl: "31536000" });
+  if (error) throw new Error(error.message);
+  return path;
+}
+
 export const MAX_POST_IMAGES = 10;
 /** Standard longest-edge for stored photos (downscaled to this). */
 export const MAX_IMAGE_DIMENSION = 1920;
@@ -52,8 +100,9 @@ const VOICE_EXTENSIONS: Record<string, string> = {
   "audio/aac": "aac",
 };
 
-/** Public URL for a file in the "media" storage bucket. */
+/** Public URL for a stored media object — CloudFront when S3 is active, else Supabase. */
 export function mediaUrl(storagePath: string): string {
+  if (S3_CDN) return `${S3_CDN}/${storagePath}`;
   return `${publicEnv.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${storagePath}`;
 }
 
@@ -176,16 +225,12 @@ export async function uploadMedia(
   file: File,
 ): Promise<UploadedMedia> {
   const prepared = await prepareMedia(file);
-  const path = `${userId}/${crypto.randomUUID()}.${prepared.extension}`;
-
-  const supabase = createClient();
-  const { error } = await supabase.storage
-    .from("media")
-    .upload(path, prepared.blob, {
-      contentType: prepared.contentType,
-      cacheControl: "31536000",
-    });
-  if (error) throw new Error(error.message);
+  const path = await putObject(
+    userId,
+    prepared.blob,
+    prepared.extension,
+    prepared.contentType,
+  );
 
   return {
     storage_path: path,
@@ -213,17 +258,12 @@ export async function uploadFile(
     throw new Error("File is too large (max 25 MB).");
   }
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
-
-  const supabase = createClient();
-  const { error } = await supabase.storage
-    .from("media")
-    .upload(path, file, {
-      contentType: file.type || "application/octet-stream",
-      cacheControl: "31536000",
-    });
-  if (error) throw new Error(error.message);
-
+  const path = await putObject(
+    userId,
+    file,
+    ext,
+    file.type || "application/octet-stream",
+  );
   return { storage_path: path, file_name: file.name };
 }
 
@@ -242,13 +282,6 @@ export async function uploadVoice(
   }
   const mime = blob.type.split(";")[0] || "audio/webm";
   const ext = VOICE_EXTENSIONS[mime] ?? "webm";
-  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
-
-  const supabase = createClient();
-  const { error } = await supabase.storage
-    .from("media")
-    .upload(path, blob, { contentType: mime, cacheControl: "31536000" });
-  if (error) throw new Error(error.message);
-
+  const path = await putObject(userId, blob, ext, mime);
   return { storage_path: path };
 }
