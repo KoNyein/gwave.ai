@@ -21,7 +21,7 @@ async function getUserId(): Promise<string | null> {
 const createSchema = z
   .object({
     title: z.string().trim().min(1).max(120),
-    cameraType: z.enum(["webrtc", "rtsp"]),
+    cameraType: z.enum(["webrtc", "rtsp", "kvs"]),
     // Only meaningful for rtsp; must be an rtsp(s):// URL with a host.
     rtspUrl: z
       .string()
@@ -32,18 +32,27 @@ const createSchema = z
         "Enter a valid rtsp:// or rtsps:// URL.",
       )
       .optional(),
+    // Only for kvs: the Amazon KVS signaling channel name (+ optional region).
+    kvsChannel: z.string().trim().min(1).max(256).optional(),
+    kvsRegion: z.string().trim().max(40).optional(),
   })
   .refine((v) => v.cameraType !== "rtsp" || Boolean(v.rtspUrl), {
     message: "An RTSP camera needs its stream URL.",
     path: ["rtspUrl"],
+  })
+  .refine((v) => v.cameraType !== "kvs" || Boolean(v.kvsChannel), {
+    message: "A KVS camera needs its signaling channel name.",
+    path: ["kvsChannel"],
   });
 
 /** Create a camera: mint ids, register it on the media server (if configured),
  *  then store the row. Private by default. */
 export async function createCamera(input: {
   title: string;
-  cameraType: "webrtc" | "rtsp";
+  cameraType: "webrtc" | "rtsp" | "kvs";
   rtspUrl?: string;
+  kvsChannel?: string;
+  kvsRegion?: string;
 }): Promise<ActionResult<{ id: string }>> {
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) {
@@ -52,21 +61,26 @@ export async function createCamera(input: {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const { title, cameraType, rtspUrl } = parsed.data;
+  const { title, cameraType, rtspUrl, kvsChannel, kvsRegion } = parsed.data;
   const streamId = `cam_${randomBytes(6).toString("hex")}`;
   const shareToken = randomBytes(16).toString("hex");
 
-  const registration = await registerBroadcast({
-    streamId,
-    name: title,
-    type: cameraType === "rtsp" ? "streamSource" : "liveStream",
-    rtspUrl: cameraType === "rtsp" ? rtspUrl : null,
-  });
-  if (registration.configured && !registration.ok) {
-    return {
-      ok: false,
-      error: registration.error ?? "The media server rejected the camera.",
-    };
+  // KVS cameras don't use the media server — a local master (KVS WebRTC C SDK)
+  // pushes straight into the signaling channel, and the browser joins as a
+  // viewer. Only webrtc/rtsp cameras register a broadcast.
+  if (cameraType !== "kvs") {
+    const registration = await registerBroadcast({
+      streamId,
+      name: title,
+      type: cameraType === "rtsp" ? "streamSource" : "liveStream",
+      rtspUrl: cameraType === "rtsp" ? rtspUrl : null,
+    });
+    if (registration.configured && !registration.ok) {
+      return {
+        ok: false,
+        error: registration.error ?? "The media server rejected the camera.",
+      };
+    }
   }
 
   const supabase = await createClient();
@@ -77,6 +91,8 @@ export async function createCamera(input: {
       title,
       camera_type: cameraType,
       rtsp_url: cameraType === "rtsp" ? rtspUrl : null,
+      kvs_channel: cameraType === "kvs" ? kvsChannel : null,
+      kvs_region: cameraType === "kvs" ? (kvsRegion || null) : null,
       stream_id: streamId,
       share_token: shareToken,
     })

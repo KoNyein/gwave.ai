@@ -60,6 +60,14 @@ const livekitConnectSrc = (() => {
   }
 })();
 
+// Amazon KVS WebRTC cameras: the browser viewer opens a secure WebSocket to a
+// per-region KVS signaling endpoint (*.kinesisvideo.<region>.amazonaws.com).
+// STUN/TURN ICE is not governed by CSP. Only widened when KVS is configured.
+const kvsRegion = process.env.KVS_AWS_REGION?.trim();
+const kvsConnectSrc = kvsRegion
+  ? ` wss://*.kinesisvideo.${kvsRegion}.amazonaws.com https://*.kinesisvideo.${kvsRegion}.amazonaws.com`
+  : "";
+
 // Content-Security-Policy: 'unsafe-inline'/'unsafe-eval' are required by
 // Next.js hydration + dev tooling; everything else is locked to self and
 // the Supabase project (REST, storage, realtime websockets).
@@ -82,7 +90,7 @@ const csp = [
   `media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com${cctvHlsSrc}`,
   "font-src 'self' data:",
   // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com${cctvHlsSrc}${livekitConnectSrc}`,
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com${cctvHlsSrc}${livekitConnectSrc}${kvsConnectSrc}`,
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
   `frame-src 'self' https://www.youtube-nocookie.com https://accounts.google.com${cctvFrameSrc}${gameFrameSrc}${googleMapsSrc}`,

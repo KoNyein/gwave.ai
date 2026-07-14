@@ -257,7 +257,7 @@ export interface GameCatalogItem {
   updated_at: string;
 }
 
-export type CameraType = "webrtc" | "rtsp";
+export type CameraType = "webrtc" | "rtsp" | "kvs";
 
 export interface UserCamera {
   id: string;
@@ -267,6 +267,9 @@ export interface UserCamera {
   rtsp_url: string | null;
   // Public HLS (.m3u8) playback URL. Credential-free, safe to expose to viewers.
   hls_url: string | null;
+  // Amazon KVS signaling channel name + region (kvs cameras). Not secret.
+  kvs_channel: string | null;
+  kvs_region: string | null;
   stream_id: string;
   share_token: string;
   is_public: boolean;

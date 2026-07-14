@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 
 import { CameraHlsForm } from "@/components/cctv/camera-hls-form";
 import { CameraPlayer } from "@/components/cctv/camera-player";
+import { KvsPlayer } from "@/components/cctv/kvs-player";
 import { CameraShareControls } from "@/components/cctv/camera-share-controls";
 import { HlsPlayer } from "@/components/cctv/hls-player";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,9 @@ export default async function CameraDetailPage({
 
       <h1 className="text-xl font-bold">{camera.title}</h1>
 
-      {camera.hls_url ? (
+      {camera.camera_type === "kvs" ? (
+        <KvsPlayer id={camera.id} title={camera.title} />
+      ) : camera.hls_url ? (
         <HlsPlayer src={camera.hls_url} title={camera.title} />
       ) : (
         <CameraPlayer streamId={camera.stream_id} title={camera.title} />
@@ -72,6 +75,19 @@ export default async function CameraDetailPage({
           <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
             {camera.rtsp_url}
           </p>
+        </div>
+      ) : null}
+
+      {camera.camera_type === "kvs" ? (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3">
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <Radio className="h-4 w-4 text-primary" /> {t("kvsChannelTitle")}
+          </p>
+          <p className="mt-1 font-mono text-xs text-muted-foreground">
+            {camera.kvs_channel}
+            {camera.kvs_region ? ` · ${camera.kvs_region}` : ""}
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">{t("kvsMasterHint")}</p>
         </div>
       ) : null}
 
