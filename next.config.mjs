@@ -73,7 +73,8 @@ const csp = [
   // learner code can't freeze the tab; importScripts inside them is covered
   // by script-src above.
   "worker-src 'self' blob:",
-  "style-src 'self' 'unsafe-inline'",
+  // accounts.google.com also serves the One Tap prompt's stylesheet.
+  "style-src 'self' 'unsafe-inline' https://accounts.google.com",
   // *.tile.openstreetmap.org serves the Leaflet map tiles for location share.
   // https: allows Shop product images, which come from arbitrary external
   // merchant hosts (affiliate/dropship listings imported from other sites).

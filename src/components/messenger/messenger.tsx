@@ -47,10 +47,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  LIVE_LOCATION_MINUTES,
-  startLiveLocation,
-} from "@/lib/actions/live-location";
+import { startLiveLocation } from "@/lib/actions/live-location";
+import { LIVE_LOCATION_MINUTES } from "@/lib/live-location-options";
 import {
   markConversationRead,
   openDirectConversation,
@@ -80,14 +78,53 @@ interface MessengerProps {
 /**
  * A message that is nothing but a few emoji renders large and bare, the way
  * every other chat app does it — a 👍 shouldn't arrive wrapped in a bubble.
+ *
+ * Deliberately no `\p{Extended_Pictographic}` regex: a Unicode property escape
+ * an engine doesn't know is a *parse-time* SyntaxError, which takes the whole
+ * chunk — and with it the entire messenger — down on older Android WebViews.
+ * Code-point ranges can't fail to parse anywhere.
  */
-const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|\s)+$/u;
+function isEmojiCodePoint(cp: number): boolean {
+  return (
+    (cp >= 0x1f000 && cp <= 0x1faff) || // pictographs, faces, symbols, flags
+    (cp >= 0x2600 && cp <= 0x27bf) || // misc symbols + dingbats
+    (cp >= 0x2b00 && cp <= 0x2bff) || // arrows/stars
+    cp === 0x203c ||
+    cp === 0x2049 ||
+    (cp >= 0x2122 && cp <= 0x2199) ||
+    (cp >= 0x21a9 && cp <= 0x21aa) ||
+    (cp >= 0x231a && cp <= 0x231b) ||
+    (cp >= 0x25aa && cp <= 0x25fe)
+  );
+}
+
+/** Skin tone, variation selector, zero-width joiner, keycap — glue, not glyphs. */
+function isEmojiModifier(cp: number): boolean {
+  return (
+    cp === 0x200d ||
+    cp === 0xfe0f ||
+    cp === 0xfe0e ||
+    cp === 0x20e3 ||
+    (cp >= 0x1f3fb && cp <= 0x1f3ff)
+  );
+}
 
 function isEmojiOnly(text: string): boolean {
   const trimmed = text.trim();
-  if (!trimmed || !EMOJI_ONLY.test(trimmed)) return false;
-  return [...trimmed].filter((c) => /\p{Extended_Pictographic}/u.test(c))
-    .length <= 3;
+  if (!trimmed) return false;
+
+  let glyphs = 0;
+  for (const char of trimmed) {
+    const cp = char.codePointAt(0);
+    if (cp === undefined) return false;
+    if (isEmojiCodePoint(cp)) {
+      glyphs += 1;
+      continue;
+    }
+    if (isEmojiModifier(cp) || /\s/.test(char)) continue;
+    return false; // anything else — it's a normal message
+  }
+  return glyphs > 0 && glyphs <= 3;
 }
 
 /** Display info for a conversation from the viewer's perspective. */

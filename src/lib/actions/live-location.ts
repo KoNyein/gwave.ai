@@ -5,9 +5,6 @@ import { z } from "zod";
 import type { ActionResult } from "@/lib/actions/posts";
 import { createClient } from "@/lib/supabase/server";
 
-/** How long a share may run. Matches what the composer offers. */
-export const LIVE_LOCATION_MINUTES = [15, 60, 480] as const;
-
 const startSchema = z.object({
   conversationId: z.string().uuid(),
   latitude: z.number().min(-90).max(90),
