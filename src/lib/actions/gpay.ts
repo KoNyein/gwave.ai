@@ -184,16 +184,16 @@ export async function saveGpayKyc(input: GpayKycInput): Promise<ActionResult> {
 }
 
 /**
- * Cash-in: start a Stripe Checkout to top up the caller's wallet by `amountMmk`
- * G-Pay (= MMK). The card is charged the USD equivalent (Stripe accepts
+ * Cash-in: start a Stripe Checkout to top up the caller's wallet by `amountUsd`
+ * G-Pay (= USD). The card is charged that amount directly (Stripe accepts
  * international cards/banks); the webhook credits the wallet on success.
  */
 export async function createGpayTopupCheckout(
-  amountMmk: number,
+  amountUsd: number,
 ): Promise<ActionResult<{ url: string }>> {
-  const amount = Math.round(Number(amountMmk));
-  if (!Number.isFinite(amount) || amount < 1000 || amount > 10_000_000) {
-    return { ok: false, error: "Enter an amount between 1,000 and 10,000,000." };
+  const amount = Math.round(Number(amountUsd) * 100) / 100;
+  if (!Number.isFinite(amount) || amount < 1 || amount > 10_000) {
+    return { ok: false, error: "Enter an amount between $1 and $10,000." };
   }
   if (!isStripeConfigured()) {
     return { ok: false, error: "Card top-up is not set up yet." };
@@ -212,17 +212,9 @@ export async function createGpayTopupCheckout(
     return { ok: false, error: "Your G-Pay account is not active yet." };
   }
 
-  // Convert MMK → USD for the card charge (Stripe minimum ~$0.50).
-  const { data: usd } = await supabase.rpc("gpay_convert", {
-    amount,
-    from_code: "MMK",
-    to_code: "USD",
-  });
-  const usdAmount = Number(usd);
-  if (!Number.isFinite(usdAmount) || usdAmount <= 0) {
-    return { ok: false, error: "Currency rate unavailable. Try again later." };
-  }
-  const cents = Math.max(50, Math.round(usdAmount * 100));
+  // G-Pay is USD-pegged, so the card is charged the same amount (Stripe min
+  // ~$0.50; our floor is $1).
+  const cents = Math.max(50, Math.round(amount * 100));
 
   const origin = await requestOrigin();
   try {
@@ -238,12 +230,12 @@ export async function createGpayTopupCheckout(
             currency: "usd",
             unit_amount: cents,
             product_data: {
-              name: `G-Pay top-up · ${amount.toLocaleString("en-US")} Ks`,
+              name: `G-Pay top-up · $${amount.toLocaleString("en-US")}`,
             },
           },
         },
       ],
-      metadata: { type: "gpay_topup", user_id: userId, amount_mmk: String(amount) },
+      metadata: { type: "gpay_topup", user_id: userId, amount: String(amount) },
       success_url: `${origin}/gpay?topup=success`,
       cancel_url: `${origin}/gpay?topup=cancel`,
     });

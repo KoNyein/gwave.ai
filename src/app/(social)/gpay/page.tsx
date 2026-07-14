@@ -7,6 +7,7 @@ import { GpayRegistrationForm } from "@/components/gpay/gpay-registration-form";
 import { GpayWallet } from "@/components/gpay/gpay-wallet";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
+import { getActiveCurrencies } from "@/lib/db/currency";
 import {
   getAllGpayAccounts,
   getGpayTransactions,
@@ -24,9 +25,10 @@ export default async function GpayPage() {
   const t = await getTranslations("gpay");
   const isAdmin = profile.role === "admin" || profile.role === "super_admin";
 
-  const [account, adminAccounts] = await Promise.all([
+  const [account, adminAccounts, currencies] = await Promise.all([
     getMyGpayAccount(),
     isAdmin ? getAllGpayAccounts() : Promise.resolve([]),
+    getActiveCurrencies(),
   ]);
   const transactions =
     account?.status === "active"
@@ -116,6 +118,7 @@ export default async function GpayPage() {
           account={account}
           transactions={transactions}
           hasPin={hasPin}
+          currencies={currencies}
         />
       )}
 

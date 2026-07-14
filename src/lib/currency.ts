@@ -3,11 +3,12 @@
  * per-USD cross-rates) so a live FX feed, a bank, or a crypto price oracle
  * can later feed the same rate table without any call-site changes.
  *
- * Peg: **1 G-Pay = 1 MMK**, fixed. The wallet balance is always MMK; use
- * gpayToCurrency / currencyToGpay to show or accept other currencies.
+ * Peg: **1 G-Pay = 1 USD** (international standard, stable store of value).
+ * The wallet balance is always USD; use gpayToCurrency / currencyToGpay to
+ * show or accept other currencies (including MMK for local users).
  */
 
-export const GPAY_PEG_CODE = "MMK" as const;
+export const GPAY_PEG_CODE = "USD" as const;
 
 export interface CurrencyMeta {
   code: string;
