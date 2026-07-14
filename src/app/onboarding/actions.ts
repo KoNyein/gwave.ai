@@ -29,6 +29,8 @@ const profileSchema = z.object({
   accept_terms: z
     .string()
     .refine((v) => v === "on", "You must accept the Terms and Privacy Policy."),
+  // IANA timezone (e.g. "Asia/Yangon") — a privacy-friendly region signal.
+  timezone: z.string().max(60).optional().or(z.literal("")),
 });
 
 export type OnboardingState = { error: string } | null;
@@ -44,6 +46,7 @@ export async function saveProfile(
     avatar_url: formData.get("avatar_url"),
     birth_date: formData.get("birth_date"),
     accept_terms: formData.get("accept_terms"),
+    timezone: formData.get("timezone"),
   });
   if (!parsed.success) {
     return { error: parsed.error.errors[0]?.message ?? "Invalid input." };
@@ -64,6 +67,7 @@ export async function saveProfile(
     bio: parsed.data.bio || null,
     avatar_url: parsed.data.avatar_url || null,
     birth_date: parsed.data.birth_date,
+    timezone: parsed.data.timezone || null,
     terms_accepted_version: TERMS_VERSION,
     privacy_accepted_version: PRIVACY_VERSION,
     terms_accepted_at: new Date().toISOString(),

@@ -1,6 +1,6 @@
 {
-  "name": "gwave.ai",
-  "short_name": "gwave",
+  "name": "Gwave",
+  "short_name": "Gwave",
   "description": "The social super-app for growers",
   "start_url": "/feed",
   "scope": "/",

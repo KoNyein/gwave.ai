@@ -11,7 +11,7 @@ import { DEFAULT_THEME } from "@/lib/theme";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "gwave.ai",
+  title: "Gwave",
   description: "The social super-app for growers",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
@@ -25,11 +25,11 @@ export const metadata: Metadata = {
     "mobile-web-app-capable": "yes",
   },
   icons: {
-    // Browsers request /favicon.ico unconditionally, so that file must
-    // exist; the SVG serves crisp icons where supported.
+    // The Gwave leaf-G mark. favicon.ico (multi-size) is requested
+    // unconditionally; the 512 PNG covers high-DPI tabs and apple touch.
     icon: [
       { url: "/favicon.ico", sizes: "48x48" },
-      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
     ],
     apple: "/icon-192.png",
   },

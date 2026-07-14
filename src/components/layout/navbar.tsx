@@ -11,6 +11,7 @@ import { MobileMenu } from "@/components/layout/mobile-menu";
 import { NotificationsButton } from "@/components/layout/notifications-button";
 import { PRIMARY_NAV } from "@/components/layout/nav-items";
 import { ProfileMenu } from "@/components/layout/profile-menu";
+import { TimezoneSync } from "@/components/layout/timezone-sync";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/types/database";
@@ -21,13 +22,14 @@ export function Navbar({ profile }: { profile: Profile | null }) {
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background">
+      {profile ? <TimezoneSync /> : null}
       <div className="flex h-14 items-center gap-2 px-3 sm:px-4">
         {/* Left: menu (mobile) + logo + search */}
         <div className="flex items-center gap-1.5">
           <MobileMenu profile={profile} />
           <Link href="/feed" className="flex items-center gap-1.5 text-primary">
             <Leaf className="h-8 w-8" />
-            <span className="hidden text-lg font-bold sm:inline">gwave.ai</span>
+            <span className="hidden text-lg font-bold sm:inline">Gwave</span>
           </Link>
           <GlobalSearch />
         </div>

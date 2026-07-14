@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { strainPhoto } from "@/lib/strain-photo";
 import { cn } from "@/lib/utils";
 import type { Strain, StrainType } from "@/types/database";
 
@@ -26,8 +27,16 @@ export function StrainCard({ strain }: { strain: Strain }) {
   return (
     <Link
       href={`/strains/${strain.slug}`}
-      className="flex flex-col gap-2 rounded-xl border bg-background p-4 transition-shadow hover:shadow-md"
+      className="flex flex-col overflow-hidden rounded-xl border bg-background transition-shadow hover:shadow-md"
     >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={strainPhoto(strain)}
+        alt={strain.name}
+        loading="lazy"
+        className="aspect-[5/3] w-full object-cover"
+      />
+      <div className="flex flex-col gap-2 p-4">
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-semibold leading-tight">{strain.name}</h3>
         <StrainTypeBadge type={strain.type} />
@@ -50,6 +59,7 @@ export function StrainCard({ strain }: { strain: Strain }) {
           {strain.description}
         </p>
       ) : null}
+      </div>
     </Link>
   );
 }

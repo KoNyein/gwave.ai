@@ -12,6 +12,10 @@ AWS deployment scripts for gwave.ai. Full walkthrough: **`docs/AWS_DEPLOY.md`**.
 | `livekit-aws-deploy.sh` | Wrapper that deploys the CloudFormation stack from your machine. |
 | `livekit.yaml` | LiveKit server config (ports, keys, embedded TURN). |
 | `app-tls-setup.sh` | Put **HTTPS (Caddy)** in front of the app on a raw EC2/Lightsail box for a custom domain. |
+| `docker-compose.prod.yml` | **App + Caddy (auto-HTTPS)** in one stack — the whole app on your own AWS server. |
+| `Caddyfile` | Caddy config used by the prod compose (TLS for gwave.cc, www→apex). |
+| `.env.server.example` | All server env (build args + secrets) for the prod compose. Copy to `.env`. |
+| `server-deploy.sh` | One command: `git pull` + rebuild + restart app & Caddy (GitHub → AWS). |
 | `ecs-task-definition.json` | ECS Fargate task definition template for the Next.js app. |
 
 The app image is built from the repo-root **`Dockerfile`** (Next.js standalone).

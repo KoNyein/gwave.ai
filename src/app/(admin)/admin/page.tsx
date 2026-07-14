@@ -3,16 +3,24 @@ import { getTranslations } from "next-intl/server";
 import { AdminCharts } from "@/components/admin/admin-charts";
 import { AdminGuide } from "@/components/admin/admin-nav";
 import { AdminInfographics } from "@/components/admin/admin-infographics";
+import { Demographics } from "@/components/admin/demographics";
 import { Card, CardContent } from "@/components/ui/card";
-import { getAdminActivityStats, getAdminStats } from "@/lib/db/admin";
+import {
+  getAdminActivityStats,
+  getAdminStats,
+  getDemographicsAge,
+  getDemographicsRegion,
+} from "@/lib/db/admin";
 import { getRevenueByMonth } from "@/lib/db/membership";
 
 export default async function AdminOverviewPage() {
   const t = await getTranslations("admin");
-  const [stats, activity, revenue] = await Promise.all([
+  const [stats, activity, revenue, ageRows, regionRows] = await Promise.all([
     getAdminStats(),
     getAdminActivityStats(),
     getRevenueByMonth(),
+    getDemographicsAge(),
+    getDemographicsRegion(),
   ]);
 
   return (
@@ -77,6 +85,8 @@ export default async function AdminOverviewPage() {
         certificatesIssued={activity.certificates_issued}
         activeLearners30d={activity.active_learners_30d}
       />
+
+      <Demographics age={ageRows} region={regionRows} />
 
       <AdminCharts
         signupsByDay={stats.signupsByDay}

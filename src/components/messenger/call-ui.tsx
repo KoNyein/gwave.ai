@@ -16,72 +16,8 @@ import { Button } from "@/components/ui/button";
 import { displayName } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-import type { CallApi, CallStatus } from "./use-call";
-
-/**
- * Plays a ringtone while a call is ringing — a repeating dual-tone for an
- * incoming call, a slower single-tone ringback for an outgoing one — using the
- * Web Audio API so no audio asset is needed. Stops as soon as the call is
- * answered, ends, or the component unmounts.
- */
-function useCallRingtone(status: CallStatus): void {
-  React.useEffect(() => {
-    if (status !== "incoming" && status !== "outgoing") return;
-
-    const AudioCtx =
-      window.AudioContext ??
-      (window as unknown as { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioCtx) return;
-
-    let ctx: AudioContext | null = null;
-    let stopped = false;
-    try {
-      ctx = new AudioCtx();
-    } catch {
-      return;
-    }
-    const audioCtx = ctx;
-
-    const beep = (freq: number, start: number, duration: number) => {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.18, start + 0.04);
-      gain.gain.setValueAtTime(0.18, start + duration - 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-      osc.connect(gain).connect(audioCtx.destination);
-      osc.start(start);
-      osc.stop(start + duration + 0.02);
-    };
-
-    const ring = () => {
-      if (stopped) return;
-      const now = audioCtx.currentTime;
-      if (status === "incoming") {
-        beep(480, now, 0.4);
-        beep(440, now + 0.5, 0.4);
-      } else {
-        beep(440, now, 1.0);
-      }
-    };
-
-    audioCtx.resume().catch(() => {});
-    ring();
-    const interval = window.setInterval(
-      ring,
-      status === "incoming" ? 1600 : 3200,
-    );
-
-    return () => {
-      stopped = true;
-      window.clearInterval(interval);
-      audioCtx.close().catch(() => {});
-    };
-  }, [status]);
-}
+import type { CallApi } from "./use-call";
+import { useRingtone } from "./use-ringtone";
 
 function MediaStreamVideo({
   stream,
@@ -118,35 +54,8 @@ function formatDuration(totalSeconds: number): string {
 /** Incoming-call banner + in-call overlay, driven entirely by useCall(). */
 export function CallUI({ call }: { call: CallApi }) {
   const t = useTranslations("messenger");
-
-  // Ring while the call is ringing (incoming/outgoing).
-  useCallRingtone(call.status);
-
-  // Pop a system notification for an incoming call (helps when the tab is in
-  // the background). Requires the notification permission the PWA already asks
-  // for; silently no-ops otherwise.
-  const peer = call.peer;
-  const incomingVideo = call.status === "incoming" ? call.video : false;
-  React.useEffect(() => {
-    if (call.status !== "incoming" || !peer) return;
-    if (
-      typeof Notification === "undefined" ||
-      Notification.permission !== "granted"
-    ) {
-      return;
-    }
-    let notification: Notification | null = null;
-    try {
-      notification = new Notification(displayName(peer), {
-        body: incomingVideo ? t("incomingVideoCall") : t("incomingAudioCall"),
-        tag: "gwave-incoming-call",
-        renotify: true,
-      } as NotificationOptions & { renotify?: boolean });
-    } catch {
-      notification = null;
-    }
-    return () => notification?.close();
-  }, [call.status, peer, incomingVideo, t]);
+  // Ring the callee (and ringback the caller) while the call is pending.
+  useRingtone(call.status, call.peer ? displayName(call.peer) : null, call.video);
 
   if (call.status === "idle" || !call.peer) return null;
 

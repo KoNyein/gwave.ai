@@ -29,7 +29,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { checkout, createCustomer, openShift } from "@/lib/actions/pos";
+import {
+  checkout,
+  createCustomer,
+  openShift,
+  settlePosGpay,
+} from "@/lib/actions/pos";
 import type { ProductWithStock } from "@/lib/db/pos";
 import { mediaUrl } from "@/lib/media";
 import {
@@ -473,6 +478,9 @@ function ChargeDialog({
   const cart = usePosCart();
   const [method, setMethod] = React.useState<PaymentMethod>("cash");
   const [tendered, setTendered] = React.useState(total.toFixed(2));
+  // In-store G-Pay: the customer's wallet phone + their transaction PIN.
+  const [gpayPhone, setGpayPhone] = React.useState("");
+  const [gpayPin, setGpayPin] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [done, setDone] = React.useState<{
@@ -485,11 +493,32 @@ function ChargeDialog({
   const change =
     method === "cash" ? Math.max(0, tenderedValue - total) : 0;
   const canConfirm =
-    method === "cash" ? tenderedValue >= total : true;
+    method === "cash"
+      ? tenderedValue >= total
+      : method === "gpay"
+        ? gpayPhone.trim().length > 0 && /^[0-9]{4,6}$/.test(gpayPin)
+        : true;
 
   async function confirm() {
     setSubmitting(true);
     setError(null);
+
+    // Real in-store G-Pay: move the money before recording the sale, so a
+    // failed charge never books an unpaid sale.
+    if (method === "gpay") {
+      const settle = await settlePosGpay({
+        storeId: store.id,
+        customerPhone: gpayPhone.trim(),
+        amount: total,
+        pin: gpayPin,
+      });
+      if (!settle.ok) {
+        setError(settle.error);
+        setSubmitting(false);
+        return;
+      }
+    }
+
     const result = await checkout({
       storeId: store.id,
       items: cart.lines.map((line) => ({
@@ -591,6 +620,42 @@ function ChargeDialog({
                     {change.toFixed(2)} {store.currency}
                   </span>
                 </p>
+              </div>
+            ) : null}
+
+            {method === "gpay" ? (
+              <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
+                <p className="text-xs text-muted-foreground">
+                  Charge {total.toFixed(2)} to the customer&apos;s G-Pay wallet.
+                  They enter their phone and transaction PIN to approve.
+                </p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="gpay-phone">Customer G-Pay phone</Label>
+                  <Input
+                    id="gpay-phone"
+                    inputMode="tel"
+                    value={gpayPhone}
+                    onChange={(event) => setGpayPhone(event.target.value)}
+                    placeholder="09…"
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="gpay-pin">Customer PIN</Label>
+                  <Input
+                    id="gpay-pin"
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={6}
+                    value={gpayPin}
+                    onChange={(event) =>
+                      setGpayPin(event.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder="••••"
+                    className="h-11 tracking-widest"
+                  />
+                </div>
               </div>
             ) : null}
 

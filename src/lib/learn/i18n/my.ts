@@ -1968,8 +1968,18 @@ export const MY_OVERLAY: LearnOverlay = {
   // ───────────────────────── JavaScript ───────────────────────────────────
   javascript: {
     title: "JavaScript သင်တန်း",
-    description: "variable, function, loop, DOM နဲ့ event — စာမျက်နှာတွေ တွေးတတ်အောင်လုပ်ပါ။",
+    description: "အစကနေ စတင်ပါ — ပထမဆုံး code၊ ဆုံးဖြတ်ချက်၊ loop၊ DOM နဲ့ event။",
     lessons: {
+      "js-start": {
+        title: "ပထမဆုံး Code",
+        summary: "JavaScript ဆိုတာ ဘာလဲ၊ ပထမဆုံး message ပြခြင်း။",
+        youtubeQuery: "JavaScript အခြေခံ ကလေး hello world မြန်မာ",
+        sections: [
+          { heading: "JavaScript ဆိုတာ ဘာလဲ", body: "JavaScript ဆိုတာ ကွန်ပျူတာကို တစ်ကြောင်းချင်း ညွှန်ကြားချက် ပေးဖို့ သုံးတဲ့ ဘာသာစကား ဖြစ်ပါတယ်။ ကွန်ပျူတာက စာကြောင်းတိုင်းကို အပေါ်ကနေ အောက်ကို အတိအကျ လိုက်လုပ်တယ် — ဟင်းချက်နည်း အဆင့်ဆင့် လိုက်လုပ်သလိုပါ။ ပထမဆုံး ညွှန်ကြားချက်ကို အတူ ရေးကြည့်ရအောင်။" },
+          { heading: "Message ပြရန်", body: "`log(\"...\")` ညွှန်ကြားချက်က screen ပေါ်မှာ message ပြတယ်။ ပြချင်တဲ့ စကားလုံးတွေကို quote ( \" \" ) ထဲ ထည့်ပါ။ Run နှိပ်ရင် ပေါ်လာမယ်။ ပြီးရင် ကိုယ့်နာမည်ကို ပြောင်းပြီး ထပ် Run နှိပ်ကြည့်ပါ — screen က ကိုယ်နဲ့အတူ ပြောင်းသွားမယ်။" },
+          { heading: "တစ်ကြောင်းပြီး နောက်တစ်ကြောင်း", body: "စာကြောင်းတစ်ကြောင်း run ပြီးရင် နောက်တစ်ကြောင်း run တယ် — အမြဲ အပေါ်ကနေ အောက် အစဉ်လိုက်။ `log` စာကြောင်း ကြိုက်သလောက် ထည့်ရင် ရေးထားတဲ့ အစဉ်အတိုင်း message တွေ ပေါ်လာမယ်။ ဒါက code ရဲ့ လျှို့ဝှက်ချက် တစ်ခုလုံးပါ — အဆင့်ငယ်လေးတွေ တစ်ခုပြီးတစ်ခု။" },
+        ],
+      },
       "js-variables": {
         title: "Variable နဲ့ Type များ",
         summary: "let, const နဲ့ အခြေခံ value type များ။",
@@ -1986,6 +1996,17 @@ export const MY_OVERLAY: LearnOverlay = {
         youtubeQuery: "JavaScript function မြန်မာ",
         sections: [
           { heading: "သတ်မှတ်ခြင်းနဲ့ ခေါ်ခြင်း", body: "function တစ်ခုက parameter ယူ၊ အလုပ်လုပ်ပြီး ရလဒ်ပြန်ပေးတယ်။ arrow function က ခေတ်မီ အတိုကောက် syntax။ တစ်ခါ သတ်မှတ်ပြီးရင် ကြိုက်သလောက် ခေါ်လို့ရတယ်။" },
+        ],
+      },
+      "js-if-else": {
+        title: "If / Else — ဆုံးဖြတ်ခြင်း",
+        summary: "တစ်ခုခု မှန်မှသာ code run၊ လမ်း ၂ ခုကြား ရွေးခြင်း။",
+        youtubeQuery: "JavaScript if else အခြေခံ မြန်မာ",
+        sections: [
+          { heading: "ဆုံးဖြတ်ချက် ချခြင်း", body: "တစ်ခါတလေ code က တစ်ခုခု မှန်မှသာ run သင့်တယ်။ `if` က ( ) ထဲမှာ ဟုတ်/မဟုတ် မေးခွန်း မေးတယ်။ အဖြေက ဟုတ် (true) ဆိုရင် { } ထဲက code run တယ်။ မဟုတ်ရင် အဲဒီ code ကို ကျော်သွားပြီး ဘာမှ မဖြစ်ဘူး။" },
+          { heading: "နောက်လမ်း — else", body: "`else` ထည့်ပြီး `if` မေးခွန်း မမှန်ရင် ဘာဖြစ်ရမလဲ ပြောနိုင်တယ်။ အခု block ၂ ခုထဲက တစ်ခုပဲ အမြဲ run တယ် — နှစ်ခုလုံး မဟုတ်၊ တစ်ခုမှ မ run တာ မရှိ။ လမ်းဆုံလို့ တွေးပါ — အဖြေက ဘယ်လမ်း လျှောက်မလဲ ဆုံးဖြတ်တယ်။" },
+          { heading: "မေးခွန်း မေးခြင်း", body: "( ) ထဲမှာ value ၂ ခုကို ဒီသင်္ကေတတွေနဲ့ နှိုင်းယှဉ်တယ်: `>` ကြီး · `<` ငယ် · `>=` ကြီး/ညီ · `<=` ငယ်/ညီ · `===` အတိအကျ တူ · `!==` မတူ။ အရေးကြီးတာ — တူမတူ စစ်ဖို့ `===` (သုံးခု) သုံးပါ။ `=` တစ်ခုတည်းက 'value သိမ်း' အဓိပ္ပာယ်ဖြစ်လို့ အခြေခံသမား အများဆုံး မှားတတ်တဲ့ နေရာ။" },
+          { heading: "ရွေးစရာ ၂ ခုထက်ပို — else if", body: "case များစွာ ရှိရင် `else if` နဲ့ ဆက်တယ်။ JavaScript က မေးခွန်းတိုင်းကို အပေါ်ကနေ စစ်ပြီး ပထမဆုံး မှန်တဲ့ဟာကို run၊ ပြီးရင် ရပ်ပြီး ကျန်တာ ကျော်တယ်။ နောက်ဆုံး `else` က ကျန်တာ အားလုံးကို ဖမ်းတယ်။" },
         ],
       },
       "js-conditions-loops": {
@@ -2510,6 +2531,25 @@ export const MY_OVERLAY: LearnOverlay = {
           },
         ],
       },
+      "sql-case": {
+        title: "CASE: SQL ထဲ If / Else",
+        summary: "row တစ်ခုချင်းကို label ကွဲ ပေးခြင်း — if/else လိုပဲ။",
+        youtubeQuery: "SQL CASE WHEN အခြေခံ မြန်မာ",
+        sections: [
+          {
+            heading: "row အလိုက် ဆုံးဖြတ်ခြင်း",
+            body: "တစ်ခါတလေ row ရဲ့ တန်ဖိုးပေါ်မူတည်ပြီး အဖြေ ကွဲစေချင်တယ် — တခြားဘာသာစကားက if/else လုပ်တဲ့ အလုပ်အတိအကျပါ။ SQL မှာ အဲဒါက `CASE`။ `WHEN` အခြေအနေတိုင်းကို အပေါ်ကနေ စစ်ပြီး ပထမဆုံး မှန်တဲ့ `THEN` ရဲ့ တန်ဖိုးကို ပြန်ပေးတယ်။ `ELSE` က ကျန်တာ အားလုံး ဖမ်း၊ `END` က ပိတ်တယ်။",
+          },
+          {
+            heading: "column အသစ်ကို နာမည်ပေးပါ",
+            body: "`AS size` က CASE ရလဒ်ကို column နာမည် သပ်သပ်ရပ်ရပ် ပေးလို့ output ဖတ်ရ လှတယ်။ CASE column က တခြား column လိုပဲ — SELECT မှာ သုံးလို့ရ၊ ORDER BY မှာ စီလို့ရ၊ count တောင် လုပ်လို့ရတယ်။",
+          },
+          {
+            heading: "လုပ်ကြည့်ပါ",
+            body: "query ကို Run ပြီး grower တိုင်းကို 'big', 'small', 'none' label တပ်ကြည့်ပါ။ ပြီးရင် `10` ကို `5` ပြောင်း၊ သို့ `WHEN plants > 20 THEN 'huge'` ကို အပေါ်မှာ ထပ်ထည့်ပြီး ပြန် run — row တိုင်း သူ့ label ရွေးတာ ကြည့်ပါ။",
+          },
+        ],
+      },
       "sql-order-limit": {
         title: "ORDER BY နဲ့ LIMIT",
         summary: "ရလဒ်ကို စီပြီး ထိပ်ဆုံး အနည်းငယ်ပဲ ယူပါ။",
@@ -2829,20 +2869,6 @@ export const MY_OVERLAY: LearnOverlay = {
           {
             heading: "လုပ်ကြည့်ပါ",
             body: "Query က indica strain စိုက်တဲ့ grower ရှာတယ်။ 'indica' ကို 'sativa' ပြောင်းပြီး sativa grower ရှာဖို့ ပြန် Run ပါ။",
-          },
-        ],
-      },
-      "sql-case": {
-        title: "CASE: SQL ထဲက If/Then",
-        summary: "အခြေအနေ logic နဲ့ တန်ဖိုးတွေကို label ပြောင်းပါ။",
-        sections: [
-          {
-            heading: "Row တစ်ခုစီအတွက် ရလဒ် ရွေးခြင်း",
-            body: "CASE က SQL ရဲ့ if/then ပါ။ အခြေအနေတွေ အစဉ်လိုက် စစ်ပြီး ပထမကိုက်တဲ့ ရလဒ်၊ တစ်ခုမှ မကိုက်ရင် ELSE တန်ဖိုး ပြန်ပေးတယ်။ ဂဏန်းတွေကို label အုပ်စုခွဲဖို့ သုံးပါ — ဒီမှာ အပင်အရေအတွက်ကို 'small'/'medium'/'large' ဥယျာဉ်အရွယ် ဖြစ်သွားတယ်။",
-          },
-          {
-            heading: "လုပ်ကြည့်ပါ",
-            body: "Query က grower တစ်ဦးစီရဲ့ ဥယျာဉ်အရွယ် label တပ်တယ်။ `15` threshold ကို `12` ပြောင်းပြီး label ရွေ့သွားတာ ပြန် Run ကြည့်ပါ။",
           },
         ],
       },
@@ -3589,5 +3615,18 @@ export const MY_OVERLAY: LearnOverlay = {
         ],
       },
     },
+  },
+  // Advanced tracks are authored natively in Burmese (summaries + section
+  // bodies + descriptions). Only the English course-card titles need an
+  // overlay so the /learn grid reads fully Burmese; technical concept lesson
+  // titles (Closures, Promises…) stay in English, as Burmese devs use them.
+  "advanced-js": {
+    title: "အဆင့်မြင့် JavaScript",
+  },
+  "game-dev": {
+    title: "JavaScript ဂိမ်း ရေးသားခြင်း သင်တန်း",
+  },
+  "advanced-canvas": {
+    title: "အဆင့်မြင့် Canvas ဂရပ်ဖစ်",
   },
 };

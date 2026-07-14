@@ -1,0 +1,19 @@
+# Caddy config for the gwave.ai app (used by deploy/docker-compose.prod.yml).
+# Caddy fetches + renews a Let's Encrypt certificate automatically and reverse
+# proxies HTTPS traffic to the app container. www -> apex redirect.
+#
+# Requires: ports 80 + 443 open on the box, and gwave.cc / www.gwave.cc DNS
+# A records pointing at the box's public IP.
+
+{
+	email nyeinchanlin75@gmail.com
+}
+
+gwave.cc {
+	encode gzip zstd
+	reverse_proxy web:3000
+}
+
+www.gwave.cc {
+	redir https://gwave.cc{uri} permanent
+}

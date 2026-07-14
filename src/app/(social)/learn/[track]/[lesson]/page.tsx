@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { LessonAudio } from "@/components/learn/lesson-audio";
+import { LessonComments } from "@/components/learn/lesson-comments";
 import { LessonVideo } from "@/components/learn/lesson-video";
 import { LessonYouTubeLink } from "@/components/learn/lesson-youtube-link";
 import { PythonPlayground } from "@/components/learn/python-playground";
@@ -21,6 +22,7 @@ import { ScratchPlayground } from "@/components/learn/scratch-playground";
 import { SqlPlayground } from "@/components/learn/sql-playground";
 import { ageBandOf, getCurrentProfile } from "@/lib/auth";
 import { getProjectForLesson } from "@/lib/db/learn";
+import { getLessonComments } from "@/lib/db/lesson-comments";
 import { localizeLesson } from "@/lib/learn/i18n";
 import { getLesson, tracksForBand } from "@/lib/learn/lessons";
 
@@ -79,6 +81,15 @@ export default async function LessonPage({
     trackSlug: track.slug,
     lessonSlug: lesson.slug,
     initialData: project?.data ?? null,
+  };
+
+  const comments = await getLessonComments(track.slug, lesson.slug);
+  const commentUser = {
+    id: profile.id,
+    username: profile.username,
+    full_name: profile.full_name,
+    avatar_url: profile.avatar_url,
+    role: profile.role,
   };
 
   return (
@@ -209,6 +220,13 @@ export default async function LessonPage({
           </CardContent>
         </Card>
       )}
+
+      <LessonComments
+        trackSlug={track.slug}
+        lessonSlug={lesson.slug}
+        currentUser={commentUser}
+        initialComments={comments}
+      />
     </div>
   );
 }

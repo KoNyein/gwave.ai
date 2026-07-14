@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { useTranslations } from "next-intl";
 
@@ -33,6 +34,14 @@ export function OnboardingForm({ profile }: { profile: Profile | null }) {
     saveProfile,
     null,
   );
+  // Fill the hidden timezone field after mount (avoids a hydration mismatch).
+  const tzRef = React.useRef<HTMLInputElement>(null);
+  React.useEffect(() => {
+    if (tzRef.current) {
+      tzRef.current.value =
+        Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+    }
+  }, []);
 
   return (
     <Card className="mx-auto w-full max-w-lg">
@@ -42,6 +51,7 @@ export function OnboardingForm({ profile }: { profile: Profile | null }) {
       </CardHeader>
       <CardContent>
         <form action={formAction} className="space-y-4">
+          <input type="hidden" name="timezone" ref={tzRef} />
           <div className="space-y-2">
             <Label htmlFor="username">{t("username")}</Label>
             <Input

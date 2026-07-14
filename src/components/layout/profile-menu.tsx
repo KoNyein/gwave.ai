@@ -37,7 +37,7 @@ export function ProfileMenu({ profile }: { profile: Profile | null }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>
-          {profile?.full_name ?? profile?.username ?? "gwave.ai"}
+          {profile?.full_name ?? profile?.username ?? "Gwave"}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>

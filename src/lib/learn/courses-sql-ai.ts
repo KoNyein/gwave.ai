@@ -26,7 +26,7 @@ const sqlTrack: Track = {
   description:
     "Query real data in your browser — SELECT, WHERE, JOIN and more. No install needed.",
   icon: "Database",
-  bands: ["teen", "adult"],
+  bands: ["preteen", "teen", "adult"],
   lessons: [
     {
       slug: "sql-intro",
@@ -112,6 +112,31 @@ const sqlTrack: Track = {
         },
       ],
       sqlCode: "SELECT name, city, plants\nFROM growers\nWHERE plants > 10;",
+    },
+    {
+      slug: "sql-case",
+      title: "CASE: If / Else in SQL",
+      summary: "Give each row a different label, just like if/else.",
+      minutes: 10,
+      kind: "sql",
+      youtubeQuery: "SQL CASE WHEN tutorial for beginners",
+      sections: [
+        {
+          heading: "Deciding per row",
+          body: "Sometimes you want a different answer depending on a row's values — exactly what if/else does in other languages. In SQL that job belongs to `CASE`. It checks each `WHEN` condition from the top and returns the value after the first `THEN` that is true. `ELSE` catches everything left over, and `END` closes it.",
+          code: "SELECT name,\n  CASE\n    WHEN plants > 10 THEN 'big'\n    WHEN plants > 0  THEN 'small'\n    ELSE 'none'\n  END AS size\nFROM growers;",
+        },
+        {
+          heading: "Name the new column",
+          body: "`AS size` gives the CASE result a friendly column name so the output reads nicely. A CASE column behaves like any other column — you can use it in SELECT, sort by it in ORDER BY, even count it.",
+        },
+        {
+          heading: "Try it",
+          body: "Run the query to label each grower 'big', 'small' or 'none'. Then change `10` to `5`, or add a new line `WHEN plants > 20 THEN 'huge'` above the others, and run again — watch each row pick its label.",
+        },
+      ],
+      sqlCode:
+        "SELECT name, plants,\n  CASE\n    WHEN plants > 10 THEN 'big 🌳'\n    WHEN plants > 0  THEN 'small 🌱'\n    ELSE 'none'\n  END AS size\nFROM growers;",
     },
     {
       slug: "sql-order-limit",

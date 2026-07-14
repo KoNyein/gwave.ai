@@ -8,7 +8,7 @@
  * Run: node scripts/generate-knowledge-seed.mjs
  */
 
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -171,6 +171,46 @@ const STRAIN_BLURB = {
     "A balanced hybrid offering the best of both worlds — a smooth head high that settles into gentle body calm.",
 };
 
+// Expand the curated classics into a ~2000-strain catalogue. Real strain names
+// pair a modifier with a base; we combine them deterministically so the extra
+// entries are unique and plausible. Type is derived from the name hash so the
+// same name always maps to the same indica/sativa/hybrid.
+const NAME_PREFIX = [
+  "Blue", "Purple", "Green", "White", "Pink", "Black", "Golden", "Silver",
+  "Northern", "Sour", "Sweet", "Super", "Lemon", "Cherry", "Grape",
+  "Strawberry", "Banana", "Mango", "Orange", "Frosted", "Platinum", "Royal",
+  "Crystal", "Ghost", "Diamond", "Alien", "Cosmic", "Tropical", "Island",
+  "Mountain", "Jungle", "Arctic", "Desert", "Electric", "Atomic", "Mystic",
+  "Holy", "Dragon", "Tiger", "Panther", "Gorilla", "Wild", "Frozen", "Amber",
+  "Ruby", "Emerald", "Jade", "Velvet", "Midnight", "Solar", "Lunar", "Crimson",
+  "Neon", "Turbo", "Mega", "Ultra", "Double", "Triple", "Rainbow", "Sunset",
+];
+const NAME_BASE = [
+  "Kush", "Haze", "Diesel", "OG", "Widow", "Dream", "Punch", "Cookies",
+  "Gelato", "Runtz", "Cake", "Glue", "Skunk", "Cheese", "Berry", "Trainwreck",
+  "Express", "Lights", "Poison", "Fire", "Frost", "Fuel", "Gas", "Sherbet",
+  "Crack", "Mist", "Storm", "Thunder", "Breath", "Gushers", "Tangie", "Mimosa",
+  "Biscotti", "Sorbet", "Wreck", "Bomb", "Rocket", "Star", "Cloud", "Wave",
+  "Rush", "Bliss", "Fusion", "Blossom", "Nectar", "Crush", "Splash", "Cream",
+];
+const STRAIN_CODES = ["i", "s", "h"];
+const TARGET_STRAINS = 2000;
+
+const ALL_STRAINS = (() => {
+  const seen = new Set(STRAINS.map(([n]) => n));
+  const out = STRAINS.slice();
+  outer: for (const p of NAME_PREFIX) {
+    for (const b of NAME_BASE) {
+      const name = `${p} ${b}`;
+      if (seen.has(name)) continue;
+      seen.add(name);
+      out.push([name, STRAIN_CODES[hash(name) % 3]]);
+      if (out.length >= TARGET_STRAINS) break outer;
+    }
+  }
+  return out;
+})();
+
 function strainRow([name, code]) {
   const type = TYPE_NAME[code];
   const seed = hash(name);
@@ -301,6 +341,62 @@ const MINERALS = [
   ["Cobalt", "Co", "Metal", 5, 8.86, ["battery cathodes", "superalloys", "blue pigment"], {}],
   ["Lithium", "Li", "Metal", 0.6, 0.53, ["batteries", "ceramics", "medication"], { note: "lightest metal; floats on water" }],
   ["Mercury", "Hg", "Metal", 1.5, 13.53, ["historic thermometers", "gold amalgamation"], { note: "liquid at room temperature", caution: "toxic" }],
+  // --- full metal set (periodic-table metals, metalloids & rare earths) ---
+  ["Sodium", "Na", "Metal", 0.5, 0.97, ["street lamps", "coolant", "chemical reagent"], { group: "alkali", caution: "reacts violently with water" }],
+  ["Potassium", "K", "Metal", 0.4, 0.86, ["fertilizer", "reagent"], { group: "alkali" }],
+  ["Rubidium", "Rb", "Metal", 0.3, 1.53, ["atomic clocks", "research"], { group: "alkali" }],
+  ["Cesium", "Cs", "Metal", 0.2, 1.93, ["atomic clocks", "drilling fluids"], { group: "alkali", note: "melts near body temperature" }],
+  ["Beryllium", "Be", "Metal", 5.5, 1.85, ["aerospace alloys", "X-ray windows"], { group: "alkaline earth", caution: "toxic dust" }],
+  ["Magnesium", "Mg", "Metal", 2.5, 1.74, ["lightweight alloys", "flares", "supplements"], { group: "alkaline earth" }],
+  ["Calcium", "Ca", "Metal", 1.75, 1.55, ["steel deoxidizer", "alloys"], { group: "alkaline earth" }],
+  ["Strontium", "Sr", "Metal", 1.5, 2.64, ["fireworks (red)", "ferrite magnets"], { group: "alkaline earth" }],
+  ["Barium", "Ba", "Metal", 1.25, 3.51, ["drilling mud", "vacuum tubes"], { group: "alkaline earth" }],
+  ["Titanium", "Ti", "Metal", 6, 4.51, ["aerospace", "implants", "pigment"], { note: "high strength-to-weight ratio" }],
+  ["Vanadium", "V", "Metal", 7, 6.11, ["steel alloys", "catalysts"], {} ],
+  ["Chromium", "Cr", "Metal", 8.5, 7.19, ["stainless steel", "plating"], { note: "hardest common metal" }],
+  ["Manganese", "Mn", "Metal", 6, 7.43, ["steelmaking", "batteries"], {} ],
+  ["Cobalt", "Co", "Metal", 5, 8.9, ["batteries", "superalloys", "blue pigment"], {} ],
+  ["Nickel", "Ni", "Metal", 4, 8.91, ["stainless steel", "batteries", "coins"], {} ],
+  ["Scandium", "Sc", "Metal", 2.5, 2.99, ["aerospace alloys", "stadium lighting"], { note: "rare, light transition metal" }],
+  ["Yttrium", "Y", "Metal", 2.5, 4.47, ["LED phosphors", "superconductors"], { group: "rare earth" }],
+  ["Zirconium", "Zr", "Metal", 5, 6.52, ["nuclear cladding", "ceramics"], { note: "corrosion resistant" }],
+  ["Niobium", "Nb", "Metal", 6, 8.57, ["superconducting magnets", "steel alloys"], {} ],
+  ["Molybdenum", "Mo", "Metal", 5.5, 10.28, ["high-strength steel", "electrodes"], {} ],
+  ["Ruthenium", "Ru", "Native metal", 6.5, 12.37, ["electronics", "catalysts"], { group: "platinum group" }],
+  ["Rhodium", "Rh", "Native metal", 6, 12.41, ["catalytic converters", "jewelry plating"], { group: "platinum group", note: "one of the rarest metals" }],
+  ["Palladium", "Pd", "Native metal", 4.75, 12.02, ["catalytic converters", "electronics"], { group: "platinum group" }],
+  ["Cadmium", "Cd", "Metal", 2, 8.65, ["NiCd batteries", "pigments"], { caution: "toxic" }],
+  ["Hafnium", "Hf", "Metal", 5.5, 13.31, ["nuclear control rods", "superalloys"], {} ],
+  ["Tantalum", "Ta", "Metal", 6.5, 16.65, ["capacitors", "surgical implants"], {} ],
+  ["Tungsten", "W", "Metal", 7.5, 19.25, ["filaments", "cutting tools", "armor"], { note: "highest melting point of all metals" }],
+  ["Rhenium", "Re", "Metal", 7, 21.02, ["jet-engine superalloys", "catalysts"], {} ],
+  ["Osmium", "Os", "Native metal", 7, 22.59, ["fountain-pen tips", "electrical contacts"], { note: "densest naturally occurring element" }],
+  ["Iridium", "Ir", "Native metal", 6.5, 22.56, ["spark plugs", "crucibles"], { note: "most corrosion-resistant metal" }],
+  ["Gallium", "Ga", "Metal", 1.5, 5.91, ["semiconductors (LEDs)", "solar cells"], { note: "melts in the hand" }],
+  ["Indium", "In", "Metal", 1.2, 7.31, ["touchscreens (ITO)", "solders"], {} ],
+  ["Thallium", "Tl", "Metal", 1.2, 11.85, ["electronics", "infrared optics"], { caution: "highly toxic" }],
+  ["Bismuth", "Bi", "Metal", 2.25, 9.78, ["pharmaceuticals", "lead-free alloys"], { note: "iridescent oxide colours" }],
+  ["Antimony", "Sb", "Native element", 3, 6.68, ["flame retardants", "lead alloys"], { class: "metalloid" }],
+  ["Boron", "B", "Native element", 9.3, 2.34, ["borosilicate glass", "abrasives"], { class: "metalloid" }],
+  ["Silicon", "Si", "Native element", 6.5, 2.33, ["semiconductors", "solar cells", "alloys"], { class: "metalloid" }],
+  ["Germanium", "Ge", "Native element", 6, 5.32, ["fiber optics", "infrared optics"], { class: "metalloid" }],
+  ["Arsenic", "As", "Native element", 3.5, 5.73, ["semiconductors", "alloys"], { class: "metalloid", caution: "toxic" }],
+  ["Tellurium", "Te", "Native element", 2.25, 6.24, ["solar panels", "alloying steel"], { class: "metalloid" }],
+  ["Lanthanum", "La", "Metal", 2.5, 6.16, ["camera lenses", "battery alloys"], { group: "rare earth" }],
+  ["Cerium", "Ce", "Metal", 2.5, 6.77, ["catalytic converters", "glass polishing"], { group: "rare earth" }],
+  ["Praseodymium", "Pr", "Metal", 2.5, 6.77, ["magnets", "aircraft alloys"], { group: "rare earth" }],
+  ["Neodymium", "Nd", "Metal", 2.5, 7.01, ["powerful magnets", "lasers"], { group: "rare earth" }],
+  ["Samarium", "Sm", "Metal", 2.5, 7.52, ["magnets", "nuclear reactors"], { group: "rare earth" }],
+  ["Europium", "Eu", "Metal", 2, 5.24, ["red/blue phosphors", "anti-counterfeit inks"], { group: "rare earth" }],
+  ["Gadolinium", "Gd", "Metal", 2.5, 7.9, ["MRI contrast", "shielding"], { group: "rare earth" }],
+  ["Terbium", "Tb", "Metal", 2.5, 8.23, ["green phosphors", "solid-state devices"], { group: "rare earth" }],
+  ["Dysprosium", "Dy", "Metal", 2.5, 8.55, ["high-temp magnets", "lasers"], { group: "rare earth" }],
+  ["Holmium", "Ho", "Metal", 2.5, 8.8, ["magnets", "medical lasers"], { group: "rare earth" }],
+  ["Erbium", "Er", "Metal", 2.5, 9.07, ["fiber-optic amplifiers", "pink glass"], { group: "rare earth" }],
+  ["Ytterbium", "Yb", "Metal", 2.5, 6.9, ["atomic clocks", "stainless steel"], { group: "rare earth" }],
+  ["Lutetium", "Lu", "Metal", 2.5, 9.84, ["PET scanners", "catalysts"], { group: "rare earth" }],
+  ["Thorium", "Th", "Metal", 3, 11.72, ["nuclear fuel research", "gas mantles"], { caution: "radioactive" }],
+  ["Uranium", "U", "Metal", 6, 19.05, ["nuclear fuel", "radiation shielding"], { caution: "radioactive" }],
 ];
 
 const MINERAL_BLURB = {
@@ -317,6 +413,21 @@ const MINERAL_BLURB = {
   Metal: "an industrially refined metal traded as a commodity",
 };
 
+// Some metals appear both in the curated list and the periodic-table block
+// (Titanium, Nickel, Cobalt, Tungsten). Keep the first occurrence of each slug
+// so the emitted INSERT never repeats a row within one statement.
+function dedupeBySlug(list) {
+  const seen = new Set();
+  const out = [];
+  for (const row of list) {
+    const slug = slugify(row[0]);
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    out.push(row);
+  }
+  return out;
+}
+
 function mineralRow([name, symbol, category, mohs, density, uses, extra]) {
   const description = `${name} (${symbol}) is ${MINERAL_BLURB[category]}. With a Mohs hardness of ${mohs} and a density of ${density} g/cm³, it is chiefly used for ${uses[0]}.`;
   const properties = JSON.stringify(extra);
@@ -325,26 +436,99 @@ function mineralRow([name, symbol, category, mohs, density, uses, extra]) {
 
 // --- output -------------------------------------------------------------------
 
-const lines = [
-  "-- Knowledge seed: 200 cannabis strains + 100 minerals/metals.",
-  "-- GENERATED by scripts/generate-knowledge-seed.mjs — edit the script, not this file.",
-  "-- Idempotent: safe to re-run.",
-  "",
-  "insert into public.strains",
-  "  (name, slug, type, thc, cbd, effects, flavors, terpenes, grow_difficulty, flowering_weeks, yield_indoor, yield_outdoor, description)",
-  "values",
-  STRAINS.map(strainRow).join(",\n"),
-  "on conflict (slug) do nothing;",
-  "",
+// Emit the strain inserts in chunks so the file stays friendly to the Supabase
+// SQL Editor (which caps a single statement's size).
+const STRAIN_COLUMNS =
+  "  (name, slug, type, thc, cbd, effects, flavors, terpenes, grow_difficulty, flowering_weeks, yield_indoor, yield_outdoor, description)";
+const CHUNK = 250;
+const strainInserts = [];
+for (let i = 0; i < ALL_STRAINS.length; i += CHUNK) {
+  const rows = ALL_STRAINS.slice(i, i + CHUNK).map(strainRow).join(",\n");
+  strainInserts.push(
+    `insert into public.strains\n${STRAIN_COLUMNS}\nvalues\n${rows}\non conflict (slug) do nothing;`,
+  );
+}
+
+const MINERAL_ROWS = dedupeBySlug(MINERALS);
+const mineralsInsert = [
   "insert into public.minerals",
   "  (name, slug, symbol, category, hardness_mohs, density, properties, uses, description)",
   "values",
-  MINERALS.map(mineralRow).join(",\n"),
+  MINERAL_ROWS.map(mineralRow).join(",\n"),
   "on conflict (slug) do nothing;",
-  "",
+].join("\n");
+
+const header = [
+  `-- Knowledge seed: ${ALL_STRAINS.length} cannabis strains + ${MINERAL_ROWS.length} minerals/metals.`,
+  "-- GENERATED by scripts/generate-knowledge-seed.mjs — edit the script, not this file.",
+  "-- Idempotent: safe to re-run. Sample strain photos are rendered in the UI",
+  "-- (type-coloured placeholder) when image_url is null.",
 ];
 
-writeFileSync(OUT, lines.join("\n"));
+// 1) One combined file — best for `psql -f` / the Supabase CLI.
+const combined = [
+  ...header,
+  "",
+  strainInserts.join("\n\n"),
+  "",
+  mineralsInsert,
+  "",
+];
+writeFileSync(OUT, combined.join("\n"));
+
+// 2) Split part files — each is ONE self-contained, valid statement small
+// enough to paste into the Supabase web SQL Editor (which truncates ~1 MB
+// pastes, the cause of the "syntax error at or near '(...'" reports). Run them
+// in filename order; every part is idempotent so re-running is safe.
+const PARTS_DIR = join(dirname(OUT), "knowledge");
+mkdirSync(PARTS_DIR, { recursive: true });
+const parts = [...strainInserts, mineralsInsert];
+const pad = String(parts.length).length;
+const manifest = [];
+parts.forEach((body, idx) => {
+  const n = String(idx + 1).padStart(pad, "0");
+  const isMinerals = idx === strainInserts.length;
+  const label = isMinerals ? "minerals" : "strains";
+  const name = `part_${n}_${label}.sql`;
+  writeFileSync(
+    join(PARTS_DIR, name),
+    [
+      ...header,
+      `-- Part ${idx + 1}/${parts.length} — ${label}. Paste this whole file into the`,
+      "-- Supabase SQL Editor and Run. Order does not matter; re-running is safe.",
+      "",
+      body,
+      "",
+    ].join("\n"),
+  );
+  manifest.push(name);
+});
+writeFileSync(
+  join(PARTS_DIR, "README.md"),
+  [
+    "# Knowledge seed — split parts",
+    "",
+    "The combined `../knowledge_seed.sql` is ~1 MB, which the Supabase **web**",
+    "SQL Editor truncates on paste (you then get `syntax error at or near`).",
+    "These parts avoid that: each file is one complete, idempotent statement.",
+    "",
+    "## How to load (Supabase web SQL Editor)",
+    "Open each file below, copy ALL of it, paste into a new query, and Run.",
+    "Do them in order. Re-running any part is safe (`on conflict do nothing`).",
+    "",
+    ...manifest.map((m, i) => `${i + 1}. \`${m}\``),
+    "",
+    "## Faster: Supabase CLI / psql (loads everything at once)",
+    "```bash",
+    "psql \"$DATABASE_URL\" -f supabase/seed/knowledge_seed.sql",
+    "```",
+    "",
+  ].join("\n"),
+);
+
 console.log(
-  `Wrote ${OUT}: ${STRAINS.length} strains, ${MINERALS.length} minerals`,
+  `Wrote ${OUT}: ${ALL_STRAINS.length} strains, ${MINERAL_ROWS.length} minerals`,
+);
+console.log(
+  `Wrote ${parts.length} split parts + README to ${PARTS_DIR}`,
 );
