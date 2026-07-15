@@ -72,7 +72,8 @@
     "passwordsDontMatch": "รหัสผ่านไม่ตรงกัน",
     "recoverySessionExpired": "ลิงก์หมดอายุ — ขอลิงก์รีเซ็ตใหม่",
     "goToFeed": "ไปที่ฟีด",
-    "oauthFailed": "เข้าสู่ระบบด้วย Google ไม่สำเร็จ"
+    "oauthFailed": "เข้าสู่ระบบด้วย Google ไม่สำเร็จ",
+    "sessionStale": "เซสชันของคุณหมดอายุ กรุณาเข้าสู่ระบบอีกครั้งเพื่อดำเนินการต่อ"
   },
   "onboarding": {
     "title": "ตั้งค่าโปรไฟล์ของคุณ",
