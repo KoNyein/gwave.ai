@@ -4,6 +4,8 @@ import { Map as MapIcon, Users } from "lucide-react";
 
 import { GpsMap } from "@/components/gps/gps-map";
 import { getCurrentProfile } from "@/lib/auth";
+import { getFamilyPeopleForMap } from "@/lib/db/family";
+import type { MapPerson } from "@/lib/geolocation";
 
 export const metadata = { title: "Map" };
 export const dynamic = "force-dynamic";
@@ -11,6 +13,17 @@ export const dynamic = "force-dynamic";
 export default async function MapPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
+
+  const family = await getFamilyPeopleForMap(profile.id);
+  const people: MapPerson[] = family.map((p) => ({
+    id: p.profile.id,
+    name: p.profile.full_name || p.profile.username || "Member",
+    username: p.profile.username,
+    latitude: p.location.latitude,
+    longitude: p.location.longitude,
+    avatarUrl: p.profile.avatar_url,
+    updatedAt: p.location.updated_at,
+  }));
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -34,7 +47,10 @@ export default async function MapPage() {
         </Link>
       </div>
 
-      <GpsMap apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""} />
+      <GpsMap
+        apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""}
+        people={people}
+      />
     </div>
   );
 }
