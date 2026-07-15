@@ -425,3 +425,52 @@ export async function markCameraAlertsSeen(
   if (error) return { ok: false, error: error.message };
   return { ok: true, data: undefined };
 }
+
+const groupShareSchema = z.object({
+  cameraId: z.string().uuid(),
+  groupId: z.string().uuid(),
+  share: z.boolean(),
+});
+
+/**
+ * Share (or unshare) a camera with a group. Owner-scoped by RLS: the insert /
+ * delete only succeeds when the caller owns the camera. Group members can then
+ * watch the camera's live feed.
+ */
+export async function shareCameraWithGroup(
+  input: z.infer<typeof groupShareSchema>,
+): Promise<ActionResult> {
+  const parsed = groupShareSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid request." };
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const supabase = await createClient();
+  // Confirm ownership up front for a clear error (RLS also enforces it).
+  const { data: cam } = await supabase
+    .from("user_cameras")
+    .select("id")
+    .eq("id", parsed.data.cameraId)
+    .eq("owner_id", userId)
+    .maybeSingle<{ id: string }>();
+  if (!cam) return { ok: false, error: "Camera not found" };
+
+  if (parsed.data.share) {
+    const { error } = await supabase
+      .from("camera_group_shares")
+      .upsert(
+        { camera_id: parsed.data.cameraId, group_id: parsed.data.groupId },
+        { onConflict: "camera_id,group_id" },
+      );
+    if (error) return { ok: false, error: error.message };
+  } else {
+    const { error } = await supabase
+      .from("camera_group_shares")
+      .delete()
+      .eq("camera_id", parsed.data.cameraId)
+      .eq("group_id", parsed.data.groupId);
+    if (error) return { ok: false, error: error.message };
+  }
+  revalidatePath(`/cameras/${parsed.data.cameraId}`);
+  return { ok: true, data: undefined };
+}

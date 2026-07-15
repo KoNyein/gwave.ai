@@ -105,3 +105,27 @@ export async function getCameraAlerts(
     .returns<CameraAlert[]>();
   return data ?? [];
 }
+
+/** Group ids a camera is shared with (owner view). */
+export async function getCameraGroupShareIds(
+  cameraId: string,
+): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("camera_group_shares")
+    .select("group_id")
+    .eq("camera_id", cameraId)
+    .returns<{ group_id: string }[]>();
+  return (data ?? []).map((r) => r.group_id);
+}
+
+/** Cameras shared with a group — RLS lets members read them (no rtsp_url). */
+export async function getGroupCameras(groupId: string): Promise<PublicCamera[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("camera_group_shares")
+    .select(`camera:user_cameras!camera_group_shares_camera_id_fkey(${PUBLIC_COLS})`)
+    .eq("group_id", groupId)
+    .returns<{ camera: PublicCamera }[]>();
+  return (data ?? []).map((r) => r.camera).filter(Boolean);
+}
