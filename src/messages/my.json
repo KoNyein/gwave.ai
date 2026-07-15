@@ -72,7 +72,8 @@
     "passwordsDontMatch": "စကားဝှက် နှစ်ခု မတူပါ။",
     "recoverySessionExpired": "Link သက်တမ်းကုန်သွားပါပြီ — reset link အသစ် ပြန်တောင်းပါ။",
     "goToFeed": "Feed သို့ သွားမည်",
-    "oauthFailed": "Google ဖြင့် ဝင်၍ မရပါ။"
+    "oauthFailed": "Google ဖြင့် ဝင်၍ မရပါ။",
+    "sessionStale": "သင့် session သက်တမ်းကုန်သွားပါပြီ။ ဆက်လုပ်ရန် ပြန်လည် ဝင်ရောက်ပါ။"
   },
   "onboarding": {
     "title": "သင့်ပရိုဖိုင်ကို ပြင်ဆင်ပါ",

@@ -78,6 +78,24 @@ export async function saveProfile(
     if (error.code === "23505") {
       return { error: "That username is already taken." };
     }
+    // 23503 = foreign_key_violation on profiles_id_fkey: the signed-in session
+    // points at an auth user that no longer exists in the database (e.g. the
+    // auth users were reset, or the app is pointed at a different Supabase
+    // project than the one that issued this session). The session is unusable,
+    // so clear it and send the user back to log in fresh rather than showing a
+    // raw database error they can't act on.
+    if (error.code === "23503") {
+      await supabase.auth.signOut();
+      redirect("/login?error=session_stale");
+    }
+    // 42703 = undefined_column: a pending migration hasn't been applied to this
+    // database. Surface an operator-actionable hint instead of the raw error.
+    if (error.code === "42703") {
+      return {
+        error:
+          "The server database is missing a recent update. Please ask the admin to apply pending migrations, then try again.",
+      };
+    }
     return { error: error.message };
   }
 

@@ -78,7 +78,11 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             role="alert"
             className="space-y-1 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm"
           >
-            <p className="font-medium text-destructive">{t("oauthFailed")}</p>
+            <p className="font-medium text-destructive">
+              {oauthError === "session_stale"
+                ? t("sessionStale")
+                : t("oauthFailed")}
+            </p>
             {oauthReason ? (
               <p className="text-xs text-muted-foreground">{oauthReason}</p>
             ) : null}

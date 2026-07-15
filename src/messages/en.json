@@ -73,7 +73,8 @@
     "passwordsDontMatch": "Passwords do not match.",
     "recoverySessionExpired": "The link has expired — request a new reset link.",
     "goToFeed": "Go to feed",
-    "oauthFailed": "Google sign-in didn't go through."
+    "oauthFailed": "Google sign-in didn't go through.",
+    "sessionStale": "Your session expired. Please sign in again to continue."
   },
   "onboarding": {
     "title": "Set up your profile",
