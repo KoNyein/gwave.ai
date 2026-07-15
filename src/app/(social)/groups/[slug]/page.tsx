@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Globe, Lock } from "lucide-react";
+import { Globe, Lock, Video } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { GroupTabs } from "@/components/groups/group-tabs";
@@ -8,6 +9,7 @@ import { MemberRow } from "@/components/groups/member-row";
 import { PostFeed } from "@/components/social/post-feed";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
+import { getGroupCameras } from "@/lib/db/cctv";
 import {
   getGroupBySlug,
   getGroupMembers,
@@ -36,12 +38,13 @@ export default async function GroupPage({
   const canViewFeed = group.privacy === "public" || isMember;
 
   const emptyPage: FeedPage = { posts: [], nextCursor: null };
-  const [initialPage, members, requests] = await Promise.all([
+  const [initialPage, members, requests, cameras] = await Promise.all([
     canViewFeed
       ? getGroupPosts(group.id, viewer.id)
       : Promise.resolve(emptyPage),
     getGroupMembers(group.id, "active"),
     canManage ? getGroupMembers(group.id, "pending") : Promise.resolve([]),
+    isMember ? getGroupCameras(group.id) : Promise.resolve([]),
   ]);
 
   const currentUser = {
@@ -88,6 +91,33 @@ export default async function GroupPage({
           />
         </CardContent>
       </Card>
+
+      {/* Cameras shared with this group (members only) */}
+      {cameras.length > 0 ? (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            <p className="flex items-center gap-2 font-semibold">
+              <Video className="h-4 w-4 text-primary" /> {t("cameras")}
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {cameras.map((cam) => (
+                <Link
+                  key={cam.id}
+                  href={`/watch/${cam.share_token}`}
+                  className="flex items-center gap-2 rounded-lg border p-3 transition-colors hover:bg-muted"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Video className="h-4 w-4" />
+                  </span>
+                  <span className="truncate text-sm font-medium">
+                    {cam.title}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Tabs */}
       <GroupTabs

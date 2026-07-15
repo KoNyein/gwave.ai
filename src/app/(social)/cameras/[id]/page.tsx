@@ -4,6 +4,7 @@ import { ArrowLeft, Radio, Upload } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { CameraClips } from "@/components/cctv/camera-clips";
+import { CameraGroupShare } from "@/components/cctv/camera-group-share";
 import { CameraHlsForm } from "@/components/cctv/camera-hls-form";
 import { CameraPlayer } from "@/components/cctv/camera-player";
 import { KvsPlayer } from "@/components/cctv/kvs-player";
@@ -16,8 +17,10 @@ import { publishUrl } from "@/lib/cctv-player";
 import {
   getCameraAlerts,
   getCameraClips,
+  getCameraGroupShareIds,
   getMyCamera,
 } from "@/lib/db/cctv";
+import { getMyGroups } from "@/lib/db/groups";
 import { publicEnv } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +51,12 @@ export default async function CameraDetailPage({
           getCameraAlerts(camera.id),
         ])
       : [[], []];
+
+  // Group sharing: the owner's groups + which ones this camera is shared with.
+  const [myGroups, sharedGroupIds] = await Promise.all([
+    getMyGroups(profile.id),
+    getCameraGroupShareIds(camera.id),
+  ]);
 
   return (
     <div className="space-y-4">
@@ -115,6 +124,12 @@ export default async function CameraDetailPage({
       {camera.camera_type === "kvs" ? (
         <CameraClips clips={clips} alerts={alerts} />
       ) : null}
+
+      <CameraGroupShare
+        cameraId={camera.id}
+        groups={myGroups.map((g) => ({ id: g.id, name: g.name }))}
+        sharedIds={sharedGroupIds}
+      />
 
       <CameraShareControls
         id={camera.id}

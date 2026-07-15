@@ -329,6 +329,7 @@
   },
   "groups": {
     "title": "Groups",
+    "cameras": "Cameras",
     "create": "Create group",
     "createTitle": "Create a group",
     "name": "Group name",
@@ -1353,6 +1354,8 @@
     "clipMotion": "Motion",
     "clipFace": "Face",
     "watchClip": "Watch",
+    "shareGroupsTitle": "Share with groups",
+    "shareGroupsHint": "Members of a selected group can watch this camera's live feed. Tap to toggle.",
     "ptzTitle": "Pan · Tilt · Zoom",
     "zoneLabel": "Zone / room (optional)",
     "zonePlaceholder": "e.g. Gate, Kitchen, Greenhouse",
