@@ -10,6 +10,7 @@ import {
   Lock,
   MapPin,
   Users,
+  ScanFace,
   Wand2,
   X,
 } from "lucide-react";
@@ -36,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createPost } from "@/lib/actions/posts";
 import { displayName } from "@/lib/format";
 import { getCurrentPosition } from "@/lib/geolocation";
+import { countFacesInImageUrl } from "@/lib/face-detect";
 import { MAX_POST_IMAGES, uploadMedia } from "@/lib/media";
 import type { PostVisibility } from "@/types/database";
 import type { AuthorSummary } from "@/types/social";
@@ -55,6 +57,8 @@ interface SelectedFile {
   file: File;
   previewUrl: string;
   isVideo: boolean;
+  // undefined = not yet checked; null = unsupported/none; number = faces found.
+  faces?: number | null;
 }
 
 export function PostComposer({
@@ -96,6 +100,26 @@ export function PostComposer({
       return [];
     });
   }, []);
+
+  // Run local face detection on each newly-added photo (one at a time). Uses
+  // the browser FaceDetector API; a no-op where unsupported. Nothing leaves
+  // the device.
+  React.useEffect(() => {
+    const pending = files.find((f) => !f.isVideo && f.faces === undefined);
+    if (!pending) return;
+    let cancelled = false;
+    void countFacesInImageUrl(pending.previewUrl).then((count) => {
+      if (cancelled) return;
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.previewUrl === pending.previewUrl ? { ...f, faces: count } : f,
+        ),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [files]);
 
   async function addLocation() {
     setError(null);
@@ -313,6 +337,11 @@ export function PostComposer({
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
+                    {selected.faces && selected.faces > 0 ? (
+                      <span className="absolute left-1 top-1 flex items-center gap-1 rounded-full bg-sky-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                        <ScanFace className="h-3 w-3" /> {selected.faces}
+                      </span>
+                    ) : null}
                     {!selected.isVideo ? (
                       <button
                         type="button"
