@@ -36,12 +36,20 @@ const cctvHlsOrigins = (process.env.NEXT_PUBLIC_CCTV_HLS_ORIGINS ?? "")
   .filter(Boolean);
 const cctvHlsSrc = cctvHlsOrigins.length ? ` ${cctvHlsOrigins.join(" ")}` : "";
 
-// The Family locator can embed a Google Map via the Maps Embed API (an
-// <iframe>) when NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is configured. Only then do we
-// widen frame-src to google.com; with no key the built-in OpenStreetMap map is
-// used and no Google origin is trusted.
-const googleMapsSrc = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-  ? " https://www.google.com"
+// The GPS locator renders an interactive Google Map via the Maps JavaScript
+// API when NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is configured. The loader pulls its
+// script from maps.googleapis.com, fetches tile/metadata over the same host,
+// and draws map/marker tiles served from maps.gstatic.com + *.googleapis.com.
+// With no key the built-in OpenStreetMap map is used and no Google origin is
+// trusted. frame-src stays widened for the legacy Maps Embed fallback.
+const hasGoogleMaps = Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
+const googleMapsFrameSrc = hasGoogleMaps ? " https://www.google.com" : "";
+const googleMapsScriptSrc = hasGoogleMaps ? " https://maps.googleapis.com" : "";
+const googleMapsConnectSrc = hasGoogleMaps
+  ? " https://maps.googleapis.com"
+  : "";
+const googleMapsImgSrc = hasGoogleMaps
+  ? " https://maps.gstatic.com https://*.googleapis.com"
   : "";
 
 // Co-host Live connects to the LiveKit SFU over a secure WebSocket
@@ -76,7 +84,7 @@ const csp = [
   // cdn.jsdelivr.net serves Pyodide (Python-in-WebAssembly) for the Python
   // playground; 'wasm-unsafe-eval' lets its WASM compile.
   // accounts.google.com serves Google Identity Services (One Tap sign-in).
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://accounts.google.com",
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://accounts.google.com${googleMapsScriptSrc}`,
   // Blob-URL Web Workers run Pyodide/sql.js off the main thread so runaway
   // learner code can't freeze the tab; importScripts inside them is covered
   // by script-src above.
@@ -86,14 +94,14 @@ const csp = [
   // *.tile.openstreetmap.org serves the Leaflet map tiles for location share.
   // https: allows Shop product images, which come from arbitrary external
   // merchant hosts (affiliate/dropship listings imported from other sites).
-  "img-src 'self' blob: data: https: https://*.supabase.co https://lh3.googleusercontent.com https://image.mux.com https://*.tile.openstreetmap.org",
+  `img-src 'self' blob: data: https: https://*.supabase.co https://lh3.googleusercontent.com https://image.mux.com https://*.tile.openstreetmap.org${googleMapsImgSrc}`,
   `media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com${cctvHlsSrc}`,
   "font-src 'self' data:",
   // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com${cctvHlsSrc}${livekitConnectSrc}${kvsConnectSrc}`,
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com${cctvHlsSrc}${livekitConnectSrc}${kvsConnectSrc}${googleMapsConnectSrc}`,
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
-  `frame-src 'self' https://www.youtube-nocookie.com https://accounts.google.com${cctvFrameSrc}${gameFrameSrc}${googleMapsSrc}`,
+  `frame-src 'self' https://www.youtube-nocookie.com https://accounts.google.com${cctvFrameSrc}${gameFrameSrc}${googleMapsFrameSrc}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

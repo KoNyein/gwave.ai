@@ -8,10 +8,13 @@ import {
   Copy,
   Crosshair,
   ExternalLink,
+  Layers,
   Loader2,
   Locate,
+  Map,
   Radio,
   Share2,
+  WifiOff,
 } from "lucide-react";
 
 import "leaflet/dist/leaflet.css";
@@ -28,8 +31,55 @@ const MapInner = dynamic(() => import("@/components/gps/gps-map-inner"), {
   ),
 });
 
+const MapGoogleInner = dynamic(
+  () => import("@/components/gps/gps-map-google-inner"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full w-full items-center justify-center bg-muted text-xs text-muted-foreground">
+        Google Map ဖွင့်နေသည်…
+      </div>
+    ),
+  },
+);
+
+const SOURCE_KEY = "gwave.gpsMapSource";
+
 export function GpsMap({ apiKey }: { apiKey: string }) {
-  const useGoogle = Boolean(apiKey);
+  // Online detection: Google Maps JS can't load offline, so fall back to the
+  // OSM/Leaflet map (which shows cached tiles) when there's no connection. GPS
+  // coordinates work offline either way.
+  const [online, setOnline] = React.useState(true);
+  React.useEffect(() => {
+    setOnline(navigator.onLine);
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+
+  // Map source: the user can switch freely between Google (satellite + detail)
+  // and OpenStreetMap (free + works offline from cached tiles). Default to
+  // Google when a key is configured; remember the choice across visits.
+  const [source, setSource] = React.useState<"google" | "osm">(
+    apiKey ? "google" : "osm",
+  );
+  React.useEffect(() => {
+    const saved = window.localStorage.getItem(SOURCE_KEY);
+    if (saved === "google" || saved === "osm") setSource(saved);
+  }, []);
+  const chooseSource = React.useCallback((s: "google" | "osm") => {
+    setSource(s);
+    window.localStorage.setItem(SOURCE_KEY, s);
+  }, []);
+
+  // Google only actually renders when a key exists, the user picked it, and
+  // there's a connection; otherwise OSM/Leaflet is used (and shows offline).
+  const useGoogle = Boolean(apiKey) && source === "google" && online;
   const router = useRouter();
   const [fix, setFix] = React.useState<GeoFix | null>(null);
   const [recenter, setRecenter] = React.useState(0);
@@ -116,25 +166,45 @@ export function GpsMap({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="space-y-3">
-      <div className="h-[60vh] min-h-[320px] w-full overflow-hidden rounded-xl border">
+      {apiKey ? (
+        <div className="inline-flex rounded-lg border bg-muted/40 p-0.5 text-xs font-medium">
+          <button
+            type="button"
+            onClick={() => chooseSource("google")}
+            disabled={!online}
+            className={`inline-flex items-center gap-1 rounded-md px-3 py-1.5 transition-colors disabled:opacity-40 ${
+              source === "google"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Map className="h-3.5 w-3.5" /> Google
+          </button>
+          <button
+            type="button"
+            onClick={() => chooseSource("osm")}
+            className={`inline-flex items-center gap-1 rounded-md px-3 py-1.5 transition-colors ${
+              source === "osm"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Layers className="h-3.5 w-3.5" /> OpenStreetMap
+          </button>
+        </div>
+      ) : null}
+
+      <div className="relative h-[60vh] min-h-[320px] w-full overflow-hidden rounded-xl border">
         {useGoogle ? (
-          fix ? (
-            <iframe
-              title="Google Map"
-              className="h-full w-full border-0"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              allow="geolocation"
-              src={`https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${fix.latitude},${fix.longitude}&zoom=16`}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-muted text-xs text-muted-foreground">
-              တည်နေရာ ရှာနေသည်…
-            </div>
-          )
+          <MapGoogleInner fix={fix} recenter={recenter} apiKey={apiKey} />
         ) : (
           <MapInner fix={fix} recenter={recenter} />
         )}
+        {!online ? (
+          <span className="absolute left-2 top-2 z-[500] flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white">
+            <WifiOff className="h-3 w-3" /> Offline · OpenStreetMap
+          </span>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -154,7 +224,7 @@ export function GpsMap({ apiKey }: { apiKey: string }) {
           <Radio className="mr-1 h-4 w-4" />
           {follow ? "Live · ရပ်ရန်" : "Live လိုက်ကြည့်"}
         </Button>
-        {fix && !useGoogle ? (
+        {fix ? (
           <Button
             onClick={() => setRecenter((n) => n + 1)}
             size="sm"
