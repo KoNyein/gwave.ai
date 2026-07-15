@@ -35,6 +35,9 @@ const createSchema = z
     // Only for kvs: the Amazon KVS signaling channel name (+ optional region).
     kvsChannel: z.string().trim().min(1).max(256).optional(),
     kvsRegion: z.string().trim().max(40).optional(),
+    // Optional grouping label + PTZ control endpoint (any camera type).
+    zone: z.string().trim().max(60).optional(),
+    ptzUrl: z.string().trim().url().max(500).optional().or(z.literal("")),
   })
   .refine((v) => v.cameraType !== "rtsp" || Boolean(v.rtspUrl), {
     message: "An RTSP camera needs its stream URL.",
@@ -53,6 +56,8 @@ export async function createCamera(input: {
   rtspUrl?: string;
   kvsChannel?: string;
   kvsRegion?: string;
+  zone?: string;
+  ptzUrl?: string;
 }): Promise<ActionResult<{ id: string }>> {
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) {
@@ -61,7 +66,8 @@ export async function createCamera(input: {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const { title, cameraType, rtspUrl, kvsChannel, kvsRegion } = parsed.data;
+  const { title, cameraType, rtspUrl, kvsChannel, kvsRegion, zone, ptzUrl } =
+    parsed.data;
   const streamId = `cam_${randomBytes(6).toString("hex")}`;
   const shareToken = randomBytes(16).toString("hex");
 
@@ -93,6 +99,8 @@ export async function createCamera(input: {
       rtsp_url: cameraType === "rtsp" ? rtspUrl : null,
       kvs_channel: cameraType === "kvs" ? kvsChannel : null,
       kvs_region: cameraType === "kvs" ? (kvsRegion || null) : null,
+      zone: zone || null,
+      ptz_url: ptzUrl || null,
       stream_id: streamId,
       share_token: shareToken,
     })
@@ -267,5 +275,55 @@ export async function deleteCamera(input: {
   if (cam?.stream_id) await removeBroadcast(cam.stream_id);
 
   revalidatePath("/cameras");
+  return { ok: true, data: undefined };
+}
+
+/**
+ * Move a PTZ camera. The command is relayed to the camera's operator-provided
+ * PTZ endpoint (ptz_url) — kept server-side because it may carry a credential.
+ * Directions: up/down/left/right/zoom_in/zoom_out/home. No-op (ok) when the
+ * camera has no PTZ endpoint configured.
+ */
+export async function ptzCommand(
+  cameraId: string,
+  move:
+    | "up"
+    | "down"
+    | "left"
+    | "right"
+    | "zoom_in"
+    | "zoom_out"
+    | "home",
+): Promise<ActionResult> {
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const supabase = await createClient();
+  const { data: cam } = await supabase
+    .from("user_cameras")
+    .select("ptz_url")
+    .eq("id", cameraId)
+    .eq("owner_id", userId)
+    .maybeSingle<{ ptz_url: string | null }>();
+
+  if (!cam) return { ok: false, error: "Camera not found" };
+  if (!cam.ptz_url) return { ok: false, error: "PTZ is not set up for this camera." };
+
+  try {
+    // The endpoint decides how to drive the camera (ONVIF bridge, vendor HTTP…).
+    // We support a {move} placeholder in the URL, else POST the command as JSON.
+    const url = cam.ptz_url.includes("{move}")
+      ? cam.ptz_url.replace("{move}", encodeURIComponent(move))
+      : cam.ptz_url;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ move }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return { ok: false, error: `PTZ endpoint returned ${res.status}` };
+  } catch {
+    return { ok: false, error: "Couldn't reach the PTZ endpoint." };
+  }
   return { ok: true, data: undefined };
 }

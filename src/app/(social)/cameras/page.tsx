@@ -8,9 +8,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
 import { getMyCameras } from "@/lib/db/cctv";
+import type { UserCamera } from "@/types/database";
 
 export const metadata = { title: "Cameras" };
 export const dynamic = "force-dynamic";
+
+/** Group cameras by zone (unzoned last, under "__none__"), zones A→Z. */
+function groupByZone(
+  cameras: UserCamera[],
+): [string, UserCamera[]][] {
+  const map = new Map<string, UserCamera[]>();
+  for (const cam of cameras) {
+    const key = cam.zone?.trim() || "__none__";
+    (map.get(key) ?? map.set(key, []).get(key)!).push(cam);
+  }
+  return [...map.entries()].sort(([a], [b]) => {
+    if (a === "__none__") return 1;
+    if (b === "__none__") return -1;
+    return a.localeCompare(b);
+  });
+}
 
 export default async function CamerasPage() {
   const profile = await getCurrentProfile();
@@ -53,36 +70,47 @@ export default async function CamerasPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {cameras.map((cam) => {
-            const expired = cam.public_until
-              ? new Date(cam.public_until).getTime() < Date.now()
-              : false;
-            const live = cam.is_public && !expired;
-            return (
-              <Link key={cam.id} href={`/cameras/${cam.id}`}>
-                <Card className="h-full transition-colors hover:bg-muted/50">
-                  <CardContent className="flex h-full flex-col gap-2 p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate font-semibold">{cam.title}</span>
-                      {live ? (
-                        <Globe className="h-4 w-4 shrink-0 text-primary" />
-                      ) : (
-                        <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {t(`type_${cam.camera_type}`)}
-                    </p>
-                    <p className="mt-auto text-xs text-muted-foreground">
-                      {live ? t("statusPublic") : t("statusPrivate")}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
+        groupByZone(cameras).map(([zone, group]) => (
+          <section key={zone} className="space-y-2">
+            {zone !== "__none__" ? (
+              <h2 className="px-1 text-sm font-semibold uppercase text-muted-foreground">
+                {zone}
+              </h2>
+            ) : null}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {group.map((cam) => {
+                const expired = cam.public_until
+                  ? new Date(cam.public_until).getTime() < Date.now()
+                  : false;
+                const live = cam.is_public && !expired;
+                return (
+                  <Link key={cam.id} href={`/cameras/${cam.id}`}>
+                    <Card className="h-full transition-colors hover:bg-muted/50">
+                      <CardContent className="flex h-full flex-col gap-2 p-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate font-semibold">
+                            {cam.title}
+                          </span>
+                          {live ? (
+                            <Globe className="h-4 w-4 shrink-0 text-primary" />
+                          ) : (
+                            <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {t(`type_${cam.camera_type}`)}
+                        </p>
+                        <p className="mt-auto text-xs text-muted-foreground">
+                          {live ? t("statusPublic") : t("statusPrivate")}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        ))
       )}
     </div>
   );
