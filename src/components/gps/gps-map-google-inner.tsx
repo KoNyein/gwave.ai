@@ -3,7 +3,7 @@
 import * as React from "react";
 import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
 
-import type { GeoFix } from "@/lib/geolocation";
+import type { GeoFix, MapPerson } from "@/lib/geolocation";
 
 /**
  * Interactive Google Maps GPS view (client-only). Mirrors the OSM/Leaflet
@@ -15,15 +15,18 @@ export default function GpsMapGoogleInner({
   fix,
   recenter,
   apiKey,
+  people = [],
 }: {
   fix: GeoFix | null;
   recenter: number;
   apiKey: string;
+  people?: MapPerson[];
 }) {
   const ref = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<google.maps.Map | null>(null);
   const markerRef = React.useRef<google.maps.Marker | null>(null);
   const circleRef = React.useRef<google.maps.Circle | null>(null);
+  const peopleRef = React.useRef<Map<string, google.maps.Marker>>(new Map());
   const [failed, setFailed] = React.useState(false);
 
   // Create the map once.
@@ -88,6 +91,37 @@ export default function GpsMapGoogleInner({
     map.panTo({ lat: fix.latitude, lng: fix.longitude });
     if ((map.getZoom() ?? 0) < 15) map.setZoom(16);
   }, [recenter, fix]);
+
+  // Family member markers.
+  React.useEffect(() => {
+    const map = mapRef.current;
+    if (!map || typeof google === "undefined") return;
+    const seen = new Set<string>();
+    for (const p of people) {
+      seen.add(p.id);
+      const position = { lat: p.latitude, lng: p.longitude };
+      const existing = peopleRef.current.get(p.id);
+      if (existing) {
+        existing.setPosition(position);
+      } else {
+        peopleRef.current.set(
+          p.id,
+          new google.maps.Marker({
+            map,
+            position,
+            title: p.name,
+            label: { text: "🧑", fontSize: "18px" },
+          }),
+        );
+      }
+    }
+    for (const [id, marker] of peopleRef.current) {
+      if (!seen.has(id)) {
+        marker.setMap(null);
+        peopleRef.current.delete(id);
+      }
+    }
+  }, [people]);
 
   if (failed) {
     return (

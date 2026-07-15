@@ -2,25 +2,40 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Check,
   Copy,
   Crosshair,
   ExternalLink,
+  Gauge,
   Layers,
   Loader2,
   Locate,
   Map,
+  MapPin,
+  MessageSquare,
+  Mountain,
+  Navigation,
   Radio,
   Share2,
+  Users,
   WifiOff,
 } from "lucide-react";
 
 import "leaflet/dist/leaflet.css";
 import { Button } from "@/components/ui/button";
 import { createPost } from "@/lib/actions/posts";
-import { getCurrentPosition, watchPosition, type GeoFix } from "@/lib/geolocation";
+import {
+  compass,
+  distanceMeters,
+  formatDistance,
+  getCurrentPosition,
+  watchPosition,
+  type GeoFix,
+  type MapPerson,
+} from "@/lib/geolocation";
 
 const MapInner = dynamic(() => import("@/components/gps/gps-map-inner"), {
   ssr: false,
@@ -45,7 +60,13 @@ const MapGoogleInner = dynamic(
 
 const SOURCE_KEY = "gwave.gpsMapSource";
 
-export function GpsMap({ apiKey }: { apiKey: string }) {
+export function GpsMap({
+  apiKey,
+  people = [],
+}: {
+  apiKey: string;
+  people?: MapPerson[];
+}) {
   // Online detection: Google Maps JS can't load offline, so fall back to the
   // OSM/Leaflet map (which shows cached tiles) when there's no connection. GPS
   // coordinates work offline either way.
@@ -88,6 +109,8 @@ export function GpsMap({ apiKey }: { apiKey: string }) {
   const [error, setError] = React.useState<string | null>(null);
   const [copied, setCopied] = React.useState(false);
   const [shared, setShared] = React.useState(false);
+  const [showFamily, setShowFamily] = React.useState(true);
+  const [address, setAddress] = React.useState<string | null>(null);
   const stopRef = React.useRef<(() => void) | null>(null);
 
   const locate = React.useCallback(async () => {
@@ -135,6 +158,48 @@ export function GpsMap({ apiKey }: { apiKey: string }) {
   const gmaps = fix
     ? `https://www.google.com/maps/search/?api=1&query=${fix.latitude},${fix.longitude}`
     : null;
+
+  // Reverse-geocode the current fix to a human address (Google Geocoding API,
+  // only when a key is configured and we're online). Debounced by the fix
+  // reference; failures just leave the address blank.
+  React.useEffect(() => {
+    if (!fix || !apiKey || !online) {
+      setAddress(null);
+      return;
+    }
+    let cancelled = false;
+    const url =
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=` +
+      `${fix.latitude},${fix.longitude}&key=${apiKey}`;
+    fetch(url)
+      .then((r) => r.json())
+      .then((d: { results?: { formatted_address?: string }[] }) => {
+        if (!cancelled) setAddress(d.results?.[0]?.formatted_address ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setAddress(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fix, apiKey, online]);
+
+  // Family members with a live location, sorted by distance from me.
+  const peopleWithDistance = React.useMemo(() => {
+    return people
+      .map((p) => ({
+        person: p,
+        meters: fix
+          ? distanceMeters(fix.latitude, fix.longitude, p.latitude, p.longitude)
+          : null,
+      }))
+      .sort((a, b) => (a.meters ?? Infinity) - (b.meters ?? Infinity));
+  }, [people, fix]);
+
+  const shownPeople = showFamily ? people : [];
+  const speedKmh =
+    fix?.speed != null && fix.speed >= 0 ? fix.speed * 3.6 : null;
+  const heading = compass(fix?.heading);
 
   async function copyCoords() {
     if (!coords) return;
@@ -196,14 +261,32 @@ export function GpsMap({ apiKey }: { apiKey: string }) {
 
       <div className="relative h-[60vh] min-h-[320px] w-full overflow-hidden rounded-xl border">
         {useGoogle ? (
-          <MapGoogleInner fix={fix} recenter={recenter} apiKey={apiKey} />
+          <MapGoogleInner
+            fix={fix}
+            recenter={recenter}
+            apiKey={apiKey}
+            people={shownPeople}
+          />
         ) : (
-          <MapInner fix={fix} recenter={recenter} />
+          <MapInner fix={fix} recenter={recenter} people={shownPeople} />
         )}
         {!online ? (
           <span className="absolute left-2 top-2 z-[500] flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white">
             <WifiOff className="h-3 w-3" /> Offline · OpenStreetMap
           </span>
+        ) : null}
+        {people.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setShowFamily((v) => !v)}
+            className={`absolute right-2 top-2 z-[500] inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold shadow ${
+              showFamily
+                ? "bg-primary text-primary-foreground"
+                : "bg-black/70 text-white"
+            }`}
+          >
+            <Users className="h-3 w-3" /> မိသားစု {people.length}
+          </button>
         ) : null}
       </div>
 
@@ -240,11 +323,11 @@ export function GpsMap({ apiKey }: { apiKey: string }) {
       {fix ? (
         <div className="space-y-2 rounded-xl border bg-card p-3 text-sm">
           <div className="flex items-center justify-between gap-2">
-            <div>
+            <div className="min-w-0">
               <p className="font-mono">{coords}</p>
-              {fix.accuracy != null ? (
-                <p className="text-xs text-muted-foreground">
-                  တိကျမှု ≈ {Math.round(fix.accuracy)} မီတာ
+              {address ? (
+                <p className="flex items-start gap-1 text-xs text-muted-foreground">
+                  <MapPin className="mt-0.5 h-3 w-3 shrink-0" /> {address}
                 </p>
               ) : null}
             </div>
@@ -255,6 +338,30 @@ export function GpsMap({ apiKey }: { apiKey: string }) {
                 <Copy className="h-4 w-4" />
               )}
             </Button>
+          </div>
+
+          {/* Live GPS metrics from the device sensors. */}
+          <div className="flex flex-wrap gap-1.5 text-xs">
+            {fix.accuracy != null ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5">
+                <Crosshair className="h-3 w-3" /> ±{Math.round(fix.accuracy)} m
+              </span>
+            ) : null}
+            {fix.altitude != null ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5">
+                <Mountain className="h-3 w-3" /> {Math.round(fix.altitude)} m
+              </span>
+            ) : null}
+            {speedKmh != null ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5">
+                <Gauge className="h-3 w-3" /> {speedKmh.toFixed(1)} km/h
+              </span>
+            ) : null}
+            {heading ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5">
+                <Navigation className="h-3 w-3" /> {heading}
+              </span>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
             {gmaps ? (
@@ -280,7 +387,75 @@ export function GpsMap({ apiKey }: { apiKey: string }) {
               )}
               {shared ? "မျှဝေပြီး" : "Post အဖြစ် မျှဝေ"}
             </button>
+            <Link
+              href="/family"
+              className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-muted/50"
+            >
+              <Users className="h-3.5 w-3.5" /> မိသားစုသို့ Live မျှဝေ
+            </Link>
           </div>
+        </div>
+      ) : null}
+
+      {/* Family members currently sharing, nearest first. */}
+      {peopleWithDistance.length > 0 ? (
+        <div className="space-y-2 rounded-xl border bg-card p-3">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <Users className="h-4 w-4 text-primary" /> မိသားစု တည်နေရာ (
+            {peopleWithDistance.length})
+          </p>
+          <ul className="divide-y">
+            {peopleWithDistance.map(({ person, meters }) => (
+              <li
+                key={person.id}
+                className="flex items-center justify-between gap-2 py-2"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  {person.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={person.avatarUrl}
+                      alt=""
+                      className="h-8 w-8 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                      {person.name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{person.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {meters != null ? `${formatDistance(meters)} အကွာ` : "—"}
+                      {person.updatedAt
+                        ? ` · ${new Date(person.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                        : ""}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 gap-1.5">
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${person.latitude},${person.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border hover:bg-muted/50"
+                    aria-label="Map ပေါ်ကြည့်"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                  {person.username ? (
+                    <Link
+                      href={`/u/${person.username}`}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border hover:bg-muted/50"
+                      aria-label="Message"
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                    </Link>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
     </div>
