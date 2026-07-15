@@ -13,11 +13,12 @@ import {
   Wrench,
 } from "lucide-react";
 
+import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { Button } from "@/components/ui/button";
 import { getCurrentProfile } from "@/lib/auth";
 
 export const metadata = {
-  title: "gwave.ai — တောင်သူများအတွက် ဆိုရှယ်နက်ဝက်",
+  title: "Gwave — တောင်သူများအတွက် ဆိုရှယ်နက်ဝက်",
   description:
     "မြန်မာ တောင်သူ၊ စိုက်ပျိုးရေးသမားများအတွက် ဆိုရှယ်မီဒီယာ၊ သင်ယူမှု၊ စျေးဝယ်၊ smart farm — အားလုံး တစ်နေရာတည်း။",
 };
@@ -63,14 +64,22 @@ export default async function WelcomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 via-background to-background">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-        <span className="flex items-center gap-2 text-primary">
-          <Leaf className="h-6 w-6" />
-          <span className="text-lg font-bold">gwave.ai</span>
-        </span>
-        <Button asChild size="sm" variant="ghost">
-          <Link href="/login">ဝင်မည်</Link>
-        </Button>
+      <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+          <span className="flex items-center gap-2 text-primary">
+            <Leaf className="h-6 w-6" />
+            <span className="text-lg font-bold">Gwave</span>
+          </span>
+          <div className="flex items-center gap-1.5">
+            <LocaleSwitcher />
+            <Button asChild size="sm" variant="ghost">
+              <Link href="/login">ဝင်မည်</Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link href="/register">စတင်မည်</Link>
+            </Button>
+          </div>
+        </div>
       </header>
 
       {/* Hero */}
@@ -83,7 +92,7 @@ export default async function WelcomePage() {
           <span className="text-primary">အားလုံး တစ်နေရာတည်း</span>
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-          gwave.ai သည် တောင်သူ၊ စိုက်ပျိုးရေးသမားများအတွက် ဆိုရှယ်နက်ဝက်၊ အခမဲ့
+          Gwave သည် တောင်သူ၊ စိုက်ပျိုးရေးသမားများအတွက် ဆိုရှယ်နက်ဝက်၊ အခမဲ့
           ပညာရေး၊ စျေးကွက်နှင့် smart farm နည်းပညာ ပေါင်းစပ်ထားသော super-app
           ဖြစ်သည်။
         </p>
@@ -125,7 +134,7 @@ export default async function WelcomePage() {
         <div className="rounded-3xl border bg-primary/5 p-8 text-center">
           <Bot className="mx-auto h-9 w-9 text-primary" />
           <h2 className="mt-3 text-xl font-bold">
-            ဒီနေ့ပဲ gwave အသိုင်းအဝိုင်းထဲ ဝင်လိုက်ပါ
+            ဒီနေ့ပဲ Gwave အသိုင်းအဝိုင်းထဲ ဝင်လိုက်ပါ
           </h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
             အခမဲ့ဖြစ်ပြီး ဖုန်းမှာ app အဖြစ် install လုပ်၍ သုံးနိုင်သည်။
@@ -137,7 +146,7 @@ export default async function WelcomePage() {
           </Button>
         </div>
         <p className="mt-8 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} gwave.ai — growers&apos; super-app
+          © {new Date().getFullYear()} Gwave — growers&apos; super-app
         </p>
       </section>
     </div>
