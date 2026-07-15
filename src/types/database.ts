@@ -270,6 +270,10 @@ export interface UserCamera {
   // Amazon KVS signaling channel name + region (kvs cameras). Not secret.
   kvs_channel: string | null;
   kvs_region: string | null;
+  // Free-text room/area label for grouping. Not secret.
+  zone: string | null;
+  // Optional PTZ control endpoint. Server-side only (may carry credentials).
+  ptz_url: string | null;
   stream_id: string;
   share_token: string;
   is_public: boolean;

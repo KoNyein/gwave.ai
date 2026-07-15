@@ -6,6 +6,7 @@ import { getTranslations } from "next-intl/server";
 import { CameraHlsForm } from "@/components/cctv/camera-hls-form";
 import { CameraPlayer } from "@/components/cctv/camera-player";
 import { KvsPlayer } from "@/components/cctv/kvs-player";
+import { PtzControls } from "@/components/cctv/ptz-controls";
 import { CameraShareControls } from "@/components/cctv/camera-share-controls";
 import { HlsPlayer } from "@/components/cctv/hls-player";
 import { Button } from "@/components/ui/button";
@@ -46,12 +47,18 @@ export default async function CameraDetailPage({
       <h1 className="text-xl font-bold">{camera.title}</h1>
 
       {camera.camera_type === "kvs" ? (
-        <KvsPlayer id={camera.id} title={camera.title} />
+        <KvsPlayer
+          id={camera.id}
+          title={camera.title}
+          shareUserId={profile.id}
+        />
       ) : camera.hls_url ? (
         <HlsPlayer src={camera.hls_url} title={camera.title} />
       ) : (
         <CameraPlayer streamId={camera.stream_id} title={camera.title} />
       )}
+
+      {camera.ptz_url ? <PtzControls cameraId={camera.id} /> : null}
 
       <CameraHlsForm id={camera.id} hlsUrl={camera.hls_url} />
 

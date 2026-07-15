@@ -67,6 +67,8 @@ export function AddCameraForm() {
   const [rtspUrl, setRtspUrl] = React.useState("");
   const [kvsChannel, setKvsChannel] = React.useState("");
   const [kvsRegion, setKvsRegion] = React.useState("");
+  const [zone, setZone] = React.useState("");
+  const [ptzUrl, setPtzUrl] = React.useState("");
   const [presetNote, setPresetNote] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -81,6 +83,8 @@ export function AddCameraForm() {
       rtspUrl: cameraType === "rtsp" ? rtspUrl.trim() : undefined,
       kvsChannel: cameraType === "kvs" ? kvsChannel.trim() : undefined,
       kvsRegion: cameraType === "kvs" ? kvsRegion.trim() : undefined,
+      zone: zone.trim() || undefined,
+      ptzUrl: ptzUrl.trim() || undefined,
     });
     setPending(false);
     if (!res.ok) {
@@ -200,6 +204,30 @@ export function AddCameraForm() {
           <p className="text-xs text-muted-foreground">{t("kvsHint")}</p>
         </div>
       ) : null}
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor="cam-zone">{t("zoneLabel")}</Label>
+          <Input
+            id="cam-zone"
+            value={zone}
+            onChange={(e) => setZone(e.target.value)}
+            placeholder={t("zonePlaceholder")}
+            maxLength={60}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="cam-ptz">{t("ptzLabel")}</Label>
+          <Input
+            id="cam-ptz"
+            value={ptzUrl}
+            onChange={(e) => setPtzUrl(e.target.value)}
+            placeholder="https://…/ptz?move={move}"
+            maxLength={500}
+          />
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">{t("ptzHint")}</p>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 

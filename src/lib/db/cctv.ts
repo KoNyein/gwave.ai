@@ -9,7 +9,7 @@ export type PublicCamera = Omit<UserCamera, "rtsp_url">;
 // hls_url is intentionally included: it is a credential-free public playback
 // URL. rtsp_url stays out — it may embed a camera password.
 const PUBLIC_COLS =
-  "id, owner_id, title, camera_type, hls_url, kvs_channel, kvs_region, stream_id, share_token, is_public, public_until, created_at, updated_at";
+  "id, owner_id, title, camera_type, hls_url, kvs_channel, kvs_region, zone, stream_id, share_token, is_public, public_until, created_at, updated_at";
 
 /** The owner's own cameras (full rows, RLS-scoped to auth.uid()). */
 export async function getMyCameras(ownerId: string): Promise<UserCamera[]> {
