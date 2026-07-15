@@ -1,18 +1,39 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
+  Bell,
+  BellOff,
   Camera,
+  Circle,
   Loader2,
   Maximize,
   RotateCw,
+  ScanFace,
   Share2,
+  Square,
   VideoOff,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import {
+  recordCameraAlert,
+  saveClip,
+} from "@/lib/actions/cctv";
 import { createPost } from "@/lib/actions/posts";
-import { uploadMedia } from "@/lib/media";
+import { uploadClip, uploadMedia } from "@/lib/media";
+import { cn } from "@/lib/utils";
+
+// The experimental FaceDetector API (Chromium). Typed loosely + feature-detected.
+interface FaceDetectorLike {
+  detect: (source: CanvasImageSource) => Promise<{ boundingBox: DOMRectReadOnly }[]>;
+}
+declare global {
+  interface Window {
+    FaceDetector?: new (opts?: { fastMode?: boolean }) => FaceDetectorLike;
+  }
+}
 
 interface ViewerConfig {
   channelARN: string;
@@ -58,12 +79,90 @@ export function KvsPlayer({
   motion?: boolean;
 }) {
   const t = useTranslations("cctv");
+  const router = useRouter();
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [status, setStatus] = React.useState<Status>("connecting");
   const [attempt, setAttempt] = React.useState(0);
   const [moving, setMoving] = React.useState(false);
   const [sharing, setSharing] = React.useState<"idle" | "busy" | "done">("idle");
+  const [recording, setRecording] = React.useState(false);
+  const [alertMode, setAlertMode] = React.useState(false);
+  const [faces, setFaces] = React.useState(0);
+
+  // Recording state kept in refs so the motion/face effects can trigger it.
+  const recorderRef = React.useRef<MediaRecorder | null>(null);
+  const alertModeRef = React.useRef(false);
+  const recordingRef = React.useRef(false);
+  const lastMotionAlertRef = React.useRef(0);
+  const lastFaceAlertRef = React.useRef(0);
+  React.useEffect(() => {
+    alertModeRef.current = alertMode;
+  }, [alertMode]);
+
+  const canRecord = Boolean(id && shareUserId);
+
+  /** Record the live stream for `ms`, upload it, and save a clip row. */
+  const captureClip = React.useCallback(
+    async (kind: "manual" | "motion" | "face", ms: number) => {
+      const video = videoRef.current;
+      const stream = video?.srcObject as MediaStream | null;
+      if (!stream || !id || !shareUserId || recordingRef.current) return null;
+      let recorder: MediaRecorder;
+      try {
+        recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+      } catch {
+        return null;
+      }
+      recordingRef.current = true;
+      setRecording(true);
+      recorderRef.current = recorder;
+      const chunks: Blob[] = [];
+      const started = Date.now();
+
+      const done = new Promise<Blob>((resolve) => {
+        recorder.ondataavailable = (e) => {
+          if (e.data.size) chunks.push(e.data);
+        };
+        recorder.onstop = () => resolve(new Blob(chunks, { type: "video/webm" }));
+      });
+      recorder.start();
+      const stopTimer = setTimeout(() => {
+        if (recorder.state !== "inactive") recorder.stop();
+      }, ms);
+
+      const blob = await done;
+      clearTimeout(stopTimer);
+      recordingRef.current = false;
+      recorderRef.current = null;
+      setRecording(false);
+      const seconds = Math.round((Date.now() - started) / 1000);
+
+      try {
+        const { storage_path } = await uploadClip(shareUserId, blob);
+        const res = await saveClip({
+          cameraId: id,
+          storagePath: storage_path,
+          durationSeconds: seconds,
+          kind,
+        });
+        router.refresh();
+        return res.ok ? res.data.clipId : null;
+      } catch {
+        return null;
+      }
+    },
+    [id, shareUserId, router],
+  );
+
+  function toggleRecording() {
+    if (recordingRef.current) {
+      recorderRef.current?.stop();
+    } else {
+      // Manual recordings cap at 60s.
+      void captureClip("manual", 60000);
+    }
+  }
 
   React.useEffect(() => {
     let cancelled = false;
@@ -233,6 +332,15 @@ export function KvsPlayer({
           setMoving(true);
           if (decay) clearTimeout(decay);
           decay = setTimeout(() => setMoving(false), 2500);
+          // In alert mode, log a motion event (debounced to once / 30s).
+          if (
+            alertModeRef.current &&
+            id &&
+            Date.now() - lastMotionAlertRef.current > 30000
+          ) {
+            lastMotionAlertRef.current = Date.now();
+            void recordCameraAlert({ cameraId: id, kind: "motion" });
+          }
         }
       }
       prev = data.slice(0);
@@ -243,7 +351,50 @@ export function KvsPlayer({
       if (decay) clearTimeout(decay);
       setMoving(false);
     };
-  }, [motion, status]);
+  }, [motion, status, id]);
+
+  // Best-effort face detection via the browser FaceDetector API (Chromium).
+  // Shows a face count; in alert mode, logs a face event (debounced).
+  React.useEffect(() => {
+    if (status !== "live" || typeof window === "undefined" || !window.FaceDetector)
+      return;
+    let detector: FaceDetectorLike;
+    try {
+      detector = new window.FaceDetector({ fastMode: true });
+    } catch {
+      return;
+    }
+    let stop = false;
+    const timer = setInterval(async () => {
+      const video = videoRef.current;
+      if (!video || !video.videoWidth || stop) return;
+      try {
+        const found = await detector.detect(video);
+        if (stop) return;
+        setFaces(found.length);
+        if (
+          found.length > 0 &&
+          alertModeRef.current &&
+          id &&
+          Date.now() - lastFaceAlertRef.current > 30000
+        ) {
+          lastFaceAlertRef.current = Date.now();
+          void recordCameraAlert({
+            cameraId: id,
+            kind: "face",
+            note: `${found.length} face(s)`,
+          });
+        }
+      } catch {
+        /* detection can throw transiently — ignore */
+      }
+    }, 1500);
+    return () => {
+      stop = true;
+      clearInterval(timer);
+      setFaces(0);
+    };
+  }, [status, id]);
 
   async function shareSnapshot() {
     const video = videoRef.current;
@@ -298,8 +449,52 @@ export function KvsPlayer({
                 {t("motion")}
               </span>
             ) : null}
+            {faces > 0 ? (
+              <span className="flex items-center gap-1 rounded-full bg-sky-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                <ScanFace className="h-3 w-3" /> {faces}
+              </span>
+            ) : null}
+            {recording ? (
+              <span className="flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+                <Circle className="h-2 w-2 animate-pulse fill-current" /> REC
+              </span>
+            ) : null}
           </div>
           <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            {canRecord ? (
+              <>
+                <button
+                  type="button"
+                  onClick={toggleRecording}
+                  aria-label={t("record")}
+                  className={cn(
+                    "rounded-full p-1.5 text-white hover:bg-black/80",
+                    recording ? "bg-red-600" : "bg-black/60",
+                  )}
+                >
+                  {recording ? (
+                    <Square className="h-4 w-4" />
+                  ) : (
+                    <Circle className="h-4 w-4" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAlertMode((a) => !a)}
+                  aria-label={t("alertMode")}
+                  className={cn(
+                    "rounded-full p-1.5 text-white hover:bg-black/80",
+                    alertMode ? "bg-amber-500 text-black" : "bg-black/60",
+                  )}
+                >
+                  {alertMode ? (
+                    <Bell className="h-4 w-4" />
+                  ) : (
+                    <BellOff className="h-4 w-4" />
+                  )}
+                </button>
+              </>
+            ) : null}
             {shareUserId ? (
               <button
                 type="button"

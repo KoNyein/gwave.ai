@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Radio, Upload } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
+import { CameraClips } from "@/components/cctv/camera-clips";
 import { CameraHlsForm } from "@/components/cctv/camera-hls-form";
 import { CameraPlayer } from "@/components/cctv/camera-player";
 import { KvsPlayer } from "@/components/cctv/kvs-player";
@@ -12,7 +13,11 @@ import { HlsPlayer } from "@/components/cctv/hls-player";
 import { Button } from "@/components/ui/button";
 import { getCurrentProfile } from "@/lib/auth";
 import { publishUrl } from "@/lib/cctv-player";
-import { getMyCamera } from "@/lib/db/cctv";
+import {
+  getCameraAlerts,
+  getCameraClips,
+  getMyCamera,
+} from "@/lib/db/cctv";
 import { publicEnv } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +39,15 @@ export default async function CameraDetailPage({
 
   const publish =
     camera.camera_type === "webrtc" ? publishUrl(camera.stream_id) : null;
+
+  // Recordings + alerts (KVS cameras record in-browser).
+  const [clips, alerts] =
+    camera.camera_type === "kvs"
+      ? await Promise.all([
+          getCameraClips(camera.id),
+          getCameraAlerts(camera.id),
+        ])
+      : [[], []];
 
   return (
     <div className="space-y-4">
@@ -96,6 +110,10 @@ export default async function CameraDetailPage({
           </p>
           <p className="mt-2 text-xs text-muted-foreground">{t("kvsMasterHint")}</p>
         </div>
+      ) : null}
+
+      {camera.camera_type === "kvs" ? (
+        <CameraClips clips={clips} alerts={alerts} />
       ) : null}
 
       <CameraShareControls
