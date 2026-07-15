@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -15,7 +16,6 @@ const profileSchema = z.object({
     .regex(/^[a-zA-Z0-9_]+$/, "Use letters, numbers and underscores only."),
   full_name: z.string().max(80).optional().or(z.literal("")),
   bio: z.string().max(280).optional().or(z.literal("")),
-  avatar_url: z.string().url().optional().or(z.literal("")),
   birth_date: z
     .string()
     .min(1, "Please enter your date of birth.")
@@ -43,7 +43,6 @@ export async function saveProfile(
     username: formData.get("username"),
     full_name: formData.get("full_name"),
     bio: formData.get("bio"),
-    avatar_url: formData.get("avatar_url"),
     birth_date: formData.get("birth_date"),
     accept_terms: formData.get("accept_terms"),
     timezone: formData.get("timezone"),
@@ -53,9 +52,7 @@ export async function saveProfile(
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     redirect("/login");
   }
@@ -65,7 +62,6 @@ export async function saveProfile(
     username: parsed.data.username,
     full_name: parsed.data.full_name || null,
     bio: parsed.data.bio || null,
-    avatar_url: parsed.data.avatar_url || null,
     birth_date: parsed.data.birth_date,
     timezone: parsed.data.timezone || null,
     terms_accepted_version: TERMS_VERSION,

@@ -85,16 +85,6 @@ export function OnboardingForm({ profile }: { profile: Profile | null }) {
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="avatar_url">{t("avatarUrl")}</Label>
-            <Input
-              id="avatar_url"
-              name="avatar_url"
-              type="url"
-              defaultValue={profile?.avatar_url ?? ""}
-              placeholder="https://..."
-            />
-          </div>
-          <div className="space-y-2">
             <Label htmlFor="bio">{t("bio")}</Label>
             <Textarea id="bio" name="bio" defaultValue={profile?.bio ?? ""} rows={3} />
           </div>
