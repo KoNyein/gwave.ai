@@ -51,6 +51,7 @@
     "loginTitle": "Log in to gwave.ai",
     "registerTitle": "Create your account",
     "continueWithGoogle": "Continue with Google",
+    "orEmail": "or with email",
     "noAccount": "Don't have an account?",
     "haveAccount": "Already have an account?",
     "loggingIn": "Logging in...",
