@@ -31,6 +31,13 @@ export async function GET() {
     { name: "profiles.presence_status", table: "profiles", select: "presence_status" },
     { name: "lesson_comments (lesson comments)", table: "lesson_comments", select: "id" },
     { name: "conversations", table: "conversations", select: "id" },
+    // CCTV migrations.
+    { name: "user_cameras.kvs_channel (camera_kvs)", table: "user_cameras", select: "kvs_channel" },
+    { name: "user_cameras.zone (camera_zone_ptz)", table: "user_cameras", select: "zone" },
+    { name: "user_cameras.ptz_url (camera_zone_ptz)", table: "user_cameras", select: "ptz_url" },
+    { name: "camera_clips (camera_clips_alerts)", table: "camera_clips", select: "id" },
+    { name: "camera_alerts (camera_clips_alerts)", table: "camera_alerts", select: "id" },
+    { name: "camera_group_shares (group camera share)", table: "camera_group_shares", select: "camera_id" },
   ];
 
   const results: Record<string, string> = {};
