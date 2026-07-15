@@ -22,18 +22,9 @@ import {
   saveClip,
 } from "@/lib/actions/cctv";
 import { createPost } from "@/lib/actions/posts";
+import { countFaces, faceDetectionSupported } from "@/lib/face-detect";
 import { uploadClip, uploadMedia } from "@/lib/media";
 import { cn } from "@/lib/utils";
-
-// The experimental FaceDetector API (Chromium). Typed loosely + feature-detected.
-interface FaceDetectorLike {
-  detect: (source: CanvasImageSource) => Promise<{ boundingBox: DOMRectReadOnly }[]>;
-}
-declare global {
-  interface Window {
-    FaceDetector?: new (opts?: { fastMode?: boolean }) => FaceDetectorLike;
-  }
-}
 
 interface ViewerConfig {
   channelARN: string;
@@ -356,37 +347,26 @@ export function KvsPlayer({
   // Best-effort face detection via the browser FaceDetector API (Chromium).
   // Shows a face count; in alert mode, logs a face event (debounced).
   React.useEffect(() => {
-    if (status !== "live" || typeof window === "undefined" || !window.FaceDetector)
-      return;
-    let detector: FaceDetectorLike;
-    try {
-      detector = new window.FaceDetector({ fastMode: true });
-    } catch {
-      return;
-    }
+    if (status !== "live" || !faceDetectionSupported()) return;
     let stop = false;
     const timer = setInterval(async () => {
       const video = videoRef.current;
       if (!video || !video.videoWidth || stop) return;
-      try {
-        const found = await detector.detect(video);
-        if (stop) return;
-        setFaces(found.length);
-        if (
-          found.length > 0 &&
-          alertModeRef.current &&
-          id &&
-          Date.now() - lastFaceAlertRef.current > 30000
-        ) {
-          lastFaceAlertRef.current = Date.now();
-          void recordCameraAlert({
-            cameraId: id,
-            kind: "face",
-            note: `${found.length} face(s)`,
-          });
-        }
-      } catch {
-        /* detection can throw transiently — ignore */
+      const count = await countFaces(video);
+      if (stop || count === null) return;
+      setFaces(count);
+      if (
+        count > 0 &&
+        alertModeRef.current &&
+        id &&
+        Date.now() - lastFaceAlertRef.current > 30000
+      ) {
+        lastFaceAlertRef.current = Date.now();
+        void recordCameraAlert({
+          cameraId: id,
+          kind: "face",
+          note: `${count} face(s)`,
+        });
       }
     }, 1500);
     return () => {
