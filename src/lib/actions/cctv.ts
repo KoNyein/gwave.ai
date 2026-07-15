@@ -327,3 +327,101 @@ export async function ptzCommand(
   }
   return { ok: true, data: undefined };
 }
+
+const clipSchema = z.object({
+  cameraId: z.string().uuid(),
+  storagePath: z.string().trim().min(1).max(500),
+  durationSeconds: z.number().int().min(0).max(3600).optional(),
+  kind: z.enum(["manual", "motion", "face"]).default("manual"),
+});
+
+/** Save a recorded clip (already uploaded to storage) against a camera. */
+export async function saveClip(
+  input: z.infer<typeof clipSchema>,
+): Promise<ActionResult<{ clipId: string }>> {
+  const parsed = clipSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid clip." };
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const supabase = await createClient();
+  // Confirm the caller owns the camera before recording against it.
+  const { data: cam } = await supabase
+    .from("user_cameras")
+    .select("id")
+    .eq("id", parsed.data.cameraId)
+    .eq("owner_id", userId)
+    .maybeSingle<{ id: string }>();
+  if (!cam) return { ok: false, error: "Camera not found" };
+
+  const { data, error } = await supabase
+    .from("camera_clips")
+    .insert({
+      camera_id: parsed.data.cameraId,
+      owner_id: userId,
+      storage_path: parsed.data.storagePath,
+      duration_seconds: parsed.data.durationSeconds ?? null,
+      kind: parsed.data.kind,
+    })
+    .select("id")
+    .single<{ id: string }>();
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? "Could not save the clip." };
+  }
+  revalidatePath(`/cameras/${parsed.data.cameraId}`);
+  return { ok: true, data: { clipId: data.id } };
+}
+
+const alertSchema = z.object({
+  cameraId: z.string().uuid(),
+  kind: z.enum(["motion", "face"]),
+  clipId: z.string().uuid().nullish(),
+  note: z.string().trim().max(200).optional(),
+});
+
+/** Record a motion/face alert for a camera (owner-scoped). */
+export async function recordCameraAlert(
+  input: z.infer<typeof alertSchema>,
+): Promise<ActionResult> {
+  const parsed = alertSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid alert." };
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+
+  const supabase = await createClient();
+  const { data: cam } = await supabase
+    .from("user_cameras")
+    .select("id")
+    .eq("id", parsed.data.cameraId)
+    .eq("owner_id", userId)
+    .maybeSingle<{ id: string }>();
+  if (!cam) return { ok: false, error: "Camera not found" };
+
+  const { error } = await supabase.from("camera_alerts").insert({
+    camera_id: parsed.data.cameraId,
+    owner_id: userId,
+    kind: parsed.data.kind,
+    clip_id: parsed.data.clipId ?? null,
+    note: parsed.data.note ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: undefined };
+}
+
+/** Mark a camera's alerts as seen (or all of the caller's when no camera). */
+export async function markCameraAlertsSeen(
+  cameraId?: string,
+): Promise<ActionResult> {
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+  const supabase = await createClient();
+  let q = supabase
+    .from("camera_alerts")
+    .update({ seen: true })
+    .eq("owner_id", userId)
+    .eq("seen", false);
+  if (cameraId) q = q.eq("camera_id", cameraId);
+  const { error } = await q;
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: undefined };
+}

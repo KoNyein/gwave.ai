@@ -252,3 +252,26 @@ export async function uploadVoice(
 
   return { storage_path: path };
 }
+
+/**
+ * Uploads a recorded CCTV clip (MediaRecorder gives a webm Blob). Separate from
+ * uploadVoice/uploadFile so it can carry a larger cap and a video MIME.
+ */
+export async function uploadClip(
+  userId: string,
+  blob: Blob,
+): Promise<{ storage_path: string }> {
+  if (blob.size > 50 * 1024 * 1024) {
+    throw new Error("Clip is too large (max 50 MB).");
+  }
+  const mime = blob.type.split(";")[0] || "video/webm";
+  const path = `${userId}/${crypto.randomUUID()}.webm`;
+
+  const supabase = createClient();
+  const { error } = await supabase.storage
+    .from("media")
+    .upload(path, blob, { contentType: mime, cacheControl: "31536000" });
+  if (error) throw new Error(error.message);
+
+  return { storage_path: path };
+}
