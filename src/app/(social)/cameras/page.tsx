@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Globe, Lock, Radio, Video } from "lucide-react";
+import { Globe, LayoutGrid, Lock, Radio, Video } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { AddCameraForm } from "@/components/cctv/add-camera-form";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
 import { getMyCameras } from "@/lib/db/cctv";
@@ -29,7 +30,16 @@ export default async function CamerasPage() {
           </h1>
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <AddCameraForm />
+        <div className="flex items-center gap-2">
+          {cameras.length > 0 ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href="/cameras/wall">
+                <LayoutGrid className="mr-1 h-4 w-4" /> {t("wallTitle")}
+              </Link>
+            </Button>
+          ) : null}
+          <AddCameraForm />
+        </div>
       </div>
 
       {cameras.length === 0 ? (
