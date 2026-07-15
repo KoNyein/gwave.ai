@@ -11,6 +11,12 @@ const publicSchema = z.object({
    * credentials. Unset simply means no One Tap.
    */
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: z.string().optional(),
+  /**
+   * "1" when the app authenticates via Amazon Cognito (third-party auth). The
+   * browser reads this to disable Supabase-only flows (e.g. Google One Tap) that
+   * don't apply under Cognito. Server code uses getCognitoConfig() instead.
+   */
+  NEXT_PUBLIC_COGNITO_ENABLED: z.string().optional(),
 });
 
 /**
@@ -22,7 +28,12 @@ export const publicEnv = publicSchema.parse({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+  NEXT_PUBLIC_COGNITO_ENABLED: process.env.NEXT_PUBLIC_COGNITO_ENABLED,
 });
+
+/** Browser-safe flag: true when the app authenticates via Cognito. */
+export const cognitoEnabledPublic =
+  publicEnv.NEXT_PUBLIC_COGNITO_ENABLED === "1";
 
 /**
  * Reads the Supabase service role key. Server-only — throws if called where the

@@ -5,9 +5,28 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { publicEnv } from "@/lib/env";
+import { authorizeUrl, logoutUrl } from "@/lib/cognito";
+import {
+  clearCognitoSession,
+  startOAuthState,
+} from "@/lib/cognito-session";
+import { isCognitoEnabled, publicEnv } from "@/lib/env";
 import { checkAuthRateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
+
+/**
+ * Send the browser to Cognito's Hosted UI to sign in. `idpHint` pre-selects an
+ * identity provider (Google), otherwise the Hosted UI shows email/password. The
+ * post-login destination rides in the OAuth `state` (CSRF-protected).
+ */
+async function redirectToCognito(
+  next: string,
+  idpHint?: "Google",
+): Promise<never> {
+  const redirectUri = `${await siteOrigin()}/auth/callback`;
+  const state = await startOAuthState(next);
+  redirect(authorizeUrl({ redirectUri, state, idpHint }));
+}
 
 /**
  * The site origin as seen by the current request. Auth emails and OAuth
@@ -36,6 +55,17 @@ export async function login(
   _prevState: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
+  // Cognito owns the login screen (Hosted UI): send the user there. The
+  // email/password form on our page is unused in this mode.
+  if (isCognitoEnabled()) {
+    const requested = String(formData.get("redirectTo") ?? "");
+    const next =
+      requested.startsWith("/") && !requested.startsWith("//")
+        ? requested
+        : "/feed";
+    await redirectToCognito(next);
+  }
+
   const parsed = credentialsSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -62,6 +92,11 @@ export async function register(
   _prevState: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
+  // Cognito owns sign-up too (Hosted UI has a "Sign up" link).
+  if (isCognitoEnabled()) {
+    await redirectToCognito("/onboarding");
+  }
+
   const parsed = credentialsSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -89,8 +124,6 @@ export async function register(
 }
 
 export async function signInWithGoogle(formData?: FormData): Promise<void> {
-  const supabase = await createClient();
-
   // Carry the page the user was heading for through Google and back. Without
   // this, someone deep-linked to /login?redirectTo=… who signs in with Google
   // always lands on the feed instead of where they were going. Only a relative
@@ -98,6 +131,13 @@ export async function signInWithGoogle(formData?: FormData): Promise<void> {
   const requested = String(formData?.get("redirectTo") ?? "");
   const next =
     requested.startsWith("/") && !requested.startsWith("//") ? requested : "/feed";
+
+  // Cognito federates Google — jump straight to Google via the Hosted UI.
+  if (isCognitoEnabled()) {
+    await redirectToCognito(next, "Google");
+  }
+
+  const supabase = await createClient();
 
   const callback = new URL(`${await siteOrigin()}/auth/callback`);
   callback.searchParams.set("next", next);
@@ -117,6 +157,12 @@ export async function signInWithGoogle(formData?: FormData): Promise<void> {
 }
 
 export async function logout() {
+  if (isCognitoEnabled()) {
+    await clearCognitoSession();
+    revalidatePath("/", "layout");
+    // End the Cognito Hosted UI session too, then return to /login.
+    redirect(logoutUrl(`${await siteOrigin()}/login`));
+  }
   const supabase = await createClient();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
@@ -129,6 +175,13 @@ export async function logout() {
  * to lock out any other active session.
  */
 export async function signOutEverywhere() {
+  if (isCognitoEnabled()) {
+    // Clearing our cookies + ending the Hosted UI session is the reachable
+    // equivalent; global Cognito token revocation would need an admin call.
+    await clearCognitoSession();
+    revalidatePath("/", "layout");
+    redirect(logoutUrl(`${await siteOrigin()}/login`));
+  }
   const supabase = await createClient();
   await supabase.auth.signOut({ scope: "global" });
   revalidatePath("/", "layout");
