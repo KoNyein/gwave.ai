@@ -124,13 +124,29 @@ export function mediaUrl(storagePath: string): string {
  * Deliberately synchronous and pure, exactly like mediaUrl: it is used inline in
  * JSX (`src={chatMediaUrl(path)}`), and signing in the browser instead would mean
  * async state, a skeleton and a re-sign timer in every bubble.
+ *
+ * On the S3/CloudFront backend there is no private chat bucket yet, so fall back
+ * to the same public URL the rest of the app uses — chat media stays readable as
+ * it is today rather than 404ing through a route that only understands Supabase
+ * Storage. The private-route path is Supabase-Storage-only until an S3-native
+ * signing flow (presigned GET / CloudFront signed URLs) lands.
  */
 export function chatMediaUrl(
   storagePath: string,
   options?: { download?: boolean },
 ): string {
+  if (S3_CDN) return mediaUrl(storagePath);
   const query = options?.download ? "?dl=1" : "";
   return `/api/media/chat/${storagePath}${query}`;
+}
+
+/**
+ * Bucket for a chat upload. Private "chat-media" on Supabase Storage; on
+ * S3/CloudFront there is no separate private chat bucket, so it goes to the
+ * shared "media" bucket like every other upload (i.e. current prod behaviour).
+ */
+function chatUploadBucket(): Bucket {
+  return S3_CDN ? "media" : CHAT_BUCKET;
 }
 
 export interface PreparedMedia {
@@ -309,7 +325,7 @@ export async function uploadVoice(
   }
   const mime = blob.type.split(";")[0] || "audio/webm";
   const ext = VOICE_EXTENSIONS[mime] ?? "webm";
-  const path = await putObject(userId, blob, ext, mime, CHAT_BUCKET);
+  const path = await putObject(userId, blob, ext, mime, chatUploadBucket());
   return { storage_path: path };
 }
 
@@ -330,7 +346,7 @@ export async function uploadChatMedia(
     prepared.blob,
     prepared.extension,
     prepared.contentType,
-    CHAT_BUCKET,
+    chatUploadBucket(),
   );
 
   return {
@@ -355,7 +371,7 @@ export async function uploadChatFile(
     file,
     ext,
     file.type || "application/octet-stream",
-    CHAT_BUCKET,
+    chatUploadBucket(),
   );
   return { storage_path: path, file_name: file.name };
 }
