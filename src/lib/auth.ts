@@ -8,8 +8,13 @@ import {
   isMinorBirthDate,
   type AgeBand,
 } from "@/lib/age";
+import { getCognitoSessionUser } from "@/lib/cognito-session";
+import { isCognitoEnabled } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile, UserRole } from "@/types/database";
+
+/** The signed-in user, normalised across the Cognito and Supabase auth paths. */
+export type AuthUser = { id: string; email: string | null };
 
 const ROLE_RANK: Record<UserRole, number> = {
   user: 0,
@@ -25,13 +30,22 @@ const ROLE_RANK: Record<UserRole, number> = {
  * Deduplicated per request via React cache() — layouts, pages and nested
  * components share one auth lookup instead of each hitting Supabase.
  */
-export const getCurrentUser = cache(async function getCurrentUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
-});
+export const getCurrentUser = cache(
+  async function getCurrentUser(): Promise<AuthUser | null> {
+    // Cognito (third-party auth): identity comes from the Cognito session cookie,
+    // not a Supabase auth session.
+    if (isCognitoEnabled()) {
+      const u = await getCognitoSessionUser();
+      return u ? { id: u.id, email: u.email } : null;
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return user ? { id: user.id, email: user.email ?? null } : null;
+  },
+);
 
 /**
  * Returns the current user's profile row, or null when unauthenticated.

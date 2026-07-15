@@ -11,6 +11,12 @@ const publicSchema = z.object({
    * credentials. Unset simply means no One Tap.
    */
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: z.string().optional(),
+  /**
+   * "1" when the app authenticates via Amazon Cognito (third-party auth). The
+   * browser reads this to disable Supabase-only flows (e.g. Google One Tap) that
+   * don't apply under Cognito. Server code uses getCognitoConfig() instead.
+   */
+  NEXT_PUBLIC_COGNITO_ENABLED: z.string().optional(),
 });
 
 /**
@@ -22,7 +28,12 @@ export const publicEnv = publicSchema.parse({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+  NEXT_PUBLIC_COGNITO_ENABLED: process.env.NEXT_PUBLIC_COGNITO_ENABLED,
 });
+
+/** Browser-safe flag: true when the app authenticates via Cognito. */
+export const cognitoEnabledPublic =
+  publicEnv.NEXT_PUBLIC_COGNITO_ENABLED === "1";
 
 /**
  * Reads the Supabase service role key. Server-only — throws if called where the
@@ -36,4 +47,47 @@ export function getServiceRoleKey(): string {
     );
   }
   return key;
+}
+
+/**
+ * Amazon Cognito configuration for the auth migration (see docs/COGNITO_SETUP.md).
+ * Server-only: the client secret must never reach the browser.
+ *
+ * Returns null until every required value is present, which is the switch that
+ * keeps the app on Supabase Auth. Nothing reads Cognito until an operator sets
+ * these on the server, so shipping this code changes no behaviour on its own.
+ */
+export type CognitoConfig = {
+  region: string;
+  userPoolId: string;
+  clientId: string;
+  clientSecret: string;
+  /** Hosted UI base, e.g. https://gwave-auth.auth.ap-southeast-1.amazoncognito.com */
+  domain: string;
+  /** OIDC issuer Supabase trusts: https://cognito-idp.<region>.amazonaws.com/<poolId> */
+  issuer: string;
+};
+
+export function getCognitoConfig(): CognitoConfig | null {
+  const region = process.env.COGNITO_REGION?.trim();
+  const userPoolId = process.env.COGNITO_USER_POOL_ID?.trim();
+  const clientId = process.env.COGNITO_CLIENT_ID?.trim();
+  const clientSecret = process.env.COGNITO_CLIENT_SECRET?.trim();
+  const domain = process.env.COGNITO_DOMAIN?.trim().replace(/\/$/, "");
+  if (!region || !userPoolId || !clientId || !clientSecret || !domain) {
+    return null;
+  }
+  return {
+    region,
+    userPoolId,
+    clientId,
+    clientSecret,
+    domain,
+    issuer: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`,
+  };
+}
+
+/** True when Cognito is fully configured; the app then prefers it for login. */
+export function isCognitoEnabled(): boolean {
+  return getCognitoConfig() !== null;
 }

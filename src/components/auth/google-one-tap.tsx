@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
-import { publicEnv } from "@/lib/env";
+import { cognitoEnabledPublic, publicEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/client";
 
 interface CredentialResponse {
@@ -54,7 +54,11 @@ async function makeNonce(): Promise<{ raw: string; hashed: string }> {
  */
 export function GoogleOneTap({ redirectTo }: { redirectTo: string }) {
   const router = useRouter();
-  const clientId = publicEnv.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  // One Tap signs in through Supabase; under Cognito the Hosted UI owns Google,
+  // so it doesn't apply. Disable it there.
+  const clientId = cognitoEnabledPublic
+    ? undefined
+    : publicEnv.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   React.useEffect(() => {
     if (!clientId) return;

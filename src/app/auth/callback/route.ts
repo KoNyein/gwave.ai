@@ -1,6 +1,10 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { decodeIdToken, exchangeCodeForTokens } from "@/lib/cognito";
+import { consumeOAuthState, setCognitoSession } from "@/lib/cognito-session";
+import { isCognitoEnabled } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -47,6 +51,47 @@ export async function GET(request: Request) {
     login.searchParams.set("error", "oauth");
     login.searchParams.set("reason", reason);
     return NextResponse.redirect(login);
+  }
+
+  // Cognito (third-party auth): exchange the code for Cognito tokens, store them
+  // in the session cookies, and provision the profile row on first sign-in.
+  if (isCognitoEnabled()) {
+    const dest = await consumeOAuthState(searchParams.get("state"));
+    if (code && dest) {
+      try {
+        const tokens = await exchangeCodeForTokens(
+          code,
+          `${origin}/auth/callback`,
+        );
+        await setCognitoSession(tokens);
+        const claims = decodeIdToken(tokens.id_token);
+
+        // Service role: create the profile if this is the user's first sign-in
+        // (there's no auth.users trigger under Cognito), never overwriting an
+        // existing row.
+        const admin = createAdminClient();
+        const { data: profile } = await admin
+          .from("profiles")
+          .select("username")
+          .eq("id", claims.sub)
+          .maybeSingle();
+        if (!profile) {
+          await admin.from("profiles").insert({
+            id: claims.sub,
+            full_name: claims.name ?? null,
+            avatar_url: claims.picture ?? null,
+          });
+        }
+
+        const destination = profile?.username ? dest : "/onboarding";
+        return NextResponse.redirect(`${origin}${destination}`);
+      } catch {
+        // Fall through to the generic failure redirect below.
+      }
+    }
+    const failed = new URL(`${origin}/login`);
+    failed.searchParams.set("error", "auth");
+    return NextResponse.redirect(failed);
   }
 
   if (code) {
