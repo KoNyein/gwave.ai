@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -13,9 +14,7 @@ const uuid = z.string().uuid();
 
 async function requireAdminId(): Promise<string | null> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return null;
   const { data: profile } = await supabase
     .from("profiles")
@@ -29,9 +28,7 @@ async function requireAdminId(): Promise<string | null> {
 
 async function requireModeratorId(): Promise<string | null> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return null;
   const { data: profile } = await supabase
     .from("profiles")
@@ -199,9 +196,7 @@ export async function reportContent(
     return { ok: false, error: "Please describe the problem (3+ chars)." };
   }
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
   if ("profileId" in target && target.profileId === user.id) {
     return { ok: false, error: "You can't report yourself." };

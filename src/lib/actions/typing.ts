@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { getCurrentUser } from "@/lib/auth";
 
 import type { ActionResult } from "@/lib/actions/posts";
 import { createClient } from "@/lib/supabase/server";
@@ -19,9 +20,7 @@ export async function recordTypingScore(
   const parsed = schema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid score." };
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
   const { error } = await supabase.from("typing_scores").insert({
     user_id: user.id,

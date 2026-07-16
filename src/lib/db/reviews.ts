@@ -1,4 +1,5 @@
 import "server-only";
+import { getCurrentUser } from "@/lib/auth";
 
 import { createClient } from "@/lib/supabase/server";
 import type {
@@ -57,9 +58,7 @@ export async function getMyReview(
   subjectId: string,
 ): Promise<Review | null> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return null;
   const { data } = await supabase
     .from("reviews")

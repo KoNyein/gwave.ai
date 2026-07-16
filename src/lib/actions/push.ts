@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import type { ActionResult } from "@/lib/actions/posts";
 
 export interface PushSubscriptionInput {
@@ -15,9 +16,7 @@ export async function savePushSubscription(
   input: PushSubscriptionInput,
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
   if (!input.endpoint || !input.p256dh || !input.auth) {
     return { ok: false, error: "Invalid subscription" };

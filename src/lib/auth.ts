@@ -8,8 +8,11 @@ import {
   isMinorBirthDate,
   type AgeBand,
 } from "@/lib/age";
+import { readSession, type Session } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile, UserRole } from "@/types/database";
+
+export type AuthUser = Session;
 
 const ROLE_RANK: Record<UserRole, number> = {
   user: 0,
@@ -21,16 +24,13 @@ const ROLE_RANK: Record<UserRole, number> = {
 };
 
 /**
- * Returns the current authenticated user, or null. Never throws.
- * Deduplicated per request via React cache() — layouts, pages and nested
- * components share one auth lookup instead of each hitting Supabase.
+ * Returns the current authenticated user ({ id, email }), or null. Never throws.
+ * Reads the session's data token locally — no network — and is deduplicated per
+ * request via React cache() so layouts, pages and nested components share one
+ * lookup. `id` is the user's profiles.id.
  */
-export const getCurrentUser = cache(async function getCurrentUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<AuthUser | null> {
+  return readSession();
 });
 
 /**

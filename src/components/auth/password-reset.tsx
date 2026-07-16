@@ -5,6 +5,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { useTranslations } from "next-intl";
 
 import {
+  changePassword,
   requestPasswordReset,
   updatePassword,
   type RecoveryState,
@@ -103,8 +104,10 @@ export function ForgotPasswordForm() {
  */
 export function UpdatePasswordForm({ compact = false }: { compact?: boolean }) {
   const t = useTranslations("auth");
+  // Settings (compact) changes the password of the signed-in user; the recovery
+  // page confirms an emailed code, so it also collects the email + code.
   const [state, formAction] = useFormState<RecoveryState, FormData>(
-    updatePassword,
+    compact ? changePassword : updatePassword,
     null,
   );
 
@@ -113,13 +116,37 @@ export function UpdatePasswordForm({ compact = false }: { compact?: boolean }) {
       <div className="rounded-lg bg-primary/10 p-4 text-sm">
         ✅ {t("passwordUpdated")}{" "}
         {!compact ? (
-          <Link href="/feed" className="font-medium text-primary hover:underline">
-            {t("goToFeed")}
+          <Link href="/login" className="font-medium text-primary hover:underline">
+            {t("backToLogin")}
           </Link>
         ) : null}
       </div>
     ) : (
       <form action={formAction} className="space-y-4">
+        {!compact ? (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="reset-email">{t("email")}</Label>
+              <Input
+                id="reset-email"
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reset-code">{t("resetCode")}</Label>
+              <Input
+                id="reset-code"
+                name="code"
+                inputMode="numeric"
+                required
+                autoComplete="one-time-code"
+              />
+            </div>
+          </>
+        ) : null}
         <div className="space-y-2">
           <Label htmlFor="new-password">{t("newPassword")}</Label>
           <Input

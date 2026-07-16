@@ -1,13 +1,20 @@
+import { randomUUID } from "node:crypto";
+
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import {
+  AdminUpdateUserAttributesCommand,
+} from "@aws-sdk/client-cognito-identity-provider";
+import { decodeJwt } from "jose";
 
+import { authEnv } from "@/lib/env";
+import { cognito } from "@/lib/auth/cognito";
+import { setSession } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * The origin as the *browser* sees it. Behind the reverse proxy the request URL
- * carries the container's own address, so building redirects from it sent people
- * to https://0.0.0.0:3000 — a dead end. The forwarded headers are what carry the
- * real host, and they're what the auth server actions already trust.
+ * The origin as the *browser* sees it (behind the reverse proxy the request URL
+ * carries the container's own address).
  */
 async function publicOrigin(fallback: string): Promise<string> {
   const h = await headers();
@@ -18,8 +25,10 @@ async function publicOrigin(fallback: string): Promise<string> {
 }
 
 /**
- * OAuth / email confirmation callback. Exchanges the auth code for a session
- * then routes the user to onboarding (new users) or their feed.
+ * Cognito Hosted UI callback (Google federation). Exchanges the authorization
+ * code for tokens at Cognito's /oauth2/token, derives the user's profiles.id
+ * (creating and back-filling custom:profile_id for a brand-new Google user),
+ * mints our session, and routes to onboarding (new) or the feed.
  */
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -27,18 +36,12 @@ export async function GET(request: Request) {
   const origin = await publicOrigin(requestUrl.origin);
   const code = searchParams.get("code");
 
-  // `next` is attacker-reachable (it rides in the OAuth redirect). Only a plain
-  // relative path may through — "//evil.com" is a protocol-relative URL and
-  // would otherwise walk straight out of our origin.
-  const requested = searchParams.get("next") ?? "/feed";
+  // `state` carries the intended destination; only a plain relative path is
+  // allowed so it can't be turned into an open redirect.
+  const requested = searchParams.get("state") ?? "/feed";
   const next =
-    requested.startsWith("/") && !requested.startsWith("//")
-      ? requested
-      : "/feed";
+    requested.startsWith("/") && !requested.startsWith("//") ? requested : "/feed";
 
-  // Google hands its own failures back here (consent screen still in testing,
-  // user cancelled, admin policy…). Carry the reason to the login page instead
-  // of swallowing it — a blank "auth" error tells nobody anything.
   const providerError = searchParams.get("error");
   if (providerError) {
     const reason =
@@ -50,23 +53,76 @@ export async function GET(request: Request) {
   }
 
   if (code) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    try {
+      const { domain, clientId, clientSecret } = authEnv.cognito;
+      const redirectUri = `${origin}/auth/callback`;
+      const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+      const res = await fetch(`${domain}/oauth2/token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${basic}`,
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          client_id: clientId,
+          code,
+          redirect_uri: redirectUri,
+        }),
+      });
+      if (res.ok) {
+        const tokens = (await res.json()) as {
+          id_token: string;
+          access_token: string;
+          refresh_token?: string;
+        };
+        const claims = decodeJwt(tokens.id_token);
+        const cognitoUsername =
+          (claims["cognito:username"] as string) ?? (claims.sub as string) ?? "";
+        const email = typeof claims.email === "string" ? claims.email : undefined;
 
-      if (user) {
+        // A first-time Google user has no custom:profile_id yet — mint one and
+        // back-fill it on the Cognito user so subsequent logins are stable.
+        const claimed = claims["custom:profile_id"];
+        let profileId: string;
+        if (typeof claimed === "string" && claimed) {
+          profileId = claimed;
+        } else {
+          profileId = randomUUID();
+          await cognito()
+            .send(
+              new AdminUpdateUserAttributesCommand({
+                UserPoolId: authEnv.cognito.userPoolId,
+                Username: cognitoUsername,
+                UserAttributes: [
+                  { Name: "custom:profile_id", Value: profileId },
+                ],
+              }),
+            )
+            .catch(() => {});
+        }
+
+        await setSession({
+          profileId,
+          email,
+          cognitoUsername,
+          accessToken: tokens.access_token,
+          idToken: tokens.id_token,
+          refreshToken: tokens.refresh_token,
+        });
+
+        // New users (no username on their profile) go to onboarding.
+        const supabase = await createClient();
         const { data: profile } = await supabase
           .from("profiles")
           .select("username")
-          .eq("id", user.id)
+          .eq("id", profileId)
           .maybeSingle();
-
         const destination = profile?.username ? next : "/onboarding";
         return NextResponse.redirect(`${origin}${destination}`);
       }
+    } catch {
+      // fall through to the error redirect
     }
   }
 

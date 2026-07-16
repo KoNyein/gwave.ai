@@ -1,4 +1,5 @@
 import "server-only";
+import { getCurrentUser } from "@/lib/auth";
 
 import { createClient } from "@/lib/supabase/server";
 import type { Job, JobApplication } from "@/types/database";
@@ -51,9 +52,7 @@ export async function getJob(id: string): Promise<JobWithEmployer | null> {
 /** The caller's own postings (any status), newest first. */
 export async function getMyJobs(): Promise<Job[]> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
   const { data } = await supabase
     .from("jobs")
@@ -83,9 +82,7 @@ export async function getJobApplications(
 /** The caller's own applications, with the job they applied to. */
 export async function getMyApplications(): Promise<MyApplication[]> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
   const { data } = await supabase
     .from("job_applications")
@@ -101,9 +98,7 @@ export async function getMyApplicationForJob(
   jobId: string,
 ): Promise<string | null> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return null;
   const { data } = await supabase
     .from("job_applications")

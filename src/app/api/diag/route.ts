@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -13,9 +14,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "sign in first" }, { status: 401 });
   }

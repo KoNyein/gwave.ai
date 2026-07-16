@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 import { headers } from "next/headers";
 import { z } from "zod";
 
@@ -18,10 +19,7 @@ async function requestOrigin(): Promise<string> {
 }
 
 async function getUserId(): Promise<string | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   return user?.id ?? null;
 }
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
@@ -25,9 +26,7 @@ export async function sendLiveGift(input: {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
   const { data, error } = await supabase.rpc("send_live_gift", {

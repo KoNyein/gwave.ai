@@ -1,6 +1,7 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
+import { getCurrentUser } from "@/lib/auth";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -13,10 +14,7 @@ import type { WebhookEvent } from "@/types/database";
 const uuid = z.string().uuid();
 
 async function getUserId(): Promise<string | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   return user?.id ?? null;
 }
 
@@ -186,9 +184,7 @@ export async function deleteWebhook(webhookId: string): Promise<ActionResult> {
  */
 export async function triggerRedeploy(): Promise<ActionResult<{ message: string }>> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
   const { data: profile } = await supabase
     .from("profiles")

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
@@ -8,10 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { FamilyCircle } from "@/types/database";
 
 async function getUserId(): Promise<string | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   return user?.id ?? null;
 }
 

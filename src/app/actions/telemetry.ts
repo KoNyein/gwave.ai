@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 
 /**
  * Backfill the signed-in user's region signal (IANA timezone, e.g.
@@ -10,9 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function captureTimezone(tz: string): Promise<void> {
   if (!tz || tz.length > 60) return;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return;
   await supabase
     .from("profiles")

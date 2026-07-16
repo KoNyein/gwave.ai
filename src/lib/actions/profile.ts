@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
@@ -24,9 +25,7 @@ export async function updateProfile(
   if (!parsed.success) return { ok: false, error: "Invalid profile details." };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
   // Only send fields the caller actually provided.

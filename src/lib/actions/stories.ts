@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
@@ -19,9 +20,7 @@ export async function createStory(
   if (!parsed.success) return { ok: false, error: "Invalid story." };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
   const { error } = await supabase.from("stories").insert({
@@ -52,9 +51,7 @@ export async function markStoryViewed(storyId: string): Promise<ActionResult> {
     return { ok: false, error: "Invalid story." };
   }
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
   const { error } = await supabase.from("story_views").insert({

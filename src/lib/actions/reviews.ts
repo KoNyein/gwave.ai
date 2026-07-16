@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
@@ -36,9 +37,7 @@ export async function upsertReview(
 /** Delete the caller's own review. */
 export async function deleteReview(reviewId: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
   const { error } = await supabase
     .from("reviews")

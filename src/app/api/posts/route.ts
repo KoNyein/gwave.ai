@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 
 import {
   getFeed,
@@ -6,7 +7,6 @@ import {
   getPagePosts,
   getProfilePosts,
 } from "@/lib/db/posts";
-import { createClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/posts?scope=feed&cursor=...
@@ -17,10 +17,7 @@ import { createClient } from "@/lib/supabase/server";
  * Cursor-paginated posts for the infinite feed. RLS enforces visibility.
  */
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

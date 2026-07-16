@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 
 import type { ActionResult } from "@/lib/actions/posts";
 import { livekitConfigured, livekitUrl, mintLivekitToken } from "@/lib/livekit";
@@ -25,9 +26,7 @@ export async function getLiveStageToken(
   if (!url) return { ok: false, error: "SFU not configured" };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
   const { data: stream } = await supabase
@@ -68,9 +67,7 @@ export async function getLiveStageToken(
  */
 export async function goLive(streamId: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
   const { data: stream } = await supabase
@@ -104,9 +101,7 @@ export async function setStreamGameGoal(
   input: { gameName?: string; goalAmount?: number; goalLabel?: string },
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
   const gameName = (input.gameName ?? "").trim().slice(0, 60);

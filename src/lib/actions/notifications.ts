@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
@@ -24,9 +25,7 @@ export async function markNotificationRead(
 
 export async function markAllNotificationsRead(): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
   const { error } = await supabase

@@ -1,29 +1,33 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import {
+  AdminConfirmSignUpCommand,
+  AdminSetUserPasswordCommand,
+  AdminUpdateUserAttributesCommand,
+  AdminUserGlobalSignOutCommand,
+  ConfirmForgotPasswordCommand,
+  ForgotPasswordCommand,
+  InitiateAuthCommand,
+  SignUpCommand,
+  type AuthenticationResultType,
+} from "@aws-sdk/client-cognito-identity-provider";
 import { z } from "zod";
 
-import { publicEnv } from "@/lib/env";
+import { authEnv } from "@/lib/env";
+import { cognito, identityFromTokens, secretHash } from "@/lib/auth/cognito";
+import { CU_COOKIE, clearSession, readSession, setSession } from "@/lib/auth/session";
 import { checkAuthRateLimit } from "@/lib/rate-limit";
-import { createClient } from "@/lib/supabase/server";
 
 /**
- * The site origin as seen by the current request. Auth emails and OAuth
- * redirects must point at the real deployed host — deriving it from the
- * request means they work even when NEXT_PUBLIC_SITE_URL is unset (its
- * localhost default would otherwise end up inside recovery emails).
+ * Auth server actions, backed by AWS Cognito. Cognito verifies credentials and
+ * federates Google; on success we read `custom:profile_id` from the id token and
+ * mint our own data token (see setSession). The old Supabase auth flow is gone.
  */
-async function siteOrigin(): Promise<string> {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  if (host) {
-    const proto = h.get("x-forwarded-proto") ?? "https";
-    return `${proto}://${host}`;
-  }
-  return publicEnv.NEXT_PUBLIC_SITE_URL;
-}
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -31,6 +35,30 @@ const credentialsSchema = z.object({
 });
 
 export type AuthState = { error: string } | null;
+
+/** Turn a Cognito authentication result into a session and stop. */
+async function establishSession(result: AuthenticationResultType): Promise<void> {
+  const identity = identityFromTokens(result);
+  await setSession(identity);
+}
+
+function friendlyAuthError(err: unknown): string {
+  const name = (err as { name?: string })?.name ?? "";
+  switch (name) {
+    case "NotAuthorizedException":
+      return "Incorrect email or password.";
+    case "UserNotFoundException":
+      return "Incorrect email or password.";
+    case "UserNotConfirmedException":
+      return "Please confirm your account first.";
+    case "PasswordResetRequiredException":
+      return "Please reset your password to continue.";
+    case "TooManyRequestsException":
+      return "Too many attempts. Please wait a minute.";
+    default:
+      return (err as { message?: string })?.message ?? "Something went wrong.";
+  }
+}
 
 export async function login(
   _prevState: AuthState,
@@ -47,10 +75,26 @@ export async function login(
     return { error: "Too many attempts. Please wait a minute." };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) {
-    return { error: error.message };
+  const { clientId } = authEnv.cognito;
+  try {
+    const out = await cognito().send(
+      new InitiateAuthCommand({
+        AuthFlow: "USER_PASSWORD_AUTH",
+        ClientId: clientId,
+        AuthParameters: {
+          USERNAME: parsed.data.email,
+          PASSWORD: parsed.data.password,
+          SECRET_HASH: secretHash(parsed.data.email),
+        },
+      }),
+    );
+    if (out.ChallengeName || !out.AuthenticationResult) {
+      // NEW_PASSWORD_REQUIRED etc. — a migrated user must set a password first.
+      return { error: "Please reset your password to continue." };
+    }
+    await establishSession(out.AuthenticationResult);
+  } catch (err) {
+    return { error: friendlyAuthError(err) };
   }
 
   const redirectTo = (formData.get("redirectTo") as string) || "/feed";
@@ -73,75 +117,125 @@ export async function register(
     return { error: "Too many attempts. Please wait a minute." };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
-    ...parsed.data,
-    options: {
-      emailRedirectTo: `${await siteOrigin()}/auth/callback`,
-    },
-  });
-  if (error) {
-    return { error: error.message };
+  const { clientId, userPoolId } = authEnv.cognito;
+  const profileId = randomUUID();
+  const email = parsed.data.email;
+
+  try {
+    await cognito().send(
+      new SignUpCommand({
+        ClientId: clientId,
+        Username: email,
+        Password: parsed.data.password,
+        SecretHash: secretHash(email),
+        UserAttributes: [
+          { Name: "email", Value: email },
+          { Name: "custom:profile_id", Value: profileId },
+        ],
+      }),
+    );
+    // Skip the email-code step to preserve the "sign up → onboarding" flow:
+    // confirm and mark the email verified server-side, then sign in.
+    await cognito().send(
+      new AdminConfirmSignUpCommand({ UserPoolId: userPoolId, Username: email }),
+    );
+    await cognito().send(
+      new AdminUpdateUserAttributesCommand({
+        UserPoolId: userPoolId,
+        Username: email,
+        UserAttributes: [{ Name: "email_verified", Value: "true" }],
+      }),
+    );
+    const out = await cognito().send(
+      new InitiateAuthCommand({
+        AuthFlow: "USER_PASSWORD_AUTH",
+        ClientId: clientId,
+        AuthParameters: {
+          USERNAME: email,
+          PASSWORD: parsed.data.password,
+          SECRET_HASH: secretHash(email),
+        },
+      }),
+    );
+    if (!out.AuthenticationResult) {
+      return { error: "Could not sign you in after registration." };
+    }
+    await establishSession(out.AuthenticationResult);
+  } catch (err) {
+    const name = (err as { name?: string })?.name ?? "";
+    if (name === "UsernameExistsException") {
+      return { error: "An account with this email already exists." };
+    }
+    if (name === "InvalidPasswordException") {
+      return { error: "Password does not meet the requirements." };
+    }
+    return { error: friendlyAuthError(err) };
   }
 
   revalidatePath("/", "layout");
   redirect("/onboarding");
 }
 
+/** Cognito's Hosted UI is the Google entry point — build its authorize URL and
+ * redirect there. The callback (/auth/callback) exchanges the code. */
 export async function signInWithGoogle(formData?: FormData): Promise<void> {
-  const supabase = await createClient();
-
-  // Carry the page the user was heading for through Google and back. Without
-  // this, someone deep-linked to /login?redirectTo=… who signs in with Google
-  // always lands on the feed instead of where they were going. Only a relative
-  // path is accepted, so the round-trip can't be turned into an open redirect.
   const requested = String(formData?.get("redirectTo") ?? "");
   const next =
     requested.startsWith("/") && !requested.startsWith("//") ? requested : "/feed";
 
-  const callback = new URL(`${await siteOrigin()}/auth/callback`);
-  callback.searchParams.set("next", next);
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: callback.toString(),
-    },
-  });
-  if (error) {
-    redirect("/login?error=oauth");
-  }
-  if (data.url) {
-    redirect(data.url);
-  }
+  const { domain, clientId } = authEnv.cognito;
+  const redirectUri = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://gwave.cc"}/auth/callback`;
+  const url = new URL(`${domain}/oauth2/authorize`);
+  url.searchParams.set("client_id", clientId);
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("scope", "openid email profile");
+  url.searchParams.set("redirect_uri", redirectUri);
+  url.searchParams.set("identity_provider", "Google");
+  url.searchParams.set("state", next);
+  redirect(url.toString());
 }
 
 export async function logout() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  revalidatePath("/", "layout");
+  await revokeAndClear(false);
   redirect("/login");
 }
 
-/**
- * Security: sign out of *every* device by revoking all of the user's refresh
- * tokens (global scope). Use after a suspected compromise or a password change
- * to lock out any other active session.
- */
 export async function signOutEverywhere() {
-  const supabase = await createClient();
-  await supabase.auth.signOut({ scope: "global" });
-  revalidatePath("/", "layout");
+  await revokeAndClear(true);
   redirect("/login");
+}
+
+async function revokeAndClear(global: boolean): Promise<void> {
+  // "Sign out everywhere" revokes every Cognito refresh token for the user
+  // (done with admin creds against the username, since we don't hold the
+  // Cognito access token — gw_at is our own data token). A normal logout just
+  // drops the cookies; the data token expires on its own.
+  if (global) {
+    try {
+      const cognitoUsername = (await cookies()).get(CU_COOKIE)?.value;
+      if (cognitoUsername) {
+        await cognito()
+          .send(
+            new AdminUserGlobalSignOutCommand({
+              UserPoolId: authEnv.cognito.userPoolId,
+              Username: cognitoUsername,
+            }),
+          )
+          .catch(() => {});
+      }
+    } catch {
+      // ignore — clearing cookies below is what ends the session here
+    }
+  }
+  await clearSession();
+  revalidatePath("/", "layout");
 }
 
 export type RecoveryState = { error: string } | { ok: true } | null;
 
 /**
- * Account recovery step 1: email the user a password-reset link. The link
- * lands on /auth/callback which exchanges the code for a session and then
- * forwards to /reset-password. Always reports success so the form can't be
- * used to probe which emails are registered.
+ * Account recovery step 1: Cognito emails a verification code. Always reports
+ * success so the form can't be used to probe which emails are registered.
  */
 export async function requestPasswordReset(
   _prevState: RecoveryState,
@@ -155,28 +249,82 @@ export async function requestPasswordReset(
     return { error: "Too many attempts. Please wait a minute." };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
-    redirectTo: `${await siteOrigin()}/auth/callback?next=/reset-password`,
-  });
-  // Operational failures (SMTP not configured, provider rate limit) must be
-  // visible — silently claiming success would strand the user. Supabase does
-  // not reveal whether the email exists, so this leaks nothing.
-  if (error) {
-    return { error: error.message };
+  try {
+    await cognito().send(
+      new ForgotPasswordCommand({
+        ClientId: authEnv.cognito.clientId,
+        Username: parsed.data,
+        SecretHash: secretHash(parsed.data),
+      }),
+    );
+  } catch (err) {
+    const name = (err as { name?: string })?.name ?? "";
+    // Don't leak existence; only surface genuine operational limits.
+    if (name === "TooManyRequestsException" || name === "LimitExceededException") {
+      return { error: "Too many attempts. Please wait a minute." };
+    }
   }
   return { ok: true };
 }
 
 /**
- * Account recovery step 2 (also used by Settings → Security): set a new
- * password on the current session — either the recovery session created by
- * the emailed link, or a normal logged-in session.
+ * Account recovery step 2: confirm the emailed code and set a new password.
+ * Requires the code from the recovery email (a new field on the reset form).
  */
 export async function updatePassword(
   _prevState: RecoveryState,
   formData: FormData,
 ): Promise<RecoveryState> {
+  const email = formData.get("email");
+  const code = formData.get("code");
+  const password = formData.get("password");
+  const confirm = formData.get("confirm");
+
+  const schema = z.object({
+    email: z.string().email(),
+    code: z.string().min(1, "Enter the code from your email."),
+    password: z.string().min(6, "Password must be at least 6 characters."),
+  });
+  const parsed = schema.safeParse({ email, code, password });
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Invalid input." };
+  }
+  if (password !== confirm) {
+    return { error: "PASSWORDS_DO_NOT_MATCH" };
+  }
+
+  try {
+    await cognito().send(
+      new ConfirmForgotPasswordCommand({
+        ClientId: authEnv.cognito.clientId,
+        Username: parsed.data.email,
+        ConfirmationCode: parsed.data.code,
+        Password: parsed.data.password,
+        SecretHash: secretHash(parsed.data.email),
+      }),
+    );
+  } catch (err) {
+    const name = (err as { name?: string })?.name ?? "";
+    if (name === "CodeMismatchException") return { error: "That code is incorrect." };
+    if (name === "ExpiredCodeException") return { error: "That code has expired." };
+    return { error: friendlyAuthError(err) };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * Change the password of the currently signed-in user (Settings → Security).
+ * We trust the session, so we set the new password directly with admin creds —
+ * no "current password" prompt, matching the previous one-field UX.
+ */
+export async function changePassword(
+  _prevState: RecoveryState,
+  formData: FormData,
+): Promise<RecoveryState> {
+  const session = await readSession();
+  if (!session) return { error: "SESSION_EXPIRED" };
+
   const password = formData.get("password");
   const confirm = formData.get("confirm");
   const parsed = z
@@ -190,17 +338,24 @@ export async function updatePassword(
     return { error: "PASSWORDS_DO_NOT_MATCH" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { error: "SESSION_EXPIRED" };
-  }
+  const cognitoUsername = (await cookies()).get(CU_COOKIE)?.value;
+  if (!cognitoUsername) return { error: "SESSION_EXPIRED" };
 
-  const { error } = await supabase.auth.updateUser({ password: parsed.data });
-  if (error) {
-    return { error: error.message };
+  try {
+    await cognito().send(
+      new AdminSetUserPasswordCommand({
+        UserPoolId: authEnv.cognito.userPoolId,
+        Username: cognitoUsername,
+        Password: parsed.data,
+        Permanent: true,
+      }),
+    );
+  } catch (err) {
+    const name = (err as { name?: string })?.name ?? "";
+    if (name === "InvalidPasswordException") {
+      return { error: "Password does not meet the requirements." };
+    }
+    return { error: friendlyAuthError(err) };
   }
   revalidatePath("/", "layout");
   return { ok: true };

@@ -64,6 +64,7 @@
     "backToLogin": "Back to login",
     "resetTitle": "Set a new password",
     "resetDesc": "Must be at least 6 characters.",
+    "resetCode": "Verification code",
     "newPassword": "New password",
     "confirmPassword": "Confirm new password",
     "updatePassword": "Update password",

@@ -1,4 +1,5 @@
 import "server-only";
+import { getCurrentUser } from "@/lib/auth";
 
 import { rankAds, type AdCandidate } from "@/lib/ads/rank";
 import { createClient } from "@/lib/supabase/server";
@@ -65,9 +66,7 @@ async function previewFor(
 /** The caller's own campaigns, newest first, each with a target preview. */
 export async function getMyBoosts(): Promise<BoostWithPreview[]> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
 
   const { data } = await supabase
@@ -110,9 +109,7 @@ export interface BoostableTargets {
 
 export async function getBoostableTargets(): Promise<BoostableTargets> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { posts: [], shopProducts: [], posProducts: [] };
 
   const [posts, products, stores] = await Promise.all([

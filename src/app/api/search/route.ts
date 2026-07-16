@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 
 import { quickSearchKnowledge } from "@/lib/db/knowledge";
 import { createClient } from "@/lib/supabase/server";
@@ -19,9 +20,7 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   const escaped = query.replace(/[%_\\]/g, "\\$&");
   const pattern = `%${escaped}%`;

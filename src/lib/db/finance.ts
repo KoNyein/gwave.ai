@@ -1,4 +1,5 @@
 import "server-only";
+import { getCurrentUser } from "@/lib/auth";
 
 import { createClient } from "@/lib/supabase/server";
 import type { BusinessExpense, ExpenseCategory } from "@/types/database";
@@ -6,9 +7,7 @@ import type { BusinessExpense, ExpenseCategory } from "@/types/database";
 /** All of the caller's expenses, unpaid (soonest due) first, then paid. */
 export async function getMyExpenses(): Promise<BusinessExpense[]> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
   const { data } = await supabase
     .from("business_expenses")

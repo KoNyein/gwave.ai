@@ -2,23 +2,24 @@ import "server-only";
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-import { getServiceRoleKey, publicEnv } from "@/lib/env";
+import { mintServiceToken } from "@/lib/auth/tokens";
+import { publicEnv } from "@/lib/env";
 import type { Database } from "@/types/database";
 
 /**
- * Privileged Supabase client using the service role key. This BYPASSES Row
- * Level Security and must ONLY be used in trusted server contexts (server
- * actions, route handlers). Never import this into a Client Component.
+ * Privileged data client. Carries a minted `service_role` token (the RDS
+ * service_role has BYPASSRLS), so it bypasses Row Level Security exactly as
+ * Supabase's service role key did. Must ONLY be used in trusted server contexts
+ * (server actions, route handlers, webhooks). Never import into a Client
+ * Component. The token is minted lazily per request via the accessToken hook, so
+ * this stays synchronous for its call sites.
  */
 export function createAdminClient() {
   return createSupabaseClient<Database>(
     publicEnv.NEXT_PUBLIC_SUPABASE_URL,
-    getServiceRoleKey(),
+    publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+      accessToken: async () => mintServiceToken(),
     },
   );
 }

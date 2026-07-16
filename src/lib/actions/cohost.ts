@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
@@ -31,9 +32,7 @@ export async function createCohostRoom(
     return { ok: false, error: "Enter a room title." };
   }
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
   const code = newRoomCode();
@@ -50,9 +49,7 @@ export async function createCohostRoom(
 /** Host: end a co-host room (removes it from the live directory). */
 export async function endCohostRoom(code: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
   const { error } = await supabase
     .from("cohost_rooms")
@@ -90,9 +87,7 @@ export async function getCohostStageToken(
   if (!url) return { ok: false, error: "SFU not configured" };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
   const { data: room } = await supabase
@@ -140,9 +135,7 @@ export async function approveCohost(
   userId: string,
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
   const { data: room } = await supabase
@@ -176,9 +169,7 @@ export async function listCohostGuests(
   code: string,
 ): Promise<ActionResult<AuthorSummary[]>> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
   const { data: room } = await supabase
@@ -217,9 +208,7 @@ export async function searchCohostCandidates(
   if (q.length < 2) return { ok: true, data: [] };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
   const { data: room } = await supabase
@@ -258,9 +247,7 @@ export async function removeCohost(
   userId: string,
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
   const { data: room } = await supabase

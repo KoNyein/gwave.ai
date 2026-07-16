@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 
 import { TRACKS } from "@/lib/learn/lessons";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -17,9 +18,7 @@ export async function claimCertificate(
   trackSlug: string,
 ): Promise<ActionResult<{ certificateId: string }>> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
   const track = TRACKS.find((t) => t.slug === trackSlug);

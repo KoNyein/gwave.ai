@@ -1,4 +1,5 @@
 import "server-only";
+import { getCurrentUser } from "@/lib/auth";
 
 import { createClient } from "@/lib/supabase/server";
 import type { GpayAccount, GpayTransaction, GpayTxnKind } from "@/types/database";
@@ -44,9 +45,7 @@ export async function getAllGpayTransactions(
 /** The caller's own G-Pay account (RLS-scoped), or null if not registered. */
 export async function getMyGpayAccount(): Promise<GpayAccount | null> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return null;
   const { data } = await supabase
     .from("gpay_accounts")

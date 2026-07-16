@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
@@ -36,9 +37,7 @@ export async function createPage(
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
   const slug = slugify(parsed.data.name);
@@ -60,9 +59,7 @@ export async function followPage(pageId: string): Promise<ActionResult> {
     return { ok: false, error: "Invalid page." };
   }
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
   const { error } = await supabase.from("page_followers").insert({
@@ -81,9 +78,7 @@ export async function unfollowPage(pageId: string): Promise<ActionResult> {
     return { ok: false, error: "Invalid page." };
   }
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
   const { error } = await supabase

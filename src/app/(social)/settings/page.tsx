@@ -9,7 +9,7 @@ import { GeneralSettings } from "@/components/settings/general-settings";
 import { PushManager } from "@/components/pwa/push-manager";
 import { PrivacySettings } from "@/components/social/privacy-settings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
 import { getSiteTheme } from "@/lib/db/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -23,9 +23,7 @@ export default async function SettingsPage() {
   const adminTheme = await getSiteTheme();
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   const [{ data: deletion }, { data: invoices }] = await Promise.all([
     supabase
       .from("deletion_requests")
@@ -85,8 +83,8 @@ export default async function SettingsPage() {
         <CardContent>
           <AccountSecurity
             email={user?.email ?? "—"}
-            emailVerified={Boolean(user?.email_confirmed_at)}
-            lastSignInAt={user?.last_sign_in_at ?? null}
+            emailVerified={Boolean(user)}
+            lastSignInAt={null}
           />
         </CardContent>
       </Card>

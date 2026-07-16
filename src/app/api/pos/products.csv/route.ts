@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 
 import { getMyStore, getProducts } from "@/lib/db/pos";
 import { createClient } from "@/lib/supabase/server";
@@ -11,9 +12,7 @@ function csvField(value: string | number | null): string {
 /** GET /api/pos/products.csv — product + stock export for the user's store. */
 export async function GET() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

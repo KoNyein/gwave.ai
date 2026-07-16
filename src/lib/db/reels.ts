@@ -1,4 +1,5 @@
 import "server-only";
+import { getCurrentUser } from "@/lib/auth";
 
 import { publicEnv } from "@/lib/env";
 import { rankItems } from "@/lib/feed/rank";
@@ -61,9 +62,7 @@ const SELECT =
  */
 export async function getReelsFeed(limit = 20): Promise<ReelWithAuthor[]> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   // Pull a bounded recent pool, then rank it.
   const { data } = await supabase
@@ -109,9 +108,7 @@ export async function getReelsFeed(limit = 20): Promise<ReelWithAuthor[]> {
 /** The caller's own reels, newest first. */
 export async function getMyReels(): Promise<ReelWithAuthor[]> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
   const { data } = await supabase
     .from("reels")
@@ -132,9 +129,7 @@ export async function getCreatorSummary(): Promise<CreatorSummary> {
     balance: 0,
   };
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return empty;
 
   const [{ data: reels }, { data: earnings }] = await Promise.all([

@@ -1,37 +1,29 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
+import { AT_COOKIE } from "@/lib/auth/session";
 import { publicEnv } from "@/lib/env";
 import type { Database } from "@/types/database";
 
-type CookieToSet = { name: string; value: string; options: CookieOptions };
-
 /**
- * Supabase client for Server Components, Server Actions and Route Handlers.
- * Uses the anon key with the authenticated user's session — RLS still applies.
+ * Supabase *data* client for Server Components, Server Actions and Route
+ * Handlers. Auth is no longer Supabase's job — the app authenticates against
+ * Cognito and mints its own data token (stored in the `gw_at` cookie). We attach
+ * that token as the bearer, so PostgREST/Realtime see `sub = profiles.id` and
+ * every RLS policy resolves correctly. No Supabase session, no cookie writes.
  */
 export async function createClient() {
   const cookieStore = await cookies();
+  const token = cookieStore.get(AT_COOKIE)?.value;
 
-  return createServerClient<Database>(
+  return createSupabaseClient<Database>(
     publicEnv.NEXT_PUBLIC_SUPABASE_URL,
     publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet: CookieToSet[]) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
-          } catch {
-            // The `setAll` method was called from a Server Component. This can
-            // be ignored if middleware refreshes the session.
-          }
-        },
-      },
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      global: token
+        ? { headers: { Authorization: `Bearer ${token}` } }
+        : {},
     },
   );
 }

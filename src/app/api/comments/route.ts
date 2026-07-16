@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 
 import { getComments } from "@/lib/db/posts";
-import { createClient } from "@/lib/supabase/server";
 
 /** GET /api/comments?post=<post id> — all comments for a visible post. */
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

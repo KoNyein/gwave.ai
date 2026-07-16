@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import { publicEnv } from "@/lib/env";
@@ -24,18 +25,13 @@ export async function getThbRate(): Promise<number> {
 }
 
 async function requireUserId(): Promise<string | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   return user?.id ?? null;
 }
 
 async function requireAdmin(): Promise<string | null> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return null;
   const { data: profile } = await supabase
     .from("profiles")
@@ -65,9 +61,7 @@ export async function createStripeCheckout(
   if (!parsedPlan.success) return { ok: false, error: "Invalid plan." };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
   const { data: planRow } = await supabase
