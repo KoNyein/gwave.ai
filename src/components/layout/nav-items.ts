@@ -19,6 +19,7 @@ import {
   Radio,
   Rocket,
   ShoppingCart,
+  Siren,
   Trophy,
   Wallet,
   Sprout,
@@ -78,6 +79,8 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/cameras", labelKey: "cameras", icon: Video },
       { href: "/family", labelKey: "family", icon: MapPin },
       { href: "/map", labelKey: "map", icon: Map },
+      // Emergency SOS lives on the map; surface it directly for fast access.
+      { href: "/map", labelKey: "sos", icon: Siren },
     ],
   },
   {

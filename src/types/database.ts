@@ -3194,3 +3194,61 @@ export interface PttMessage {
   duration_ms: number | null;
   created_at: string;
 }
+
+// --- SOS / Safety / Threat (migrations 20260715{140000,160000,200000}) ---
+// Hand-written row types for the sos_*/safety_*/threat_* tables (kept until
+// database.ts is regenerated from the RDS schema after the migrations apply).
+export type SosCategory =
+  | "medical"
+  | "disaster"
+  | "conflict"
+  | "fire"
+  | "trapped"
+  | "other";
+export type SosStatus = "active" | "safe" | "resolved" | "cancelled";
+
+export type ThreatKind =
+  | "airstrike"
+  | "artillery"
+  | "drone"
+  | "ground"
+  | "disaster"
+  | "other";
+
+export interface ThreatAlert {
+  id: string;
+  reporter_id: string;
+  kind: ThreatKind;
+  latitude: number;
+  longitude: number;
+  heading: number | null;
+  note: string | null;
+  created_at: string;
+  expires_at: string;
+}
+
+export type SafetyStatus = "safe" | "need_help";
+
+export interface SafetyCheckin {
+  id: string;
+  user_id: string;
+  status: SafetyStatus;
+  note: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  created_at: string;
+}
+
+export interface SosAlert {
+  id: string;
+  user_id: string;
+  category: SosCategory;
+  status: SosStatus;
+  message: string | null;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+}

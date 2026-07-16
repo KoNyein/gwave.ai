@@ -3,7 +3,16 @@ import Link from "next/link";
 import { Map as MapIcon, Users } from "lucide-react";
 
 import { GpsMap } from "@/components/gps/gps-map";
+import { SafetyPanel } from "@/components/gps/safety-panel";
+import { SosPanel } from "@/components/gps/sos-panel";
+import { ThreatPanel } from "@/components/gps/threat-panel";
 import { getCurrentProfile } from "@/lib/auth";
+import { getFamilyPeopleForMap } from "@/lib/db/family";
+import { getFamilySafety } from "@/lib/db/safety";
+import { getActiveSosAlerts, getMyActiveSos } from "@/lib/db/sos";
+import { getActiveThreats } from "@/lib/db/threat";
+import { THREAT_META } from "@/lib/threat";
+import type { MapPerson } from "@/lib/geolocation";
 
 export const metadata = { title: "Map" };
 export const dynamic = "force-dynamic";
@@ -11,6 +20,43 @@ export const dynamic = "force-dynamic";
 export default async function MapPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
+
+  const [family, sosAlerts, myAlert, familySafety, threats] =
+    await Promise.all([
+      getFamilyPeopleForMap(profile.id),
+      getActiveSosAlerts(),
+      getMyActiveSos(profile.id),
+      getFamilySafety(profile.id),
+      getActiveThreats(),
+    ]);
+
+  const familyPeople: MapPerson[] = family.map((p) => ({
+    id: p.profile.id,
+    name: p.profile.full_name || p.profile.username || "Member",
+    username: p.profile.username,
+    latitude: p.location.latitude,
+    longitude: p.location.longitude,
+    avatarUrl: p.profile.avatar_url,
+    updatedAt: p.location.updated_at,
+    kind: "family",
+  }));
+  // SOS alerts also plot on the map, as red emergency pins.
+  const sosPeople: MapPerson[] = sosAlerts.map((a) => ({
+    id: `sos-${a.id}`,
+    name: `🆘 ${a.person.full_name || a.person.username || "SOS"}`,
+    latitude: a.latitude,
+    longitude: a.longitude,
+    kind: "sos",
+  }));
+  // Threat warnings plot as red pins too.
+  const threatPeople: MapPerson[] = threats.map((t) => ({
+    id: `threat-${t.id}`,
+    name: `${THREAT_META[t.kind].emoji} ${THREAT_META[t.kind].label}`,
+    latitude: t.latitude,
+    longitude: t.longitude,
+    kind: "sos",
+  }));
+  const people = [...familyPeople, ...sosPeople, ...threatPeople];
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -34,7 +80,18 @@ export default async function MapPage() {
         </Link>
       </div>
 
-      <GpsMap apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""} />
+      <ThreatPanel threats={threats} />
+
+      <SosPanel myAlert={myAlert} alerts={sosAlerts} myUserId={profile.id} />
+
+      {familySafety.length > 0 ? (
+        <SafetyPanel family={familySafety} myUserId={profile.id} />
+      ) : null}
+
+      <GpsMap
+        apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""}
+        people={people}
+      />
     </div>
   );
 }
