@@ -89,3 +89,48 @@ deliverability မသေချာ) မို့ — password reset / signup emai
      redirect URL က allowlist ထဲ မရှိရင် Supabase က Site URL ကို သုံးလို့ပါ
 5. (optional) **Auth → Email Templates → Reset Password** မှာ စာသား မြန်မာလို ပြင်
 6. App env: `NEXT_PUBLIC_SITE_URL=https://gwave.cc` (build arg) သတ်မှတ်ပြီး redeploy
+
+## ၇။ Cognito auth + self-hosted PostgREST (JWKS oct-key) — SOS/PTT/feed fix
+
+**လက္ခဏာ:** login ဝင်ထားလျက် `/feed` က redirect loop (`ERR_TOO_MANY_REDIRECTS`
+/ "down")၊ SOS မှာ "Could not send SOS"၊ walkie-talkie မှာ "Could not create
+channel"။ PostgREST log/response မှာ `401 JWSError JWSInvalidSignature`။
+
+**အကြောင်းရင်း:** login က Cognito မို့ app က HS256 token တစ်ခု mint လုပ်ပြီး
+PostgREST ကို ပေးတယ် (`src/lib/supabase/mint-token.ts`)။ ဒါပေမဲ့ ဒီ server ရဲ့
+PostgREST က `PGRST_JWT_SECRET=@/etc/postgrest/jwks.json` — JWKS ထဲမှာ
+**asymmetric EC/ES256** key တွေပဲ ရှိတော့ HS256 token ကို ဘယ်တော့မှ လက်မခံ →
+authenticated read/write အားလုံး 401။
+
+**ဖြေရှင်းချက် (additive, EC key တွေ မထိ):** JWKS ထဲ symmetric `oct` (HS256)
+key တစ်ခု ထည့်ပြီး app ရဲ့ minted token ကို လက်ခံအောင် လုပ်တယ်။
+
+```bash
+# server (EC2) ပေါ်မှာ —
+sudo bash /home/ubuntu/app/gwave.ai/deploy/postgrest-add-hs256-key.sh
+# ↑ က secret တစ်ခု print လုပ်မယ်။ အဲ့ဒါကို web container မှာ ထည့်ပြီး redeploy —
+echo 'SUPABASE_JWT_SECRET=<printed value>' | sudo tee -a \
+  /home/ubuntu/app/gwave.ai/deploy/gwave.override.env
+sudo bash /home/ubuntu/app/gwave.ai/deploy/ecr-redeploy.sh
+```
+
+`/etc/postgrest` က host bind-mount မို့ ဒီ key က `docker restart` ဖြတ်ပြီးပါ
+ကျန်တယ်။ **server ကို အသစ်ပြန်ဆောက်ရင်** script ကို ပြန် run ရုံပါပဲ။
+
+**စစ်ဆေးရန်** (bad token → 401၊ good token → 200 ဖြစ်ရမယ်) —
+
+```bash
+SECRET=<the secret>; AK=<NEXT_PUBLIC_SUPABASE_ANON_KEY>
+TOK=$(python3 - "$SECRET" <<'PY'
+import json,base64,hmac,hashlib,sys,time
+s=sys.argv[1].encode(); b=lambda x:base64.urlsafe_b64encode(x).rstrip(b'=').decode()
+si=b(json.dumps({"alg":"HS256","typ":"JWT"}).encode())+"."+b(json.dumps(
+ {"sub":"00000000-0000-0000-0000-000000000000","role":"authenticated",
+  "aud":"authenticated","iat":int(time.time()),"exp":int(time.time())+300}).encode())
+print(si+"."+b(hmac.new(s,si.encode(),hashlib.sha256).digest()))
+PY
+)
+curl -s -o /dev/null -w '%{http_code}\n' -H "apikey: $AK" \
+  -H "Authorization: Bearer $TOK" \
+  'https://gwave.cc/sb/rest/v1/profiles?select=id&limit=1'   # -> 200
+```

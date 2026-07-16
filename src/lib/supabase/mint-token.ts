@@ -25,6 +25,13 @@ import crypto from "node:crypto";
  * fall back to the previous behaviour (passing the raw Cognito token). Uses the
  * Node crypto module — this runs only in Server Components / Actions / Route
  * Handlers (never the Edge middleware), so no external JWT dependency is needed.
+ *
+ * NOTE (this deployment): PostgREST here validates against a JWKS file that
+ * ships only asymmetric EC/ES256 keys, so it would reject a plain HS256 token.
+ * We add one symmetric "oct" key (whose `k` is base64url of this same secret's
+ * UTF-8 bytes) to that JWKS so this token verifies — see
+ * deploy/postgrest-add-hs256-key.sh. On Supabase Cloud or a PostgREST whose
+ * PGRST_JWT_SECRET is the raw secret string, no such step is needed.
  */
 export function mintSupabaseToken(sub: string): string | null {
   const secret = process.env.SUPABASE_JWT_SECRET?.trim();
