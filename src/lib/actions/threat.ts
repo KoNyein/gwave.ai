@@ -8,6 +8,7 @@ import { distanceMeters, formatDistance } from "@/lib/geolocation";
 import { sendPushToUser } from "@/lib/push";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import { THREAT_META, bearingLabelMy } from "@/lib/threat";
 import type { ThreatKind } from "@/types/database";
 
@@ -32,9 +33,7 @@ export async function reportThreat(
   if (!parsed.success) return { ok: false, error: "Invalid report." };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
   const { data, error } = await supabase

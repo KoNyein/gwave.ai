@@ -6,13 +6,11 @@ import { z } from "zod";
 import type { ActionResult } from "@/lib/actions/posts";
 import { notifyNearbySos } from "@/lib/sos-notify";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import type { SosCategory, SosStatus } from "@/types/database";
 
 async function getUserId(): Promise<string | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   return user?.id ?? null;
 }
 

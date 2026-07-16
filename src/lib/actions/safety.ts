@@ -7,6 +7,7 @@ import type { ActionResult } from "@/lib/actions/posts";
 import { sendPushToUser } from "@/lib/push";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import type { SafetyStatus } from "@/types/database";
 
 const schema = z.object({
@@ -27,9 +28,7 @@ export async function safetyCheckIn(
   if (!parsed.success) return { ok: false, error: "Invalid check-in." };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
   const { error } = await supabase.from("safety_checkins").insert({
