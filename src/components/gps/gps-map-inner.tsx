@@ -3,24 +3,28 @@
 import * as React from "react";
 import L from "leaflet";
 
-import type { GeoFix } from "@/lib/geolocation";
+import type { GeoFix, MapPerson } from "@/lib/geolocation";
 
 /**
  * Interactive GPS map (client-only, OSM tiles). Shows a live "you are here"
- * marker with an accuracy circle. When `recenter` increments, the view snaps
- * back to the current fix — used by the "locate me" button and live-follow.
+ * marker with an accuracy circle, plus a marker per shared family member. When
+ * `recenter` increments, the view snaps back to the current fix — used by the
+ * "locate me" button and live-follow.
  */
 export default function GpsMapInner({
   fix,
   recenter,
+  people = [],
 }: {
   fix: GeoFix | null;
   recenter: number;
+  people?: MapPerson[];
 }) {
   const ref = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<L.Map | null>(null);
   const markerRef = React.useRef<L.Marker | null>(null);
   const circleRef = React.useRef<L.Circle | null>(null);
+  const peopleRef = React.useRef<Map<string, L.Marker>>(new Map());
   const centredRef = React.useRef(false);
 
   // Create the map once.
@@ -84,6 +88,41 @@ export default function GpsMapInner({
     if (!map || !fix || recenter === 0) return;
     map.setView([fix.latitude, fix.longitude], Math.max(map.getZoom(), 16));
   }, [recenter, fix]);
+
+  // Family member markers: add/move present ones, drop the rest.
+  React.useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const seen = new Set<string>();
+    for (const p of people) {
+      seen.add(p.id);
+      const point: [number, number] = [p.latitude, p.longitude];
+      const existing = peopleRef.current.get(p.id);
+      if (existing) {
+        existing.setLatLng(point);
+      } else {
+        const sos = p.kind === "sos";
+        const icon = L.divIcon({
+          className: "",
+          html: sos
+            ? `<div style="font-size:28px;line-height:1;filter:drop-shadow(0 0 4px #ef4444)">🆘</div>`
+            : `<div style="font-size:26px;line-height:1">🧑</div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 28],
+        });
+        const marker = L.marker(point, { icon })
+          .addTo(map)
+          .bindTooltip(p.name, { direction: "top", offset: [0, -26] });
+        peopleRef.current.set(p.id, marker);
+      }
+    }
+    for (const [id, marker] of peopleRef.current) {
+      if (!seen.has(id)) {
+        marker.remove();
+        peopleRef.current.delete(id);
+      }
+    }
+  }, [people]);
 
   return <div ref={ref} className="h-full w-full" />;
 }
