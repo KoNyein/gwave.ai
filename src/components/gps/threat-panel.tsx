@@ -170,7 +170,7 @@ export function ThreatPanel({
           onClick={() => setOpen(true)}
           className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-destructive/50 bg-destructive/5 px-4 py-2.5 text-sm font-bold text-destructive"
         >
-          <AlertTriangle className="h-5 w-5" /> ⚠️ အန္တရာယ် သတင်းပို့ (လေယာဉ်/ဗုံး/ဘေး)
+          <AlertTriangle className="h-5 w-5" /> ⚠️ အန္တရာယ် သတင်းပို့
         </button>
       )}
     </div>
