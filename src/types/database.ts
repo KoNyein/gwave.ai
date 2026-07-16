@@ -3174,3 +3174,23 @@ export type Database = {
     };
   };
 };
+
+// --- PTT / Walkie-talkie (migration 20260715180000_ptt_channels) ---
+// Hand-written row types for the ptt_* tables (kept until database.ts is
+// regenerated from the RDS schema after the migration is applied).
+export interface PttChannel {
+  id: string;
+  name: string;
+  join_code: string;
+  owner_id: string;
+  created_at: string;
+}
+
+export interface PttMessage {
+  id: string;
+  channel_id: string;
+  user_id: string;
+  audio_path: string;
+  duration_ms: number | null;
+  created_at: string;
+}
