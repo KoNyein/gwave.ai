@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
+import { notifyNearbySos } from "@/lib/sos-notify";
 import { createClient } from "@/lib/supabase/server";
 import type { SosCategory, SosStatus } from "@/types/database";
 
@@ -79,6 +80,24 @@ export async function raiseSos(
   if (error || !data) {
     return { ok: false, error: error?.message ?? "Could not send SOS." };
   }
+
+  // Alert nearby users (best-effort; never blocks the SOS). Only send on a new
+  // alert, not on every location refresh of an existing one, to avoid spam.
+  if (!existing) {
+    const { data: me } = await supabase
+      .from("profiles")
+      .select("full_name, username")
+      .eq("id", userId)
+      .maybeSingle();
+    await notifyNearbySos({
+      raiserId: userId,
+      raiserName: me?.full_name || me?.username || "တစ်ဦး",
+      category: parsed.data.category,
+      latitude: parsed.data.latitude,
+      longitude: parsed.data.longitude,
+    });
+  }
+
   revalidatePath("/map");
   return { ok: true, data: { id: data.id } };
 }
