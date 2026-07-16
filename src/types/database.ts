@@ -337,6 +337,18 @@ export type SosCategory =
   | "other";
 export type SosStatus = "active" | "safe" | "resolved" | "cancelled";
 
+export type SafetyStatus = "safe" | "need_help";
+
+export interface SafetyCheckin {
+  id: string;
+  user_id: string;
+  status: SafetyStatus;
+  note: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  created_at: string;
+}
+
 export interface SosAlert {
   id: string;
   user_id: string;
