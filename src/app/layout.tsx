@@ -5,6 +5,7 @@ import { getLocale, getMessages } from "next-intl/server";
 
 import "./globals.css";
 
+import { isRtl } from "@/i18n/config";
 import { getSiteTheme } from "@/lib/db/admin";
 import { DEFAULT_THEME } from "@/lib/theme";
 
@@ -53,6 +54,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
+      dir={isRtl(locale) ? "rtl" : "ltr"}
       data-theme={theme === DEFAULT_THEME ? undefined : theme}
       suppressHydrationWarning
     >
