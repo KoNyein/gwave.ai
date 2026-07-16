@@ -3,9 +3,11 @@ import Link from "next/link";
 import { Map as MapIcon, Users } from "lucide-react";
 
 import { GpsMap } from "@/components/gps/gps-map";
+import { SafetyPanel } from "@/components/gps/safety-panel";
 import { SosPanel } from "@/components/gps/sos-panel";
 import { getCurrentProfile } from "@/lib/auth";
 import { getFamilyPeopleForMap } from "@/lib/db/family";
+import { getFamilySafety } from "@/lib/db/safety";
 import { getActiveSosAlerts, getMyActiveSos } from "@/lib/db/sos";
 import type { MapPerson } from "@/lib/geolocation";
 
@@ -16,10 +18,11 @@ export default async function MapPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 
-  const [family, sosAlerts, myAlert] = await Promise.all([
+  const [family, sosAlerts, myAlert, familySafety] = await Promise.all([
     getFamilyPeopleForMap(profile.id),
     getActiveSosAlerts(),
     getMyActiveSos(profile.id),
+    getFamilySafety(profile.id),
   ]);
 
   const familyPeople: MapPerson[] = family.map((p) => ({
@@ -65,6 +68,10 @@ export default async function MapPage() {
       </div>
 
       <SosPanel myAlert={myAlert} alerts={sosAlerts} myUserId={profile.id} />
+
+      {familySafety.length > 0 ? (
+        <SafetyPanel family={familySafety} myUserId={profile.id} />
+      ) : null}
 
       <GpsMap
         apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""}
