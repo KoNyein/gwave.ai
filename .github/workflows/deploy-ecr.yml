@@ -14,7 +14,7 @@ name: Build & deploy web image (ECR)
 
 on:
   push:
-    branches: [main]
+    branches: [main, claude/phase-1-implementation-7ysxtj]
   workflow_dispatch:
 
 concurrency:
