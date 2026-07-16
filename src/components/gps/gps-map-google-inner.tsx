@@ -110,7 +110,11 @@ export default function GpsMapGoogleInner({
             map,
             position,
             title: p.name,
-            label: { text: "🧑", fontSize: "18px" },
+            label: {
+              text: p.kind === "sos" ? "🆘" : "🧑",
+              fontSize: p.kind === "sos" ? "22px" : "18px",
+            },
+            zIndex: p.kind === "sos" ? 1000 : undefined,
           }),
         );
       }
