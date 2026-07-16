@@ -19,6 +19,7 @@ import {
   Radio,
   Rocket,
   ShoppingCart,
+  Siren,
   Trophy,
   Wallet,
   Sprout,
@@ -56,6 +57,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/groups", labelKey: "groups", icon: LayoutGrid },
       { href: "/pages", labelKey: "pages", icon: Flag },
       { href: "/live", labelKey: "live", icon: Radio },
+      { href: "/talk", labelKey: "talk", icon: Radio },
       { href: "/reels", labelKey: "reels", icon: Clapperboard },
       { href: "/games", labelKey: "games", icon: Gamepad2 },
     ],
@@ -77,6 +79,8 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/cameras", labelKey: "cameras", icon: Video },
       { href: "/family", labelKey: "family", icon: MapPin },
       { href: "/map", labelKey: "map", icon: Map },
+      // Emergency SOS lives on the map; surface it directly for fast access.
+      { href: "/map", labelKey: "sos", icon: Siren },
     ],
   },
   {

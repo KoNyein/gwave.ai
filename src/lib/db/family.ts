@@ -66,3 +66,61 @@ export async function getCircleMembers(
     location: byUser.get(r.user_id) ?? null,
   }));
 }
+
+export interface FamilyMapPerson {
+  profile: AuthorSummary;
+  location: MemberLocation;
+}
+
+/**
+ * Everyone across all of the caller's family circles who is currently sharing a
+ * location, for plotting on the GPS map. Self is excluded, and each person
+ * appears once even if shared across multiple circles. RLS on member_locations
+ * already restricts this to people the caller may see.
+ */
+export async function getFamilyPeopleForMap(
+  userId: string,
+): Promise<FamilyMapPerson[]> {
+  const supabase = await createClient();
+
+  const { data: myRows } = await supabase
+    .from("family_memberships")
+    .select("circle_id")
+    .eq("user_id", userId)
+    .returns<{ circle_id: string }[]>();
+  const circleIds = (myRows ?? []).map((r) => r.circle_id);
+  if (circleIds.length === 0) return [];
+
+  const { data: memberRows } = await supabase
+    .from("family_memberships")
+    .select(
+      "user_id, sharing_enabled, profile:profiles!family_memberships_user_id_fkey(id, username, full_name, avatar_url)",
+    )
+    .in("circle_id", circleIds)
+    .neq("user_id", userId)
+    .eq("sharing_enabled", true)
+    .returns<
+      (Pick<FamilyMembership, "user_id" | "sharing_enabled"> & {
+        profile: AuthorSummary;
+      })[]
+    >();
+
+  const byId = new Map<string, AuthorSummary>();
+  for (const r of memberRows ?? []) {
+    if (r.profile && !byId.has(r.user_id)) byId.set(r.user_id, r.profile);
+  }
+  if (byId.size === 0) return [];
+
+  const { data: locations } = await supabase
+    .from("member_locations")
+    .select("*")
+    .in("user_id", [...byId.keys()])
+    .returns<MemberLocation[]>();
+
+  const people: FamilyMapPerson[] = [];
+  for (const loc of locations ?? []) {
+    const profile = byId.get(loc.user_id);
+    if (profile) people.push({ profile, location: loc });
+  }
+  return people;
+}

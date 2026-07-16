@@ -25,7 +25,7 @@ export const LOCALE_LABELS: Record<Locale, string> = {
   rki: "ရခိုင်",
   shn: "ရှမ်း",
   mnw: "မွန်",
-  ksw: "ကရင်",
+  ksw: "ကညီ (ကရင်)",
   kyu: "ကယား",
   cnh: "ချင်း",
   th: "ไทย",

@@ -375,3 +375,21 @@ export async function uploadChatFile(
   );
   return { storage_path: path, file_name: file.name };
 }
+
+/**
+ * Uploads a recorded CCTV clip (MediaRecorder gives a webm Blob). Separate from
+ * uploadVoice/uploadFile so it can carry a larger cap and a video MIME. Goes to
+ * the public "media" bucket via putObject, so it works under whichever backend
+ * (S3 or Supabase Storage) is active — matching how the rest of media.ts uploads.
+ */
+export async function uploadClip(
+  userId: string,
+  blob: Blob,
+): Promise<{ storage_path: string }> {
+  if (blob.size > 50 * 1024 * 1024) {
+    throw new Error("Clip is too large (max 50 MB).");
+  }
+  const mime = blob.type.split(";")[0] || "video/webm";
+  const path = await putObject(userId, blob, "webm", mime, "media");
+  return { storage_path: path };
+}

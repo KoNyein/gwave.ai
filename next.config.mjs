@@ -44,6 +44,25 @@ const googleMapsSrc = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
   ? " https://www.google.com"
   : "";
 
+// The GPS/location map also uses the Google Maps JS API
+// (@googlemaps/js-api-loader) for an interactive map, not just the iframe embed:
+// it loads a script from maps.googleapis.com and fetches geocoding/tiles over the
+// same host. (Tile/marker images from maps.gstatic.com are already covered by the
+// `https:` wildcard in img-src.) The map's offline pre-cache fetch()es OSM tiles,
+// so *.tile.openstreetmap.org must also be in connect-src (not just img-src).
+const hasGoogleMaps = Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
+const googleMapsScriptSrc = hasGoogleMaps ? " https://maps.googleapis.com" : "";
+const googleMapsConnectSrc = hasGoogleMaps ? " https://maps.googleapis.com" : "";
+
+// Amazon KVS WebRTC cameras: the browser viewer opens a secure WebSocket to a
+// per-region KVS signaling endpoint (*.kinesisvideo.<region>.amazonaws.com) and
+// makes HTTPS control calls to the same host. STUN/TURN ICE media is not governed
+// by CSP. Only widened when KVS_AWS_REGION is configured.
+const kvsRegion = process.env.KVS_AWS_REGION?.trim();
+const kvsConnectSrc = kvsRegion
+  ? ` wss://*.kinesisvideo.${kvsRegion}.amazonaws.com https://*.kinesisvideo.${kvsRegion}.amazonaws.com`
+  : "";
+
 // Co-host Live connects to the LiveKit SFU over a secure WebSocket
 // (NEXT_PUBLIC_LIVEKIT_URL, e.g. wss://live.yourdomain.com). The signalling
 // socket and the HTTPS region/ICE lookups both target that host, so allow-list
@@ -68,7 +87,7 @@ const csp = [
   // cdn.jsdelivr.net serves Pyodide (Python-in-WebAssembly) for the Python
   // playground; 'wasm-unsafe-eval' lets its WASM compile.
   // accounts.google.com serves Google Identity Services (One Tap sign-in).
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://accounts.google.com",
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://accounts.google.com${googleMapsScriptSrc}`,
   // Blob-URL Web Workers run Pyodide/sql.js off the main thread so runaway
   // learner code can't freeze the tab; importScripts inside them is covered
   // by script-src above.
@@ -82,7 +101,7 @@ const csp = [
   `media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com https://d10t7bibe827e7.cloudfront.net${cctvHlsSrc}`,
   "font-src 'self' data:",
   // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com https://gwave-media-8acd2816.s3.ap-southeast-1.amazonaws.com https://d10t7bibe827e7.cloudfront.net${cctvHlsSrc}${livekitConnectSrc}`,
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com https://gwave-media-8acd2816.s3.ap-southeast-1.amazonaws.com https://d10t7bibe827e7.cloudfront.net https://*.tile.openstreetmap.org${cctvHlsSrc}${livekitConnectSrc}${googleMapsConnectSrc}${kvsConnectSrc}`,
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
   `frame-src 'self' https://www.youtube-nocookie.com https://accounts.google.com${cctvFrameSrc}${gameFrameSrc}${googleMapsSrc}`,

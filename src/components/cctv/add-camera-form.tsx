@@ -61,8 +61,14 @@ export function AddCameraForm() {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [title, setTitle] = React.useState("");
-  const [cameraType, setCameraType] = React.useState<"webrtc" | "rtsp">("webrtc");
+  const [cameraType, setCameraType] = React.useState<"webrtc" | "rtsp" | "kvs">(
+    "webrtc",
+  );
   const [rtspUrl, setRtspUrl] = React.useState("");
+  const [kvsChannel, setKvsChannel] = React.useState("");
+  const [kvsRegion, setKvsRegion] = React.useState("");
+  const [zone, setZone] = React.useState("");
+  const [ptzUrl, setPtzUrl] = React.useState("");
   const [presetNote, setPresetNote] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -75,6 +81,10 @@ export function AddCameraForm() {
       title: title.trim() || t("defaultTitle"),
       cameraType,
       rtspUrl: cameraType === "rtsp" ? rtspUrl.trim() : undefined,
+      kvsChannel: cameraType === "kvs" ? kvsChannel.trim() : undefined,
+      kvsRegion: cameraType === "kvs" ? kvsRegion.trim() : undefined,
+      zone: zone.trim() || undefined,
+      ptzUrl: ptzUrl.trim() || undefined,
     });
     setPending(false);
     if (!res.ok) {
@@ -114,8 +124,8 @@ export function AddCameraForm() {
 
       <div className="space-y-1">
         <Label>{t("typeLabel")}</Label>
-        <div className="grid grid-cols-2 gap-2">
-          {(["webrtc", "rtsp"] as const).map((type) => (
+        <div className="grid grid-cols-3 gap-2">
+          {(["webrtc", "rtsp", "kvs"] as const).map((type) => (
             <button
               key={type}
               type="button"
@@ -168,6 +178,56 @@ export function AddCameraForm() {
           <p className="text-xs text-muted-foreground">{t("rtspHint")}</p>
         </div>
       ) : null}
+
+      {cameraType === "kvs" ? (
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <Label htmlFor="cam-kvs-channel">{t("kvsChannelLabel")}</Label>
+            <Input
+              id="cam-kvs-channel"
+              value={kvsChannel}
+              onChange={(e) => setKvsChannel(e.target.value)}
+              placeholder="Hydroponics-Cam"
+              maxLength={256}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cam-kvs-region">{t("kvsRegionLabel")}</Label>
+            <Input
+              id="cam-kvs-region"
+              value={kvsRegion}
+              onChange={(e) => setKvsRegion(e.target.value)}
+              placeholder="ap-southeast-1"
+              maxLength={40}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">{t("kvsHint")}</p>
+        </div>
+      ) : null}
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor="cam-zone">{t("zoneLabel")}</Label>
+          <Input
+            id="cam-zone"
+            value={zone}
+            onChange={(e) => setZone(e.target.value)}
+            placeholder={t("zonePlaceholder")}
+            maxLength={60}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="cam-ptz">{t("ptzLabel")}</Label>
+          <Input
+            id="cam-ptz"
+            value={ptzUrl}
+            onChange={(e) => setPtzUrl(e.target.value)}
+            placeholder="https://…/ptz?move={move}"
+            maxLength={500}
+          />
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">{t("ptzHint")}</p>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 

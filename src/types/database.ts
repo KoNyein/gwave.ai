@@ -257,7 +257,7 @@ export interface GameCatalogItem {
   updated_at: string;
 }
 
-export type CameraType = "webrtc" | "rtsp";
+export type CameraType = "webrtc" | "rtsp" | "kvs";
 
 export interface UserCamera {
   id: string;
@@ -267,6 +267,13 @@ export interface UserCamera {
   rtsp_url: string | null;
   // Public HLS (.m3u8) playback URL. Credential-free, safe to expose to viewers.
   hls_url: string | null;
+  // Amazon KVS signaling channel name + region (kvs cameras). Not secret.
+  kvs_channel: string | null;
+  kvs_region: string | null;
+  // Free-text room/area label for grouping. Not secret.
+  zone: string | null;
+  // Optional PTZ control endpoint. Server-side only (may carry credentials).
+  ptz_url: string | null;
   stream_id: string;
   share_token: string;
   is_public: boolean;
@@ -3174,3 +3181,81 @@ export type Database = {
     };
   };
 };
+
+// --- PTT / Walkie-talkie (migration 20260715180000_ptt_channels) ---
+// Hand-written row types for the ptt_* tables (kept until database.ts is
+// regenerated from the RDS schema after the migration is applied).
+export interface PttChannel {
+  id: string;
+  name: string;
+  join_code: string;
+  owner_id: string;
+  created_at: string;
+}
+
+export interface PttMessage {
+  id: string;
+  channel_id: string;
+  user_id: string;
+  audio_path: string;
+  duration_ms: number | null;
+  created_at: string;
+}
+
+// --- SOS / Safety / Threat (migrations 20260715{140000,160000,200000}) ---
+// Hand-written row types for the sos_*/safety_*/threat_* tables (kept until
+// database.ts is regenerated from the RDS schema after the migrations apply).
+export type SosCategory =
+  | "medical"
+  | "disaster"
+  | "conflict"
+  | "fire"
+  | "trapped"
+  | "other";
+export type SosStatus = "active" | "safe" | "resolved" | "cancelled";
+
+export type ThreatKind =
+  | "airstrike"
+  | "artillery"
+  | "drone"
+  | "ground"
+  | "disaster"
+  | "other";
+
+export interface ThreatAlert {
+  id: string;
+  reporter_id: string;
+  kind: ThreatKind;
+  latitude: number;
+  longitude: number;
+  heading: number | null;
+  note: string | null;
+  created_at: string;
+  expires_at: string;
+}
+
+export type SafetyStatus = "safe" | "need_help";
+
+export interface SafetyCheckin {
+  id: string;
+  user_id: string;
+  status: SafetyStatus;
+  note: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  created_at: string;
+}
+
+export interface SosAlert {
+  id: string;
+  user_id: string;
+  category: SosCategory;
+  status: SosStatus;
+  message: string | null;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+}

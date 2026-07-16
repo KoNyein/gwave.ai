@@ -1,0 +1,15 @@
+[Unit]
+Description=gwave KVS WebRTC master (RTSP -> Kinesis signaling channel)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__DIR__
+ExecStart=/usr/bin/env bash __DIR__/run-master.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
