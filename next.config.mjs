@@ -54,6 +54,15 @@ const hasGoogleMaps = Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
 const googleMapsScriptSrc = hasGoogleMaps ? " https://maps.googleapis.com" : "";
 const googleMapsConnectSrc = hasGoogleMaps ? " https://maps.googleapis.com" : "";
 
+// Amazon KVS WebRTC cameras: the browser viewer opens a secure WebSocket to a
+// per-region KVS signaling endpoint (*.kinesisvideo.<region>.amazonaws.com) and
+// makes HTTPS control calls to the same host. STUN/TURN ICE media is not governed
+// by CSP. Only widened when KVS_AWS_REGION is configured.
+const kvsRegion = process.env.KVS_AWS_REGION?.trim();
+const kvsConnectSrc = kvsRegion
+  ? ` wss://*.kinesisvideo.${kvsRegion}.amazonaws.com https://*.kinesisvideo.${kvsRegion}.amazonaws.com`
+  : "";
+
 // Co-host Live connects to the LiveKit SFU over a secure WebSocket
 // (NEXT_PUBLIC_LIVEKIT_URL, e.g. wss://live.yourdomain.com). The signalling
 // socket and the HTTPS region/ICE lookups both target that host, so allow-list
@@ -92,7 +101,7 @@ const csp = [
   `media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com https://d10t7bibe827e7.cloudfront.net${cctvHlsSrc}`,
   "font-src 'self' data:",
   // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com https://gwave-media-8acd2816.s3.ap-southeast-1.amazonaws.com https://d10t7bibe827e7.cloudfront.net https://*.tile.openstreetmap.org${cctvHlsSrc}${livekitConnectSrc}${googleMapsConnectSrc}`,
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com https://gwave-media-8acd2816.s3.ap-southeast-1.amazonaws.com https://d10t7bibe827e7.cloudfront.net https://*.tile.openstreetmap.org${cctvHlsSrc}${livekitConnectSrc}${googleMapsConnectSrc}${kvsConnectSrc}`,
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
   `frame-src 'self' https://www.youtube-nocookie.com https://accounts.google.com${cctvFrameSrc}${gameFrameSrc}${googleMapsSrc}`,
