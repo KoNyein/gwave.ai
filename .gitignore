@@ -42,3 +42,6 @@ next-env.d.ts
 # supabase
 /supabase/.branches
 /supabase/.temp
+
+# server-only env override (holds SUPABASE_JWT_SECRET) — never commit
+deploy/gwave.override.env
