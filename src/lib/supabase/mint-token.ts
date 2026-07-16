@@ -1,0 +1,53 @@
+import "server-only";
+
+import crypto from "node:crypto";
+
+/**
+ * Mint a Supabase-compatible JWT for a Cognito-authenticated user.
+ *
+ * Background: this deployment uses a self-hosted Supabase (PostgREST) rather
+ * than Supabase Cloud. PostgREST validates a request's JWT against
+ * SUPABASE_JWT_SECRET and reads two claims from it — `role` (which Postgres
+ * role to run as) and `sub` (what auth.uid() returns). Cognito's own access
+ * token is signed with Cognito's keys and carries no `role`, so PostgREST
+ * treats the request as the anonymous role and every RLS `to authenticated`
+ * insert/update is refused (e.g. "Could not send SOS", "Could not create
+ * channel"). Supabase Cloud's third-party-auth feature papers over this, but a
+ * bare self-hosted PostgREST does not.
+ *
+ * The fix is to hand PostgREST a token it natively understands: we re-sign a
+ * short-lived HS256 JWT with the Supabase secret, carrying the verified
+ * Cognito `sub` and role "authenticated" — exactly the shape GoTrue issues.
+ * auth.uid() then equals the Cognito sub (matching the ids stored on every
+ * row) and RLS keeps working unchanged.
+ *
+ * Returns null when SUPABASE_JWT_SECRET is not configured, so the caller can
+ * fall back to the previous behaviour (passing the raw Cognito token). Uses the
+ * Node crypto module — this runs only in Server Components / Actions / Route
+ * Handlers (never the Edge middleware), so no external JWT dependency is needed.
+ */
+export function mintSupabaseToken(sub: string): string | null {
+  const secret = process.env.SUPABASE_JWT_SECRET?.trim();
+  if (!secret || !sub) return null;
+
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "HS256", typ: "JWT" };
+  const payload = {
+    sub,
+    role: "authenticated",
+    aud: "authenticated",
+    iat: now,
+    // Short-lived; a fresh token is minted on every server request.
+    exp: now + 60 * 60,
+  };
+
+  const encode = (obj: unknown) =>
+    Buffer.from(JSON.stringify(obj)).toString("base64url");
+  const signingInput = `${encode(header)}.${encode(payload)}`;
+  const signature = crypto
+    .createHmac("sha256", secret)
+    .update(signingInput)
+    .digest("base64url");
+
+  return `${signingInput}.${signature}`;
+}
