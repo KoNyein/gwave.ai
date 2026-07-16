@@ -57,6 +57,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/groups", labelKey: "groups", icon: LayoutGrid },
       { href: "/pages", labelKey: "pages", icon: Flag },
       { href: "/live", labelKey: "live", icon: Radio },
+      { href: "/talk", labelKey: "talk", icon: Radio },
       { href: "/reels", labelKey: "reels", icon: Clapperboard },
       { href: "/games", labelKey: "games", icon: Gamepad2 },
     ],
