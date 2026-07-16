@@ -68,14 +68,14 @@ async function cognitoDiag() {
  * never key values.
  */
 function keyKind(key: string | undefined): string {
-  if (!key) return "missing";
-  if (key.startsWith("eyJ")) return "legacy-jwt (correct)";
-  if (key.startsWith("sb_publishable_")) {
-    return "sb_publishable (WRONG — replace with the legacy eyJ… anon key)";
-  }
-  if (key.startsWith("sb_secret_")) {
-    return "sb_secret (WRONG — replace with the legacy eyJ… service_role key)";
-  }
+  if (!key) return "MISSING — set this key in the server .env";
+  // Both formats are accepted by supabase-js as the apikey. The legacy JWT keys
+  // (eyJ…) and the new publishable/secret keys (sb_…) both work; the app only
+  // passes them through to createClient and never decodes them. So key format
+  // is not a cause of auth failures on its own.
+  if (key.startsWith("eyJ")) return "legacy-jwt (ok)";
+  if (key.startsWith("sb_publishable_")) return "sb_publishable (ok, new format)";
+  if (key.startsWith("sb_secret_")) return "sb_secret (ok, new format)";
   return `unknown format (${key.slice(0, 6)}…)`;
 }
 
@@ -121,7 +121,7 @@ export async function GET() {
         ? "PROFILE_MISSING — the account has no profile row; finish onboarding (/onboarding)."
         : "AUTH_OK — the database sees your session. Posting should work; if it still fails, send me the exact error."
       : profileRowExists
-        ? "SESSION_NOT_REACHING_DB — the login works but the database sees you as anonymous. In your server .env, set NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY (Supabase → Settings → API Keys), then redeploy and log in again."
+        ? "SESSION_NOT_REACHING_DB — the login works but the database sees you as anonymous. Confirm the Supabase URL/keys in the server .env are all from the same project and redeploy; under Cognito, also confirm the Cognito issuer is registered under Supabase → Authentication → Third-Party Auth."
         : "PROFILE_MISSING_OR_KEYS — profile row not found and/or session not reaching the database. Check the key kinds below and finish onboarding.";
 
   return NextResponse.json({
