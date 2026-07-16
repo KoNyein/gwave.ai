@@ -1,4 +1,4 @@
-/** A person (family circle member) to plot on the GPS map. */
+/** A person or alert to plot on the GPS map. */
 export interface MapPerson {
   id: string;
   name: string;
@@ -8,6 +8,8 @@ export interface MapPerson {
   avatarUrl?: string | null;
   /** ISO timestamp of their last location update. */
   updatedAt?: string | null;
+  /** "family" (default) draws a person pin; "sos" draws a red emergency pin. */
+  kind?: "family" | "sos";
 }
 
 /** Great-circle distance between two points, in metres (Haversine). */

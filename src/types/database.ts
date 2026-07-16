@@ -328,6 +328,29 @@ export interface MemberLocation {
   updated_at: string;
 }
 
+export type SosCategory =
+  | "medical"
+  | "disaster"
+  | "conflict"
+  | "fire"
+  | "trapped"
+  | "other";
+export type SosStatus = "active" | "safe" | "resolved" | "cancelled";
+
+export interface SosAlert {
+  id: string;
+  user_id: string;
+  category: SosCategory;
+  status: SosStatus;
+  message: string | null;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+}
+
 export type GpayStatus = "pending" | "active" | "suspended" | "rejected";
 export type GpayTxnKind = "transfer" | "topup" | "withdraw" | "fee";
 

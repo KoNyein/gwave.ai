@@ -101,15 +101,18 @@ export default function GpsMapInner({
       if (existing) {
         existing.setLatLng(point);
       } else {
+        const sos = p.kind === "sos";
         const icon = L.divIcon({
           className: "",
-          html: `<div style="font-size:26px;line-height:1">🧑</div>`,
-          iconSize: [26, 26],
-          iconAnchor: [13, 26],
+          html: sos
+            ? `<div style="font-size:28px;line-height:1;filter:drop-shadow(0 0 4px #ef4444)">🆘</div>`
+            : `<div style="font-size:26px;line-height:1">🧑</div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 28],
         });
         const marker = L.marker(point, { icon })
           .addTo(map)
-          .bindTooltip(p.name, { direction: "top", offset: [0, -24] });
+          .bindTooltip(p.name, { direction: "top", offset: [0, -26] });
         peopleRef.current.set(p.id, marker);
       }
     }
