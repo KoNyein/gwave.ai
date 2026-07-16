@@ -337,6 +337,26 @@ export type SosCategory =
   | "other";
 export type SosStatus = "active" | "safe" | "resolved" | "cancelled";
 
+export type ThreatKind =
+  | "airstrike"
+  | "artillery"
+  | "drone"
+  | "ground"
+  | "disaster"
+  | "other";
+
+export interface ThreatAlert {
+  id: string;
+  reporter_id: string;
+  kind: ThreatKind;
+  latitude: number;
+  longitude: number;
+  heading: number | null;
+  note: string | null;
+  created_at: string;
+  expires_at: string;
+}
+
 export interface PttChannel {
   id: string;
   name: string;
