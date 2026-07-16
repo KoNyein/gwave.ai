@@ -1,0 +1,67 @@
+# Auto-deploy gwave.cc to the AWS server on every push to main.
+#
+# gwave.cc runs on a self-hosted AWS box; until now the deploy was a manual
+# `bash deploy/server-deploy.sh` run ON the box, so merged changes stayed
+# invisible on the live site until someone SSH'd in. This workflow does that
+# SSH + deploy automatically whenever main changes.
+#
+# ONE-TIME SETUP — add three repository secrets
+# (GitHub → repo → Settings → Secrets and variables → Actions → New secret):
+#   DEPLOY_HOST  — the server's public IP or hostname (e.g. 12.34.56.78)
+#   DEPLOY_USER  — the SSH user on the box (e.g. ubuntu or ec2-user)
+#   DEPLOY_SSH_KEY — the PRIVATE SSH key (full contents, incl. the
+#                    -----BEGIN/END----- lines) whose public key is in the
+#                    server user's ~/.ssh/authorized_keys
+# Optional:
+#   DEPLOY_PORT  — SSH port if not 22
+#   DEPLOY_PATH  — repo path on the box if not "gwave.ai" (relative to $HOME)
+#
+# Until those secrets exist the job runs but skips the deploy (stays green,
+# never spams failures). You can also run it by hand: Actions → "Deploy to
+# AWS" → Run workflow.
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never let two deploys overlap; a newer push supersedes an in-flight one.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH (git pull + rebuild on the server)
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_SSH_KEY" ]; then
+            echo "::notice::Deploy secrets not set yet — skipping. Add DEPLOY_HOST, DEPLOY_USER and DEPLOY_SSH_KEY to enable auto-deploy."
+            exit 0
+          fi
+          PORT="${DEPLOY_PORT:-22}"
+          REPO_PATH="${DEPLOY_PATH:-gwave.ai}"
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "$PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          # Pull the latest main and rebuild via the existing deploy script.
+          ssh -i ~/.ssh/id_deploy -p "$PORT" \
+            -o StrictHostKeyChecking=accept-new \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd '$REPO_PATH' && git fetch origin main && git reset --hard origin/main && bash deploy/server-deploy.sh"
+
+          echo ">>> Deploy triggered on $DEPLOY_HOST — gwave.cc is rebuilding."
