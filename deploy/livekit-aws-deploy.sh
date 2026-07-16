@@ -58,7 +58,7 @@ cat <<DONE
 Next:
   1) DNS: point ${DOMAIN}  A record  ->  ${PUBLIC_IP}
   2) Wait ~2 min for Caddy to issue the TLS certificate.
-  3) Set these in the app (Vercel env / ECS secrets) and redeploy:
+  3) Set these in the app server's .env and redeploy (bash deploy/server-deploy.sh):
         NEXT_PUBLIC_LIVEKIT_URL = wss://${DOMAIN}
         LIVEKIT_API_KEY         = ${API_KEY}
         LIVEKIT_API_SECRET      = ${API_SECRET}
