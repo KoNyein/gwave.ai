@@ -94,12 +94,17 @@ jobs:
       - name: List build outputs
         run: ls -la *.apk *.aab 2>/dev/null || ls -la
 
+      # retention-days keeps old builds from piling up and exhausting the
+      # account's Actions artifact-storage quota (a full quota blocks ALL new
+      # uploads). The APK/AAB are rebuildable so they expire quickly; the
+      # keystore is kept longer because it must sign every future update.
       - name: Upload APK (install on a phone to test)
         uses: actions/upload-artifact@v4
         with:
           name: gwave-apk
           path: app-release-signed.apk
           if-no-files-found: error
+          retention-days: 5
 
       - name: Upload AAB (upload this to Play Console)
         uses: actions/upload-artifact@v4
@@ -107,6 +112,7 @@ jobs:
           name: gwave-playstore-aab
           path: app-release-bundle.aab
           if-no-files-found: warn
+          retention-days: 5
 
       - name: Upload keystore + fingerprint (KEEP SAFE)
         uses: actions/upload-artifact@v4
@@ -117,3 +123,4 @@ jobs:
             fingerprint.txt
             assetlinks.json
           if-no-files-found: error
+          retention-days: 30
