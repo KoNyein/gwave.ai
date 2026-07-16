@@ -98,7 +98,9 @@ const csp = [
   `media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com${cctvHlsSrc}`,
   "font-src 'self' data:",
   // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com${cctvHlsSrc}${livekitConnectSrc}${kvsConnectSrc}${googleMapsConnectSrc}`,
+  // *.tile.openstreetmap.org over connect-src too: the GPS map pre-fetches
+  // tiles with fetch() to warm the offline cache (img-src covers <img> display).
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com https://*.tile.openstreetmap.org${cctvHlsSrc}${livekitConnectSrc}${kvsConnectSrc}${googleMapsConnectSrc}`,
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
   `frame-src 'self' https://www.youtube-nocookie.com https://accounts.google.com${cctvFrameSrc}${gameFrameSrc}${googleMapsFrameSrc}`,

@@ -8,6 +8,7 @@ import {
   Check,
   Copy,
   Crosshair,
+  Download,
   ExternalLink,
   Gauge,
   Layers,
@@ -111,7 +112,49 @@ export function GpsMap({
   const [shared, setShared] = React.useState(false);
   const [showFamily, setShowFamily] = React.useState(true);
   const [address, setAddress] = React.useState<string | null>(null);
+  const [offline, setOffline] = React.useState<null | "saving" | "done">(null);
   const stopRef = React.useRef<(() => void) | null>(null);
+
+  // Pre-cache OpenStreetMap tiles around the current spot so the map works with
+  // no signal (the service worker stores each fetched tile). Covers a few zoom
+  // levels of the immediate area — enough to navigate on foot offline.
+  const downloadOfflineArea = React.useCallback(async () => {
+    if (!fix) return;
+    setOffline("saving");
+    const lon2tile = (lon: number, z: number) =>
+      Math.floor(((lon + 180) / 360) * 2 ** z);
+    const lat2tile = (lat: number, z: number) =>
+      Math.floor(
+        ((1 -
+          Math.log(
+            Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180),
+          ) /
+            Math.PI) /
+          2) *
+          2 ** z,
+      );
+    const urls: string[] = [];
+    for (const z of [13, 14, 15, 16]) {
+      const cx = lon2tile(fix.longitude, z);
+      const cy = lat2tile(fix.latitude, z);
+      for (let dx = -2; dx <= 2; dx++) {
+        for (let dy = -2; dy <= 2; dy++) {
+          urls.push(
+            `https://a.tile.openstreetmap.org/${z}/${cx + dx}/${cy + dy}.png`,
+          );
+        }
+      }
+    }
+    // Fetch in small batches so the tile server isn't hammered; the SW caches
+    // each successful response.
+    for (let i = 0; i < urls.length; i += 8) {
+      await Promise.all(
+        urls.slice(i, i + 8).map((u) => fetch(u).catch(() => undefined)),
+      );
+    }
+    setOffline("done");
+    setTimeout(() => setOffline(null), 3000);
+  }, [fix]);
 
   const locate = React.useCallback(async () => {
     setBusy(true);
@@ -314,6 +357,21 @@ export function GpsMap({
             variant="outline"
           >
             <Crosshair className="mr-1 h-4 w-4" /> ဗဟိုပြန်
+          </Button>
+        ) : null}
+        {fix ? (
+          <Button
+            onClick={downloadOfflineArea}
+            disabled={offline === "saving"}
+            size="sm"
+            variant="outline"
+          >
+            {offline === "saving" ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-1 h-4 w-4" />
+            )}
+            {offline === "done" ? "Offline သိမ်းပြီး" : "Offline သိမ်း"}
           </Button>
         ) : null}
       </div>

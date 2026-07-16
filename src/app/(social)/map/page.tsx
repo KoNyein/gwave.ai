@@ -5,10 +5,13 @@ import { Map as MapIcon, Users } from "lucide-react";
 import { GpsMap } from "@/components/gps/gps-map";
 import { SafetyPanel } from "@/components/gps/safety-panel";
 import { SosPanel } from "@/components/gps/sos-panel";
+import { ThreatPanel } from "@/components/gps/threat-panel";
 import { getCurrentProfile } from "@/lib/auth";
 import { getFamilyPeopleForMap } from "@/lib/db/family";
 import { getFamilySafety } from "@/lib/db/safety";
 import { getActiveSosAlerts, getMyActiveSos } from "@/lib/db/sos";
+import { getActiveThreats } from "@/lib/db/threat";
+import { THREAT_META } from "@/lib/threat";
 import type { MapPerson } from "@/lib/geolocation";
 
 export const metadata = { title: "Map" };
@@ -18,12 +21,14 @@ export default async function MapPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 
-  const [family, sosAlerts, myAlert, familySafety] = await Promise.all([
-    getFamilyPeopleForMap(profile.id),
-    getActiveSosAlerts(),
-    getMyActiveSos(profile.id),
-    getFamilySafety(profile.id),
-  ]);
+  const [family, sosAlerts, myAlert, familySafety, threats] =
+    await Promise.all([
+      getFamilyPeopleForMap(profile.id),
+      getActiveSosAlerts(),
+      getMyActiveSos(profile.id),
+      getFamilySafety(profile.id),
+      getActiveThreats(),
+    ]);
 
   const familyPeople: MapPerson[] = family.map((p) => ({
     id: p.profile.id,
@@ -43,7 +48,15 @@ export default async function MapPage() {
     longitude: a.longitude,
     kind: "sos",
   }));
-  const people = [...familyPeople, ...sosPeople];
+  // Threat warnings plot as red pins too.
+  const threatPeople: MapPerson[] = threats.map((t) => ({
+    id: `threat-${t.id}`,
+    name: `${THREAT_META[t.kind].emoji} ${THREAT_META[t.kind].label}`,
+    latitude: t.latitude,
+    longitude: t.longitude,
+    kind: "sos",
+  }));
+  const people = [...familyPeople, ...sosPeople, ...threatPeople];
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -66,6 +79,8 @@ export default async function MapPage() {
           <Users className="h-4 w-4" /> မိသားစု
         </Link>
       </div>
+
+      <ThreatPanel threats={threats} />
 
       <SosPanel myAlert={myAlert} alerts={sosAlerts} myUserId={profile.id} />
 
