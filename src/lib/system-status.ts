@@ -39,12 +39,14 @@ function group(
 export function getSystemStatus(): StatusGroup[] {
   return [
     group(
-      "Core (Supabase)",
+      "Core (Database)",
       "Database၊ login၊ storage — site တစ်ခုလုံး ဒီအပေါ်မှာ",
       [
+        // Data plane = self-hosted PostgREST/Realtime at NEXT_PUBLIC_SUPABASE_URL
+        // (gwave.cc/sb → RDS). The privileged path mints its own service_role
+        // token (lib/auth/tokens.ts), so no SUPABASE_SERVICE_ROLE_KEY is needed.
         "NEXT_PUBLIC_SUPABASE_URL",
         "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-        "SUPABASE_SERVICE_ROLE_KEY",
         "NEXT_PUBLIC_SITE_URL",
       ],
       true,

@@ -37,20 +37,6 @@ export const publicEnv = publicSchema.parse({
   NEXT_PUBLIC_S3_CDN: process.env.NEXT_PUBLIC_S3_CDN,
 });
 
-/**
- * Reads the Supabase service role key. Server-only — throws if called where the
- * variable is not present so it can never silently fall back to the client.
- */
-export function getServiceRoleKey(): string {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) {
-    throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY is not set. This key must only be used on the server.",
-    );
-  }
-  return key;
-}
-
 function required(name: string): string {
   const value = process.env[name];
   if (!value) {
