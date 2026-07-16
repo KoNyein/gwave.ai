@@ -10,12 +10,13 @@ name: Build and Deploy to ECR & EC2
 # still needs before relying on this.
 
 on:
-  # NOTE: 'main' has diverged from production (a separate feature branch with a
-  # different auth architecture), so CI deploys the branch that is ACTUALLY live
-  # in prod: live-cohost-ux-and-fixes. Reconciling main <-> prod is separate work.
-  workflow_dispatch: {} # manual "Run workflow" button (only appears once this file also exists on the default branch, main)
+  # main was reconciled back to production (2026-07-16): the old diverged main was
+  # retired and replaced with the deployed prod code, so main is once again the
+  # canonical prod branch. CI deploys from main. (Old main is archived at the tag
+  # archive/main-pre-retire if the diverged history is ever needed.)
+  workflow_dispatch: {} # manual "Run workflow" button (deploy.yml is on the default branch main, so this works)
   push:
-    branches: [live-cohost-ux-and-fixes] # the branch deployed to prod (NOT main)
+    branches: [main]
     paths-ignore:
       - "**.md"
       - "docs/**"

@@ -13,7 +13,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # write: publish the signed APK as a GitHub Release asset. Release assets
+  # do NOT count against the Actions artifact-storage quota, so the download
+  # link works even when that quota is full.
+  contents: write
 
 jobs:
   build:
@@ -94,26 +97,24 @@ jobs:
       - name: List build outputs
         run: ls -la *.apk *.aab 2>/dev/null || ls -la
 
-      - name: Upload APK (install on a phone to test)
-        uses: actions/upload-artifact@v4
-        with:
-          name: gwave-apk
-          path: app-release-signed.apk
-          if-no-files-found: error
-
-      - name: Upload AAB (upload this to Play Console)
-        uses: actions/upload-artifact@v4
-        with:
-          name: gwave-playstore-aab
-          path: app-release-bundle.aab
-          if-no-files-found: warn
-
-      - name: Upload keystore + fingerprint (KEEP SAFE)
-        uses: actions/upload-artifact@v4
-        with:
-          name: gwave-signing-keystore
-          path: |
-            android.keystore
-            fingerprint.txt
-            assetlinks.json
-          if-no-files-found: error
+      # Publish everything as a GitHub Release instead of workflow artifacts.
+      # Release assets don't count against the Actions artifact-storage quota
+      # (which had filled up and blocked the artifact uploads), and they give
+      # a stable, permanent download page instead of a 90-day-expiring zip.
+      - name: Publish signed APK, AAB, and keystore to a GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="android-build-${{ github.run_number }}"
+          # Re-runs reuse the run number; clear any prior release/tag so the
+          # publish is idempotent.
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" \
+            app-release-signed.apk \
+            app-release-bundle.aab \
+            android.keystore \
+            fingerprint.txt \
+            assetlinks.json \
+            --latest \
+            --title "Gwave Android build #${{ github.run_number }}" \
+            --notes "Download **app-release-signed.apk** and sideload it on a phone to test. **app-release-bundle.aab** is for the Play Console. **android.keystore** is the signing key — KEEP IT SAFE, every future update must be signed with it. SHA-256 fingerprint is in fingerprint.txt."
