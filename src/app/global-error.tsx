@@ -66,6 +66,26 @@ export default function GlobalError({
           <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 16 }}>
             The error has been logged. Please try again.
           </p>
+          {error.message ? (
+            <pre
+              style={{
+                maxWidth: 340,
+                margin: "0 auto 16px",
+                padding: 12,
+                background: "#173404",
+                color: "#EAF3DE",
+                borderRadius: 8,
+                fontSize: 12,
+                textAlign: "left",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                userSelect: "all",
+              }}
+            >
+              {error.message}
+              {error.digest ? `\n[${error.digest}]` : ""}
+            </pre>
+          ) : null}
           <button
             onClick={reset}
             style={{
