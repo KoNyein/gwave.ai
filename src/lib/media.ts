@@ -1,4 +1,5 @@
 import { publicEnv } from "@/lib/env";
+import { mediaUrl } from "@/lib/media-url";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -132,11 +133,15 @@ const VOICE_EXTENSIONS: Record<string, string> = {
   "audio/aac": "aac",
 };
 
-/** Public URL for a stored media object — CloudFront when S3 is active, else Supabase. */
-export function mediaUrl(storagePath: string): string {
-  if (S3_CDN) return `${S3_CDN}/${storagePath}`;
-  return `${publicEnv.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${storagePath}`;
-}
+/**
+ * Public URL for a stored media object — CloudFront when S3 is active, else
+ * Supabase. Defined in lib/media-url so server-only callers can import the URL
+ * helper without dragging in the browser Supabase client and the canvas image
+ * pipeline this module also contains. Re-exported here so existing
+ * `@/lib/media` imports are unchanged. Imported (not just re-exported) because
+ * chatMediaUrl below calls it, and `export ... from` creates no local binding.
+ */
+export { mediaUrl };
 
 /**
  * Read URL for a chat attachment. Points at our own route, which checks that the
