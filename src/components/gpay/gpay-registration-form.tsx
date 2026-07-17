@@ -18,8 +18,7 @@ import {
   GPAY_PLATFORM_KPAY,
   GPAY_REGISTER_FEE_MMK,
 } from "@/lib/gpay";
-import { prepareMedia } from "@/lib/media";
-import { createClient } from "@/lib/supabase/client";
+import { prepareMedia, uploadSlip } from "@/lib/media";
 import type { GpayAccount } from "@/types/database";
 
 /**
@@ -57,31 +56,27 @@ export function GpayRegistrationForm({
     setPending(true);
     setError(null);
     const fd = new FormData(e.currentTarget);
-    const supabase = createClient();
 
     // Upload a newly chosen payment slip + face scan to the private "slips"
     // bucket first; we store only their paths. Editing without a new capture
-    // keeps the old one.
+    // keeps the old one. uploadSlip picks the backend (presigned S3 PUT when
+    // NEXT_PUBLIC_S3_CDN is set, Supabase Storage otherwise) so the write always
+    // lands where the admin pages read from.
     let slipPath = "";
     let facePath = "";
     try {
       if (slip) {
         const prepared = await prepareMedia(slip);
         if (prepared.mediaType !== "image") throw new Error(t("slipImageOnly"));
-        slipPath = `${userId}/gpay/${crypto.randomUUID()}.${prepared.extension}`;
-        const { error: upErr } = await supabase.storage
-          .from("slips")
-          .upload(slipPath, prepared.blob, {
-            contentType: prepared.contentType,
-          });
-        if (upErr) throw new Error(upErr.message);
+        slipPath = await uploadSlip(
+          userId,
+          prepared.blob,
+          prepared.extension,
+          prepared.contentType,
+        );
       }
       if (face) {
-        facePath = `${userId}/gpay/face-${crypto.randomUUID()}.jpg`;
-        const { error: faceErr } = await supabase.storage
-          .from("slips")
-          .upload(facePath, face, { contentType: "image/jpeg" });
-        if (faceErr) throw new Error(faceErr.message);
+        facePath = await uploadSlip(userId, face, "jpg", "image/jpeg");
       }
     } catch (err) {
       setPending(false);
