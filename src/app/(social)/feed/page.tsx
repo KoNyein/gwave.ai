@@ -8,10 +8,12 @@ import { getStoryGroups } from "@/lib/db/stories";
 
 export default async function FeedPage() {
   const profile = await getCurrentProfile();
-  if (!profile) {
-    redirect("/login");
-  }
-  if (!profile.username) {
+  // The (social) layout's requireUser() has already guaranteed an authenticated
+  // user, so a missing profile row here means "signed in but not yet
+  // provisioned" — send them to onboarding, NOT /login. Redirecting to /login
+  // would bounce off the middleware (valid session → /feed) and spin the
+  // client router's history.replaceState until the browser aborts the page.
+  if (!profile || !profile.username) {
     redirect("/onboarding");
   }
 
