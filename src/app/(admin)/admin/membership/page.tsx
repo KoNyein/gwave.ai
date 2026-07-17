@@ -23,6 +23,7 @@ import {
   getRevenueByMonth,
 } from "@/lib/db/membership";
 import { displayName, timeAgo } from "@/lib/format";
+import { s3SlipsEnabled, signedSlipUrl } from "@/lib/storage/signed-read";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -39,15 +40,23 @@ export default async function AdminMembershipPage({
     getMembers(searchParams.q),
   ]);
 
-  // Signed URLs for slips in the private bucket (admin RLS grants read).
-  const supabase = await createClient();
+  // Signed URLs for slips in the private bucket. On S3 we sign a GET ourselves;
+  // otherwise fall back to Supabase Storage (admin RLS grants read). Without the
+  // S3 branch, uploads land in S3 while this still asks Supabase for an object
+  // that is no longer there — and the error is dropped, so the slip silently
+  // renders as nothing.
   const slipUrls = new Map<string, string>();
+  const supabase = s3SlipsEnabled() ? null : await createClient();
   for (const payment of queue) {
-    if (payment.slip_path) {
+    if (!payment.slip_path) continue;
+    if (supabase) {
       const { data } = await supabase.storage
         .from("slips")
         .createSignedUrl(payment.slip_path, 3600);
       if (data?.signedUrl) slipUrls.set(payment.id, data.signedUrl);
+    } else {
+      const url = await signedSlipUrl(payment.slip_path);
+      if (url) slipUrls.set(payment.id, url);
     }
   }
 
