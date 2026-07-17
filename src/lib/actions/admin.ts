@@ -235,21 +235,30 @@ export async function resolveReport(
 
   if (action === "remove") {
     const stamp = new Date().toISOString();
+    // The removal must succeed BEFORE the report is marked resolved. These writes
+    // previously dropped their error, so if the removal failed the report was
+    // still flipped to "removed" and audited as content_removed — while the post
+    // stayed visible, and the report could never be actioned again (the queue
+    // filters on status = 'pending'). Check the error and bail so the report
+    // stays pending and the moderator sees the failure.
+    let removalError: string | null = null;
     if (report.post_id) {
       // Soft removal: hidden from everyone but the author and moderators
       // (via can_view_post_id), reversible and auditable.
-      await admin
+      const { error } = await admin
         .from("posts")
         .update({ removed_at: stamp })
         .eq("id", report.post_id);
+      removalError = error?.message ?? null;
     } else if (report.comment_id) {
-      await admin
+      const { error } = await admin
         .from("comments")
         .update({ removed_at: stamp })
         .eq("id", report.comment_id);
+      removalError = error?.message ?? null;
     } else if (report.profile_id) {
       // "Remove" on a profile report = 7-day suspension.
-      await admin
+      const { error } = await admin
         .from("profiles")
         .update({
           suspended_until: new Date(
@@ -258,6 +267,10 @@ export async function resolveReport(
           suspend_reason: `Report upheld: ${report.reason}`.slice(0, 500),
         })
         .eq("id", report.profile_id);
+      removalError = error?.message ?? null;
+    }
+    if (removalError) {
+      return { ok: false, error: `Could not remove content: ${removalError}` };
     }
   }
 
