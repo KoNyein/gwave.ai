@@ -2,7 +2,11 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
-import { getCognitoAccessToken, getCognitoSessionUser } from "@/lib/cognito-session";
+import {
+  clearCognitoSession,
+  getCognitoAccessToken,
+  getCognitoSessionUser,
+} from "@/lib/cognito-session";
 import { isCognitoEnabled, publicEnv } from "@/lib/env";
 import { mintSupabaseToken } from "@/lib/supabase/mint-token";
 import type { Database } from "@/types/database";
@@ -55,6 +59,13 @@ export async function createClient() {
         data: { session: authedUser ? { user: authedUser } : null },
         error: null,
       }),
+      // A couple of server actions call supabase.auth.signOut() to drop a stale
+      // session (e.g. onboarding on a 23503 FK violation). Under Cognito that's
+      // clearing the Cognito cookies, not a Supabase auth round-trip.
+      signOut: async () => {
+        await clearCognitoSession();
+        return { error: null };
+      },
     };
     return client;
   }
