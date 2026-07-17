@@ -14,6 +14,29 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Deploy skew: after a new release the browser may still hold old JS chunks,
+  // and Next's client router then throws "Cannot read parallelRoutes of null"
+  // or a ChunkLoadError on the next navigation. Recover automatically with one
+  // full reload (guarded so it can't loop) instead of showing a scary screen.
+  React.useEffect(() => {
+    const msg = error?.message ?? "";
+    const skew =
+      error?.name === "ChunkLoadError" ||
+      /parallelRoutes|ChunkLoadError|Loading chunk|dynamically imported module/i.test(
+        msg,
+      );
+    if (skew && typeof window !== "undefined") {
+      try {
+        if (!sessionStorage.getItem("gw:skew-reloaded")) {
+          sessionStorage.setItem("gw:skew-reloaded", "1");
+          window.location.reload();
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [error]);
+
   React.useEffect(() => {
     const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
     if (!dsn) return;

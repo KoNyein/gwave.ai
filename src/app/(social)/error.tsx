@@ -16,6 +16,26 @@ export default function SocialError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Auto-recover from post-deploy chunk skew (see global-error.tsx).
+  React.useEffect(() => {
+    const msg = error?.message ?? "";
+    const skew =
+      error?.name === "ChunkLoadError" ||
+      /parallelRoutes|ChunkLoadError|Loading chunk|dynamically imported module/i.test(
+        msg,
+      );
+    if (skew && typeof window !== "undefined") {
+      try {
+        if (!sessionStorage.getItem("gw:skew-reloaded")) {
+          sessionStorage.setItem("gw:skew-reloaded", "1");
+          window.location.reload();
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [error]);
+
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center">
       <AlertTriangle className="h-10 w-10 text-amber-500" />
