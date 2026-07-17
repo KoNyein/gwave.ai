@@ -45,3 +45,5 @@ next-env.d.ts
 
 # server-only env override (holds SUPABASE_JWT_SECRET) — never commit
 deploy/gwave.override.env
+# realtime container secrets (DB_PASSWORD, API_JWT_SECRET, …) — never commit
+deploy/.env.realtime

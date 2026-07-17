@@ -112,6 +112,21 @@ DB-only or storage-policy-only changes need **no** redeploy.
 > ⚠️ Redeploy right after a push can pull the **old** image if the build hasn't
 > finished. Wait for the Actions run to go green first.
 
+### Rebuilding the ad-hoc containers (realtime / postgrest)
+
+`realtime` and `postgrest` run as plain `docker run` (no compose), so their
+config — RDS password, `API_JWT_SECRET`, oct key — lives only in the running
+containers. If the box is lost, capture is gone. To make them rebuildable:
+
+- **Realtime**: `deploy/realtime-run.sh` recreates it from `deploy/.env.realtime`
+  (gitignored). Capture that file once from the live container (see the script
+  header), store it in a secrets manager, then relaunch with
+  `sudo bash deploy/realtime-run.sh`.
+- **PostgREST**: not yet scripted — capture its env the same way
+  (`docker inspect postgrest …`) and mirror the realtime launcher. Its
+  `PGRST_JWT_SECRET=@/etc/postgrest/jwks.json` bind mount must also be preserved
+  (that JWKS holds the oct key — see the invariant above).
+
 ## Pending follow-ups (need console access)
 
 1. **Rotate the RDS password** — it was exposed in a chat transcript.
