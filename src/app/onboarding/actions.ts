@@ -77,12 +77,19 @@ export async function saveProfile(
     return { error: error.message };
   }
 
-  // Append an auditable consent record.
-  await supabase.from("consents").insert({
+  // Append an auditable consent record. This is a legal/compliance log, so a
+  // failed insert must not be swallowed — otherwise the user is sent to /feed
+  // as if they accepted while no consent record exists. The profile upsert above
+  // is idempotent, so returning an error here retries the whole action safely
+  // rather than proceeding without the record.
+  const { error: consentError } = await supabase.from("consents").insert({
     user_id: user.id,
     terms_version: TERMS_VERSION,
     privacy_version: PRIVACY_VERSION,
   });
+  if (consentError) {
+    return { error: "Could not record your consent. Please try again." };
+  }
 
   revalidatePath("/", "layout");
   redirect("/feed");
