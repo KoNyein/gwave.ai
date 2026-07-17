@@ -3,17 +3,28 @@
 -- location; everyone inside the threat's radius gets an instant high-priority
 -- warning so they can take cover. This is a human spotter-relay network (the
 -- app can't detect ordnance itself); it's how grassroots warning saves lives.
+--
+-- Idempotent: safe to re-run (no migration ledger — files are piped into psql).
 
-create type public.threat_kind as enum (
-  'airstrike',  -- jet / aircraft / bombing
-  'artillery',  -- shelling / heavy weapons
-  'drone',
-  'ground',     -- troops / ground assault
-  'disaster',   -- flood, quake, storm
-  'other'
-);
+do $$
+begin
+  if not exists (
+    select 1 from pg_type t
+    join pg_namespace n on n.oid = t.typnamespace
+    where n.nspname = 'public' and t.typname = 'threat_kind'
+  ) then
+    create type public.threat_kind as enum (
+      'airstrike',  -- jet / aircraft / bombing
+      'artillery',  -- shelling / heavy weapons
+      'drone',
+      'ground',     -- troops / ground assault
+      'disaster',   -- flood, quake, storm
+      'other'
+    );
+  end if;
+end $$;
 
-create table public.threat_alerts (
+create table if not exists public.threat_alerts (
   id uuid primary key default gen_random_uuid(),
   reporter_id uuid not null references public.profiles (id) on delete cascade,
   kind public.threat_kind not null default 'other',
@@ -27,21 +38,24 @@ create table public.threat_alerts (
   expires_at timestamptz not null default (now() + interval '30 minutes')
 );
 
-create index threat_alerts_active_idx
+create index if not exists threat_alerts_active_idx
   on public.threat_alerts (expires_at desc, created_at desc);
 
 alter table public.threat_alerts enable row level security;
 
 -- Any signed-in user sees active warnings (the whole point) and manages their
 -- own reports.
+drop policy if exists "Active threat warnings visible to all authenticated" on public.threat_alerts;
 create policy "Active threat warnings visible to all authenticated"
   on public.threat_alerts for select to authenticated
   using (expires_at > now() or reporter_id = auth.uid());
 
+drop policy if exists "Users report threats themselves" on public.threat_alerts;
 create policy "Users report threats themselves"
   on public.threat_alerts for insert to authenticated
   with check (reporter_id = auth.uid());
 
+drop policy if exists "Reporters manage their own threat reports" on public.threat_alerts;
 create policy "Reporters manage their own threat reports"
   on public.threat_alerts for update to authenticated
   using (reporter_id = auth.uid())
