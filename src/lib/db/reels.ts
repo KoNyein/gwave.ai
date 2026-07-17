@@ -1,8 +1,8 @@
 import "server-only";
 import { getCurrentUser } from "@/lib/auth";
 
-import { publicEnv } from "@/lib/env";
 import { rankItems } from "@/lib/feed/rank";
+import { mediaUrl } from "@/lib/media-url";
 import { createClient } from "@/lib/supabase/server";
 import type {
   CreatorEarning,
@@ -11,11 +11,6 @@ import type {
   Reel,
   ReelWithAuthor,
 } from "@/types/database";
-
-/** Public URL for a file in the public "media" bucket. */
-function mediaUrl(path: string): string {
-  return `${publicEnv.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${path}`;
-}
 
 type ReelRow = Reel & {
   author: {
