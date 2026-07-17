@@ -26,6 +26,36 @@ function isProtected(pathname: string) {
 }
 
 /**
+ * Edge-safe check that the Cognito id token is actually usable — decodes the
+ * JWT payload and requires a `sub` and an unexpired `exp`, matching what the
+ * server's getCognitoSessionUser accepts. The middleware must agree with the
+ * server on "is there a session": if it treated a present-but-undecodable
+ * cookie as a session, it would bounce /login → /feed while the page bounced
+ * /feed → /login, spinning the router's History API until the browser throws
+ * "Too many calls to Location or History APIs" ("The operation is insecure").
+ */
+function idTokenIsValid(idToken: string | undefined): boolean {
+  if (!idToken) return false;
+  try {
+    const payload = idToken.split(".")[1];
+    if (!payload) return false;
+    // Decode base64url as UTF-8 (id tokens can carry multibyte claims like a
+    // Burmese display name; a latin1 atob would corrupt them and fail parsing).
+    const bin = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+    const json = new TextDecoder().decode(bytes);
+    const claims = JSON.parse(json) as { sub?: string; exp?: number };
+    if (!claims.sub) return false;
+    if (typeof claims.exp === "number" && claims.exp * 1000 <= Date.now()) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Refreshes the auth session on every request and enforces authentication for
  * protected route groups. Branches on the configured auth provider.
  */
@@ -47,13 +77,14 @@ async function updateCognitoSession(request: NextRequest) {
   let response = NextResponse.next({ request });
   const { pathname } = request.nextUrl;
 
-  const hasAccess = Boolean(request.cookies.get("gw_at"));
   const refresh = request.cookies.get("gw_rt")?.value;
-  let hasSession = hasAccess || Boolean(request.cookies.get("gw_it"));
+  // A session exists only when the id token actually decodes to a live user —
+  // the same test the server uses — not merely when the cookie is present.
+  let hasSession = idTokenIsValid(request.cookies.get("gw_it")?.value);
 
-  if (!hasAccess && refresh) {
+  if (!hasSession && refresh) {
     const tokens = await refreshCognitoTokens(refresh);
-    if (tokens) {
+    if (tokens && idTokenIsValid(tokens.id_token)) {
       const secure = process.env.NODE_ENV === "production";
       request.cookies.set("gw_at", tokens.access_token);
       request.cookies.set("gw_it", tokens.id_token);
@@ -82,7 +113,14 @@ async function updateCognitoSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirectTo", pathname);
-    return NextResponse.redirect(url);
+    const redirectResp = NextResponse.redirect(url);
+    // Drop any stale/invalid Cognito cookies so /login doesn't bounce back to a
+    // protected route (which is what span the History API loop). A fresh login
+    // sets valid cookies again.
+    for (const name of ["gw_at", "gw_it", "gw_rt"]) {
+      redirectResp.cookies.delete(name);
+    }
+    return redirectResp;
   }
   if (hasSession && AUTH_ROUTES.includes(pathname)) {
     const url = request.nextUrl.clone();
