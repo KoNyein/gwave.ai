@@ -17,7 +17,7 @@
 
 > idempotent မို့ ထပ် run လည်း ဘေးကင်း။ ၈ ချက်စလုံး `PASS ✅` ဖြစ်ရမည်။
 
-## ၂။ Environment variables (hosting — Vercel/Netlify/...)
+## ၂။ Environment variables (AWS server `.env`)
 
 ရှိပြီးသား Supabase/Stripe/Mux env များအပြင် အသစ် —
 
@@ -32,11 +32,22 @@ TWA_PACKAGE_NAME=ai.gwave.app
 TWA_SHA256_FINGERPRINT=...
 ```
 
-## ၃။ Redeploy
+## ၃။ Redeploy (AWS server — manual)
 
-Hosting မှာ နောက်ဆုံး `main` ကို deploy — Vercel ဆို push တိုင်း auto-deploy
-ဖြစ်သင့်သည်။ Dashboard မှာ deployment commit မှန်မမှန် စစ်ပြီး ဖုန်း/browser
-မှာ hard refresh (Ctrl+Shift+R) လုပ်ပါ။
+gwave.cc က AWS server (self-hosted Docker) ပေါ်မှာ run နေတာမို့ deploy က
+**auto မဟုတ်ပါ** — server ထဲ ဝင်ပြီး အောက်က command ကို **လက်နဲ့ run** ရမည် —
+
+```
+cd gwave.ai
+git pull
+bash deploy/server-deploy.sh
+```
+
+ဒါက နောက်ဆုံး `main` ကို ဆွဲ၊ Docker image ကို ပြန်ဆောက်ပြီး restart လုပ်တယ်။
+ပြီးမှ ဖုန်း/browser မှာ hard refresh (Ctrl+Shift+R) လုပ်ပါ။
+
+> ⚠️ ဒီ manual deploy မ run မချင်း website မှာ update အသစ်တွေ (ဘာသာစကား၊
+> feature အသစ်) မပေါ်ပါ — code က GitHub ရောက်ရုံနဲ့ live မဖြစ်သေးပါ။
 
 ## ၄။ စစ်ဆေးရန် (deploy ပြီးနောက်)
 
