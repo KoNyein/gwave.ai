@@ -42,10 +42,18 @@ export async function createPttChannel(
   if (error || !data) {
     return { ok: false, error: error?.message ?? "Could not create channel." };
   }
-  // Owner joins their own channel.
-  await supabase
+  // Owner joins their own channel. If this fails it must not be swallowed: the
+  // message RLS gates posting on is_ptt_member() with no owner exemption, so a
+  // channel whose owner isn't a member is dead — the owner can hand out the join
+  // code but nobody, including them, can post. Roll the channel back and report
+  // the failure rather than leaving that orphan behind.
+  const { error: joinError } = await supabase
     .from("ptt_channel_members")
     .insert({ channel_id: data.id, user_id: userId });
+  if (joinError) {
+    await supabase.from("ptt_channels").delete().eq("id", data.id);
+    return { ok: false, error: "Could not create channel." };
+  }
 
   revalidatePath("/talk");
   return { ok: true, data: { id: data.id, joinCode: data.join_code } };
