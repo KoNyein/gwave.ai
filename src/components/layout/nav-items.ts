@@ -8,6 +8,7 @@ import {
   Flower2,
   Gamepad2,
   Gem,
+  HeartPulse,
   Briefcase,
   Home,
   LayoutGrid,
@@ -68,6 +69,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/learn", labelKey: "learn", icon: BookOpen },
       { href: "/leaderboard", labelKey: "leaderboard", icon: Trophy },
       { href: "/wellness", labelKey: "wellness", icon: Flower2 },
+      { href: "/health", labelKey: "health", icon: HeartPulse },
     ],
   },
   {
