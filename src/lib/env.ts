@@ -56,6 +56,32 @@ function required(name: string): string {
  * base64-encoded PKCS#8 PEM (base64 so it survives a single-line env file);
  * `APP_JWT_PUBLIC_JWK` is the matching public JWK (carries the `kid`).
  */
+/**
+ * Terra wearable-data aggregator (https://tryterra.co). Server-only.
+ *
+ * Returns null until all three are set, which keeps the whole health-data
+ * feature dormant — the app behaves exactly as before until an operator
+ * configures it (mirrors the other optional integrations).
+ */
+export type TerraConfig = {
+  devId: string;
+  apiKey: string;
+  signingSecret: string;
+};
+
+export function getTerraConfig(): TerraConfig | null {
+  const devId = process.env.TERRA_DEV_ID?.trim();
+  const apiKey = process.env.TERRA_API_KEY?.trim();
+  const signingSecret = process.env.TERRA_SIGNING_SECRET?.trim();
+  if (!devId || !apiKey || !signingSecret) return null;
+  return { devId, apiKey, signingSecret };
+}
+
+/** True when the Terra health integration is fully configured. */
+export function isTerraEnabled(): boolean {
+  return getTerraConfig() !== null;
+}
+
 export const authEnv = {
   get jwtPrivateKeyPem(): string {
     return Buffer.from(required("APP_JWT_PRIVATE_KEY"), "base64").toString("utf8");
