@@ -2,7 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { FitbitTokens, NormalizedMetric } from "@/lib/health/fitbit";
+import type { HealthTokens, NormalizedMetric } from "@/lib/health/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,8 +16,6 @@ import { createClient } from "@/lib/supabase/server";
 function untyped(client: unknown): SupabaseClient {
   return client as unknown as SupabaseClient;
 }
-
-const PROVIDER = "fitbit";
 
 export interface HealthConnection {
   id: string;
@@ -39,6 +37,7 @@ export interface DailySummary {
 
 export interface SyncConnection {
   id: string;
+  provider: string;
   access_token: string;
   refresh_token: string;
   token_expires_at: string | null;
@@ -89,19 +88,20 @@ export async function getLatestSummary(
   return (data ?? null) as DailySummary | null;
 }
 
-// ── Fitbit connection lifecycle (service role) ──────────────────────────────
+// ── Connection lifecycle (service role) ─────────────────────────────────────
 
-/** Create/replace the caller's Fitbit connection after the OAuth exchange. */
-export async function saveFitbitConnection(
+/** Create/replace a provider connection after its OAuth exchange. */
+export async function saveConnection(
   userId: string,
-  tokens: FitbitTokens,
+  provider: string,
+  tokens: HealthTokens,
 ): Promise<void> {
   const db = untyped(createAdminClient());
   await db.from("health_connections").upsert(
     {
       user_id: userId,
-      provider: PROVIDER,
-      terra_user_id: tokens.userId || userId, // legacy NOT NULL column
+      provider,
+      terra_user_id: tokens.userId || `${provider}:${userId}`, // legacy NOT NULL
       provider_user_id: tokens.userId,
       status: "connected",
       connected_at: new Date().toISOString(),
@@ -114,24 +114,39 @@ export async function saveFitbitConnection(
   );
 }
 
-/** The caller's Fitbit connection with tokens, for a sync (service role). */
+/** The caller's connection (with tokens) for a provider, for a sync. */
 export async function getSyncConnection(
   userId: string,
+  provider: string,
 ): Promise<SyncConnection | null> {
   const db = untyped(createAdminClient());
   const { data } = await db
     .from("health_connections")
-    .select("id, access_token, refresh_token, token_expires_at")
+    .select("id, provider, access_token, refresh_token, token_expires_at")
     .eq("user_id", userId)
-    .eq("provider", PROVIDER)
+    .eq("provider", provider)
     .maybeSingle();
   return (data ?? null) as SyncConnection | null;
 }
 
-/** Persist rotated tokens after a refresh. */
+/** A connection by id (owner-scoped), for revoke-then-delete on disconnect. */
+export async function getConnectionById(
+  userId: string,
+  connectionId: string,
+): Promise<SyncConnection | null> {
+  const db = untyped(createAdminClient());
+  const { data } = await db
+    .from("health_connections")
+    .select("id, provider, access_token, refresh_token, token_expires_at")
+    .eq("user_id", userId)
+    .eq("id", connectionId)
+    .maybeSingle();
+  return (data ?? null) as SyncConnection | null;
+}
+
 export async function updateTokens(
   connectionId: string,
-  tokens: FitbitTokens,
+  tokens: HealthTokens,
 ): Promise<void> {
   const db = untyped(createAdminClient());
   await db
@@ -145,20 +160,35 @@ export async function updateTokens(
     .eq("id", connectionId);
 }
 
+export async function deleteConnection(
+  userId: string,
+  connectionId: string,
+): Promise<string | null> {
+  const supabase = untyped(await createClient());
+  const { error } = await supabase
+    .from("health_connections")
+    .delete()
+    .eq("id", connectionId);
+  return error ? error.message : null;
+}
+
+// ── Metrics (service role) ──────────────────────────────────────────────────
+
 /**
  * Store normalized metric rows. Upserts on the natural key so a re-synced day
- * (Fitbit daily totals are cumulative) overwrites the earlier value instead of
- * being dropped, and marks the connection's last_sync_at.
+ * (cumulative daily totals) overwrites the earlier value, and marks the
+ * connection's last_sync_at.
  */
 export async function insertMetrics(
   userId: string,
+  provider: string,
   metrics: NormalizedMetric[],
 ): Promise<void> {
   if (metrics.length === 0) return;
   const db = untyped(createAdminClient());
   const rows = metrics.map((m) => ({
     user_id: userId,
-    provider: PROVIDER,
+    provider,
     metric_type: m.metric_type,
     value: m.value,
     unit: m.unit,
@@ -172,7 +202,33 @@ export async function insertMetrics(
     .from("health_connections")
     .update({ last_sync_at: new Date().toISOString() })
     .eq("user_id", userId)
-    .eq("provider", PROVIDER);
+    .eq("provider", provider);
+}
+
+/**
+ * Log one manually-entered (or phone-sensor) metric for today. No provider
+ * connection needed — this is the account-free path so any phone can test.
+ */
+export async function insertManualMetric(
+  userId: string,
+  metricType: string,
+  value: number,
+  unit: string,
+): Promise<void> {
+  const db = untyped(createAdminClient());
+  const now = new Date().toISOString();
+  await db.from("health_metrics").upsert(
+    {
+      user_id: userId,
+      provider: "manual",
+      metric_type: metricType,
+      value,
+      unit,
+      recorded_at: now,
+      day: now.slice(0, 10),
+    },
+    { onConflict: "user_id,metric_type,recorded_at" },
+  );
 }
 
 /**

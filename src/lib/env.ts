@@ -81,6 +81,33 @@ export function isFitbitEnabled(): boolean {
   return getFitbitConfig() !== null;
 }
 
+/**
+ * Google Fit OAuth (https://console.cloud.google.com). Server-only. NOTE: the
+ * Google Fit REST API is deprecated by Google — kept as an optional secondary
+ * provider. A dedicated OAuth client (separate from Maps/One Tap) with fitness
+ * scopes is required.
+ */
+export type GoogleFitConfig = {
+  clientId: string;
+  clientSecret: string;
+};
+
+export function getGoogleFitConfig(): GoogleFitConfig | null {
+  const clientId = process.env.GOOGLE_FIT_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_FIT_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) return null;
+  return { clientId, clientSecret };
+}
+
+export function isGoogleFitEnabled(): boolean {
+  return getGoogleFitConfig() !== null;
+}
+
+/** True when ANY health provider is configured (drives the connect UI). */
+export function isHealthEnabled(): boolean {
+  return isFitbitEnabled() || isGoogleFitEnabled();
+}
+
 export const authEnv = {
   get jwtPrivateKeyPem(): string {
     return Buffer.from(required("APP_JWT_PRIVATE_KEY"), "base64").toString("utf8");

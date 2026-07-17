@@ -3,21 +3,23 @@ import { HeartPulse } from "lucide-react";
 
 import { ConnectPanel } from "@/components/health/connect-panel";
 import { HealthSummary } from "@/components/health/health-summary";
+import { ManualLog } from "@/components/health/manual-log";
+import { PhonePedometer } from "@/components/health/phone-pedometer";
 import { getCurrentProfile } from "@/lib/auth";
 import {
   getConnections,
   getDailySummaries,
   getLatestSummary,
 } from "@/lib/db/health";
-import { isFitbitEnabled } from "@/lib/env";
+import { enabledProviders } from "@/lib/health/registry";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Health" };
 
 /**
- * Health dashboard: connect Fitbit and see synced steps / heart rate / sleep.
- * All data is owner-private (RLS). Works even before Fitbit is configured — the
- * connect button just explains it's not enabled yet.
+ * Health dashboard. Cloud providers (Fitbit / Google Fit) sync steps / heart
+ * rate / sleep; the manual log and phone step-counter work with no device or
+ * account, so any phone can use it. All data is owner-private (RLS).
  */
 export default async function HealthPage() {
   const profile = await getCurrentProfile();
@@ -38,13 +40,15 @@ export default async function HealthPage() {
         <div>
           <h1 className="text-xl font-bold">ကျန်းမာရေး</h1>
           <p className="text-sm text-muted-foreground">
-            နာရီ/ဖန်တီးနက် ချိတ်ပြီး ခြေလှမ်း၊ နှလုံးခုန်နှုန်း၊ အိပ်ချိန် ကြည့်ပါ။
+            ခြေလှမ်း၊ နှလုံးခုန်နှုန်း၊ အိပ်ချိန် — နာရီ ဒါမှမဟုတ် ဖုန်းနဲ့။
           </p>
         </div>
       </div>
 
       <HealthSummary latest={latest} week={week} />
-      <ConnectPanel connections={connections} enabled={isFitbitEnabled()} />
+      <ConnectPanel connections={connections} providers={enabledProviders()} />
+      <PhonePedometer />
+      <ManualLog />
     </div>
   );
 }
