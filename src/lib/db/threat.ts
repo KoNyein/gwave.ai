@@ -11,7 +11,7 @@ export interface ThreatWithReporter extends ThreatAlert {
 /** Active (unexpired) threat warnings, newest first. */
 export async function getActiveThreats(): Promise<ThreatWithReporter[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("threat_alerts")
     .select(
       "*, reporter:profiles!threat_alerts_reporter_id_fkey(id, username, full_name, avatar_url)",
@@ -20,5 +20,9 @@ export async function getActiveThreats(): Promise<ThreatWithReporter[]> {
     .order("created_at", { ascending: false })
     .limit(50)
     .returns<ThreatWithReporter[]>();
+  // Air-raid / threat early-warning: a swallowed error would render "no active
+  // warnings" during an actual failure. Throw so the /map error boundary shows a
+  // retry instead of a false all-clear. A genuinely empty result renders empty.
+  if (error) throw new Error(`Failed to load threat warnings: ${error.message}`);
   return data ?? [];
 }

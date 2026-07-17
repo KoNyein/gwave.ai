@@ -16,7 +16,7 @@ export interface SosAlertWithPerson extends SosAlert {
  */
 export async function getActiveSosAlerts(): Promise<SosAlertWithPerson[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("sos_alerts")
     .select(
       "*, person:profiles!sos_alerts_user_id_fkey(id, username, full_name, avatar_url)",
@@ -25,10 +25,18 @@ export async function getActiveSosAlerts(): Promise<SosAlertWithPerson[]> {
     .order("created_at", { ascending: false })
     .returns<(SosAlert & { person: AuthorSummary })[]>();
 
+  // This is a safety-of-life board. A query failure (missing table, RLS block,
+  // dropped connection) must NOT be swallowed into an empty list — that would
+  // render a calm, complete-looking emergency map while people are actually
+  // asking for help. Throw so the /map segment error boundary shows "something
+  // went wrong, retry" instead of a false all-clear. A genuinely empty result
+  // (no open alerts) is `data: []` with no error and still renders empty.
+  if (error) throw new Error(`Failed to load SOS alerts: ${error.message}`);
+
   const alerts = data ?? [];
   if (alerts.length === 0) return [];
 
-  const { data: responders } = await supabase
+  const { data: responders, error: respErr } = await supabase
     .from("sos_responders")
     .select("alert_id")
     .in(
@@ -36,6 +44,9 @@ export async function getActiveSosAlerts(): Promise<SosAlertWithPerson[]> {
       alerts.map((a) => a.id),
     )
     .returns<{ alert_id: string }[]>();
+  if (respErr) {
+    throw new Error(`Failed to load SOS responders: ${respErr.message}`);
+  }
   const counts = new Map<string, number>();
   for (const r of responders ?? []) {
     counts.set(r.alert_id, (counts.get(r.alert_id) ?? 0) + 1);
@@ -50,7 +61,7 @@ export async function getActiveSosAlerts(): Promise<SosAlertWithPerson[]> {
 /** The caller's own open SOS alert, if any. */
 export async function getMyActiveSos(userId: string): Promise<SosAlert | null> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("sos_alerts")
     .select("*")
     .eq("user_id", userId)
@@ -58,5 +69,8 @@ export async function getMyActiveSos(userId: string): Promise<SosAlert | null> {
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  // Drives the "you have an open SOS" banner + cancel button. A swallowed error
+  // would hide the user's own active alert from them; surface it instead.
+  if (error) throw new Error(`Failed to load your SOS: ${error.message}`);
   return data;
 }
