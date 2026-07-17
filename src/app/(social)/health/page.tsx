@@ -9,15 +9,15 @@ import {
   getDailySummaries,
   getLatestSummary,
 } from "@/lib/db/health";
-import { isTerraEnabled } from "@/lib/env";
+import { isFitbitEnabled } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Health" };
 
 /**
- * Health dashboard: connect a wearable (via Terra) and see synced steps / heart
- * rate / sleep. All data is owner-private (RLS). Works even before Terra is
- * configured — the connect button just explains it's not enabled yet.
+ * Health dashboard: connect Fitbit and see synced steps / heart rate / sleep.
+ * All data is owner-private (RLS). Works even before Fitbit is configured — the
+ * connect button just explains it's not enabled yet.
  */
 export default async function HealthPage() {
   const profile = await getCurrentProfile();
@@ -44,7 +44,7 @@ export default async function HealthPage() {
       </div>
 
       <HealthSummary latest={latest} week={week} />
-      <ConnectPanel connections={connections} enabled={isTerraEnabled()} />
+      <ConnectPanel connections={connections} enabled={isFitbitEnabled()} />
     </div>
   );
 }

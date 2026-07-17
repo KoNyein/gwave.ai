@@ -2,20 +2,22 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import type { FitbitTokens, NormalizedMetric } from "@/lib/health/fitbit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import type { NormalizedMetric } from "@/lib/health/terra";
 
 /**
  * Data-access for the health/wearable feature. The health tables are new and not
  * in the generated Database types yet, so we access them through an untyped view
- * of the client (return shapes are declared explicitly below). Reads use the
- * request-scoped client (RLS keeps them owner-private); webhook writes use the
- * service-role admin client.
+ * of the client (return shapes declared below). Public reads use the
+ * request-scoped client (RLS keeps them owner-private); token reads/writes use
+ * the service-role admin client and never leave the server.
  */
 function untyped(client: unknown): SupabaseClient {
   return client as unknown as SupabaseClient;
 }
+
+const PROVIDER = "fitbit";
 
 export interface HealthConnection {
   id: string;
@@ -35,7 +37,14 @@ export interface DailySummary {
   active_minutes: number | null;
 }
 
-// ── Reads (RLS-scoped) ──────────────────────────────────────────────────────
+export interface SyncConnection {
+  id: string;
+  access_token: string;
+  refresh_token: string;
+  token_expires_at: string | null;
+}
+
+// ── Public reads (RLS-scoped; token columns never selected) ─────────────────
 
 export async function getConnections(
   userId: string,
@@ -80,66 +89,76 @@ export async function getLatestSummary(
   return (data ?? null) as DailySummary | null;
 }
 
-// ── Webhook writes (service role) ───────────────────────────────────────────
+// ── Fitbit connection lifecycle (service role) ──────────────────────────────
 
-/** Link a Terra user id to our app user (called on Terra's `auth` event). */
-export async function upsertConnection(input: {
-  userId: string;
-  provider: string;
-  terraUserId: string;
-}): Promise<void> {
+/** Create/replace the caller's Fitbit connection after the OAuth exchange. */
+export async function saveFitbitConnection(
+  userId: string,
+  tokens: FitbitTokens,
+): Promise<void> {
   const db = untyped(createAdminClient());
   await db.from("health_connections").upsert(
     {
-      user_id: input.userId,
-      provider: input.provider.toLowerCase(),
-      terra_user_id: input.terraUserId,
+      user_id: userId,
+      provider: PROVIDER,
+      terra_user_id: tokens.userId || userId, // legacy NOT NULL column
+      provider_user_id: tokens.userId,
       status: "connected",
       connected_at: new Date().toISOString(),
+      access_token: tokens.accessToken,
+      refresh_token: tokens.refreshToken,
+      token_expires_at: tokens.expiresAt,
+      scope: tokens.scope,
     },
     { onConflict: "user_id,provider" },
   );
 }
 
-export async function markConnectionRevoked(terraUserId: string): Promise<void> {
-  const db = untyped(createAdminClient());
-  await db
-    .from("health_connections")
-    .update({ status: "revoked" })
-    .eq("terra_user_id", terraUserId);
-}
-
-/** Resolve which app user (and provider) a Terra webhook belongs to. */
-export async function findByTerraId(
-  terraUserId: string,
-): Promise<{ userId: string; provider: string } | null> {
+/** The caller's Fitbit connection with tokens, for a sync (service role). */
+export async function getSyncConnection(
+  userId: string,
+): Promise<SyncConnection | null> {
   const db = untyped(createAdminClient());
   const { data } = await db
     .from("health_connections")
-    .select("user_id, provider")
-    .eq("terra_user_id", terraUserId)
+    .select("id, access_token, refresh_token, token_expires_at")
+    .eq("user_id", userId)
+    .eq("provider", PROVIDER)
     .maybeSingle();
-  return data
-    ? { userId: data.user_id as string, provider: data.provider as string }
-    : null;
+  return (data ?? null) as SyncConnection | null;
+}
+
+/** Persist rotated tokens after a refresh. */
+export async function updateTokens(
+  connectionId: string,
+  tokens: FitbitTokens,
+): Promise<void> {
+  const db = untyped(createAdminClient());
+  await db
+    .from("health_connections")
+    .update({
+      access_token: tokens.accessToken,
+      refresh_token: tokens.refreshToken,
+      token_expires_at: tokens.expiresAt,
+      scope: tokens.scope,
+    })
+    .eq("id", connectionId);
 }
 
 /**
- * Store normalized metric rows. Upserts on the natural key so a re-delivered
- * daily payload (Terra sends cumulative daily totals multiple times a day)
- * overwrites the earlier value instead of being dropped — otherwise steps /
- * calories / heart-rate would stay stuck at the first sync of the day.
+ * Store normalized metric rows. Upserts on the natural key so a re-synced day
+ * (Fitbit daily totals are cumulative) overwrites the earlier value instead of
+ * being dropped, and marks the connection's last_sync_at.
  */
 export async function insertMetrics(
   userId: string,
-  provider: string,
   metrics: NormalizedMetric[],
 ): Promise<void> {
   if (metrics.length === 0) return;
   const db = untyped(createAdminClient());
   const rows = metrics.map((m) => ({
     user_id: userId,
-    provider,
+    provider: PROVIDER,
     metric_type: m.metric_type,
     value: m.value,
     unit: m.unit,
@@ -153,12 +172,12 @@ export async function insertMetrics(
     .from("health_connections")
     .update({ last_sync_at: new Date().toISOString() })
     .eq("user_id", userId)
-    .eq("provider", provider);
+    .eq("provider", PROVIDER);
 }
 
 /**
- * Recompute the pre-aggregated daily summary for the days a batch touched, so
- * the dashboard reads one row per day instead of scanning raw metrics.
+ * Recompute the pre-aggregated daily summary for the days a sync touched, so the
+ * dashboard reads one row per day instead of scanning raw metrics.
  */
 export async function recomputeDailySummaries(
   userId: string,

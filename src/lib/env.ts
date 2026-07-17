@@ -57,29 +57,28 @@ function required(name: string): string {
  * `APP_JWT_PUBLIC_JWK` is the matching public JWK (carries the `kid`).
  */
 /**
- * Terra wearable-data aggregator (https://tryterra.co). Server-only.
+ * Fitbit Web API OAuth (https://dev.fitbit.com) — the free health-data provider.
+ * Server-only: the client secret must never reach the browser.
  *
- * Returns null until all three are set, which keeps the whole health-data
- * feature dormant — the app behaves exactly as before until an operator
- * configures it (mirrors the other optional integrations).
+ * Returns null until both are set, which keeps the whole health-data feature
+ * dormant — the app behaves exactly as before until an operator configures it
+ * (mirrors the other optional integrations).
  */
-export type TerraConfig = {
-  devId: string;
-  apiKey: string;
-  signingSecret: string;
+export type FitbitConfig = {
+  clientId: string;
+  clientSecret: string;
 };
 
-export function getTerraConfig(): TerraConfig | null {
-  const devId = process.env.TERRA_DEV_ID?.trim();
-  const apiKey = process.env.TERRA_API_KEY?.trim();
-  const signingSecret = process.env.TERRA_SIGNING_SECRET?.trim();
-  if (!devId || !apiKey || !signingSecret) return null;
-  return { devId, apiKey, signingSecret };
+export function getFitbitConfig(): FitbitConfig | null {
+  const clientId = process.env.FITBIT_CLIENT_ID?.trim();
+  const clientSecret = process.env.FITBIT_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) return null;
+  return { clientId, clientSecret };
 }
 
-/** True when the Terra health integration is fully configured. */
-export function isTerraEnabled(): boolean {
-  return getTerraConfig() !== null;
+/** True when the Fitbit health integration is fully configured. */
+export function isFitbitEnabled(): boolean {
+  return getFitbitConfig() !== null;
 }
 
 export const authEnv = {
