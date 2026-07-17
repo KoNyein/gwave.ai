@@ -12,6 +12,7 @@ import {
   getGpayTransactions,
   getMyGpayAccount,
 } from "@/lib/db/gpay";
+import { s3SlipsEnabled, signedSlipUrl } from "@/lib/storage/signed-read";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "G-Pay" };
@@ -42,24 +43,28 @@ export default async function GpayPage() {
   }
 
   // Signed URLs for admins to view each account's KPay slip + KYC face scan
-  // (private bucket).
+  // (private bucket). On S3 we sign a GET ourselves; otherwise fall back to
+  // Supabase Storage. Without the S3 branch, uploads land in S3 while this still
+  // asks Supabase for an object that is no longer there — and the error is
+  // dropped, so the KYC image silently renders as nothing.
   const slipUrls: Record<string, string> = {};
   const faceUrls: Record<string, string> = {};
   if (isAdmin && adminAccounts.length > 0) {
-    const supabase = await createClient();
+    const storage = s3SlipsEnabled() ? null : (await createClient()).storage;
+    const sign = async (path: string): Promise<string | null> => {
+      if (!storage) return signedSlipUrl(path);
+      const { data } = await storage.from("slips").createSignedUrl(path, 3600);
+      return data?.signedUrl ?? null;
+    };
     await Promise.all(
       adminAccounts.map(async (a) => {
         if (a.slip_path) {
-          const { data } = await supabase.storage
-            .from("slips")
-            .createSignedUrl(a.slip_path, 3600);
-          if (data?.signedUrl) slipUrls[a.id] = data.signedUrl;
+          const url = await sign(a.slip_path);
+          if (url) slipUrls[a.id] = url;
         }
         if (a.face_path) {
-          const { data } = await supabase.storage
-            .from("slips")
-            .createSignedUrl(a.face_path, 3600);
-          if (data?.signedUrl) faceUrls[a.id] = data.signedUrl;
+          const url = await sign(a.face_path);
+          if (url) faceUrls[a.id] = url;
         }
       }),
     );
