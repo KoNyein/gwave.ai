@@ -7,8 +7,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { submitPromptPayPayment } from "@/lib/actions/membership";
-import { prepareMedia } from "@/lib/media";
-import { createClient } from "@/lib/supabase/client";
+import { prepareMedia, uploadSlip } from "@/lib/media";
 
 /** Uploads the transfer slip to the private bucket and submits for review. */
 export function SlipUpload({
@@ -35,12 +34,12 @@ export function SlipUpload({
       if (prepared.mediaType !== "image") {
         throw new Error(t("slipImageOnly"));
       }
-      const path = `${userId}/${crypto.randomUUID()}.${prepared.extension}`;
-      const supabase = createClient();
-      const { error: uploadError } = await supabase.storage
-        .from("slips")
-        .upload(path, prepared.blob, { contentType: prepared.contentType });
-      if (uploadError) throw new Error(uploadError.message);
+      const path = await uploadSlip(
+        userId,
+        prepared.blob,
+        prepared.extension,
+        prepared.contentType,
+      );
 
       const result = await submitPromptPayPayment({ plan, slipPath: path });
       if (!result.ok) throw new Error(result.error);

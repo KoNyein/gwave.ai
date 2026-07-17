@@ -59,6 +59,28 @@ async function putObject(
   return path;
 }
 
+/**
+ * Upload a KPay payment slip or KYC face scan to the private "slips" bucket and
+ * return its stored path.
+ *
+ * This exists so the slip/KYC forms go through the same putObject branch as every
+ * other upload. They previously called `supabase.storage.from("slips").upload()`
+ * directly, which meant that after the S3 cutover the write still went to Supabase
+ * Storage while the admin pages read from S3 — so a freshly uploaded slip could
+ * never be displayed. Routing them here keeps write and read on the same backend:
+ * presigned S3 PUT when NEXT_PUBLIC_S3_CDN is set, Supabase Storage otherwise.
+ *
+ * Throws on failure — unlike the old inline calls, callers must handle it.
+ */
+export async function uploadSlip(
+  userId: string,
+  body: Blob,
+  ext: string,
+  contentType: string,
+): Promise<string> {
+  return putObject(userId, body, ext, contentType, "slips");
+}
+
 export const MAX_POST_IMAGES = 10;
 /** Standard longest-edge for stored photos (downscaled to this). */
 export const MAX_IMAGE_DIMENSION = 1920;
