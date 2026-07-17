@@ -124,7 +124,12 @@ export async function findByTerraId(
     : null;
 }
 
-/** Insert normalized metric rows (idempotent on the natural key). */
+/**
+ * Store normalized metric rows. Upserts on the natural key so a re-delivered
+ * daily payload (Terra sends cumulative daily totals multiple times a day)
+ * overwrites the earlier value instead of being dropped — otherwise steps /
+ * calories / heart-rate would stay stuck at the first sync of the day.
+ */
 export async function insertMetrics(
   userId: string,
   provider: string,
@@ -143,10 +148,7 @@ export async function insertMetrics(
   }));
   await db
     .from("health_metrics")
-    .upsert(rows, {
-      onConflict: "user_id,metric_type,recorded_at",
-      ignoreDuplicates: true,
-    });
+    .upsert(rows, { onConflict: "user_id,metric_type,recorded_at" });
   await db
     .from("health_connections")
     .update({ last_sync_at: new Date().toISOString() })

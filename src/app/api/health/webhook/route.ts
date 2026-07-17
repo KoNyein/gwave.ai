@@ -80,8 +80,11 @@ export async function POST(request: Request) {
       }
     }
   } catch {
-    // Never 500 a webhook we've authenticated — Terra would retry the batch.
-    return NextResponse.json({ received: true });
+    // A processing failure (DB/network) must NOT be ACKed: Terra only retries on
+    // a non-2xx, so a 200 here would permanently drop an authenticated batch.
+    // Signal an error so it's redelivered — our writes are idempotent. Bad or
+    // ignorable payload shapes are ACKed above, not here.
+    return NextResponse.json({ error: "processing failed" }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });
