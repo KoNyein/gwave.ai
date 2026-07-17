@@ -29,7 +29,7 @@ export async function createClient() {
       (sessionUser ? mintSupabaseToken(sessionUser.id) : null) ??
       (await getCognitoAccessToken()) ??
       "";
-    return createSupabaseClient<Database>(
+    const client = createSupabaseClient<Database>(
       publicEnv.NEXT_PUBLIC_SUPABASE_URL,
       publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       {
@@ -37,6 +37,26 @@ export async function createClient() {
         auth: { persistSession: false, autoRefreshToken: false },
       },
     );
+
+    // With the `accessToken` option set, supabase-js replaces `client.auth`
+    // with a Proxy that throws on ANY access ("accessing supabase.auth.getUser
+    // is not possible"). Dozens of server actions and db helpers identify the
+    // caller with `const { data: { user } } = await supabase.auth.getUser()`,
+    // so under Cognito that Proxy crashes the render/action. Swap it for a tiny
+    // auth shim backed by the verified Cognito session — the same identity the
+    // minted token carries — so every existing call site keeps working without
+    // touching ~65 files.
+    const authedUser = sessionUser
+      ? { id: sessionUser.id, email: sessionUser.email }
+      : null;
+    (client as unknown as { auth: unknown }).auth = {
+      getUser: async () => ({ data: { user: authedUser }, error: null }),
+      getSession: async () => ({
+        data: { session: authedUser ? { user: authedUser } : null },
+        error: null,
+      }),
+    };
+    return client;
   }
 
   const cookieStore = await cookies();
