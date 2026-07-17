@@ -14,6 +14,7 @@ import {
   getMyGpayAccount,
 } from "@/lib/db/gpay";
 import { createClient } from "@/lib/supabase/server";
+import { createSignedUrl } from "@/lib/storage-signed";
 
 export const metadata = { title: "G-Pay" };
 export const dynamic = "force-dynamic";
@@ -48,20 +49,15 @@ export default async function GpayPage() {
   const slipUrls: Record<string, string> = {};
   const faceUrls: Record<string, string> = {};
   if (isAdmin && adminAccounts.length > 0) {
-    const supabase = await createClient();
     await Promise.all(
       adminAccounts.map(async (a) => {
         if (a.slip_path) {
-          const { data } = await supabase.storage
-            .from("slips")
-            .createSignedUrl(a.slip_path, 3600);
-          if (data?.signedUrl) slipUrls[a.id] = data.signedUrl;
+          const signed = await createSignedUrl("slips", a.slip_path, 3600);
+          if (signed) slipUrls[a.id] = signed;
         }
         if (a.face_path) {
-          const { data } = await supabase.storage
-            .from("slips")
-            .createSignedUrl(a.face_path, 3600);
-          if (data?.signedUrl) faceUrls[a.id] = data.signedUrl;
+          const signed = await createSignedUrl("slips", a.face_path, 3600);
+          if (signed) faceUrls[a.id] = signed;
         }
       }),
     );

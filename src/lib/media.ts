@@ -1,6 +1,51 @@
 import { publicEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/client";
 
+/**
+ * Under Cognito the browser can't sign a token Cloud storage trusts, so uploads
+ * go through our server route (which uses the Cloud service key). Detected by the
+ * browser-readable access-token cookie, mirroring createClient().
+ */
+export function usingCognito(): boolean {
+  if (typeof document === "undefined") return false;
+  return /(?:^|; )gw_at=/.test(document.cookie);
+}
+
+/** Sanitize a user-supplied extension to what the upload route accepts. */
+function safeExt(ext: string): string {
+  const clean = ext.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return clean.slice(0, 12) || "bin";
+}
+
+/**
+ * POST raw bytes to the server upload route and return the stored object path.
+ * The route derives the folder from the session user, so no userId is sent.
+ */
+export async function uploadViaServer(
+  blob: Blob,
+  ext: string,
+  contentType: string,
+  bucket: "media" | "slips" = "media",
+): Promise<string> {
+  const res = await fetch(
+    `/api/upload?ext=${encodeURIComponent(safeExt(ext))}&bucket=${bucket}`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": contentType },
+      body: blob,
+    },
+  );
+  const data = (await res.json().catch(() => ({}))) as {
+    storage_path?: string;
+    error?: string;
+  };
+  if (!res.ok || !data.storage_path) {
+    throw new Error(data.error || "Upload failed.");
+  }
+  return data.storage_path;
+}
+
 export const MAX_POST_IMAGES = 10;
 /** Standard longest-edge for stored photos (downscaled to this). */
 export const MAX_IMAGE_DIMENSION = 1920;
@@ -176,8 +221,22 @@ export async function uploadMedia(
   file: File,
 ): Promise<UploadedMedia> {
   const prepared = await prepareMedia(file);
-  const path = `${userId}/${crypto.randomUUID()}.${prepared.extension}`;
+  const meta = {
+    media_type: prepared.mediaType,
+    width: prepared.width,
+    height: prepared.height,
+  };
 
+  if (usingCognito()) {
+    const storage_path = await uploadViaServer(
+      prepared.blob,
+      prepared.extension,
+      prepared.contentType,
+    );
+    return { storage_path, ...meta };
+  }
+
+  const path = `${userId}/${crypto.randomUUID()}.${prepared.extension}`;
   const supabase = createClient();
   const { error } = await supabase.storage
     .from("media")
@@ -187,12 +246,7 @@ export async function uploadMedia(
     });
   if (error) throw new Error(error.message);
 
-  return {
-    storage_path: path,
-    media_type: prepared.mediaType,
-    width: prepared.width,
-    height: prepared.height,
-  };
+  return { storage_path: path, ...meta };
 }
 
 export interface UploadedFile {
@@ -213,15 +267,18 @@ export async function uploadFile(
     throw new Error("File is too large (max 25 MB).");
   }
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+  const contentType = file.type || "application/octet-stream";
 
+  if (usingCognito()) {
+    const storage_path = await uploadViaServer(file, ext, contentType);
+    return { storage_path, file_name: file.name };
+  }
+
+  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
   const supabase = createClient();
   const { error } = await supabase.storage
     .from("media")
-    .upload(path, file, {
-      contentType: file.type || "application/octet-stream",
-      cacheControl: "31536000",
-    });
+    .upload(path, file, { contentType, cacheControl: "31536000" });
   if (error) throw new Error(error.message);
 
   return { storage_path: path, file_name: file.name };
@@ -242,8 +299,12 @@ export async function uploadVoice(
   }
   const mime = blob.type.split(";")[0] || "audio/webm";
   const ext = VOICE_EXTENSIONS[mime] ?? "webm";
-  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
 
+  if (usingCognito()) {
+    return { storage_path: await uploadViaServer(blob, ext, mime) };
+  }
+
+  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
   const supabase = createClient();
   const { error } = await supabase.storage
     .from("media")
@@ -265,8 +326,12 @@ export async function uploadClip(
     throw new Error("Clip is too large (max 50 MB).");
   }
   const mime = blob.type.split(";")[0] || "video/webm";
-  const path = `${userId}/${crypto.randomUUID()}.webm`;
 
+  if (usingCognito()) {
+    return { storage_path: await uploadViaServer(blob, "webm", mime) };
+  }
+
+  const path = `${userId}/${crypto.randomUUID()}.webm`;
   const supabase = createClient();
   const { error } = await supabase.storage
     .from("media")

@@ -23,7 +23,7 @@ import {
   getRevenueByMonth,
 } from "@/lib/db/membership";
 import { displayName, timeAgo } from "@/lib/format";
-import { createClient } from "@/lib/supabase/server";
+import { createSignedUrl } from "@/lib/storage-signed";
 import { cn } from "@/lib/utils";
 
 export default async function AdminMembershipPage({
@@ -39,15 +39,12 @@ export default async function AdminMembershipPage({
     getMembers(searchParams.q),
   ]);
 
-  // Signed URLs for slips in the private bucket (admin RLS grants read).
-  const supabase = await createClient();
+  // Signed URLs for slips in the private bucket (signed with the Cloud service key).
   const slipUrls = new Map<string, string>();
   for (const payment of queue) {
     if (payment.slip_path) {
-      const { data } = await supabase.storage
-        .from("slips")
-        .createSignedUrl(payment.slip_path, 3600);
-      if (data?.signedUrl) slipUrls.set(payment.id, data.signedUrl);
+      const signed = await createSignedUrl("slips", payment.slip_path, 3600);
+      if (signed) slipUrls.set(payment.id, signed);
     }
   }
 
