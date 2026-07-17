@@ -12,7 +12,6 @@ import {
   insertManualMetric,
   insertMetrics,
   recomputeDailySummaries,
-  saveConnection,
   updateTokens,
 } from "@/lib/db/health";
 import { getProvider } from "@/lib/health/registry";
