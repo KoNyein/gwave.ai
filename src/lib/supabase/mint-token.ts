@@ -33,19 +33,17 @@ import crypto from "node:crypto";
  * deploy/postgrest-add-hs256-key.sh. On Supabase Cloud or a PostgREST whose
  * PGRST_JWT_SECRET is the raw secret string, no such step is needed.
  */
-export function mintSupabaseToken(sub: string): string | null {
+function mintToken(claims: Record<string, unknown>): string | null {
   const secret = process.env.SUPABASE_JWT_SECRET?.trim();
-  if (!secret || !sub) return null;
+  if (!secret) return null;
 
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: "HS256", typ: "JWT" };
   const payload = {
-    sub,
-    role: "authenticated",
-    aud: "authenticated",
     iat: now,
     // Short-lived; a fresh token is minted on every server request.
     exp: now + 60 * 60,
+    ...claims,
   };
 
   const encode = (obj: unknown) =>
@@ -57,4 +55,23 @@ export function mintSupabaseToken(sub: string): string | null {
     .digest("base64url");
 
   return `${signingInput}.${signature}`;
+}
+
+export function mintSupabaseToken(sub: string): string | null {
+  if (!sub) return null;
+  return mintToken({ sub, role: "authenticated", aud: "authenticated" });
+}
+
+/**
+ * Mint a `service_role` token for the privileged admin client. Self-hosted
+ * PostgREST validates JWTs against SUPABASE_JWT_SECRET (via the oct key we
+ * added to its JWKS), but the service-role *key* is an opaque `sb_secret_...`
+ * string it can't verify — so the admin client would silently drop to the anon
+ * role and every RLS-bypassing write ("new row violates row-level security
+ * policy for table …", profile provisioning, live-stream create, webhooks)
+ * would fail. Signing a real service_role JWT restores the bypass. Returns null
+ * when SUPABASE_JWT_SECRET isn't set (Supabase Cloud path uses the raw key).
+ */
+export function mintServiceToken(): string | null {
+  return mintToken({ role: "service_role", aud: "service_role" });
 }
