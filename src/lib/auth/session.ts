@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { cookies } from "next/headers";
 
 import {
@@ -87,10 +88,57 @@ export async function readSession(): Promise<Session | null> {
   return { id: claims.sub, email: claims.email };
 }
 
+/**
+ * Per-request stash for a data token minted mid-request when the cookie could
+ * not be written (Server Components render with a read-only cookie store).
+ * cache() scopes it to the current request.
+ */
+const freshTokenStash = cache(() => ({ token: null as string | null }));
+
 /** The raw data token to hand the supabase data client as its bearer. */
 export async function getDataToken(): Promise<string | null> {
   const store = await cookies();
-  return store.get(AT_COOKIE)?.value ?? null;
+  return store.get(AT_COOKIE)?.value ?? freshTokenStash().token;
+}
+
+/**
+ * readSession plus an on-demand server-side refresh. The gw_at cookie has a
+ * 1-hour maxAge, so the browser silently drops it while the 30-day gw_rt is
+ * still perfectly valid; without this fallback every Route Handler and Server
+ * Action would answer 401 ("Not authenticated") for up to an hour of activity
+ * — e.g. End-stream on /live. When the token is missing/expired but the
+ * Cognito refresh token is present, exchange it and re-mint. The cookie write
+ * is best-effort: it works in Route Handlers and Server Actions; Server
+ * Components cannot write cookies, so there the fresh token is stashed for
+ * getDataToken() and persisted by middleware/SessionKeeper on a later request.
+ */
+export async function readOrRefreshSession(): Promise<Session | null> {
+  const existing = await readSession();
+  if (existing) return existing;
+
+  const store = await cookies();
+  const refreshToken = store.get(RT_COOKIE)?.value;
+  const cognitoUsername = store.get(CU_COOKIE)?.value;
+  if (!refreshToken || !cognitoUsername) return null;
+
+  const identity = await refreshCognitoTokens(refreshToken, cognitoUsername);
+  if (!identity) return null;
+
+  const token = await mintDataToken(identity.profileId, {
+    email: identity.email,
+  });
+  freshTokenStash().token = token;
+  try {
+    store.set(AT_COOKIE, token, {
+      ...baseOptions(),
+      httpOnly: false,
+      maxAge: DATA_TOKEN_TTL_SECONDS,
+    });
+  } catch {
+    // Read-only cookie store (Server Component render) — the stash above
+    // still lets this request's supabase queries authenticate.
+  }
+  return { id: identity.profileId, email: identity.email };
 }
 
 /**

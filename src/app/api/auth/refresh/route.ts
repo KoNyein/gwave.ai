@@ -15,9 +15,17 @@ export async function GET(request: NextRequest) {
   const requested = request.nextUrl.searchParams.get("next") ?? "/feed";
   const next =
     requested.startsWith("/") && !requested.startsWith("//") ? requested : "/feed";
+  // silent=1: called by SessionKeeper via fetch() to re-mint the gw_at cookie
+  // in place — answer with JSON instead of redirecting.
+  const silent = request.nextUrl.searchParams.get("silent") === "1";
 
   const store = await cookies();
   const session = await refreshSession(store, store);
+
+  if (silent) {
+    if (!session) return NextResponse.json({ ok: false }, { status: 401 });
+    return NextResponse.json({ ok: true });
+  }
 
   const origin = request.nextUrl.origin;
   if (!session) {

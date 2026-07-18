@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Sprout } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
+import { ShareExperience } from "@/components/knowledge/share-experience";
 import { StrainTypeBadge } from "@/components/knowledge/strain-card";
 import { strainPhoto } from "@/lib/strain-photo";
 import {
@@ -52,7 +53,7 @@ export default async function StrainDetailPage(
 ) {
   const params = await props.params;
   // Cannabis content — verified adults (18+) only.
-  await requireAdult();
+  const profile = await requireAdult();
   const t = await getTranslations("strains");
   const strain = await getStrainBySlug(params.slug);
   if (!strain) notFound();
@@ -192,6 +193,12 @@ export default async function StrainDetailPage(
           </dl>
         </CardContent>
       </Card>
+
+      <ShareExperience
+        userId={profile.id}
+        itemName={strain.name}
+        itemPath={`/strains/${strain.slug}`}
+      />
     </div>
   );
 }
