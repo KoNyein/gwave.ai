@@ -13,11 +13,12 @@ import { cn } from "@/lib/utils";
 export const metadata = { title: "Jobs" };
 export const dynamic = "force-dynamic";
 
-export default async function JobsPage({
-  searchParams,
-}: {
-  searchParams: { category?: string; q?: string };
-}) {
+export default async function JobsPage(
+  props: {
+    searchParams: Promise<{ category?: string; q?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 

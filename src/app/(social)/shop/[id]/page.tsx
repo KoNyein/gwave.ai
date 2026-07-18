@@ -19,20 +19,22 @@ import { displayName, formatPrice } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { id: string };
-}) {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const product = await getShopProduct(params.id);
   return { title: product?.title ?? "Shop" };
 }
 
-export default async function ProductPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function ProductPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 
@@ -77,17 +79,16 @@ export default async function ProductPage({
       >
         <ArrowLeft className="h-4 w-4" /> {t("backToShop")}
       </Link>
-
       <div className="grid gap-4 md:grid-cols-2">
         <div className="relative aspect-square w-full overflow-hidden rounded-xl border bg-muted">
           {product.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
+            (<img
               src={product.image_url}
               alt={product.title}
               referrerPolicy="no-referrer"
               className="h-full w-full object-cover"
-            />
+            />)
           ) : (
             <div className="flex h-full w-full items-center justify-center text-muted-foreground">
               <ImageOff className="h-10 w-10" />
@@ -133,7 +134,6 @@ export default async function ProductPage({
           ) : null}
         </div>
       </div>
-
       {product.description ? (
         <Card>
           <CardContent className="space-y-1 p-4">
@@ -144,7 +144,6 @@ export default async function ProductPage({
           </CardContent>
         </Card>
       ) : null}
-
       {product.source_url ? (
         <a
           href={product.source_url}
@@ -155,7 +154,6 @@ export default async function ProductPage({
           <ExternalLink className="h-3 w-3" /> {t("originalListing")}
         </a>
       ) : null}
-
       <ReviewSection
         subjectType="shop_product"
         subjectId={product.id}

@@ -12,10 +12,8 @@ const uuid = z.string().uuid();
  * and marks the stream ended immediately (the webhook would eventually do
  * the same, this just makes the UI instant).
  */
-export async function POST(
-  _request: Request,
-  { params }: { params: { id: string } },
-) {
+export async function POST(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   if (!uuid.safeParse(params.id).success) {
     return NextResponse.json({ error: "Invalid stream id." }, { status: 400 });
   }

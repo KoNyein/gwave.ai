@@ -11,11 +11,12 @@ export const metadata = { title: "Submit a game" };
 export const dynamic = "force-dynamic";
 
 /** Upload a self-contained HTML5 game for moderator review. */
-export default async function SubmitGamePage({
-  searchParams,
-}: {
-  searchParams: { edit?: string };
-}) {
+export default async function SubmitGamePage(
+  props: {
+    searchParams: Promise<{ edit?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   const t = await getTranslations("games");

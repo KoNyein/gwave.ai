@@ -17,11 +17,12 @@ export const metadata = { title: "Live camera" };
  * Anyone else — including an anonymous visitor with a leaked link — gets null,
  * so we show a neutral "private or unavailable" message.
  */
-export default async function WatchPage({
-  params,
-}: {
-  params: { token: string };
-}) {
+export default async function WatchPage(
+  props: {
+    params: Promise<{ token: string }>;
+  }
+) {
+  const params = await props.params;
   const t = await getTranslations("cctv");
   const camera = await getSharedCamera(params.token);
 

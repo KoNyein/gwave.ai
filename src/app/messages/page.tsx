@@ -5,11 +5,12 @@ import { getCurrentProfile } from "@/lib/auth";
 import { getFriends } from "@/lib/db/friends";
 import { getConversations } from "@/lib/db/messages";
 
-export default async function MessagesPage({
-  searchParams,
-}: {
-  searchParams: { c?: string };
-}) {
+export default async function MessagesPage(
+  props: {
+    searchParams: Promise<{ c?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   if (!profile.username) redirect("/onboarding");

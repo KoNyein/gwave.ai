@@ -10,11 +10,12 @@ import { getCircleMembers, getMyCircles } from "@/lib/db/family";
 export const metadata = { title: "Family" };
 export const dynamic = "force-dynamic";
 
-export default async function FamilyPage({
-  searchParams,
-}: {
-  searchParams: { c?: string };
-}) {
+export default async function FamilyPage(
+  props: {
+    searchParams: Promise<{ c?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   const t = await getTranslations("family");

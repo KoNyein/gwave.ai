@@ -27,11 +27,12 @@ import { s3SlipsEnabled, signedSlipUrl } from "@/lib/storage/signed-read";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
-export default async function AdminMembershipPage({
-  searchParams,
-}: {
-  searchParams: { q?: string };
-}) {
+export default async function AdminMembershipPage(
+  props: {
+    searchParams: Promise<{ q?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const t = await getTranslations("membershipAdmin");
   const [stats, revenue, queue, members] = await Promise.all([
     getMembershipStats(),

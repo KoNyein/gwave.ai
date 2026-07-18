@@ -29,11 +29,12 @@ import { displayName, initials } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function ProfilePage({
-  params,
-}: {
-  params: { username: string };
-}) {
+export default async function ProfilePage(
+  props: {
+    params: Promise<{ username: string }>;
+  }
+) {
+  const params = await props.params;
   const t = await getTranslations("profile");
   const viewer = await getCurrentProfile();
   if (!viewer) redirect("/login");

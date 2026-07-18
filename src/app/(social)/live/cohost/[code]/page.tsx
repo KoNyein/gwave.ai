@@ -14,11 +14,12 @@ import { livekitConfigured } from "@/lib/livekit";
 export const metadata = { title: "Co-host Live" };
 export const dynamic = "force-dynamic";
 
-export default async function CohostRoomPage({
-  params,
-}: {
-  params: { code: string };
-}) {
+export default async function CohostRoomPage(
+  props: {
+    params: Promise<{ code: string }>;
+  }
+) {
+  const params = await props.params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   if (!profile.username) redirect("/onboarding");
@@ -38,7 +39,6 @@ export default async function CohostRoomPage({
       >
         <ArrowLeft className="h-4 w-4" /> Co-host Live များ
       </Link>
-
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <UserAvatar profile={room.host} className="h-9 w-9" />
@@ -54,14 +54,13 @@ export default async function CohostRoomPage({
         </div>
         {isHost && !ended ? <CohostEnd code={room.code} /> : null}
       </div>
-
       {ended ? (
         <div className="rounded-xl border p-8 text-center text-sm text-muted-foreground">
           ဒီ Co-host Live ပြီးဆုံးသွားပါပြီ။
         </div>
       ) : useSfu ? (
         // LiveKit SFU: a few publishers broadcast to thousands of viewers.
-        <CohostStage
+        (<CohostStage
           code={room.code}
           currentUser={{
             id: profile.id,
@@ -69,10 +68,10 @@ export default async function CohostRoomPage({
             full_name: profile.full_name,
             avatar_url: profile.avatar_url,
           }}
-        />
+        />)
       ) : (
         // Fallback: WebRTC mesh grid (no media server; best for ~6 co-hosts).
-        <MeetRoomClient
+        (<MeetRoomClient
           roomId={`cohost-${room.code}`}
           currentUser={{
             id: profile.id,
@@ -80,7 +79,7 @@ export default async function CohostRoomPage({
             full_name: profile.full_name,
             avatar_url: profile.avatar_url,
           }}
-        />
+        />)
       )}
     </div>
   );

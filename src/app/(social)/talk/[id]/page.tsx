@@ -9,11 +9,12 @@ import { getPttChannel, getPttMessages } from "@/lib/db/ptt";
 export const metadata = { title: "Channel" };
 export const dynamic = "force-dynamic";
 
-export default async function PttChannelPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function PttChannelPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 

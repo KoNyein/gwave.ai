@@ -13,11 +13,12 @@ import type { ShopProductKind } from "@/types/database";
 export const metadata = { title: "Shop" };
 export const dynamic = "force-dynamic";
 
-export default async function ShopPage({
-  searchParams,
-}: {
-  searchParams: { kind?: string };
-}) {
+export default async function ShopPage(
+  props: {
+    searchParams: Promise<{ kind?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 

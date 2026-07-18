@@ -28,21 +28,23 @@ import { getLesson, tracksForBand } from "@/lib/learn/lessons";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { track: string; lesson: string };
-}) {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ track: string; lesson: string }>;
+  }
+) {
+  const params = await props.params;
   return {
     title: getLesson(params.track, params.lesson)?.lesson.title ?? "Lesson",
   };
 }
 
-export default async function LessonPage({
-  params,
-}: {
-  params: { track: string; lesson: string };
-}) {
+export default async function LessonPage(
+  props: {
+    params: Promise<{ track: string; lesson: string }>;
+  }
+) {
+  const params = await props.params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 

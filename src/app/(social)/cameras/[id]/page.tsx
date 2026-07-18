@@ -26,11 +26,12 @@ import { publicEnv } from "@/lib/env";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Camera" };
 
-export default async function CameraDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function CameraDetailPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 

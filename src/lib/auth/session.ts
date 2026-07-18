@@ -28,7 +28,7 @@ export const CU_COOKIE = "gw_cu";
 
 const REFRESH_MAX_AGE = 60 * 60 * 24 * 30; // 30 days — matches Cognito refresh token
 
-type CookieStore = Awaited<ReturnType<typeof cookies>>;
+type CookieStore = Awaited<Awaited<ReturnType<typeof cookies>>>;
 
 export interface Session {
   /** profiles.id */

@@ -16,11 +16,12 @@ import {
 import { getGroupPosts } from "@/lib/db/posts";
 import type { FeedPage } from "@/types/social";
 
-export default async function GroupPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
+export default async function GroupPage(
+  props: {
+    params: Promise<{ slug: string }>;
+  }
+) {
+  const params = await props.params;
   const t = await getTranslations("groups");
   const viewer = await getCurrentProfile();
   if (!viewer) redirect("/login");

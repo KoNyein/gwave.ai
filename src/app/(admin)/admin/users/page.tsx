@@ -6,11 +6,12 @@ import { Input } from "@/components/ui/input";
 import { getCurrentProfile } from "@/lib/auth";
 import { getUsers } from "@/lib/db/admin";
 
-export default async function AdminUsersPage({
-  searchParams,
-}: {
-  searchParams: { q?: string };
-}) {
+export default async function AdminUsersPage(
+  props: {
+    searchParams: Promise<{ q?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const t = await getTranslations("admin");
   const [viewer, users] = await Promise.all([
     getCurrentProfile(),

@@ -12,16 +12,18 @@ import { employmentTypeLabel, jobCategory } from "@/lib/jobs";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: { id: string } }) {
+export async function generateMetadata(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const job = await getJob(params.id);
   return { title: job?.title ?? "Job" };
 }
 
-export default async function JobDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function JobDetailPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 

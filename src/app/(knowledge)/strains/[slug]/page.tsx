@@ -45,11 +45,12 @@ function Meter({
   );
 }
 
-export default async function StrainDetailPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
+export default async function StrainDetailPage(
+  props: {
+    params: Promise<{ slug: string }>;
+  }
+) {
+  const params = await props.params;
   // Cannabis content — verified adults (18+) only.
   await requireAdult();
   const t = await getTranslations("strains");

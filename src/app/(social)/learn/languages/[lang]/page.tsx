@@ -9,16 +9,18 @@ import { getLangCourse } from "@/lib/learn/languages";
 
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params }: { params: { lang: string } }) {
+export async function generateMetadata(props: { params: Promise<{ lang: string }> }) {
+  const params = await props.params;
   const course = getLangCourse(params.lang);
   return { title: course ? course.label : "Language" };
 }
 
-export default async function LanguageCoursePage({
-  params,
-}: {
-  params: { lang: string };
-}) {
+export default async function LanguageCoursePage(
+  props: {
+    params: Promise<{ lang: string }>;
+  }
+) {
+  const params = await props.params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 

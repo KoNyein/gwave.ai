@@ -39,10 +39,8 @@ const LIFETIMES: Record<string, { sign: number; cache: number }> = {
   video: { sign: 3600, cache: 300 },
 };
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { path: string[] } },
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ path: string[] }> }) {
+  const params = await props.params;
   // The dormant S3 backend has no equivalent of this route yet. Fail loudly
   // rather than quietly handing back a public URL and undoing the whole point.
   if (process.env.NEXT_PUBLIC_S3_CDN) {

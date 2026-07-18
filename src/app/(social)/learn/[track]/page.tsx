@@ -36,19 +36,21 @@ const KIND_ICON: Record<LessonKind, typeof BookText> = {
   scratch: Blocks,
 };
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { track: string };
-}) {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ track: string }>;
+  }
+) {
+  const params = await props.params;
   return { title: getTrack(params.track)?.title ?? "Learn" };
 }
 
-export default async function TrackPage({
-  params,
-}: {
-  params: { track: string };
-}) {
+export default async function TrackPage(
+  props: {
+    params: Promise<{ track: string }>;
+  }
+) {
+  const params = await props.params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 

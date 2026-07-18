@@ -40,11 +40,12 @@ export const dynamic = "force-dynamic";
 
 const uuid = z.string().uuid();
 
-export default async function LiveStreamPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function LiveStreamPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   if (!uuid.safeParse(params.id).success) notFound();
 
   const profile = await getCurrentProfile();

@@ -25,10 +25,8 @@ function back(ok: boolean): NextResponse {
  * Verifies the CSRF state, exchanges the code, stores the connection, and runs
  * an initial 7-day sync. Always redirects back to /health.
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { provider: string } },
-) {
+export async function GET(request: Request, props: { params: Promise<{ provider: string }> }) {
+  const params = await props.params;
   const provider = getProvider(params.provider);
   if (!provider || !provider.isEnabled()) return back(false);
 

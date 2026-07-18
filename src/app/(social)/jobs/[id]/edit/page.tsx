@@ -10,11 +10,12 @@ import { getJob } from "@/lib/db/jobs";
 export const metadata = { title: "Edit job" };
 export const dynamic = "force-dynamic";
 
-export default async function EditJobPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function EditJobPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 

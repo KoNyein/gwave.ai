@@ -6,11 +6,12 @@ import { getCurrentProfile } from "@/lib/auth";
 export const metadata = { title: "Live Class Room" };
 export const dynamic = "force-dynamic";
 
-export default async function MeetRoomPage({
-  params,
-}: {
-  params: { room: string };
-}) {
+export default async function MeetRoomPage(
+  props: {
+    params: Promise<{ room: string }>;
+  }
+) {
+  const params = await props.params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   if (!profile.username) redirect("/onboarding");

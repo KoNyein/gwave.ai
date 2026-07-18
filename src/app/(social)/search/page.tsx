@@ -23,11 +23,12 @@ interface PostResult {
   author: AuthorSummary;
 }
 
-export default async function SearchPage({
-  searchParams,
-}: {
-  searchParams: { q?: string };
-}) {
+export default async function SearchPage(
+  props: {
+    searchParams: Promise<{ q?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const t = await getTranslations("search");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");

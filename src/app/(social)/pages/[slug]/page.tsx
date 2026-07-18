@@ -14,11 +14,12 @@ import { getPageBySlug, isFollowingPage } from "@/lib/db/pages";
 import { getPagePosts } from "@/lib/db/posts";
 import { getMyReview, getReviews, getReviewStats } from "@/lib/db/reviews";
 
-export default async function PageDetailPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
+export default async function PageDetailPage(
+  props: {
+    params: Promise<{ slug: string }>;
+  }
+) {
+  const params = await props.params;
   const t = await getTranslations("pages");
   const viewer = await getCurrentProfile();
   if (!viewer) redirect("/login");

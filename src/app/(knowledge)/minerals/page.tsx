@@ -64,11 +64,12 @@ function MineralCard({ mineral }: { mineral: Mineral }) {
   );
 }
 
-export default async function MineralsPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function MineralsPage(
+  props: {
+    searchParams: Promise<SearchParams>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const t = await getTranslations("minerals");
   const page = Math.max(1, Number(searchParams.page) || 1);
 

@@ -9,20 +9,22 @@ import { getEduGame } from "@/lib/games/edu-games";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string };
-}) {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ slug: string }>;
+  }
+) {
+  const params = await props.params;
   const game = getEduGame(params.slug);
   return { title: game ? "Learning game" : "Games" };
 }
 
-export default async function EduGamePage({
-  params,
-}: {
-  params: { slug: string };
-}) {
+export default async function EduGamePage(
+  props: {
+    params: Promise<{ slug: string }>;
+  }
+) {
+  const params = await props.params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 

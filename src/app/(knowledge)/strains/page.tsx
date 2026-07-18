@@ -44,11 +44,12 @@ function buildQuery(
   return encoded ? `/strains?${encoded}` : "/strains";
 }
 
-export default async function StrainsPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function StrainsPage(
+  props: {
+    searchParams: Promise<SearchParams>;
+  }
+) {
+  const searchParams = await props.searchParams;
   // Cannabis content — verified adults (18+) only.
   await requireAdult();
   const t = await getTranslations("strains");

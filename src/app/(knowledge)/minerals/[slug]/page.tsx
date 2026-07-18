@@ -20,11 +20,12 @@ import {
 import { MineralMedia } from "@/components/knowledge/mineral-media";
 import { getMineralBySlug } from "@/lib/db/knowledge";
 
-export default async function MineralDetailPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
+export default async function MineralDetailPage(
+  props: {
+    params: Promise<{ slug: string }>;
+  }
+) {
+  const params = await props.params;
   const t = await getTranslations("minerals");
   const mineral = await getMineralBySlug(params.slug);
   if (!mineral) notFound();
@@ -47,7 +48,6 @@ export default async function MineralDetailPage({
         <ArrowLeft className="h-4 w-4" />
         {t("backToMinerals")}
       </Link>
-
       {/* Header */}
       <Card>
         <CardContent className="flex flex-col gap-3 p-6">
@@ -70,7 +70,6 @@ export default async function MineralDetailPage({
           ) : null}
         </CardContent>
       </Card>
-
       {/* Media — HTML5 specimen, audio read-aloud, video */}
       <Card>
         <CardHeader className="pb-2">
@@ -88,7 +87,6 @@ export default async function MineralDetailPage({
           />
         </CardContent>
       </Card>
-
       {/* Property table */}
       <Card>
         <CardHeader className="pb-2">
@@ -131,7 +129,6 @@ export default async function MineralDetailPage({
           </table>
         </CardContent>
       </Card>
-
       {/* Uses */}
       {mineral.uses.length > 0 ? (
         <Card>
@@ -150,7 +147,6 @@ export default async function MineralDetailPage({
           </CardContent>
         </Card>
       ) : null}
-
       {/* Myanmar — deposits, extraction, transport */}
       {deposits.length > 0 || mm.extraction || mm.transport || mm.notes ? (
         <Card>
@@ -205,7 +201,6 @@ export default async function MineralDetailPage({
           </CardContent>
         </Card>
       ) : null}
-
       {/* Learn more — external links */}
       {mineral.wikipedia_url || youtubeUrl ? (
         <Card>

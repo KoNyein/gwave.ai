@@ -15,11 +15,12 @@ function defaultRange(): { from: string; to: string } {
   };
 }
 
-export default async function ReportsPage({
-  searchParams,
-}: {
-  searchParams: { from?: string; to?: string };
-}) {
+export default async function ReportsPage(
+  props: {
+    searchParams: Promise<{ from?: string; to?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const t = await getTranslations("pos");
   const user = await requireUser();
   const context = await getMyStore(user.id);

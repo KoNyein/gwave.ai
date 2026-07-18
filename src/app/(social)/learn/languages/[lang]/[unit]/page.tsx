@@ -9,20 +9,22 @@ import { getLangUi, getLangUnit } from "@/lib/learn/languages";
 
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({
-  params,
-}: {
-  params: { lang: string; unit: string };
-}) {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ lang: string; unit: string }>;
+  }
+) {
+  const params = await props.params;
   const found = getLangUnit(params.lang, params.unit);
   return { title: found ? found.unit.title : "Lesson" };
 }
 
-export default async function LanguageUnitPage({
-  params,
-}: {
-  params: { lang: string; unit: string };
-}) {
+export default async function LanguageUnitPage(
+  props: {
+    params: Promise<{ lang: string; unit: string }>;
+  }
+) {
+  const params = await props.params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 

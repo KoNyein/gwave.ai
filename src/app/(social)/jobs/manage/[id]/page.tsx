@@ -10,11 +10,12 @@ import { jobCategory } from "@/lib/jobs";
 export const metadata = { title: "Applicants" };
 export const dynamic = "force-dynamic";
 
-export default async function JobApplicantsPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function JobApplicantsPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 

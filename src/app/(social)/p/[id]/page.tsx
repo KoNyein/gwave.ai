@@ -4,11 +4,12 @@ import { SinglePost } from "@/components/social/single-post";
 import { getCurrentProfile } from "@/lib/auth";
 import { getPost } from "@/lib/db/posts";
 
-export default async function PostPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function PostPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   if (!profile.username) redirect("/onboarding");

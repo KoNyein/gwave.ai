@@ -16,11 +16,12 @@ import { getThbRate } from "@/lib/actions/membership";
 import { getCurrentProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function PromptPayPage({
-  params,
-}: {
-  params: { plan: string };
-}) {
+export default async function PromptPayPage(
+  props: {
+    params: Promise<{ plan: string }>;
+  }
+) {
+  const params = await props.params;
   const t = await getTranslations("membership");
   const profile = await getCurrentProfile();
   if (!profile) redirect(`/login?redirectTo=/membership/promptpay/${params.plan}`);

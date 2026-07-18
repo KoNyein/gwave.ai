@@ -16,11 +16,12 @@ export const dynamic = "force-dynamic";
  * Play a community game. RLS scopes visibility: approved games for everyone,
  * pending/rejected only for their author and moderators.
  */
-export default async function PlayGamePage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function PlayGamePage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 

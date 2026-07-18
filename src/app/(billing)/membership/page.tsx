@@ -19,11 +19,12 @@ const PLAN_FEATURES: Record<string, string[]> = {
   business: ["everythingPro", "teamReady", "prioritySupport"],
 };
 
-export default async function MembershipPage({
-  searchParams,
-}: {
-  searchParams: { checkout?: string };
-}) {
+export default async function MembershipPage(
+  props: {
+    searchParams: Promise<{ checkout?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const t = await getTranslations("membership");
   const [profile, plans] = await Promise.all([
     getCurrentProfile(),

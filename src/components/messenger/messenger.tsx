@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   ArrowLeft,
@@ -1158,9 +1159,9 @@ export function Messenger({
                     className="rounded-full"
                     aria-label={t("goLive")}
                   >
-                    <a href="/live/new">
+                    <Link href="/live/new">
                       <Radio className="h-5 w-5 text-destructive" />
-                    </a>
+                    </Link>
                   </Button>
                 </>
               ) : null}
