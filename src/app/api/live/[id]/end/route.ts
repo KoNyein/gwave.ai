@@ -4,6 +4,7 @@ import { z } from "zod";
 import { agoraRecordingConfigured, stopAgoraRecording } from "@/lib/agora";
 import { getCurrentProfile } from "@/lib/auth";
 import { stopIvsStream } from "@/lib/ivs";
+import { stopIvsComposition } from "@/lib/ivs-realtime";
 import { egressConfigured, stopRoomRecording } from "@/lib/livekit";
 import { getMux } from "@/lib/mux";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -49,11 +50,22 @@ export async function POST(_request: Request, props: { params: Promise<{ id: str
   if (process.env.NEXT_PUBLIC_LIVE_PROVIDER === "ivs") {
     const { data: rec } = await admin
       .from("live_streams")
-      .select("ivs_channel_arn")
+      .select("ivs_channel_arn, ivs_composition_arn")
       .eq("id", stream.id)
       .maybeSingle();
     if (rec?.ivs_channel_arn) {
       await stopIvsStream(rec.ivs_channel_arn);
+    }
+    // Stage stream with a composite recording running: stop it and store the
+    // finished HLS master path as the replay.
+    if (rec?.ivs_composition_arn) {
+      const { recordingPath } = await stopIvsComposition(rec.ivs_composition_arn);
+      if (recordingPath) {
+        await admin
+          .from("live_streams")
+          .update({ recording_path: recordingPath })
+          .eq("id", stream.id);
+      }
     }
   }
 

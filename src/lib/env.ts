@@ -33,6 +33,10 @@ const publicSchema = z.object({
     .enum(["livekit", "agora", "ivs"])
     .default("livekit"),
   NEXT_PUBLIC_AGORA_RECORDING_BASE: z.string().url().optional(),
+  /** Public base URL IVS Real-Time composite recordings play back from. */
+  NEXT_PUBLIC_IVS_RECORDING_BASE: z.string().url().optional(),
+  /** Messenger call media transport: legacy WebRTC mesh, or Amazon Chime. */
+  NEXT_PUBLIC_CALL_PROVIDER: z.enum(["mesh", "chime"]).default("mesh"),
 });
 
 /**
@@ -50,6 +54,8 @@ export const publicEnv = publicSchema.parse({
   NEXT_PUBLIC_AGORA_APP_ID: process.env.NEXT_PUBLIC_AGORA_APP_ID,
   NEXT_PUBLIC_LIVE_PROVIDER: process.env.NEXT_PUBLIC_LIVE_PROVIDER,
   NEXT_PUBLIC_AGORA_RECORDING_BASE: process.env.NEXT_PUBLIC_AGORA_RECORDING_BASE,
+  NEXT_PUBLIC_IVS_RECORDING_BASE: process.env.NEXT_PUBLIC_IVS_RECORDING_BASE,
+  NEXT_PUBLIC_CALL_PROVIDER: process.env.NEXT_PUBLIC_CALL_PROVIDER,
 });
 
 function required(name: string): string {

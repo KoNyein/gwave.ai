@@ -120,6 +120,13 @@ export interface LiveStream {
   ivs_channel_arn: string | null;
   ivs_ingest_url: string | null;
   ivs_playback_url: string | null;
+  /**
+   * Amazon IVS Real-Time (phone-browser Live). Set on stage streams;
+   * ivs_composition_arn tracks the in-flight composite recording, whose HLS
+   * master path lands in recording_path on end.
+   */
+  ivs_stage_arn: string | null;
+  ivs_composition_arn: string | null;
   viewer_count: number;
   kind: "stream" | "class";
   track_slug: string | null;

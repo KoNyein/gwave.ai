@@ -19,6 +19,9 @@ export function GoLiveForm({
   const router = useRouter();
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
+  const [mode, setMode] = React.useState<"camera" | "rtmp">(
+    browserBroadcast ? "camera" : "rtmp",
+  );
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -34,6 +37,7 @@ export function GoLiveForm({
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim() || undefined,
+          mode,
         }),
       });
       const body = (await response.json().catch(() => null)) as {
@@ -66,6 +70,39 @@ export function GoLiveForm({
               maxLength={120}
               required
             />
+          </div>
+          <div className="space-y-2">
+            <Label>ဘယ်လို လွှင့်မလဲ</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setMode("camera")}
+                className={`rounded-lg border p-3 text-left text-sm transition-colors ${
+                  mode === "camera"
+                    ? "border-primary bg-primary/10"
+                    : "hover:bg-muted/50"
+                }`}
+              >
+                <span className="font-medium">📱 ဖုန်းကင်မရာ</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  ဒီစက်ရဲ့ ကင်မရာ/မိုက်နဲ့ တိုက်ရိုက်လွှင့်
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("rtmp")}
+                className={`rounded-lg border p-3 text-left text-sm transition-colors ${
+                  mode === "rtmp"
+                    ? "border-primary bg-primary/10"
+                    : "hover:bg-muted/50"
+                }`}
+              >
+                <span className="font-medium">🎮 OBS / Game</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  RTMP URL + stream key နဲ့ OBS ကနေလွှင့်
+                </span>
+              </button>
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="live-description">Description (optional)</Label>
