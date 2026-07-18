@@ -6,7 +6,7 @@ import { UserAvatar } from "@/components/social/user-avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
 import { listStreams } from "@/lib/db/live";
-import { displayName, timeAgo } from "@/lib/format";
+import { displayName, liveStreamTitle, timeAgo } from "@/lib/format";
 
 export const metadata = { title: "Live" };
 export const dynamic = "force-dynamic";
@@ -85,7 +85,9 @@ export default async function LivePage() {
                 <CardContent className="flex items-center gap-3 p-4">
                   <UserAvatar profile={stream.host} linked={false} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">{stream.title}</p>
+                    <p className="truncate font-semibold">
+                      {liveStreamTitle(stream.title, stream.host)}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {displayName(stream.host)}
                       {stream.started_at
@@ -120,13 +122,19 @@ export default async function LivePage() {
                 <CardContent className="flex items-center gap-3 p-4">
                   <UserAvatar profile={stream.host} linked={false} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{stream.title}</p>
+                    <p className="truncate font-medium">
+                      {liveStreamTitle(stream.title, stream.host)}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {displayName(stream.host)} · {timeAgo(stream.created_at)}
                     </p>
                   </div>
                   <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
-                    {stream.status === "ended" ? "Ended" : "Waiting"}
+                    {stream.status === "ended"
+                      ? stream.recording_path
+                        ? "Replay"
+                        : "Ended"
+                      : "Waiting"}
                   </span>
                 </CardContent>
               </Card>

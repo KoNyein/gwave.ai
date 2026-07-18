@@ -41,6 +41,21 @@ export function displayName(
   return profile?.full_name || profile?.username || "Unknown user";
 }
 
+/**
+ * A Live broadcast's display title. Streams created without a title (or with a
+ * whitespace-only one) rendered as a blank line or a stray combining glyph in
+ * the Recent broadcasts list, so every such row read as "nothing" — fall back
+ * to the host's name so the row is always legible.
+ */
+export function liveStreamTitle(
+  title: string | null | undefined,
+  host: { full_name: string | null; username: string | null } | null | undefined,
+): string {
+  const trimmed = title?.trim();
+  if (trimmed) return trimmed;
+  return `${displayName(host)} · Live`;
+}
+
 export function initials(
   profile: {
     full_name: string | null;

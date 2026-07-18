@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Radio } from "lucide-react";
 import { z } from "zod";
 
 import { DoubleTapHeart } from "@/components/live/double-tap-heart";
@@ -34,7 +34,7 @@ import {
   getMySellableProducts,
 } from "@/lib/db/live-products";
 import { createClient } from "@/lib/supabase/server";
-import { displayName, timeAgo } from "@/lib/format";
+import { displayName, liveStreamTitle, timeAgo } from "@/lib/format";
 import { recordingPlaybackUrl } from "@/lib/livekit";
 import { MUX_RTMP_URL } from "@/lib/mux";
 
@@ -152,6 +152,20 @@ export default async function LiveStreamPage(
                 src={replayUrl}
                 className="mx-auto max-h-[80vh] w-full rounded-xl border bg-black"
               />
+            ) : isLivekit && stream.status === "ended" ? (
+              // Ended browser broadcast with no saved replay: say so plainly
+              // instead of a bare "ended" placeholder that reads as a blank
+              // screen. A replay appears here automatically once recording is
+              // enabled and the file finishes processing.
+              <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-xl border bg-muted px-6 text-center text-muted-foreground">
+                <Radio className="h-8 w-8" />
+                <p className="text-sm font-medium">
+                  ဒီ Live ပြီးဆုံးသွားပါပြီ။
+                </p>
+                <p className="text-xs">
+                  Replay မရနိုင်သေးပါ — recording ဖွင့်ထားမှ ပြန်ကြည့်လို့ရပါမည်။
+                </p>
+              </div>
             ) : isLivekit ? (
               <LiveStage
                 streamId={stream.id}
@@ -190,7 +204,7 @@ export default async function LiveStreamPage(
                   <UserAvatar profile={stream.host} />
                   <div className="min-w-0">
                     <h1 className="truncate text-lg font-bold">
-                      {stream.title}
+                      {liveStreamTitle(stream.title, stream.host)}
                     </h1>
                     <p className="text-xs text-muted-foreground">
                       {displayName(stream.host)} · {timeAgo(stream.created_at)}
