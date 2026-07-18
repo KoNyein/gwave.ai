@@ -9,6 +9,7 @@ import { LiveChat, type ChatEntry } from "@/components/live/live-chat";
 import { LiveOverlay } from "@/components/live/live-overlay";
 import { LiveGifts } from "@/components/live/live-gifts";
 import { LivePlayer } from "@/components/live/live-player";
+import { AgoraStage } from "@/components/live/agora-stage";
 import { LiveStage } from "@/components/live/live-stage";
 import { LiveSaleManager } from "@/components/live/live-sale-manager";
 import { LiveSalePanel } from "@/components/live/live-sale-panel";
@@ -35,7 +36,9 @@ import {
 } from "@/lib/db/live-products";
 import { createClient } from "@/lib/supabase/server";
 import { displayName, liveStreamTitle, timeAgo } from "@/lib/format";
+import { agoraRecordingUrl } from "@/lib/agora";
 import { recordingPlaybackUrl } from "@/lib/livekit";
+import { mediaUrl } from "@/lib/media-url";
 import { MUX_RTMP_URL } from "@/lib/mux";
 
 export const dynamic = "force-dynamic";
@@ -57,17 +60,24 @@ export default async function LiveStreamPage(
   if (!stream) notFound();
 
   const isHost = stream.host_id === profile.id;
-  // LiveKit streams broadcast from the browser (no RTMP key); Mux streams
-  // ingest from OBS via a key.
+  // Provider per stream: Agora (managed WebRTC) or LiveKit broadcast from the
+  // browser (no RTMP key); Mux ingests from OBS via a key.
+  const isAgora = Boolean(stream.agora_channel);
   const isLivekit = Boolean(stream.livekit_room);
-  // Auto-saved replay: an ended LiveKit broadcast plays back its recording (if
-  // egress saved one) instead of the "broadcast ended" placeholder.
+  const isBrowserLive = isAgora || isLivekit;
+  // Auto-saved replay: an ended browser broadcast plays back its recording
+  // instead of the "broadcast ended" placeholder. Egress recordings resolve via
+  // their own base, Agora recordings via the Agora base, and both fall back to
+  // the media CDN when a dedicated base isn't configured.
   const replayUrl =
-    isLivekit && stream.status === "ended"
-      ? recordingPlaybackUrl(stream.recording_path ?? null)
+    isBrowserLive && stream.status === "ended" && stream.recording_path
+      ? recordingPlaybackUrl(stream.recording_path) ??
+        agoraRecordingUrl(stream.recording_path) ??
+        mediaUrl(stream.recording_path)
       : null;
-  // RLS returns the key only to the host; null for everyone else.
-  const streamKey = isHost && !isLivekit ? await getStreamKey(stream.id) : null;
+  // RLS returns the key only to the host; null for everyone else. Only Mux
+  // (RTMP) streams have a stream key.
+  const streamKey = isHost && !isBrowserLive ? await getStreamKey(stream.id) : null;
   const chat = (await getRecentChat(stream.id)) as ChatEntry[];
 
   // Live Sale — products pinned to this stream, and (for buyers) their G-Pay
@@ -152,7 +162,7 @@ export default async function LiveStreamPage(
                 src={replayUrl}
                 className="mx-auto max-h-[80vh] w-full rounded-xl border bg-black"
               />
-            ) : isLivekit && stream.status === "ended" ? (
+            ) : isBrowserLive && stream.status === "ended" ? (
               // Ended browser broadcast with no saved replay: say so plainly
               // instead of a bare "ended" placeholder that reads as a blank
               // screen. A replay appears here automatically once recording is
@@ -166,6 +176,12 @@ export default async function LiveStreamPage(
                   Replay မရနိုင်သေးပါ — recording ဖွင့်ထားမှ ပြန်ကြည့်လို့ရပါမည်။
                 </p>
               </div>
+            ) : isAgora ? (
+              <AgoraStage
+                streamId={stream.id}
+                isHost={isHost}
+                status={stream.status}
+              />
             ) : isLivekit ? (
               <LiveStage
                 streamId={stream.id}

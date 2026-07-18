@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { agoraRecordingConfigured, stopAgoraRecording } from "@/lib/agora";
 import { getCurrentProfile } from "@/lib/auth";
 import { egressConfigured, stopRoomRecording } from "@/lib/livekit";
 import { getMux } from "@/lib/mux";
@@ -40,10 +41,9 @@ export async function POST(_request: Request, props: { params: Promise<{ id: str
     return NextResponse.json({ ok: true });
   }
 
-  // Stop the auto-save recording, if one is running. The egress worker then
-  // finalises and uploads the MP4; the egress_ended webhook stores its path.
-  // Only touched when egress is configured, so a deploy that predates the
-  // recording migration never reads the new column.
+  // Stop the auto-save recording, if one is running. Per provider, and only
+  // when that provider's recording is configured, so a deploy that predates a
+  // recording migration never reads the new columns.
   if (egressConfigured()) {
     const { data: rec } = await admin
       .from("live_streams")
@@ -51,7 +51,29 @@ export async function POST(_request: Request, props: { params: Promise<{ id: str
       .eq("id", stream.id)
       .maybeSingle();
     if (rec?.recording_egress_id) {
+      // LiveKit egress: the egress_ended webhook stores the finished MP4 path.
       await stopRoomRecording(rec.recording_egress_id);
+    }
+  } else if (agoraRecordingConfigured()) {
+    const { data: rec } = await admin
+      .from("live_streams")
+      .select("agora_channel, agora_resource_id, agora_recording_sid")
+      .eq("id", stream.id)
+      .maybeSingle();
+    if (rec?.agora_channel && rec.agora_resource_id && rec.agora_recording_sid) {
+      const result = await stopAgoraRecording(
+        rec.agora_channel,
+        rec.agora_resource_id,
+        rec.agora_recording_sid,
+      );
+      // Agora returns the uploaded MP4's key synchronously on stop — store it as
+      // the replay right away.
+      if (result?.mp4Path) {
+        await admin
+          .from("live_streams")
+          .update({ recording_path: result.mp4Path })
+          .eq("id", stream.id);
+      }
     }
   }
 

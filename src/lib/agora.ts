@@ -36,6 +36,14 @@ export function agoraAppId(): string | null {
   return process.env.NEXT_PUBLIC_AGORA_APP_ID ?? null;
 }
 
+/** Public URL a saved Agora recording is played back from, or null when its
+ * base isn't configured (the caller can then fall back to the media CDN). */
+export function agoraRecordingUrl(path: string | null): string | null {
+  const base = process.env.NEXT_PUBLIC_AGORA_RECORDING_BASE;
+  if (!path || !base) return null;
+  return `${base.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
+}
+
 const TOKEN_TTL_SECONDS = 60 * 60 * 2; // 2 hours, like the LiveKit tokens
 
 /**

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { agoraIsDefaultProvider } from "@/lib/agora";
 import { getCurrentProfile } from "@/lib/auth";
 import { livekitConfigured } from "@/lib/livekit";
 import { getMux } from "@/lib/mux";
@@ -8,6 +9,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 /** Short, unguessable-enough LiveKit room name. */
 function newLivekitRoom(): string {
+  return `live-${crypto.randomUUID().slice(0, 12)}`;
+}
+
+/** Short, unguessable-enough Agora channel name (<=64 chars, ascii). */
+function newAgoraChannel(): string {
   return `live-${crypto.randomUUID().slice(0, 12)}`;
 }
 
@@ -55,6 +61,38 @@ export async function POST(request: Request) {
         { status: 403 },
       );
     }
+  }
+
+  // Best path (flagged): Agora managed WebRTC. A row with agora_channel set is
+  // an Agora stream; the host publishes from the browser and Cloud Recording
+  // auto-saves to S3. Gated by NEXT_PUBLIC_LIVE_PROVIDER=agora so LiveKit stays
+  // the default until cutover.
+  if (agoraIsDefaultProvider()) {
+    const admin = createAdminClient();
+    const { data: row, error } = await admin
+      .from("live_streams")
+      .insert({
+        host_id: profile.id,
+        title: parsed.data.title.trim(),
+        description: parsed.data.description?.trim() || null,
+        agora_channel: newAgoraChannel(),
+        kind: parsed.data.kind,
+        track_slug:
+          parsed.data.kind === "class" ? parsed.data.trackSlug || null : null,
+        scheduled_at:
+          parsed.data.kind === "class"
+            ? parsed.data.scheduledAt || null
+            : null,
+      })
+      .select("id")
+      .single();
+    if (error || !row) {
+      return NextResponse.json(
+        { error: error?.message ?? "Failed to save the stream." },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json({ id: row.id }, { status: 201 });
   }
 
   // Preferred path: LiveKit SFU. The host broadcasts from the browser
