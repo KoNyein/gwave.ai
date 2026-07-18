@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Check, FileArchive, Loader2, Upload } from "lucide-react";
 import { useLocale } from "next-intl";
 
-import { createPost } from "@/lib/actions/posts";
+import { createPost, importPost } from "@/lib/actions/posts";
+import { readExifDate } from "@/lib/exif-date";
 import { uploadMedia, type UploadedMedia } from "@/lib/media";
 import { prefersMyanmarScript } from "@/i18n/config";
 
@@ -203,23 +204,46 @@ export function FacebookImport({ userId }: { userId: string }) {
               !/(icon|sticker|emoji|thumbnail|profile_picture|avatar)/i.test(n),
           )
           .sort();
-        // Group by album folder, then split each album into posts of at most
-        // MAX_PHOTOS_PER_POST so EVERY photo is imported, not just the first
-        // ten of a big album.
-        const byFolder = new Map<string, string[]>();
-        for (const path of imgFiles) {
-          const folder = path.split("/").slice(0, -1).join("/");
-          const list = byFolder.get(folder) ?? [];
-          list.push(path);
-          byFolder.set(folder, list);
+        // Recover each photo's original capture time from its EXIF so the
+        // restored posts keep their real dates and correct order — the ZIP
+        // has no post JSON to read timestamps from.
+        const takenAt = new Map<string, number>();
+        for (const path of imgFiles.slice(0, 800)) {
+          if (!/\.jpe?g$/i.test(path)) continue;
+          try {
+            const bytes = await archive.files[path]!.async("arraybuffer");
+            const ms = readExifDate(bytes);
+            if (ms) takenAt.set(path, ms);
+          } catch {
+            // Unreadable EXIF — leaves this photo undated.
+          }
         }
-        for (const paths of byFolder.values()) {
-          for (let i = 0; i < paths.length; i += MAX_PHOTOS_PER_POST) {
+        // Group photos taken on the same day into one post (Facebook-album
+        // style), newest first, then split any day into 10-photo posts.
+        const dayKey = (path: string) => {
+          const ms = takenAt.get(path);
+          return ms ? new Date(ms).toISOString().slice(0, 10) : "undated";
+        };
+        const byDay = new Map<string, string[]>();
+        for (const path of imgFiles) {
+          const key = dayKey(path);
+          const list = byDay.get(key) ?? [];
+          list.push(path);
+          byDay.set(key, list);
+        }
+        for (const [key, dayPaths] of byDay) {
+          // Order photos within the day by capture time.
+          dayPaths.sort(
+            (a, b) => (takenAt.get(a) ?? 0) - (takenAt.get(b) ?? 0),
+          );
+          const ts =
+            key === "undated" ? 0 : (takenAt.get(dayPaths[0]!) ?? 0);
+          for (let i = 0; i < dayPaths.length; i += MAX_PHOTOS_PER_POST) {
             parsed.push({
               text: "",
-              timestamp: 0,
-              date: "",
-              mediaPaths: paths.slice(i, i + MAX_PHOTOS_PER_POST),
+              timestamp: ts,
+              date: key === "undated" ? "" : key,
+              mediaPaths: dayPaths.slice(i, i + MAX_PHOTOS_PER_POST),
               selected: true,
             });
           }
@@ -309,7 +333,16 @@ export function FacebookImport({ userId }: { userId: string }) {
         ]
           .filter(Boolean)
           .join("\n\n");
-        const result = await createPost({ content, visibility, media });
+        // Backdate to the original time when we have one so the feed shows the
+        // real date and correct order; otherwise post as now.
+        const result = post.timestamp
+          ? await importPost({
+              content,
+              visibility,
+              media,
+              createdAt: new Date(post.timestamp).toISOString(),
+            })
+          : await createPost({ content, visibility, media });
         if (result.ok) imported += 1;
       } catch {
         // One bad post shouldn't sink the batch — carry on.
