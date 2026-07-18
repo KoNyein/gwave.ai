@@ -1,0 +1,16 @@
+# LiveKit Egress worker config — records room composites for gwave.ai Live
+# auto-save. Runs alongside the LiveKit server (see deploy/livekit-egress-setup.sh).
+#
+# The app passes the S3 destination (bucket + IAM creds) inside each egress
+# request (see startRoomRecording in src/lib/livekit.ts), so there is no storage
+# block here — the worker only needs to reach the LiveKit server (over Redis) and,
+# at upload time, S3. Egress and the server must share the SAME Redis and the
+# SAME api_key/api_secret.
+#
+# api_secret is rendered in by the setup script from the value you pass it.
+redis:
+  address: 127.0.0.1:6379
+api_key: APIgwave
+api_secret: REPLACE_WITH_LIVEKIT_API_SECRET
+ws_url: ws://127.0.0.1:7880
+log_level: info
