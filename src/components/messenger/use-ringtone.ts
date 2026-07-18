@@ -39,7 +39,9 @@ export function useRingtone(
       gain.connect(ctx.destination);
       const freqs = ringing ? [440, 480] : [420];
       const dur = ringing ? 1.2 : 1.0;
-      const vol = ringing ? 0.16 : 0.06;
+      // The incoming ring must be unmissable — phone speakers eat quiet sine
+      // tones, so the callee side is driven hard while ringback stays soft.
+      const vol = ringing ? 0.45 : 0.06;
       const oscillators = freqs.map((f) => {
         const osc = ctx.createOscillator();
         osc.type = "sine";

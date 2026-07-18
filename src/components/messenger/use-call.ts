@@ -4,6 +4,7 @@ import * as React from "react";
 
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
+import { notifyIncomingCall } from "@/lib/actions/calls";
 import { sendMessage } from "@/lib/actions/messages";
 import { createClient } from "@/lib/supabase/client";
 import type { AuthorSummary } from "@/types/social";
@@ -583,6 +584,11 @@ export function useCall(
           }
         });
       });
+
+      // Reach the callee even when they have no Gwave tab open: web push to
+      // their subscribed devices. Best-effort — the realtime ring above is
+      // the primary channel.
+      void notifyIncomingCall(conversationId, video).catch(() => {});
 
       s.ringTimer = setTimeout(() => {
         if (session.current === s && !s.connectedAt) {
