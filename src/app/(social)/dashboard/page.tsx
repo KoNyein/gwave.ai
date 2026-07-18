@@ -12,12 +12,15 @@ import {
   Wallet,
 } from "lucide-react";
 
+import { FarmHomeMonitor } from "@/components/dashboard/farm-home-monitor";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { MemberBadge } from "@/components/social/member-badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
 import { getCertificatesForUser } from "@/lib/db/certificates";
+import { getMyCameras, getMyRecentClips } from "@/lib/db/cctv";
 import { getMyGpayAccount } from "@/lib/db/gpay";
+import { getDevices, getLatestReadings } from "@/lib/db/iot";
 import { getLearningPoints } from "@/lib/db/learn";
 import { createClient } from "@/lib/supabase/server";
 import { displayName } from "@/lib/format";
@@ -75,6 +78,18 @@ export default async function UserDashboardPage() {
     getLearningPoints(profile.id),
     getMyGpayAccount(),
   ]);
+
+  // Farm / smart-home / CCTV live monitor. Readings only matter when the user
+  // actually has devices, and the RPC throws pre-migration — never sink the
+  // whole dashboard for it.
+  const [devices, cameras, recentClips] = await Promise.all([
+    getDevices(profile.id).catch(() => []),
+    getMyCameras(profile.id).catch(() => []),
+    getMyRecentClips(profile.id).catch(() => []),
+  ]);
+  const readings =
+    devices.length > 0 ? await getLatestReadings().catch(() => []) : [];
+  const cameraNames = Object.fromEntries(cameras.map((c) => [c.id, c.title]));
 
   const listings = listingsRes.count ?? 0;
 
@@ -194,6 +209,16 @@ export default async function UserDashboardPage() {
           );
         })}
       </div>
+
+      {/* Farm / smart-home / CCTV live monitor (renders only when the user
+          has devices or recordings) */}
+      <FarmHomeMonitor
+        userId={profile.id}
+        devices={devices}
+        readings={readings}
+        clips={recentClips}
+        cameraNames={cameraNames}
+      />
 
       {/* Certificates strip */}
       {certificates.length > 0 ? (
