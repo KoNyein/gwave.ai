@@ -6,6 +6,30 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { SubscriptionStatus } from "@/types/database";
 
 /**
+ * Await a Supabase query and throw on its error instead of dropping it.
+ *
+ * This handler runs against a self-hosted PostgREST, where an error is a returned
+ * value, not an exception. Every write below used to be `await admin.from(...)`
+ * with the error discarded, so a failed write (the wallet credit, the payment
+ * row, the subscription activation) still fell through to `{ received: true }` /
+ * HTTP 200 — telling Stripe the event was handled so it never retried. A card
+ * could be charged with the wallet never credited, and the money event was gone.
+ *
+ * Throwing routes the failure to the outer try/catch, which returns 500, so
+ * Stripe retries with backoff. Every write here is idempotent on a Stripe id
+ * (session/subscription/invoice) or an on-conflict-safe RPC, so a retry re-runs
+ * cleanly rather than double-crediting.
+ */
+async function orThrow<T>(
+  query: PromiseLike<{ data: T; error: { message: string } | null }>,
+  what: string,
+): Promise<T> {
+  const { data, error } = await query;
+  if (error) throw new Error(`stripe webhook: ${what}: ${error.message}`);
+  return data;
+}
+
+/**
  * Stripe webhook (signature verified). Uses the service role client because
  * webhook calls carry no user session. Handled events:
  *  - checkout.session.completed → create/activate the subscription + payment
@@ -51,11 +75,14 @@ export async function POST(request: NextRequest) {
             session.payment_status === "paid"
           ) {
             // Idempotent on the Stripe session id (stored as the txn reference).
-            await admin.rpc("gpay_stripe_topup", {
-              p_user: topupUser,
-              p_amount: amountMmk,
-              p_ref: session.id,
-            });
+            await orThrow(
+              admin.rpc("gpay_stripe_topup", {
+                p_user: topupUser,
+                p_amount: amountMmk,
+                p_ref: session.id,
+              }),
+              "gpay top-up",
+            );
           }
           break;
         }
@@ -73,56 +100,71 @@ export async function POST(request: NextRequest) {
         periodEnd.setMonth(periodEnd.getMonth() + 1);
 
         // Replace any live subscription (e.g. an abandoned PromptPay pending).
-        await admin
-          .from("subscriptions")
-          .update({ status: "canceled" })
-          .eq("user_id", userId)
-          .in("status", ["pending", "active", "past_due"])
-          .is("stripe_subscription_id", null);
+        await orThrow(
+          admin
+            .from("subscriptions")
+            .update({ status: "canceled" })
+            .eq("user_id", userId)
+            .in("status", ["pending", "active", "past_due"])
+            .is("stripe_subscription_id", null),
+          "cancel prior subscriptions",
+        );
 
-        const { data: existing } = await admin
-          .from("subscriptions")
-          .select("id")
-          .eq("stripe_subscription_id", stripeSubscriptionId)
-          .maybeSingle();
+        const existing = await orThrow(
+          admin
+            .from("subscriptions")
+            .select("id")
+            .eq("stripe_subscription_id", stripeSubscriptionId)
+            .maybeSingle(),
+          "look up existing subscription",
+        );
 
         let subscriptionId = existing?.id ?? null;
         if (subscriptionId) {
-          await admin
-            .from("subscriptions")
-            .update({
-              status: "active",
-              plan_id: planId,
-              current_period_start: new Date().toISOString(),
-              current_period_end: periodEnd.toISOString(),
-            })
-            .eq("id", subscriptionId);
+          await orThrow(
+            admin
+              .from("subscriptions")
+              .update({
+                status: "active",
+                plan_id: planId,
+                current_period_start: new Date().toISOString(),
+                current_period_end: periodEnd.toISOString(),
+              })
+              .eq("id", subscriptionId),
+            "activate existing subscription",
+          );
         } else {
-          const { data: created } = await admin
-            .from("subscriptions")
-            .insert({
-              user_id: userId,
-              plan_id: planId,
-              provider: "stripe",
-              status: "active",
-              stripe_subscription_id: stripeSubscriptionId,
-              current_period_end: periodEnd.toISOString(),
-            })
-            .select("id")
-            .single();
+          const created = await orThrow(
+            admin
+              .from("subscriptions")
+              .insert({
+                user_id: userId,
+                plan_id: planId,
+                provider: "stripe",
+                status: "active",
+                stripe_subscription_id: stripeSubscriptionId,
+                current_period_end: periodEnd.toISOString(),
+              })
+              .select("id")
+              .single(),
+            "create subscription",
+          );
           subscriptionId = created?.id ?? null;
         }
 
         if ((session.amount_total ?? 0) > 0) {
-          await admin.from("payments").insert({
-            user_id: userId,
-            subscription_id: subscriptionId,
-            provider: "stripe",
-            status: "succeeded",
-            amount: (session.amount_total ?? 0) / 100,
-            currency: (session.currency ?? "usd").toUpperCase(),
-            stripe_payment_id: session.id,
-          });
+          await orThrow(
+            admin.from("payments").insert({
+              user_id: userId,
+              subscription_id: subscriptionId,
+              provider: "stripe",
+              status: "succeeded",
+              amount: (session.amount_total ?? 0) / 100,
+              currency: (session.currency ?? "usd").toUpperCase(),
+              stripe_payment_id: session.id,
+            }),
+            "record checkout payment",
+          );
         }
         break;
       }
@@ -136,40 +178,52 @@ export async function POST(request: NextRequest) {
             : null;
         if (!stripeSubscriptionId) break;
 
-        const { data: subscription } = await admin
-          .from("subscriptions")
-          .select("id, user_id")
-          .eq("stripe_subscription_id", stripeSubscriptionId)
-          .maybeSingle();
+        const subscription = await orThrow(
+          admin
+            .from("subscriptions")
+            .select("id, user_id")
+            .eq("stripe_subscription_id", stripeSubscriptionId)
+            .maybeSingle(),
+          "look up subscription for invoice",
+        );
         if (!subscription) break;
 
         const periodEnd = invoice.lines.data[0]?.period?.end;
-        await admin
-          .from("subscriptions")
-          .update({
-            status: "active",
-            current_period_end: periodEnd
-              ? new Date(periodEnd * 1000).toISOString()
-              : null,
-          })
-          .eq("id", subscription.id);
+        await orThrow(
+          admin
+            .from("subscriptions")
+            .update({
+              status: "active",
+              current_period_end: periodEnd
+                ? new Date(periodEnd * 1000).toISOString()
+                : null,
+            })
+            .eq("id", subscription.id),
+          "extend subscription period",
+        );
 
         // Skip the invoice that Checkout already recorded.
-        const { data: existingPayment } = await admin
-          .from("payments")
-          .select("id")
-          .eq("stripe_payment_id", invoice.id ?? "")
-          .maybeSingle();
+        const existingPayment = await orThrow(
+          admin
+            .from("payments")
+            .select("id")
+            .eq("stripe_payment_id", invoice.id ?? "")
+            .maybeSingle(),
+          "check for existing invoice payment",
+        );
         if (!existingPayment && invoice.amount_paid > 0) {
-          await admin.from("payments").insert({
-            user_id: subscription.user_id,
-            subscription_id: subscription.id,
-            provider: "stripe",
-            status: "succeeded",
-            amount: invoice.amount_paid / 100,
-            currency: invoice.currency.toUpperCase(),
-            stripe_payment_id: invoice.id,
-          });
+          await orThrow(
+            admin.from("payments").insert({
+              user_id: subscription.user_id,
+              subscription_id: subscription.id,
+              provider: "stripe",
+              status: "succeeded",
+              amount: invoice.amount_paid / 100,
+              currency: invoice.currency.toUpperCase(),
+              stripe_payment_id: invoice.id,
+            }),
+            "record invoice payment",
+          );
         }
         break;
       }
@@ -192,13 +246,16 @@ export async function POST(request: NextRequest) {
             ? "canceled"
             : (statusMap[stripeSubscription.status] ?? "canceled");
 
-        await admin
-          .from("subscriptions")
-          .update({
-            status,
-            cancel_at_period_end: stripeSubscription.cancel_at_period_end,
-          })
-          .eq("stripe_subscription_id", stripeSubscription.id);
+        await orThrow(
+          admin
+            .from("subscriptions")
+            .update({
+              status,
+              cancel_at_period_end: stripeSubscription.cancel_at_period_end,
+            })
+            .eq("stripe_subscription_id", stripeSubscription.id),
+          "sync subscription status",
+        );
         break;
       }
 
