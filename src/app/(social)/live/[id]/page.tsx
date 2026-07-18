@@ -37,8 +37,10 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { displayName, liveStreamTitle, timeAgo } from "@/lib/format";
 import { agoraRecordingUrl } from "@/lib/agora";
+import { isIvsChannelLive } from "@/lib/ivs";
 import { recordingPlaybackUrl } from "@/lib/livekit";
 import { mediaUrl } from "@/lib/media-url";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { MUX_RTMP_URL } from "@/lib/mux";
 
 export const dynamic = "force-dynamic";
@@ -61,10 +63,30 @@ export default async function LiveStreamPage(
 
   const isHost = stream.host_id === profile.id;
   // Provider per stream: Agora (managed WebRTC) or LiveKit broadcast from the
-  // browser (no RTMP key); Mux ingests from OBS via a key.
+  // browser (no RTMP key); IVS and Mux ingest RTMP(S) from OBS via a key.
   const isAgora = Boolean(stream.agora_channel);
   const isLivekit = Boolean(stream.livekit_room);
+  const isIvs = Boolean(stream.ivs_channel_arn);
   const isBrowserLive = isAgora || isLivekit;
+
+  // IVS has no webhook into the app (yet — that needs EventBridge), so an idle
+  // IVS stream checks the channel on page view: once OBS starts pushing, the
+  // next visit flips it live for everyone. Cheap (one GetStream) and only for
+  // idle IVS streams.
+  if (isIvs && stream.status === "idle" && stream.ivs_channel_arn) {
+    if (await isIvsChannelLive(stream.ivs_channel_arn)) {
+      const admin = createAdminClient();
+      await admin
+        .from("live_streams")
+        .update({
+          status: "live",
+          started_at: stream.started_at ?? new Date().toISOString(),
+        })
+        .eq("id", stream.id)
+        .eq("status", "idle");
+      stream.status = "live";
+    }
+  }
   // Auto-saved replay: an ended browser broadcast plays back its recording
   // instead of the "broadcast ended" placeholder. Egress recordings resolve via
   // their own base, Agora recordings via the Agora base, and both fall back to
@@ -194,6 +216,7 @@ export default async function LiveStreamPage(
                 vodPlaybackId={stream.vod_playback_id}
                 status={stream.status}
                 title={stream.title}
+                src={isIvs ? stream.ivs_playback_url : null}
               />
             )}
             {stream.status === "live" ? (
@@ -264,7 +287,7 @@ export default async function LiveStreamPage(
             <HostPanel
               streamId={stream.id}
               status={stream.status}
-              rtmpUrl={MUX_RTMP_URL}
+              rtmpUrl={isIvs ? stream.ivs_ingest_url ?? MUX_RTMP_URL : MUX_RTMP_URL}
               streamKey={streamKey}
             />
           )}

@@ -6,20 +6,24 @@ import { Radio } from "lucide-react";
 import type { LiveStreamStatus } from "@/types/database";
 
 /**
- * Mux HLS player with idle/ended placeholders. Ended streams with an auto-saved
- * recording (vod_playback_id, filled by the Mux webhook when the asset is
- * ready) play the replay instead of a dead-end placeholder.
+ * HLS player with idle/ended placeholders. Plays a Mux playbackId, or any raw
+ * HLS URL via `src` (used for Amazon IVS channels — MuxPlayer is a generic HLS
+ * player under the hood). Ended streams with an auto-saved recording play the
+ * replay instead of a dead-end placeholder.
  */
 export function LivePlayer({
   playbackId,
   vodPlaybackId,
   status,
   title,
+  src,
 }: {
   playbackId: string | null;
   vodPlaybackId?: string | null;
   status: LiveStreamStatus;
   title: string;
+  /** Raw HLS URL (IVS playback). Takes precedence over playbackId while live. */
+  src?: string | null;
 }) {
   if (status === "ended") {
     if (vodPlaybackId) {
@@ -46,7 +50,7 @@ export function LivePlayer({
     );
   }
 
-  if (status === "idle" || !playbackId) {
+  if (status === "idle" || (!playbackId && !src)) {
     return (
       <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-xl border bg-muted text-muted-foreground">
         <Radio className="h-8 w-8 animate-pulse" />
@@ -58,7 +62,7 @@ export function LivePlayer({
 
   return (
     <MuxPlayer
-      playbackId={playbackId}
+      {...(src ? { src } : { playbackId: playbackId ?? undefined })}
       streamType="live"
       autoPlay="muted"
       metadata={{ video_title: title }}
