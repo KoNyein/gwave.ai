@@ -27,6 +27,55 @@ interface Conn {
 }
 
 /**
+ * Keep the stage's aspect ratio matched to the actual video — a phone held
+ * upright publishes a portrait frame, and forcing it into a fixed 16:9 box
+ * crops it to a sliver. Reads the live <video> element's real dimensions (host
+ * preview and viewer playback both), updating on rotation, and falls back to
+ * the device orientation before the first frame arrives. Clamped so an extreme
+ * ratio can't make the stage absurdly tall or wide.
+ */
+function useStageAspect(): string {
+  const portraitInit =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(orientation: portrait)").matches;
+  const [aspect, setAspect] = React.useState(
+    portraitInit ? "9 / 16" : "16 / 9",
+  );
+
+  React.useEffect(() => {
+    const measure = () => {
+      const video = document.querySelector<HTMLVideoElement>(
+        "video.lk-participant-media-video, .lk-participant-tile video",
+      );
+      let ratio: number | null = null;
+      if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+        ratio = video.videoWidth / video.videoHeight;
+      } else if (window.matchMedia?.("(orientation: portrait)").matches) {
+        ratio = 9 / 16;
+      }
+      if (ratio) {
+        // Clamp between 9:16 (portrait) and 16:9 (landscape).
+        const clamped = Math.min(16 / 9, Math.max(9 / 16, ratio));
+        setAspect(`${clamped.toFixed(4)} / 1`);
+      }
+    };
+    measure();
+    // Poll (the video element appears/changes after connect) plus react to
+    // device rotation immediately.
+    const id = window.setInterval(measure, 700);
+    window.addEventListener("orientationchange", measure);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("orientationchange", measure);
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
+  return aspect;
+}
+
+/**
  * Single-broadcaster Live over the LiveKit SFU. The host publishes camera/mic
  * straight from the browser; viewers subscribe only, so one broadcast reaches
  * thousands of viewers with no Mux account and no OBS. Chat, gifts, reactions
@@ -44,6 +93,7 @@ export function LiveStage({
   const router = useRouter();
   const [conn, setConn] = React.useState<Conn | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const aspect = useStageAspect();
 
   React.useEffect(() => {
     if (status === "ended") return;
@@ -90,8 +140,8 @@ export function LiveStage({
       video={conn.canPublish}
       audio={conn.canPublish}
       data-lk-theme="default"
-      className="overflow-hidden rounded-xl border bg-black"
-      style={{ aspectRatio: "16 / 9", width: "100%" }}
+      className="mx-auto overflow-hidden rounded-xl border bg-black transition-[aspect-ratio] duration-300"
+      style={{ aspectRatio: aspect, width: "100%", maxHeight: "80vh" }}
       onConnected={
         isHost ? () => void goLive(streamId).then(() => router.refresh()) : undefined
       }

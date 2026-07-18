@@ -492,6 +492,17 @@
 }
 
 /* Print: hide chrome and show only the certificate card cleanly. */
+/* Live stage: fill the (orientation-adaptive) container with the video so a
+   portrait phone stream isn't letterboxed inside a landscape box. */
+.lk-participant-tile,
+.lk-participant-tile .lk-participant-media-video {
+  width: 100% !important;
+  height: 100% !important;
+}
+.lk-participant-tile .lk-participant-media-video {
+  object-fit: cover !important;
+}
+
 @media print {
   body {
     background: #ffffff !important;

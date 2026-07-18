@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { WebhookReceiver } from "livekit-server-sdk";
+import { EgressStatus, WebhookReceiver } from "livekit-server-sdk";
 
+import { egressConfigured, stopRoomRecording } from "@/lib/livekit";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -46,6 +47,26 @@ export async function POST(request: NextRequest) {
     event = await receiver.receive(body, auth);
   } catch {
     return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
+  }
+
+  // Auto-save: when a recording finishes, egress reports the uploaded MP4's
+  // object key — store it as the stream's replay. Matched on egress id (egress
+  // events don't always carry the room).
+  if (event.event === "egress_ended" || event.event === "egress_updated") {
+    const eg = event.egressInfo;
+    const filename = eg?.fileResults?.[0]?.filename;
+    if (
+      eg?.egressId &&
+      filename &&
+      eg.status === EgressStatus.EGRESS_COMPLETE
+    ) {
+      const admin = createAdminClient();
+      await admin
+        .from("live_streams")
+        .update({ recording_path: filename })
+        .eq("recording_egress_id", eg.egressId);
+    }
+    return NextResponse.json({ ok: true });
   }
 
   const room = event.room?.name;
@@ -98,6 +119,21 @@ export async function POST(request: NextRequest) {
 
   if (hostLeft && event.participant?.identity !== stream.host_id) {
     return NextResponse.json({ ok: true });
+  }
+
+  // The broadcast is over (host dropped or room torn down) — stop the auto-save
+  // recording so the MP4 is finalised promptly rather than when the room later
+  // times out. Only touched when egress is configured, so a deploy that predates
+  // the recording migration never reads the new column.
+  if (egressConfigured()) {
+    const { data: rec } = await admin
+      .from("live_streams")
+      .select("recording_egress_id")
+      .eq("id", stream.id)
+      .maybeSingle();
+    if (rec?.recording_egress_id) {
+      await stopRoomRecording(rec.recording_egress_id);
+    }
   }
 
   const { error } = await admin

@@ -35,6 +35,7 @@ import {
 } from "@/lib/db/live-products";
 import { createClient } from "@/lib/supabase/server";
 import { displayName, timeAgo } from "@/lib/format";
+import { recordingPlaybackUrl } from "@/lib/livekit";
 import { MUX_RTMP_URL } from "@/lib/mux";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +60,12 @@ export default async function LiveStreamPage(
   // LiveKit streams broadcast from the browser (no RTMP key); Mux streams
   // ingest from OBS via a key.
   const isLivekit = Boolean(stream.livekit_room);
+  // Auto-saved replay: an ended LiveKit broadcast plays back its recording (if
+  // egress saved one) instead of the "broadcast ended" placeholder.
+  const replayUrl =
+    isLivekit && stream.status === "ended"
+      ? recordingPlaybackUrl(stream.recording_path ?? null)
+      : null;
   // RLS returns the key only to the host; null for everyone else.
   const streamKey = isHost && !isLivekit ? await getStreamKey(stream.id) : null;
   const chat = (await getRecentChat(stream.id)) as ChatEntry[];
@@ -128,108 +135,137 @@ export default async function LiveStreamPage(
         <ArrowLeft className="h-4 w-4" /> Back to Live
       </Link>
 
-      <div className="relative overflow-hidden rounded-xl">
-        {isLivekit ? (
-          <LiveStage
+      {/*
+        Twitch/YouTube-style layout: the video + host controls fill the main
+        column while chat rides alongside in a tall, sticky sidebar on wide
+        screens. On mobile everything stacks (chat last) so nothing is cramped.
+      */}
+      <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
+        {/* ── Main column: video, host, interactions, sale ─────────────── */}
+        <div className="space-y-4 lg:col-span-2">
+          <div className="relative overflow-hidden rounded-xl">
+            {replayUrl ? (
+              <video
+                controls
+                playsInline
+                preload="metadata"
+                src={replayUrl}
+                className="mx-auto max-h-[80vh] w-full rounded-xl border bg-black"
+              />
+            ) : isLivekit ? (
+              <LiveStage
+                streamId={stream.id}
+                isHost={isHost}
+                status={stream.status}
+              />
+            ) : (
+              <LivePlayer
+                playbackId={stream.mux_playback_id}
+                vodPlaybackId={stream.vod_playback_id}
+                status={stream.status}
+                title={stream.title}
+              />
+            )}
+            {stream.status === "live" ? (
+              <>
+                <LiveOverlay streamId={stream.id} currentUser={currentUser} />
+                <DoubleTapHeart streamId={stream.id} userId={profile.id} />
+              </>
+            ) : null}
+            <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
+              {stream.status === "live" && (
+                <span className="rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase text-destructive-foreground">
+                  Live
+                </span>
+              )}
+              <ViewerCount streamId={stream.id} viewerId={profile.id} />
+            </div>
+          </div>
+
+          {/* Title + host + reactions grouped into one clean header card */}
+          <Card>
+            <CardContent className="space-y-3 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <UserAvatar profile={stream.host} />
+                  <div className="min-w-0">
+                    <h1 className="truncate text-lg font-bold">
+                      {stream.title}
+                    </h1>
+                    <p className="text-xs text-muted-foreground">
+                      {displayName(stream.host)} · {timeAgo(stream.created_at)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <ReactionBar
+                    streamId={stream.id}
+                    userId={profile.id}
+                    disabled={stream.status === "ended"}
+                    showFloaters={stream.status !== "live"}
+                  />
+                  <LiveGifts
+                    streamId={stream.id}
+                    gifts={liveGifts}
+                    hasPin={giftHasPin}
+                    canGift={canGift}
+                  />
+                </div>
+              </div>
+
+              {stream.description && (
+                <p className="text-sm text-muted-foreground">
+                  {stream.description}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <GameGoalBar
             streamId={stream.id}
             isHost={isHost}
-            status={stream.status}
+            gameName={stream.game_name ?? null}
+            goalAmount={stream.goal_amount ?? null}
+            goalLabel={stream.goal_label ?? null}
+            gifted={giftTotal}
           />
-        ) : (
-          <LivePlayer
-            playbackId={stream.mux_playback_id}
-            vodPlaybackId={stream.vod_playback_id}
-            status={stream.status}
-            title={stream.title}
-          />
-        )}
-        {stream.status === "live" ? (
-          <>
-            <LiveOverlay streamId={stream.id} currentUser={currentUser} />
-            <DoubleTapHeart streamId={stream.id} userId={profile.id} />
-          </>
-        ) : null}
-        <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
-          {stream.status === "live" && (
-            <span className="rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase text-destructive-foreground">
-              Live
-            </span>
+
+          {isHost && (
+            <HostPanel
+              streamId={stream.id}
+              status={stream.status}
+              rtmpUrl={MUX_RTMP_URL}
+              streamKey={streamKey}
+            />
           )}
-          <ViewerCount streamId={stream.id} viewerId={profile.id} />
+
+          {/* Live Sale — viewers buy pinned products; host manages the pins */}
+          <LiveSalePanel products={liveProducts} gpayByProduct={gpayByProduct} />
+          {isHost && (
+            <LiveSaleManager
+              streamId={stream.id}
+              myProducts={myProducts}
+              pinnedIds={pinnedIds}
+            />
+          )}
+        </div>
+
+        {/* ── Sidebar: sticky chat + top supporters ────────────────────── */}
+        <div className="space-y-4 lg:sticky lg:top-4">
+          <Card className="overflow-hidden">
+            <CardContent className="h-[26rem] p-0 lg:h-[calc(100vh-7rem)]">
+              <LiveChat
+                streamId={stream.id}
+                currentUser={currentUser}
+                initialMessages={chat}
+                disabled={stream.status === "ended"}
+              />
+            </CardContent>
+          </Card>
+
+          <TopGifters gifters={topGifters} />
         </div>
       </div>
-
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <UserAvatar profile={stream.host} />
-          <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold">{stream.title}</h1>
-            <p className="text-xs text-muted-foreground">
-              {displayName(stream.host)} · {timeAgo(stream.created_at)}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {stream.description && (
-        <p className="text-sm text-muted-foreground">{stream.description}</p>
-      )}
-
-      <div className="flex items-center gap-1">
-        <ReactionBar
-          streamId={stream.id}
-          userId={profile.id}
-          disabled={stream.status === "ended"}
-          showFloaters={stream.status !== "live"}
-        />
-        <LiveGifts
-          streamId={stream.id}
-          gifts={liveGifts}
-          hasPin={giftHasPin}
-          canGift={canGift}
-        />
-      </div>
-
-      <GameGoalBar
-        streamId={stream.id}
-        isHost={isHost}
-        gameName={stream.game_name ?? null}
-        goalAmount={stream.goal_amount ?? null}
-        goalLabel={stream.goal_label ?? null}
-        gifted={giftTotal}
-      />
-
-      <TopGifters gifters={topGifters} />
-
-      {isHost && (
-        <HostPanel
-          streamId={stream.id}
-          status={stream.status}
-          rtmpUrl={MUX_RTMP_URL}
-          streamKey={streamKey}
-        />
-      )}
-
-      {/* Live Sale — viewers buy pinned products; host manages the pins */}
-      <LiveSalePanel products={liveProducts} gpayByProduct={gpayByProduct} />
-      {isHost && (
-        <LiveSaleManager
-          streamId={stream.id}
-          myProducts={myProducts}
-          pinnedIds={pinnedIds}
-        />
-      )}
-
-      <Card className="overflow-hidden">
-        <CardContent className="h-96 p-0">
-          <LiveChat
-            streamId={stream.id}
-            currentUser={currentUser}
-            initialMessages={chat}
-            disabled={stream.status === "ended"}
-          />
-        </CardContent>
-      </Card>
     </div>
   );
 }
