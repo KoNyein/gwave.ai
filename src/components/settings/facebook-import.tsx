@@ -193,11 +193,14 @@ export function FacebookImport({ userId }: { userId: string }) {
       // the photos themselves so they aren't lost. Group by folder so an
       // album becomes one post; cap so a huge library doesn't explode.
       if (parsed.length === 0) {
+        // Scan EVERY image in the archive — Facebook scatters photos across
+        // posts/media, photos_and_videos, album folders, mobile uploads, etc.
+        // Only skip obvious non-content (icons, stickers, profile chrome).
         const imgFiles = allNames
           .filter(
             (n) =>
               /\.(jpe?g|png|gif|webp)$/i.test(n) &&
-              /(post|media|photo|album|timeline)/i.test(n),
+              !/(icon|sticker|emoji|thumbnail|profile_picture|avatar)/i.test(n),
           )
           .sort();
         // Group by album folder, then split each album into posts of at most
@@ -325,6 +328,7 @@ export function FacebookImport({ userId }: { userId: string }) {
   }
 
   const selectedCount = posts.filter((p) => p.selected).length;
+  const photoCount = posts.reduce((n, p) => n + p.mediaPaths.length, 0);
 
   return (
     <div className="space-y-3 rounded-xl border bg-card p-4">
@@ -359,8 +363,8 @@ export function FacebookImport({ userId }: { userId: string }) {
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="font-medium">
               {mm
-                ? `Post ${posts.length} ခု တွေ့သည် — ${selectedCount} ခု ရွေးထား`
-                : `Found ${posts.length} posts — ${selectedCount} selected`}
+                ? `Post ${posts.length} ခု (ဓာတ်ပုံ ${photoCount} ပုံ) တွေ့သည် — ${selectedCount} ခု ရွေးထား`
+                : `Found ${posts.length} posts (${photoCount} photos) — ${selectedCount} selected`}
             </span>
             <button
               type="button"
