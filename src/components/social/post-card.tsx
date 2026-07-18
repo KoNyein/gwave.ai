@@ -26,6 +26,7 @@ import {
   useBoostClick,
 } from "@/components/boost/sponsored-tracker";
 import { CommentSection } from "@/components/social/comment-section";
+import { LinkifiedText } from "@/components/ui/linkified-text";
 import { EditPostDialog } from "@/components/social/edit-post-dialog";
 import { LocationMap } from "@/components/social/location-map";
 import { MediaGrid } from "@/components/social/media-grid";
@@ -319,7 +320,7 @@ export function PostCard({
       {/* Content */}
       {content ? (
         <p className="whitespace-pre-wrap break-words px-4 py-2 text-sm">
-          {content}
+          <LinkifiedText text={content} />
         </p>
       ) : (
         <div className="pt-2" />
