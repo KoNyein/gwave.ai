@@ -35,6 +35,7 @@ import {
 } from "@/lib/db/live-products";
 import { createClient } from "@/lib/supabase/server";
 import { displayName, timeAgo } from "@/lib/format";
+import { recordingPlaybackUrl } from "@/lib/livekit";
 import { MUX_RTMP_URL } from "@/lib/mux";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +60,12 @@ export default async function LiveStreamPage(
   // LiveKit streams broadcast from the browser (no RTMP key); Mux streams
   // ingest from OBS via a key.
   const isLivekit = Boolean(stream.livekit_room);
+  // Auto-saved replay: an ended LiveKit broadcast plays back its recording (if
+  // egress saved one) instead of the "broadcast ended" placeholder.
+  const replayUrl =
+    isLivekit && stream.status === "ended"
+      ? recordingPlaybackUrl(stream.recording_path ?? null)
+      : null;
   // RLS returns the key only to the host; null for everyone else.
   const streamKey = isHost && !isLivekit ? await getStreamKey(stream.id) : null;
   const chat = (await getRecentChat(stream.id)) as ChatEntry[];
@@ -137,7 +144,15 @@ export default async function LiveStreamPage(
         {/* ── Main column: video, host, interactions, sale ─────────────── */}
         <div className="space-y-4 lg:col-span-2">
           <div className="relative overflow-hidden rounded-xl">
-            {isLivekit ? (
+            {replayUrl ? (
+              <video
+                controls
+                playsInline
+                preload="metadata"
+                src={replayUrl}
+                className="mx-auto max-h-[80vh] w-full rounded-xl border bg-black"
+              />
+            ) : isLivekit ? (
               <LiveStage
                 streamId={stream.id}
                 isHost={isHost}

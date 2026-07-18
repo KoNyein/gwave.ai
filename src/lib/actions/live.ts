@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 
 import type { ActionResult } from "@/lib/actions/posts";
-import { livekitConfigured, livekitUrl, mintLivekitToken } from "@/lib/livekit";
+import {
+  egressConfigured,
+  livekitConfigured,
+  livekitUrl,
+  mintLivekitToken,
+  startRoomRecording,
+} from "@/lib/livekit";
 import { createClient } from "@/lib/supabase/server";
 
 export interface LiveStageToken {
@@ -72,7 +78,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
 
   const { data: stream } = await supabase
     .from("live_streams")
-    .select("id, host_id, status, started_at")
+    .select("id, host_id, status, started_at, livekit_room")
     .eq("id", streamId)
     .maybeSingle();
   if (!stream) return { ok: false, error: "Stream not found" };
@@ -82,11 +88,28 @@ export async function goLive(streamId: string): Promise<ActionResult> {
   }
   if (stream.status === "live") return { ok: true, data: undefined };
 
+  // Auto-save: start recording the room to S3 on this one live-transition (the
+  // status guard above makes goLive idempotent, so this runs once). Only for
+  // LiveKit rooms and only when egress is configured — a failure returns null
+  // and the broadcast proceeds without a recording. The recording columns are
+  // only ever read/written when egress is configured, so a deploy that predates
+  // the recording migration leaves go-live untouched.
+  let recording: { egressId: string; path: string } | null = null;
+  if (stream.livekit_room && egressConfigured()) {
+    recording = await startRoomRecording(stream.livekit_room);
+  }
+
   const { error } = await supabase
     .from("live_streams")
     .update({
       status: "live",
       started_at: stream.started_at ?? new Date().toISOString(),
+      ...(recording
+        ? {
+            recording_egress_id: recording.egressId,
+            recording_path: null,
+          }
+        : {}),
     })
     .eq("id", stream.id)
     .eq("host_id", user.id);

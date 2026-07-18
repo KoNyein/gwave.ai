@@ -97,6 +97,13 @@ export interface LiveStream {
   /** Playback id of the auto-saved recording; set when the VOD is ready. */
   vod_playback_id: string | null;
   livekit_room: string | null;
+  /**
+   * Auto-saved LiveKit recording. `recording_egress_id` is the in-flight egress
+   * (set on go-live, used to stop it); `recording_path` is the finished MP4's
+   * object key, filled by the egress_ended webhook and served as the replay.
+   */
+  recording_egress_id: string | null;
+  recording_path: string | null;
   viewer_count: number;
   kind: "stream" | "class";
   track_slug: string | null;
