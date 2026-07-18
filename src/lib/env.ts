@@ -21,6 +21,16 @@ const publicSchema = z.object({
    * Supabase Storage (the default), so this flips the whole storage backend.
    */
   NEXT_PUBLIC_S3_CDN: z.string().url().optional(),
+  /**
+   * Agora Live provider. NEXT_PUBLIC_AGORA_APP_ID is the (public) App ID the
+   * client joins with; NEXT_PUBLIC_LIVE_PROVIDER = "agora" makes new broadcasts
+   * use Agora instead of LiveKit (feature flag — default keeps LiveKit).
+   * NEXT_PUBLIC_AGORA_RECORDING_BASE is the public base URL a saved replay is
+   * served from (falls back to the media CDN when unset).
+   */
+  NEXT_PUBLIC_AGORA_APP_ID: z.string().optional(),
+  NEXT_PUBLIC_LIVE_PROVIDER: z.enum(["livekit", "agora"]).default("livekit"),
+  NEXT_PUBLIC_AGORA_RECORDING_BASE: z.string().url().optional(),
 });
 
 /**
@@ -35,6 +45,9 @@ export const publicEnv = publicSchema.parse({
   NEXT_PUBLIC_COGNITO_DOMAIN: process.env.NEXT_PUBLIC_COGNITO_DOMAIN,
   NEXT_PUBLIC_COGNITO_CLIENT_ID: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID,
   NEXT_PUBLIC_S3_CDN: process.env.NEXT_PUBLIC_S3_CDN,
+  NEXT_PUBLIC_AGORA_APP_ID: process.env.NEXT_PUBLIC_AGORA_APP_ID,
+  NEXT_PUBLIC_LIVE_PROVIDER: process.env.NEXT_PUBLIC_LIVE_PROVIDER,
+  NEXT_PUBLIC_AGORA_RECORDING_BASE: process.env.NEXT_PUBLIC_AGORA_RECORDING_BASE,
 });
 
 function required(name: string): string {

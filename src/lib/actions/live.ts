@@ -5,6 +5,14 @@ import { getCurrentUser } from "@/lib/auth";
 
 import type { ActionResult } from "@/lib/actions/posts";
 import {
+  agoraAppId,
+  agoraConfigured,
+  agoraRecordingConfigured,
+  agoraUidFor,
+  mintAgoraToken,
+  startAgoraRecording,
+} from "@/lib/agora";
+import {
   egressConfigured,
   livekitConfigured,
   livekitUrl,
@@ -67,6 +75,57 @@ export async function getLiveStageToken(
   return { ok: true, data: { url, token, canPublish: isHost } };
 }
 
+export interface AgoraStageToken {
+  appId: string;
+  channel: string;
+  token: string;
+  uid: number;
+  canPublish: boolean;
+}
+
+/**
+ * Mint an Agora RTC token for a single-broadcaster stream. The host publishes
+ * (camera/mic); everyone else subscribes only — the role is baked into the
+ * signed token so a viewer can't publish by tampering with the client. `uid` is
+ * derived deterministically from the user id so the token and roster agree.
+ */
+export async function getAgoraStageToken(
+  streamId: string,
+): Promise<ActionResult<AgoraStageToken>> {
+  if (!agoraConfigured()) return { ok: false, error: "Live provider not configured" };
+  const appId = agoraAppId();
+  if (!appId) return { ok: false, error: "Live provider not configured" };
+
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Not signed in" };
+
+  const { data: stream } = await supabase
+    .from("live_streams")
+    .select("id, host_id, status, agora_channel")
+    .eq("id", streamId)
+    .maybeSingle();
+  if (!stream) return { ok: false, error: "Stream not found" };
+  if (!stream.agora_channel) {
+    return { ok: false, error: "This stream is not an Agora stream." };
+  }
+  if (stream.status === "ended") {
+    return { ok: false, error: "This broadcast has ended." };
+  }
+
+  const isHost = stream.host_id === user.id;
+  const uid = agoraUidFor(user.id);
+  const token = mintAgoraToken({
+    channel: stream.agora_channel,
+    uid,
+    role: isHost ? "host" : "audience",
+  });
+  return {
+    ok: true,
+    data: { appId, channel: stream.agora_channel, token, uid, canPublish: isHost },
+  };
+}
+
 /**
  * Host: flip a LiveKit stream to "live" once the browser starts publishing.
  * Idempotent — safe to call again on reconnect.
@@ -78,7 +137,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
 
   const { data: stream } = await supabase
     .from("live_streams")
-    .select("id, host_id, status, started_at, livekit_room")
+    .select("id, host_id, status, started_at, livekit_room, agora_channel")
     .eq("id", streamId)
     .maybeSingle();
   if (!stream) return { ok: false, error: "Stream not found" };
@@ -88,15 +147,26 @@ export async function goLive(streamId: string): Promise<ActionResult> {
   }
   if (stream.status === "live") return { ok: true, data: undefined };
 
-  // Auto-save: start recording the room to S3 on this one live-transition (the
-  // status guard above makes goLive idempotent, so this runs once). Only for
-  // LiveKit rooms and only when egress is configured — a failure returns null
+  // Auto-save: start recording to S3 on this one live-transition (the status
+  // guard above makes goLive idempotent, so this runs once). Per provider, and
+  // only when that provider's recording is configured — a failure returns null
   // and the broadcast proceeds without a recording. The recording columns are
-  // only ever read/written when egress is configured, so a deploy that predates
-  // the recording migration leaves go-live untouched.
-  let recording: { egressId: string; path: string } | null = null;
+  // only read/written when the relevant provider is configured, so a deploy that
+  // predates a recording migration leaves go-live untouched.
+  const extra: Record<string, string | null> = {};
   if (stream.livekit_room && egressConfigured()) {
-    recording = await startRoomRecording(stream.livekit_room);
+    const rec = await startRoomRecording(stream.livekit_room);
+    if (rec) {
+      extra.recording_egress_id = rec.egressId;
+      extra.recording_path = null;
+    }
+  } else if (stream.agora_channel && agoraRecordingConfigured()) {
+    const rec = await startAgoraRecording(stream.agora_channel);
+    if (rec) {
+      extra.agora_resource_id = rec.resourceId;
+      extra.agora_recording_sid = rec.sid;
+      extra.recording_path = null;
+    }
   }
 
   const { error } = await supabase
@@ -104,12 +174,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
     .update({
       status: "live",
       started_at: stream.started_at ?? new Date().toISOString(),
-      ...(recording
-        ? {
-            recording_egress_id: recording.egressId,
-            recording_path: null,
-          }
-        : {}),
+      ...extra,
     })
     .eq("id", stream.id)
     .eq("host_id", user.id);

@@ -104,6 +104,14 @@ export interface LiveStream {
    */
   recording_egress_id: string | null;
   recording_path: string | null;
+  /**
+   * Agora Live provider. `agora_channel` is set on an Agora stream (LiveKit rows
+   * leave it null); `agora_resource_id` + `agora_recording_sid` are the Cloud
+   * Recording handles used to stop it. The finished MP4 lands in recording_path.
+   */
+  agora_channel: string | null;
+  agora_resource_id: string | null;
+  agora_recording_sid: string | null;
   viewer_count: number;
   kind: "stream" | "class";
   track_slug: string | null;
