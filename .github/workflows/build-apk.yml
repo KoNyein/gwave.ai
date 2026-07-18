@@ -59,6 +59,7 @@ jobs:
         run: |
           if [ -n "$KEYSTORE_B64" ]; then
             echo "$KEYSTORE_B64" | base64 -d > android.keystore
+            echo "KEYSTORE_FROM_SECRET=1" >> "$GITHUB_ENV"
             echo "Using keystore from repository secret."
           else
             keytool -genkeypair -v -keystore android.keystore -alias gwave \
@@ -109,12 +110,20 @@ jobs:
           # Re-runs reuse the run number; clear any prior release/tag so the
           # publish is idempotent.
           gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          # The signing keystore is only published when it was generated on the
+          # fly (so the operator can rescue it). When it comes from the
+          # repository secret, the private key must NOT be exposed as a public
+          # release asset.
+          EXTRA=""
+          if [ -z "${KEYSTORE_FROM_SECRET:-}" ]; then
+            EXTRA="android.keystore"
+          fi
           gh release create "$TAG" \
             app-release-signed.apk \
             app-release-bundle.aab \
-            android.keystore \
+            $EXTRA \
             fingerprint.txt \
             assetlinks.json \
             --latest \
             --title "Gwave Android build #${{ github.run_number }}" \
-            --notes "Download **app-release-signed.apk** and sideload it on a phone to test. **app-release-bundle.aab** is for the Play Console. **android.keystore** is the signing key — KEEP IT SAFE, every future update must be signed with it. SHA-256 fingerprint is in fingerprint.txt."
+            --notes "Download **app-release-signed.apk** and sideload it on a phone to test. **app-release-bundle.aab** is for the Play Console. SHA-256 fingerprint is in fingerprint.txt. Signed with the repository's pinned keystore when the ANDROID_KEYSTORE_BASE64 secret is set — updates install cleanly over previous builds signed with the same key."
