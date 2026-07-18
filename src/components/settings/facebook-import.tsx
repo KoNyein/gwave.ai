@@ -10,7 +10,6 @@ import { readExifDate } from "@/lib/exif-date";
 import { uploadMedia, type UploadedMedia } from "@/lib/media";
 import { prefersMyanmarScript } from "@/i18n/config";
 
-const MAX_IMPORT_PER_RUN = 50;
 const MAX_PHOTOS_PER_POST = 10;
 
 interface ParsedPost {
@@ -306,58 +305,91 @@ export function FacebookImport({ userId }: { userId: string }) {
     }
   }
 
+  /** Import ONE parsed post; returns true on success. */
+  async function importOne(post: ParsedPost): Promise<boolean> {
+    if (!zip) return false;
+    try {
+      const media: UploadedMedia[] = [];
+      let mediaTs = 0;
+      for (const path of post.mediaPaths) {
+        const entry = zip.files[path];
+        if (!entry) continue;
+        // Read the original photo's EXIF here (we already have the bytes) so
+        // even photos not pre-scanned keep their real capture date.
+        if (!mediaTs && /\.jpe?g$/i.test(path)) {
+          try {
+            mediaTs = readExifDate(await entry.async("arraybuffer")) ?? 0;
+          } catch {
+            /* no EXIF */
+          }
+        }
+        const blob = await entry.async("blob");
+        const filename = path.split("/").pop() ?? "photo.jpg";
+        media.push(
+          await uploadMedia(userId, new File([blob], filename, {
+            type: blob.type || "image/jpeg",
+          })),
+        );
+      }
+      const ts = post.timestamp || mediaTs;
+      const dateLabel = ts ? new Date(ts).toISOString().slice(0, 10) : post.date;
+      const content = [
+        post.text,
+        dateLabel ? `📥 Facebook · ${dateLabel}` : "📥 Facebook",
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+      const result = ts
+        ? await importPost({
+            content,
+            visibility,
+            media,
+            createdAt: new Date(ts).toISOString(),
+          })
+        : await createPost({ content, visibility, media });
+      return result.ok;
+    } catch {
+      // One bad post shouldn't sink the batch — carry on.
+      return false;
+    }
+  }
+
+  /**
+   * Import EVERY selected post in one press with a progress bar. A small
+   * concurrency pool keeps a huge library (thousands of photos) moving without
+   * flooding the server. Runs until 100% or the user leaves the page.
+   */
   async function runImport() {
     if (!zip || progress) return;
-    const selected = posts.filter((p) => p.selected).slice(0, MAX_IMPORT_PER_RUN);
-    if (selected.length === 0) return;
-    setProgress({ done: 0, total: selected.length });
+    const queue = posts.filter((p) => p.selected);
+    if (queue.length === 0) return;
+    const total = queue.length;
+    setProgress({ done: 0, total });
+    setFinished(null);
     setError(null);
+
+    let done = 0;
     let imported = 0;
-    for (const post of selected) {
-      try {
-        const media: UploadedMedia[] = [];
-        for (const path of post.mediaPaths) {
-          const entry = zip.files[path];
-          if (!entry) continue;
-          const blob = await entry.async("blob");
-          const filename = path.split("/").pop() ?? "photo.jpg";
-          media.push(
-            await uploadMedia(userId, new File([blob], filename, {
-              type: blob.type || "image/jpeg",
-            })),
-          );
-        }
-        const content = [
-          post.text,
-          post.date ? `📥 Facebook · ${post.date}` : "📥 Facebook",
-        ]
-          .filter(Boolean)
-          .join("\n\n");
-        // Backdate to the original time when we have one so the feed shows the
-        // real date and correct order; otherwise post as now.
-        const result = post.timestamp
-          ? await importPost({
-              content,
-              visibility,
-              media,
-              createdAt: new Date(post.timestamp).toISOString(),
-            })
-          : await createPost({ content, visibility, media });
-        if (result.ok) imported += 1;
-      } catch {
-        // One bad post shouldn't sink the batch — carry on.
+    let cursor = 0;
+    const CONCURRENCY = 4;
+
+    async function worker() {
+      while (cursor < queue.length) {
+        const post = queue[cursor++]!;
+        const ok = await importOne(post);
+        done += 1;
+        if (ok) imported += 1;
+        setProgress({ done, total });
       }
-      setProgress((prev) =>
-        prev ? { ...prev, done: prev.done + 1 } : prev,
-      );
     }
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, queue.length) }, worker),
+    );
+
     setProgress(null);
     setFinished(imported);
-    // Unselect what was just imported so a second press continues the rest.
-    setPosts((prev) => {
-      const importedSet = new Set(selected);
-      return prev.filter((p) => !importedSet.has(p));
-    });
+    const importedSet = new Set(queue);
+    setPosts((prev) => prev.filter((p) => !importedSet.has(p)));
   }
 
   const selectedCount = posts.filter((p) => p.selected).length;
@@ -476,25 +508,39 @@ export function FacebookImport({ userId }: { userId: string }) {
               {progress ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  {progress.done}/{progress.total}
+                  {Math.round((progress.done / progress.total) * 100)}%
                 </>
               ) : (
                 <>
                   <Upload className="h-4 w-4" />
                   {mm
-                    ? `Import (${Math.min(selectedCount, MAX_IMPORT_PER_RUN)} ခု)`
-                    : `Import ${Math.min(selectedCount, MAX_IMPORT_PER_RUN)}`}
+                    ? `အားလုံး Import (${selectedCount} ခု)`
+                    : `Import all (${selectedCount})`}
                 </>
               )}
             </button>
-            {selectedCount > MAX_IMPORT_PER_RUN ? (
-              <span className="text-xs text-muted-foreground">
-                {mm
-                  ? `တစ်ခါမှာ ${MAX_IMPORT_PER_RUN} ခုအထိပဲ — ပြီးရင် ထပ်နှိပ်ပါ`
-                  : `Up to ${MAX_IMPORT_PER_RUN} per run — press again for the rest`}
-              </span>
-            ) : null}
           </div>
+
+          {/* One-click progress bar to 100% */}
+          {progress ? (
+            <div className="space-y-1">
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-200"
+                  style={{
+                    width: `${(progress.done / progress.total) * 100}%`,
+                  }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {progress.done.toLocaleString()} /{" "}
+                {progress.total.toLocaleString()}{" "}
+                {mm
+                  ? "— ပြီးအောင် ဒီစာမျက်နှာ ဖွင့်ထားပါ"
+                  : "— keep this page open until it finishes"}
+              </p>
+            </div>
+          ) : null}
         </>
       ) : null}
 
