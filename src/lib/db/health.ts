@@ -97,7 +97,11 @@ export async function saveConnection(
   tokens: HealthTokens,
 ): Promise<void> {
   const db = untyped(createAdminClient());
-  await db.from("health_connections").upsert(
+  // Primary write of the OAuth connection + tokens. On a self-hosted PostgREST an
+  // error is a returned value, not a throw, so it was dropped and the callback
+  // redirected "?connected=1" while no connection row existed. Throw so the
+  // failure surfaces instead of a false success.
+  const { error } = await db.from("health_connections").upsert(
     {
       user_id: userId,
       provider,
@@ -112,6 +116,7 @@ export async function saveConnection(
     },
     { onConflict: "user_id,provider" },
   );
+  if (error) throw new Error(`saveConnection: ${error.message}`);
 }
 
 /** The caller's connection (with tokens) for a provider, for a sync. */
@@ -149,7 +154,9 @@ export async function updateTokens(
   tokens: HealthTokens,
 ): Promise<void> {
   const db = untyped(createAdminClient());
-  await db
+  // If the provider rotated a single-use refresh token and this persist silently
+  // fails, the connection breaks permanently with no error anywhere. Throw.
+  const { error } = await db
     .from("health_connections")
     .update({
       access_token: tokens.accessToken,
@@ -158,6 +165,7 @@ export async function updateTokens(
       scope: tokens.scope,
     })
     .eq("id", connectionId);
+  if (error) throw new Error(`updateTokens: ${error.message}`);
 }
 
 export async function deleteConnection(
@@ -195,9 +203,14 @@ export async function insertMetrics(
     recorded_at: m.recorded_at,
     day: m.recorded_at.slice(0, 10),
   }));
-  await db
+  // The synced wearable data — the whole point of a sync. Throw so a manual
+  // "Sync" that writes nothing doesn't report success.
+  const { error } = await db
     .from("health_metrics")
     .upsert(rows, { onConflict: "user_id,metric_type,recorded_at" });
+  if (error) throw new Error(`insertMetrics: ${error.message}`);
+  // last_sync_at is a best-effort timestamp: a failure here shouldn't fail an
+  // otherwise-successful sync, so its error stays intentionally unchecked.
   await db
     .from("health_connections")
     .update({ last_sync_at: new Date().toISOString() })
@@ -217,7 +230,9 @@ export async function insertManualMetric(
 ): Promise<void> {
   const db = untyped(createAdminClient());
   const now = new Date().toISOString();
-  await db.from("health_metrics").upsert(
+  // The user manually logged this metric and is told it saved — throw rather than
+  // silently drop it.
+  const { error } = await db.from("health_metrics").upsert(
     {
       user_id: userId,
       provider: "manual",
@@ -229,6 +244,7 @@ export async function insertManualMetric(
     },
     { onConflict: "user_id,metric_type,recorded_at" },
   );
+  if (error) throw new Error(`insertManualMetric: ${error.message}`);
 }
 
 /**

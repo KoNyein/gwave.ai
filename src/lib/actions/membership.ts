@@ -276,11 +276,16 @@ export async function rejectPayment(
   if (error) return { ok: false, error: error.message };
 
   if (payment.subscription_id) {
-    await supabase
+    // Secondary write after the checked payment-rejection above. Its error was
+    // dropped, so a failure left the payment "rejected" but the subscription
+    // stuck "pending" (the mirror-image approvePayment path checks this). Surface
+    // it so the admin can retry rather than leaving the two out of sync.
+    const { error: subError } = await supabase
       .from("subscriptions")
       .update({ status: "canceled" })
       .eq("id", payment.subscription_id)
       .eq("status", "pending");
+    if (subError) return { ok: false, error: subError.message };
   }
 
   revalidateMembership();
@@ -315,12 +320,19 @@ export async function grantMembership(
   periodEnd.setDate(periodEnd.getDate() + parsed.data.days);
 
   const admin = createAdminClient();
-  // End any live subscription first, then grant the manual one.
-  await admin
+  // End any live subscription first, then grant the manual one. This cancel must
+  // succeed before the insert: its error was dropped, so on failure the insert
+  // still ran and the user ended up with the new active subscription PLUS the
+  // stale live ones (duplicate membership / billing corruption), while the admin
+  // saw success. Bail before the insert so that can't happen.
+  const { error: cancelError } = await admin
     .from("subscriptions")
     .update({ status: "canceled" })
     .eq("user_id", target.id)
     .in("status", ["pending", "active", "past_due"]);
+  if (cancelError) {
+    return { ok: false, error: cancelError.message };
+  }
   const { error } = await admin.from("subscriptions").insert({
     user_id: target.id,
     plan_id: parsed.data.plan,
