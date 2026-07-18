@@ -55,6 +55,18 @@ function isProtected(pathname: string) {
   );
 }
 
+/**
+ * Absolute URL for a redirect. Behind the reverse proxy, the origin Next
+ * reconstructs from the incoming request can be the container's bind address
+ * (http://0.0.0.0:3000) — a browser redirected there dead-ends with
+ * ERR_CONNECTION_REFUSED. Prefer the canonical public origin from config;
+ * fall back to the request origin only when it is not set (local dev).
+ */
+function absoluteUrl(request: NextRequest, pathname: string): URL {
+  const base = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
+  return new URL(pathname, base);
+}
+
 export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(AT_COOKIE)?.value;
@@ -69,24 +81,17 @@ export async function updateSession(request: NextRequest) {
   if (!authed && request.method === "GET" && isProtected(pathname)) {
     const canRefresh = Boolean(request.cookies.get(RT_COOKIE)?.value);
     if (canRefresh) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/api/auth/refresh";
-      url.search = "";
+      const url = absoluteUrl(request, "/api/auth/refresh");
       url.searchParams.set("next", pathname + request.nextUrl.search);
       return NextResponse.redirect(url);
     }
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.search = "";
+    const url = absoluteUrl(request, "/login");
     url.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(url);
   }
 
   if (authed && AUTH_ROUTES.includes(pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/feed";
-    url.search = "";
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(absoluteUrl(request, "/feed"));
   }
 
   return NextResponse.next({ request });

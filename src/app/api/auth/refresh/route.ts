@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { clearSession, refreshSession } from "@/lib/auth/session";
+import { publicEnv } from "@/lib/env";
 
 /**
  * Node-runtime session refresh. Edge middleware redirects here when the data
@@ -27,7 +28,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const origin = request.nextUrl.origin;
+  // NEVER use request.nextUrl.origin here: behind the reverse proxy the
+  // reconstructed origin can be the container's bind address
+  // (http://0.0.0.0:3000), and redirecting the browser there strands it on
+  // ERR_CONNECTION_REFUSED. The canonical public origin is configuration.
+  const origin = publicEnv.NEXT_PUBLIC_SITE_URL;
   if (!session) {
     // The refresh token is dead (revoked/expired). Clear the stale cookies so
     // middleware doesn't bounce every protected GET back through here — the
