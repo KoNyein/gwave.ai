@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { refreshSession } from "@/lib/auth/session";
+import { clearSession, refreshSession } from "@/lib/auth/session";
 
 /**
  * Node-runtime session refresh. Edge middleware redirects here when the data
@@ -21,6 +21,10 @@ export async function GET(request: NextRequest) {
 
   const origin = request.nextUrl.origin;
   if (!session) {
+    // The refresh token is dead (revoked/expired). Clear the stale cookies so
+    // middleware doesn't bounce every protected GET back through here — the
+    // user goes straight to /login until they sign in again.
+    await clearSession();
     const login = new URL("/login", origin);
     login.searchParams.set("redirectTo", next);
     return NextResponse.redirect(login);
