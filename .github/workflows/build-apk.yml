@@ -58,9 +58,32 @@ jobs:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           if [ -n "$KEYSTORE_B64" ]; then
-            # The secret is usually pasted from a terminal, which smuggles in
-            # line wraps / CR / spaces — strip all whitespace before decoding.
-            printf '%s' "$KEYSTORE_B64" | tr -d ' \t\r\n' | base64 -d > android.keystore
+            # The secret is pasted from a terminal, which smuggles in line
+            # wraps / CR and sometimes surrounding text (shell prompt, byte
+            # counts). Recover the keystore instead of decoding blindly: a
+            # PKCS#12 file base64-encodes to "MII…", so try every MII-anchored
+            # base64 run and keep the longest one that decodes to an ASN.1
+            # SEQUENCE (0x30 0x82).
+            python3 - <<'EOF'
+          import base64, os, re, sys
+          s = re.sub(r"\s+", "", os.environ["KEYSTORE_B64"])
+          best = b""
+          for m in re.finditer(r"MII[A-Za-z0-9+/]+={0,2}", s):
+              cand = m.group(0)
+              if len(cand) % 4:
+                  cand = cand[: len(cand) // 4 * 4]
+              try:
+                  data = base64.b64decode(cand)
+              except Exception:
+                  continue
+              if data.startswith(b"\x30\x82") and len(data) > len(best):
+                  best = data
+          if not best:
+              sys.exit("ANDROID_KEYSTORE_BASE64 contains no decodable keystore data")
+          with open("android.keystore", "wb") as f:
+              f.write(best)
+          print(f"Recovered keystore: {len(best)} bytes")
+          EOF
             # Prove the decode produced a real keystore that opens with the
             # configured password, so a mangled secret fails loudly here
             # instead of shipping a wrongly-signed APK.
