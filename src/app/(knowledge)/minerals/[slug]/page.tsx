@@ -18,8 +18,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { MineralMedia } from "@/components/knowledge/mineral-media";
+import { ExperienceList } from "@/components/knowledge/experience-list";
 import { ShareExperience } from "@/components/knowledge/share-experience";
 import { getCurrentUser } from "@/lib/auth";
+import { getExperiencePosts } from "@/lib/db/experiences";
 import { getMineralBySlug } from "@/lib/db/knowledge";
 
 export default async function MineralDetailPage(
@@ -34,6 +36,7 @@ export default async function MineralDetailPage(
     getCurrentUser(),
   ]);
   if (!mineral) notFound();
+  const experiences = await getExperiencePosts(`/minerals/${mineral.slug}`);
 
   const extraProperties = Object.entries(mineral.properties);
   const mm = mineral.myanmar ?? {};
@@ -242,6 +245,7 @@ export default async function MineralDetailPage(
         itemName={mineral.name}
         itemPath={`/minerals/${mineral.slug}`}
       />
+      <ExperienceList posts={experiences} />
     </div>
   );
 }
