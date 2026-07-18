@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Sprout } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
+import { ExperienceList } from "@/components/knowledge/experience-list";
 import { ShareExperience } from "@/components/knowledge/share-experience";
 import { StrainTypeBadge } from "@/components/knowledge/strain-card";
 import { strainPhoto } from "@/lib/strain-photo";
@@ -13,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { requireAdult } from "@/lib/auth";
+import { getExperiencePosts } from "@/lib/db/experiences";
 import { getStrainBySlug } from "@/lib/db/knowledge";
 
 function Meter({
@@ -57,6 +59,7 @@ export default async function StrainDetailPage(
   const t = await getTranslations("strains");
   const strain = await getStrainBySlug(params.slug);
   if (!strain) notFound();
+  const experiences = await getExperiencePosts(`/strains/${strain.slug}`);
 
   return (
     <div className="space-y-4">
@@ -199,6 +202,7 @@ export default async function StrainDetailPage(
         itemName={strain.name}
         itemPath={`/strains/${strain.slug}`}
       />
+      <ExperienceList posts={experiences} />
     </div>
   );
 }
