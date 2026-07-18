@@ -13,6 +13,7 @@ import {
 import { EmojiPicker } from "@/components/messenger/emoji-picker";
 import { GamesPanel } from "@/components/messenger/games-panel";
 import { UserAvatar } from "@/components/social/user-avatar";
+import { LinkifiedText } from "@/components/ui/linkified-text";
 import { chatMediaUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
 import type { AuthorSummary, MessageWithSender } from "@/types/social";
@@ -212,7 +213,7 @@ export function ChatBox({
                   ) : null}
                   {message.content ? (
                     <p className="whitespace-pre-wrap break-words px-3 py-1.5 text-sm">
-                      {message.content}
+                      <LinkifiedText text={message.content} />
                     </p>
                   ) : null}
                 </div>
