@@ -76,17 +76,18 @@ export function FacebookImport({ userId }: { userId: string }) {
       const archive = await JSZip.loadAsync(file);
       setZip(archive);
 
-      const postFiles = Object.keys(archive.files).filter((name) =>
-        /(?:^|\/)(?:your_posts|posts)[^/]*\.json$/i.test(name),
+      const allNames = Object.keys(archive.files).filter(
+        (name) => !archive.files[name]!.dir,
       );
-      if (postFiles.length === 0) {
-        setError(
-          mm
-            ? "ZIP ထဲမှာ posts JSON မတွေ့ပါ — Facebook ကနေ ဒေါင်းတုန်းက format ကို JSON ရွေးထားဖို့ လိုပါတယ် (HTML မဟုတ်ပါ)။"
-            : "No posts JSON found in the ZIP — when downloading from Facebook, the format must be JSON (not HTML).",
-        );
-        return;
-      }
+      // Facebook has renamed these files repeatedly — accept any JSON that
+      // lives near "post" in its path and let the item-shape check below
+      // decide what is actually a post.
+      const postFiles = allNames.filter(
+        (name) => /post/i.test(name) && /\.json$/i.test(name),
+      );
+      const htmlPostFiles = allNames.filter(
+        (name) => /post/i.test(name) && /\.html?$/i.test(name),
+      );
 
       const parsed: ParsedPost[] = [];
       for (const name of postFiles) {
@@ -124,13 +125,59 @@ export function FacebookImport({ userId }: { userId: string }) {
           });
         }
       }
+      // HTML-format archive (the disabled-account quick download often gives
+      // no format choice): best-effort DOM parse of the posts pages.
+      if (parsed.length === 0 && htmlPostFiles.length > 0) {
+        const domParser = new DOMParser();
+        for (const name of htmlPostFiles) {
+          const html = await archive.files[name]!.async("string");
+          const doc = domParser.parseFromString(html, "text/html");
+          // 2022+ exports wrap each post in a `_a6-g` block; older ones use
+          // `pam`. Fall back to nothing rather than importing page chrome.
+          const blocks = doc.querySelectorAll('[class*="_a6-g"], .pam');
+          for (const block of Array.from(blocks)) {
+            const text = (
+              block.querySelector('[class*="_2pin"]')?.textContent ??
+              block.textContent ??
+              ""
+            ).trim();
+            const mediaPaths = Array.from(block.querySelectorAll("img"))
+              .map((img) => img.getAttribute("src") ?? "")
+              .filter(
+                (src) =>
+                  src &&
+                  !src.startsWith("http") &&
+                  /\.(jpe?g|png|gif|webp)$/i.test(src) &&
+                  archive.files[src],
+              )
+              .slice(0, MAX_PHOTOS_PER_POST);
+            if (!text && mediaPaths.length === 0) continue;
+            parsed.push({
+              text: text.slice(0, 5000),
+              timestamp: 0,
+              date: "",
+              mediaPaths,
+              selected: true,
+            });
+          }
+        }
+      }
+
       parsed.sort((a, b) => b.timestamp - a.timestamp);
       setPosts(parsed);
       if (parsed.length === 0) {
+        // Show what IS in the archive so the structure can be diagnosed from
+        // a screenshot.
+        const folders = [
+          ...new Set(
+            allNames.map((n) => n.split("/").slice(0, 2).join("/")),
+          ),
+        ].slice(0, 8);
         setError(
-          mm
-            ? "Post တစ်ခုမှ မတွေ့ပါ။"
-            : "No posts were found in this archive.",
+          (mm
+            ? "Post တစ်ခုမှ မတွေ့ပါ။ ZIP ထဲမှာ ပါတာတွေ — "
+            : "No posts were found in this archive. The ZIP contains: ") +
+            folders.join(", "),
         );
       }
     } catch {
