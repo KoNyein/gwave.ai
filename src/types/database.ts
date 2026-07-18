@@ -94,6 +94,8 @@ export interface LiveStream {
   status: LiveStreamStatus;
   mux_stream_id: string | null;
   mux_playback_id: string | null;
+  /** Playback id of the auto-saved recording; set when the VOD is ready. */
+  vod_playback_id: string | null;
   livekit_room: string | null;
   viewer_count: number;
   kind: "stream" | "class";

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { DoubleTapHeart } from "@/components/live/double-tap-heart";
 import { HostPanel } from "@/components/live/host-panel";
 import { LiveChat, type ChatEntry } from "@/components/live/live-chat";
+import { LiveOverlay } from "@/components/live/live-overlay";
 import { LiveGifts } from "@/components/live/live-gifts";
 import { LivePlayer } from "@/components/live/live-player";
 import { LiveStage } from "@/components/live/live-stage";
@@ -137,12 +138,16 @@ export default async function LiveStreamPage(
         ) : (
           <LivePlayer
             playbackId={stream.mux_playback_id}
+            vodPlaybackId={stream.vod_playback_id}
             status={stream.status}
             title={stream.title}
           />
         )}
         {stream.status === "live" ? (
-          <DoubleTapHeart streamId={stream.id} userId={profile.id} />
+          <>
+            <LiveOverlay streamId={stream.id} currentUser={currentUser} />
+            <DoubleTapHeart streamId={stream.id} userId={profile.id} />
+          </>
         ) : null}
         <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
           {stream.status === "live" && (
@@ -175,6 +180,7 @@ export default async function LiveStreamPage(
           streamId={stream.id}
           userId={profile.id}
           disabled={stream.status === "ended"}
+          showFloaters={stream.status !== "live"}
         />
         <LiveGifts
           streamId={stream.id}
