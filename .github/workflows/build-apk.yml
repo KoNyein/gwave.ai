@@ -65,32 +65,48 @@ jobs:
             # base64 run and keep the longest one that decodes to an ASN.1
             # SEQUENCE (0x30 0x82).
             python3 - <<'EOF'
-          import base64, os, re, sys
+          import base64, os, re, subprocess, sys
+
           s = re.sub(r"\s+", "", os.environ["KEYSTORE_B64"])
-          best = b""
+          ks_pass = os.environ["KS_PASS"]
+          # A run whose length is not a multiple of 4 lost either its trailing
+          # padding (copy stopped short: re-pad) or gained merged junk at the
+          # end (trim). Try both repairs for every candidate and let keytool —
+          # which validates the PKCS#12 MAC — decide which one is the real
+          # keystore.
+          cands = []
           for m in re.finditer(r"MII[A-Za-z0-9+/]+={0,2}", s):
-              cand = m.group(0)
-              if len(cand) % 4:
-                  cand = cand[: len(cand) // 4 * 4]
+              c = m.group(0)
+              r = len(c) % 4
+              if r == 0:
+                  cands.append(c)
+              else:
+                  if r >= 2:
+                      cands.append(c + "=" * (4 - r))
+                  cands.append(c[: len(c) - r])
+          decodable = False
+          for c in sorted(set(cands), key=len, reverse=True):
               try:
-                  data = base64.b64decode(cand)
+                  data = base64.b64decode(c)
               except Exception:
                   continue
-              if data.startswith(b"\x30\x82") and len(data) > len(best):
-                  best = data
-          if not best:
-              sys.exit("ANDROID_KEYSTORE_BASE64 contains no decodable keystore data")
-          with open("android.keystore", "wb") as f:
-              f.write(best)
-          print(f"Recovered keystore: {len(best)} bytes")
+              if not data.startswith(b"\x30\x82"):
+                  continue
+              decodable = True
+              with open("android.keystore", "wb") as f:
+                  f.write(data)
+              ok = subprocess.run(
+                  ["keytool", "-list", "-keystore", "android.keystore",
+                   "-alias", "gwave", "-storepass", ks_pass],
+                  capture_output=True,
+              ).returncode == 0
+              if ok:
+                  print(f"Recovered keystore: {len(data)} bytes")
+                  sys.exit(0)
+          if decodable:
+              sys.exit("Keystore data decoded, but no candidate opened with alias 'gwave' and the configured password. Either the base64 tail is missing more than padding (re-create ANDROID_KEYSTORE_BASE64 with only the full base64 text) or ANDROID_KEYSTORE_PASSWORD does not match the keystore.")
+          sys.exit("ANDROID_KEYSTORE_BASE64 contains no decodable keystore data")
           EOF
-            # Prove the decode produced a real keystore that opens with the
-            # configured password, so a mangled secret fails loudly here
-            # instead of shipping a wrongly-signed APK.
-            keytool -list -keystore android.keystore -alias gwave -storepass "$KS_PASS" > /dev/null || {
-              echo "::error::ANDROID_KEYSTORE_BASE64 decoded, but the keystore did not open with alias 'gwave' and the configured password. Re-create the secret with ONLY the base64 text (no prompts/labels) and check ANDROID_KEYSTORE_PASSWORD."
-              exit 1
-            }
             echo "KEYSTORE_FROM_SECRET=1" >> "$GITHUB_ENV"
             echo "Using keystore from repository secret."
           else
