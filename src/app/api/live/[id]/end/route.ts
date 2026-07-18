@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { agoraRecordingConfigured, stopAgoraRecording } from "@/lib/agora";
 import { getCurrentProfile } from "@/lib/auth";
+import { stopIvsStream } from "@/lib/ivs";
 import { egressConfigured, stopRoomRecording } from "@/lib/livekit";
 import { getMux } from "@/lib/mux";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -39,6 +40,21 @@ export async function POST(_request: Request, props: { params: Promise<{ id: str
   }
   if (stream.status === "ended") {
     return NextResponse.json({ ok: true });
+  }
+
+  // IVS: stop the broadcast on the channel so "End stream" is instant (IVS
+  // auto-records to S3 on its own when a recording config is attached). Only
+  // touched when IVS is the active provider, so a deploy that predates the IVS
+  // migration never reads the new column.
+  if (process.env.NEXT_PUBLIC_LIVE_PROVIDER === "ivs") {
+    const { data: rec } = await admin
+      .from("live_streams")
+      .select("ivs_channel_arn")
+      .eq("id", stream.id)
+      .maybeSingle();
+    if (rec?.ivs_channel_arn) {
+      await stopIvsStream(rec.ivs_channel_arn);
+    }
   }
 
   // Stop the auto-save recording, if one is running. Per provider, and only

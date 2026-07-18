@@ -112,6 +112,14 @@ export interface LiveStream {
   agora_channel: string | null;
   agora_resource_id: string | null;
   agora_recording_sid: string | null;
+  /**
+   * Amazon IVS Low-Latency provider (AWS-native). A stream is an IVS stream
+   * when ivs_channel_arn is set; the host pushes RTMPS to ivs_ingest_url (key
+   * kept host-only in live_stream_keys) and viewers watch ivs_playback_url.
+   */
+  ivs_channel_arn: string | null;
+  ivs_ingest_url: string | null;
+  ivs_playback_url: string | null;
   viewer_count: number;
   kind: "stream" | "class";
   track_slug: string | null;

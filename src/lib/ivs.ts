@@ -1,0 +1,120 @@
+import "server-only";
+
+import {
+  CreateChannelCommand,
+  DeleteChannelCommand,
+  GetStreamCommand,
+  IvsClient,
+  StopStreamCommand,
+} from "@aws-sdk/client-ivs";
+
+/**
+ * Amazon IVS Low-Latency Streaming — the AWS-native Live provider for
+ * OBS/game-style broadcasts (the exact stack Twitch runs on). Each gwave stream
+ * gets its own IVS channel: the host pushes RTMPS from OBS with a per-channel
+ * stream key, viewers watch the channel's HLS playback URL (global edge, ~3s
+ * latency), and IVS auto-records to S3 when a recording configuration is
+ * attached — no media server of ours anywhere.
+ *
+ * Region note: IVS control plane isn't offered in ap-southeast-1, so channels
+ * are created in IVS_REGION (default ap-northeast-1, Tokyo). Video ingest and
+ * playback ride AWS's global edge network regardless, so viewer latency in
+ * Myanmar is unaffected; only the API calls and the recording bucket live in
+ * Tokyo.
+ *
+ * Credentials come from the EC2 instance role (default provider chain) — the
+ * role needs ivs:CreateChannel/StopStream/DeleteChannel (see
+ * deploy/aws-ivs-setup.md). Env:
+ *   IVS_REGION                    control-plane region (default ap-northeast-1)
+ *   IVS_RECORDING_CONFIG_ARN      optional; attach to channels for S3 auto-record
+ *   NEXT_PUBLIC_LIVE_PROVIDER=ivs New broadcasts use IVS (flag; default livekit)
+ */
+
+export function ivsConfigured(): boolean {
+  // The SDK signs with the instance role; the only hard requirement is the
+  // flag-independent region (which has a default), so IVS is considered
+  // available unless explicitly disabled.
+  return process.env.IVS_DISABLED !== "1";
+}
+
+/** New streams use IVS only when the provider flag says so. */
+export function ivsIsDefaultProvider(): boolean {
+  return ivsConfigured() && process.env.NEXT_PUBLIC_LIVE_PROVIDER === "ivs";
+}
+
+function ivsClient(): IvsClient {
+  return new IvsClient({
+    region: process.env.IVS_REGION || "ap-northeast-1",
+  });
+}
+
+export interface IvsChannel {
+  channelArn: string;
+  /** RTMPS URL the host pastes into OBS (includes the /app/ path). */
+  ingestUrl: string;
+  /** Secret stream key — store host-only, never on the public row. */
+  streamKey: string;
+  /** HLS playback URL viewers watch. */
+  playbackUrl: string;
+}
+
+/**
+ * Create an IVS channel for one broadcast. LOW latency + BASIC type covers
+ * 480p→1080p adaptive; the recording configuration (when set) makes IVS write
+ * the HLS/MP4 recording to its S3 bucket automatically on stream end.
+ */
+export async function createIvsChannel(name: string): Promise<IvsChannel> {
+  const recordingArn = process.env.IVS_RECORDING_CONFIG_ARN;
+  const res = await ivsClient().send(
+    new CreateChannelCommand({
+      name,
+      latencyMode: "LOW",
+      type: "STANDARD",
+      ...(recordingArn ? { recordingConfigurationArn: recordingArn } : {}),
+    }),
+  );
+  const arn = res.channel?.arn;
+  const ingest = res.channel?.ingestEndpoint;
+  const playback = res.channel?.playbackUrl;
+  const key = res.streamKey?.value;
+  if (!arn || !ingest || !playback || !key) {
+    throw new Error("IVS did not return a usable channel.");
+  }
+  return {
+    channelArn: arn,
+    ingestUrl: `rtmps://${ingest}:443/app/`,
+    streamKey: key,
+    playbackUrl: playback,
+  };
+}
+
+/**
+ * Is the channel broadcasting right now? IVS has no webhook wired into the app
+ * yet (that needs EventBridge), so the watch page checks the channel state when
+ * an idle IVS stream is opened and flips it live — OBS starts pushing, the next
+ * page view marks it live for everyone.
+ */
+export async function isIvsChannelLive(channelArn: string): Promise<boolean> {
+  try {
+    const res = await ivsClient().send(new GetStreamCommand({ channelArn }));
+    return res.stream?.state === "LIVE";
+  } catch {
+    // ChannelNotBroadcasting (or any API error) — treat as not live.
+    return false;
+  }
+}
+
+/** Stop an in-progress broadcast on a channel. Best-effort — the host closing
+ * OBS ends it anyway; this just makes "End stream" instant. */
+export async function stopIvsStream(channelArn: string): Promise<void> {
+  await ivsClient()
+    .send(new StopStreamCommand({ channelArn }))
+    .catch(() => undefined);
+}
+
+/** Delete a channel (cleanup for failed creates). Best-effort. */
+export async function deleteIvsChannel(channelArn: string): Promise<void> {
+  await ivsClient()
+    .send(new DeleteChannelCommand({ arn: channelArn }))
+    .catch(() => undefined);
+}

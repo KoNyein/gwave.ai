@@ -29,7 +29,9 @@ const publicSchema = z.object({
    * served from (falls back to the media CDN when unset).
    */
   NEXT_PUBLIC_AGORA_APP_ID: z.string().optional(),
-  NEXT_PUBLIC_LIVE_PROVIDER: z.enum(["livekit", "agora"]).default("livekit"),
+  NEXT_PUBLIC_LIVE_PROVIDER: z
+    .enum(["livekit", "agora", "ivs"])
+    .default("livekit"),
   NEXT_PUBLIC_AGORA_RECORDING_BASE: z.string().url().optional(),
 });
 

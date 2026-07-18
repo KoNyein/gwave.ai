@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { agoraIsDefaultProvider } from "@/lib/agora";
 import { getCurrentProfile } from "@/lib/auth";
+import { createIvsChannel, deleteIvsChannel, ivsIsDefaultProvider } from "@/lib/ivs";
 import { livekitConfigured } from "@/lib/livekit";
 import { getMux } from "@/lib/mux";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -61,6 +62,69 @@ export async function POST(request: Request) {
         { status: 403 },
       );
     }
+  }
+
+  // AWS-native path (flagged): Amazon IVS Low-Latency. Each broadcast gets its
+  // own IVS channel — the host pushes RTMPS from OBS (Twitch-style), viewers
+  // watch the channel's HLS URL off AWS's global edge, and IVS auto-records to
+  // S3 when a recording configuration is attached. Gated by
+  // NEXT_PUBLIC_LIVE_PROVIDER=ivs so nothing changes until the flag flips.
+  if (ivsIsDefaultProvider()) {
+    let channel;
+    try {
+      channel = await createIvsChannel(`gwave-${profile.id.slice(0, 8)}`);
+    } catch (e) {
+      return NextResponse.json(
+        {
+          error:
+            e instanceof Error && /security token|credentials|AccessDenied/i.test(e.message)
+              ? "IVS permissions are missing on this server's IAM role. See deploy/aws-ivs-setup.md."
+              : "Failed to provision the live channel.",
+        },
+        { status: 503 },
+      );
+    }
+
+    const admin = createAdminClient();
+    const { data: row, error } = await admin
+      .from("live_streams")
+      .insert({
+        host_id: profile.id,
+        title: parsed.data.title.trim(),
+        description: parsed.data.description?.trim() || null,
+        ivs_channel_arn: channel.channelArn,
+        ivs_ingest_url: channel.ingestUrl,
+        ivs_playback_url: channel.playbackUrl,
+        kind: parsed.data.kind,
+        track_slug:
+          parsed.data.kind === "class" ? parsed.data.trackSlug || null : null,
+        scheduled_at:
+          parsed.data.kind === "class"
+            ? parsed.data.scheduledAt || null
+            : null,
+      })
+      .select("id")
+      .single();
+    if (error || !row) {
+      // Don't leave an orphaned IVS channel behind.
+      await deleteIvsChannel(channel.channelArn);
+      return NextResponse.json(
+        { error: error?.message ?? "Failed to save the stream." },
+        { status: 500 },
+      );
+    }
+
+    // Stream key is host-only (RLS) — same handling as the Mux key.
+    const { error: keyError } = await admin
+      .from("live_stream_keys")
+      .insert({ stream_id: row.id, stream_key: channel.streamKey });
+    if (keyError) {
+      await admin.from("live_streams").delete().eq("id", row.id);
+      await deleteIvsChannel(channel.channelArn);
+      return NextResponse.json({ error: keyError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ id: row.id }, { status: 201 });
   }
 
   // Best path (flagged): Agora managed WebRTC. A row with agora_channel set is
