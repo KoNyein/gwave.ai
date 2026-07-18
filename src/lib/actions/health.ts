@@ -112,6 +112,7 @@ const MANUAL_METRICS: Record<string, string> = {
   sleep: "min",
   calories: "kcal",
   heart_rate: "bpm",
+  screen_time: "min",
 };
 
 /**

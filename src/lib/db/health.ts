@@ -33,6 +33,7 @@ export interface DailySummary {
   sleep_minutes: number | null;
   calories: number | null;
   active_minutes: number | null;
+  screen_minutes: number | null;
 }
 
 export interface SyncConnection {
@@ -67,7 +68,7 @@ export async function getDailySummaries(
     .slice(0, 10);
   const { data } = await db
     .from("health_daily_summary")
-    .select("day, steps, avg_hr, resting_hr, sleep_minutes, calories, active_minutes")
+    .select("day, steps, avg_hr, resting_hr, sleep_minutes, calories, active_minutes, screen_minutes")
     .eq("user_id", userId)
     .gte("day", since)
     .order("day", { ascending: true });
@@ -80,7 +81,7 @@ export async function getLatestSummary(
   const db = untyped(await createClient());
   const { data } = await db
     .from("health_daily_summary")
-    .select("day, steps, avg_hr, resting_hr, sleep_minutes, calories, active_minutes")
+    .select("day, steps, avg_hr, resting_hr, sleep_minutes, calories, active_minutes, screen_minutes")
     .eq("user_id", userId)
     .order("day", { ascending: false })
     .limit(1)
@@ -283,6 +284,9 @@ export async function recomputeDailySummaries(
         sleep_minutes: sum(vals("sleep")),
         calories: max(vals("calories")),
         active_minutes: max(vals("active_minutes")),
+        // Reported as a cumulative daily total (tracker re-sends the running
+        // total), so the max is the day's figure.
+        screen_minutes: max(vals("screen_time")),
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id,day" },

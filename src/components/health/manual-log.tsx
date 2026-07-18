@@ -11,6 +11,7 @@ const METRICS = [
   { type: "sleep", label: "အိပ်ချိန် (မိနစ်)", unit: "မိနစ်" },
   { type: "calories", label: "ကယ်လိုရီ", unit: "kcal" },
   { type: "heart_rate", label: "နှလုံးခုန် (bpm)", unit: "bpm" },
+  { type: "screen_time", label: "Screen time (မိနစ်)", unit: "မိနစ်" },
 ] as const;
 
 /**

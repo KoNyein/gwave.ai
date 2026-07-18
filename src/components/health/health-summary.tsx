@@ -1,4 +1,11 @@
-import { Activity, Flame, Footprints, HeartPulse, Moon } from "lucide-react";
+import {
+  Activity,
+  Flame,
+  Footprints,
+  HeartPulse,
+  Moon,
+  Smartphone,
+} from "lucide-react";
 
 import type { DailySummary } from "@/lib/db/health";
 
@@ -25,6 +32,12 @@ export function HealthSummary({
     },
     { icon: Flame, label: "ကယ်လိုရီ", value: latest?.calories, unit: "kcal" },
     { icon: Activity, label: "လှုပ်ရှားချိန်", value: latest?.active_minutes, unit: "မိနစ်" },
+    {
+      icon: Smartphone,
+      label: "Screen time",
+      value: latest?.screen_minutes,
+      unit: "မိနစ်",
+    },
   ];
 
   const maxSteps = Math.max(1, ...week.map((d) => d.steps ?? 0));
