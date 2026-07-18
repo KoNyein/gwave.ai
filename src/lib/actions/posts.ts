@@ -125,6 +125,78 @@ export async function createPost(
   return { ok: true, data: { postId: post.id } };
 }
 
+const importPostSchema = z.object({
+  content: z.string().max(10000),
+  visibility: z.enum(["public", "friends", "only_me", "members"]),
+  media: z.array(mediaItemSchema).max(10),
+  // The post's original time (from the source archive), so a restored
+  // Facebook post keeps its real date and correct feed order.
+  createdAt: z.string().datetime({ offset: true }),
+});
+
+export type ImportPostInput = z.infer<typeof importPostSchema>;
+
+/**
+ * Create a post restored from an external archive (Facebook import), backdating
+ * created_at to the original time so the feed shows the real date and orders it
+ * correctly. Own posts only; the timestamp is clamped to not be in the future.
+ */
+export async function importPost(
+  input: ImportPostInput,
+): Promise<ActionResult<{ postId: string }>> {
+  const parsed = importPostSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.errors[0]?.message ?? "Invalid post." };
+  }
+  if (
+    parsed.data.content.trim().length === 0 &&
+    parsed.data.media.length === 0
+  ) {
+    return { ok: false, error: "A post needs text or media." };
+  }
+
+  const supabase = await createClient();
+  const userId = await getUserId();
+  if (!userId) return { ok: false, error: "Not authenticated." };
+
+  const when = new Date(parsed.data.createdAt);
+  const createdAt = (when.getTime() > Date.now() ? new Date() : when).toISOString();
+
+  const { data: post, error } = await supabase
+    .from("posts")
+    .insert({
+      author_id: userId,
+      content: parsed.data.content.trim(),
+      visibility: parsed.data.visibility,
+      created_at: createdAt,
+    })
+    .select("id")
+    .single();
+  if (error || !post) {
+    return { ok: false, error: error?.message ?? "Failed to import post." };
+  }
+
+  if (parsed.data.media.length > 0) {
+    const { error: mediaError } = await supabase.from("post_media").insert(
+      parsed.data.media.map((m, index) => ({
+        post_id: post.id,
+        media_type: m.media_type,
+        storage_path: m.storage_path,
+        width: m.width,
+        height: m.height,
+        position: index,
+      })),
+    );
+    if (mediaError) {
+      await supabase.from("posts").delete().eq("id", post.id);
+      return { ok: false, error: mediaError.message };
+    }
+  }
+
+  revalidatePath("/feed");
+  return { ok: true, data: { postId: post.id } };
+}
+
 export async function deletePost(postId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.from("posts").delete().eq("id", postId);
