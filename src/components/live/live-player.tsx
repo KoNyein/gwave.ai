@@ -17,6 +17,7 @@ export function LivePlayer({
   status,
   title,
   src,
+  vodSrc,
 }: {
   playbackId: string | null;
   vodPlaybackId?: string | null;
@@ -24,8 +25,27 @@ export function LivePlayer({
   title: string;
   /** Raw HLS URL (IVS playback). Takes precedence over playbackId while live. */
   src?: string | null;
+  /** Raw HLS replay URL (IVS recordings are HLS; a bare <video> can't play
+   * m3u8 on Chrome). Takes precedence over vodPlaybackId when ended. */
+  vodSrc?: string | null;
 }) {
   if (status === "ended") {
+    if (vodSrc) {
+      return (
+        <div className="relative">
+          <span className="absolute left-3 top-3 z-20 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+            Replay
+          </span>
+          <MuxPlayer
+            src={vodSrc}
+            streamType="on-demand"
+            metadata={{ video_title: title }}
+            className="aspect-video w-full overflow-hidden rounded-xl"
+            accentColor="#3B6D11"
+          />
+        </div>
+      );
+    }
     if (vodPlaybackId) {
       return (
         <div className="relative">

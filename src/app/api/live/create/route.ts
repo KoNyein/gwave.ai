@@ -4,6 +4,7 @@ import { z } from "zod";
 import { agoraIsDefaultProvider } from "@/lib/agora";
 import { getCurrentProfile } from "@/lib/auth";
 import { createIvsChannel, deleteIvsChannel, ivsIsDefaultProvider } from "@/lib/ivs";
+import { createIvsStage, deleteIvsStage } from "@/lib/ivs-realtime";
 import { livekitConfigured } from "@/lib/livekit";
 import { getMux } from "@/lib/mux";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -25,6 +26,9 @@ const bodySchema = z.object({
   kind: z.enum(["stream", "class"]).optional().default("stream"),
   trackSlug: z.string().max(60).optional(),
   scheduledAt: z.string().datetime().optional(),
+  // How the host broadcasts (IVS provider only): phone/browser camera, or an
+  // RTMP encoder (OBS / game streaming). Other providers ignore it.
+  mode: z.enum(["camera", "rtmp"]).optional().default("camera"),
 });
 
 /**
@@ -62,6 +66,54 @@ export async function POST(request: Request) {
         { status: 403 },
       );
     }
+  }
+
+  // AWS-native path (flagged): Amazon IVS Real-Time. The host broadcasts from
+  // the phone/browser camera over WebRTC (FB/TikTok-style); viewers subscribe
+  // through AWS's global edge, and a server-side composition records the mixed
+  // view to S3. Gated by NEXT_PUBLIC_LIVE_PROVIDER=ivs + mode "camera".
+  if (ivsIsDefaultProvider() && parsed.data.mode === "camera") {
+    let stageArn: string;
+    try {
+      stageArn = await createIvsStage(`gwave-${profile.id.slice(0, 8)}`);
+    } catch (e) {
+      return NextResponse.json(
+        {
+          error:
+            e instanceof Error && /security token|credentials|AccessDenied/i.test(e.message)
+              ? "IVS permissions are missing on this server's IAM role. See deploy/aws-ivs-setup.md."
+              : "Failed to provision the live stage.",
+        },
+        { status: 503 },
+      );
+    }
+
+    const admin = createAdminClient();
+    const { data: row, error } = await admin
+      .from("live_streams")
+      .insert({
+        host_id: profile.id,
+        title: parsed.data.title.trim(),
+        description: parsed.data.description?.trim() || null,
+        ivs_stage_arn: stageArn,
+        kind: parsed.data.kind,
+        track_slug:
+          parsed.data.kind === "class" ? parsed.data.trackSlug || null : null,
+        scheduled_at:
+          parsed.data.kind === "class"
+            ? parsed.data.scheduledAt || null
+            : null,
+      })
+      .select("id")
+      .single();
+    if (error || !row) {
+      await deleteIvsStage(stageArn);
+      return NextResponse.json(
+        { error: error?.message ?? "Failed to save the stream." },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json({ id: row.id }, { status: 201 });
   }
 
   // AWS-native path (flagged): Amazon IVS Low-Latency. Each broadcast gets its

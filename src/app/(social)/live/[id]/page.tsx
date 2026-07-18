@@ -10,6 +10,7 @@ import { LiveOverlay } from "@/components/live/live-overlay";
 import { LiveGifts } from "@/components/live/live-gifts";
 import { LivePlayer } from "@/components/live/live-player";
 import { AgoraStage } from "@/components/live/agora-stage";
+import { IvsStage } from "@/components/live/ivs-stage";
 import { LiveStage } from "@/components/live/live-stage";
 import { LiveSaleManager } from "@/components/live/live-sale-manager";
 import { LiveSalePanel } from "@/components/live/live-sale-panel";
@@ -38,6 +39,7 @@ import { createClient } from "@/lib/supabase/server";
 import { displayName, liveStreamTitle, timeAgo } from "@/lib/format";
 import { agoraRecordingUrl } from "@/lib/agora";
 import { isIvsChannelLive } from "@/lib/ivs";
+import { ivsRecordingUrl } from "@/lib/ivs-realtime";
 import { recordingPlaybackUrl } from "@/lib/livekit";
 import { mediaUrl } from "@/lib/media-url";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -67,7 +69,8 @@ export default async function LiveStreamPage(
   const isAgora = Boolean(stream.agora_channel);
   const isLivekit = Boolean(stream.livekit_room);
   const isIvs = Boolean(stream.ivs_channel_arn);
-  const isBrowserLive = isAgora || isLivekit;
+  const isIvsStage = Boolean(stream.ivs_stage_arn);
+  const isBrowserLive = isAgora || isLivekit || isIvsStage;
 
   // IVS has no webhook into the app (yet — that needs EventBridge), so an idle
   // IVS stream checks the channel on page view: once OBS starts pushing, the
@@ -93,7 +96,8 @@ export default async function LiveStreamPage(
   // the media CDN when a dedicated base isn't configured.
   const replayUrl =
     isBrowserLive && stream.status === "ended" && stream.recording_path
-      ? recordingPlaybackUrl(stream.recording_path) ??
+      ? (isIvsStage ? ivsRecordingUrl(stream.recording_path) : null) ??
+        recordingPlaybackUrl(stream.recording_path) ??
         agoraRecordingUrl(stream.recording_path) ??
         mediaUrl(stream.recording_path)
       : null;
@@ -177,13 +181,22 @@ export default async function LiveStreamPage(
         <div className="space-y-4 lg:col-span-2">
           <div className="relative overflow-hidden rounded-xl">
             {replayUrl ? (
-              <video
-                controls
-                playsInline
-                preload="metadata"
-                src={replayUrl}
-                className="mx-auto max-h-[80vh] w-full rounded-xl border bg-black"
-              />
+              replayUrl.includes(".m3u8") ? (
+                <LivePlayer
+                  playbackId={null}
+                  status={stream.status}
+                  title={stream.title}
+                  vodSrc={replayUrl}
+                />
+              ) : (
+                <video
+                  controls
+                  playsInline
+                  preload="metadata"
+                  src={replayUrl}
+                  className="mx-auto max-h-[80vh] w-full rounded-xl border bg-black"
+                />
+              )
             ) : isBrowserLive && stream.status === "ended" ? (
               // Ended browser broadcast with no saved replay: say so plainly
               // instead of a bare "ended" placeholder that reads as a blank
@@ -198,6 +211,12 @@ export default async function LiveStreamPage(
                   Replay မရနိုင်သေးပါ — recording ဖွင့်ထားမှ ပြန်ကြည့်လို့ရပါမည်။
                 </p>
               </div>
+            ) : isIvsStage ? (
+              <IvsStage
+                streamId={stream.id}
+                isHost={isHost}
+                status={stream.status}
+              />
             ) : isAgora ? (
               <AgoraStage
                 streamId={stream.id}

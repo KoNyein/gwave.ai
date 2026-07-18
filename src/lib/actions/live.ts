@@ -13,6 +13,10 @@ import {
   startAgoraRecording,
 } from "@/lib/agora";
 import {
+  mintIvsStageToken,
+  startIvsComposition,
+} from "@/lib/ivs-realtime";
+import {
   egressConfigured,
   livekitConfigured,
   livekitUrl,
@@ -127,6 +131,52 @@ export async function getAgoraStageToken(
 }
 
 /**
+ * Mint an IVS Real-Time participant token for a stage stream. The host may
+ * publish (capability baked into the signed token); everyone else subscribes.
+ */
+export async function getIvsStageToken(
+  streamId: string,
+): Promise<ActionResult<{ token: string; canPublish: boolean }>> {
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Not signed in" };
+
+  const { data: stream } = await supabase
+    .from("live_streams")
+    .select("id, host_id, status, ivs_stage_arn")
+    .eq("id", streamId)
+    .maybeSingle();
+  if (!stream) return { ok: false, error: "Stream not found" };
+  if (!stream.ivs_stage_arn) {
+    return { ok: false, error: "This stream is not an IVS stage." };
+  }
+  if (stream.status === "ended") {
+    return { ok: false, error: "This broadcast has ended." };
+  }
+
+  const isHost = stream.host_id === user.id;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, username")
+    .eq("id", user.id)
+    .maybeSingle();
+  const name =
+    profile?.full_name?.trim() || profile?.username?.trim() || "Guest";
+
+  try {
+    const token = await mintIvsStageToken({
+      stageArn: stream.ivs_stage_arn,
+      userId: user.id,
+      name,
+      canPublish: isHost,
+    });
+    return { ok: true, data: { token, canPublish: isHost } };
+  } catch {
+    return { ok: false, error: "Live provider is not reachable." };
+  }
+}
+
+/**
  * Host: flip a LiveKit stream to "live" once the browser starts publishing.
  * Idempotent — safe to call again on reconnect.
  */
@@ -135,11 +185,25 @@ export async function goLive(streamId: string): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
+  const providerCols =
+    process.env.NEXT_PUBLIC_LIVE_PROVIDER === "ivs"
+      ? ", ivs_stage_arn"
+      : "";
   const { data: stream } = await supabase
     .from("live_streams")
-    .select("id, host_id, status, started_at, livekit_room, agora_channel")
+    .select(
+      `id, host_id, status, started_at, livekit_room, agora_channel${providerCols}`,
+    )
     .eq("id", streamId)
-    .maybeSingle();
+    .maybeSingle<{
+      id: string;
+      host_id: string;
+      status: string;
+      started_at: string | null;
+      livekit_room: string | null;
+      agora_channel: string | null;
+      ivs_stage_arn?: string | null;
+    }>();
   if (!stream) return { ok: false, error: "Stream not found" };
   if (stream.host_id !== user.id) return { ok: false, error: "Host only" };
   if (stream.status === "ended") {
@@ -165,6 +229,12 @@ export async function goLive(streamId: string): Promise<ActionResult> {
     if (rec) {
       extra.agora_resource_id = rec.resourceId;
       extra.agora_recording_sid = rec.sid;
+      extra.recording_path = null;
+    }
+  } else if (stream.ivs_stage_arn) {
+    const arn = await startIvsComposition(stream.ivs_stage_arn);
+    if (arn) {
+      extra.ivs_composition_arn = arn;
       extra.recording_path = null;
     }
   }

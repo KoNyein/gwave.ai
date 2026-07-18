@@ -82,6 +82,67 @@ Notes:
 - Live-status flips on page view (GetStream) for now; an EventBridge → webhook
   wiring can replace that later for instant transitions.
 
-## Phase 2 — IVS Real-Time (phone Live) · Phase 3 — Chime (calls)
+## Phase 2 — IVS Real-Time (phone-browser Live)
 
-Follow-up phases; this doc gains their sections when the code lands.
+FB/TikTok-style: the host broadcasts from the phone/browser camera over WebRTC
+(an IVS *stage*), viewers subscribe through the global edge, and a server-side
+*composition* records the mixed view to S3.
+
+### 1. IAM: extend the instance-role policy
+
+Add the realtime actions to the Phase 1 policy (or a second inline policy):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ivs:CreateStage",
+        "ivs:DeleteStage",
+        "ivs:CreateParticipantToken",
+        "ivs:StartComposition",
+        "ivs:StopComposition",
+        "ivs:GetComposition"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+### 2. Recording (optional): storage + encoder configurations
+
+IVS console (Tokyo) → Real-Time streaming:
+
+1. **Storage configuration** → point at the recordings bucket → copy ARN.
+2. **Encoder configuration** → 720×1280 (portrait) or 1280×720 → copy ARN.
+3. Serve the bucket via CloudFront for public replay playback.
+
+### 3. App environment
+
+```
+IVS_RT_STORAGE_CONFIG_ARN=<storage config arn>
+IVS_RT_ENCODER_CONFIG_ARN=<encoder config arn>
+NEXT_PUBLIC_IVS_RECORDING_BASE=https://<cloudfront-over-recordings-bucket>
+```
+
+### 4. Database migration (idempotent)
+
+```sql
+alter table public.live_streams
+  add column if not exists ivs_stage_arn text,
+  add column if not exists ivs_composition_arn text;
+```
+
+### 5. Verify
+
+With `NEXT_PUBLIC_LIVE_PROVIDER=ivs`, `/live/new` shows a mode picker:
+**📱 ဖုန်းကင်မရာ** creates a stage (camera broadcast in the browser);
+**🎮 OBS / Game** creates a Low-Latency channel (Phase 1). Start a camera
+broadcast, end it, and the replay (HLS) appears once the composition finishes.
+
+## Phase 3 — Chime (messenger calls)
+
+Follow-up phase; this doc gains its section when the code lands.
