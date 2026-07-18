@@ -84,6 +84,31 @@ export async function getCameraClips(
   return data ?? [];
 }
 
+export interface RecentClip extends CameraClip {
+  camera: { id: string; title: string } | null;
+}
+
+/**
+ * The owner's newest recordings across ALL their cameras (for the dashboard
+ * monitor). RLS scopes rows to the owner; the camera embed carries the name.
+ */
+export async function getMyRecentClips(
+  ownerId: string,
+  limit = 6,
+): Promise<RecentClip[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("camera_clips")
+    .select(
+      "id, camera_id, storage_path, duration_seconds, kind, created_at, camera:user_cameras!camera_clips_camera_id_fkey(id, title)",
+    )
+    .eq("owner_id", ownerId)
+    .order("created_at", { ascending: false })
+    .limit(limit)
+    .returns<RecentClip[]>();
+  return data ?? [];
+}
+
 export interface CameraAlert {
   id: string;
   camera_id: string;
