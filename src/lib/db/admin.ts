@@ -125,7 +125,7 @@ export interface ReportWithContext extends Report {
 
 export async function getPendingReports(): Promise<ReportWithContext[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("reports")
     .select(
       `*,
@@ -138,6 +138,11 @@ export async function getPendingReports(): Promise<ReportWithContext[]> {
     .order("created_at", { ascending: true })
     .limit(50)
     .returns<ReportWithContext[]>();
+  // A swallowed error would render an empty moderation queue during a failure —
+  // indistinguishable from "no pending reports", so a moderator sees nothing to
+  // do while reports pile up. Throw so the /admin error boundary shows a retry.
+  // A genuinely empty queue is `data: []` with no error and still renders empty.
+  if (error) throw new Error(`Failed to load pending reports: ${error.message}`);
   return data ?? [];
 }
 

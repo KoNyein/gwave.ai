@@ -48,7 +48,7 @@ export async function getMySubscription(
 /** PromptPay payments waiting for admin review. */
 export async function getReviewQueue(): Promise<PaymentWithProfile[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("payments")
     .select(
       "*, profile:profiles!payments_user_id_fkey(id, username, full_name, avatar_url)",
@@ -57,6 +57,12 @@ export async function getReviewQueue(): Promise<PaymentWithProfile[]> {
     .order("created_at", { ascending: true })
     .limit(50)
     .returns<PaymentWithProfile[]>();
+  // A swallowed error would render an empty payment-review queue during a failure,
+  // so an admin sees no payments to review while paying users wait to be activated.
+  // Throw so the /admin error boundary shows a retry instead of a false all-clear.
+  if (error) {
+    throw new Error(`Failed to load the payment review queue: ${error.message}`);
+  }
   return data ?? [];
 }
 
