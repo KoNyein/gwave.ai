@@ -77,6 +77,23 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
+            📥 Import · Facebook data ပြန်သွင်းရန်
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <a
+            href="/settings/import"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            Facebook &quot;Download Your Information&quot; ZIP ကနေ post/ဓာတ်ပုံများ
+            ပြန်သွင်းရန် →
+          </a>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
             🔐 Account Security · အကောင့် လုံခြုံရေး
           </CardTitle>
         </CardHeader>
