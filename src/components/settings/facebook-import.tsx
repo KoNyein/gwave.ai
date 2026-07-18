@@ -103,19 +103,22 @@ export function FacebookImport({ userId }: { userId: string }) {
       const allNames = Object.keys(archive.files).filter(
         (name) => !archive.files[name]!.dir,
       );
-      // Facebook has renamed these files repeatedly — accept any JSON that
-      // lives near "post" in its path and let the item-shape check below
-      // decide what is actually a post.
-      const postFiles = allNames.filter(
-        (name) => /post/i.test(name) && /\.json$/i.test(name),
-      );
+      // Facebook renames the post files between export versions and sometimes
+      // nests the text JSON where "post" isn't in the path — so scan EVERY
+      // JSON and let the item-shape check below decide what is a post.
+      // "post"-pathed files first so real posts sort ahead of other data.
+      const jsonFiles = allNames
+        .filter((name) => /\.json$/i.test(name))
+        .sort((a, b) => Number(/post/i.test(b)) - Number(/post/i.test(a)));
       const htmlPostFiles = allNames.filter(
         (name) => /post/i.test(name) && /\.html?$/i.test(name),
       );
 
       const parsed: ParsedPost[] = [];
-      for (const name of postFiles) {
-        const raw = await archive.files[name]!.async("string");
+      for (const name of jsonFiles) {
+        // Skip huge non-post JSON (ads/security logs) to keep parsing quick.
+        const file = archive.files[name]!;
+        const raw = await file.async("string");
         let items: FbPost[] = [];
         try {
           items = collectPosts(JSON.parse(raw) as unknown);
@@ -186,12 +189,43 @@ export function FacebookImport({ userId }: { userId: string }) {
         }
       }
 
+      // Media-only archive (or one whose post text we couldn't map): rescue
+      // the photos themselves so they aren't lost. Group by folder so an
+      // album becomes one post; cap so a huge library doesn't explode.
+      if (parsed.length === 0) {
+        const imgFiles = allNames
+          .filter(
+            (n) =>
+              /\.(jpe?g|png|gif|webp)$/i.test(n) &&
+              /(post|media|photo|album|timeline)/i.test(n),
+          )
+          .slice(0, 300);
+        const byFolder = new Map<string, string[]>();
+        for (const path of imgFiles) {
+          const folder = path.split("/").slice(0, -1).join("/");
+          const list = byFolder.get(folder) ?? [];
+          if (list.length < MAX_PHOTOS_PER_POST) list.push(path);
+          byFolder.set(folder, list);
+        }
+        for (const paths of byFolder.values()) {
+          parsed.push({
+            text: "",
+            timestamp: 0,
+            date: "",
+            mediaPaths: paths,
+            selected: true,
+          });
+        }
+      }
+
       parsed.sort((a, b) => b.timestamp - a.timestamp);
       setPosts(parsed);
       if (parsed.length === 0) {
         // List the actual post-folder files (name + first keys of any JSON) so
         // an unrecognised shape can be diagnosed from a screenshot.
-        const inPosts = allNames.filter((n) => /post/i.test(n)).slice(0, 6);
+        const inPosts = allNames
+          .filter((n) => /\.json$/i.test(n))
+          .slice(0, 8);
         const details: string[] = [];
         for (const name of inPosts) {
           const short = name.split("/").pop() ?? name;
