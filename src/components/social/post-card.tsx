@@ -26,6 +26,7 @@ import {
   useBoostClick,
 } from "@/components/boost/sponsored-tracker";
 import { CommentSection } from "@/components/social/comment-section";
+import { LinkPreview } from "@/components/social/link-preview";
 import { LinkifiedText } from "@/components/ui/linkified-text";
 import { EditPostDialog } from "@/components/social/edit-post-dialog";
 import { LocationMap } from "@/components/social/location-map";
@@ -325,6 +326,14 @@ export function PostCard({
       ) : (
         <div className="pt-2" />
       )}
+
+      {/* Rich preview for the first link — only when the post brings no
+          media of its own, matching how Facebook treats link posts. */}
+      {content && post.media.length === 0 && !post.shared_post ? (
+        <div className="px-4 pb-2">
+          <LinkPreview text={content} />
+        </div>
+      ) : null}
 
       {mapOpen && post.latitude != null && post.longitude != null ? (
         <div className="mx-4 mb-2">

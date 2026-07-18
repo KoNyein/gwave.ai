@@ -27,6 +27,8 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 
 import { CallUI } from "@/components/messenger/call-ui";
+import { LinkPreview } from "@/components/social/link-preview";
+import { LinkifiedText } from "@/components/ui/linkified-text";
 import { GamesPanel } from "@/components/messenger/games-panel";
 import { EmojiPicker } from "@/components/messenger/emoji-picker";
 import { LiveLocationMessage } from "@/components/messenger/live-location-message";
@@ -1319,8 +1321,13 @@ export function Messenger({
                                   bare ? "text-[2.75rem] leading-tight" : "text-sm",
                                 )}
                               >
-                                {message.content}
+                                <LinkifiedText text={message.content} />
                               </p>
+                              {!bare && !message.image_path ? (
+                                <div className="mt-1.5">
+                                  <LinkPreview text={message.content} />
+                                </div>
+                              ) : null}
                               {translations[translationKey(message.id, locale)]
                                 ?.text ? (
                                 <p
