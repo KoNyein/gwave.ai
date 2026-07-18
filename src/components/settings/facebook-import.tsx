@@ -34,13 +34,37 @@ function fixEncoding(s: string): string {
   }
 }
 
-interface FbAttachment {
-  data?: Array<{ media?: { uri?: string } }>;
-}
 interface FbPost {
   timestamp?: number;
+  title?: string;
   data?: Array<{ post?: string }>;
-  attachments?: FbAttachment[];
+  attachments?: Array<{ data?: Array<{ media?: { uri?: string } }> }>;
+}
+
+/**
+ * Facebook's post JSON is sometimes a bare array and sometimes an object that
+ * wraps it under a versioned key (e.g. { "your_posts_v2": [...] }), and the
+ * key name changes between exports. Pull every post-like object out of
+ * whatever shape we get: recurse shallowly and collect objects that carry a
+ * post's fingerprint (data/attachments/title/timestamp).
+ */
+function collectPosts(json: unknown, out: FbPost[] = [], depth = 0): FbPost[] {
+  if (depth > 4 || out.length > 5000) return out;
+  if (Array.isArray(json)) {
+    for (const item of json) collectPosts(item, out, depth + 1);
+  } else if (json && typeof json === "object") {
+    const obj = json as Record<string, unknown>;
+    if ("data" in obj || "attachments" in obj || "timestamp" in obj) {
+      out.push(obj as FbPost);
+    } else {
+      for (const value of Object.values(obj)) {
+        if (Array.isArray(value) || (value && typeof value === "object")) {
+          collectPosts(value, out, depth + 1);
+        }
+      }
+    }
+  }
+  return out;
 }
 
 /**
@@ -94,18 +118,17 @@ export function FacebookImport({ userId }: { userId: string }) {
         const raw = await archive.files[name]!.async("string");
         let items: FbPost[] = [];
         try {
-          const json = JSON.parse(raw) as unknown;
-          items = Array.isArray(json) ? (json as FbPost[]) : [];
+          items = collectPosts(JSON.parse(raw) as unknown);
         } catch {
           continue;
         }
         for (const item of items) {
-          const text = fixEncoding(
-            (item.data ?? [])
-              .map((d) => d.post ?? "")
-              .filter(Boolean)
-              .join("\n\n"),
-          ).trim();
+          // Text lives in data[].post; check-ins/updates put it in title.
+          const bodyText = (item.data ?? [])
+            .map((d) => d.post ?? "")
+            .filter(Boolean)
+            .join("\n\n");
+          const text = fixEncoding(bodyText || item.title || "").trim();
           const mediaPaths = (item.attachments ?? [])
             .flatMap((a) => a.data ?? [])
             .map((d) => d.media?.uri ?? "")
@@ -166,18 +189,44 @@ export function FacebookImport({ userId }: { userId: string }) {
       parsed.sort((a, b) => b.timestamp - a.timestamp);
       setPosts(parsed);
       if (parsed.length === 0) {
-        // Show what IS in the archive so the structure can be diagnosed from
-        // a screenshot.
-        const folders = [
-          ...new Set(
-            allNames.map((n) => n.split("/").slice(0, 2).join("/")),
-          ),
-        ].slice(0, 8);
+        // List the actual post-folder files (name + first keys of any JSON) so
+        // an unrecognised shape can be diagnosed from a screenshot.
+        const inPosts = allNames.filter((n) => /post/i.test(n)).slice(0, 6);
+        const details: string[] = [];
+        for (const name of inPosts) {
+          const short = name.split("/").pop() ?? name;
+          if (/\.json$/i.test(name)) {
+            try {
+              const j = JSON.parse(
+                await archive.files[name]!.async("string"),
+              ) as unknown;
+              const keys = Array.isArray(j)
+                ? `[array ${j.length}]`
+                : j && typeof j === "object"
+                  ? `{${Object.keys(j as object).slice(0, 3).join(",")}}`
+                  : typeof j;
+              details.push(`${short} ${keys}`);
+            } catch {
+              details.push(`${short} (unreadable)`);
+            }
+          } else {
+            details.push(short);
+          }
+        }
+        const shown =
+          details.length > 0
+            ? details.join(" · ")
+            : [
+                ...new Set(
+                  allNames.map((n) => n.split("/").slice(0, 2).join("/")),
+                ),
+              ]
+                .slice(0, 8)
+                .join(", ");
         setError(
           (mm
             ? "Post တစ်ခုမှ မတွေ့ပါ။ ZIP ထဲမှာ ပါတာတွေ — "
-            : "No posts were found in this archive. The ZIP contains: ") +
-            folders.join(", "),
+            : "No posts were found in this archive. The ZIP contains: ") + shown,
         );
       }
     } catch {
