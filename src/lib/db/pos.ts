@@ -59,51 +59,56 @@ export async function getProducts(
     .eq("store_id", storeId)
     .order("name");
   if (!includeInactive) query = query.eq("active", true);
-  const { data } = await query.returns<ProductWithStock[]>();
+  const { data, error } = await query.returns<ProductWithStock[]>();
+  if (error) throw new Error(error.message);
   return data ?? [];
 }
 
 export async function getCategories(storeId: string): Promise<PosCategory[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("pos_categories")
     .select("*")
     .eq("store_id", storeId)
     .order("sort_order")
     .order("name");
+  if (error) throw new Error(error.message);
   return data ?? [];
 }
 
 export async function getCustomers(storeId: string): Promise<PosCustomer[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("pos_customers")
     .select("*")
     .eq("store_id", storeId)
     .order("name")
     .limit(200);
+  if (error) throw new Error(error.message);
   return data ?? [];
 }
 
 export async function getOpenShift(storeId: string): Promise<Shift | null> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("shifts")
     .select("*")
     .eq("store_id", storeId)
     .is("closed_at", null)
     .maybeSingle();
+  if (error) throw new Error(error.message);
   return data;
 }
 
 export async function getShifts(storeId: string, limit = 30): Promise<Shift[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("shifts")
     .select("*")
     .eq("store_id", storeId)
     .order("opened_at", { ascending: false })
     .limit(limit);
+  if (error) throw new Error(error.message);
   return data ?? [];
 }
 
@@ -127,13 +132,14 @@ export async function getSales(
   limit = 50,
 ): Promise<SaleWithRelations[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("sales")
     .select(SALE_SELECT)
     .eq("store_id", storeId)
     .order("created_at", { ascending: false })
     .limit(limit)
     .returns<SaleWithRelations[]>();
+  if (error) throw new Error(error.message);
   return data ?? [];
 }
 
@@ -141,23 +147,25 @@ export async function getSale(
   saleId: string,
 ): Promise<SaleWithRelations | null> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("sales")
     .select(SALE_SELECT)
     .eq("id", saleId)
     .maybeSingle<SaleWithRelations>();
+  if (error) throw new Error(error.message);
   return data;
 }
 
 /** Cash-payment total for the current shift (for reconciliation). */
 export async function getShiftCashSales(shiftId: string): Promise<number> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("sales")
     .select("id, payments:sale_payments(method, amount)")
     .eq("shift_id", shiftId)
     .eq("status", "completed")
     .returns<{ id: string; payments: SalePayment[] }[]>();
+  if (error) throw new Error(error.message);
   let total = 0;
   for (const sale of data ?? []) {
     for (const payment of sale.payments) {
@@ -288,12 +296,13 @@ export async function getStoreMembers(
   storeId: string,
 ): Promise<StoreMemberWithProfile[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("store_members")
     .select(
       "*, profile:profiles!store_members_user_id_fkey(id, username, full_name, avatar_url)",
     )
     .eq("store_id", storeId)
     .returns<StoreMemberWithProfile[]>();
+  if (error) throw new Error(error.message);
   return data ?? [];
 }

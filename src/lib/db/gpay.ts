@@ -31,7 +31,7 @@ export async function getAllGpayTransactions(
   limit = 300,
 ): Promise<GpayTxnDetail[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("gpay_transactions")
     .select(
       "id, kind, amount, note, created_at, from:gpay_accounts!gpay_transactions_from_account_fkey(user_id, full_name, phone), to:gpay_accounts!gpay_transactions_to_account_fkey(user_id, full_name, phone)",
@@ -39,6 +39,7 @@ export async function getAllGpayTransactions(
     .order("created_at", { ascending: false })
     .limit(limit)
     .returns<GpayTxnDetail[]>();
+  if (error) throw new Error(error.message);
   return data ?? [];
 }
 
@@ -47,11 +48,12 @@ export async function getMyGpayAccount(): Promise<GpayAccount | null> {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) return null;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("gpay_accounts")
     .select("*")
     .eq("user_id", user.id)
     .maybeSingle<GpayAccount>();
+  if (error) throw new Error(error.message);
   return data ?? null;
 }
 
@@ -66,23 +68,25 @@ export async function getGpayTransactions(
   limit = 50,
 ): Promise<GpayTransaction[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("gpay_transactions")
     .select("*")
     .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
     .order("created_at", { ascending: false })
     .limit(limit)
     .returns<GpayTransaction[]>();
+  if (error) throw new Error(error.message);
   return data ?? [];
 }
 
 /** Admin review queue: every account, newest first (RLS lets admins read all). */
 export async function getAllGpayAccounts(): Promise<GpayAccount[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("gpay_accounts")
     .select("*")
     .order("created_at", { ascending: false })
     .returns<GpayAccount[]>();
+  if (error) throw new Error(error.message);
   return data ?? [];
 }

@@ -34,18 +34,20 @@ export async function getJobs(opts: {
     .limit(100);
   if (opts.category) query = query.eq("category", opts.category);
   if (opts.q) query = query.ilike("title", `%${opts.q}%`);
-  const { data } = await query.returns<JobWithEmployer[]>();
+  const { data, error } = await query.returns<JobWithEmployer[]>();
+  if (error) throw new Error(error.message);
   return data ?? [];
 }
 
 /** A single job with its employer. */
 export async function getJob(id: string): Promise<JobWithEmployer | null> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("jobs")
     .select(`*, ${EMPLOYER_EMBED}`)
     .eq("id", id)
     .maybeSingle<JobWithEmployer>();
+  if (error) throw new Error(error.message);
   return data ?? null;
 }
 
@@ -54,12 +56,13 @@ export async function getMyJobs(): Promise<Job[]> {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) return [];
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("jobs")
     .select("*")
     .eq("employer_id", user.id)
     .order("created_at", { ascending: false })
     .returns<Job[]>();
+  if (error) throw new Error(error.message);
   return data ?? [];
 }
 
@@ -68,7 +71,7 @@ export async function getJobApplications(
   jobId: string,
 ): Promise<JobApplicationWithApplicant[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("job_applications")
     .select(
       "*, applicant:profiles!job_applications_applicant_id_fkey(id, username, full_name, avatar_url)",
@@ -76,6 +79,7 @@ export async function getJobApplications(
     .eq("job_id", jobId)
     .order("created_at", { ascending: false })
     .returns<JobApplicationWithApplicant[]>();
+  if (error) throw new Error(error.message);
   return data ?? [];
 }
 
@@ -84,12 +88,13 @@ export async function getMyApplications(): Promise<MyApplication[]> {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) return [];
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("job_applications")
     .select("*, job:jobs(id, title, category, status)")
     .eq("applicant_id", user.id)
     .order("created_at", { ascending: false })
     .returns<MyApplication[]>();
+  if (error) throw new Error(error.message);
   return data ?? [];
 }
 
@@ -100,11 +105,12 @@ export async function getMyApplicationForJob(
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) return null;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("job_applications")
     .select("id")
     .eq("job_id", jobId)
     .eq("applicant_id", user.id)
     .maybeSingle<{ id: string }>();
+  if (error) throw new Error(error.message);
   return data?.id ?? null;
 }
