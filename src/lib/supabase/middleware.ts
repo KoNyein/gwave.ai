@@ -61,10 +61,14 @@ export async function updateSession(request: NextRequest) {
   const authed = await hasValidToken(token);
 
   // Session expired but refreshable: send protected page GETs through the Node
-  // refresh route, which re-mints the token and redirects back.
+  // refresh route, which re-mints the token and redirects back. This must run
+  // even when the gw_at cookie is GONE entirely — it has maxAge 1h, so the
+  // browser deletes it and `token` is undefined on the next visit; requiring
+  // the cookie to still be present sent 30-day refresh-token holders to /login
+  // every hour instead of silently refreshing.
   if (!authed && request.method === "GET" && isProtected(pathname)) {
     const canRefresh = Boolean(request.cookies.get(RT_COOKIE)?.value);
-    if (canRefresh && token !== undefined) {
+    if (canRefresh) {
       const url = request.nextUrl.clone();
       url.pathname = "/api/auth/refresh";
       url.search = "";
