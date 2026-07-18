@@ -2,8 +2,16 @@
 
 import * as React from "react";
 import { useRoomContext } from "@livekit/components-react";
-import { Track } from "livekit-client";
-import { Film, Image as ImageIcon, Music, Square, Volume2 } from "lucide-react";
+import { LocalVideoTrack, Track } from "livekit-client";
+import {
+  AudioLines,
+  Film,
+  Image as ImageIcon,
+  Music,
+  Sparkles,
+  Square,
+  Volume2,
+} from "lucide-react";
 
 // Host-only "advanced Live" media sharing. On top of the camera/mic, the host
 // can push extra tracks into the same LiveKit room:
@@ -11,12 +19,17 @@ import { Film, Image as ImageIcon, Music, Square, Volume2 } from "lucide-react";
 //     Audio so the host hears it locally too)
 //   • Video file                → a screen-share video + audio track
 //   • Photo                     → a static canvas captured as a video track
-// Everything is unpublished and cleaned up on "Stop".
+// …plus two overlay *effects* that composite directly onto the live camera
+// (the host's own camera feed is replaced with a canvas that draws camera +
+// overlay, then restored on "Stop"):
+//   • Music FX  → play a song and paint an audio-reactive visualizer over cam
+//   • Photo FX  → paint a (transparent) frame / sticker over the camera
+// Everything is unpublished / the camera restored and cleaned up on "Stop".
 
 type CaptureEl = HTMLVideoElement & { captureStream?: () => MediaStream };
 
 interface Sharing {
-  kind: "music" | "audio" | "video" | "photo";
+  kind: "music" | "audio" | "video" | "photo" | "music-fx" | "photo-fx";
   tracks: MediaStreamTrack[];
   cleanup: () => void;
 }
@@ -147,6 +160,129 @@ export function LiveMediaShare() {
     });
   }
 
+  // ── Overlay effects ─────────────────────────────────────────────────────
+  // Composite the host's own camera with an overlay onto a canvas and swap the
+  // published camera track for that canvas. The raw camera is restored (via
+  // restartTrack) when the effect stops, so viewers keep seeing the host — now
+  // with the effect painted on top rather than a separate share tile.
+  async function startCameraOverlay(kind: "music-fx" | "photo-fx", file: File) {
+    const camTrack = room.localParticipant.getTrackPublication(
+      Track.Source.Camera,
+    )?.track;
+    const raw = camTrack?.mediaStreamTrack;
+    if (!(camTrack instanceof LocalVideoTrack) || !raw) {
+      throw new Error("camera required");
+    }
+
+    // Clone the live camera so the compositor keeps a feed after we replace the
+    // published track with the canvas (a clone shares the source and stays live
+    // independently).
+    const camClone = raw.clone();
+    const camVideo = document.createElement("video");
+    camVideo.srcObject = new MediaStream([camClone]);
+    camVideo.muted = true;
+    camVideo.playsInline = true;
+    await camVideo.play();
+
+    const settings = raw.getSettings();
+    const canvas = document.createElement("canvas");
+    canvas.width = settings.width ?? 1280;
+    canvas.height = settings.height ?? 720;
+    const g = canvas.getContext("2d")!;
+
+    const extraTracks: MediaStreamTrack[] = [];
+    const cleanups: Array<() => void> = [];
+    let paintOverlay: (w: number, h: number) => void;
+
+    if (kind === "photo-fx") {
+      const imgUrl = URL.createObjectURL(file);
+      const img = new window.Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("image load failed"));
+        img.src = imgUrl;
+      });
+      cleanups.push(() => URL.revokeObjectURL(imgUrl));
+      // Stretch the overlay across the whole frame — a transparent PNG frame
+      // shows the camera through its middle; a solid image acts as a sticker.
+      paintOverlay = (w, h) => g.drawImage(img, 0, 0, w, h);
+    } else {
+      // music-fx: play the song (published + audible to the host) and draw an
+      // audio-reactive equaliser along the bottom of the camera frame.
+      const audioUrl = URL.createObjectURL(file);
+      const el = document.createElement("audio");
+      el.src = audioUrl;
+      el.loop = true;
+      const AudioCtx =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
+      const ctx = new AudioCtx();
+      const source = ctx.createMediaElementSource(el);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 128;
+      const dest = ctx.createMediaStreamDestination();
+      source.connect(analyser);
+      source.connect(dest);
+      source.connect(ctx.destination); // host hears it too
+      await el.play();
+      const aTrack = dest.stream.getAudioTracks()[0]!;
+      await room.localParticipant.publishTrack(aTrack, {
+        source: Track.Source.ScreenShareAudio,
+        name: "fx-music",
+      });
+      extraTracks.push(aTrack);
+      const bins = new Uint8Array(analyser.frequencyBinCount);
+      cleanups.push(() => {
+        el.pause();
+        void ctx.close().catch(() => {});
+        URL.revokeObjectURL(audioUrl);
+      });
+      paintOverlay = (w, h) => {
+        analyser.getByteFrequencyData(bins);
+        const n = bins.length;
+        const bw = w / n;
+        g.save();
+        g.globalAlpha = 0.85;
+        for (let i = 0; i < n; i++) {
+          const v = bins[i]! / 255;
+          const bh = v * h * 0.3;
+          g.fillStyle = `hsl(${140 + i * 2}, 90%, 55%)`;
+          g.fillRect(i * bw, h - bh, bw * 0.82, bh);
+        }
+        g.restore();
+      };
+    }
+
+    let raf = 0;
+    const render = () => {
+      if (camVideo.readyState >= 2) {
+        g.drawImage(camVideo, 0, 0, canvas.width, canvas.height);
+      }
+      paintOverlay(canvas.width, canvas.height);
+      raf = requestAnimationFrame(render);
+    };
+    render();
+
+    const outTrack = canvas.captureStream(30).getVideoTracks()[0]!;
+    await camTrack.replaceTrack(outTrack);
+
+    setSharing({
+      kind,
+      // Only extra (audio) tracks are unpublished on stop; the camera is
+      // restored via restartTrack in cleanup, not unpublished.
+      tracks: extraTracks,
+      cleanup: () => {
+        cancelAnimationFrame(raf);
+        camVideo.pause();
+        camClone.stop();
+        outTrack.stop();
+        cleanups.forEach((c) => c());
+        void camTrack.restartTrack().catch(() => {});
+      },
+    });
+  }
+
   function pick(
     accept: string,
     handler: (file: File) => Promise<void>,
@@ -178,7 +314,11 @@ export function LiveMediaShare() {
           ? "🔊 Audio ဖွင့်နေသည်"
           : sharing.kind === "video"
             ? "🎬 Video ဖွင့်နေသည်"
-            : "🖼 Photo ပြသနေသည်";
+            : sharing.kind === "music-fx"
+              ? "🎶 သီချင်း Effect ဖွင့်နေသည်"
+              : sharing.kind === "photo-fx"
+                ? "✨ ဓာတ်ပုံ Effect ဖွင့်နေသည်"
+                : "🖼 Photo ပြသနေသည်";
     return (
       <div className="flex items-center justify-between gap-2 bg-black/60 px-3 py-2 text-sm text-white">
         <span>{label}</span>
@@ -218,6 +358,18 @@ export function LiveMediaShare() {
         label="Photo"
         disabled={busy}
         onClick={() => pick("image/*", sharePhoto)}
+      />
+      <MediaButton
+        icon={AudioLines}
+        label="သီချင်း Effect"
+        disabled={busy}
+        onClick={() => pick("audio/*", (f) => startCameraOverlay("music-fx", f))}
+      />
+      <MediaButton
+        icon={Sparkles}
+        label="ဓာတ်ပုံ Effect"
+        disabled={busy}
+        onClick={() => pick("image/*", (f) => startCameraOverlay("photo-fx", f))}
       />
     </div>
   );
