@@ -199,22 +199,27 @@ export function FacebookImport({ userId }: { userId: string }) {
               /\.(jpe?g|png|gif|webp)$/i.test(n) &&
               /(post|media|photo|album|timeline)/i.test(n),
           )
-          .slice(0, 300);
+          .sort();
+        // Group by album folder, then split each album into posts of at most
+        // MAX_PHOTOS_PER_POST so EVERY photo is imported, not just the first
+        // ten of a big album.
         const byFolder = new Map<string, string[]>();
         for (const path of imgFiles) {
           const folder = path.split("/").slice(0, -1).join("/");
           const list = byFolder.get(folder) ?? [];
-          if (list.length < MAX_PHOTOS_PER_POST) list.push(path);
+          list.push(path);
           byFolder.set(folder, list);
         }
         for (const paths of byFolder.values()) {
-          parsed.push({
-            text: "",
-            timestamp: 0,
-            date: "",
-            mediaPaths: paths,
-            selected: true,
-          });
+          for (let i = 0; i < paths.length; i += MAX_PHOTOS_PER_POST) {
+            parsed.push({
+              text: "",
+              timestamp: 0,
+              date: "",
+              mediaPaths: paths.slice(i, i + MAX_PHOTOS_PER_POST),
+              selected: true,
+            });
+          }
         }
       }
 
