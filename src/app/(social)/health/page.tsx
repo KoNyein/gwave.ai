@@ -2,9 +2,11 @@ import { redirect } from "next/navigation";
 import { HeartPulse } from "lucide-react";
 
 import { ConnectPanel } from "@/components/health/connect-panel";
+import { HealthDetails } from "@/components/health/health-details";
 import { HealthSummary } from "@/components/health/health-summary";
 import { ManualLog } from "@/components/health/manual-log";
 import { PhonePedometer } from "@/components/health/phone-pedometer";
+import { ScreenTimeTracker } from "@/components/health/screen-time-tracker";
 import { getCurrentProfile } from "@/lib/auth";
 import {
   getConnections,
@@ -46,7 +48,9 @@ export default async function HealthPage() {
       </div>
 
       <HealthSummary latest={latest} week={week} />
+      <HealthDetails week={week} />
       <ConnectPanel connections={connections} providers={enabledProviders()} />
+      <ScreenTimeTracker />
       <PhonePedometer />
       <ManualLog />
     </div>

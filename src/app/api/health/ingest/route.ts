@@ -37,6 +37,7 @@ const ingestSchema = z.object({
           "sleep",
           "calories",
           "active_minutes",
+          "screen_time",
         ]),
         value: z.number().finite().min(0).max(1_000_000),
         unit: z.string().max(16).nullish(),
