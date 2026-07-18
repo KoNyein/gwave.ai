@@ -143,6 +143,60 @@ With `NEXT_PUBLIC_LIVE_PROVIDER=ivs`, `/live/new` shows a mode picker:
 **🎮 OBS / Game** creates a Low-Latency channel (Phase 1). Start a camera
 broadcast, end it, and the replay (HLS) appears once the composition finishes.
 
-## Phase 3 — Chime (messenger calls)
+## Phase 3 — Chime SDK (messenger calls)
 
-Follow-up phase; this doc gains its section when the code lands.
+Call media moves from the peer-to-peer WebRTC mesh to Amazon Chime meetings
+(placed in **ap-southeast-1** — Chime supports it). The supabase ring/accept
+signaling is unchanged; only the media transport swaps, behind
+`NEXT_PUBLIC_CALL_PROVIDER` (default `mesh`).
+
+### 1. IAM: extend the instance-role policy
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "chime:CreateMeeting",
+        "chime:CreateAttendee",
+        "chime:DeleteMeeting"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+### 2. App environment
+
+```
+NEXT_PUBLIC_CALL_PROVIDER=mesh   # flip to chime after the client wiring lands
+CHIME_CONTROL_REGION=ap-southeast-1
+CHIME_MEDIA_REGION=ap-southeast-1
+```
+
+Server foundation (meeting/attendee actions) ships first; the use-call client
+integration (joining the meeting with amazon-chime-sdk-js on accept) lands in
+its own PR, after which the flag can flip.
+
+## Phase 4 — Cutover checklist
+
+Run through in order; each step is independently reversible.
+
+1. **Migrations** (idempotent, run all three on the prod DB): Phase 1 `ivs_*`
+   channel columns, Phase 2 `ivs_stage_arn`/`ivs_composition_arn`.
+2. **IAM**: attach the Phase 1 + 2 (+ 3) policies to the app EC2 instance role.
+3. **IVS console (Tokyo)**: recordings bucket, Low-Latency recording
+   configuration, Real-Time storage + encoder configurations, CloudFront over
+   the bucket.
+4. **Env**: `IVS_REGION`, `IVS_RECORDING_CONFIG_ARN`, `IVS_RT_STORAGE_CONFIG_ARN`,
+   `IVS_RT_ENCODER_CONFIG_ARN`, `NEXT_PUBLIC_IVS_RECORDING_BASE`.
+5. **Flip Live**: `NEXT_PUBLIC_LIVE_PROVIDER=ivs`, restart the app container.
+   Verify: camera broadcast (phone), OBS broadcast, both replays. Roll back by
+   flipping to `livekit`.
+6. **Flip calls** (after the Chime client PR): `NEXT_PUBLIC_CALL_PROVIDER=chime`.
+   Verify 1:1 audio + video call. Roll back to `mesh`.
+7. **Decommission** (only after a comfortable soak): LiveKit EC2 box
+   (52.77.195.25), Mux account, Agora project; then remove their code paths.
