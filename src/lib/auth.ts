@@ -8,7 +8,7 @@ import {
   isMinorBirthDate,
   type AgeBand,
 } from "@/lib/age";
-import { readSession, type Session } from "@/lib/auth/session";
+import { readOrRefreshSession, type Session } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile, UserRole } from "@/types/database";
 
@@ -25,12 +25,13 @@ const ROLE_RANK: Record<UserRole, number> = {
 
 /**
  * Returns the current authenticated user ({ id, email }), or null. Never throws.
- * Reads the session's data token locally — no network — and is deduplicated per
- * request via React cache() so layouts, pages and nested components share one
- * lookup. `id` is the user's profiles.id.
+ * Verifies the data token locally; when it has expired but the 30-day refresh
+ * token is present, silently refreshes (one Cognito round-trip). Deduplicated
+ * per request via React cache() so layouts, pages and nested components share
+ * one lookup. `id` is the user's profiles.id.
  */
 export const getCurrentUser = cache(async function getCurrentUser(): Promise<AuthUser | null> {
-  return readSession();
+  return readOrRefreshSession();
 });
 
 /**

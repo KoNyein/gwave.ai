@@ -18,6 +18,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { MineralMedia } from "@/components/knowledge/mineral-media";
+import { ShareExperience } from "@/components/knowledge/share-experience";
+import { getCurrentUser } from "@/lib/auth";
 import { getMineralBySlug } from "@/lib/db/knowledge";
 
 export default async function MineralDetailPage(
@@ -27,7 +29,10 @@ export default async function MineralDetailPage(
 ) {
   const params = await props.params;
   const t = await getTranslations("minerals");
-  const mineral = await getMineralBySlug(params.slug);
+  const [mineral, user] = await Promise.all([
+    getMineralBySlug(params.slug),
+    getCurrentUser(),
+  ]);
   if (!mineral) notFound();
 
   const extraProperties = Object.entries(mineral.properties);
@@ -231,6 +236,12 @@ export default async function MineralDetailPage(
           </CardContent>
         </Card>
       ) : null}
+
+      <ShareExperience
+        userId={user?.id ?? null}
+        itemName={mineral.name}
+        itemPath={`/minerals/${mineral.slug}`}
+      />
     </div>
   );
 }
