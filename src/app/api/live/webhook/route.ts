@@ -46,8 +46,14 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
 
   try {
+    // A PostgREST error is a returned value, not a throw, so these updates must
+    // check `error` and throw — otherwise a failed status flip falls through to
+    // `{ received: true }` / HTTP 200, Mux never retries, and the broadcast is
+    // stuck in the wrong state (never goes live, or stuck "live" with viewers in
+    // an empty room). Throwing routes to the catch below → 500 → Mux retries.
+    // The updates are idempotent, so a retry is safe.
     if (event.type === "video.live_stream.active") {
-      await admin
+      const { error } = await admin
         .from("live_streams")
         .update({
           status: "live",
@@ -58,17 +64,19 @@ export async function POST(request: Request) {
             : {}),
         })
         .eq("mux_stream_id", muxStreamId);
+      if (error) throw new Error(error.message);
     } else if (
       event.type === "video.live_stream.idle" ||
       event.type === "video.live_stream.disabled"
     ) {
       // Only a stream that actually went live transitions to 'ended';
       // an idle event before the first broadcast keeps it joinable.
-      await admin
+      const { error } = await admin
         .from("live_streams")
         .update({ status: "ended", ended_at: new Date().toISOString() })
         .eq("mux_stream_id", muxStreamId)
         .eq("status", "live");
+      if (error) throw new Error(error.message);
     }
   } catch (error) {
     const message =

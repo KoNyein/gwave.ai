@@ -49,13 +49,23 @@ async function audit(
   detail: Record<string, unknown> = {},
 ) {
   const admin = createAdminClient();
-  await admin.from("audit_logs").insert({
+  const { error } = await admin.from("audit_logs").insert({
     actor_id: actorId,
     action,
     target_type: targetType,
     target_id: targetId,
     detail,
   });
+  // The audit row is written AFTER the (already-checked) primary action, so
+  // throwing here would fail an action that actually succeeded — worse than a
+  // missing log line. But a silently dropped accountability record for a
+  // privileged/moderation action shouldn't be invisible either, so surface it to
+  // the server logs.
+  if (error) {
+    console.error(
+      `audit log failed for ${action} on ${targetType}:${targetId}: ${error.message}`,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

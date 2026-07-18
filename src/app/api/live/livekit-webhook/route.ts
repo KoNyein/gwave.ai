@@ -74,7 +74,18 @@ export async function POST(request: NextRequest) {
     if (hostLeft && event.participant?.identity !== cohost.host_id) {
       return NextResponse.json({ ok: true });
     }
-    await admin.from("cohost_rooms").update({ ended_at: now }).eq("id", cohost.id);
+    // A PostgREST error is a returned value, not a throw. If this end-the-room
+    // update fails and we still return 200, LiveKit won't retry and the co-host
+    // room is stuck live forever (a pulsing LIVE badge over an empty room — the
+    // exact bug this route exists to prevent). Return 500 so LiveKit retries;
+    // the update is idempotent.
+    const { error } = await admin
+      .from("cohost_rooms")
+      .update({ ended_at: now })
+      .eq("id", cohost.id);
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     return NextResponse.json({ ok: true, ended: "cohost", code });
   }
 
@@ -89,9 +100,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  await admin
+  const { error } = await admin
     .from("live_streams")
     .update({ status: "ended", ended_at: now })
     .eq("id", stream.id);
+  // Same as above: a swallowed failure here leaves the stream stuck "live".
+  // Return 500 so LiveKit retries; the update is idempotent.
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json({ ok: true, ended: "stream", id: stream.id });
 }
