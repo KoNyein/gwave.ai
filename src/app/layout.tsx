@@ -6,6 +6,7 @@ import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
 
 import { SessionKeeper } from "@/components/auth/session-keeper";
+import { GlobalServices } from "@/components/global-services";
 import { getSiteTheme } from "@/lib/db/admin";
 import { isRtl } from "@/i18n/config";
 import { DEFAULT_THEME } from "@/lib/theme";
@@ -69,6 +70,7 @@ export default async function RootLayout({
         />
         <NextIntlClientProvider messages={messages}>
           <SessionKeeper />
+          <GlobalServices />
           {children}
         </NextIntlClientProvider>
       </body>
