@@ -58,7 +58,16 @@ jobs:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > android.keystore
+            # The secret is usually pasted from a terminal, which smuggles in
+            # line wraps / CR / spaces — strip all whitespace before decoding.
+            printf '%s' "$KEYSTORE_B64" | tr -d ' \t\r\n' | base64 -d > android.keystore
+            # Prove the decode produced a real keystore that opens with the
+            # configured password, so a mangled secret fails loudly here
+            # instead of shipping a wrongly-signed APK.
+            keytool -list -keystore android.keystore -alias gwave -storepass "$KS_PASS" > /dev/null || {
+              echo "::error::ANDROID_KEYSTORE_BASE64 decoded, but the keystore did not open with alias 'gwave' and the configured password. Re-create the secret with ONLY the base64 text (no prompts/labels) and check ANDROID_KEYSTORE_PASSWORD."
+              exit 1
+            }
             echo "KEYSTORE_FROM_SECRET=1" >> "$GITHUB_ENV"
             echo "Using keystore from repository secret."
           else
