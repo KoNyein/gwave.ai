@@ -15,12 +15,13 @@ export interface CircleWithMine extends FamilyCircle {
 /** Circles the caller belongs to, with their own sharing flag. */
 export async function getMyCircles(userId: string): Promise<CircleWithMine[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("family_memberships")
     .select("sharing_enabled, circle:family_circles(*)")
     .eq("user_id", userId)
     .order("joined_at", { ascending: true })
     .returns<{ sharing_enabled: boolean; circle: FamilyCircle }[]>();
+  if (error) throw new Error(error.message);
   return (data ?? [])
     .filter((r) => r.circle)
     .map((r) => ({ ...r.circle, sharing_enabled: r.sharing_enabled }));
