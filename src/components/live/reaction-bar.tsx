@@ -23,10 +23,13 @@ export function ReactionBar({
   streamId,
   userId,
   disabled,
+  showFloaters = true,
 }: {
   streamId: string;
   userId: string;
   disabled?: boolean;
+  /** Off when LiveOverlay renders the floats over the video instead. */
+  showFloaters?: boolean;
 }) {
   const [floaters, setFloaters] = React.useState<Floater[]>([]);
   const nextKey = React.useRef(0);
@@ -84,20 +87,22 @@ export function ReactionBar({
   return (
     <div className="relative">
       {/* Floating layer */}
-      <div
-        className="pointer-events-none absolute bottom-full left-0 right-0 h-40 overflow-hidden"
-        aria-hidden
-      >
-        {floaters.map((floater) => (
-          <span
-            key={floater.key}
-            className="absolute bottom-0 animate-float-up text-2xl"
-            style={{ left: `${floater.left}%` }}
-          >
-            {floater.emoji}
-          </span>
-        ))}
-      </div>
+      {showFloaters ? (
+        <div
+          className="pointer-events-none absolute bottom-full left-0 right-0 h-40 overflow-hidden"
+          aria-hidden
+        >
+          {floaters.map((floater) => (
+            <span
+              key={floater.key}
+              className="absolute bottom-0 animate-float-up text-2xl"
+              style={{ left: `${floater.left}%` }}
+            >
+              {floater.emoji}
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-1.5">
         {LIVE_REACTION_EMOJIS.map((emoji) => (

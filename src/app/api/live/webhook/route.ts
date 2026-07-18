@@ -30,20 +30,45 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
   }
 
-  if (!event.type.startsWith("video.live_stream.")) {
+  const isLiveEvent = event.type.startsWith("video.live_stream.");
+  const isAssetEvent = event.type.startsWith("video.asset.");
+  if (!isLiveEvent && !isAssetEvent) {
     return NextResponse.json({ received: true });
   }
 
   const data = event.data as {
     id?: string;
     playback_ids?: { id: string }[];
+    live_stream_id?: string;
   };
+
+  const admin = createAdminClient();
+
+  // Auto-saved recording: Mux records every broadcast (new_asset_settings) into
+  // an asset carrying the parent live_stream_id. When that asset is ready,
+  // store its playback id so ended streams become watchable replays.
+  if (isAssetEvent) {
+    if (
+      (event.type === "video.asset.ready" ||
+        event.type === "video.asset.live_stream_completed") &&
+      data.live_stream_id &&
+      data.playback_ids?.[0]?.id
+    ) {
+      const { error } = await admin
+        .from("live_streams")
+        .update({ vod_playback_id: data.playback_ids[0].id })
+        .eq("mux_stream_id", data.live_stream_id);
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+    }
+    return NextResponse.json({ received: true });
+  }
+
   const muxStreamId = data.id;
   if (!muxStreamId) {
     return NextResponse.json({ received: true });
   }
-
-  const admin = createAdminClient();
 
   try {
     // A PostgREST error is a returned value, not a throw, so these updates must
