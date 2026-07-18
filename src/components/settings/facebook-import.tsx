@@ -125,13 +125,20 @@ export function FacebookImport({ userId }: { userId: string }) {
         } catch {
           continue;
         }
+        // Only a real "your posts" file may contribute title-only items (life
+        // events / check-ins). Everything else must carry written text or
+        // media — this keeps out activity-log noise like "X was added to a
+        // group" that also has a title + timestamp.
+        const isOwnPostsFile =
+          /your_posts|timeline|status_updates/i.test(name) &&
+          !/group|other|activity_log|friends|following|reaction|comment/i.test(
+            name,
+          );
         for (const item of items) {
-          // Text lives in data[].post; check-ins/updates put it in title.
           const bodyText = (item.data ?? [])
             .map((d) => d.post ?? "")
             .filter(Boolean)
             .join("\n\n");
-          const text = fixEncoding(bodyText || item.title || "").trim();
           const mediaPaths = (item.attachments ?? [])
             .flatMap((a) => a.data ?? [])
             .map((d) => d.media?.uri ?? "")
@@ -140,7 +147,23 @@ export function FacebookImport({ userId }: { userId: string }) {
                 uri && /\.(jpe?g|png|gif|webp)$/i.test(uri) && archive.files[uri],
             )
             .slice(0, MAX_PHOTOS_PER_POST);
-          if (!text && mediaPaths.length === 0) continue;
+          // Drop activity entries: something is a real post only if it was
+          // written (data[].post) or has media. A bare title from a non-posts
+          // file is activity-log noise, so ignore it.
+          const rawText = bodyText || (isOwnPostsFile ? item.title ?? "" : "");
+          const text = fixEncoding(rawText).trim();
+          if (!bodyText && mediaPaths.length === 0) {
+            if (!isOwnPostsFile || !text) continue;
+            // A title-only own-post that reads like a Facebook activity line
+            // (added, is now friends, likes…) is still noise — skip it.
+            if (
+              /(was added to|added \d+ new|is now friends|are now friends|updated (his|her|their)|likes|reacted to|followed|is with)/i.test(
+                text,
+              )
+            ) {
+              continue;
+            }
+          }
           const ts = (item.timestamp ?? 0) * 1000;
           parsed.push({
             text,
