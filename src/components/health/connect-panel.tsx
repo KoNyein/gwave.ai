@@ -10,6 +10,8 @@ import {
   syncHealth,
 } from "@/lib/actions/health";
 import type { HealthConnection } from "@/lib/db/health";
+import { useLocale } from "next-intl";
+import { prefersMyanmarScript } from "@/i18n/config";
 
 /**
  * Connect / manage cloud providers (Fitbit, Google Fit). Each enabled provider
@@ -22,6 +24,7 @@ export function ConnectPanel({
   connections: HealthConnection[];
   providers: { id: string; label: string }[];
 }) {
+  const mm = prefersMyanmarScript(useLocale());
   const router = useRouter();
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -49,7 +52,7 @@ export function ConnectPanel({
     const res = await syncHealth(providerId);
     setBusy(false);
     if (res.ok) {
-      setNote("Sync ပြီးပါပြီ။");
+      setNote(mm ? "Sync ပြီးပါပြီ။" : "Synced.");
       router.refresh();
     } else {
       setError(res.error);
@@ -67,13 +70,14 @@ export function ConnectPanel({
     <div className="space-y-3 rounded-xl border bg-card p-4">
       <div className="flex items-center gap-2">
         <HeartPulse className="h-5 w-5 text-primary" />
-        <h2 className="font-semibold">ချိတ်ဆက်ထားသော စက်များ</h2>
+        <h2 className="font-semibold">{mm ? "ချိတ်ဆက်ထားသော စက်များ" : "Connected devices"}</h2>
       </div>
 
       {connections.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          နာရီ/app မချိတ်ရသေးပါ — အောက်က ခလုတ်နဲ့ ချိတ်ပါ (ဒါမှမဟုတ် အောက်မှာ
-          ကိုယ်တိုင် မှတ်တမ်းတင်ပါ)။
+          {mm
+            ? "နာရီ/app မချိတ်ရသေးပါ — အောက်က ခလုတ်နဲ့ ချိတ်ပါ (ဒါမှမဟုတ် အောက်မှာ ကိုယ်တိုင် မှတ်တမ်းတင်ပါ)။"
+            : "No watch or app connected yet — use a button below, or log data manually."}
         </p>
       ) : (
         <ul className="space-y-2">
@@ -85,7 +89,7 @@ export function ConnectPanel({
               <div className="text-sm">
                 <p className="font-medium capitalize">{c.provider}</p>
                 <p className="text-xs text-muted-foreground">
-                  {c.status === "connected" ? "ချိတ်ဆက်ထား" : c.status}
+                  {c.status === "connected" ? (mm ? "ချိတ်ဆက်ထား" : "Connected") : c.status}
                   {c.last_sync_at
                     ? ` · sync ${new Date(c.last_sync_at).toLocaleString()}`
                     : ""}
@@ -108,7 +112,7 @@ export function ConnectPanel({
                   disabled={busy}
                   className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
                 >
-                  <Unplug className="h-3.5 w-3.5" /> ဖြုတ်
+                  <Unplug className="h-3.5 w-3.5" /> {mm ? "ဖြုတ်" : "Disconnect"}
                 </button>
               </div>
             </li>
@@ -132,14 +136,15 @@ export function ConnectPanel({
           ) : (
             <Plus className="h-4 w-4" />
           )}
-          {p.label} နဲ့ ချိတ်ဆက်ရန်
+          {mm ? `${p.label} နဲ့ ချိတ်ဆက်ရန်` : `Connect ${p.label}`}
         </button>
       ))}
 
       {providers.length === 0 ? (
         <p className="text-center text-xs text-muted-foreground">
-          Cloud provider (Fitbit/Google Fit) ကို server မှာ ဖွင့်ရန် ကျန်သည် —
-          အောက်က ကိုယ်တိုင်/ဖုန်း နည်းက အခုပင် အလုပ်လုပ်သည်။
+          {mm
+            ? "Cloud provider (Fitbit/Google Fit) ကို server မှာ ဖွင့်ရန် ကျန်သည် — အောက်က ကိုယ်တိုင်/ဖုန်း နည်းက အခုပင် အလုပ်လုပ်သည်။"
+            : "Cloud providers (Fitbit/Google Fit) are not enabled on the server yet — the manual and phone options below already work."}
         </p>
       ) : null}
     </div>

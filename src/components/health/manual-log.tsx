@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 import { Loader2, PencilLine } from "lucide-react";
 
 import { logManualMetric } from "@/lib/actions/health";
+import { useLocale } from "next-intl";
+import { prefersMyanmarScript } from "@/i18n/config";
 
 const METRICS = [
-  { type: "steps", label: "ခြေလှမ်း", unit: "" },
-  { type: "sleep", label: "အိပ်ချိန် (မိနစ်)", unit: "မိနစ်" },
-  { type: "calories", label: "ကယ်လိုရီ", unit: "kcal" },
-  { type: "heart_rate", label: "နှလုံးခုန် (bpm)", unit: "bpm" },
-  { type: "screen_time", label: "Screen time (မိနစ်)", unit: "မိနစ်" },
+  { type: "steps", en: "Steps", my: "ခြေလှမ်း" },
+  { type: "sleep", en: "Sleep (min)", my: "အိပ်ချိန် (မိနစ်)" },
+  { type: "calories", en: "Calories", my: "ကယ်လိုရီ" },
+  { type: "heart_rate", en: "Heart rate (bpm)", my: "နှလုံးခုန် (bpm)" },
+  { type: "screen_time", en: "Screen time (min)", my: "Screen time (မိနစ်)" },
 ] as const;
 
 /**
@@ -20,6 +22,7 @@ const METRICS = [
  * the dashboard fill in.
  */
 export function ManualLog() {
+  const mm = prefersMyanmarScript(useLocale());
   const router = useRouter();
   const [type, setType] = React.useState<string>("steps");
   const [value, setValue] = React.useState("");
@@ -36,7 +39,7 @@ export function ManualLog() {
     setBusy(false);
     if (res.ok) {
       setValue("");
-      setMsg("မှတ်တမ်းတင်ပြီးပါပြီ။");
+      setMsg(mm ? "မှတ်တမ်းတင်ပြီးပါပြီ။" : "Logged.");
       router.refresh();
     } else {
       setMsg(res.error);
@@ -47,10 +50,12 @@ export function ManualLog() {
     <form onSubmit={submit} className="space-y-3 rounded-xl border bg-card p-4">
       <div className="flex items-center gap-2">
         <PencilLine className="h-5 w-5 text-primary" />
-        <h2 className="font-semibold">ကိုယ်တိုင် မှတ်တမ်းတင်</h2>
+        <h2 className="font-semibold">{mm ? "ကိုယ်တိုင် မှတ်တမ်းတင်" : "Manual log"}</h2>
       </div>
       <p className="text-xs text-muted-foreground">
-        စက်မလိုဘဲ ဒီနေ့ data ကို ကိုယ်တိုင် ထည့်ပါ (ဖုန်းတိုင်း အလုပ်လုပ်သည်)။
+        {mm
+          ? "စက်မလိုဘဲ ဒီနေ့ data ကို ကိုယ်တိုင် ထည့်ပါ (ဖုန်းတိုင်း အလုပ်လုပ်သည်)။"
+          : "No device needed — enter today's data yourself (works on any phone)."}
       </p>
       <div className="flex gap-2">
         <select
@@ -60,7 +65,7 @@ export function ManualLog() {
         >
           {METRICS.map((m) => (
             <option key={m.type} value={m.type}>
-              {m.label}
+              {mm ? m.my : m.en}
             </option>
           ))}
         </select>
@@ -69,7 +74,7 @@ export function ManualLog() {
           inputMode="numeric"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="တန်ဖိုး"
+          placeholder={mm ? "တန်ဖိုး" : "Value"}
           className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm"
         />
         <button

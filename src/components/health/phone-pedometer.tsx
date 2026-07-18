@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Footprints, Loader2, Play, Save, Square } from "lucide-react";
 
 import { logManualMetric } from "@/lib/actions/health";
+import { useLocale } from "next-intl";
+import { prefersMyanmarScript } from "@/i18n/config";
 
 /**
  * Phone-only step counter — no wearable, no account. Uses the browser's motion
@@ -14,6 +16,7 @@ import { logManualMetric } from "@/lib/actions/health";
  * today's steps.
  */
 export function PhonePedometer() {
+  const mm = prefersMyanmarScript(useLocale());
   const router = useRouter();
   const [running, setRunning] = React.useState(false);
   const [steps, setSteps] = React.useState(0);
@@ -48,16 +51,16 @@ export function PhonePedometer() {
       try {
         const res = await DME.requestPermission();
         if (res !== "granted") {
-          setError("Motion sensor ခွင့်ပြုချက် လိုအပ်သည်။");
+          setError(mm ? "Motion sensor ခွင့်ပြုချက် လိုအပ်သည်။" : "Motion-sensor permission is required.");
           return;
         }
       } catch {
-        setError("ဒီ browser မှာ motion sensor မရနိုင်ပါ။");
+        setError(mm ? "ဒီ browser မှာ motion sensor မရနိုင်ပါ။" : "Motion sensors are not available in this browser.");
         return;
       }
     }
     if (typeof DeviceMotionEvent === "undefined") {
-      setError("ဒီစက်မှာ motion sensor မရှိပါ။");
+      setError(mm ? "ဒီစက်မှာ motion sensor မရှိပါ။" : "This device has no motion sensor.");
       return;
     }
     window.addEventListener("devicemotion", onMotion);
@@ -91,10 +94,10 @@ export function PhonePedometer() {
     <div className="space-y-3 rounded-xl border bg-card p-4">
       <div className="flex items-center gap-2">
         <Footprints className="h-5 w-5 text-primary" />
-        <h2 className="font-semibold">ဖုန်း ခြေလှမ်းတိုင်း</h2>
+        <h2 className="font-semibold">{mm ? "ဖုန်း ခြေလှမ်းတိုင်း" : "Phone step counter"}</h2>
       </div>
       <p className="text-xs text-muted-foreground">
-        စက်မလိုပါ — ဖုန်းကို ကိုင်ပြီး လမ်းလျှောက်ပါ၊ ဖုန်းက ခြေလှမ်း ရေတွက်ပေးမည်။
+        {mm ? "စက်မလိုပါ — ဖုန်းကို ကိုင်ပြီး လမ်းလျှောက်ပါ၊ ဖုန်းက ခြေလှမ်း ရေတွက်ပေးမည်။" : "No device needed — hold your phone and walk; it counts your steps."}
       </p>
       <p className="text-center text-3xl font-bold tabular-nums">{steps}</p>
       <div className="flex justify-center gap-2">
@@ -104,7 +107,7 @@ export function PhonePedometer() {
             onClick={stop}
             className="flex items-center gap-1 rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-white"
           >
-            <Square className="h-4 w-4" /> ရပ်
+            <Square className="h-4 w-4" /> {mm ? "ရပ်" : "Stop"}
           </button>
         ) : (
           <button
@@ -112,7 +115,7 @@ export function PhonePedometer() {
             onClick={start}
             className="flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
           >
-            <Play className="h-4 w-4" /> စတင်
+            <Play className="h-4 w-4" /> {mm ? "စတင်" : "Start"}
           </button>
         )}
         <button
@@ -126,7 +129,7 @@ export function PhonePedometer() {
           ) : (
             <Save className="h-4 w-4" />
           )}
-          သိမ်း
+          {mm ? "သိမ်း" : "Save"}
         </button>
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}

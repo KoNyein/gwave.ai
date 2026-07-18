@@ -54,6 +54,16 @@ export const FALLBACK_BASE: Partial<Record<Locale, Locale>> = {
 
 export const LOCALE_COOKIE = "GWAVE_LOCALE";
 
+/**
+ * Should inline bilingual UI strings show their Burmese variant? True for
+ * Burmese and the ethnic languages whose speakers read Burmese (same set as
+ * FALLBACK_BASE). Everything else — including the default locale — reads the
+ * English variant.
+ */
+export function prefersMyanmarScript(locale: string): boolean {
+  return locale === "my" || locale in FALLBACK_BASE;
+}
+
 export function isLocale(value: string | undefined): value is Locale {
   return !!value && (locales as readonly string[]).includes(value);
 }
