@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { HeartPulse } from "lucide-react";
+import { getLocale } from "next-intl/server";
 
 import { ConnectPanel } from "@/components/health/connect-panel";
+import { HealthCharts } from "@/components/health/health-charts";
 import { HealthDetails } from "@/components/health/health-details";
 import { HealthSummary } from "@/components/health/health-summary";
 import { ManualLog } from "@/components/health/manual-log";
@@ -14,6 +16,7 @@ import {
   getLatestSummary,
 } from "@/lib/db/health";
 import { enabledProviders } from "@/lib/health/registry";
+import { prefersMyanmarScript } from "@/i18n/config";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Health" };
@@ -26,6 +29,7 @@ export const metadata = { title: "Health" };
 export default async function HealthPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
+  const mm = prefersMyanmarScript(await getLocale());
 
   const [connections, week, latest] = await Promise.all([
     getConnections(profile.id),
@@ -40,14 +44,19 @@ export default async function HealthPage() {
           <HeartPulse className="h-5 w-5" />
         </span>
         <div>
-          <h1 className="text-xl font-bold">ကျန်းမာရေး</h1>
+          <h1 className="text-xl font-bold">
+            {mm ? "ကျန်းမာရေး" : "Health"}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            ခြေလှမ်း၊ နှလုံးခုန်နှုန်း၊ အိပ်ချိန် — နာရီ ဒါမှမဟုတ် ဖုန်းနဲ့။
+            {mm
+              ? "ခြေလှမ်း၊ နှလုံးခုန်နှုန်း၊ အိပ်ချိန် — နာရီ ဒါမှမဟုတ် ဖုန်းနဲ့။"
+              : "Steps, heart rate, sleep — from a watch or just your phone."}
           </p>
         </div>
       </div>
 
-      <HealthSummary latest={latest} week={week} />
+      <HealthSummary latest={latest} />
+      <HealthCharts week={week} />
       <HealthDetails week={week} />
       <ConnectPanel connections={connections} providers={enabledProviders()} />
       <ScreenTimeTracker />

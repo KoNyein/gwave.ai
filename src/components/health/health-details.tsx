@@ -1,4 +1,9 @@
+"use client";
+
 import { Table2 } from "lucide-react";
+import { useLocale } from "next-intl";
+
+import { prefersMyanmarScript } from "@/i18n/config";
 
 import type { DailySummary } from "@/lib/db/health";
 
@@ -6,10 +11,11 @@ function fmt(v: number | null): string {
   return v != null ? v.toLocaleString() : "—";
 }
 
-function fmtMinutes(v: number | null): string {
+function fmtMinutes(v: number | null, mm: boolean): string {
   if (v == null) return "—";
   const h = Math.floor(v / 60);
-  return h > 0 ? `${h}နာရီ ${v % 60}မိနစ်` : `${v}မိနစ်`;
+  if (mm) return h > 0 ? `${h}နာရီ ${v % 60}မိနစ်` : `${v}မိနစ်`;
+  return h > 0 ? `${h}h ${v % 60}m` : `${v}m`;
 }
 
 /**
@@ -17,6 +23,7 @@ function fmtMinutes(v: number | null): string {
  * the raw numbers behind the headline tiles and the steps chart.
  */
 export function HealthDetails({ week }: { week: DailySummary[] }) {
+  const mm = prefersMyanmarScript(useLocale());
   if (week.length === 0) return null;
   const rows = [...week].reverse();
 
@@ -24,18 +31,18 @@ export function HealthDetails({ week }: { week: DailySummary[] }) {
     <div className="space-y-3 rounded-xl border bg-card p-4">
       <div className="flex items-center gap-2">
         <Table2 className="h-5 w-5 text-primary" />
-        <h2 className="font-semibold">အသေးစိတ် data (၇ ရက်)</h2>
+        <h2 className="font-semibold">{mm ? "အသေးစိတ် data (၇ ရက်)" : "Details (7 days)"}</h2>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">
           <thead>
             <tr className="border-b text-left text-xs text-muted-foreground">
-              <th className="py-2 pr-3 font-medium">နေ့</th>
-              <th className="py-2 pr-3 font-medium">ခြေလှမ်း</th>
-              <th className="py-2 pr-3 font-medium">နှလုံးခုန်</th>
-              <th className="py-2 pr-3 font-medium">အိပ်ချိန်</th>
-              <th className="py-2 pr-3 font-medium">ကယ်လိုရီ</th>
-              <th className="py-2 pr-3 font-medium">လှုပ်ရှားချိန်</th>
+              <th className="py-2 pr-3 font-medium">{mm ? "နေ့" : "Day"}</th>
+              <th className="py-2 pr-3 font-medium">{mm ? "ခြေလှမ်း" : "Steps"}</th>
+              <th className="py-2 pr-3 font-medium">{mm ? "နှလုံးခုန်" : "Heart"}</th>
+              <th className="py-2 pr-3 font-medium">{mm ? "အိပ်ချိန်" : "Sleep"}</th>
+              <th className="py-2 pr-3 font-medium">{mm ? "ကယ်လိုရီ" : "Calories"}</th>
+              <th className="py-2 pr-3 font-medium">{mm ? "လှုပ်ရှားချိန်" : "Active"}</th>
               <th className="py-2 font-medium">Screen time</th>
             </tr>
           </thead>
@@ -47,10 +54,10 @@ export function HealthDetails({ week }: { week: DailySummary[] }) {
                 <td className="py-2 pr-3">
                   {d.avg_hr != null ? `${d.avg_hr} bpm` : "—"}
                 </td>
-                <td className="py-2 pr-3">{fmtMinutes(d.sleep_minutes)}</td>
+                <td className="py-2 pr-3">{fmtMinutes(d.sleep_minutes, mm)}</td>
                 <td className="py-2 pr-3">{fmt(d.calories)}</td>
-                <td className="py-2 pr-3">{fmtMinutes(d.active_minutes)}</td>
-                <td className="py-2">{fmtMinutes(d.screen_minutes)}</td>
+                <td className="py-2 pr-3">{fmtMinutes(d.active_minutes, mm)}</td>
+                <td className="py-2">{fmtMinutes(d.screen_minutes, mm)}</td>
               </tr>
             ))}
           </tbody>
