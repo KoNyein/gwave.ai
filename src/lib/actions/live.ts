@@ -272,6 +272,55 @@ export async function goLive(streamId: string): Promise<ActionResult> {
   return { ok: true, data: undefined };
 }
 
+/**
+ * Host, on "End + save": drop a wrap-up post into the feed with the replay
+ * link, an optional 📍 location (stored as the post's check-in too) and
+ * optional friend tags (free-text names/usernames rendered as @mentions).
+ */
+export async function saveLiveWrapPost(
+  streamId: string,
+  location: string,
+  friends: string,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Not signed in" };
+
+  const { data: stream } = await supabase
+    .from("live_streams")
+    .select("id, host_id, title")
+    .eq("id", streamId)
+    .maybeSingle();
+  if (!stream) return { ok: false, error: "Stream not found" };
+  if (stream.host_id !== user.id) return { ok: false, error: "Host only" };
+
+  const site = process.env.NEXT_PUBLIC_SITE_URL || "https://gwave.cc";
+  const loc = location.trim().slice(0, 120);
+  const tagged = friends
+    .split(/[,\s]+/)
+    .map((f) => f.trim().replace(/^@/, ""))
+    .filter(Boolean)
+    .slice(0, 10)
+    .map((f) => `@${f}`)
+    .join(" ");
+
+  const lines = [
+    `📼 Live ပြီးပါပြီ — ${stream.title ?? "Live"}`,
+    `${site}/live/${streamId}`,
+  ];
+  if (loc) lines.push(`📍 ${loc}`);
+  if (tagged) lines.push(`👥 ${tagged}`);
+
+  const { error } = await supabase.from("posts").insert({
+    author_id: user.id,
+    content: lines.join("\n"),
+    visibility: "public",
+    location_name: loc || null,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: undefined };
+}
+
 /** Host sets the game tag + support goal for a game live stream. */
 export async function setStreamGameGoal(
   streamId: string,

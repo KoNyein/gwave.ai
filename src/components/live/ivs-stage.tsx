@@ -429,7 +429,10 @@ export function IvsStage({
 
   return (
     <div
-      className="mx-auto overflow-hidden rounded-xl border bg-black transition-[aspect-ratio] duration-300"
+      // Mobile: fill the parent (the page gives it the full viewport) — the
+      // !important arbitrary utilities beat the inline aspect style, which
+      // only governs the desktop card. Desktop: orientation-adaptive box.
+      className="mx-auto overflow-hidden bg-black transition-[aspect-ratio] duration-300 max-lg:h-full max-lg:![aspect-ratio:auto] max-lg:!max-h-none lg:rounded-xl lg:border"
       style={{ aspectRatio: aspect, width: "100%", maxHeight: "80vh" }}
     >
       <div className="relative flex h-full flex-col">
