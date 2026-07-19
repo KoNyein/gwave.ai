@@ -172,12 +172,13 @@ export default async function LiveStreamPage(
       </Link>
 
       {/*
-        Twitch/YouTube-style layout: the video + host controls fill the main
-        column while chat rides alongside in a tall, sticky sidebar on wide
-        screens. On mobile everything stacks (chat last) so nothing is cramped.
+        Twitch/YouTube-style layout on wide screens: video + host controls in
+        the main column, chat in a tall sticky sidebar. On mobile the DOM order
+        is video → header → CHAT → everything else, so the comment box sits
+        right under the video instead of being buried below the sale panels.
       */}
       <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
-        {/* ── Main column: video, host, interactions, sale ─────────────── */}
+        {/* ── Video + header (main column, top) ────────────────────────── */}
         <div className="space-y-4 lg:col-span-2">
           <div className="relative overflow-hidden rounded-xl">
             {replayUrl ? (
@@ -292,7 +293,27 @@ export default async function LiveStreamPage(
               )}
             </CardContent>
           </Card>
+        </div>
 
+        {/* ── Chat + top supporters: right sidebar on desktop, directly under
+               the video on mobile ─────────────────────────────────────── */}
+        <div className="space-y-4 lg:sticky lg:top-4 lg:col-start-3 lg:row-start-1 lg:row-span-2">
+          <Card className="overflow-hidden">
+            <CardContent className="h-[22rem] p-0 lg:h-[calc(100vh-7rem)]">
+              <LiveChat
+                streamId={stream.id}
+                currentUser={currentUser}
+                initialMessages={chat}
+                disabled={stream.status === "ended"}
+              />
+            </CardContent>
+          </Card>
+
+          <TopGifters gifters={topGifters} />
+        </div>
+
+        {/* ── Goal, host tools, Live Sale (main column, below) ─────────── */}
+        <div className="space-y-4 lg:col-span-2 lg:col-start-1">
           <GameGoalBar
             streamId={stream.id}
             isHost={isHost}
@@ -320,22 +341,6 @@ export default async function LiveStreamPage(
               pinnedIds={pinnedIds}
             />
           )}
-        </div>
-
-        {/* ── Sidebar: sticky chat + top supporters ────────────────────── */}
-        <div className="space-y-4 lg:sticky lg:top-4">
-          <Card className="overflow-hidden">
-            <CardContent className="h-[26rem] p-0 lg:h-[calc(100vh-7rem)]">
-              <LiveChat
-                streamId={stream.id}
-                currentUser={currentUser}
-                initialMessages={chat}
-                disabled={stream.status === "ended"}
-              />
-            </CardContent>
-          </Card>
-
-          <TopGifters gifters={topGifters} />
         </div>
       </div>
     </div>

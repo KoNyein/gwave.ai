@@ -2,17 +2,24 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Mic, MicOff, Radio, Video, VideoOff } from "lucide-react";
+import {
+  AudioLines,
+  Loader2,
+  Mic,
+  MicOff,
+  Radio,
+  RefreshCcw,
+  Sparkles,
+  Video,
+  VideoOff,
+  X,
+} from "lucide-react";
 
 import { getIvsStageToken, goLive } from "@/lib/actions/live";
 import type { LiveStreamStatus } from "@/types/database";
 
 /** Minimal structural types for the dynamically-imported IVS broadcast SDK —
- * the package ships its own types, but importing them statically would pull the
- * whole SDK into the server bundle. */
-interface IvsLocalStream {
-  setMuted(muted: boolean): void;
-}
+ * importing its types statically would pull the whole SDK into the bundle. */
 interface IvsRemoteStream {
   streamType: string;
   mediaStreamTrack: MediaStreamTrack;
@@ -26,8 +33,152 @@ interface IvsStageHandle {
   on(event: string, cb: (...args: never[]) => void): void;
 }
 
-/** Orientation-adaptive aspect (same behaviour as the other stages): match the
- * played video's real shape, clamped 9:16…16:9, with a device fallback. */
+/**
+ * The host's publish pipeline. The camera never goes to IVS directly — it is
+ * drawn onto a canvas (with optional photo/music overlays) and the canvas'
+ * captured track is what gets published. That one indirection makes everything
+ * the host asked for cheap:
+ *   • front/back camera flip = swap the track feeding the canvas (published
+ *     track never changes, so no renegotiation)
+ *   • ✨ photo effect = draw the image over the frame (transparent PNG = frame)
+ *   • 🎶 music effect = mix the song into the published audio via WebAudio and
+ *     paint an equaliser along the bottom
+ */
+interface Compositor {
+  canvas: HTMLCanvasElement;
+  videoEl: HTMLVideoElement;
+  camTrack: MediaStreamTrack | null;
+  micTrack: MediaStreamTrack | null;
+  outVideo: MediaStreamTrack;
+  outAudio: MediaStreamTrack;
+  audioCtx: AudioContext;
+  micSource: MediaStreamAudioSourceNode | null;
+  mixDest: MediaStreamAudioDestinationNode;
+  overlayImg: HTMLImageElement | null;
+  musicEl: HTMLAudioElement | null;
+  musicNodes: { analyser: AnalyserNode; bins: Uint8Array<ArrayBuffer> } | null;
+  raf: number;
+  stop(): void;
+}
+
+async function getCamMic(facing: "user" | "environment"): Promise<MediaStream> {
+  return navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: facing,
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+    },
+    audio: true,
+  });
+}
+
+async function createCompositor(
+  facing: "user" | "environment",
+): Promise<Compositor> {
+  const media = await getCamMic(facing);
+  const camTrack = media.getVideoTracks()[0] ?? null;
+  const micTrack = media.getAudioTracks()[0] ?? null;
+
+  const videoEl = document.createElement("video");
+  videoEl.muted = true;
+  videoEl.playsInline = true;
+  videoEl.autoplay = true;
+  if (camTrack) videoEl.srcObject = new MediaStream([camTrack]);
+  await videoEl.play().catch(() => undefined);
+
+  const s = camTrack?.getSettings() ?? {};
+  const canvas = document.createElement("canvas");
+  canvas.width = s.width ?? 1280;
+  canvas.height = s.height ?? 720;
+  const g = canvas.getContext("2d")!;
+
+  const AudioCtx =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext: typeof AudioContext })
+      .webkitAudioContext;
+  const audioCtx = new AudioCtx();
+  const mixDest = audioCtx.createMediaStreamDestination();
+  let micSource: MediaStreamAudioSourceNode | null = null;
+  if (micTrack) {
+    micSource = audioCtx.createMediaStreamSource(new MediaStream([micTrack]));
+    micSource.connect(mixDest);
+  }
+
+  const comp: Compositor = {
+    canvas,
+    videoEl,
+    camTrack,
+    micTrack,
+    outVideo: canvas.captureStream(30).getVideoTracks()[0]!,
+    outAudio: mixDest.stream.getAudioTracks()[0]!,
+    audioCtx,
+    micSource,
+    mixDest,
+    overlayImg: null,
+    musicEl: null,
+    musicNodes: null,
+    raf: 0,
+    stop() {
+      cancelAnimationFrame(comp.raf);
+      comp.musicEl?.pause();
+      comp.camTrack?.stop();
+      comp.micTrack?.stop();
+      comp.outVideo.stop();
+      comp.outAudio.stop();
+      void comp.audioCtx.close().catch(() => undefined);
+    },
+  };
+
+  const render = () => {
+    if (videoEl.readyState >= 2) {
+      g.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+    } else {
+      g.fillStyle = "#000";
+      g.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    if (comp.overlayImg) {
+      g.drawImage(comp.overlayImg, 0, 0, canvas.width, canvas.height);
+    }
+    if (comp.musicNodes) {
+      const { analyser, bins } = comp.musicNodes;
+      analyser.getByteFrequencyData(bins);
+      const n = bins.length;
+      const bw = canvas.width / n;
+      g.save();
+      g.globalAlpha = 0.85;
+      for (let i = 0; i < n; i++) {
+        const v = bins[i]! / 255;
+        const bh = v * canvas.height * 0.28;
+        g.fillStyle = `hsl(${140 + i * 2}, 90%, 55%)`;
+        g.fillRect(i * bw, canvas.height - bh, bw * 0.82, bh);
+      }
+      g.restore();
+    }
+    comp.raf = requestAnimationFrame(render);
+  };
+  render();
+
+  return comp;
+}
+
+/** Swap the camera feeding the canvas — the published track is untouched. */
+async function flipCompositorCamera(
+  comp: Compositor,
+  facing: "user" | "environment",
+): Promise<void> {
+  const media = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { exact: facing } },
+  }).catch(() => getCamMic(facing));
+  const track = media.getVideoTracks()[0];
+  if (!track) return;
+  comp.camTrack?.stop();
+  comp.camTrack = track;
+  comp.videoEl.srcObject = new MediaStream([track]);
+  await comp.videoEl.play().catch(() => undefined);
+}
+
+/** Orientation-adaptive aspect: match the played video's shape, clamped
+ * 9:16…16:9, updating on rotation with a device fallback. */
 function useStageAspect(container: React.RefObject<HTMLDivElement | null>): string {
   const portraitInit =
     typeof window !== "undefined" &&
@@ -63,11 +214,10 @@ function useStageAspect(container: React.RefObject<HTMLDivElement | null>): stri
 }
 
 /**
- * Single-broadcaster Live on Amazon IVS Real-Time. The host publishes
- * camera/mic over WebRTC from the browser; viewers subscribe through AWS's
- * global edge (up to 10,000 per stage). Chat, gifts, reactions and Live Sale
- * live outside this component and are provider-agnostic. Mirrors the other
- * stages' props so the watch page picks a provider per stream.
+ * Single-broadcaster Live on Amazon IVS Real-Time. Host publishes a composited
+ * camera (flip / photo FX / music FX built in); viewers subscribe through
+ * AWS's global edge. Chat, gifts, reactions and Live Sale live outside this
+ * component and are provider-agnostic.
  */
 export function IvsStage({
   streamId,
@@ -88,9 +238,12 @@ export function IvsStage({
   const [error, setError] = React.useState<string | null>(null);
   const [micOn, setMicOn] = React.useState(true);
   const [camOn, setCamOn] = React.useState(true);
+  const [facing, setFacing] = React.useState<"user" | "environment">("user");
+  const [fx, setFx] = React.useState<"none" | "photo" | "music">("none");
 
-  const micRef = React.useRef<IvsLocalStream | null>(null);
-  const camRef = React.useRef<IvsLocalStream | null>(null);
+  const compRef = React.useRef<Compositor | null>(null);
+  const photoInput = React.useRef<HTMLInputElement>(null);
+  const musicInput = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (status === "ended") return;
@@ -101,10 +254,10 @@ export function IvsStage({
 
     let cancelled = false;
     let stage: IvsStageHandle | null = null;
-    let media: MediaStream | null = null;
 
     const cleanup = () => {
-      media?.getTracks().forEach((t) => t.stop());
+      compRef.current?.stop();
+      compRef.current = null;
       try {
         stage?.leave();
       } catch {
@@ -127,34 +280,21 @@ export function IvsStage({
 
       let localStreams: InstanceType<typeof LocalStageStream>[] = [];
       if (res.data.canPublish) {
-        media = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: true,
-        });
+        const comp = await createCompositor("user");
         if (cancelled) {
-          cleanup();
+          comp.stop();
           return;
         }
-        const camTrack = media.getVideoTracks()[0];
-        const micTrack = media.getAudioTracks()[0];
-        const camStream = camTrack ? new LocalStageStream(camTrack) : null;
-        const micStream = micTrack ? new LocalStageStream(micTrack) : null;
-        localStreams = [camStream, micStream].filter(
-          (s): s is InstanceType<typeof LocalStageStream> => Boolean(s),
-        );
-        camRef.current = camStream;
-        micRef.current = micStream;
-
-        // Local preview of the host's own camera.
-        if (camTrack && stageRef.current) {
-          const video = document.createElement("video");
-          video.srcObject = new MediaStream([camTrack]);
-          video.muted = true;
-          video.playsInline = true;
-          video.autoplay = true;
-          video.style.cssText = "width:100%;height:100%;object-fit:cover";
-          stageRef.current.replaceChildren(video);
-          void video.play().catch(() => undefined);
+        compRef.current = comp;
+        localStreams = [
+          new LocalStageStream(comp.outVideo),
+          new LocalStageStream(comp.outAudio),
+        ];
+        // Local preview = the composited canvas, so the host sees exactly what
+        // viewers see (overlays included).
+        if (stageRef.current) {
+          comp.canvas.style.cssText = "width:100%;height:100%;object-fit:cover";
+          stageRef.current.replaceChildren(comp.canvas);
         }
       }
 
@@ -166,7 +306,6 @@ export function IvsStage({
       const s = new Stage(res.data.token, strategy) as unknown as IvsStageHandle;
       stage = s;
 
-      // Viewer path: render the host's tracks as they arrive.
       s.on(
         StageEvents.STAGE_PARTICIPANT_STREAMS_ADDED,
         ((participant: IvsParticipant, streams: IvsRemoteStream[]) => {
@@ -200,7 +339,6 @@ export function IvsStage({
 
       if (res.data.canPublish) {
         setPhase("live");
-        // Mark live + start the server-side composite recording.
         void goLive(streamId).then(() => router.refresh());
       } else {
         setPhase("waiting");
@@ -215,23 +353,71 @@ export function IvsStage({
 
     return () => {
       cancelled = true;
-      micRef.current = null;
-      camRef.current = null;
       cleanup();
     };
   }, [streamId, isHost, status, router]);
 
   const toggleMic = () => {
-    if (!micRef.current) return;
-    const next = !micOn;
-    micRef.current.setMuted(!next);
-    setMicOn(next);
+    const track = compRef.current?.micTrack;
+    if (!track) return;
+    track.enabled = !track.enabled;
+    setMicOn(track.enabled);
   };
   const toggleCam = () => {
-    if (!camRef.current) return;
-    const next = !camOn;
-    camRef.current.setMuted(!next);
-    setCamOn(next);
+    const track = compRef.current?.camTrack;
+    if (!track) return;
+    track.enabled = !track.enabled;
+    setCamOn(track.enabled);
+  };
+  const flipCamera = () => {
+    const comp = compRef.current;
+    if (!comp) return;
+    const next = facing === "user" ? "environment" : "user";
+    setFacing(next);
+    void flipCompositorCamera(comp, next);
+  };
+
+  const startPhotoFx = (file: File) => {
+    const comp = compRef.current;
+    if (!comp) return;
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      comp.overlayImg = img;
+      setFx("photo");
+    };
+    img.src = url;
+  };
+  const startMusicFx = (file: File) => {
+    const comp = compRef.current;
+    if (!comp) return;
+    stopFx();
+    const url = URL.createObjectURL(file);
+    const el = document.createElement("audio");
+    el.src = url;
+    el.loop = true;
+    const source = comp.audioCtx.createMediaElementSource(el);
+    const analyser = comp.audioCtx.createAnalyser();
+    analyser.fftSize = 128;
+    source.connect(analyser);
+    source.connect(comp.mixDest); // viewers hear it
+    source.connect(comp.audioCtx.destination); // host hears it
+    void el.play().catch(() => undefined);
+    comp.musicEl = el;
+    comp.musicNodes = {
+      analyser,
+      bins: new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount)),
+    };
+    setFx("music");
+  };
+  const stopFx = () => {
+    const comp = compRef.current;
+    if (!comp) return;
+    comp.overlayImg = null;
+    comp.musicEl?.pause();
+    comp.musicEl = null;
+    comp.musicNodes = null;
+    setFx("none");
   };
 
   if (status === "ended") {
@@ -263,10 +449,58 @@ export function IvsStage({
         ) : null}
 
         {isHost && phase === "live" ? (
-          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2">
-            <ControlButton on={micOn} onClick={toggleMic} OnIcon={Mic} OffIcon={MicOff} />
-            <ControlButton on={camOn} onClick={toggleCam} OnIcon={Video} OffIcon={VideoOff} />
-          </div>
+          <>
+            <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2">
+              <ControlButton on={micOn} onClick={toggleMic} OnIcon={Mic} OffIcon={MicOff} />
+              <ControlButton on={camOn} onClick={toggleCam} OnIcon={Video} OffIcon={VideoOff} />
+              <ControlButton
+                on
+                onClick={flipCamera}
+                OnIcon={RefreshCcw}
+                OffIcon={RefreshCcw}
+                label="ကင်မရာလှည့်"
+              />
+              <ControlButton
+                on={fx !== "music"}
+                onClick={() => musicInput.current?.click()}
+                OnIcon={AudioLines}
+                OffIcon={AudioLines}
+                label="သီချင်း FX"
+              />
+              <ControlButton
+                on={fx !== "photo"}
+                onClick={() => photoInput.current?.click()}
+                OnIcon={Sparkles}
+                OffIcon={Sparkles}
+                label="ဓာတ်ပုံ FX"
+              />
+              {fx !== "none" ? (
+                <ControlButton on={false} onClick={stopFx} OnIcon={X} OffIcon={X} label="FX ရပ်" />
+              ) : null}
+            </div>
+            <input
+              ref={photoInput}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) startPhotoFx(f);
+                e.target.value = "";
+              }}
+            />
+            <input
+              ref={musicInput}
+              type="file"
+              accept="audio/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) startMusicFx(f);
+                e.target.value = "";
+              }}
+            />
+          </>
         ) : null}
       </div>
     </div>
@@ -278,17 +512,21 @@ function ControlButton({
   onClick,
   OnIcon,
   OffIcon,
+  label,
 }: {
   on: boolean;
   onClick: () => void;
   OnIcon: React.ComponentType<{ className?: string }>;
   OffIcon: React.ComponentType<{ className?: string }>;
+  label?: string;
 }) {
   const Icon = on ? OnIcon : OffIcon;
   return (
     <button
       type="button"
       onClick={onClick}
+      title={label}
+      aria-label={label}
       className={`flex h-10 w-10 items-center justify-center rounded-full ${
         on ? "bg-white/20 text-white" : "bg-destructive text-destructive-foreground"
       } backdrop-blur transition-colors hover:bg-white/30`}
