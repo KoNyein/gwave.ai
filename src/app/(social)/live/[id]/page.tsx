@@ -4,6 +4,7 @@ import { ArrowLeft, Radio } from "lucide-react";
 import { z } from "zod";
 
 import { DoubleTapHeart } from "@/components/live/double-tap-heart";
+import { EndStreamControl } from "@/components/live/end-stream-control";
 import { HostPanel } from "@/components/live/host-panel";
 import { LiveChat, type ChatEntry } from "@/components/live/live-chat";
 import { LiveOverlay } from "@/components/live/live-overlay";
@@ -251,13 +252,16 @@ export default async function LiveStreamPage(
                 <DoubleTapHeart streamId={stream.id} userId={profile.id} />
               </>
             ) : null}
-            <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
+            <div className="absolute right-3 top-3 z-40 flex items-center gap-2">
               {stream.status === "live" && (
                 <span className="rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase text-destructive-foreground">
                   Live
                 </span>
               )}
               <ViewerCount streamId={stream.id} viewerId={profile.id} />
+              {isHost && stream.status !== "ended" ? (
+                <EndStreamControl streamId={stream.id} />
+              ) : null}
             </div>
 
             {/* TikTok-style mobile chat: the comments + input ride ON the
