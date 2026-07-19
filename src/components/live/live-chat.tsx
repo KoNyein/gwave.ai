@@ -25,11 +25,15 @@ export function LiveChat({
   currentUser,
   initialMessages,
   disabled,
+  overlay,
 }: {
   streamId: string;
   currentUser: AuthorSummary;
   initialMessages: ChatEntry[];
   disabled?: boolean;
+  /** TikTok-style: transparent, white text with shadow, drawn over the video
+   * (the parent supplies the gradient). Card styling when false. */
+  overlay?: boolean;
 }) {
   const [messages, setMessages] = React.useState<ChatEntry[]>(initialMessages);
   const [draft, setDraft] = React.useState("");
@@ -116,13 +120,15 @@ export function LiveChat({
     <div className="flex h-full flex-col">
       <div
         ref={listRef}
-        className="flex-1 space-y-2 overflow-y-auto p-3"
+        className={`flex-1 space-y-2 overflow-y-auto ${overlay ? "px-3 pb-1" : "p-3"}`}
         aria-live="polite"
       >
         {messages.length === 0 ? (
-          <p className="py-6 text-center text-xs text-muted-foreground">
-            No messages yet — say hi! 👋
-          </p>
+          overlay ? null : (
+            <p className="py-6 text-center text-xs text-muted-foreground">
+              No messages yet — say hi! 👋
+            </p>
+          )
         ) : (
           messages.map((message) => (
             <div key={message.id} className="flex items-start gap-2">
@@ -131,11 +137,21 @@ export function LiveChat({
                 linked={false}
                 className="h-6 w-6"
               />
-              <p className="min-w-0 flex-1 text-sm">
-                <span className="mr-1 font-semibold">
+              <p
+                className={`min-w-0 flex-1 text-sm ${
+                  overlay ? "[text-shadow:0_1px_2px_rgba(0,0,0,.8)]" : ""
+                }`}
+              >
+                <span
+                  className={`mr-1 font-semibold ${overlay ? "text-white/80" : ""}`}
+                >
                   {displayName(message.author)}
                 </span>
-                <span className="break-words text-foreground/90">
+                <span
+                  className={`break-words ${
+                    overlay ? "text-white" : "text-foreground/90"
+                  }`}
+                >
                   {message.content}
                 </span>
               </p>
@@ -144,7 +160,10 @@ export function LiveChat({
         )}
       </div>
 
-      <form onSubmit={send} className="flex items-center gap-2 border-t p-2">
+      <form
+        onSubmit={send}
+        className={`flex items-center gap-2 p-2 ${overlay ? "" : "border-t"}`}
+      >
         <Input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -152,12 +171,18 @@ export function LiveChat({
           maxLength={500}
           disabled={disabled || pending}
           aria-label="Chat message"
+          className={
+            overlay
+              ? "h-9 rounded-full border-white/25 bg-black/40 text-white placeholder:text-white/60"
+              : undefined
+          }
         />
         <Button
           type="submit"
           size="icon"
           disabled={disabled || pending || !draft.trim()}
           aria-label="Send"
+          className={overlay ? "h-9 w-9 rounded-full" : undefined}
         >
           {pending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
