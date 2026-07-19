@@ -180,7 +180,13 @@ export default async function LiveStreamPage(
       <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
         {/* ── Video + header (main column, top) ────────────────────────── */}
         <div className="space-y-4 lg:col-span-2">
-          <div className="relative overflow-hidden rounded-xl">
+          <div
+            className={`relative overflow-hidden rounded-xl ${
+              stream.status !== "ended"
+                ? "h-[calc(100dvh-9.5rem)] bg-black lg:h-auto"
+                : ""
+            }`}
+          >
             {replayUrl ? (
               replayUrl.includes(".m3u8") ? (
                 <LivePlayer
@@ -257,23 +263,47 @@ export default async function LiveStreamPage(
             {/* TikTok-style mobile chat: the comments + input ride ON the
                 video over a bottom gradient (desktop keeps the sidebar). */}
             {stream.status !== "ended" ? (
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 lg:hidden">
-                <div className="bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-8">
-                  <div className="pointer-events-auto h-52">
-                    <LiveChat
-                      streamId={stream.id}
-                      currentUser={currentUser}
-                      initialMessages={chat}
-                      overlay
-                    />
+              <>
+                {/* Host/title chip, TikTok-style */}
+                <div className="absolute left-3 top-3 z-20 max-w-[60%] rounded-full bg-black/50 px-3 py-1 lg:hidden">
+                  <p className="truncate text-xs font-semibold text-white">
+                    {liveStreamTitle(stream.title, stream.host)}
+                  </p>
+                </div>
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 lg:hidden">
+                  <div className="bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-8">
+                    <div className="pointer-events-auto flex items-center justify-between px-2">
+                      <ReactionBar
+                        streamId={stream.id}
+                        userId={profile.id}
+                        disabled={false}
+                        showFloaters={false}
+                      />
+                      <LiveGifts
+                        streamId={stream.id}
+                        gifts={liveGifts}
+                        hasPin={giftHasPin}
+                        canGift={canGift}
+                      />
+                    </div>
+                    <div className="pointer-events-auto h-48">
+                      <LiveChat
+                        streamId={stream.id}
+                        currentUser={currentUser}
+                        initialMessages={chat}
+                        overlay
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              </>
             ) : null}
           </div>
 
-          {/* Title + host + reactions grouped into one clean header card */}
-          <Card>
+          {/* Title + host + reactions grouped into one clean header card.
+              While live on mobile everything rides on the video (one-screen
+              TikTok layout), so this card is desktop-only until it ends. */}
+          <Card className={stream.status !== "ended" ? "hidden lg:block" : ""}>
             <CardContent className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
