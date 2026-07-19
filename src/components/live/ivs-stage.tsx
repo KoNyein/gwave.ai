@@ -450,7 +450,9 @@ export function IvsStage({
 
         {isHost && phase === "live" ? (
           <>
-            <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2">
+            {/* TikTok-style right rail — keeps the bottom clear for the chat
+                overlay on mobile. */}
+            <div className="absolute right-2 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-2">
               <ControlButton on={micOn} onClick={toggleMic} OnIcon={Mic} OffIcon={MicOff} />
               <ControlButton on={camOn} onClick={toggleCam} OnIcon={Video} OffIcon={VideoOff} />
               <ControlButton

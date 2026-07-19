@@ -253,6 +253,23 @@ export default async function LiveStreamPage(
               )}
               <ViewerCount streamId={stream.id} viewerId={profile.id} />
             </div>
+
+            {/* TikTok-style mobile chat: the comments + input ride ON the
+                video over a bottom gradient (desktop keeps the sidebar). */}
+            {stream.status !== "ended" ? (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 lg:hidden">
+                <div className="bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-8">
+                  <div className="pointer-events-auto h-52">
+                    <LiveChat
+                      streamId={stream.id}
+                      currentUser={currentUser}
+                      initialMessages={chat}
+                      overlay
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {/* Title + host + reactions grouped into one clean header card */}
@@ -297,7 +314,11 @@ export default async function LiveStreamPage(
 
         {/* ── Chat + top supporters: right sidebar on desktop, directly under
                the video on mobile ─────────────────────────────────────── */}
-        <div className="space-y-4 lg:sticky lg:top-4 lg:col-start-3 lg:row-start-1 lg:row-span-2">
+        <div
+          className={`space-y-4 lg:sticky lg:top-4 lg:col-start-3 lg:row-start-1 lg:row-span-2 ${
+            stream.status !== "ended" ? "hidden lg:block" : ""
+          }`}
+        >
           <Card className="overflow-hidden">
             <CardContent className="h-[22rem] p-0 lg:h-[calc(100vh-7rem)]">
               <LiveChat

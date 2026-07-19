@@ -192,7 +192,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
   const { data: stream } = await supabase
     .from("live_streams")
     .select(
-      `id, host_id, status, started_at, livekit_room, agora_channel${providerCols}`,
+      `id, host_id, status, started_at, title, livekit_room, agora_channel${providerCols}`,
     )
     .eq("id", streamId)
     .maybeSingle<{
@@ -200,6 +200,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
       host_id: string;
       status: string;
       started_at: string | null;
+      title: string | null;
       livekit_room: string | null;
       agora_channel: string | null;
       ivs_stage_arn?: string | null;
@@ -249,6 +250,24 @@ export async function goLive(streamId: string): Promise<ActionResult> {
     .eq("id", stream.id)
     .eq("host_id", user.id);
   if (error) return { ok: false, error: error.message };
+
+  // Announce the broadcast in the news feed: a public post with the live link
+  // (clickable + preview card), so followers see the Live without opening the
+  // Live tab. Runs once per stream (the status guard above) and best-effort —
+  // a feed hiccup must not block going live.
+  const site = process.env.NEXT_PUBLIC_SITE_URL || "https://gwave.cc";
+  await supabase
+    .from("posts")
+    .insert({
+      author_id: user.id,
+      content: `🔴 Live လွှင့်နေပါပြီ — ${stream.title ?? "Live"}\n${site}/live/${streamId}`,
+      visibility: "public",
+    })
+    .then(
+      () => undefined,
+      () => undefined,
+    );
+
   revalidatePath(`/live/${streamId}`);
   return { ok: true, data: undefined };
 }
