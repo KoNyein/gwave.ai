@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
+
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
 import { useTranslations } from "next-intl";
+import { Eye, EyeOff } from "lucide-react";
 
 import { login, register, signInWithGoogle, type AuthState } from "@/app/(auth)/actions";
 import { GoogleOneTap } from "@/components/auth/google-one-tap";
@@ -36,6 +39,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
 
   const action = mode === "login" ? login : register;
   const [state, formAction] = useFormState<AuthState, FormData>(action, null);
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <Card>
@@ -69,13 +73,30 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">{t("password")}</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              required
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                required
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                tabIndex={-1}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
           {state?.error ? (
             <p className="text-sm text-destructive" role="alert">
