@@ -3,10 +3,12 @@ import { redirect } from "next/navigation";
 import {
   ArrowRight,
   Bot,
+  Download,
   GraduationCap,
   Leaf,
   MessageCircle,
   ShoppingBag,
+  Smartphone,
   Sprout,
   Cpu,
   Users,
@@ -22,6 +24,11 @@ export const metadata = {
     "မြန်မာ တောင်သူ၊ စိုက်ပျိုးရေးသမားများအတွက် ဆိုရှယ်မီဒီယာ၊ သင်ယူမှု၊ စျေးဝယ်၊ smart farm — အားလုံး တစ်နေရာတည်း။",
 };
 export const dynamic = "force-dynamic";
+
+/** Direct download for the native Android app, published by the
+ * "Build Flutter APK" workflow as the rolling `mobile-latest` release. */
+const APK_URL =
+  "https://github.com/KoNyein/gwave.ai/releases/download/mobile-latest/gwave.apk";
 
 const FEATURES = [
   {
@@ -96,6 +103,24 @@ export default async function WelcomePage() {
           <Button asChild size="lg" variant="outline">
             <Link href="/login">အကောင့်ရှိပြီး — ဝင်မည်</Link>
           </Button>
+        </div>
+
+        {/* Native Android app download */}
+        <div className="mt-6 flex flex-col items-center gap-2">
+          <Button
+            asChild
+            size="lg"
+            className="bg-foreground text-background hover:bg-foreground/90"
+          >
+            <a href={APK_URL} download>
+              <Smartphone className="mr-2 h-5 w-5" />
+              Android App ရယူမည်
+              <Download className="ml-2 h-4 w-4" />
+            </a>
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            APK ဖိုင်ကို တိုက်ရိုက် download လုပ်ပါ · Android 5.0 နှင့်အထက်
+          </p>
         </div>
       </section>
 
