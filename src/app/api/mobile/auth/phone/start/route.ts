@@ -70,7 +70,14 @@ export async function POST(request: Request) {
   } catch (err) {
     const name = (err as { name?: string })?.name ?? "";
     if (name !== "UsernameExistsException") {
-      return NextResponse.json({ error: "Couldn't send the code." }, { status: 500 });
+      // Surface Cognito's real reason so a misconfigured pool (SMS/SNS not set
+      // up, phone sign-up disabled, invalid number) is diagnosable from the app.
+      const detail = (err as { message?: string })?.message ?? "";
+      console.error("[mobile/phone/start] SignUp failed", name, detail);
+      return NextResponse.json(
+        { error: `Couldn't send the code. ${name}${detail ? `: ${detail}` : ""}`.trim() },
+        { status: 500 },
+      );
     }
   }
 
