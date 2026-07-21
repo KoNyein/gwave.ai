@@ -1091,6 +1091,7 @@ export interface Comment {
   author_id: string;
   parent_id: string | null;
   content: string;
+  image_path: string | null;
   reaction_count: number;
   reply_count: number;
   removed_at: string | null;
@@ -1895,6 +1896,7 @@ export type Database = {
           author_id: string;
           parent_id?: string | null;
           content: string;
+          image_path?: string | null;
           reaction_count?: number;
           reply_count?: number;
           created_at?: string;
@@ -1906,6 +1908,7 @@ export type Database = {
           author_id?: string;
           parent_id?: string | null;
           content?: string;
+          image_path?: string | null;
           reaction_count?: number;
           reply_count?: number;
           removed_at?: string | null;
