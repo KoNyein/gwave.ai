@@ -139,7 +139,7 @@ export function PostCard({
   async function shareExternally() {
     try {
       await navigator.share({
-        title: "gwave.ai",
+        title: "Gwave",
         url: `${window.location.origin}/p/${post.id}`,
       });
     } catch {

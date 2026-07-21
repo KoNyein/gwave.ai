@@ -189,7 +189,7 @@ export async function getSiteName(): Promise<string> {
     .select("value")
     .eq("key", "general")
     .maybeSingle();
-  return (data?.value as { site_name?: string })?.site_name ?? "gwave.ai";
+  return (data?.value as { site_name?: string })?.site_name ?? "Gwave";
 }
 
 export interface DemographicRow {

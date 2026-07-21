@@ -142,7 +142,7 @@ export function VpdCalculator() {
         disabled={vpd === null}
         content={
           vpd !== null
-            ? `💧 VPD check (gwave.ai tools)\n\nAir ${air}°C, leaf offset −${offset}°C, RH ${rh}% → VPD ${vpd.toFixed(2)} kPa`
+            ? `💧 VPD check (Gwave tools)\n\nAir ${air}°C, leaf offset −${offset}°C, RH ${rh}% → VPD ${vpd.toFixed(2)} kPa`
             : ""
         }
       />

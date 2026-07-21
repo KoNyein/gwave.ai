@@ -61,7 +61,7 @@ export const htmlTrack: Track = {
         },
       ],
       code: {
-        html: "<h1>My first page</h1>\n<p>I am learning HTML on gwave.ai.</p>\n<p>Change this text, then press <b>Run</b>.</p>",
+        html: "<h1>My first page</h1>\n<p>I am learning HTML on Gwave.</p>\n<p>Change this text, then press <b>Run</b>.</p>",
         css: "body { font-family: sans-serif; padding: 2rem; }",
         js: "// HTML lesson — no JavaScript needed yet.",
       },
@@ -904,7 +904,7 @@ export const pythonTrack: Track = {
       minutes: 9,
       kind: "python",
       youtubeQuery: "Python tutorial for beginners",
-      pythonCode: "print(\"Hello, gwave.ai!\")\nprint(\"2 + 3 =\", 2 + 3)\n\n# Try changing the text, then press Run.\nname = \"Mai\"\nprint(\"Grower:\", name)",
+      pythonCode: "print(\"Hello, Gwave!\")\nprint(\"2 + 3 =\", 2 + 3)\n\n# Try changing the text, then press Run.\nname = \"Mai\"\nprint(\"Grower:\", name)",
       sections: [
         {
           heading: "Why Python",
@@ -913,7 +913,7 @@ export const pythonTrack: Track = {
         {
           heading: "print() — your first function",
           body: "print() writes text to the screen. Text (a string) goes in quotes; numbers don't need them. One line is a complete program:",
-          code: 'print("Hello, gwave.ai!")\nprint("2 + 3 =", 2 + 3)',
+          code: 'print("Hello, Gwave!")\nprint("2 + 3 =", 2 + 3)',
         },
         {
           heading: "Comments",

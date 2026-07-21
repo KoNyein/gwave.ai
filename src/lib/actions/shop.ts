@@ -403,7 +403,7 @@ export async function importProductFromUrl(
     for (let hop = 0; hop < 5; hop++) {
       await assertPublicUrl(current);
       const res = await fetch(current, {
-        headers: { "user-agent": "Mozilla/5.0 (gwave.ai product import)" },
+        headers: { "user-agent": "Mozilla/5.0 (Gwave product import)" },
         redirect: "manual",
         signal: AbortSignal.timeout(10_000),
       });

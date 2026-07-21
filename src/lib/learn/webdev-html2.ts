@@ -217,11 +217,11 @@ const HTML_EXTRA2_BASE: Lesson[] = [
       {
         heading: "Beyond a plain link",
         body: "target=\"_blank\" opens a link in a new tab (add rel=\"noopener\" for safety). href=\"#id\" jumps within the page, mailto: opens an email, and tel: dials a number on phones.",
-        code: '<a href="mailto:hi@gwave.ai">Email us</a>',
+        code: '<a href="mailto:hi@gwave.cc">Email us</a>',
       },
     ],
     code: {
-      html: '<p><a href="https://example.com" target="_blank" rel="noopener">New tab ↗</a></p>\n<p><a href="mailto:hi@gwave.ai">Email</a> · <a href="tel:+95912345678">Call</a></p>',
+      html: '<p><a href="https://example.com" target="_blank" rel="noopener">New tab ↗</a></p>\n<p><a href="mailto:hi@gwave.cc">Email</a> · <a href="tel:+95912345678">Call</a></p>',
       css,
       js: noJs,
     },

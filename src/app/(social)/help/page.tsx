@@ -29,7 +29,7 @@ export default function HelpPage() {
     <div className="space-y-4 pb-8">
       <h1 className="text-xl font-bold">📖 အကူအညီနှင့် လမ်းညွှန် (Help &amp; Guide)</h1>
       <p className="text-sm text-muted-foreground">
-        gwave.ai သုံးရာမှာ အခက်ခဲရှိရင် ဒီစာမျက်နှာက အဆင့်လိုက် ဖြေရှင်းနည်းများ။
+        Gwave သုံးရာမှာ အခက်ခဲရှိရင် ဒီစာမျက်နှာက အဆင့်လိုက် ဖြေရှင်းနည်းများ။
       </p>
 
       <Card>

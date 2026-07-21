@@ -2,7 +2,7 @@
 export const OPENAPI_SPEC = {
   openapi: "3.1.0",
   info: {
-    title: "gwave.ai Public API",
+    title: "Gwave Public API",
     version: "1.0.0",
     description:
       "Read-only REST API. Authenticate every request with `Authorization: Bearer <api key>`. Keys are created in the Developer dashboard (/dev) with per-key scopes and a per-minute rate limit.",

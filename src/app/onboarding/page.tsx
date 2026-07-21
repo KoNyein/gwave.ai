@@ -11,7 +11,7 @@ export default async function OnboardingPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted px-4 py-12">
       <div className="mb-8 flex items-center gap-2 text-primary">
         <Leaf className="h-8 w-8" />
-        <span className="text-2xl font-bold">gwave.ai</span>
+        <span className="text-2xl font-bold">Gwave</span>
       </div>
       <OnboardingForm profile={profile} />
     </div>

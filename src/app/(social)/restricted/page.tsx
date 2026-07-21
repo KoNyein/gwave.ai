@@ -15,7 +15,7 @@ export default function RestrictedPage() {
         <div>
           <h1 className="text-xl font-bold">This area is for adults</h1>
           <p className="mt-2 max-w-md text-sm text-muted-foreground">
-            Some parts of gwave.ai cover regulated topics and are only available
+            Some parts of Gwave cover regulated topics and are only available
             to members aged 18 and over. There&apos;s still plenty for you to
             explore — including learning content made for your age group.
           </p>
