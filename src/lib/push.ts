@@ -91,7 +91,7 @@ export async function pushSocial(
       (actor?.username as string | null) ||
       "Someone";
     await sendPushToUser(recipientId, {
-      title: "gwave.ai",
+      title: "Gwave",
       body: body(name),
       url,
     });

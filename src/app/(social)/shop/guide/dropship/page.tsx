@@ -131,7 +131,7 @@ export default async function DropshipGuidePage() {
 
       <Section title="၅။ ငွေကြေး စီမံနည်း">
         <p>
-          gwave.ai က order ချိတ်ဆက်မှုသာ လုပ်ပေးပြီး — <b>ငွေကောက်ခံမှုက
+          Gwave က order ချိတ်ဆက်မှုသာ လုပ်ပေးပြီး — <b>ငွေကောက်ခံမှုက
           သင်နဲ့ ဖောက်သည်ကြား တိုက်ရိုက်</b> ဖြစ်ပါတယ် (COD၊ KPay/WavePay ကြိုလွှဲ၊
           G-Pay စသဖြင့်)။ အကြံပြုချက် —
         </p>

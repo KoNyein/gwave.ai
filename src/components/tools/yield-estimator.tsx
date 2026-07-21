@@ -120,7 +120,7 @@ export function YieldEstimator() {
         disabled={!valid}
         content={
           valid
-            ? `⚖️ Yield estimate (gwave.ai tools)\n\n${wattsValue} W · ${plantsValue} plants · ${t(`methods.${method.id}`)}\nEstimated harvest: ${Math.round(low!)}–${Math.round(high!)} g`
+            ? `⚖️ Yield estimate (Gwave tools)\n\n${wattsValue} W · ${plantsValue} plants · ${t(`methods.${method.id}`)}\nEstimated harvest: ${Math.round(low!)}–${Math.round(high!)} g`
             : ""
         }
       />

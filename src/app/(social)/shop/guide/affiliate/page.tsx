@@ -75,7 +75,7 @@ export default async function AffiliateGuidePage() {
           <b>ဥပမာ:</b> Commission 8% ပေးတဲ့ ၅၀,၀၀၀ ကျပ်တန် ပစ္စည်း link ကို မျှဝေထားပြီး
           တစ်လကို ၁၀ ယောက် ဝယ်ရင် — ၅၀,၀၀၀ × 8% × ၁၀ = <b>တစ်လ ၄၀,၀၀၀ ကျပ်</b>။
           <br />
-          ⚠️ Commission ကို <b>merchant ဘက်က တိုက်ရိုက် ပေး</b>ပါတယ် — gwave.ai က
+          ⚠️ Commission ကို <b>merchant ဘက်က တိုက်ရိုက် ပေး</b>ပါတယ် — Gwave က
           click ချိတ်ဆက်ပေး/ရေတွက်ပေးရုံသာ ဖြစ်ပါတယ်။
         </p>
       </Section>

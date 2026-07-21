@@ -102,7 +102,7 @@ export function ProfitCalculator() {
         disabled={!valid || margin === null}
         content={
           valid && margin !== null
-            ? `📈 Pricing check (gwave.ai tools)\n\nCost $${costValue.toFixed(2)} → sell $${priceValue.toFixed(2)}\nMargin ${margin.toFixed(1)}%${breakEven !== null ? ` · break-even at ${breakEven} units/month` : ""}`
+            ? `📈 Pricing check (Gwave tools)\n\nCost $${costValue.toFixed(2)} → sell $${priceValue.toFixed(2)}\nMargin ${margin.toFixed(1)}%${breakEven !== null ? ` · break-even at ${breakEven} units/month` : ""}`
             : ""
         }
       />

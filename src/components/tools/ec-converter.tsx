@@ -78,7 +78,7 @@ export function EcConverter() {
         disabled={!valid}
         content={
           valid
-            ? `🧪 EC/PPM conversion (gwave.ai tools)\n\nEC ${ecValue.toFixed(2)} mS/cm = ${ppm500} ppm (500 scale) = ${ppm700} ppm (700 scale)`
+            ? `🧪 EC/PPM conversion (Gwave tools)\n\nEC ${ecValue.toFixed(2)} mS/cm = ${ppm500} ppm (500 scale) = ${ppm700} ppm (700 scale)`
             : ""
         }
       />

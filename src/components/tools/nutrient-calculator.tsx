@@ -134,7 +134,7 @@ export function NutrientCalculator() {
         disabled={!valid}
         content={
           valid
-            ? `🧪 Nutrient mix (gwave.ai tools)\n\n${litersValue} L reservoir @ EC ${ecValue} (${n}-${p}-${k} NPK)\nPart A: ${gramsA!.toFixed(1)} g · Part B: ${gramsB!.toFixed(1)} g`
+            ? `🧪 Nutrient mix (Gwave tools)\n\n${litersValue} L reservoir @ EC ${ecValue} (${n}-${p}-${k} NPK)\nPart A: ${gramsA!.toFixed(1)} g · Part B: ${gramsB!.toFixed(1)} g`
             : ""
         }
       />

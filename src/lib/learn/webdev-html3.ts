@@ -667,7 +667,7 @@ export const HTML_EXTRA3: Lesson[] = [
       [
         "canonical",
         "`<link rel=\"canonical\" href=\"...\">` က တူညီ/ဆင်တူ content များအတွက် 'မူရင်း' URL ကို search engine အား ပြောပြသည် — duplicate content ကြောင့် SEO ကျမှု ကာကွယ်သည်။",
-        '<link rel="canonical" href="https://gwave.ai/post/1">',
+        '<link rel="canonical" href="https://gwave.cc/post/1">',
       ],
     ],
   ),

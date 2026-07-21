@@ -95,7 +95,7 @@ export async function createStripeCheckout(
                 unit_amount: Math.round(planRow.price_monthly * 100),
                 recurring: { interval: "month" },
                 product_data: {
-                  name: `gwave.ai ${planRow.name} membership`,
+                  name: `Gwave ${planRow.name} membership`,
                 },
               },
             },

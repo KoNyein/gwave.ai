@@ -63,7 +63,7 @@ const AFFILIATE_STEPS: Step[] = [
   {
     n: 4,
     title: "Commission က merchant ဆီက",
-    body: "ဝယ်ယူမှုအတွက် commission ကို သင် ချိတ်ဆက်ထားတဲ့ merchant/affiliate program ကနေ တိုက်ရိုက် ရသည်။ gwave.ai က click ချိတ်ဆက်ပေးရုံသာ — ငွေ merchant ဘက်က ပေးသည်။",
+    body: "ဝယ်ယူမှုအတွက် commission ကို သင် ချိတ်ဆက်ထားတဲ့ merchant/affiliate program ကနေ တိုက်ရိုက် ရသည်။ Gwave က click ချိတ်ဆက်ပေးရုံသာ — ငွေ merchant ဘက်က ပေးသည်။",
   },
 ];
 

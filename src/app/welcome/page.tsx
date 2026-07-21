@@ -15,13 +15,14 @@ import {
   Wrench,
 } from "lucide-react";
 
+import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { Button } from "@/components/ui/button";
 import { getCurrentProfile } from "@/lib/auth";
 
 export const metadata = {
-  title: "gwave.ai — တောင်သူများအတွက် ဆိုရှယ်နက်ဝက်",
+  title: "Gwave — the super-app for farmers",
   description:
-    "မြန်မာ တောင်သူ၊ စိုက်ပျိုးရေးသမားများအတွက် ဆိုရှယ်မီဒီယာ၊ သင်ယူမှု၊ စျေးဝယ်၊ smart farm — အားလုံး တစ်နေရာတည်း။",
+    "Social network, learning, marketplace and smart-farm tech for farmers — all in one app.",
 };
 export const dynamic = "force-dynamic";
 
@@ -33,33 +34,33 @@ const APK_URL =
 const FEATURES = [
   {
     icon: Users,
-    title: "လူမှုကွန်ရက်",
-    body: "မိတ်ဆွေ တောင်သူများနှင့် ချိတ်ဆက်၊ ပို့စ်၊ ဓာတ်ပုံ၊ ဗီဒီယို မျှဝေ။",
+    title: "Social network",
+    body: "Connect with fellow farmers and share posts, photos and videos.",
   },
   {
     icon: MessageCircle,
-    title: "Messenger + ဂိမ်း",
-    body: "Realtime စကားပြော၊ အသံ/ဗီဒီယို ခေါ်ဆို၊ စစ်တုရင်နှင့် ကျားထိုး ကစား။",
+    title: "Messenger + games",
+    body: "Realtime chat, voice/video calls, and play chess and Kyar.",
   },
   {
     icon: GraduationCap,
-    title: "အခမဲ့ သင်တန်းများ",
-    body: "Coding, AI, Electronics, Robotics, စိုက်ပျိုးရေး — မြန်မာလို သင်ခန်းစာ ၆၀ စီ။",
+    title: "Free courses",
+    body: "Coding, AI, Electronics, Robotics and Agriculture — 60 lessons each.",
   },
   {
     icon: ShoppingBag,
-    title: "စျေးဝယ် + ရောင်း",
-    body: "ကုန်ပစ္စည်း ရောင်း/ဝယ်၊ dropship/affiliate၊ ပို့ဆောင်မှု ခြေရာခံ။",
+    title: "Buy + sell",
+    body: "Trade products, run dropship/affiliate stores, track deliveries.",
   },
   {
     icon: Cpu,
     title: "Smart Farm IoT",
-    body: "Sensor များ၊ အလိုအလျောက် ရေလောင်း၊ dashboard နဲ့ စိုက်ခင်း စောင့်ကြည့်။",
+    body: "Sensors, automatic irrigation, and a dashboard to watch your farm.",
   },
   {
     icon: Wrench,
-    title: "စိုက်ပျိုးရေး Tools",
-    body: "EC/PPM, VPD, အမြတ်တွက်စက်၊ မျိုးကွဲ/သတ္တု အချက်အလက် စသည်။",
+    title: "Farming tools",
+    body: "EC/PPM, VPD, profit calculators, strain and mineral references.",
   },
 ];
 
@@ -70,38 +71,45 @@ export default async function WelcomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 via-background to-background">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-        <span className="flex items-center gap-2 text-primary">
-          <Leaf className="h-6 w-6" />
-          <span className="text-lg font-bold">gwave.ai</span>
-        </span>
-        <Button asChild size="sm" variant="ghost">
-          <Link href="/login">ဝင်မည်</Link>
-        </Button>
+      <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+          <span className="flex items-center gap-2 text-primary">
+            <Leaf className="h-6 w-6" />
+            <span className="text-lg font-bold">Gwave</span>
+          </span>
+          <div className="flex items-center gap-1.5">
+            <LocaleSwitcher />
+            <Button asChild size="sm" variant="ghost">
+              <Link href="/login">Sign in</Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link href="/register">Get started</Link>
+            </Button>
+          </div>
+        </div>
       </header>
 
       {/* Hero */}
       <section className="mx-auto max-w-5xl px-4 pb-10 pt-8 text-center sm:pt-16">
         <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
-          <Sprout className="h-3.5 w-3.5 text-primary" /> မြန်မာ တောင်သူများအတွက်
+          <Sprout className="h-3.5 w-3.5 text-primary" /> For farmers
         </span>
         <h1 className="mx-auto mt-4 max-w-2xl text-3xl font-bold leading-tight sm:text-4xl">
-          စိုက်ပျိုးရေး၊ သင်ယူမှုနှင့် အသိုင်းအဝိုင်း —{" "}
-          <span className="text-primary">အားလုံး တစ်နေရာတည်း</span>
+          Farming, learning and community —{" "}
+          <span className="text-primary">all in one place</span>
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-          gwave.ai သည် တောင်သူ၊ စိုက်ပျိုးရေးသမားများအတွက် ဆိုရှယ်နက်ဝက်၊ အခမဲ့
-          ပညာရေး၊ စျေးကွက်နှင့် smart farm နည်းပညာ ပေါင်းစပ်ထားသော super-app
-          ဖြစ်သည်။
+          Gwave is a super-app for farmers, bringing together a social
+          network, free education, a marketplace and smart-farm technology.
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Button asChild size="lg">
             <Link href="/register">
-              အခမဲ့ စတင်မည် <ArrowRight className="ml-1.5 h-4 w-4" />
+              Start free <ArrowRight className="ml-1.5 h-4 w-4" />
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <Link href="/login">အကောင့်ရှိပြီး — ဝင်မည်</Link>
+            <Link href="/login">Already have an account — sign in</Link>
           </Button>
         </div>
 
@@ -114,12 +122,12 @@ export default async function WelcomePage() {
           >
             <a href={APK_URL} download>
               <Smartphone className="mr-2 h-5 w-5" />
-              Android App ရယူမည်
+              Download the Android app
               <Download className="ml-2 h-4 w-4" />
             </a>
           </Button>
           <p className="text-xs text-muted-foreground">
-            APK ဖိုင်ကို တိုက်ရိုက် download လုပ်ပါ · Android 5.0 နှင့်အထက်
+            Download the APK directly · Android 5.0 and above
           </p>
         </div>
       </section>
@@ -150,19 +158,31 @@ export default async function WelcomePage() {
         <div className="rounded-3xl border bg-primary/5 p-8 text-center">
           <Bot className="mx-auto h-9 w-9 text-primary" />
           <h2 className="mt-3 text-xl font-bold">
-            ဒီနေ့ပဲ gwave အသိုင်းအဝိုင်းထဲ ဝင်လိုက်ပါ
+            Join the Gwave community today
           </h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            အခမဲ့ဖြစ်ပြီး ဖုန်းမှာ app အဖြစ် install လုပ်၍ သုံးနိုင်သည်။
+            It&apos;s free, and you can install it as an app on your phone.
           </p>
-          <Button asChild size="lg" className="mt-5">
-            <Link href="/register">
-              အကောင့်ဖွင့်မည် <ArrowRight className="ml-1.5 h-4 w-4" />
-            </Link>
-          </Button>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            <Button asChild size="lg">
+              <Link href="/register">
+                Create an account <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="border-foreground/20"
+            >
+              <a href={APK_URL} download>
+                <Download className="mr-2 h-4 w-4" /> Android app
+              </a>
+            </Button>
+          </div>
         </div>
         <p className="mt-8 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} gwave.ai — growers&apos; super-app
+          © {new Date().getFullYear()} Gwave — growers&apos; super-app
         </p>
       </section>
     </div>

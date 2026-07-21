@@ -39,7 +39,7 @@ const LEVELS: { value: ErrorLevel; label: string }[] = [
 export function QrGenerator() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [mode, setMode] = useState<Mode>("text");
-  const [text, setText] = useState("https://gwave.ai");
+  const [text, setText] = useState("https://gwave.cc");
   // Wi-Fi fields
   const [ssid, setSsid] = useState("");
   const [wifiPass, setWifiPass] = useState("");
