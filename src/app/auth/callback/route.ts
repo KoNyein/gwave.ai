@@ -42,6 +42,39 @@ export async function GET(request: Request) {
   const next =
     requested.startsWith("/") && !requested.startsWith("//") ? requested : "/feed";
 
+  // Native app flow. The Android app can't register its gwave:// scheme as a
+  // Cognito callback (only this https URL is whitelisted), so it borrows this
+  // callback with state=mobile. Hand the code straight to the app via its
+  // gwave://auth deep link WITHOUT exchanging it here — the app exchanges it
+  // at /api/mobile/auth/google (with this URL as redirect_uri). Served as a
+  // tiny page (auto-redirect + button) because some browsers only follow
+  // custom-scheme intents from a page, not a bare 302.
+  if (requested === "mobile" && code) {
+    const deepLink = `gwave://auth?code=${encodeURIComponent(code)}`;
+    const html = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opening Gwave…</title>
+<style>
+  body{font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;
+       justify-content:center;min-height:100vh;margin:0;background:#EEF5E7;color:#12160E;text-align:center;padding:24px}
+  a.btn{margin-top:18px;background:#3B6D11;color:#fff;text-decoration:none;font-weight:700;
+        padding:14px 28px;border-radius:14px;font-size:16px}
+  p{color:#5B6650;font-size:14px;max-width:320px}
+</style></head><body>
+<h2>Gwave app သို့ ပြန်သွားနေသည်…</h2>
+<p>အလိုအလျောက် မပွင့်ရင် အောက်က ခလုတ်ကို နှိပ်ပါ။</p>
+<a class="btn" href="${deepLink}">Open Gwave app</a>
+<script>location.replace(${JSON.stringify(deepLink)});</script>
+</body></html>`;
+    return new NextResponse(html, {
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      },
+    });
+  }
+
   const providerError = searchParams.get("error");
   if (providerError) {
     const reason =
