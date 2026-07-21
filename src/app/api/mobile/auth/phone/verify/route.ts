@@ -8,6 +8,7 @@ import { z } from "zod";
 import { authEnv } from "@/lib/env";
 import { cognito, identityFromTokens, secretHash } from "@/lib/auth/cognito";
 import { DATA_TOKEN_TTL_SECONDS, mintDataToken } from "@/lib/auth/tokens";
+import { ensureProfile } from "@/lib/auth/ensure-profile";
 import { derivePhonePassword, normalizePhone } from "@/lib/auth/phone";
 
 export const runtime = "nodejs";
@@ -80,6 +81,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Could not sign you in." }, { status: 500 });
     }
     const identity = identityFromTokens(out.AuthenticationResult);
+    await ensureProfile(identity.profileId);
     const token = await mintDataToken(identity.profileId, {});
     return NextResponse.json({
       token,

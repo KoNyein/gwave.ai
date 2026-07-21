@@ -12,6 +12,7 @@ import { z } from "zod";
 import { authEnv } from "@/lib/env";
 import { cognito, identityFromTokens, secretHash } from "@/lib/auth/cognito";
 import { DATA_TOKEN_TTL_SECONDS, mintDataToken } from "@/lib/auth/tokens";
+import { ensureProfile } from "@/lib/auth/ensure-profile";
 import { checkAuthRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -97,6 +98,7 @@ export async function POST(request: Request) {
     }
 
     const identity = identityFromTokens(out.AuthenticationResult);
+    await ensureProfile(identity.profileId);
     const token = await mintDataToken(identity.profileId, {
       email: identity.email,
     });

@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { authEnv } from "@/lib/env";
 import { cognito } from "@/lib/auth/cognito";
+import { ensureProfile } from "@/lib/auth/ensure-profile";
 import { DATA_TOKEN_TTL_SECONDS, mintDataToken } from "@/lib/auth/tokens";
 
 export const runtime = "nodejs";
@@ -100,6 +101,13 @@ export async function POST(request: Request) {
         )
         .catch(() => {});
     }
+
+    // The profiles row must exist before any FK write (live_streams, PTT,
+    // messages, comments, G-Pay…) — seed it with the Google name/photo.
+    await ensureProfile(profileId, {
+      fullName: typeof claims.name === "string" ? claims.name : null,
+      avatarUrl: typeof claims.picture === "string" ? claims.picture : null,
+    });
 
     const token = await mintDataToken(profileId, { email });
     return NextResponse.json({
