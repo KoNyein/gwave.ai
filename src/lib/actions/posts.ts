@@ -81,33 +81,37 @@ export async function createPost(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const { data: post, error } = await supabase
-    .from("posts")
-    .insert({
-      author_id: userId,
-      content: parsed.data.content.trim(),
-      // Group/page posts don't carry personal visibility; the group's
-      // privacy (or the page being public) governs who sees them.
-      visibility:
-        parsed.data.groupId || parsed.data.pageId
-          ? "public"
-          : parsed.data.visibility,
-      group_id: parsed.data.groupId ?? null,
-      page_id: parsed.data.pageId ?? null,
-      location_name: parsed.data.locationName || null,
-      latitude: parsed.data.latitude ?? null,
-      longitude: parsed.data.longitude ?? null,
-    })
-    .select("id")
-    .single();
-  if (error || !post) {
-    return { ok: false, error: error?.message ?? "Failed to create post." };
+  // Generate the id client-side so we never need INSERT ... RETURNING.
+  // The posts SELECT policy (can_view_post_id) is a STABLE SECURITY DEFINER
+  // function that re-queries posts, so it cannot see the row being inserted
+  // in the same statement; using .select() after .insert() therefore fails
+  // the SELECT RLS check and reports a false "row-level security" violation.
+  const postId = crypto.randomUUID();
+
+  const { error } = await supabase.from("posts").insert({
+    id: postId,
+    author_id: userId,
+    content: parsed.data.content.trim(),
+    // Group/page posts don't carry personal visibility; the group's
+    // privacy (or the page being public) governs who sees them.
+    visibility:
+      parsed.data.groupId || parsed.data.pageId
+        ? "public"
+        : parsed.data.visibility,
+    group_id: parsed.data.groupId ?? null,
+    page_id: parsed.data.pageId ?? null,
+    location_name: parsed.data.locationName || null,
+    latitude: parsed.data.latitude ?? null,
+    longitude: parsed.data.longitude ?? null,
+  });
+  if (error) {
+    return { ok: false, error: error.message ?? "Failed to create post." };
   }
 
   if (parsed.data.media.length > 0) {
     const { error: mediaError } = await supabase.from("post_media").insert(
       parsed.data.media.map((m, index) => ({
-        post_id: post.id,
+        post_id: postId,
         media_type: m.media_type,
         storage_path: m.storage_path,
         width: m.width,
@@ -116,13 +120,13 @@ export async function createPost(
       })),
     );
     if (mediaError) {
-      await supabase.from("posts").delete().eq("id", post.id);
+      await supabase.from("posts").delete().eq("id", postId);
       return { ok: false, error: mediaError.message };
     }
   }
 
   revalidatePath("/feed");
-  return { ok: true, data: { postId: post.id } };
+  return { ok: true, data: { postId } };
 }
 
 const importPostSchema = z.object({
@@ -229,22 +233,22 @@ export async function sharePost(
     .maybeSingle();
   if (!target) return { ok: false, error: "Post not found." };
 
-  const { data: post, error } = await supabase
-    .from("posts")
-    .insert({
-      author_id: userId,
-      content: parsed.data.content.trim(),
-      visibility: parsed.data.visibility,
-      shared_post_id: target.shared_post_id ?? target.id,
-    })
-    .select("id")
-    .single();
-  if (error || !post) {
-    return { ok: false, error: error?.message ?? "Failed to share post." };
+  // See createPost: avoid INSERT ... RETURNING so the SELECT RLS policy
+  // does not reject the freshly-inserted row.
+  const postId = crypto.randomUUID();
+  const { error } = await supabase.from("posts").insert({
+    id: postId,
+    author_id: userId,
+    content: parsed.data.content.trim(),
+    visibility: parsed.data.visibility,
+    shared_post_id: target.shared_post_id ?? target.id,
+  });
+  if (error) {
+    return { ok: false, error: error.message ?? "Failed to share post." };
   }
 
   revalidatePath("/feed");
-  return { ok: true, data: { postId: post.id } };
+  return { ok: true, data: { postId } };
 }
 
 /**
