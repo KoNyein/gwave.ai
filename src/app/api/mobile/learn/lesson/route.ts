@@ -44,6 +44,11 @@ export function GET(request: NextRequest) {
         quiz: lesson.quiz ?? [],
         youtubeId: lesson.youtubeId ?? null,
         youtubeQuery: lesson.youtubeQuery ?? null,
+        // Starter code for the app's in-app playground (code lessons run
+        // natively in a WebView; python/sql show the starter to copy).
+        code: lesson.code ?? null,
+        pythonCode: lesson.pythonCode ?? null,
+        sqlCode: lesson.sqlCode ?? null,
       },
       next: next ? { slug: next.slug, title: next.title } : null,
     },
