@@ -28,11 +28,14 @@ export function LiveGifts({
   gifts,
   hasPin,
   canGift,
+  disabled,
 }: {
   streamId: string;
   gifts: LiveGift[];
   hasPin: boolean;
   canGift: boolean;
+  /** Ended broadcast — gifts are refused by send_live_gift(), so don't offer them. */
+  disabled?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -112,14 +115,16 @@ export function LiveGifts({
       <Button
         variant="ghost"
         size="icon"
-        className="rounded-full"
+        className="rounded-full disabled:opacity-50"
         onClick={() => setOpen(true)}
+        disabled={disabled}
         aria-label="Send gift"
+        title={disabled ? "ဤ live ပြီးဆုံးသွားပါပြီ" : undefined}
       >
         <Gift className="h-5 w-5 text-pink-500" />
       </Button>
 
-      {open ? (
+      {open && !disabled ? (
         <div className="fixed inset-0 z-[60] flex items-end bg-black/50" onClick={() => setOpen(false)}>
           <div
             className="w-full rounded-t-2xl bg-card p-4"

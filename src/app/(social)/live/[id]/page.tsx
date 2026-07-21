@@ -181,6 +181,7 @@ export default async function LiveStreamPage(
           gifts={liveGifts}
           hasPin={giftHasPin}
           canGift={canGift}
+          disabled={stream.status === "ended"}
         />
       </div>
 
