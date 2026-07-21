@@ -329,11 +329,18 @@ export async function setReaction(
   return { ok: true, data: undefined };
 }
 
-const addCommentSchema = z.object({
-  postId: z.string().uuid(),
-  content: z.string().min(1).max(4000),
-  parentId: z.string().uuid().nullable(),
-});
+const addCommentSchema = z
+  .object({
+    postId: z.string().uuid(),
+    content: z.string().max(4000),
+    parentId: z.string().uuid().nullable(),
+    // Optional photo (path in the "media" bucket). A comment needs text or a
+    // photo — never neither.
+    imagePath: z.string().max(500).nullable().optional(),
+  })
+  .refine((c) => c.content.trim().length > 0 || c.imagePath, {
+    message: "Empty comment",
+  });
 
 export async function addComment(
   input: z.infer<typeof addCommentSchema>,
@@ -352,6 +359,7 @@ export async function addComment(
       author_id: userId,
       parent_id: parsed.data.parentId,
       content: parsed.data.content.trim(),
+      image_path: parsed.data.imagePath ?? null,
     })
     .select("id")
     .single();

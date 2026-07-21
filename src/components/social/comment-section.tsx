@@ -2,12 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Loader2, SendHorizonal, Trash2 } from "lucide-react";
+import { ImagePlus, Loader2, SendHorizonal, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { UserAvatar } from "@/components/social/user-avatar";
 import { addComment, deleteComment, setReaction } from "@/lib/actions/posts";
 import { displayName, timeAgo } from "@/lib/format";
+import { mediaUrl, uploadMedia } from "@/lib/media";
 import { cn } from "@/lib/utils";
 import type { AuthorSummary, CommentWithAuthor } from "@/types/social";
 
@@ -44,9 +45,20 @@ export function CommentSection({
     };
   }, [postId]);
 
-  async function submitComment(content: string) {
+  async function submitComment(content: string, photo: File | null) {
     const trimmed = content.trim();
-    if (!trimmed) return;
+    if (!trimmed && !photo) return;
+
+    // Upload the photo first so both the optimistic row and the insert carry
+    // the final storage path.
+    let imagePath: string | null = null;
+    if (photo) {
+      try {
+        imagePath = (await uploadMedia(currentUser.id, photo)).storage_path;
+      } catch {
+        return;
+      }
+    }
 
     const parentId = replyTo ? (replyTo.parent_id ?? replyTo.id) : null;
     const optimistic: CommentWithAuthor = {
@@ -55,6 +67,7 @@ export function CommentSection({
       author_id: currentUser.id,
       parent_id: parentId,
       content: trimmed,
+      image_path: imagePath,
       reaction_count: 0,
       reply_count: 0,
       removed_at: null,
@@ -67,7 +80,12 @@ export function CommentSection({
     setReplyTo(null);
     onCountChange(1);
 
-    const result = await addComment({ postId, content: trimmed, parentId });
+    const result = await addComment({
+      postId,
+      content: trimmed,
+      parentId,
+      imagePath,
+    });
     setComments((previous) => {
       if (!previous) return previous;
       if (!result.ok) {
@@ -215,10 +233,21 @@ function CommentItem({
               {displayName(comment.author)}
             </span>
           )}
-          <p className="whitespace-pre-wrap break-words text-sm">
-            {comment.content}
-          </p>
+          {comment.content ? (
+            <p className="whitespace-pre-wrap break-words text-sm">
+              {comment.content}
+            </p>
+          ) : null}
         </div>
+        {comment.image_path ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={mediaUrl(comment.image_path)}
+            alt=""
+            loading="lazy"
+            className="mt-1 max-h-64 max-w-full rounded-xl border object-cover"
+          />
+        ) : null}
         <div className="mt-0.5 flex items-center gap-3 px-3 text-xs text-muted-foreground">
           <button
             type="button"
@@ -265,44 +294,102 @@ function CommentInput({
 }: {
   currentUser: AuthorSummary;
   placeholder: string;
-  onSubmit: (content: string) => void;
+  onSubmit: (content: string, photo: File | null) => void | Promise<void>;
   inputRef: React.RefObject<HTMLInputElement>;
 }) {
   const [value, setValue] = React.useState("");
+  const [photo, setPhoto] = React.useState<File | null>(null);
+  const [preview, setPreview] = React.useState<string | null>(null);
+  const [sending, setSending] = React.useState(false);
+  const fileRef = React.useRef<HTMLInputElement>(null);
 
-  function submit() {
-    if (!value.trim()) return;
-    onSubmit(value);
-    setValue("");
+  function pickPhoto(file: File | null) {
+    if (preview) URL.revokeObjectURL(preview);
+    setPhoto(file);
+    setPreview(file ? URL.createObjectURL(file) : null);
+  }
+
+  async function submit() {
+    if ((!value.trim() && !photo) || sending) return;
+    setSending(true);
+    try {
+      await onSubmit(value, photo);
+      setValue("");
+      pickPhoto(null);
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <UserAvatar profile={currentUser} className="h-8 w-8" linked={false} />
-      <div className="relative flex-1">
-        <input
-          ref={inputRef}
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              submit();
-            }
-          }}
-          placeholder={placeholder}
-          maxLength={4000}
-          className="w-full rounded-full bg-muted px-4 py-2 pr-10 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
-        />
-        <button
-          type="button"
-          onClick={submit}
-          disabled={!value.trim()}
-          aria-label="Send"
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-primary disabled:opacity-40"
-        >
-          <SendHorizonal className="h-4 w-4" />
-        </button>
+    <div className="space-y-2">
+      {preview ? (
+        <div className="relative ml-10 inline-block">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={preview}
+            alt=""
+            className="max-h-28 rounded-lg border object-cover"
+          />
+          <button
+            type="button"
+            onClick={() => pickPhoto(null)}
+            aria-label="Remove photo"
+            className="absolute -right-2 -top-2 rounded-full bg-foreground/80 p-0.5 text-background"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : null}
+      <div className="flex items-center gap-2">
+        <UserAvatar profile={currentUser} className="h-8 w-8" linked={false} />
+        <div className="relative flex-1">
+          <input
+            ref={inputRef}
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                void submit();
+              }
+            }}
+            placeholder={placeholder}
+            maxLength={4000}
+            className="w-full rounded-full bg-muted px-4 py-2 pr-16 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
+          />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(event) => {
+              pickPhoto(event.target.files?.[0] ?? null);
+              event.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            aria-label="Attach photo"
+            className="absolute right-8 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <ImagePlus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => void submit()}
+            disabled={(!value.trim() && !photo) || sending}
+            aria-label="Send"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-primary disabled:opacity-40"
+          >
+            {sending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <SendHorizonal className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
