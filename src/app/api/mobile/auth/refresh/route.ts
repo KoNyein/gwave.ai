@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { refreshCognitoTokens } from "@/lib/auth/cognito";
 import { DATA_TOKEN_TTL_SECONDS, mintDataToken } from "@/lib/auth/tokens";
+import { ensureProfile } from "@/lib/auth/ensure-profile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +42,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Session expired." }, { status: 401 });
   }
 
+  // Self-heal accounts created before profile provisioning existed.
+  await ensureProfile(identity.profileId);
   const token = await mintDataToken(identity.profileId, {
     email: identity.email,
   });
