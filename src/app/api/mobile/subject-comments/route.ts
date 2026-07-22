@@ -11,8 +11,32 @@ export const dynamic = "force-dynamic";
 // a feed post. The native strain/mineral detail screens let users discuss an
 // entry with text, a photo, a voice note or a video. Writes go through the
 // service role (like /ptt/*) so the device isn't blocked by table RLS.
+//
+// Author profiles are looked up in a second query rather than a PostgREST
+// embed: the subject_comments table was created after PostgREST cached its
+// schema, so its foreign key isn't guaranteed to be known to the embed
+// resolver — a plain join by id always works.
 
-const AUTHOR = "author:profiles!subject_comments_author_id_fkey(id,username,full_name,avatar_url)";
+const COLUMNS =
+  "id, subject_type, subject_id, author_id, content, media_path, media_type, created_at";
+
+type CommentRow = {
+  id: string;
+  subject_type: string;
+  subject_id: string;
+  author_id: string;
+  content: string;
+  media_path: string | null;
+  media_type: string | null;
+  created_at: string;
+};
+
+type Author = {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+};
 
 function bearer(request: NextRequest): string | undefined {
   const h = request.headers.get("authorization") ?? "";
@@ -29,6 +53,24 @@ const createSchema = z.object({
   mediaType: z.enum(["image", "audio", "video"]).nullish(),
 });
 
+/** Attach author profiles to a batch of comment rows (one extra query). */
+async function withAuthors(
+  admin: ReturnType<typeof createAdminClient>,
+  rows: CommentRow[],
+) {
+  const ids = [...new Set(rows.map((r) => r.author_id).filter(Boolean))];
+  const authors: Author[] = ids.length
+    ? ((
+        await admin
+          .from("profiles")
+          .select("id, username, full_name, avatar_url")
+          .in("id", ids)
+      ).data as Author[] | null) ?? []
+    : [];
+  const byId = new Map(authors.map((a) => [a.id, a]));
+  return rows.map((r) => ({ ...r, author: byId.get(r.author_id) ?? null }));
+}
+
 /** GET /api/mobile/subject-comments?type=strain&id=<uuid> — newest last. */
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -41,7 +83,7 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("subject_comments")
-    .select(`id, subject_type, subject_id, author_id, content, media_path, media_type, created_at, ${AUTHOR}`)
+    .select(COLUMNS)
     .eq("subject_type", type.data)
     .eq("subject_id", id.data)
     .order("created_at", { ascending: true })
@@ -49,7 +91,8 @@ export async function GET(request: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ comments: data ?? [] });
+  const comments = await withAuthors(admin, (data ?? []) as CommentRow[]);
+  return NextResponse.json({ comments });
 }
 
 /** POST /api/mobile/subject-comments — add a comment (optionally with media). */
@@ -70,7 +113,6 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  // Media type is required when a media path is present.
   if (input.mediaPath && !input.mediaType) {
     return NextResponse.json({ error: "Missing media type." }, { status: 400 });
   }
@@ -86,7 +128,7 @@ export async function POST(request: NextRequest) {
       media_path: input.mediaPath ?? null,
       media_type: input.mediaPath ? input.mediaType : null,
     })
-    .select(`id, subject_type, subject_id, author_id, content, media_path, media_type, created_at, ${AUTHOR}`)
+    .select(COLUMNS)
     .single();
   if (error || !data) {
     return NextResponse.json(
@@ -94,5 +136,6 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
-  return NextResponse.json({ comment: data });
+  const [comment] = await withAuthors(admin, [data as CommentRow]);
+  return NextResponse.json({ comment });
 }
