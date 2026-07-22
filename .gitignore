@@ -48,3 +48,8 @@ deploy/gwave.override.env
 
 # realtime container env (holds the RDS password + API_JWT_SECRET) — never commit
 deploy/.env.realtime
+
+# Flutter (mobile/)
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins*
