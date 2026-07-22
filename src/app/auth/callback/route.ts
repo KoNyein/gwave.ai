@@ -3,7 +3,9 @@ import { randomUUID } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 import {
+  AdminGetUserCommand,
   AdminUpdateUserAttributesCommand,
+  ListUsersCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { decodeJwt } from "jose";
 
@@ -23,6 +25,60 @@ async function publicOrigin(fallback: string): Promise<string> {
   if (!host) return fallback;
   const proto = h.get("x-forwarded-proto") ?? "https";
   return `${proto}://${host}`;
+}
+
+/**
+ * The authoritative profile id from the Cognito user store. The ID token's
+ * `custom:profile_id` claim can be missing or stale for federated (Google)
+ * users — e.g. the attribute was back-filled after the token was issued — so
+ * an absent claim must never be trusted on its own.
+ */
+async function storedProfileId(username: string): Promise<string | null> {
+  if (!username) return null;
+  try {
+    const out = await cognito().send(
+      new AdminGetUserCommand({
+        UserPoolId: authEnv.cognito.userPoolId,
+        Username: username,
+      }),
+    );
+    return (
+      out.UserAttributes?.find((a) => a.Name === "custom:profile_id")?.Value ??
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The profile id of another account with this (Google-verified) email, so a
+ * first Google sign-in links to it instead of creating a duplicate profile.
+ */
+async function profileIdForEmail(
+  email: string | undefined,
+  selfUsername: string,
+): Promise<string | null> {
+  if (!email) return null;
+  try {
+    const out = await cognito().send(
+      new ListUsersCommand({
+        UserPoolId: authEnv.cognito.userPoolId,
+        Filter: `email = "${email.replace(/["\\]/g, "")}"`,
+        Limit: 30,
+      }),
+    );
+    for (const u of out.Users ?? []) {
+      if (u.Username === selfUsername) continue;
+      const pid = u.Attributes?.find(
+        (a) => a.Name === "custom:profile_id",
+      )?.Value;
+      if (pid) return pid;
+    }
+  } catch {
+    // Best effort — fall back to a fresh profile.
+  }
+  return null;
 }
 
 /**
@@ -153,14 +209,19 @@ export async function GET(request: Request) {
           return NextResponse.redirect(`${origin}/settings?link=google_ok`);
         }
 
-        // A first-time Google user has no custom:profile_id yet — mint one and
-        // back-fill it on the Cognito user so subsequent logins are stable.
+        // A first-time Google user has no custom:profile_id claim yet — but
+        // the claim can also simply be stale/absent from the token, so check
+        // the user store, then other accounts on the same email, and only then
+        // mint a fresh profile (back-filled so later logins are stable).
         const claimed = claims["custom:profile_id"];
         let profileId: string;
         if (typeof claimed === "string" && claimed) {
           profileId = claimed;
         } else {
-          profileId = randomUUID();
+          const stored = await storedProfileId(cognitoUsername);
+          const linked =
+            stored ?? (await profileIdForEmail(email, cognitoUsername));
+          profileId = linked ?? randomUUID();
           await cognito()
             .send(
               new AdminUpdateUserAttributesCommand({
