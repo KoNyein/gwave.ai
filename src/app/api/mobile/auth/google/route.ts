@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
 import {
+  AdminGetUserCommand,
   AdminUpdateUserAttributesCommand,
   ListUsersCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
@@ -39,6 +40,31 @@ const schema = z.object({
  * profile. Looks for another Cognito user with the same email that already
  * carries a `custom:profile_id`.
  */
+/**
+ * The authoritative profile id from the Cognito user store. The ID token's
+ * `custom:profile_id` claim can be missing or stale for federated (Google)
+ * users — e.g. when the attribute was back-filled after the token was issued —
+ * so when the claim is absent we must read the stored attribute directly
+ * instead of inventing a fresh profile.
+ */
+async function storedProfileId(
+  userPoolId: string,
+  username: string,
+): Promise<string | null> {
+  if (!username) return null;
+  try {
+    const out = await cognito().send(
+      new AdminGetUserCommand({ UserPoolId: userPoolId, Username: username }),
+    );
+    return (
+      out.UserAttributes?.find((a) => a.Name === "custom:profile_id")?.Value ??
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
 async function profileIdForEmail(
   userPoolId: string,
   email: string | undefined,
@@ -118,7 +144,10 @@ export async function POST(request: Request) {
       (claims["cognito:username"] as string) ?? (claims.sub as string) ?? "";
     const email = typeof claims.email === "string" ? claims.email : undefined;
 
-    // A first-time Google user has no custom:profile_id yet.
+    // A first-time Google user has no custom:profile_id claim yet — but the
+    // claim can also simply be stale/absent from the token, so never trust its
+    // absence alone: check the user store, then other accounts on the same
+    // email, and only then mint a fresh profile.
     const claimed = claims["custom:profile_id"];
     let profileId: string;
     let isNewUser: boolean;
@@ -126,10 +155,12 @@ export async function POST(request: Request) {
       profileId = claimed;
       isNewUser = false;
     } else {
+      const stored = await storedProfileId(userPoolId, cognitoUsername);
       // If an account already exists with this (Google-verified) email — e.g.
       // one created earlier with email/password — link the Google login to it
       // instead of stranding the user on a fresh, empty profile.
-      const linkedId = await profileIdForEmail(userPoolId, email, cognitoUsername);
+      const linkedId =
+        stored ?? (await profileIdForEmail(userPoolId, email, cognitoUsername));
       profileId = linkedId ?? randomUUID();
       isNewUser = linkedId === null;
       // Back-fill custom:profile_id so every later login is stable and both
