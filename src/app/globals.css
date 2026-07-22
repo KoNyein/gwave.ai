@@ -39,33 +39,36 @@
   }
 
   .dark {
-    --background: 96 40% 6%;
-    --foreground: 86 46% 92%;
+    /* Green-on-black. The accents used to sit at hue ~87 (chartreuse), which
+       reads as gold/yellow on a dark background; shifted to hue ~132 for a
+       clean leaf green. Surfaces stay near-black with a faint green tint. */
+    --background: 132 22% 5%;
+    --foreground: 130 25% 92%;
 
-    --card: 96 35% 9%;
-    --card-foreground: 86 46% 92%;
+    --card: 132 18% 8%;
+    --card-foreground: 130 25% 92%;
 
-    --popover: 96 35% 9%;
-    --popover-foreground: 86 46% 92%;
+    --popover: 132 18% 8%;
+    --popover-foreground: 130 25% 92%;
 
-    --primary: 87 64% 45%;
-    --primary-foreground: 96 85% 8%;
+    --primary: 132 55% 46%;
+    --primary-foreground: 132 40% 6%;
 
-    --secondary: 96 20% 16%;
-    --secondary-foreground: 86 46% 92%;
+    --secondary: 132 16% 14%;
+    --secondary-foreground: 130 25% 92%;
 
-    --muted: 96 20% 16%;
-    --muted-foreground: 86 15% 65%;
+    --muted: 132 16% 14%;
+    --muted-foreground: 130 12% 64%;
 
-    --accent: 87 64% 37%;
-    --accent-foreground: 86 46% 96%;
+    --accent: 132 50% 40%;
+    --accent-foreground: 130 30% 96%;
 
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 96 20% 18%;
-    --input: 96 20% 18%;
-    --ring: 87 64% 45%;
+    --border: 132 16% 17%;
+    --input: 132 16% 17%;
+    --ring: 132 55% 46%;
   }
 
   /* ------------------------------------------------------------------
