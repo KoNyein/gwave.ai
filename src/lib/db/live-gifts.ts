@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { LiveGift } from "@/types/database";
 
 export interface TopGifter {
@@ -20,8 +20,8 @@ export interface TopGifter {
  * `anon` role returns zero rows and silently renders an empty gift picker.
  */
 export async function getLiveGifts(): Promise<LiveGift[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("live_gifts")
     .select("*")
     .eq("is_active", true)
@@ -32,15 +32,15 @@ export async function getLiveGifts(): Promise<LiveGift[]> {
 
 /** Total G-Pay gifted to a stream — the numerator of the support-goal bar. */
 export async function getStreamGiftTotal(streamId: string): Promise<number> {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("live_gift_total", { p_stream: streamId });
+  const db = await createClient();
+  const { data } = await db.rpc("live_gift_total", { p_stream: streamId });
   return Number(data ?? 0);
 }
 
 /** Top supporters of a stream, by total G-Pay gifted. */
 export async function getTopGifters(streamId: string): Promise<TopGifter[]> {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("live_top_gifters", {
+  const db = await createClient();
+  const { data } = await db.rpc("live_top_gifters", {
     p_stream: streamId,
     p_limit: 10,
   });

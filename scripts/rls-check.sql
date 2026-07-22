@@ -1,5 +1,5 @@
 -- Read-only RLS coverage check — SAFE to run on the LIVE database.
--- Paste into the Supabase SQL Editor and Run. It only READS catalog metadata:
+-- Run against RDS with psql. It only READS catalog metadata:
 -- no inserts, no writes, nothing to roll back.
 --
 -- For every table in the `public` schema it reports whether Row Level Security

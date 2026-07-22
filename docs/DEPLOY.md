@@ -2,7 +2,11 @@
 
 နောက်ဆုံး main ကို production ဖြစ်အောင် အဆင့်လိုက် —
 
-## ၁။ Database migration (Supabase SQL Editor)
+## ၁။ Database migration (RDS — `psql`)
+
+> DB က **Amazon RDS** ပေါ်မှာ (2026-07-17 ကတည်းက)၊ Supabase SQL Editor
+> မရှိတော့ပါ — SQL အားလုံးကို RDS endpoint ဆီ `psql "$DATABASE_URL" -v
+> ON_ERROR_STOP=1 -f <file>.sql` နဲ့ run ပါ။
 
 `gwave-MASTER-run-once.sql` (chat မှာ ပို့ထားသည်) ကို **တစ်ကြိမ်** run ပါ။
 ကျန်နေသေးသမျှ အားလုံး ပါပြီး — အောက်ဆုံးမှာ PASS/FAIL ဇယား ထွက်မည်။
@@ -19,7 +23,9 @@
 
 ## ၂။ Environment variables (AWS server `.env`)
 
-ရှိပြီးသား Supabase/Stripe/Mux env များအပြင် အသစ် —
+ရှိပြီးသား data API (`NEXT_PUBLIC_DATA_API_URL` / `NEXT_PUBLIC_DATA_API_KEY` —
+`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` ကနေ နာမည်ပြောင်း၊
+အဟောင်းကိုလည်း fallback အဖြစ် လက်ခံဆဲ) / Cognito / Stripe / Mux env များအပြင် အသစ် —
 
 ```
 # Web Push — chat မှာ ပို့ထားတဲ့ gwave-VAPID-keys.env ထဲက တန်ဖိုးများ
@@ -67,25 +73,18 @@ bash deploy/server-deploy.sh
 - `bubblewrap build` → `.aab` → Play Console upload
 - Content rating: gambling မေးခွန်း "No" (လောင်းကစား ဖယ်ပြီး)
 
-## ၆။ Recovery / အကောင့် email များ တကယ် ရောက်အောင် (SMTP — မဖြစ်မနေ)
+## ၆။ Recovery / အကောင့် email များ တကယ် ရောက်အောင် (Cognito)
 
-Supabase ရဲ့ built-in email က **စမ်းသပ်ရေးသက်သက်** (တစ်နာရီ ၂–၃ စောင်သာ၊
-deliverability မသေချာ) မို့ — password reset / signup email တွေ တကယ်ရောက်ဖို့
-**custom SMTP** ချိတ်ပါ။
+> ⚠️ **Supabase Dashboard မရှိတော့ပါ။** Auth က **Amazon Cognito** ဖြစ်သွားပြီ
+> (2026-07-17)၊ Supabase project နဲ့ အဲဒီက Google OAuth client က သေပြီးသား —
+> အဲဒီမှာ သွား debug မလုပ်ပါနဲ့။ အောက်ပါအရာအားလုံးကို **Cognito user pool**
+> ထဲမှာ ပြင်ရမည်။
 
-1. Supabase Dashboard → **Project Settings → Auth → SMTP Settings** → Enable
-2. အလွယ်ဆုံး ရွေးချယ်စရာ ၂ ခု —
-   - **Resend** (အခမဲ့ ၃၀၀၀ စောင်/လ): resend.com မှာ account ဖွင့် → API key ယူ →
-     Host `smtp.resend.com`, Port `465`, User `resend`, Password = API key
-   - **Gmail**: Google Account → Security → 2-Step Verification ဖွင့် →
-     App passwords မှာ password ထုတ် → Host `smtp.gmail.com`, Port `465`,
-     User = သင့် gmail, Password = app password
-3. Sender email/name ဖြည့် → Save
-4. **Auth → URL Configuration** မှာ —
-   - Site URL: `https://gwave.cc`
-   - Redirect URLs: `https://gwave.cc/auth/callback` နဲ့
-     `https://www.gwave.cc/auth/callback` ထည့်
-   - ⚠️ Site URL မှားရင် Google login ပြီးတာနဲ့ အဲဒီ URL ဆီ ပြန်ပို့ခံရမယ် —
-     redirect URL က allowlist ထဲ မရှိရင် Supabase က Site URL ကို သုံးလို့ပါ
-5. (optional) **Auth → Email Templates → Reset Password** မှာ စာသား မြန်မာလို ပြင်
-6. App env: `NEXT_PUBLIC_SITE_URL=https://gwave.cc` (build arg) သတ်မှတ်ပြီး redeploy
+1. **Cognito → user pool → Messaging (email)** — default Cognito email က
+   နေ့စဉ် ကန့်သတ်ချက် ရှိလို့ production အတွက် **Amazon SES** ကို ချိတ်ပြီး
+   sender address ကို verify လုပ်ပါ။
+2. **User pool → App client** မှာ callback / sign-out URL —
+   `https://gwave.cc/auth/callback` (နှင့် `https://www.gwave.cc/auth/callback`)
+   ကို allow-list ထဲ ထည့်ပါ။ မထည့်ရင် Google login ပြီးတာနဲ့ redirect ကျဆုံးမည်။
+3. (optional) Cognito ရဲ့ **message templates** မှာ စာသား မြန်မာလို ပြင်။
+4. App env: `NEXT_PUBLIC_SITE_URL=https://gwave.cc` (build arg) သတ်မှတ်ပြီး redeploy

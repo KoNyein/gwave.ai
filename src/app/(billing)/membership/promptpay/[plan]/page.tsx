@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { getThbRate } from "@/lib/actions/membership";
 import { getCurrentProfile } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 export default async function PromptPayPage(
   props: {
@@ -27,8 +27,8 @@ export default async function PromptPayPage(
   if (!profile) redirect(`/login?redirectTo=/membership/promptpay/${params.plan}`);
 
   if (!["pro", "business"].includes(params.plan)) notFound();
-  const supabase = await createClient();
-  const { data: plan } = await supabase
+  const db = await createClient();
+  const { data: plan } = await db
     .from("membership_plans")
     .select("*")
     .eq("id", params.plan)

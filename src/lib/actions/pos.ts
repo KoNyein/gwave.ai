@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { ActionResult } from "@/lib/actions/posts";
 
 const uuid = z.string().uuid();
@@ -33,8 +33,8 @@ export async function createStore(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("stores").insert({
+  const db = await createClient();
+  const { error } = await db.from("stores").insert({
     owner_id: userId,
     name: parsed.data.name,
     currency: parsed.data.currency,
@@ -52,15 +52,15 @@ export async function addStoreMember(
   if (!uuid.safeParse(storeId).success) {
     return { ok: false, error: "Invalid store." };
   }
-  const supabase = await createClient();
-  const { data: profile } = await supabase
+  const db = await createClient();
+  const { data: profile } = await db
     .from("profiles")
     .select("id")
     .eq("username", username.trim())
     .maybeSingle();
   if (!profile) return { ok: false, error: "User not found." };
 
-  const { error } = await supabase.from("store_members").insert({
+  const { error } = await db.from("store_members").insert({
     store_id: storeId,
     user_id: profile.id,
     role,
@@ -82,8 +82,8 @@ export async function removeStoreMember(
   if (!uuid.safeParse(storeId).success || !uuid.safeParse(userId).success) {
     return { ok: false, error: "Invalid request." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("store_members")
     .delete()
     .eq("store_id", storeId)
@@ -121,7 +121,7 @@ export async function saveProduct(
     };
   }
 
-  const supabase = await createClient();
+  const db = await createClient();
   const row = {
     store_id: parsed.data.storeId,
     name: parsed.data.name.trim(),
@@ -139,13 +139,13 @@ export async function saveProduct(
     if (!uuid.safeParse(productId).success) {
       return { ok: false, error: "Invalid product." };
     }
-    const { error } = await supabase
+    const { error } = await db
       .from("pos_products")
       .update(row)
       .eq("id", productId);
     if (error) return { ok: false, error: error.message };
   } else {
-    const { data: created, error } = await supabase
+    const { data: created, error } = await db
       .from("pos_products")
       .insert(row)
       .select("id")
@@ -157,7 +157,7 @@ export async function saveProduct(
   }
 
   // Threshold lives on the inventory row (create it if missing).
-  const { error: inventoryError } = await supabase
+  const { error: inventoryError } = await db
     .from("inventory")
     .update({ low_stock_threshold: parsed.data.lowStockThreshold })
     .eq("product_id", productId);
@@ -176,8 +176,8 @@ export async function setProductActive(
   if (!uuid.safeParse(productId).success) {
     return { ok: false, error: "Invalid product." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("pos_products")
     .update({ active })
     .eq("id", productId);
@@ -193,8 +193,8 @@ export async function createCategory(
   if (!uuid.safeParse(storeId).success || !name.trim()) {
     return { ok: false, error: "Invalid category." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase.from("pos_categories").insert({
+  const db = await createClient();
+  const { error } = await db.from("pos_categories").insert({
     store_id: storeId,
     name: name.trim().slice(0, 60),
   });
@@ -219,8 +219,8 @@ export async function adjustStock(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("stock_movements").insert({
+  const db = await createClient();
+  const { error } = await db.from("stock_movements").insert({
     product_id: productId,
     delta,
     reason: delta > 0 ? "purchase" : "adjustment",
@@ -252,7 +252,7 @@ export async function importProducts(
   const parsed = z.array(importRowSchema).min(1).max(500).safeParse(rows);
   if (!parsed.success) return { ok: false, error: "Invalid CSV rows." };
 
-  const supabase = await createClient();
+  const db = await createClient();
   // Resolve/create referenced categories first.
   const categoryNames = [
     ...new Set(
@@ -263,7 +263,7 @@ export async function importProducts(
   ];
   const categoryIds = new Map<string, string>();
   for (const name of categoryNames) {
-    const { data: existing } = await supabase
+    const { data: existing } = await db
       .from("pos_categories")
       .select("id")
       .eq("store_id", storeId)
@@ -272,7 +272,7 @@ export async function importProducts(
     if (existing) {
       categoryIds.set(name, existing.id);
     } else {
-      const { data: created } = await supabase
+      const { data: created } = await db
         .from("pos_categories")
         .insert({ store_id: storeId, name })
         .select("id")
@@ -281,7 +281,7 @@ export async function importProducts(
     }
   }
 
-  const { error } = await supabase.from("pos_products").insert(
+  const { error } = await db.from("pos_products").insert(
     parsed.data.map((row) => ({
       store_id: storeId,
       name: row.name.trim(),
@@ -306,8 +306,8 @@ export async function createCustomer(
   if (!uuid.safeParse(storeId).success || !name.trim()) {
     return { ok: false, error: "Invalid customer." };
   }
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("pos_customers")
     .insert({
       store_id: storeId,
@@ -358,8 +358,8 @@ export async function checkout(
   const parsed = checkoutSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid sale." };
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_sale", {
+  const db = await createClient();
+  const { data, error } = await db.rpc("create_sale", {
     p_store_id: parsed.data.storeId,
     p_items: parsed.data.items,
     p_payments: parsed.data.payments,
@@ -382,8 +382,8 @@ export async function refundSale(saleId: string): Promise<ActionResult> {
   if (!uuid.safeParse(saleId).success) {
     return { ok: false, error: "Invalid sale." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("refund_sale", { p_sale_id: saleId });
+  const db = await createClient();
+  const { error } = await db.rpc("refund_sale", { p_sale_id: saleId });
   if (error) return { ok: false, error: error.message };
   revalidatePath("/pos", "layout");
   return { ok: true, data: undefined };
@@ -407,8 +407,8 @@ export async function openShift(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("shifts").insert({
+  const db = await createClient();
+  const { error } = await db.from("shifts").insert({
     store_id: storeId,
     opened_by: userId,
     float_amount: floatAmount,
@@ -435,8 +435,8 @@ export async function recordCashMovement(
   ) {
     return { ok: false, error: "Invalid amount." };
   }
-  const supabase = await createClient();
-  const { data: shift } = await supabase
+  const db = await createClient();
+  const { data: shift } = await db
     .from("shifts")
     .select("cash_in, cash_out, closed_at")
     .eq("id", shiftId)
@@ -445,7 +445,7 @@ export async function recordCashMovement(
     return { ok: false, error: "Shift is not open." };
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from("shifts")
     .update(
       direction === "in"
@@ -474,8 +474,8 @@ export async function closeShift(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("shifts")
     .update({
       closed_at: new Date().toISOString(),
@@ -512,8 +512,8 @@ export async function settlePosGpay(input: {
   }
   if (!(input.amount > 0)) return { ok: false, error: "Nothing to charge." };
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("pos_settle_gpay", {
+  const db = await createClient();
+  const { data, error } = await db.rpc("pos_settle_gpay", {
     p_store_id: input.storeId,
     p_customer_phone: phone,
     p_amount: input.amount,

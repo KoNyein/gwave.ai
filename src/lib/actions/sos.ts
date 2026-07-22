@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
 import { notifyNearbySos } from "@/lib/sos-notify";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import { getCurrentUser } from "@/lib/auth";
 import type { SosCategory, SosStatus } from "@/types/database";
 
@@ -42,8 +42,8 @@ export async function raiseSos(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in." };
 
-  const supabase = await createClient();
-  const { data: existing } = await supabase
+  const db = await createClient();
+  const { data: existing } = await db
     .from("sos_alerts")
     .select("id")
     .eq("user_id", userId)
@@ -63,13 +63,13 @@ export async function raiseSos(
   };
 
   const { data, error } = existing
-    ? await supabase
+    ? await db
         .from("sos_alerts")
         .update(fields)
         .eq("id", existing.id)
         .select("id")
         .single()
-    : await supabase
+    : await db
         .from("sos_alerts")
         .insert({ user_id: userId, ...fields })
         .select("id")
@@ -82,7 +82,7 @@ export async function raiseSos(
   // Alert nearby users (best-effort; never blocks the SOS). Only send on a new
   // alert, not on every location refresh of an existing one, to avoid spam.
   if (!existing) {
-    const { data: me } = await supabase
+    const { data: me } = await db
       .from("profiles")
       .select("full_name, username")
       .eq("id", userId)
@@ -107,8 +107,8 @@ export async function setSosStatus(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in." };
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("sos_alerts")
     .update({
       status,
@@ -132,8 +132,8 @@ export async function respondToSos(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in." };
-  const supabase = await createClient();
-  const { error } = await supabase.from("sos_responders").upsert(
+  const db = await createClient();
+  const { error } = await db.from("sos_responders").upsert(
     {
       alert_id: alertId,
       user_id: userId,
@@ -152,8 +152,8 @@ export async function withdrawSosResponse(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in." };
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("sos_responders")
     .delete()
     .eq("alert_id", alertId)

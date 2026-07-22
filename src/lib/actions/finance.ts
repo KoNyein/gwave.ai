@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 async function getUserId(): Promise<string | null> {
   const user = await getCurrentUser();
@@ -33,8 +33,8 @@ export async function createExpense(input: ExpenseInput): Promise<ActionResult> 
   if (!userId) return { ok: false, error: "Not signed in" };
 
   const v = parsed.data;
-  const supabase = await createClient();
-  const { error } = await supabase.from("business_expenses").insert({
+  const db = await createClient();
+  const { error } = await db.from("business_expenses").insert({
     owner_id: userId,
     category: v.category,
     title: v.title,
@@ -59,8 +59,8 @@ export async function toggleExpensePaid(input: {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("business_expenses")
     .update({
       is_paid: input.isPaid,
@@ -81,8 +81,8 @@ export async function deleteExpense(id: string): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("business_expenses")
     .delete()
     .eq("id", id)

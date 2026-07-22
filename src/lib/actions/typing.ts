@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 
 import type { ActionResult } from "@/lib/actions/posts";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 const schema = z.object({
   lang: z.string().trim().min(1).max(20),
@@ -19,10 +19,10 @@ export async function recordTypingScore(
 ): Promise<ActionResult> {
   const parsed = schema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid score." };
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
-  const { error } = await supabase.from("typing_scores").insert({
+  const { error } = await db.from("typing_scores").insert({
     user_id: user.id,
     lang: parsed.data.lang,
     wpm: parsed.data.wpm,

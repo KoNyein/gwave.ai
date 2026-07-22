@@ -1,7 +1,7 @@
 /**
  * k6 load test for the feed API.
  *
- *   1. Log in in a browser and copy the Supabase auth cookies
+ *   1. Log in in a browser and copy the gwave auth cookies (gw_at / gw_rt)
  *      (sb-<ref>-auth-token[.0/.1]) from DevTools.
  *   2. k6 run -e BASE_URL=https://social.gwave.cc \
  *             -e COOKIE "sb-xxx-auth-token=...;" \

@@ -4,16 +4,18 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        # Data API = our PostgREST + Realtime over RDS, not Supabase. The legacy
+        # NEXT_PUBLIC_SUPABASE_* names are accepted as a fallback during the
+        # rename, so either spelling in your .env produces a working image.
+        NEXT_PUBLIC_DATA_API_URL: ${NEXT_PUBLIC_DATA_API_URL:-${NEXT_PUBLIC_SUPABASE_URL:-}}
+        NEXT_PUBLIC_DATA_API_KEY: ${NEXT_PUBLIC_DATA_API_KEY:-${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
     ports:
       - "3000:3000"
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      NEXT_PUBLIC_DATA_API_URL: ${NEXT_PUBLIC_DATA_API_URL:-${NEXT_PUBLIC_SUPABASE_URL:-}}
+      NEXT_PUBLIC_DATA_API_KEY: ${NEXT_PUBLIC_DATA_API_KEY:-${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
     restart: unless-stopped
 
@@ -27,15 +29,15 @@ services:
       EMQX_ALLOW_ANONYMOUS: "true" # local dev only; disable in production
     restart: unless-stopped
 
-  # Relays MQTT telemetry into Supabase and publishes queued commands.
+  # Relays MQTT telemetry into the gwave data API and publishes queued commands.
   iot-bridge:
     build:
       context: ./services/iot-bridge
     depends_on:
       - emqx
     environment:
-      SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      DATA_API_URL: ${NEXT_PUBLIC_DATA_API_URL:-${NEXT_PUBLIC_SUPABASE_URL:-}}
+      DATA_API_SERVICE_KEY: ${DATA_API_SERVICE_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}
       MQTT_URL: mqtt://emqx:1883
       TZ: ${TZ:-Asia/Bangkok}
     restart: unless-stopped

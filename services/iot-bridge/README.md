@@ -1,6 +1,7 @@
 # gwave.ai IoT bridge
 
-Relays MQTT device traffic into Supabase and back:
+Relays MQTT device traffic into the gwave data API (self-hosted PostgREST +
+Realtime over RDS — not Supabase) and back:
 
 - `gwave/<device_id>/telemetry` → `sensor_readings` (+ rule evaluation,
   alerts, command fan-out)
@@ -34,7 +35,8 @@ node scripts/simulate-devices.mjs
    access in production (Dashboard → Access Control) and create a user
    for the bridge.
 2. **Bridge**: add this directory as a Dockerfile app. Set env:
-   `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+   `DATA_API_URL`, `DATA_API_SERVICE_KEY` (the old `SUPABASE_URL` /
+   `SUPABASE_SERVICE_ROLE_KEY` names still work as a fallback),
    `MQTT_URL=mqtt://<emqx-host>:1883`, `MQTT_USERNAME`, `MQTT_PASSWORD`,
    `TZ` (for schedule/rule time windows). No ports needed.
 3. Point devices at the broker with their per-device topic + secret.

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type {
   Alert,
   AutomationRule,
@@ -17,8 +17,8 @@ export interface LatestReading {
 }
 
 export async function getDevices(userId: string): Promise<Device[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("devices")
     .select("*")
     .eq("owner_id", userId)
@@ -28,8 +28,8 @@ export async function getDevices(userId: string): Promise<Device[]> {
 }
 
 export async function getLatestReadings(): Promise<LatestReading[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("latest_sensor_readings");
+  const db = await createClient();
+  const { data, error } = await db.rpc("latest_sensor_readings");
   if (error) throw new Error(`Failed to load readings: ${error.message}`);
   return ((data ?? []) as LatestReading[]).map((row) => ({
     ...row,
@@ -43,8 +43,8 @@ export async function getRecentReadings(
   metric: string,
   limit = 30,
 ): Promise<{ value: number; ts: string }[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("sensor_readings")
     .select("value, ts")
     .eq("device_id", deviceId)
@@ -62,8 +62,8 @@ export interface RuleWithDevices extends AutomationRule {
 }
 
 export async function getRules(userId: string): Promise<RuleWithDevices[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("automation_rules")
     .select(
       `*,
@@ -84,8 +84,8 @@ export async function getAlerts(
   userId: string,
   limit = 50,
 ): Promise<AlertWithDevice[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("alerts")
     .select("*, device:devices!alerts_device_id_fkey(id, name)")
     .eq("owner_id", userId)
@@ -100,8 +100,8 @@ export interface SceneWithSchedules extends Scene {
 }
 
 export async function getScenes(userId: string): Promise<SceneWithSchedules[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("scenes")
     .select("*, schedules:scene_schedules(*)")
     .eq("owner_id", userId)

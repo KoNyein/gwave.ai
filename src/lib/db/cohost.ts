@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { CohostRoom } from "@/types/database";
 import type { AuthorSummary } from "@/types/social";
 
@@ -10,9 +10,9 @@ export interface CohostRoomWithHost extends CohostRoom {
 
 /** Currently-live co-host rooms (open, started within the last 6 hours). */
 export async function getActiveCohostRooms(): Promise<CohostRoomWithHost[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-  const { data } = await supabase
+  const { data } = await db
     .from("cohost_rooms")
     .select(
       "*, host:profiles!cohost_rooms_host_id_fkey(id, username, full_name, avatar_url)",
@@ -29,8 +29,8 @@ export async function getActiveCohostRooms(): Promise<CohostRoomWithHost[]> {
 export async function getCohostRoom(
   code: string,
 ): Promise<CohostRoomWithHost | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("cohost_rooms")
     .select(
       "*, host:profiles!cohost_rooms_host_id_fkey(id, username, full_name, avatar_url)",

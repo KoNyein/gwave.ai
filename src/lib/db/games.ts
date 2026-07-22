@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { Game, GameComment, GameReactionKind } from "@/types/database";
 import type { AuthorSummary } from "@/types/social";
 
@@ -14,8 +14,8 @@ const GAME_SELECT =
 
 /** Approved community games, most-played first. */
 export async function getApprovedGames(limit = 60): Promise<GameWithAuthor[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("games")
     .select(GAME_SELECT)
     .eq("status", "approved")
@@ -30,8 +30,8 @@ export async function getApprovedGames(limit = 60): Promise<GameWithAuthor[]> {
 
 /** All of the viewer's own submissions (any status), newest first. */
 export async function getMyGames(userId: string): Promise<Game[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("games")
     .select("*")
     .eq("author_id", userId)
@@ -47,8 +47,8 @@ export async function getMyGames(userId: string): Promise<Game[]> {
  * pending/rejected only for their author and moderators.
  */
 export async function getGame(id: string): Promise<GameWithAuthor | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("games")
     .select(GAME_SELECT)
     .eq("id", id)
@@ -63,15 +63,15 @@ export async function getGame(id: string): Promise<GameWithAuthor | null> {
  * ever ages out of the queue), followed by the most recent decisions.
  */
 export async function getGamesForReview(): Promise<GameWithAuthor[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   const [pendingRes, decidedRes] = await Promise.all([
-    supabase
+    db
       .from("games")
       .select(GAME_SELECT)
       .eq("status", "pending")
       .order("created_at", { ascending: true })
       .returns<GameWithAuthor[]>(),
-    supabase
+    db
       .from("games")
       .select(GAME_SELECT)
       .neq("status", "pending")
@@ -112,15 +112,15 @@ export async function getGameEngagement(
   gameId: string,
   viewerId: string,
 ): Promise<GameEngagement> {
-  const supabase = await createClient();
+  const db = await createClient();
   const [reactionsRes, mineRes, commentsRes] = await Promise.all([
-    supabase.rpc("game_reaction_breakdown", { gid: gameId }),
-    supabase
+    db.rpc("game_reaction_breakdown", { gid: gameId }),
+    db
       .from("game_reactions")
       .select("kind")
       .match({ game_id: gameId, user_id: viewerId })
       .maybeSingle<{ kind: GameReactionKind }>(),
-    supabase
+    db
       .from("game_comments")
       .select(
         "*, author:profiles!game_comments_user_id_fkey(id, username, full_name, avatar_url)",
@@ -146,8 +146,8 @@ export async function getGameEngagement(
 
 /** Most popular games (admin dashboard): by plays, then engagement. */
 export async function getPopularGames(limit = 50): Promise<GameWithAuthor[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("games")
     .select(GAME_SELECT)
     .eq("status", "approved")

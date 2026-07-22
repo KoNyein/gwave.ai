@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 
 import { notifyConversation } from "@/lib/notify-conversation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { ActionResult } from "@/lib/actions/posts";
 
 const uuid = z.string().uuid();
@@ -16,8 +16,8 @@ export async function openDirectConversation(
   if (!uuid.safeParse(otherUserId).success) {
     return { ok: false, error: "Invalid user." };
   }
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc(
+  const db = await createClient();
+  const { data, error } = await db.rpc(
     "get_or_create_direct_conversation",
     { other_user: otherUserId },
   );
@@ -74,11 +74,11 @@ export async function sendMessage(
   const parsed = sendMessageSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid message." };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
-  const { data: message, error } = await supabase
+  const { data: message, error } = await db
     .from("messages")
     .insert({
       conversation_id: parsed.data.conversationId,
@@ -115,11 +115,11 @@ export async function markConversationRead(
   if (!uuid.safeParse(conversationId).success) {
     return { ok: false, error: "Invalid conversation." };
   }
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
-  const { error } = await supabase
+  const { error } = await db
     .from("conversation_participants")
     .update({ last_read_at: new Date().toISOString() })
     .eq("conversation_id", conversationId)

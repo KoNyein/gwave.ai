@@ -10,7 +10,7 @@ import {
   JOB_CATEGORY_SLUGS,
   MAX_JOB_QUESTIONS,
 } from "@/lib/jobs";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 async function getUserId(): Promise<string | null> {
   const user = await getCurrentUser();
@@ -66,9 +66,9 @@ export async function saveJob(
     questions: v.questions.filter(Boolean),
   };
 
-  const supabase = await createClient();
+  const db = await createClient();
   if (jobId) {
-    const { error } = await supabase
+    const { error } = await db
       .from("jobs")
       .update(row)
       .eq("id", jobId)
@@ -79,7 +79,7 @@ export async function saveJob(
     return { ok: true, data: { jobId } };
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("jobs")
     .insert(row)
     .select("id")
@@ -99,8 +99,8 @@ export async function setJobStatus(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("jobs")
     .update({ status })
     .eq("id", jobId)
@@ -115,8 +115,8 @@ export async function setJobStatus(
 export async function deleteJob(jobId: string): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("jobs")
     .delete()
     .eq("id", jobId)
@@ -155,8 +155,8 @@ export async function applyToJob(
   if (!userId) return { ok: false, error: "Not signed in" };
 
   const v = parsed.data;
-  const supabase = await createClient();
-  const { error } = await supabase.from("job_applications").insert({
+  const db = await createClient();
+  const { error } = await db.from("job_applications").insert({
     job_id: v.jobId,
     applicant_id: userId,
     full_name: v.fullName,
@@ -189,8 +189,8 @@ export async function setApplicationStatus(
   if (!STATUSES.includes(status)) return { ok: false, error: "Invalid status." };
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("job_applications")
     .update({ status })
     .eq("id", applicationId);
@@ -205,8 +205,8 @@ export async function withdrawApplication(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("job_applications")
     .delete()
     .eq("id", applicationId)

@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { verifyDataToken } from "@/lib/auth/tokens";
 import { createIvsChannel, deleteIvsChannel, ivsIsDefaultProvider } from "@/lib/ivs";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/data/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

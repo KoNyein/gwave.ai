@@ -4,7 +4,7 @@ import { Flower2, HeartPulse, Radio, Sparkles } from "lucide-react";
 import { MeditationTimer } from "@/components/wellness/meditation-timer";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { WellnessItem } from "@/types/database";
 
 export const metadata = { title: "Wellness" };
@@ -14,8 +14,8 @@ export default async function WellnessPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("wellness_items")
     .select("*")
     .order("position", { ascending: true });

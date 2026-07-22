@@ -9,6 +9,12 @@
 # auth fix), then recreate it on the new image with the same port + restart
 # policy.
 #
+# NAMING: keys spelled SUPABASE_* here are historical env-var names, not a sign
+# that gwave runs on Supabase — it does not, and has not since 2026-07-17 (data
+# on RDS behind our own PostgREST at https://gwave.cc/sb, storage on S3, auth on
+# Cognito). SUPABASE_JWT_SECRET in particular is the shared secret our
+# self-hosted PostgREST/Realtime use to validate the legacy HS256 anon key.
+#
 # Run it on the server after a new image is in ECR:
 #   sudo bash /home/ubuntu/app/gwave.ai/deploy/ecr-redeploy.sh
 # The GitHub Actions "Build & deploy web image (ECR)" workflow runs it for you
@@ -89,13 +95,24 @@ echo "    $(wc -l < "$ENV_FILE") unique env keys"
 # Guard: never recreate the container with a gutted env. Passing env by hand has
 # already dropped a secret once (the missing service-role key that 500'd
 # /api/live/create), so refuse rather than start a half-configured prod app.
-for required_key in APP_JWT_PRIVATE_KEY APP_JWT_PUBLIC_JWK NEXT_PUBLIC_SUPABASE_URL; do
+for required_key in APP_JWT_PRIVATE_KEY APP_JWT_PUBLIC_JWK; do
   if ! grep -q "^${required_key}=" "$ENV_FILE"; then
     echo "!! Refusing to redeploy: '${required_key}' missing from the env snapshot." >&2
     echo "!! The running container was left untouched." >&2
     exit 1
   fi
 done
+
+# The data-API URL must be present under EITHER spelling. It was renamed from
+# NEXT_PUBLIC_SUPABASE_URL to NEXT_PUBLIC_DATA_API_URL (the backend is our own
+# PostgREST over RDS, not Supabase); prod env files may still carry only the old
+# name, and the app accepts both. Require at least one.
+if ! grep -qE "^(NEXT_PUBLIC_DATA_API_URL|NEXT_PUBLIC_SUPABASE_URL)=" "$ENV_FILE"; then
+  echo "!! Refusing to redeploy: neither NEXT_PUBLIC_DATA_API_URL nor" >&2
+  echo "!! NEXT_PUBLIC_SUPABASE_URL is in the env snapshot." >&2
+  echo "!! The running container was left untouched." >&2
+  exit 1
+fi
 
 echo ">>> Recreating $CONTAINER on the new image ..."
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true

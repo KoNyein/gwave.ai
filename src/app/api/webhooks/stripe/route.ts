@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 
 import { getStripe } from "@/lib/stripe";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/data/admin";
 import type { SubscriptionStatus } from "@/types/database";
 
 /**
- * Await a Supabase query and throw on its error instead of dropping it.
+ * Await a data-API query and throw on its error instead of dropping it.
  *
  * This handler runs against a self-hosted PostgREST, where an error is a returned
  * value, not an exception. Every write below used to be `await admin.from(...)`

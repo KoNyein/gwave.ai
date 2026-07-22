@@ -1,5 +1,5 @@
 -- RLS audit: attempts forbidden operations per role and raises if any
--- succeeds. Run against a LOCAL stack after `supabase db reset`:
+-- succeeds. Run against a LOCAL Postgres stack seeded from supabase/migrations:
 --
 --   psql "$LOCAL_DB_URL" -v ON_ERROR_STOP=1 -f scripts/rls-audit.sql
 --
@@ -8,7 +8,7 @@
 
 begin;
 
--- Helper: impersonate a user for both local-shim and real Supabase
+-- Helper: impersonate a user for both the local shim and the real PostgREST
 -- auth.uid() implementations.
 create or replace function pg_temp.impersonate(uid uuid) returns void
 language plpgsql as $$
@@ -178,8 +178,8 @@ end $$;
 reset role;
 rollback;
 
--- Plain SQL (works in psql AND the Supabase SQL Editor; `\echo` is psql-only).
+-- Plain SQL (psql; `\echo` is psql-only).
 -- NOTE: this script inserts seed fixtures and is meant for a LOCAL reset DB
--- (`supabase db reset`), not a live project. To check a live database use the
+-- (a freshly migrated local Postgres), not a live database. To check a live one use the
 -- read-only scripts/rls-check.sql instead.
 select 'RLS audit passed — every forbidden operation was denied.' as result;

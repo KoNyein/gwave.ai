@@ -28,7 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { timeAgo } from "@/lib/format";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import { cn } from "@/lib/utils";
 import type { Device, SensorReading } from "@/types/database";
 
@@ -97,8 +97,8 @@ export function FarmDashboard({
 
   // Live updates: new readings stream in over realtime (RLS-scoped).
   React.useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
+    const db = createClient();
+    const channel = db
       .channel(`farm:${userId}`)
       .on(
         "postgres_changes",
@@ -122,7 +122,7 @@ export function FarmDashboard({
       )
       .subscribe();
     return () => {
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [userId, sensorIds]);
 

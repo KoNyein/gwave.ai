@@ -13,7 +13,7 @@ import {
 import { getCurrentProfile } from "@/lib/auth";
 import { quickSearchKnowledge } from "@/lib/db/knowledge";
 import { displayName, timeAgo } from "@/lib/format";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { AuthorSummary } from "@/types/social";
 
 interface PostResult {
@@ -44,19 +44,19 @@ export default async function SearchPage(
 
   if (query.length >= 2) {
     knowledge = await quickSearchKnowledge(query, 6);
-    const supabase = await createClient();
+    const db = await createClient();
     // Escape LIKE wildcards so user input is matched literally.
     const escaped = query.replace(/[%_\\]/g, "\\$&");
     const pattern = `%${escaped}%`;
 
     const [usersRes, postsRes] = await Promise.all([
-      supabase
+      db
         .from("profiles")
         .select("id, username, full_name, avatar_url")
         .or(`username.ilike.${pattern},full_name.ilike.${pattern}`)
         .not("username", "is", null)
         .limit(10),
-      supabase
+      db
         .from("posts")
         .select(
           "id, content, created_at, author:profiles!posts_author_id_fkey(id, username, full_name, avatar_url)",

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 
 import { quickSearchKnowledge } from "@/lib/db/knowledge";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 /**
  * GET /api/search?q= — grouped quick results for the navbar dropdown.
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
 
   const escaped = query.replace(/[%_\\]/g, "\\$&");
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   const [knowledge, usersRes, postsRes] = await Promise.all([
     quickSearchKnowledge(query, 5),
     user
-      ? supabase
+      ? db
           .from("profiles")
           .select("id, username, full_name, avatar_url")
           .or(`username.ilike.${pattern},full_name.ilike.${pattern}`)
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
           .limit(5)
       : Promise.resolve({ data: [] }),
     user
-      ? supabase
+      ? db
           .from("posts")
           .select(
             "id, content, author:profiles!posts_author_id_fkey(username, full_name)",

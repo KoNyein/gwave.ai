@@ -17,8 +17,8 @@ import {
  * Cookie-backed session for the AWS-native auth stack.
  *
  * - `gw_at` — the app's data token (our minted ES256 JWT). Readable by the
- *   browser (NOT httpOnly) so the client-side supabase data client can attach it
- *   as its bearer, exactly as Supabase's own access token was readable. Short
+ *   browser (NOT httpOnly) so the client-side data client can attach it
+ *   as its bearer, the same way a browser-readable access token always was. Short
  *   lived (1h).
  * - `gw_rt` / `gw_cu` — the Cognito refresh token and username. httpOnly: only
  *   the server refreshes the session.
@@ -95,7 +95,7 @@ export async function readSession(): Promise<Session | null> {
  */
 const freshTokenStash = cache(() => ({ token: null as string | null }));
 
-/** The raw data token to hand the supabase data client as its bearer. */
+/** The raw data token to hand the data client as its bearer. */
 export async function getDataToken(): Promise<string | null> {
   const store = await cookies();
   return store.get(AT_COOKIE)?.value ?? freshTokenStash().token;
@@ -136,7 +136,7 @@ export async function readOrRefreshSession(): Promise<Session | null> {
     });
   } catch {
     // Read-only cookie store (Server Component render) — the stash above
-    // still lets this request's supabase queries authenticate.
+    // still lets this request's data-API queries authenticate.
   }
   return { id: identity.profileId, email: identity.email };
 }

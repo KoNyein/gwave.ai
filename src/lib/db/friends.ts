@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { Friendship, Profile } from "@/types/database";
 import type { AuthorSummary, FriendState } from "@/types/social";
 
@@ -22,8 +22,8 @@ export async function getFriendshipBetween(
   userA: string,
   userB: string,
 ): Promise<Friendship | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("friendships")
     .select("*")
     .or(
@@ -54,8 +54,8 @@ export async function getFriendState(
 
 /** Accepted friends of a user, as profile summaries. */
 export async function getFriends(userId: string): Promise<AuthorSummary[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("friendships")
     .select(FRIENDSHIP_SELECT)
     .eq("status", "accepted")
@@ -72,8 +72,8 @@ export async function getFriends(userId: string): Promise<AuthorSummary[]> {
 export async function getIncomingRequests(
   userId: string,
 ): Promise<FriendRequestWithProfile[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("friendships")
     .select(FRIENDSHIP_SELECT)
     .eq("status", "pending")
@@ -87,8 +87,8 @@ export async function getIncomingRequests(
 export async function getOutgoingRequests(
   userId: string,
 ): Promise<FriendRequestWithProfile[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("friendships")
     .select(FRIENDSHIP_SELECT)
     .eq("status", "pending")
@@ -103,13 +103,13 @@ export async function getSuggestions(
   userId: string,
   limit = 8,
 ): Promise<Profile[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   const [{ data: friendships }, { data: profiles }] = await Promise.all([
-    supabase
+    db
       .from("friendships")
       .select("requester_id, addressee_id")
       .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`),
-    supabase
+    db
       .from("profiles")
       .select("*")
       .neq("id", userId)
@@ -130,8 +130,8 @@ export async function isFollowing(
   followerId: string,
   followeeId: string,
 ): Promise<boolean> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("follows")
     .select("follower_id")
     .eq("follower_id", followerId)
@@ -141,8 +141,8 @@ export async function isFollowing(
 }
 
 export async function getFriendCount(userId: string): Promise<number> {
-  const supabase = await createClient();
-  const { count } = await supabase
+  const db = await createClient();
+  const { count } = await db
     .from("friendships")
     .select("id", { count: "exact", head: true })
     .eq("status", "accepted")

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 export interface TypingSummary {
   bestWpm: number;
@@ -13,8 +13,8 @@ export async function getTypingSummary(
   userId: string,
   lang: string,
 ): Promise<TypingSummary> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("typing_scores")
     .select("wpm, accuracy")
     .eq("user_id", userId)

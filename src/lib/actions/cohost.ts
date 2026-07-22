@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
 import { livekitConfigured, livekitUrl, mintLivekitToken } from "@/lib/livekit";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { AuthorSummary } from "@/types/social";
 
 /** Readable, unguessable-enough room code. */
@@ -31,12 +31,12 @@ export async function createCohostRoom(
   if (!parsed.success) {
     return { ok: false, error: "Enter a room title." };
   }
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
   const code = newRoomCode();
-  const { error } = await supabase.from("cohost_rooms").insert({
+  const { error } = await db.from("cohost_rooms").insert({
     code,
     host_id: user.id,
     title: parsed.data,
@@ -48,10 +48,10 @@ export async function createCohostRoom(
 
 /** Host: end a co-host room (removes it from the live directory). */
 export async function endCohostRoom(code: string): Promise<ActionResult> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
-  const { error } = await supabase
+  const { error } = await db
     .from("cohost_rooms")
     .update({ ended_at: new Date().toISOString() })
     .eq("code", code)
@@ -86,11 +86,11 @@ export async function getCohostStageToken(
   const url = livekitUrl();
   if (!url) return { ok: false, error: "SFU not configured" };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
-  const { data: room } = await supabase
+  const { data: room } = await db
     .from("cohost_rooms")
     .select("id, host_id, ended_at")
     .eq("code", code)
@@ -101,7 +101,7 @@ export async function getCohostStageToken(
   const isHost = room.host_id === user.id;
   let canPublish = isHost;
   if (!canPublish) {
-    const { data: guest } = await supabase
+    const { data: guest } = await db
       .from("cohost_guests")
       .select("user_id")
       .eq("room_id", room.id)
@@ -110,7 +110,7 @@ export async function getCohostStageToken(
     canPublish = Boolean(guest);
   }
 
-  const { data: profile } = await supabase
+  const { data: profile } = await db
     .from("profiles")
     .select("full_name, username")
     .eq("id", user.id)
@@ -134,11 +134,11 @@ export async function approveCohost(
   code: string,
   userId: string,
 ): Promise<ActionResult> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
-  const { data: room } = await supabase
+  const { data: room } = await db
     .from("cohost_rooms")
     .select("id, host_id")
     .eq("code", code)
@@ -152,7 +152,7 @@ export async function approveCohost(
   // ON CONFLICT DO UPDATE, and `cohost_guests` has no UPDATE policy — so
   // re-approving someone already on stage failed with a raw RLS error. Being
   // already a co-host is a no-op, not an error.
-  const { error } = await supabase.from("cohost_guests").upsert(
+  const { error } = await db.from("cohost_guests").upsert(
     { room_id: room.id, user_id: userId, added_by: user.id },
     { onConflict: "room_id,user_id", ignoreDuplicates: true },
   );
@@ -168,18 +168,18 @@ export async function approveCohost(
 export async function listCohostGuests(
   code: string,
 ): Promise<ActionResult<AuthorSummary[]>> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
-  const { data: room } = await supabase
+  const { data: room } = await db
     .from("cohost_rooms")
     .select("id")
     .eq("code", code)
     .maybeSingle();
   if (!room) return { ok: false, error: "Room not found" };
 
-  const { data: guests } = await supabase
+  const { data: guests } = await db
     .from("cohost_guests")
     .select("user_id")
     .eq("room_id", room.id);
@@ -187,7 +187,7 @@ export async function listCohostGuests(
   const ids = (guests ?? []).map((g) => g.user_id);
   if (ids.length === 0) return { ok: true, data: [] };
 
-  const { data: profiles } = await supabase
+  const { data: profiles } = await db
     .from("profiles")
     .select("id, username, full_name, avatar_url")
     .in("id", ids)
@@ -207,11 +207,11 @@ export async function searchCohostCandidates(
   const q = query.trim().slice(0, 60);
   if (q.length < 2) return { ok: true, data: [] };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
-  const { data: room } = await supabase
+  const { data: room } = await db
     .from("cohost_rooms")
     .select("id, host_id")
     .eq("code", code)
@@ -221,14 +221,14 @@ export async function searchCohostCandidates(
     return { ok: false, error: "Only the host can add co-hosts." };
   }
 
-  const { data: guests } = await supabase
+  const { data: guests } = await db
     .from("cohost_guests")
     .select("user_id")
     .eq("room_id", room.id);
   const exclude = new Set([room.host_id, ...(guests ?? []).map((g) => g.user_id)]);
 
   const pattern = `%${q.replace(/[%_\\]/g, "\\$&")}%`;
-  const { data: profiles } = await supabase
+  const { data: profiles } = await db
     .from("profiles")
     .select("id, username, full_name, avatar_url")
     .or(`username.ilike.${pattern},full_name.ilike.${pattern}`)
@@ -246,11 +246,11 @@ export async function removeCohost(
   code: string,
   userId: string,
 ): Promise<ActionResult> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
-  const { data: room } = await supabase
+  const { data: room } = await db
     .from("cohost_rooms")
     .select("id")
     .eq("code", code)
@@ -259,7 +259,7 @@ export async function removeCohost(
 
   // RLS enforces that only the host, an admin, or the co-host themselves can
   // delete the row.
-  const { error } = await supabase
+  const { error } = await db
     .from("cohost_guests")
     .delete()
     .eq("room_id", room.id)

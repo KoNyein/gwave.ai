@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { Certificate } from "@/types/database";
 
 export interface CertificateWithOwner extends Certificate {
@@ -12,8 +12,8 @@ export interface CertificateWithOwner extends Certificate {
 export async function getCertificate(
   id: string,
 ): Promise<CertificateWithOwner | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("certificates")
     .select("*, profiles!certificates_user_id_fkey(display_name, username)")
     .eq("id", id)
@@ -36,8 +36,8 @@ export async function getCertificate(
 export async function getCertificatesForUser(
   userId: string,
 ): Promise<Certificate[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("certificates")
     .select("*")
     .eq("user_id", userId)

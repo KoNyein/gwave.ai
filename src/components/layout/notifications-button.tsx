@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { markAllNotificationsRead } from "@/lib/actions/notifications";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import { displayName } from "@/lib/format";
 import type { NotificationWithActor } from "@/types/social";
 
@@ -101,8 +101,8 @@ export function NotificationsButton({ userId }: { userId: string }) {
   React.useEffect(() => {
     void loadNotifications();
 
-    const supabase = createClient();
-    const channel = supabase
+    const db = createClient();
+    const channel = db
       .channel(`notifications:${userId}`)
       .on(
         "postgres_changes",
@@ -125,7 +125,7 @@ export function NotificationsButton({ userId }: { userId: string }) {
       .subscribe();
 
     return () => {
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [userId, loadNotifications, pushOsNotification]);
 

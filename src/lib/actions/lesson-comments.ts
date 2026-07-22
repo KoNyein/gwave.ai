@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 async function getUserId(): Promise<string | null> {
   const user = await getCurrentUser();
@@ -28,8 +28,8 @@ export async function addLessonComment(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("lesson_comments")
     .insert({
       track_slug: parsed.data.trackSlug,
@@ -54,8 +54,8 @@ export async function deleteLessonComment(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("lesson_comments")
     .delete()
     .eq("id", commentId);

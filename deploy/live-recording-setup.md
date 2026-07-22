@@ -8,8 +8,8 @@ configured, Live works exactly as before (no recording). Two things turn it on.
 
 Adds `recording_path` and `recording_egress_id` to `live_streams`. Idempotent.
 
-Run it once against the production database — either in the Supabase SQL Editor,
-or via psql:
+Run it once against the production database — **RDS**, via `psql` (there is no
+Supabase SQL Editor: gwave moved off hosted Supabase on 2026-07-17):
 
 ```sql
 alter table public.live_streams

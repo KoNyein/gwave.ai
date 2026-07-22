@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { EgressStatus, WebhookReceiver } from "livekit-server-sdk";
 
 import { egressConfigured, stopRoomRecording } from "@/lib/livekit";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/data/admin";
 
 /**
  * LiveKit webhook — the only thing that ends a broadcast when the host doesn't.

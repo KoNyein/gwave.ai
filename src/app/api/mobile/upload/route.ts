@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
  * resolves under CloudFront the same way for both clients.
  *
  * Only reachable when AWS_S3_MEDIA_BUCKET is set (S3 is the active backend); on
- * Supabase Storage the app uploads directly and never calls this.
+ * the legacy object storage the app uploads directly and never calls this.
  */
 const REGION = process.env.AWS_REGION ?? "ap-southeast-1";
 const MEDIA_BUCKET = process.env.AWS_S3_MEDIA_BUCKET;

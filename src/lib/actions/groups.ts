@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { ActionResult } from "@/lib/actions/posts";
 
 const uuid = z.string().uuid();
@@ -36,9 +36,9 @@ export async function createGroup(
     };
   }
 
-  const supabase = await createClient();
+  const db = await createClient();
   const slug = slugify(parsed.data.name);
-  const { error } = await supabase.rpc("create_group_with_owner", {
+  const { error } = await db.rpc("create_group_with_owner", {
     group_name: parsed.data.name.trim(),
     group_slug: slug,
     group_description: parsed.data.description?.trim() || null,
@@ -55,18 +55,18 @@ export async function joinGroup(groupId: string): Promise<ActionResult> {
   if (!uuid.safeParse(groupId).success) {
     return { ok: false, error: "Invalid group." };
   }
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
-  const { data: group } = await supabase
+  const { data: group } = await db
     .from("groups")
     .select("privacy")
     .eq("id", groupId)
     .maybeSingle();
   if (!group) return { ok: false, error: "Group not found." };
 
-  const { error } = await supabase.from("group_members").insert({
+  const { error } = await db.from("group_members").insert({
     group_id: groupId,
     user_id: user.id,
     status: group.privacy === "public" ? "active" : "pending",
@@ -86,12 +86,12 @@ export async function leaveGroup(
   if (!uuid.safeParse(groupId).success) {
     return { ok: false, error: "Invalid group." };
   }
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
   const target = userId ?? user.id;
-  const { error } = await supabase
+  const { error } = await db
     .from("group_members")
     .delete()
     .eq("group_id", groupId)
@@ -109,8 +109,8 @@ export async function approveGroupMember(
   if (!uuid.safeParse(groupId).success || !uuid.safeParse(userId).success) {
     return { ok: false, error: "Invalid request." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("group_members")
     .update({ status: "active" })
     .eq("group_id", groupId)
@@ -130,8 +130,8 @@ export async function setGroupMemberRole(
   if (!uuid.safeParse(groupId).success || !uuid.safeParse(userId).success) {
     return { ok: false, error: "Invalid request." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("group_members")
     .update({ role })
     .eq("group_id", groupId)

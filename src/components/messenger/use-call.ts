@@ -6,10 +6,10 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { notifyIncomingCall } from "@/lib/actions/calls";
 import { sendMessage } from "@/lib/actions/messages";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import type { AuthorSummary } from "@/types/social";
 
-// WebRTC audio/video calls for the 1:1 messenger. Supabase Realtime
+// WebRTC audio/video calls for the 1:1 messenger. Our self-hosted Realtime
 // broadcast channels carry the signaling (ring / accept / offer / answer /
 // ICE / hangup); the media itself flows peer-to-peer over WebRTC.
 //
@@ -179,9 +179,9 @@ export function useCall(
         if (s.durationTimer) clearInterval(s.durationTimer);
         s.localStream?.getTracks().forEach((track) => track.stop());
         s.pc?.close();
-        const supabase = createClient();
-        void supabase.removeChannel(s.channel);
-        if (s.ringChannel) void supabase.removeChannel(s.ringChannel);
+        const db = createClient();
+        void db.removeChannel(s.channel);
+        if (s.ringChannel) void db.removeChannel(s.ringChannel);
 
         // One call-log message per call, written by the caller.
         if (log && s.isCaller) {
@@ -438,13 +438,13 @@ export function useCall(
   // us under someone else's name — and the caller identity we display comes
   // from the database, never from the broadcast payload.
   React.useEffect(() => {
-    const supabase = createClient();
+    const db = createClient();
 
     async function verifyRing(payload: {
       conversationId: string;
       fromId: string;
     }): Promise<AuthorSummary | null> {
-      const { data } = await supabase
+      const { data } = await db
         .from("conversation_participants")
         .select(
           "user_id, profile:profiles!conversation_participants_user_id_fkey(id, username, full_name, avatar_url)",
@@ -456,7 +456,7 @@ export function useCall(
       return includesMe && caller ? caller.profile : null;
     }
 
-    const channel = supabase
+    const channel = db
       .channel(`calls:${currentUser.id}`)
       .on("broadcast", { event: "ring" }, (message) => {
         const payload = message.payload as {
@@ -527,7 +527,7 @@ export function useCall(
 
     return () => {
       ringInbox.current = null;
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
       cleanup(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -536,7 +536,7 @@ export function useCall(
   const startCall = React.useCallback(
     (peer: AuthorSummary, conversationId: string, video: boolean) => {
       if (session.current || incoming.current) return;
-      const supabase = createClient();
+      const db = createClient();
       const callId = crypto.randomUUID();
 
       const s: Session = {
@@ -545,7 +545,7 @@ export function useCall(
         peer,
         video,
         isCaller: true,
-        channel: supabase.channel(`call:${callId}`),
+        channel: db.channel(`call:${callId}`),
         pc: null,
         localStream: null,
         ringChannel: null,
@@ -562,7 +562,7 @@ export function useCall(
       s.channel.subscribe((callStatus) => {
         if (callStatus !== "SUBSCRIBED" || session.current !== s) return;
         if (s.ringChannel) return; // already ringing (subscribe callbacks repeat)
-        const ringChannel = supabase.channel(`calls:${peer.id}`);
+        const ringChannel = db.channel(`calls:${peer.id}`);
         s.ringChannel = ringChannel;
         ringChannel.subscribe((ringStatus) => {
           if (ringStatus === "SUBSCRIBED") {
@@ -618,14 +618,14 @@ export function useCall(
       event: "answered",
       payload: { callId: ring.callId, tabId: TAB_ID },
     });
-    const supabase = createClient();
+    const db = createClient();
     const s: Session = {
       callId: ring.callId,
       conversationId: ring.conversationId,
       peer: ring.from,
       video: ring.video,
       isCaller: false,
-      channel: supabase.channel(`call:${ring.callId}`),
+      channel: db.channel(`call:${ring.callId}`),
       pc: null,
       localStream: null,
       ringChannel: null,
@@ -650,13 +650,13 @@ export function useCall(
     incoming.current = null;
     clearIncomingTimer();
     if (ring) {
-      const supabase = createClient();
-      const channel = supabase.channel(`call:${ring.callId}`);
+      const db = createClient();
+      const channel = db.channel(`call:${ring.callId}`);
       channel.subscribe((status) => {
         if (status === "SUBSCRIBED") {
           void channel
             .send({ type: "broadcast", event: "decline", payload: {} })
-            .finally(() => void supabase.removeChannel(channel));
+            .finally(() => void db.removeChannel(channel));
         }
       });
     }

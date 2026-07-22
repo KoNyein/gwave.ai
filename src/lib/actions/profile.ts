@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 const schema = z.object({
   full_name: z.string().trim().max(80).nullish(),
@@ -24,7 +24,7 @@ export async function updateProfile(
   const parsed = schema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid profile details." };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
@@ -38,7 +38,7 @@ export async function updateProfile(
   if (d.presence_status !== undefined) patch.presence_status = d.presence_status;
   if (Object.keys(patch).length === 0) return { ok: true, data: undefined };
 
-  const { error } = await supabase
+  const { error } = await db
     .from("profiles")
     .update(patch)
     .eq("id", user.id);

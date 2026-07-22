@@ -1,15 +1,15 @@
 import "server-only";
 import { getCurrentUser } from "@/lib/auth";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { BusinessExpense, ExpenseCategory } from "@/types/database";
 
 /** All of the caller's expenses, unpaid (soonest due) first, then paid. */
 export async function getMyExpenses(): Promise<BusinessExpense[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return [];
-  const { data } = await supabase
+  const { data } = await db
     .from("business_expenses")
     .select("*")
     .eq("owner_id", user.id)

@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 /**
  * Minimal in-memory sliding-window rate limiter for auth actions.
  * Per-instance only (resets on deploy; not shared across replicas) — the
- * platform's real backstop is Supabase Auth's own rate limits; this stops
+ * platform's real backstop is Cognito's own rate limits; this stops
  * the cheapest brute-force attempts at the app layer.
  */
 const buckets = new Map<string, number[]>();

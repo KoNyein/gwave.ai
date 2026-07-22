@@ -42,11 +42,11 @@ export function getSystemStatus(): StatusGroup[] {
       "Core (Database)",
       "Database၊ login၊ storage — site တစ်ခုလုံး ဒီအပေါ်မှာ",
       [
-        // Data plane = self-hosted PostgREST/Realtime at NEXT_PUBLIC_SUPABASE_URL
+        // Data plane = self-hosted PostgREST/Realtime at NEXT_PUBLIC_DATA_API_URL
         // (gwave.cc/sb → RDS). The privileged path mints its own service_role
-        // token (lib/auth/tokens.ts), so no SUPABASE_SERVICE_ROLE_KEY is needed.
-        "NEXT_PUBLIC_SUPABASE_URL",
-        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        // token (lib/auth/tokens.ts), so no static service-role key is needed.
+        "NEXT_PUBLIC_DATA_API_URL",
+        "NEXT_PUBLIC_DATA_API_KEY",
         "NEXT_PUBLIC_SITE_URL",
       ],
       true,
@@ -92,8 +92,14 @@ export function getSystemStatus(): StatusGroup[] {
 
 /** A cheap database reachability probe (no secret values used). */
 export async function probeDatabase(): Promise<"ok" | "unreachable" | string> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Read literally, new name first, old name as fallback — same compatibility
+  // window as lib/env.ts (the old NEXT_PUBLIC_SUPABASE_* names are still baked
+  // into the running production image).
+  const url =
+    process.env.NEXT_PUBLIC_DATA_API_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon =
+    process.env.NEXT_PUBLIC_DATA_API_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anon) return "not configured";
   try {
     const res = await fetch(

@@ -23,7 +23,7 @@ import {
   mintLivekitToken,
   startRoomRecording,
 } from "@/lib/livekit";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 export interface LiveStageToken {
   url: string;
@@ -43,11 +43,11 @@ export async function getLiveStageToken(
   const url = livekitUrl();
   if (!url) return { ok: false, error: "SFU not configured" };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
-  const { data: stream } = await supabase
+  const { data: stream } = await db
     .from("live_streams")
     .select("id, host_id, status, livekit_room")
     .eq("id", streamId)
@@ -62,7 +62,7 @@ export async function getLiveStageToken(
 
   const isHost = stream.host_id === user.id;
 
-  const { data: profile } = await supabase
+  const { data: profile } = await db
     .from("profiles")
     .select("full_name, username")
     .eq("id", user.id)
@@ -100,11 +100,11 @@ export async function getAgoraStageToken(
   const appId = agoraAppId();
   if (!appId) return { ok: false, error: "Live provider not configured" };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
-  const { data: stream } = await supabase
+  const { data: stream } = await db
     .from("live_streams")
     .select("id, host_id, status, agora_channel")
     .eq("id", streamId)
@@ -137,11 +137,11 @@ export async function getAgoraStageToken(
 export async function getIvsStageToken(
   streamId: string,
 ): Promise<ActionResult<{ token: string; canPublish: boolean }>> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
-  const { data: stream } = await supabase
+  const { data: stream } = await db
     .from("live_streams")
     .select("id, host_id, status, ivs_stage_arn")
     .eq("id", streamId)
@@ -155,7 +155,7 @@ export async function getIvsStageToken(
   }
 
   const isHost = stream.host_id === user.id;
-  const { data: profile } = await supabase
+  const { data: profile } = await db
     .from("profiles")
     .select("full_name, username")
     .eq("id", user.id)
@@ -181,7 +181,7 @@ export async function getIvsStageToken(
  * Idempotent — safe to call again on reconnect.
  */
 export async function goLive(streamId: string): Promise<ActionResult> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
@@ -189,7 +189,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
     process.env.NEXT_PUBLIC_LIVE_PROVIDER === "ivs"
       ? ", ivs_stage_arn"
       : "";
-  const { data: stream } = await supabase
+  const { data: stream } = await db
     .from("live_streams")
     .select(
       `id, host_id, status, started_at, title, livekit_room, agora_channel${providerCols}`,
@@ -240,7 +240,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
     }
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from("live_streams")
     .update({
       status: "live",
@@ -256,7 +256,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
   // Live tab. Runs once per stream (the status guard above) and best-effort —
   // a feed hiccup must not block going live.
   const site = process.env.NEXT_PUBLIC_SITE_URL || "https://gwave.cc";
-  await supabase
+  await db
     .from("posts")
     .insert({
       author_id: user.id,
@@ -282,11 +282,11 @@ export async function saveLiveWrapPost(
   location: string,
   friends: string,
 ): Promise<ActionResult> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
-  const { data: stream } = await supabase
+  const { data: stream } = await db
     .from("live_streams")
     .select("id, host_id, title")
     .eq("id", streamId)
@@ -311,7 +311,7 @@ export async function saveLiveWrapPost(
   if (loc) lines.push(`📍 ${loc}`);
   if (tagged) lines.push(`👥 ${tagged}`);
 
-  const { error } = await supabase.from("posts").insert({
+  const { error } = await db.from("posts").insert({
     author_id: user.id,
     content: lines.join("\n"),
     visibility: "public",
@@ -326,7 +326,7 @@ export async function setStreamGameGoal(
   streamId: string,
   input: { gameName?: string; goalAmount?: number; goalLabel?: string },
 ): Promise<ActionResult> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
@@ -337,7 +337,7 @@ export async function setStreamGameGoal(
       ? Math.round(input.goalAmount)
       : null;
 
-  const { error } = await supabase
+  const { error } = await db
     .from("live_streams")
     .update({
       game_name: gameName || null,

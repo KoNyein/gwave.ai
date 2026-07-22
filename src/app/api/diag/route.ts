@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
  * whether a column exists, never data.
  */
 export async function GET() {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "sign in first" }, { status: 401 });
@@ -35,7 +35,7 @@ export async function GET() {
   const results: Record<string, string> = {};
   const missing: string[] = [];
   for (const probe of probes) {
-    const { error } = await supabase
+    const { error } = await db
       .from(probe.table)
       .select(probe.select)
       .limit(0);
@@ -53,7 +53,7 @@ export async function GET() {
     hint:
       missing.length === 0
         ? "All probed columns/tables exist. The crash is elsewhere."
-        : "Run the migration(s) that add the MISSING columns/tables in the Supabase SQL editor.",
+        : "Run the migration(s) that add the MISSING columns/tables against RDS with psql.",
     results,
   });
 }

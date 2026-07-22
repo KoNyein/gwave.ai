@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 const schema = z.object({
   streamId: z.string().uuid(),
@@ -25,11 +25,11 @@ export async function sendLiveGift(input: {
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
-  const { data, error } = await supabase.rpc("send_live_gift", {
+  const { data, error } = await db.rpc("send_live_gift", {
     p_stream: parsed.data.streamId,
     p_gift: parsed.data.giftId,
     p_quantity: parsed.data.quantity,

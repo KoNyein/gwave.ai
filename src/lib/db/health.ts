@@ -3,8 +3,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { HealthTokens, NormalizedMetric } from "@/lib/health/types";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/data/admin";
+import { createClient } from "@/lib/data/server";
 
 /**
  * Data-access for the health/wearable feature. The health tables are new and not
@@ -12,6 +12,9 @@ import { createClient } from "@/lib/supabase/server";
  * of the client (return shapes declared below). Public reads use the
  * request-scoped client (RLS keeps them owner-private); token reads/writes use
  * the service-role admin client and never leave the server.
+ *
+ * `SupabaseClient` is just the type exported by `@supabase/supabase-js`, the
+ * PostgREST client we point at the AWS data API — not a hosted Supabase client.
  */
 function untyped(client: unknown): SupabaseClient {
   return client as unknown as SupabaseClient;
@@ -173,8 +176,8 @@ export async function deleteConnection(
   userId: string,
   connectionId: string,
 ): Promise<string | null> {
-  const supabase = untyped(await createClient());
-  const { error } = await supabase
+  const db = untyped(await createClient());
+  const { error } = await db
     .from("health_connections")
     .delete()
     .eq("id", connectionId);

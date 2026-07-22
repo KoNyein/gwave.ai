@@ -6,8 +6,8 @@ import { z } from "zod";
 
 import { publicEnv } from "@/lib/env";
 import { getStripe } from "@/lib/stripe";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/data/admin";
+import { createClient } from "@/lib/data/server";
 import type { ActionResult } from "@/lib/actions/posts";
 
 const uuid = z.string().uuid();
@@ -15,8 +15,8 @@ const planId = z.enum(["pro", "business"]);
 
 /** USD→THB rate from the admin-editable currency table (fallback 36). */
 export async function getThbRate(): Promise<number> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("currency_rates")
     .select("rate_per_usd")
     .eq("code", "THB")
@@ -30,10 +30,10 @@ async function requireUserId(): Promise<string | null> {
 }
 
 async function requireAdmin(): Promise<string | null> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return null;
-  const { data: profile } = await supabase
+  const { data: profile } = await db
     .from("profiles")
     .select("role")
     .eq("id", user.id)
@@ -60,11 +60,11 @@ export async function createStripeCheckout(
   const parsedPlan = planId.safeParse(plan);
   if (!parsedPlan.success) return { ok: false, error: "Invalid plan." };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
-  const { data: planRow } = await supabase
+  const { data: planRow } = await db
     .from("membership_plans")
     .select("*")
     .eq("id", parsedPlan.data)
@@ -137,11 +137,11 @@ export async function submitPromptPayPayment(
   const parsed = promptPaySchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid submission." };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const userId = await requireUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const { data: planRow } = await supabase
+  const { data: planRow } = await db
     .from("membership_plans")
     .select("*")
     .eq("id", parsed.data.plan)
@@ -150,7 +150,7 @@ export async function submitPromptPayPayment(
   if (!planRow) return { ok: false, error: "Plan not found." };
 
   // Reuse an existing live subscription row or start a pending one.
-  const { data: existing } = await supabase
+  const { data: existing } = await db
     .from("subscriptions")
     .select("id, status")
     .eq("user_id", userId)
@@ -159,7 +159,7 @@ export async function submitPromptPayPayment(
 
   let subscriptionId = existing?.id ?? null;
   if (!subscriptionId) {
-    const { data: created, error } = await supabase
+    const { data: created, error } = await db
       .from("subscriptions")
       .insert({
         user_id: userId,
@@ -175,7 +175,7 @@ export async function submitPromptPayPayment(
     subscriptionId = created.id;
   }
 
-  const { error: paymentError } = await supabase.from("payments").insert({
+  const { error: paymentError } = await db.from("payments").insert({
     user_id: userId,
     subscription_id: subscriptionId,
     provider: "promptpay",
@@ -205,8 +205,8 @@ export async function approvePayment(
   const adminId = await requireAdmin();
   if (!adminId) return { ok: false, error: "Admin access required." };
 
-  const supabase = await createClient();
-  const { data: payment } = await supabase
+  const db = await createClient();
+  const { data: payment } = await db
     .from("payments")
     .select("*")
     .eq("id", paymentId)
@@ -214,7 +214,7 @@ export async function approvePayment(
     .maybeSingle();
   if (!payment) return { ok: false, error: "Payment not found." };
 
-  const { error: paymentError } = await supabase
+  const { error: paymentError } = await db
     .from("payments")
     .update({
       status: "succeeded",
@@ -227,7 +227,7 @@ export async function approvePayment(
   if (payment.subscription_id) {
     const periodEnd = new Date();
     periodEnd.setMonth(periodEnd.getMonth() + 1);
-    const { error: subscriptionError } = await supabase
+    const { error: subscriptionError } = await db
       .from("subscriptions")
       .update({
         status: "active",
@@ -255,8 +255,8 @@ export async function rejectPayment(
   const adminId = await requireAdmin();
   if (!adminId) return { ok: false, error: "Admin access required." };
 
-  const supabase = await createClient();
-  const { data: payment } = await supabase
+  const db = await createClient();
+  const { data: payment } = await db
     .from("payments")
     .select("id, subscription_id")
     .eq("id", paymentId)
@@ -264,7 +264,7 @@ export async function rejectPayment(
     .maybeSingle();
   if (!payment) return { ok: false, error: "Payment not found." };
 
-  const { error } = await supabase
+  const { error } = await db
     .from("payments")
     .update({
       status: "rejected",
@@ -280,7 +280,7 @@ export async function rejectPayment(
     // dropped, so a failure left the payment "rejected" but the subscription
     // stuck "pending" (the mirror-image approvePayment path checks this). Surface
     // it so the admin can retry rather than leaving the two out of sync.
-    const { error: subError } = await supabase
+    const { error: subError } = await db
       .from("subscriptions")
       .update({ status: "canceled" })
       .eq("id", payment.subscription_id)
@@ -308,8 +308,8 @@ export async function grantMembership(
   const adminId = await requireAdmin();
   if (!adminId) return { ok: false, error: "Admin access required." };
 
-  const supabase = await createClient();
-  const { data: target } = await supabase
+  const db = await createClient();
+  const { data: target } = await db
     .from("profiles")
     .select("id")
     .eq("username", parsed.data.username)
@@ -362,8 +362,8 @@ export async function extendMembership(
   const adminId = await requireAdmin();
   if (!adminId) return { ok: false, error: "Admin access required." };
 
-  const supabase = await createClient();
-  const { data: subscription } = await supabase
+  const db = await createClient();
+  const { data: subscription } = await db
     .from("subscriptions")
     .select("current_period_end")
     .eq("id", subscriptionId)
@@ -375,7 +375,7 @@ export async function extendMembership(
     : new Date();
   base.setDate(base.getDate() + days);
 
-  const { error } = await supabase
+  const { error } = await db
     .from("subscriptions")
     .update({ status: "active", current_period_end: base.toISOString() })
     .eq("id", subscriptionId);
@@ -395,8 +395,8 @@ export async function revokeMembership(
   const adminId = await requireAdmin();
   if (!adminId) return { ok: false, error: "Admin access required." };
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("subscriptions")
     .update({ status: "canceled" })
     .eq("id", subscriptionId);
@@ -415,8 +415,8 @@ export async function cancelMySubscription(): Promise<ActionResult> {
   const userId = await requireUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { data: subscription } = await supabase
+  const db = await createClient();
+  const { data: subscription } = await db
     .from("subscriptions")
     .select("id, provider, stripe_subscription_id")
     .eq("user_id", userId)

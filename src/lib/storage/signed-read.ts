@@ -8,14 +8,14 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
  *
  * `/api/storage/presign` covers the write half (a signed PUT). This is the read
  * half, which was missing: uploads went to S3 while the pages that display them
- * still called Supabase Storage's `createSignedUrl()`. After the S3 cutover the
- * object is no longer in Supabase, so those calls return an error — and every
+ * still called the legacy object storage's `createSignedUrl()`. After the S3
+ * cutover the object is no longer there, so those calls return an error — and every
  * call site drops it (`const { data } = ...`), so a KYC slip or face scan simply
  * rendered as nothing. Silent, not a 500.
  *
  * Credentials come from the EC2 instance role (default provider chain) — no
  * static keys. Returns null when S3 isn't configured, so callers can fall back
- * to Supabase Storage and this stays dormant outside the S3 deployment.
+ * to the legacy object storage and this stays dormant outside the S3 deployment.
  */
 
 const REGION = process.env.AWS_REGION ?? "ap-southeast-1";
@@ -30,7 +30,7 @@ function s3(): S3Client {
 /**
  * Signed GET URL for an object in the private "slips" bucket (KPay payment
  * slips + KYC face scans). `null` when S3 is not configured — the caller then
- * falls back to Supabase Storage.
+ * falls back to the legacy object storage.
  *
  * Access control lives with the caller, exactly as it did before: these pages
  * already gate on an admin check, and the RLS-protected row supplies the path.

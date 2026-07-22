@@ -14,7 +14,7 @@ import {
   type KyarMove,
   type KyarState,
 } from "@/lib/games/kyar";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import { cn } from "@/lib/utils";
 
 /**
@@ -48,8 +48,8 @@ export function KyarGame({
   stateRef.current = state;
 
   React.useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase.channel(`game:${conversationId}:kyar`, {
+    const db = createClient();
+    const channel = db.channel(`game:${conversationId}:kyar`, {
       config: { broadcast: { self: false } },
     });
     channel
@@ -96,7 +96,7 @@ export function KyarGame({
     chanRef.current = channel;
     return () => {
       chanRef.current = null;
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [conversationId, currentUserId]);
 

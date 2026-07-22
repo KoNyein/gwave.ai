@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 /**
  * True for loopback, private (RFC1918), carrier-grade-NAT, link-local
@@ -130,9 +130,9 @@ export async function saveProduct(
     commission_rate: v.commissionRate ?? null,
   };
 
-  const supabase = await createClient();
+  const db = await createClient();
   if (productId) {
-    const { error } = await supabase
+    const { error } = await db
       .from("shop_products")
       .update(row)
       .eq("id", productId)
@@ -143,7 +143,7 @@ export async function saveProduct(
     return { ok: true, data: { productId } };
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("shop_products")
     .insert(row)
     .select("id")
@@ -163,8 +163,8 @@ export async function setProductStatus(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("shop_products")
     .update({ status })
     .eq("id", productId)
@@ -179,8 +179,8 @@ export async function setProductStatus(
 export async function deleteProduct(productId: string): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("shop_products")
     .delete()
     .eq("id", productId)
@@ -197,8 +197,8 @@ export async function deleteProduct(productId: string): Promise<ActionResult> {
 export async function trackAffiliateClick(
   productId: string,
 ): Promise<ActionResult<{ url: string }>> {
-  const supabase = await createClient();
-  const { data: product, error: readErr } = await supabase
+  const db = await createClient();
+  const { data: product, error: readErr } = await db
     .from("shop_products")
     .select("external_url")
     .eq("id", productId)
@@ -206,7 +206,7 @@ export async function trackAffiliateClick(
   if (readErr || !product?.external_url) {
     return { ok: false, error: "Link unavailable." };
   }
-  await supabase.rpc("record_affiliate_click", { p_product_id: productId });
+  await db.rpc("record_affiliate_click", { p_product_id: productId });
   return { ok: true, data: { url: product.external_url } };
 }
 
@@ -233,8 +233,8 @@ export async function placeOrder(
   if (!userId) return { ok: false, error: "Not authenticated." };
 
   const v = parsed.data;
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("place_dropship_order", {
+  const db = await createClient();
+  const { data, error } = await db.rpc("place_dropship_order", {
     p_product_id: v.productId,
     p_quantity: v.quantity,
     p_ship_name: v.shipName,
@@ -259,8 +259,8 @@ export async function placeOrderWithGpay(
   if (!userId) return { ok: false, error: "Not authenticated." };
 
   const v = parsed.data;
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("place_dropship_order_gpay", {
+  const db = await createClient();
+  const { data, error } = await db.rpc("place_dropship_order_gpay", {
     p_product_id: v.productId,
     p_quantity: v.quantity,
     p_ship_name: v.shipName,
@@ -292,8 +292,8 @@ export async function updateOrderStatus(
   }
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
-  const supabase = await createClient();
-  const { data: updated, error } = await supabase
+  const db = await createClient();
+  const { data: updated, error } = await db
     .from("shop_orders")
     .update({ status })
     .eq("id", orderId)
@@ -334,8 +334,8 @@ export async function updateOrderTracking(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("shop_orders")
     .update({
       courier: courier.trim().slice(0, 60) || null,

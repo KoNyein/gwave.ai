@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth";
 import { getLesson } from "@/lib/learn/lessons";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 export type LearnActionResult = { ok: true } | { ok: false; error: string };
 
@@ -46,8 +46,8 @@ export async function upsertLessonProgress(input: {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
-  const supabase = await createClient();
-  const { data: existing } = await supabase
+  const db = await createClient();
+  const { data: existing } = await db
     .from("lesson_progress")
     .select("*")
     .eq("user_id", user.id)
@@ -67,7 +67,7 @@ export async function upsertLessonProgress(input: {
       ? Math.max(existing?.score ?? 0, score)
       : (existing?.score ?? null);
 
-  const { error } = await supabase.from("lesson_progress").upsert(
+  const { error } = await db.from("lesson_progress").upsert(
     {
       user_id: user.id,
       track_slug: trackSlug,
@@ -130,8 +130,8 @@ export async function saveProject(input: {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("member_projects").upsert(
+  const db = await createClient();
+  const { error } = await db.from("member_projects").upsert(
     {
       user_id: user.id,
       track_slug: trackSlug,

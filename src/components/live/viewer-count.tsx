@@ -3,10 +3,11 @@
 import * as React from "react";
 import { Eye } from "lucide-react";
 
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 
 /**
- * Live viewer count via a Supabase presence channel. Every open viewer page
+ * Live viewer count via a Realtime presence channel (our self-hosted Realtime,
+ * reached through the data client). Every open viewer page
  * tracks itself; the count is the number of tracked presences.
  */
 export function ViewerCount({
@@ -19,8 +20,8 @@ export function ViewerCount({
   const [count, setCount] = React.useState(1);
 
   React.useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase.channel(`live-presence:${streamId}`, {
+    const db = createClient();
+    const channel = db.channel(`live-presence:${streamId}`, {
       config: { presence: { key: viewerId } },
     });
 
@@ -35,7 +36,7 @@ export function ViewerCount({
       });
 
     return () => {
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [streamId, viewerId]);
 

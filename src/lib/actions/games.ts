@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 // Matches the DB check constraint — a single self-contained HTML document.
 const MAX_CODE_CHARS = 200_000;
@@ -44,7 +44,7 @@ export async function submitGame(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const row = {
     title: parsed.data.title,
     description: parsed.data.description || null,
@@ -56,7 +56,7 @@ export async function submitGame(
 
   if (gameId) {
     // Author edit — RLS restricts to own rows and forces re-review.
-    const { error } = await supabase
+    const { error } = await db
       .from("games")
       .update(row)
       .eq("id", gameId)
@@ -66,7 +66,7 @@ export async function submitGame(
     return { ok: true, data: { gameId } };
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("games")
     .insert({ ...row, author_id: userId })
     .select("id")
@@ -89,8 +89,8 @@ export async function reviewGame(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("games")
     .update({
       status: decision,
@@ -111,8 +111,8 @@ export async function deleteGame(gameId: string): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("games").delete().eq("id", gameId);
+  const db = await createClient();
+  const { error } = await db.from("games").delete().eq("id", gameId);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/games");
   revalidatePath("/admin/games");
@@ -123,8 +123,8 @@ export async function deleteGame(gameId: string): Promise<ActionResult> {
 export async function recordGamePlay(gameId: string): Promise<void> {
   const userId = await getUserId();
   if (!userId) return;
-  const supabase = await createClient();
-  await supabase.rpc("record_game_play", { gid: gameId });
+  const db = await createClient();
+  await db.rpc("record_game_play", { gid: gameId });
 }
 
 const REACTION_KINDS = ["like", "love", "fun", "interested", "wow"] as const;
@@ -136,9 +136,9 @@ export async function setGameReaction(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in." };
-  const supabase = await createClient();
+  const db = await createClient();
   if (kind === null) {
-    const { error } = await supabase
+    const { error } = await db
       .from("game_reactions")
       .delete()
       .match({ game_id: gameId, user_id: userId });
@@ -146,7 +146,7 @@ export async function setGameReaction(
   } else {
     if (!REACTION_KINDS.includes(kind))
       return { ok: false, error: "Invalid reaction." };
-    const { error } = await supabase
+    const { error } = await db
       .from("game_reactions")
       .upsert(
         { game_id: gameId, user_id: userId, kind },
@@ -168,8 +168,8 @@ export async function addGameComment(
   const clean = body.trim();
   if (!clean || clean.length > 1000)
     return { ok: false, error: "မှတ်ချက် ၁–၁၀၀၀ လုံး ဖြစ်ရမည်။" };
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("game_comments")
     .insert({ game_id: gameId, user_id: userId, body: clean });
   if (error) return { ok: false, error: error.message };
@@ -184,8 +184,8 @@ export async function deleteGameComment(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in." };
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("game_comments")
     .delete()
     .eq("id", commentId);

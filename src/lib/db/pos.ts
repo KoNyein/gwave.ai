@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type {
   Inventory,
   PosCategory,
@@ -22,8 +22,8 @@ export interface StoreContext {
 
 /** The user's store (owned or joined) and their effective role. */
 export async function getMyStore(userId: string): Promise<StoreContext | null> {
-  const supabase = await createClient();
-  const { data: owned } = await supabase
+  const db = await createClient();
+  const { data: owned } = await db
     .from("stores")
     .select("*")
     .eq("owner_id", userId)
@@ -32,7 +32,7 @@ export async function getMyStore(userId: string): Promise<StoreContext | null> {
     .maybeSingle();
   if (owned) return { store: owned, role: "manager" };
 
-  const { data: membership } = await supabase
+  const { data: membership } = await db
     .from("store_members")
     .select("role, store:stores!store_members_store_id_fkey(*)")
     .eq("user_id", userId)
@@ -52,8 +52,8 @@ export async function getProducts(
   storeId: string,
   includeInactive = false,
 ): Promise<ProductWithStock[]> {
-  const supabase = await createClient();
-  let query = supabase
+  const db = await createClient();
+  let query = db
     .from("pos_products")
     .select("*, inventory(*)")
     .eq("store_id", storeId)
@@ -65,8 +65,8 @@ export async function getProducts(
 }
 
 export async function getCategories(storeId: string): Promise<PosCategory[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("pos_categories")
     .select("*")
     .eq("store_id", storeId)
@@ -77,8 +77,8 @@ export async function getCategories(storeId: string): Promise<PosCategory[]> {
 }
 
 export async function getCustomers(storeId: string): Promise<PosCustomer[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("pos_customers")
     .select("*")
     .eq("store_id", storeId)
@@ -89,8 +89,8 @@ export async function getCustomers(storeId: string): Promise<PosCustomer[]> {
 }
 
 export async function getOpenShift(storeId: string): Promise<Shift | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("shifts")
     .select("*")
     .eq("store_id", storeId)
@@ -101,8 +101,8 @@ export async function getOpenShift(storeId: string): Promise<Shift | null> {
 }
 
 export async function getShifts(storeId: string, limit = 30): Promise<Shift[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("shifts")
     .select("*")
     .eq("store_id", storeId)
@@ -131,8 +131,8 @@ export async function getSales(
   storeId: string,
   limit = 50,
 ): Promise<SaleWithRelations[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("sales")
     .select(SALE_SELECT)
     .eq("store_id", storeId)
@@ -146,8 +146,8 @@ export async function getSales(
 export async function getSale(
   saleId: string,
 ): Promise<SaleWithRelations | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("sales")
     .select(SALE_SELECT)
     .eq("id", saleId)
@@ -158,8 +158,8 @@ export async function getSale(
 
 /** Cash-payment total for the current shift (for reconciliation). */
 export async function getShiftCashSales(shiftId: string): Promise<number> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("sales")
     .select("id, payments:sale_payments(method, amount)")
     .eq("shift_id", shiftId)
@@ -190,11 +190,11 @@ export async function getReport(
   from: string,
   to: string,
 ): Promise<ReportData> {
-  const supabase = await createClient();
+  const db = await createClient();
   const fromIso = new Date(`${from}T00:00:00`).toISOString();
   const toIso = new Date(`${to}T23:59:59.999`).toISOString();
 
-  const { data: sales } = await supabase
+  const { data: sales } = await db
     .from("sales")
     .select(
       `id, total, created_at,
@@ -221,7 +221,7 @@ export async function getReport(
       }[]
     >();
 
-  const { data: categories } = await supabase
+  const { data: categories } = await db
     .from("pos_categories")
     .select("id, name")
     .eq("store_id", storeId);
@@ -295,8 +295,8 @@ export interface StoreMemberWithProfile {
 export async function getStoreMembers(
   storeId: string,
 ): Promise<StoreMemberWithProfile[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("store_members")
     .select(
       "*, profile:profiles!store_members_user_id_fkey(id, username, full_name, avatar_url)",

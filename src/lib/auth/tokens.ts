@@ -9,8 +9,9 @@ import { authEnv } from "@/lib/env";
  * one of these: a short-lived ES256 JWT whose `sub` is the user's profiles.id
  * and whose `role` is `authenticated`. PostgREST and Realtime are configured to
  * trust our public JWKS, and RDS's `auth.uid()` reads `sub`, so all 226 RLS
- * policies resolve to the correct user. This is the token supabase-js sends as
- * its bearer to the /sb gateway — Cognito's own tokens never reach the data plane.
+ * policies resolve to the correct user. This is the token the PostgREST client
+ * (`@supabase/supabase-js`) sends as its bearer to the /sb gateway — Cognito's
+ * own tokens never reach the data plane.
  */
 
 const ALG = "ES256";
@@ -44,8 +45,9 @@ export interface DataClaims {
 /**
  * Mint a data token for a profile. Kept deliberately small: `sub` (profile id),
  * `role`/`aud` = authenticated, and optionally the email for convenience. The
- * `kid` header lets PostgREST/Realtime pick our key out of a JWKS that also
- * still holds Supabase's key during the transition.
+ * `kid` header lets PostgREST/Realtime pick our ES256 key out of a JWKS that
+ * also still carries the legacy HS256 anon key (see
+ * deploy/postgrest-add-hs256-key.sh).
  */
 export async function mintDataToken(
   profileId: string,
@@ -68,8 +70,9 @@ let serviceToken: { token: string; expiresAt: number } | null = null;
 
 /**
  * Mint (and briefly cache) a service_role token — the RDS `service_role` has
- * BYPASSRLS, so this is the AWS-native replacement for Supabase's service role
- * key. Used only in trusted server contexts (admin client, webhooks). Cached and
+ * BYPASSRLS, so this is the AWS-native replacement for the former hosted
+ * service-role key. Used only in trusted server contexts (admin client,
+ * webhooks). Cached and
  * re-minted a little before expiry to avoid signing on every request.
  */
 export async function mintServiceToken(): Promise<string> {

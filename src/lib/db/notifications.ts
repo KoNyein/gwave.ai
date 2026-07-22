@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { NotificationWithActor } from "@/types/social";
 
 const NOTIFICATION_SELECT = `
@@ -12,8 +12,8 @@ export async function getNotifications(
   userId: string,
   limit = 30,
 ): Promise<NotificationWithActor[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("notifications")
     .select(NOTIFICATION_SELECT)
     .eq("recipient_id", userId)
@@ -30,8 +30,8 @@ export async function getNotifications(
 export async function getUnreadNotificationCount(
   userId: string,
 ): Promise<number> {
-  const supabase = await createClient();
-  const { count } = await supabase
+  const db = await createClient();
+  const { count } = await db
     .from("notifications")
     .select("id", { count: "exact", head: true })
     .eq("recipient_id", userId)

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient as createPostgrestClient } from "@supabase/supabase-js";
 
 import { publicEnv } from "@/lib/env";
 import type { Database } from "@/types/database";
@@ -10,11 +10,15 @@ import type { Database } from "@/types/database";
  * Because it never touches cookies() it is safe to use inside
  * unstable_cache/ISR scopes where request APIs are unavailable. RLS applies
  * with the anon role, so it can only ever read what anonymous visitors can.
+ *
+ * `@supabase/supabase-js` is a PostgREST client, and our AWS data plane
+ * (PostgREST + Realtime over RDS, at NEXT_PUBLIC_DATA_API_URL) serves exactly
+ * that wire protocol — the package stays, the hosted Supabase service is gone.
  */
 export function createAnonClient() {
-  return createSupabaseClient<Database>(
-    publicEnv.NEXT_PUBLIC_SUPABASE_URL,
-    publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  return createPostgrestClient<Database>(
+    publicEnv.NEXT_PUBLIC_DATA_API_URL,
+    publicEnv.NEXT_PUBLIC_DATA_API_KEY,
     {
       auth: {
         autoRefreshToken: false,

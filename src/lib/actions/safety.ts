@@ -5,8 +5,8 @@ import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
 import { sendPushToUser } from "@/lib/push";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/data/admin";
+import { createClient } from "@/lib/data/server";
 import { getCurrentUser } from "@/lib/auth";
 import type { SafetyStatus } from "@/types/database";
 
@@ -27,11 +27,11 @@ export async function safetyCheckIn(
   const parsed = schema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid check-in." };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
-  const { error } = await supabase.from("safety_checkins").insert({
+  const { error } = await db.from("safety_checkins").insert({
     user_id: user.id,
     status: parsed.data.status,
     note: parsed.data.note || null,

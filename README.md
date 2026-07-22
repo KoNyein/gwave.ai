@@ -1,7 +1,9 @@
 # gwave.ai
 
 GreenWave — a Facebook-style social super-app for growers, built as a single
-Next.js 14 application with Supabase as the backend. Social feed, groups,
+Next.js 14 application on an all-AWS backend (Postgres on RDS behind our own
+self-hosted PostgREST + Realtime, S3/CloudFront storage, Cognito auth).
+Social feed, groups,
 messenger, a strain/mineral knowledge base, paid memberships, grower
 calculators, IoT smart-farm monitoring, a point of sale, and a public REST
 API — all in one codebase.
@@ -26,7 +28,11 @@ Per-phase implementation notes live in `PHASE_REPORT*.md` (Phases 1–9).
 
 - **Next.js 14** (App Router) + **TypeScript** (strict mode)
 - **Tailwind CSS** + **shadcn/ui** primitives, **Zustand** for client state
-- **Supabase** — Postgres (RLS on every table), Auth, Storage, Realtime
+- **AWS** — Postgres on **RDS** (RLS on every table) exposed by a self-hosted
+  **PostgREST + Realtime** data API at `https://gwave.cc/sb`, **S3 + CloudFront**
+  storage, **Amazon Cognito** auth. The `@supabase/supabase-js` dependency stays:
+  it is a PostgREST/Realtime client, and that is exactly the wire protocol our
+  AWS endpoints speak — it does **not** mean the backend is Supabase
 - **next-intl** for i18n (English UI, Burmese `my` scaffolding)
 - **Stripe** + **PromptPay** payments; **EMQX** MQTT broker + Node bridge
 - **pnpm**; Docker (standalone output) via Coolify on AWS EC2
@@ -45,20 +51,25 @@ pnpm install
 cp .env.example .env.local
 ```
 
-Fill in your Supabase project URL and keys. See `.env.example` for the full
-list (Stripe, PromptPay, Coolify variables are optional in development).
-`SUPABASE_SERVICE_ROLE_KEY` is server-only — never expose it to the client.
+Fill in your data-API URL and key — `NEXT_PUBLIC_DATA_API_URL` and
+`NEXT_PUBLIC_DATA_API_KEY` (renamed from `NEXT_PUBLIC_SUPABASE_URL` /
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`; both old names are still accepted as a runtime
+fallback in `src/lib/env.ts` during the transition). See `.env.example` for the
+full list (Stripe, PromptPay, Coolify variables are optional in development).
+Privileged server access mints its own short-lived service token from
+`APP_JWT_PRIVATE_KEY` — server-only, never expose it to the client.
 
 ### 3. Apply database migrations
 
-Migrations live in `supabase/migrations` as plain SQL (chain `0001 → 0009`).
-With the Supabase CLI:
+Migrations live in `supabase/migrations` as plain SQL (directory name is
+historical — they are applied to **RDS**). Apply them with `psql` against the
+database:
 
 ```bash
-supabase db reset   # local: applies migrations + seed
-# or push to a linked project:
-supabase db push
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/<file>.sql
 ```
+
+There is no Supabase project and no `supabase db push` target.
 
 Seeds: `supabase/seed/seed.sql` (demo users/content — **development only**)
 and `supabase/seed/knowledge_seed.sql` (200 strains + 100 minerals — safe for
@@ -77,8 +88,9 @@ Open http://localhost:3000.
 - **IoT**: `docker compose up emqx iot-bridge`, then
   `node scripts/simulate-devices.mjs` to stream fake sensor data
   (see `services/iot-bridge/README.md`).
-- **Edge Functions**: `supabase functions deploy cleanup-stories
-  deliver-webhooks` (hourly / per-minute schedules).
+- **Edge Functions** (`supabase/functions/cleanup-stories`, `deliver-webhooks`):
+  legacy — they ran on the hosted Supabase project, which no longer exists.
+  There is no Edge Functions runtime on the AWS stack.
 
 ## Scripts
 
@@ -116,7 +128,7 @@ floating reactions (broadcast) and a presence-based viewer count.
 ## Messenger calls (WebRTC)
 
 The messenger supports 1:1 **audio and video calls**. Signaling runs over
-Supabase Realtime broadcast channels (ring → accept → offer/answer → ICE),
+our self-hosted Realtime broadcast channels (ring → accept → offer/answer → ICE),
 and media flows peer-to-peer via WebRTC — no extra service required. By
 default calls use Google's public STUN server; for callers behind strict
 NATs, set the optional `NEXT_PUBLIC_TURN_*` variables (see `.env.example`)
@@ -128,9 +140,9 @@ finished or missed call is logged as a message in the conversation.
 
 - **Smoke E2E** (`e2e/smoke.spec.ts`) — auth guards, public pages, security
   headers, API auth, health probe. Runs against the production build with
-  dummy Supabase env; also runs in CI.
+  dummy data-API env; also runs in CI.
 - **Full flows** (`e2e/flows.spec.ts`) — post/react/comment, search, POS
-  sale, API keys. Needs a real seeded Supabase stack: `E2E_FULL=1 pnpm e2e`.
+  sale, API keys. Needs a real seeded database + data API: `E2E_FULL=1 pnpm e2e`.
 - **RLS audit** — `psql "$DB_URL" -v ON_ERROR_STOP=1 -f scripts/rls-audit.sql`
   asserts every forbidden cross-user operation is denied (rolls back).
 - **Load test** — `k6 run -e BASE_URL=... scripts/load-test-feed.js`
@@ -153,13 +165,14 @@ stack.
 
 Roles are stored in `profiles.role` (`user`, `member`, `moderator`, `developer`,
 `admin`, `super_admin`) and enforced by Postgres RLS plus the `requireRole()`
-server helper in `src/lib/auth.ts`. Privileged operations use the service role
-key only from server actions / route handlers (`src/lib/supabase/admin.ts`).
+server helper in `src/lib/auth.ts`. Privileged operations use the service-role
+token only from server actions / route handlers (`src/lib/data/admin.ts`).
 Public API access uses per-key scopes (`read:*`, `write:posts`, …) checked in
 `src/lib/api-auth.ts`.
 
 ## Deploying
 
-Follow `LAUNCH_CHECKLIST.md` — it covers migrations, storage policies, Coolify
-environment variables, EMQX/bridge/Edge Function deployment, the Stripe
-webhook, verification (E2E + k6), monitoring and backups.
+Follow `LAUNCH_CHECKLIST.md` — it covers RDS migrations, S3/CloudFront storage,
+environment variables, EMQX/bridge deployment, the Stripe webhook, verification
+(E2E + k6), monitoring and backups. AWS specifics live in `docs/AWS_DEPLOY.md`
+and `docs/OPERATIONS_RUNBOOK.md`.

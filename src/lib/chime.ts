@@ -12,7 +12,7 @@ import {
  * (1:1 and group, up to 250). Phase 3 of the full-AWS Live/RTC migration.
  *
  * Model: the caller creates a *meeting* (media placed in ap-southeast-1 — Chime
- * supports it, unlike IVS) and sends its id through the existing supabase call
+ * supports it, unlike IVS) and sends its id through the existing data-API call
  * signaling (ring/accept, unchanged); each side then asks for an *attendee* and
  * joins with amazon-chime-sdk-js. The old WebRTC mesh stays behind
  * NEXT_PUBLIC_CALL_PROVIDER (default "mesh") until cutover.

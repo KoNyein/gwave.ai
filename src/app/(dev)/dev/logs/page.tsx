@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
 import { timeAgo } from "@/lib/format";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import { cn } from "@/lib/utils";
 
 export default async function DevLogsPage() {
@@ -17,14 +17,14 @@ export default async function DevLogsPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 
-  const supabase = await createClient();
-  const { data: keys } = await supabase
+  const db = await createClient();
+  const { data: keys } = await db
     .from("api_keys")
     .select("id, name, prefix")
     .eq("owner_id", profile.id);
   const keyNames = new Map((keys ?? []).map((key) => [key.id, key.name]));
 
-  const { data: logs } = await supabase
+  const { data: logs } = await db
     .from("api_logs")
     .select("*")
     .order("created_at", { ascending: false })

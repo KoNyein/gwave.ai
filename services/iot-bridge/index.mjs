@@ -1,5 +1,10 @@
 /**
- * gwave.ai IoT bridge: MQTT ⇄ Supabase.
+ * gwave.ai IoT bridge: MQTT ⇄ the gwave data API.
+ *
+ * The data API is our self-hosted PostgREST + Realtime over RDS (gwave.cc/sb),
+ * not Supabase — gwave left the hosted service on 2026-07-17. The
+ * `@supabase/supabase-js` import stays because it is a PostgREST client, which
+ * is exactly the wire protocol the AWS side serves.
  *
  * Responsibilities:
  *  - subscribe to gwave/+/telemetry — validate the device secret, insert
@@ -12,24 +17,27 @@
  *  - run scene schedules once per minute
  *  - mark devices offline after OFFLINE_AFTER_MS without telemetry
  *
- * Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, MQTT_URL
+ * Env: DATA_API_URL, DATA_API_SERVICE_KEY, MQTT_URL
  * (e.g. mqtt://emqx:1883), optional MQTT_USERNAME/MQTT_PASSWORD, TZ.
+ * The former SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY names are still accepted
+ * as a fallback so an already-deployed bridge keeps running after this rename.
  */
 
 import { createClient } from "@supabase/supabase-js";
 import mqtt from "mqtt";
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const DATA_API_URL = process.env.DATA_API_URL ?? process.env.SUPABASE_URL;
+const SERVICE_KEY =
+  process.env.DATA_API_SERVICE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 const MQTT_URL = process.env.MQTT_URL ?? "mqtt://localhost:1883";
 const OFFLINE_AFTER_MS = 90_000;
 
-if (!SUPABASE_URL || !SERVICE_KEY) {
-  console.error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required");
+if (!DATA_API_URL || !SERVICE_KEY) {
+  console.error("DATA_API_URL and DATA_API_SERVICE_KEY are required");
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
+const db = createClient(DATA_API_URL, SERVICE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
@@ -43,7 +51,7 @@ const client = mqtt.connect(MQTT_URL, {
 const deviceCache = new Map();
 
 async function refreshDeviceCache() {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("devices")
     .select("id, topic, secret, owner_id, type");
   if (error) {
@@ -110,11 +118,11 @@ async function handleTelemetry(device, body) {
     }));
 
   if (rows.length > 0) {
-    const { error } = await supabase.from("sensor_readings").insert(rows);
+    const { error } = await db.from("sensor_readings").insert(rows);
     if (error) log("insert readings failed:", error.message);
   }
 
-  await supabase
+  await db
     .from("devices")
     .update({ online: true, last_seen: new Date().toISOString() })
     .eq("id", device.id);
@@ -126,7 +134,7 @@ async function handleTelemetry(device, body) {
 
 async function handleState(device, body) {
   const state = body.state ?? {};
-  await supabase
+  await db
     .from("devices")
     .update({
       state,
@@ -135,7 +143,7 @@ async function handleState(device, body) {
     })
     .eq("id", device.id);
   // Any in-flight commands for this device are now confirmed.
-  await supabase
+  await db
     .from("device_commands")
     .update({ status: "acked" })
     .eq("device_id", device.id)
@@ -164,7 +172,7 @@ function inTimeWindow(rule, now) {
 }
 
 async function evaluateRules(device, metric, value) {
-  const { data: rules } = await supabase
+  const { data: rules } = await db
     .from("automation_rules")
     .select("*")
     .eq("trigger_device_id", device.id)
@@ -186,19 +194,19 @@ async function evaluateRules(device, metric, value) {
     }
 
     log(`rule "${rule.name}" triggered (${metric} ${value})`);
-    await supabase
+    await db
       .from("automation_rules")
       .update({ last_triggered_at: now.toISOString() })
       .eq("id", rule.id);
 
     if (rule.action_device_id && Object.keys(rule.action ?? {}).length > 0) {
-      await supabase.from("device_commands").insert({
+      await db.from("device_commands").insert({
         device_id: rule.action_device_id,
         command: rule.action,
       });
     }
 
-    await supabase.from("alerts").insert({
+    await db.from("alerts").insert({
       owner_id: rule.owner_id,
       device_id: device.id,
       rule_id: rule.id,
@@ -213,7 +221,7 @@ async function evaluateRules(device, metric, value) {
 // ---------------------------------------------------------------------------
 
 async function dispatchPendingCommands() {
-  const { data: pending } = await supabase
+  const { data: pending } = await db
     .from("device_commands")
     .select("id, device_id, command")
     .eq("status", "pending")
@@ -233,7 +241,7 @@ async function dispatchPendingCommands() {
       JSON.stringify(command.command),
       { qos: 1 },
     );
-    await supabase
+    await db
       .from("device_commands")
       .update({ status: "sent" })
       .eq("id", command.id);
@@ -241,7 +249,7 @@ async function dispatchPendingCommands() {
   }
 }
 
-supabase
+db
   .channel("bridge:commands")
   .on(
     "postgres_changes",
@@ -259,7 +267,7 @@ async function runDueSchedules() {
   const currentTime = now.toTimeString().slice(0, 5);
   const isoWeekday = ((now.getDay() + 6) % 7) + 1; // 1 = Monday
 
-  const { data: schedules } = await supabase
+  const { data: schedules } = await db
     .from("scene_schedules")
     .select("id, scene_id, run_at, days_of_week, last_run_at")
     .eq("enabled", true);
@@ -274,7 +282,7 @@ async function runDueSchedules() {
       continue;
     }
 
-    const { data: scene } = await supabase
+    const { data: scene } = await db
       .from("scenes")
       .select("name, actions")
       .eq("id", schedule.scene_id)
@@ -284,14 +292,14 @@ async function runDueSchedules() {
     log(`schedule fired: scene "${scene.name}"`);
     const actions = scene.actions ?? [];
     if (actions.length > 0) {
-      await supabase.from("device_commands").insert(
+      await db.from("device_commands").insert(
         actions.map((action) => ({
           device_id: action.device_id,
           command: action.command,
         })),
       );
     }
-    await supabase
+    await db
       .from("scene_schedules")
       .update({ last_run_at: now.toISOString() })
       .eq("id", schedule.id);
@@ -300,7 +308,7 @@ async function runDueSchedules() {
 
 async function sweepOfflineDevices() {
   const cutoff = new Date(Date.now() - OFFLINE_AFTER_MS).toISOString();
-  await supabase
+  await db
     .from("devices")
     .update({ online: false })
     .eq("online", true)

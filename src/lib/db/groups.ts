@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type {
   Group,
   GroupMember,
@@ -20,8 +20,8 @@ export type GroupMembershipState =
   | { kind: "member"; role: GroupMemberRole };
 
 export async function getGroupBySlug(slug: string): Promise<Group | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("groups")
     .select("*")
     .eq("slug", slug)
@@ -33,8 +33,8 @@ export async function getGroupMembership(
   groupId: string,
   userId: string,
 ): Promise<GroupMembershipState> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("group_members")
     .select("role, status")
     .eq("group_id", groupId)
@@ -49,8 +49,8 @@ export async function getGroupMembers(
   groupId: string,
   status: GroupMemberStatus = "active",
 ): Promise<GroupMemberWithProfile[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("group_members")
     .select(
       "*, profile:profiles!group_members_user_id_fkey(id, username, full_name, avatar_url)",
@@ -65,8 +65,8 @@ export async function getGroupMembers(
 
 /** Groups the user belongs to (active), newest membership first. */
 export async function getMyGroups(userId: string): Promise<Group[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("group_members")
     .select("group:groups!group_members_group_id_fkey(*)")
     .eq("user_id", userId)
@@ -81,13 +81,13 @@ export async function getDiscoverGroups(
   userId: string,
   limit = 20,
 ): Promise<Group[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   const [{ data: memberships }, { data: groups }] = await Promise.all([
-    supabase
+    db
       .from("group_members")
       .select("group_id")
       .eq("user_id", userId),
-    supabase
+    db
       .from("groups")
       .select("*")
       .order("member_count", { ascending: false })

@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { PRIVACY_VERSION, TERMS_VERSION } from "@/lib/consent";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 const profileSchema = z.object({
   username: z
@@ -51,13 +51,13 @@ export async function saveProfile(
     return { error: parsed.error.errors[0]?.message ?? "Invalid input." };
   }
 
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) {
     redirect("/login");
   }
 
-  const { error } = await supabase.from("profiles").upsert({
+  const { error } = await db.from("profiles").upsert({
     id: user.id,
     username: parsed.data.username,
     full_name: parsed.data.full_name || null,
@@ -82,7 +82,7 @@ export async function saveProfile(
   // as if they accepted while no consent record exists. The profile upsert above
   // is idempotent, so returning an error here retries the whole action safely
   // rather than proceeding without the record.
-  const { error: consentError } = await supabase.from("consents").insert({
+  const { error: consentError } = await db.from("consents").insert({
     user_id: user.id,
     terms_version: TERMS_VERSION,
     privacy_version: PRIVACY_VERSION,

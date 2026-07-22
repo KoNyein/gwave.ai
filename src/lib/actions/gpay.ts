@@ -8,7 +8,7 @@ import { z } from "zod";
 import type { ActionResult } from "@/lib/actions/posts";
 import { sendSms, smsConfigured } from "@/lib/sms";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { GpayStatus } from "@/types/database";
 
 async function requestOrigin(): Promise<string> {
@@ -76,8 +76,8 @@ export async function requestGpayPhoneOtp(phone: string): Promise<ActionResult> 
 
   // 6-digit code; stored bcrypt-hashed by the DB function (never persisted raw).
   const code = String(Math.floor(100000 + Math.random() * 900000));
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("gpay_start_phone_otp", {
+  const db = await createClient();
+  const { error } = await db.rpc("gpay_start_phone_otp", {
     p_phone: parsed.data,
     p_code: code,
   });
@@ -104,8 +104,8 @@ export async function verifyGpayPhoneOtp(
   if (!/^[0-9]{6}$/.test(code)) {
     return { ok: false, error: "Enter the 6-digit code." };
   }
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("gpay_verify_phone_otp", {
+  const db = await createClient();
+  const { data, error } = await db.rpc("gpay_verify_phone_otp", {
     p_phone: phone,
     p_code: code,
   });
@@ -127,8 +127,8 @@ export async function saveGpayKyc(input: GpayKycInput): Promise<ActionResult> {
 
   const v = parsed.data;
 
-  const supabase0 = await createClient();
-  const { data: existing } = await supabase0
+  const db0 = await createClient();
+  const { data: existing } = await db0
     .from("gpay_accounts")
     .select("id")
     .eq("user_id", userId)
@@ -138,7 +138,7 @@ export async function saveGpayKyc(input: GpayKycInput): Promise<ActionResult> {
   // when SMS is actually configured, so the flow still works before an operator
   // wires up a provider.
   if (!existing && smsConfigured()) {
-    const { data: verified } = await supabase0.rpc("gpay_phone_verified", {
+    const { data: verified } = await db0.rpc("gpay_phone_verified", {
       p_phone: v.phone,
     });
     if (verified !== true) {
@@ -163,10 +163,10 @@ export async function saveGpayKyc(input: GpayKycInput): Promise<ActionResult> {
   if (v.slipPath) row.slip_path = v.slipPath;
   if (v.facePath) row.face_path = v.facePath;
 
-  const supabase = await createClient();
+  const db = await createClient();
   // Upsert on user_id: first submission inserts (pending), later edits update
   // the KYC fields. balance/status are protected by the DB guard trigger.
-  const { error } = await supabase
+  const { error } = await db
     .from("gpay_accounts")
     .upsert(row, { onConflict: "user_id" });
 
@@ -199,9 +199,9 @@ export async function createGpayTopupCheckout(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
+  const db = await createClient();
   // Must have an active wallet to credit.
-  const { data: acct } = await supabase
+  const { data: acct } = await db
     .from("gpay_accounts")
     .select("status")
     .eq("user_id", userId)
@@ -211,7 +211,7 @@ export async function createGpayTopupCheckout(
   }
 
   // Convert MMK → USD for the card charge (Stripe minimum ~$0.50).
-  const { data: usd } = await supabase.rpc("gpay_convert", {
+  const { data: usd } = await db.rpc("gpay_convert", {
     amount,
     from_code: "MMK",
     to_code: "USD",
@@ -279,8 +279,8 @@ export async function transferGpay(input: {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("gpay_transfer", {
+  const db = await createClient();
+  const { error } = await db.rpc("gpay_transfer", {
     p_to_phone: parsed.data.toPhone,
     p_amount: parsed.data.amount,
     p_note: parsed.data.note ?? null,
@@ -303,8 +303,8 @@ export async function setGpayPin(pin: string): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("gpay_set_pin", { p_pin: parsed.data });
+  const db = await createClient();
+  const { error } = await db.rpc("gpay_set_pin", { p_pin: parsed.data });
   if (error) return { ok: false, error: error.message };
   revalidatePath("/gpay");
   return { ok: true, data: undefined };
@@ -325,8 +325,8 @@ export async function setGpayStatus(input: {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("gpay_set_status", {
+  const db = await createClient();
+  const { error } = await db.rpc("gpay_set_status", {
     p_account: parsed.data.accountId,
     p_status: parsed.data.status,
   });
@@ -352,8 +352,8 @@ export async function topupGpay(input: {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("gpay_admin_topup", {
+  const db = await createClient();
+  const { error } = await db.rpc("gpay_admin_topup", {
     p_account: parsed.data.accountId,
     p_amount: parsed.data.amount,
     p_note: parsed.data.note ?? null,

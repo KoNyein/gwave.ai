@@ -1,7 +1,7 @@
 import "server-only";
 import { getCurrentUser } from "@/lib/auth";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type {
   LeaderboardEntry,
   Review,
@@ -22,8 +22,8 @@ export async function getReviews(
   subjectId: string,
   limit = 30,
 ): Promise<ReviewWithAuthor[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("reviews")
     .select(`*, author:profiles!reviews_reviewer_id_fkey(${AUTHOR_SELECT})`)
     .eq("subject_type", subjectType)
@@ -39,8 +39,8 @@ export async function getReviewStats(
   subjectType: ReviewSubject,
   subjectId: string,
 ): Promise<ReviewStats> {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("review_stats", {
+  const db = await createClient();
+  const { data } = await db.rpc("review_stats", {
     p_subject_type: subjectType,
     p_subject_id: subjectId,
   });
@@ -57,10 +57,10 @@ export async function getMyReview(
   subjectType: ReviewSubject,
   subjectId: string,
 ): Promise<Review | null> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return null;
-  const { data } = await supabase
+  const { data } = await db
     .from("reviews")
     .select("*")
     .eq("subject_type", subjectType)
@@ -85,8 +85,8 @@ export async function getLeaderboard(
   subjectType: Exclude<ReviewSubject, "profile">,
   limit = 20,
 ): Promise<LeaderboardEntry[]> {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("review_leaderboard", {
+  const db = await createClient();
+  const { data } = await db.rpc("review_leaderboard", {
     p_subject_type: subjectType,
     p_limit: limit,
     p_min_reviews: 1,
@@ -98,7 +98,7 @@ export async function getLeaderboard(
   const display = new Map<string, { title: string; image: string | null; href: string }>();
 
   if (subjectType === "page") {
-    const { data: pages } = await supabase
+    const { data: pages } = await db
       .from("pages")
       .select("id, name, slug, avatar_url")
       .in("id", ids)
@@ -107,7 +107,7 @@ export async function getLeaderboard(
       display.set(p.id, { title: p.name, image: p.avatar_url, href: `/pages/${p.slug}` });
     }
   } else {
-    const { data: products } = await supabase
+    const { data: products } = await db
       .from("shop_products")
       .select("id, title, image_url")
       .in("id", ids)

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/data/admin";
 
 /**
  * Make sure a `profiles` row exists for [profileId], creating it when missing.

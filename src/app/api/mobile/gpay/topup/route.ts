@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { verifyDataToken } from "@/lib/auth/tokens";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/data/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,10 +50,10 @@ export async function POST(request: NextRequest) {
   }
   const amount = Math.round(parsed.data.amount);
 
-  const supabase = createAdminClient();
+  const db = createAdminClient();
 
   // Must have an active wallet to credit.
-  const { data: acct } = await supabase
+  const { data: acct } = await db
     .from("gpay_accounts")
     .select("status")
     .eq("user_id", claims.sub)
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Convert MMK → USD for the card charge (Stripe minimum ~$0.50).
-  const { data: usd } = await supabase.rpc("gpay_convert", {
+  const { data: usd } = await db.rpc("gpay_convert", {
     amount,
     from_code: "MMK",
     to_code: "USD",

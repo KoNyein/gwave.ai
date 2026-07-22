@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { SafetyCheckin } from "@/types/database";
 import type { AuthorSummary } from "@/types/social";
 
@@ -17,7 +17,7 @@ export interface FamilySafety {
 export async function getFamilySafety(
   userId: string,
 ): Promise<FamilySafety[]> {
-  const supabase = await createClient();
+  const db = await createClient();
 
   // This is a disaster safety-status board. A swallowed error anywhere here would
   // render family members as "unknown" (no check-in) during an actual outage —
@@ -26,7 +26,7 @@ export async function getFamilySafety(
   // still return [] normally.
 
   // Everyone in a circle the caller belongs to (includes self), deduped.
-  const { data: myRows, error: myErr } = await supabase
+  const { data: myRows, error: myErr } = await db
     .from("family_memberships")
     .select("circle_id")
     .eq("user_id", userId)
@@ -35,7 +35,7 @@ export async function getFamilySafety(
   const circleIds = (myRows ?? []).map((r) => r.circle_id);
   if (circleIds.length === 0) return [];
 
-  const { data: memberRows, error: memErr } = await supabase
+  const { data: memberRows, error: memErr } = await db
     .from("family_memberships")
     .select(
       "user_id, profile:profiles!family_memberships_user_id_fkey(id, username, full_name, avatar_url)",
@@ -51,7 +51,7 @@ export async function getFamilySafety(
   if (people.size === 0) return [];
 
   // Latest check-in per user (newest first, keep the first seen per user).
-  const { data: checkins, error: chkErr } = await supabase
+  const { data: checkins, error: chkErr } = await db
     .from("safety_checkins")
     .select("*")
     .in("user_id", [...people.keys()])

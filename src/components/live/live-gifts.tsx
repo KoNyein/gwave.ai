@@ -8,7 +8,7 @@ import { Gift, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { sendLiveGift } from "@/lib/actions/live-gifts";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import { cn } from "@/lib/utils";
 import type { LiveGift } from "@/types/database";
 
@@ -54,8 +54,8 @@ export function LiveGifts({
   }, []);
 
   React.useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase.channel(`live-gifts:${streamId}`, {
+    const db = createClient();
+    const channel = db.channel(`live-gifts:${streamId}`, {
       config: { broadcast: { self: true } },
     });
     channel
@@ -67,7 +67,7 @@ export function LiveGifts({
     chanRef.current = channel;
     return () => {
       chanRef.current = null;
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [streamId, pushFloater]);
 

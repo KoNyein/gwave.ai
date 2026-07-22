@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 async function getUserId(): Promise<string | null> {
   const user = await getCurrentUser();
@@ -32,8 +32,8 @@ export async function createReel(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in." };
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("reels").insert({
+  const db = await createClient();
+  const { error } = await db.from("reels").insert({
     owner_id: userId,
     video_path: parsed.data.video_path,
     poster_path: parsed.data.poster_path ?? null,
@@ -48,8 +48,8 @@ export async function createReel(
 /** Record a unique view (fire-and-forget; failures are non-fatal). */
 export async function recordReelView(reelId: string): Promise<void> {
   if (!reelId) return;
-  const supabase = await createClient();
-  await supabase.rpc("record_reel_view", { p_reel: reelId });
+  const db = await createClient();
+  await db.rpc("record_reel_view", { p_reel: reelId });
 }
 
 /**
@@ -61,8 +61,8 @@ export async function recordReelWatch(
   seconds: number,
 ): Promise<void> {
   if (!reelId || !Number.isFinite(seconds) || seconds <= 0) return;
-  const supabase = await createClient();
-  await supabase.rpc("record_reel_watch", {
+  const db = await createClient();
+  await db.rpc("record_reel_watch", {
     p_reel: reelId,
     p_seconds: Math.round(seconds),
   });
@@ -73,8 +73,8 @@ export async function toggleReelLike(
   reelId: string,
 ): Promise<ActionResult<boolean>> {
   if (!reelId) return { ok: false, error: "Missing reel." };
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("toggle_reel_like", {
+  const db = await createClient();
+  const { data, error } = await db.rpc("toggle_reel_like", {
     p_reel: reelId,
   });
   if (error) return { ok: false, error: error.message };
@@ -85,8 +85,8 @@ export async function toggleReelLike(
 export async function deleteReel(reelId: string): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in." };
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("reels")
     .delete()
     .eq("id", reelId)
@@ -98,8 +98,8 @@ export async function deleteReel(reelId: string): Promise<ActionResult> {
 
 /** Move unpaid reel earnings into the caller's active G-Pay wallet. */
 export async function withdrawEarnings(): Promise<ActionResult<number>> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("withdraw_reel_earnings");
+  const db = await createClient();
+  const { data, error } = await db.rpc("withdraw_reel_earnings");
   if (error) return { ok: false, error: error.message };
   revalidatePath("/reels");
   revalidatePath("/gpay");

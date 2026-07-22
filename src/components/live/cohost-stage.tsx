@@ -45,7 +45,7 @@ import {
   searchCohostCandidates,
 } from "@/lib/actions/cohost";
 import { displayName } from "@/lib/format";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import type { AuthorSummary } from "@/types/social";
 
 interface Conn {
@@ -156,7 +156,7 @@ function StageBody({
     { onlySubscribed: false },
   );
 
-  const supabase = React.useMemo(() => createClient(), []);
+  const db = React.useMemo(() => createClient(), []);
   const channelRef = React.useRef<RealtimeChannel | null>(null);
   const [requests, setRequests] = React.useState<RaisePayload[]>([]);
   const [raised, setRaised] = React.useState(false);
@@ -174,7 +174,7 @@ function StageBody({
   }, [isHost, refreshGuests]);
 
   React.useEffect(() => {
-    const channel = supabase.channel(`cohost-stage-${code}`, {
+    const channel = db.channel(`cohost-stage-${code}`, {
       config: { broadcast: { self: false } },
     });
     channel.on("broadcast", { event: "raise" }, ({ payload }) => {
@@ -200,10 +200,10 @@ function StageBody({
     channel.subscribe();
     channelRef.current = channel;
     return () => {
-      supabase.removeChannel(channel);
+      db.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [code, isHost, currentUser.id, onPermissionChange, supabase]);
+  }, [code, isHost, currentUser.id, onPermissionChange, db]);
 
   async function raiseHand() {
     setRaised(true);

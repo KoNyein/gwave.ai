@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import {
   LIVE_REACTION_EMOJIS,
   type LiveReactionEmoji,
@@ -50,8 +50,8 @@ export function ReactionBar({
   }, []);
 
   React.useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase.channel(`live-reactions:${streamId}`, {
+    const db = createClient();
+    const channel = db.channel(`live-reactions:${streamId}`, {
       config: { broadcast: { self: true } },
     });
     channel
@@ -63,7 +63,7 @@ export function ReactionBar({
     channelRef.current = channel;
     return () => {
       channelRef.current = null;
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [streamId, spawn]);
 
@@ -75,8 +75,8 @@ export function ReactionBar({
       payload: { emoji },
     });
     // Fire-and-forget persistence for counts/analytics.
-    const supabase = createClient();
-    void supabase
+    const db = createClient();
+    void db
       .from("live_reactions")
       .insert({ stream_id: streamId, user_id: userId, emoji })
       .then(({ error }) => {

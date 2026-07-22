@@ -36,14 +36,14 @@ import {
   getLiveProducts,
   getMySellableProducts,
 } from "@/lib/db/live-products";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import { displayName, liveStreamTitle, timeAgo } from "@/lib/format";
 import { agoraRecordingUrl } from "@/lib/agora";
 import { isIvsChannelLive } from "@/lib/ivs";
 import { ivsRecordingUrl } from "@/lib/ivs-realtime";
 import { recordingPlaybackUrl } from "@/lib/livekit";
 import { mediaUrl } from "@/lib/media-url";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/data/admin";
 import { MUX_RTMP_URL } from "@/lib/mux";
 
 export const dynamic = "force-dynamic";
@@ -141,8 +141,8 @@ export default async function LiveStreamPage(
     getTopGifters(stream.id),
     getStreamGiftTotal(stream.id),
   ]);
-  const giftSupabase = await createClient();
-  const { data: myGpayGift } = await giftSupabase
+  const giftDb = await createClient();
+  const { data: myGpayGift } = await giftDb
     .from("gpay_accounts")
     .select("status")
     .eq("user_id", profile.id)
@@ -150,7 +150,7 @@ export default async function LiveStreamPage(
   const canGift = myGpayGift?.status === "active" && !isHost;
   let giftHasPin = false;
   if (canGift) {
-    const { data } = await giftSupabase.rpc("gpay_has_pin");
+    const { data } = await giftDb.rpc("gpay_has_pin");
     giftHasPin = data === true;
   }
 

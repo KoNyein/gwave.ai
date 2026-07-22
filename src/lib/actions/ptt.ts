@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/data/admin";
+import { createClient } from "@/lib/data/server";
 import { getCurrentUser } from "@/lib/auth";
 
 async function getUserId(): Promise<string | null> {
@@ -32,9 +32,9 @@ export async function createPttChannel(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in." };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const joinCode = makeJoinCode();
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("ptt_channels")
     .insert({ name: parsed.data, join_code: joinCode, owner_id: userId })
     .select("id, join_code")
@@ -47,11 +47,11 @@ export async function createPttChannel(
   // channel whose owner isn't a member is dead — the owner can hand out the join
   // code but nobody, including them, can post. Roll the channel back and report
   // the failure rather than leaving that orphan behind.
-  const { error: joinError } = await supabase
+  const { error: joinError } = await db
     .from("ptt_channel_members")
     .insert({ channel_id: data.id, user_id: userId });
   if (joinError) {
-    await supabase.from("ptt_channels").delete().eq("id", data.id);
+    await db.from("ptt_channels").delete().eq("id", data.id);
     return { ok: false, error: "Could not create channel." };
   }
 
@@ -114,8 +114,8 @@ export async function sendPttMessage(input: {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in." };
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("ptt_messages")
     .insert({
       channel_id: parsed.data.channelId,
@@ -137,8 +137,8 @@ export async function leavePttChannel(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in." };
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("ptt_channel_members")
     .delete()
     .eq("channel_id", channelId)

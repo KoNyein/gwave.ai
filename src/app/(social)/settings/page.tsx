@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
 import { getSiteTheme } from "@/lib/db/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 export const metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
@@ -30,15 +30,15 @@ export default async function SettingsPage({
   const linkResult = (await searchParams)?.link;
   const adminTheme = await getSiteTheme();
 
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   const [{ data: deletion }, { data: invoices }] = await Promise.all([
-    supabase
+    db
       .from("deletion_requests")
       .select("status")
       .eq("user_id", profile.id)
       .maybeSingle(),
-    supabase
+    db
       .from("invoices")
       .select("id, number, amount, currency, description, issued_at")
       .eq("user_id", profile.id)

@@ -4,7 +4,7 @@ import * as React from "react";
 import { Loader2, RotateCcw, Swords } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import { cn } from "@/lib/utils";
 
 type Cell = "X" | "O" | null;
@@ -53,8 +53,8 @@ export function TicTacToeGame({
   stateRef.current = state;
 
   React.useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase.channel(`game:${conversationId}:ttt`, {
+    const db = createClient();
+    const channel = db.channel(`game:${conversationId}:ttt`, {
       config: { broadcast: { self: false } },
     });
     channel
@@ -97,7 +97,7 @@ export function TicTacToeGame({
     chanRef.current = channel;
     return () => {
       chanRef.current = null;
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [conversationId, currentUserId]);
 

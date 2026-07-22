@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { Message } from "@/types/database";
 import type {
   ConversationSummary,
@@ -17,8 +17,8 @@ const PARTICIPANT_SELECT = `
 export async function getConversations(
   userId: string,
 ): Promise<ConversationSummary[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("conversations")
     .select(`*, participants:conversation_participants(${PARTICIPANT_SELECT})`)
     .order("last_message_at", { ascending: false })
@@ -38,7 +38,7 @@ export async function getConversations(
   // with their unread dot cleared. DISTINCT ON in the database gives exactly one
   // row each, and RLS still applies (the function is security invoker).
   const ids = conversations.map((c) => c.id);
-  const { data: lastMessages } = await supabase.rpc(
+  const { data: lastMessages } = await db.rpc(
     "conversation_last_messages",
     { ids },
   );
@@ -66,8 +66,8 @@ export async function getMessages(
   conversationId: string,
   limit = 100,
 ): Promise<MessageWithSender[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("messages")
     .select(
       "*, sender:profiles!messages_sender_id_fkey(id, username, full_name, avatar_url)",

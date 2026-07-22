@@ -1,3 +1,12 @@
+// NOT DEPLOYED — legacy Supabase Edge Function, kept for reference only.
+//
+// This ran on the hosted Supabase platform, which gwave left on 2026-07-17
+// (database on RDS, data API = self-hosted PostgREST + Realtime at
+// https://gwave.cc/sb, storage on S3/CloudFront, auth on Cognito). There is no
+// Supabase Edge runtime any more, so nothing here executes; the `SUPABASE_URL`
+// and `SUPABASE_SERVICE_ROLE_KEY` below were injected by that platform and no
+// longer exist. Do not treat this file as evidence the backend is Supabase.
+//
 // Webhook delivery worker: sends due webhook_deliveries with an HMAC-SHA256
 // signature and exponential-backoff retries (up to 5 attempts).
 //

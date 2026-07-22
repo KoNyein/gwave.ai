@@ -2,7 +2,7 @@ import "server-only";
 
 import { SPONSORED_SLOT } from "@/lib/ads/rank";
 import { pickBoostForFeed } from "@/lib/db/boosts";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import { rankItems } from "@/lib/feed/rank";
 import {
   decodeCursor,
@@ -122,14 +122,14 @@ interface FeedGraph {
 
 /** The viewer's social graph: accepted friends and followed users. */
 async function getFeedGraph(userId: string): Promise<FeedGraph> {
-  const supabase = await createClient();
+  const db = await createClient();
   const [friendshipsRes, followsRes] = await Promise.all([
-    supabase
+    db
       .from("friendships")
       .select("requester_id, addressee_id")
       .eq("status", "accepted")
       .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`),
-    supabase.from("follows").select("followee_id").eq("follower_id", userId),
+    db.from("follows").select("followee_id").eq("follower_id", userId),
   ]);
 
   const friendIds = new Set<string>();
@@ -178,8 +178,8 @@ async function injectSponsoredPost(
   // Don't show a promo for a post already on screen.
   if (posts.some((p) => p.id === winner.target_id)) return posts;
 
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("posts")
     .select(POST_SELECT)
     .eq("id", winner.target_id)
@@ -206,13 +206,13 @@ export async function getFeed(
   cursor: string | null = null,
   limit = FEED_PAGE_SIZE,
 ): Promise<FeedPage> {
-  const supabase = await createClient();
+  const db = await createClient();
   const graph = await getFeedGraph(userId);
 
   // Phase 2 — chronological continuation.
   if (cursor && cursor.startsWith("c:")) {
     const decoded = decodeCursor(cursor.slice(2));
-    let query = supabase
+    let query = db
       .from("posts")
       .select(POST_SELECT)
       .in("author_id", graph.authorIds)
@@ -244,7 +244,7 @@ export async function getFeed(
       ? Math.max(0, Number.parseInt(cursor.slice(2), 10) || 0)
       : 0;
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("posts")
     .select(POST_SELECT)
     .in("author_id", graph.authorIds)
@@ -297,9 +297,9 @@ export async function getProfilePosts(
   cursor: string | null = null,
   limit = FEED_PAGE_SIZE,
 ): Promise<FeedPage> {
-  const supabase = await createClient();
+  const db = await createClient();
 
-  let query = supabase
+  let query = db
     .from("posts")
     .select(POST_SELECT)
     .eq("author_id", profileId)
@@ -325,9 +325,9 @@ export async function getGroupPosts(
   cursor: string | null = null,
   limit = FEED_PAGE_SIZE,
 ): Promise<FeedPage> {
-  const supabase = await createClient();
+  const db = await createClient();
 
-  let query = supabase
+  let query = db
     .from("posts")
     .select(POST_SELECT)
     .eq("group_id", groupId)
@@ -351,9 +351,9 @@ export async function getPagePosts(
   cursor: string | null = null,
   limit = FEED_PAGE_SIZE,
 ): Promise<FeedPage> {
-  const supabase = await createClient();
+  const db = await createClient();
 
-  let query = supabase
+  let query = db
     .from("posts")
     .select(POST_SELECT)
     .eq("page_id", pageId)
@@ -375,8 +375,8 @@ export async function getPost(
   postId: string,
   viewerId: string,
 ): Promise<FeedPost | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("posts")
     .select(POST_SELECT)
     .eq("id", postId)
@@ -402,8 +402,8 @@ export async function getProfilePhotos(
   profileId: string,
   limit = 30,
 ): Promise<ProfilePhoto[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("posts")
     .select("id, created_at, media:post_media(storage_path, media_type, position)")
     .eq("author_id", profileId)
@@ -446,8 +446,8 @@ export async function getComments(
   postId: string,
   viewerId: string,
 ): Promise<CommentWithAuthor[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("comments")
     .select(
       `*, author:profiles!comments_author_id_fkey(${AUTHOR_SELECT}), my_reaction:reactions(type)`,

@@ -7,7 +7,7 @@ import { stopIvsStream } from "@/lib/ivs";
 import { stopIvsComposition } from "@/lib/ivs-realtime";
 import { egressConfigured, stopRoomRecording } from "@/lib/livekit";
 import { getMux } from "@/lib/mux";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/data/admin";
 
 const uuid = z.string().uuid();
 

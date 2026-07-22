@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { AuthorSummary } from "@/types/social";
 
 export interface ExperiencePost {
@@ -22,8 +22,8 @@ export async function getExperiencePosts(
   itemPath: string,
   limit = 12,
 ): Promise<ExperiencePost[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("posts")
     .select(
       `id, content, created_at,

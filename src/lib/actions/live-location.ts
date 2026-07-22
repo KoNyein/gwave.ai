@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 
 import type { ActionResult } from "@/lib/actions/posts";
 import { notifyConversation } from "@/lib/notify-conversation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 const startSchema = z.object({
   conversationId: z.string().uuid(),
@@ -26,7 +26,7 @@ export async function startLiveLocation(
   const parsed = startSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid location." };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
@@ -34,7 +34,7 @@ export async function startLiveLocation(
     Date.now() + parsed.data.minutes * 60 * 1000,
   ).toISOString();
 
-  const { data: message, error: messageError } = await supabase
+  const { data: message, error: messageError } = await db
     .from("messages")
     .insert({
       conversation_id: parsed.data.conversationId,
@@ -50,7 +50,7 @@ export async function startLiveLocation(
     return { ok: false, error: messageError?.message ?? "Failed to share." };
   }
 
-  const { error } = await supabase.from("live_locations").insert({
+  const { error } = await db.from("live_locations").insert({
     message_id: message.id,
     conversation_id: parsed.data.conversationId,
     user_id: user.id,
@@ -61,7 +61,7 @@ export async function startLiveLocation(
   });
   if (error) {
     // Don't leave a message claiming to be live with nothing behind it.
-    await supabase.from("messages").delete().eq("id", message.id);
+    await db.from("messages").delete().eq("id", message.id);
     return { ok: false, error: error.message };
   }
 
@@ -95,8 +95,8 @@ export async function moveLiveLocation(
   const parsed = moveSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid location." };
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("live_locations")
     .update({
       latitude: parsed.data.latitude,
@@ -115,8 +115,8 @@ export async function moveLiveLocation(
 export async function stopLiveLocation(
   messageId: string,
 ): Promise<ActionResult> {
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("live_locations")
     .update({ stopped_at: new Date().toISOString() })
     .eq("message_id", messageId)

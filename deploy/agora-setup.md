@@ -45,8 +45,9 @@ Agora's region code for **ap-southeast-1 (Singapore) is `8`** — the default.
 
 ## 3. Database migration
 
-Apply once against the production DB (idempotent). Same as
-`supabase/migrations/20260719140000_live_agora.sql`:
+Apply once against the production database — **RDS**, with `psql` (there is no
+Supabase project; the `supabase/migrations/` directory name is historical).
+Idempotent. Same as `supabase/migrations/20260719140000_live_agora.sql`:
 
 ```sql
 alter table public.live_streams

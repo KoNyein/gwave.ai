@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 #
-# Reproducible launcher for the self-hosted Supabase Realtime container.
+# Reproducible launcher for the self-hosted Realtime container. This is the
+# OPEN-SOURCE supabase/realtime server running on our own EC2 box against RDS —
+# gwave has no hosted Supabase project (migrated off 2026-07-17).
 #
 # Realtime runs as a plain `docker run` on the box (NOT docker-compose), so its
 # config — including the RDS password and API_JWT_SECRET — lives only inside the

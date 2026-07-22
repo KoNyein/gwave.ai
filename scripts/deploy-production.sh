@@ -1,5 +1,25 @@
 #!/usr/bin/env bash
-# gwave.ai — one-command production deploy (database side).
+# ############################################################################
+# OBSOLETE — DO NOT USE. Kept only as a record of the pre-AWS deploy.
+#
+# This script drives the HOSTED SUPABASE project that gwave no longer has.
+# gwave migrated to AWS on 2026-07-17: the database is on RDS, the data API is
+# our own self-hosted PostgREST + Realtime behind https://gwave.cc/sb, storage
+# is S3/CloudFront and auth is Cognito. There is no Supabase project to link,
+# no `supabase db push` target, and no Edge Functions runtime.
+#
+# Current deploy path instead:
+#   - build + push the image:  ~/gwave-ops/rebuild-gwave.sh
+#   - roll it out on the box:  sudo gwave-redeploy   (deploy/ecr-redeploy.sh)
+#   - migrations are applied to RDS with psql against the RDS endpoint.
+#
+# It refuses to run rather than let someone spend hours on a dead backend.
+# ############################################################################
+echo "scripts/deploy-production.sh is OBSOLETE (pre-AWS, hosted Supabase)." >&2
+echo "gwave runs on AWS since 2026-07-17 — see the header of this file." >&2
+exit 1
+
+# gwave.ai — one-command production deploy (database side). [HISTORICAL]
 #
 # Automates the DB/functions portion of LAUNCH_CHECKLIST.md:
 #   1. Links the Supabase project and applies migrations 0001 → 0010

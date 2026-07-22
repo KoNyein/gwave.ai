@@ -2,7 +2,7 @@
 
 import { getCurrentUser } from "@/lib/auth";
 import { sendPushToUser } from "@/lib/push";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/data/admin";
 
 /**
  * Web-push every other participant of a conversation about an incoming call,

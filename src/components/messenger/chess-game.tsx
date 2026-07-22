@@ -12,7 +12,7 @@ import {
 
 import { UserAvatar } from "@/components/social/user-avatar";
 import { displayName } from "@/lib/format";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import {
   applyMove,
   colorOf,
@@ -211,8 +211,8 @@ export function ChessGame({
 
   // Realtime sync with the opponent.
   React.useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase.channel(`game:${conversationId}:chess`, {
+    const db = createClient();
+    const channel = db.channel(`game:${conversationId}:chess`, {
       config: { broadcast: { self: false } },
     });
     channel
@@ -274,7 +274,7 @@ export function ChessGame({
     chanRef.current = channel;
     return () => {
       chanRef.current = null;
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [conversationId, currentUserId]);
 

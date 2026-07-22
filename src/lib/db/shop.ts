@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type {
   ShopOrder,
   ShopProduct,
@@ -29,8 +29,8 @@ export async function getShopProducts(
   kind?: ShopProductKind,
   limit = 60,
 ): Promise<ShopProductWithSeller[]> {
-  const supabase = await createClient();
-  let query = supabase
+  const db = await createClient();
+  let query = db
     .from("shop_products")
     .select(PRODUCT_SELECT)
     .eq("status", "active")
@@ -47,8 +47,8 @@ export async function getShopProducts(
 export async function getShopProduct(
   id: string,
 ): Promise<ShopProductWithSeller | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("shop_products")
     .select(PRODUCT_SELECT)
     .eq("id", id)
@@ -61,8 +61,8 @@ export async function getShopProduct(
 export async function getMyShopProducts(
   sellerId: string,
 ): Promise<ShopProduct[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("shop_products")
     .select("*")
     .eq("seller_id", sellerId)
@@ -79,8 +79,8 @@ const ORDER_SELECT =
 export async function getMyOrders(
   buyerId: string,
 ): Promise<ShopOrderWithProduct[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("shop_orders")
     .select(ORDER_SELECT)
     .eq("buyer_id", buyerId)
@@ -94,8 +94,8 @@ export async function getMyOrders(
 export async function getSellerOrders(
   sellerId: string,
 ): Promise<ShopOrderWithProduct[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("shop_orders")
     .select(ORDER_SELECT)
     .eq("seller_id", sellerId)
@@ -110,8 +110,8 @@ export async function getAffiliateClickCounts(
   productIds: string[],
 ): Promise<Record<string, number>> {
   if (productIds.length === 0) return {};
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("affiliate_clicks")
     .select("product_id")
     .in("product_id", productIds)

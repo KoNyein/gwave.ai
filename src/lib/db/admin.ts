@@ -1,7 +1,7 @@
 import "server-only";
 
-import { createAnonClient } from "@/lib/supabase/anon";
-import { createClient } from "@/lib/supabase/server";
+import { createAnonClient } from "@/lib/data/anon";
+import { createClient } from "@/lib/data/server";
 import { DEFAULT_THEME, isSiteTheme, type SiteTheme } from "@/lib/theme";
 import type { AuditLog, Profile, Report } from "@/types/database";
 import type { AuthorSummary } from "@/types/social";
@@ -29,8 +29,8 @@ export interface AdminActivityStats {
 
 /** Engagement + commerce metrics (admin-only RPC). */
 export async function getAdminActivityStats(): Promise<AdminActivityStats> {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("admin_activity_stats");
+  const db = await createClient();
+  const { data } = await db.rpc("admin_activity_stats");
   const d = (data as Partial<AdminActivityStats> | null) ?? {};
   return {
     dau: d.dau ?? 0,
@@ -60,7 +60,7 @@ function bucketByDay(rows: { created_at: string }[], days: number) {
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
-  const supabase = await createClient();
+  const db = await createClient();
   const since14 = new Date();
   since14.setDate(since14.getDate() - 13);
   const since7 = new Date();
@@ -68,18 +68,18 @@ export async function getAdminStats(): Promise<AdminStats> {
 
   const [usersRes, postsRes, membersRes, recentUsersRes, recentPostsRes] =
     await Promise.all([
-      supabase.from("profiles").select("id", { count: "exact", head: true }),
-      supabase.from("posts").select("id", { count: "exact", head: true }),
-      supabase
+      db.from("profiles").select("id", { count: "exact", head: true }),
+      db.from("posts").select("id", { count: "exact", head: true }),
+      db
         .from("subscriptions")
         .select("id", { count: "exact", head: true })
         .eq("status", "active"),
-      supabase
+      db
         .from("profiles")
         .select("created_at")
         .gte("created_at", since14.toISOString())
         .limit(5000),
-      supabase
+      db
         .from("posts")
         .select("created_at")
         .gte("created_at", since14.toISOString())
@@ -100,8 +100,8 @@ export async function getAdminStats(): Promise<AdminStats> {
 }
 
 export async function getUsers(search?: string): Promise<Profile[]> {
-  const supabase = await createClient();
-  let query = supabase
+  const db = await createClient();
+  let query = db
     .from("profiles")
     .select("*")
     .order("created_at", { ascending: false })
@@ -124,8 +124,8 @@ export interface ReportWithContext extends Report {
 }
 
 export async function getPendingReports(): Promise<ReportWithContext[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("reports")
     .select(
       `*,
@@ -149,8 +149,8 @@ export async function getPendingReports(): Promise<ReportWithContext[]> {
 export async function getAuditLogs(limit = 100): Promise<
   (AuditLog & { actor: AuthorSummary | null })[]
 > {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("audit_logs")
     .select(
       "*, actor:profiles!audit_logs_actor_id_fkey(id, username, full_name, avatar_url)",
@@ -169,8 +169,8 @@ export async function getAuditLogs(limit = 100): Promise<
  */
 export async function getSiteTheme(): Promise<SiteTheme> {
   try {
-    const supabase = createAnonClient();
-    const { data } = await supabase
+    const db = createAnonClient();
+    const { data } = await db
       .from("site_settings")
       .select("value")
       .eq("key", "appearance")
@@ -183,8 +183,8 @@ export async function getSiteTheme(): Promise<SiteTheme> {
 }
 
 export async function getSiteName(): Promise<string> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("site_settings")
     .select("value")
     .eq("key", "general")
@@ -199,8 +199,8 @@ export interface DemographicRow {
 
 /** User age distribution by band (admin-only RPC). */
 export async function getDemographicsAge(): Promise<DemographicRow[]> {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("demographics_age");
+  const db = await createClient();
+  const { data } = await db.rpc("demographics_age");
   return ((data as { band: string; count: number }[] | null) ?? []).map((r) => ({
     label: r.band,
     count: Number(r.count),
@@ -209,8 +209,8 @@ export async function getDemographicsAge(): Promise<DemographicRow[]> {
 
 /** User region distribution by timezone (admin-only RPC). */
 export async function getDemographicsRegion(): Promise<DemographicRow[]> {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("demographics_region");
+  const db = await createClient();
+  const { data } = await db.rpc("demographics_region");
   return ((data as { region: string; count: number }[] | null) ?? []).map((r) => ({
     label: r.region,
     count: Number(r.count),

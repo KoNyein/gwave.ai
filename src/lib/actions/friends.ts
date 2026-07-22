@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { ActionResult } from "@/lib/actions/posts";
 
 const uuid = z.string().uuid();
@@ -26,14 +26,14 @@ export async function sendFriendRequest(
   if (!uuid.safeParse(profileId).success) {
     return { ok: false, error: "Invalid profile." };
   }
-  const supabase = await createClient();
+  const db = await createClient();
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
   if (userId === profileId) {
     return { ok: false, error: "You cannot friend yourself." };
   }
 
-  const { error } = await supabase.from("friendships").insert({
+  const { error } = await db.from("friendships").insert({
     requester_id: userId,
     addressee_id: profileId,
   });
@@ -62,9 +62,9 @@ export async function acceptFriendRequest(
   if (!uuid.safeParse(friendshipId).success) {
     return { ok: false, error: "Invalid request." };
   }
-  const supabase = await createClient();
+  const db = await createClient();
   // RLS restricts this update to the addressee.
-  const { error } = await supabase
+  const { error } = await db
     .from("friendships")
     .update({ status: "accepted" })
     .eq("id", friendshipId)
@@ -81,8 +81,8 @@ export async function removeFriendship(
   if (!uuid.safeParse(friendshipId).success) {
     return { ok: false, error: "Invalid request." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("friendships")
     .delete()
     .eq("id", friendshipId);
@@ -95,14 +95,14 @@ export async function followUser(profileId: string): Promise<ActionResult> {
   if (!uuid.safeParse(profileId).success) {
     return { ok: false, error: "Invalid profile." };
   }
-  const supabase = await createClient();
+  const db = await createClient();
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
   if (userId === profileId) {
     return { ok: false, error: "You cannot follow yourself." };
   }
 
-  const { error } = await supabase.from("follows").insert({
+  const { error } = await db.from("follows").insert({
     follower_id: userId,
     followee_id: profileId,
   });
@@ -128,11 +128,11 @@ export async function unfollowUser(profileId: string): Promise<ActionResult> {
   if (!uuid.safeParse(profileId).success) {
     return { ok: false, error: "Invalid profile." };
   }
-  const supabase = await createClient();
+  const db = await createClient();
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const { error } = await supabase
+  const { error } = await db
     .from("follows")
     .delete()
     .eq("follower_id", userId)

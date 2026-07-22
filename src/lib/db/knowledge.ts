@@ -2,7 +2,7 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 
-import { createAnonClient } from "@/lib/supabase/anon";
+import { createAnonClient } from "@/lib/data/anon";
 import type { Mineral, Strain, StrainType } from "@/types/database";
 
 export const KNOWLEDGE_PAGE_SIZE = 24;
@@ -53,11 +53,11 @@ export const listStrains = cached(
   async function listStrains(
     filters: StrainFilters = {},
   ): Promise<KnowledgePage<Strain>> {
-    const supabase = createAnonClient();
+    const db = createAnonClient();
     const page = Math.max(1, filters.page ?? 1);
     const from = (page - 1) * KNOWLEDGE_PAGE_SIZE;
 
-    let query = supabase.from("strains").select("*");
+    let query = db.from("strains").select("*");
     if (filters.query) {
       query = query.ilike("name", likePattern(filters.query));
     }
@@ -88,8 +88,8 @@ export const listStrains = cached(
 export const getStrainBySlug = cached(
   "strain-by-slug",
   async function getStrainBySlug(slug: string): Promise<Strain | null> {
-    const supabase = createAnonClient();
-    const { data } = await supabase
+    const db = createAnonClient();
+    const { data } = await db
       .from("strains")
       .select("*")
       .eq("slug", slug)
@@ -103,11 +103,11 @@ export const listMinerals = cached(
   async function listMinerals(
     filters: MineralFilters = {},
   ): Promise<KnowledgePage<Mineral>> {
-    const supabase = createAnonClient();
+    const db = createAnonClient();
     const page = Math.max(1, filters.page ?? 1);
     const from = (page - 1) * KNOWLEDGE_PAGE_SIZE;
 
-    let query = supabase.from("minerals").select("*");
+    let query = db.from("minerals").select("*");
     if (filters.query) {
       query = query.ilike("name", likePattern(filters.query));
     }
@@ -132,8 +132,8 @@ export const listMinerals = cached(
 export const getMineralBySlug = cached(
   "mineral-by-slug",
   async function getMineralBySlug(slug: string): Promise<Mineral | null> {
-    const supabase = createAnonClient();
-    const { data } = await supabase
+    const db = createAnonClient();
+    const { data } = await db
       .from("minerals")
       .select("*")
       .eq("slug", slug)
@@ -145,8 +145,8 @@ export const getMineralBySlug = cached(
 export const getMineralCategories = cached(
   "mineral-categories",
   async function getMineralCategories(): Promise<string[]> {
-    const supabase = createAnonClient();
-    const { data } = await supabase
+    const db = createAnonClient();
+    const { data } = await db
       .from("minerals")
       .select("category")
       .order("category");
@@ -159,16 +159,16 @@ export const getMineralCategories = cached(
  * cached: the per-keystroke query space would flood the cache for no reuse.
  */
 export async function quickSearchKnowledge(query: string, limit = 5) {
-  const supabase = createAnonClient();
+  const db = createAnonClient();
   const pattern = likePattern(query);
   const [strainsRes, mineralsRes] = await Promise.all([
-    supabase
+    db
       .from("strains")
       .select("name, slug, type, thc, cbd")
       .ilike("name", pattern)
       .order("name")
       .limit(limit),
-    supabase
+    db
       .from("minerals")
       .select("name, slug, symbol, category")
       .ilike("name", pattern)

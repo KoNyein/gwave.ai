@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getCurrentProfile } from "@/lib/auth";
 import { stopIvsStream } from "@/lib/ivs";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/data/admin";
 
 const uuid = z.string().uuid();
 

@@ -146,8 +146,8 @@ broadcast, end it, and the replay (HLS) appears once the composition finishes.
 ## Phase 3 — Chime SDK (messenger calls)
 
 Call media moves from the peer-to-peer WebRTC mesh to Amazon Chime meetings
-(placed in **ap-southeast-1** — Chime supports it). The supabase ring/accept
-signaling is unchanged; only the media transport swaps, behind
+(placed in **ap-southeast-1** — Chime supports it). The ring/accept signaling
+over our self-hosted Realtime is unchanged; only the media transport swaps, behind
 `NEXT_PUBLIC_CALL_PROVIDER` (default `mesh`).
 
 ### 1. IAM: extend the instance-role policy

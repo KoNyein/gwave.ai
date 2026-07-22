@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 function csvField(value: string | number | null): string {
   const text = String(value ?? "");
@@ -10,12 +10,12 @@ function csvField(value: string | number | null): string {
 
 /** GET /api/admin/members.csv — subscription export for admins. */
 export async function GET() {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const { data: profile } = await supabase
+  const { data: profile } = await db
     .from("profiles")
     .select("role")
     .eq("id", user.id)
@@ -24,7 +24,7 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { data: subscriptions } = await supabase
+  const { data: subscriptions } = await db
     .from("subscriptions")
     .select(
       `status, provider, plan_id, current_period_start, current_period_end,

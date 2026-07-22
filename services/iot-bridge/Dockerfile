@@ -1,4 +1,4 @@
-# gwave.ai IoT bridge — MQTT ⇄ Supabase relay.
+# gwave.ai IoT bridge — MQTT ⇄ gwave data API (PostgREST/RDS on AWS) relay.
 FROM node:20-alpine
 
 WORKDIR /app

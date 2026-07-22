@@ -6,7 +6,7 @@ import { Navigation, Square } from "lucide-react";
 
 import { LocationMap } from "@/components/social/location-map";
 import { stopLiveLocation } from "@/lib/actions/live-location";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import { cn } from "@/lib/utils";
 import type { LiveLocation } from "@/types/database";
 
@@ -43,7 +43,7 @@ export function LiveLocationMessage({
   onStopped?: (messageId: string) => void;
 }) {
   const t = useTranslations("messenger");
-  const supabase = React.useMemo(() => createClient(), []);
+  const db = React.useMemo(() => createClient(), []);
   const [row, setRow] = React.useState<LiveLocation | null>(null);
   const [stopping, setStopping] = React.useState(false);
   // Re-render on a timer so "ends in 12 min" counts down and the bubble flips
@@ -52,7 +52,7 @@ export function LiveLocationMessage({
 
   React.useEffect(() => {
     let active = true;
-    void supabase
+    void db
       .from("live_locations")
       .select("*")
       .eq("message_id", messageId)
@@ -61,7 +61,7 @@ export function LiveLocationMessage({
         if (active && data) setRow(data);
       });
 
-    const channel = supabase
+    const channel = db
       .channel(`live-location:${messageId}`)
       .on(
         "postgres_changes",
@@ -77,9 +77,9 @@ export function LiveLocationMessage({
 
     return () => {
       active = false;
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
-  }, [messageId, supabase]);
+  }, [messageId, db]);
 
   React.useEffect(() => {
     const timer = window.setInterval(() => tick((n) => n + 1), 15_000);

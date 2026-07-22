@@ -3,11 +3,13 @@
 #
 # WHY THIS EXISTS
 # ---------------
-# gwave runs a self-hosted Supabase. Login is Amazon Cognito, so the app can't
-# use Supabase GoTrue sessions; instead src/lib/supabase/server.ts mints a
-# short-lived HS256 JWT (role "authenticated", sub = the Cognito user, signed
-# with SUPABASE_JWT_SECRET) and hands it to PostgREST — see
-# src/lib/supabase/mint-token.ts.
+# gwave runs its OWN PostgREST + Realtime over RDS (the /sb gateway) — there is
+# no hosted Supabase, only the open-source servers. Login is Amazon Cognito, so
+# there are no GoTrue sessions; instead the app mints a short-lived JWT (role
+# "authenticated", sub = the user's profiles.id) and hands it to PostgREST — see
+# src/lib/auth/tokens.ts, used by src/lib/data/server.ts. NOTE: the app now mints
+# ES256 tokens against APP_JWT_PRIVATE_KEY; the HS256 path below is the earlier
+# scheme, kept because the legacy anon key is still an HS256 JWT.
 #
 # But this deployment's PostgREST validates JWTs against a *JWKS file*
 # (PGRST_JWT_SECRET=@/etc/postgrest/jwks.json) that only contains **asymmetric
@@ -17,8 +19,8 @@
 # "Could not send SOS" / "Could not create channel" (writes fail).
 #
 # The fix is additive: drop one symmetric ("oct", HS256) key into the same JWKS
-# so PostgREST accepts our minted token *as well as* Supabase's own EC-signed
-# tokens. Nothing about the existing EC keys changes.
+# so PostgREST accepts the HS256 token *as well as* the EC/ES256-signed tokens
+# already in the JWKS. Nothing about the existing EC keys changes.
 #
 # WHAT THIS SCRIPT DOES (idempotent)
 #   1. Back up /etc/postgrest/jwks.json.
