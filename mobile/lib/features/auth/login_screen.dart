@@ -139,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final googleError = appState.googleError;
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: GwColors.primaryGradient),
+        decoration: BoxDecoration(gradient: GwColors.primaryGradient),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -195,7 +195,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     Container(
                       padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        // Was a hardcoded white slab; follows the theme so it
+                        // does not stay white on the dark login page.
+                        color: GwColors.surface,
                         borderRadius: BorderRadius.circular(GwRadius.lg),
                         boxShadow: [
                           BoxShadow(
@@ -262,7 +264,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             if (_isPhone(_email.text.trim()) && _register) ...[
                               const SizedBox(height: 6),
-                              const Text(
+                              Text(
                                 "📱 Phone signup uses an SMS code — no password needed.",
                                 style: TextStyle(
                                     color: GwColors.inkSoft, fontSize: 12),
@@ -336,7 +338,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                               const SizedBox(height: 14),
-                              const Align(
+                              Align(
                                 alignment: Alignment.centerLeft,
                                 child: Text("Gender",
                                     style: TextStyle(
@@ -382,7 +384,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             if (AppConfig.googleEnabled) ...[
                               const SizedBox(height: 14),
                               Row(
-                                children: const [
+                                children: [
                                   Expanded(child: Divider(color: GwColors.line)),
                                   Padding(
                                     padding:
@@ -415,7 +417,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: GwColors.ink,
                                     side:
-                                        const BorderSide(color: GwColors.line),
+                                        BorderSide(color: GwColors.line),
                                   ),
                                 ),
                               ),
@@ -441,7 +443,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     style: TextStyle(fontSize: 15)),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: GwColors.ink,
-                                  side: const BorderSide(color: GwColors.line),
+                                  side: BorderSide(color: GwColors.line),
                                 ),
                               ),
                             ),
@@ -453,7 +455,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   _register
                                       ? "Already have an account?"
                                       : "New to Gwave?",
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       color: GwColors.inkSoft, fontSize: 13),
                                 ),
                                 TextButton(
@@ -526,11 +528,11 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.error_outline, color: GwColors.live, size: 19),
+            Icon(Icons.error_outline, color: GwColors.live, size: 19),
             const SizedBox(width: 8),
             Expanded(
               child: Text(msg,
-                  style: const TextStyle(color: GwColors.live, fontSize: 13)),
+                  style: TextStyle(color: GwColors.live, fontSize: 13)),
             ),
           ],
         ),
@@ -542,7 +544,7 @@ class _LoginScreenState extends State<LoginScreen> {
           color: GwColors.gold.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(GwRadius.sm),
         ),
-        child: const Text(
+        child: Text(
           "Backend not configured — build with --dart-define SUPABASE_URL and "
           "SUPABASE_ANON_KEY.",
           style: TextStyle(fontSize: 12, color: GwColors.primaryDark),

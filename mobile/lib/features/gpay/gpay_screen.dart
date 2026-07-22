@@ -85,7 +85,7 @@ class _GpayScreenState extends State<GpayScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading && _account == null && !_noAccount
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
@@ -364,7 +364,7 @@ class _GpayScreenState extends State<GpayScreen> {
                         fontWeight: FontWeight.w800, fontSize: 15)),
                 const SizedBox(height: 2),
                 Text(subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: GwColors.inkSoft, fontSize: 13)),
               ],
             ),
@@ -391,7 +391,7 @@ class _GpayScreenState extends State<GpayScreen> {
               color: GwColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(18),
             ),
-            child: const Icon(Icons.account_balance_wallet,
+            child: Icon(Icons.account_balance_wallet,
                 color: GwColors.primary, size: 30),
           ),
           const SizedBox(height: 14),
@@ -406,7 +406,7 @@ class _GpayScreenState extends State<GpayScreen> {
                 "ငွေလွှဲ၊ ငွေဖြည့်၊ QR scan အတွက် KYC အချက်အလက်ဖြည့်ပြီး "
                     "အကောင့်ဖွင့်ပါ။ လုံခြုံမှုအတွက် web တွင် ဖြည့်ရပါမည်။"),
             textAlign: TextAlign.center,
-            style: const TextStyle(color: GwColors.inkSoft, fontSize: 13),
+            style: TextStyle(color: GwColors.inkSoft, fontSize: 13),
           ),
           const SizedBox(height: 16),
           SizedBox(
@@ -442,7 +442,7 @@ class _GpayScreenState extends State<GpayScreen> {
                       "Website မှာ အကောင့်ဖွင့်ပြီးသားဖြစ်ပြီး ဒီမှာ မပေါ်ဘူးလား? "
                           "ပိုက်ဆံအိတ်သည် အကောင့်ဖွင့်စဉ်က ဝင်ရောက်ခဲ့သော login နှင့် ချိတ်ဆက်ထားပါသည် — "
                           "website မှာသုံးသလို တူညီသော login (email/Google) ဖြင့် app ထဲ ပြန်ဝင်ပါ။"),
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: GwColors.inkSoft, fontSize: 11.5, height: 1.45),
                 ),
                 if (_identity != null) ...[
@@ -450,7 +450,7 @@ class _GpayScreenState extends State<GpayScreen> {
                   Text(
                     tr(context, "Signed in as: $_identity",
                         "လက်ရှိ ဝင်ရောက်ထားသည်: $_identity"),
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: GwColors.ink,
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700),

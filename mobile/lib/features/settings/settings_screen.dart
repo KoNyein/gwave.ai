@@ -171,20 +171,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Container(
                           width: 32,
                           height: 32,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             color: GwColors.primary,
                             shape: BoxShape.circle,
                           ),
                           child: _uploadingAvatar
-                              ? const Padding(
-                                  padding: EdgeInsets.all(7),
+                              ? Padding(
+                                  padding: const EdgeInsets.all(7),
                                   child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       valueColor: AlwaysStoppedAnimation(
-                                          Colors.white)),
+                                          GwColors.onPrimary)),
                                 )
-                              : const Icon(Icons.camera_alt,
-                                  color: Colors.white, size: 16),
+                              : Icon(Icons.camera_alt,
+                                  color: GwColors.onPrimary, size: 16),
                         ),
                       ),
                     ),
@@ -196,7 +196,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         fontWeight: FontWeight.w900, fontSize: 17)),
                 if (me?.username != null)
                   Text("@${me!.username}",
-                      style: const TextStyle(color: GwColors.inkSoft)),
+                      style: TextStyle(color: GwColors.inkSoft)),
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
                   onPressed: _uploadingCover
@@ -212,7 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   label: Text(tr(context, "Change cover photo", "Cover ဓာတ်ပုံ ပြောင်းရန်")),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: GwColors.primary,
-                    side: const BorderSide(color: GwColors.line),
+                    side: BorderSide(color: GwColors.line),
                   ),
                 ),
               ],
@@ -275,13 +275,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: ElevatedButton(
                     onPressed: _saving ? null : _saveProfile,
                     child: _saving
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2.2,
-                                valueColor:
-                                    AlwaysStoppedAnimation(Colors.white)))
+                                valueColor: AlwaysStoppedAnimation(
+                                    GwColors.onPrimary)))
                         : Text(tr(context, "Save", "သိမ်းမည်")),
                   ),
                 ),
@@ -303,6 +303,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     () => _openWeb("/settings")),
                 const Divider(height: 1, indent: 56),
                 _languageRow(context),
+                const Divider(height: 1, indent: 56),
+                _themeRow(context),
                 const Divider(height: 1, indent: 56),
                 _row(Icons.workspace_premium_outlined, "Membership",
                     () => _openWeb("/membership")),
@@ -331,9 +333,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child:
-                    const Icon(Icons.logout, color: GwColors.live, size: 20),
+                    Icon(Icons.logout, color: GwColors.live, size: 20),
               ),
-              title: const Text("Log out",
+              title: Text("Log out",
                   style: TextStyle(
                       fontWeight: FontWeight.w700, color: GwColors.live)),
               onTap: () => context.read<AppState>().logout(),
@@ -356,7 +358,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color: GwColors.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Icon(Icons.translate, color: GwColors.primary, size: 20),
+        child: Icon(Icons.translate, color: GwColors.primary, size: 20),
       ),
       title: Text(tr(context, "Language", "ဘာသာစကား"),
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
@@ -377,6 +379,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// Appearance — System (follow the phone), Light, or Dark. Dark is a true
+  /// AMOLED black, so on an OLED panel the background pixels are switched off
+  /// rather than lit dim grey: easier at night and cheaper on battery.
+  ///
+  /// Icon-only segments because three word labels do not fit the trailing slot
+  /// at Burmese text sizes; each carries a tooltip and the choice is spelled
+  /// out in the subtitle underneath.
+  Widget _themeRow(BuildContext context) {
+    final theme = context.watch<GwTheme>();
+    final label = switch (theme.mode) {
+      ThemeMode.light => tr(context, "Light", "အလင်း"),
+      ThemeMode.dark => tr(context, "Dark (AMOLED)", "အမှောင် (AMOLED)"),
+      ThemeMode.system => tr(context, "Follow system", "စနစ်အတိုင်း"),
+    };
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: GwColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(Icons.dark_mode_outlined, color: GwColors.primary, size: 20),
+      ),
+      title: Text(tr(context, "Appearance", "အသွင်အပြင်"),
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
+      subtitle: Text(label, style: TextStyle(color: GwColors.inkSoft)),
+      trailing: SegmentedButton<ThemeMode>(
+        segments: [
+          ButtonSegment(
+            value: ThemeMode.system,
+            icon: const Icon(Icons.brightness_auto_outlined, size: 18),
+            tooltip: tr(context, "Follow system", "စနစ်အတိုင်း"),
+          ),
+          ButtonSegment(
+            value: ThemeMode.light,
+            icon: const Icon(Icons.light_mode_outlined, size: 18),
+            tooltip: tr(context, "Light", "အလင်း"),
+          ),
+          ButtonSegment(
+            value: ThemeMode.dark,
+            icon: const Icon(Icons.dark_mode_outlined, size: 18),
+            tooltip: tr(context, "Dark (AMOLED)", "အမှောင် (AMOLED)"),
+          ),
+        ],
+        selected: {theme.mode},
+        showSelectedIcon: false,
+        style: SegmentedButton.styleFrom(
+          selectedBackgroundColor: GwColors.primary.withValues(alpha: 0.15),
+          selectedForegroundColor: GwColors.primary,
+          visualDensity: VisualDensity.compact,
+        ),
+        onSelectionChanged: (v) => theme.setMode(v.first),
+      ),
+    );
+  }
+
   Widget _row(IconData icon, String label, VoidCallback onTap) => ListTile(
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
@@ -392,7 +452,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: Text(label,
             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
         trailing:
-            const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+            Icon(Icons.chevron_right, color: GwColors.inkSoft),
         onTap: onTap,
       );
 }

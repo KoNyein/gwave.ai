@@ -55,17 +55,17 @@ class _ToolsScreenState extends State<ToolsScreen> {
                       onSelected: (_) => setState(() => _calc = c),
                       avatar: Icon(_icons[c],
                           size: 17,
-                          color: _calc == c ? Colors.white : GwColors.primary),
+                          color: _calc == c ? GwColors.onPrimary : GwColors.primary),
                       label: Text(_labels[c]!),
                       labelStyle: TextStyle(
-                        color: _calc == c ? Colors.white : GwColors.ink,
+                        color: _calc == c ? GwColors.onPrimary : GwColors.ink,
                         fontWeight: FontWeight.w600,
                       ),
                       selectedColor: GwColors.primary,
                       backgroundColor: GwColors.surface,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
-                        side: const BorderSide(color: GwColors.line),
+                        side: BorderSide(color: GwColors.line),
                       ),
                     ),
                   ),
@@ -410,6 +410,6 @@ class _Hint extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(top: 6, bottom: 14),
         child: Text(text,
-            style: const TextStyle(color: GwColors.inkSoft, fontSize: 13)),
+            style: TextStyle(color: GwColors.inkSoft, fontSize: 13)),
       );
 }

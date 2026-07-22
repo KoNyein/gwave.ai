@@ -48,7 +48,7 @@ class CallScreen extends StatelessWidget {
             else
               Positioned.fill(
                 child: Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                       gradient: GwColors.primaryGradient),
                 ),
               ),
@@ -211,7 +211,7 @@ class IncomingCallSheet extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF0B1F0B),
       body: Container(
-        decoration: const BoxDecoration(gradient: GwColors.primaryGradient),
+        decoration: BoxDecoration(gradient: GwColors.primaryGradient),
         child: SafeArea(
           child: Column(
             children: [

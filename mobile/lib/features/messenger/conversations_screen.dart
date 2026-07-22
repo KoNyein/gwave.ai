@@ -54,7 +54,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : _error != null && _items.isEmpty
                 ? ListView(children: [
@@ -74,7 +74,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                     : ListView.separated(
                         padding: const EdgeInsets.only(bottom: 90),
                         itemCount: _items.length,
-                        separatorBuilder: (_, __) => const Divider(
+                        separatorBuilder: (_, __) => Divider(
                             height: 1, indent: 78, color: GwColors.line),
                         itemBuilder: (_, i) => _tile(_items[i]),
                       ),
@@ -93,7 +93,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                 color: GwColors.primary.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.groups, color: GwColors.primary),
+              child: Icon(Icons.groups, color: GwColors.primary),
             )
           : GwAvatar(
               url: resolveMedia(c.other?.avatarUrl),
@@ -106,10 +106,10 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         c.lastMessage ?? "Tap to open",
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: GwColors.inkSoft, fontSize: 13),
+        style: TextStyle(color: GwColors.inkSoft, fontSize: 13),
       ),
       trailing: Text(timeAgo(c.lastMessageAt),
-          style: const TextStyle(color: GwColors.inkSoft, fontSize: 12)),
+          style: TextStyle(color: GwColors.inkSoft, fontSize: 12)),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => ChatScreen(conversation: c)),
       ),

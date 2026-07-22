@@ -56,7 +56,7 @@ class _ShopScreenState extends State<ShopScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : _error != null && _products.isEmpty
                 ? ListView(children: [
@@ -156,7 +156,7 @@ class _ProductCard extends StatelessWidget {
                           product.price != null
                               ? money(product.price, product.currency)
                               : "—",
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: GwColors.primary,
                             fontWeight: FontWeight.w900,
                             fontSize: 15,
@@ -165,7 +165,7 @@ class _ProductCard extends StatelessWidget {
                       ),
                       Container(
                         padding: const EdgeInsets.all(7),
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           gradient: GwColors.primaryGradient,
                           shape: BoxShape.circle,
                         ),
@@ -185,7 +185,7 @@ class _ProductCard extends StatelessWidget {
 
   Widget _ph() => Container(
         color: GwColors.surfaceMuted,
-        child: const Center(
+        child: Center(
           child: Icon(Icons.image_outlined, color: GwColors.line, size: 40),
         ),
       );

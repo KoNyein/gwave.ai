@@ -102,7 +102,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading && _friends.isEmpty && _incoming.isEmpty
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : _error != null && _friends.isEmpty
                 ? ListView(children: [
@@ -214,13 +214,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.check_circle,
+                      icon: Icon(Icons.check_circle,
                           color: GwColors.primary),
                       tooltip: "Accept",
                       onPressed: () => _accept(f),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.cancel_outlined,
+                      icon: Icon(Icons.cancel_outlined,
                           color: GwColors.inkSoft),
                       tooltip: "Decline",
                       onPressed: () => _remove(f, "decline"),
@@ -232,7 +232,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       onPressed: () => _remove(f, "cancel"),
                       child: const Text("Cancel"),
                     )
-                  : const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+                  : Icon(Icons.chevron_right, color: GwColors.inkSoft),
     );
   }
 }

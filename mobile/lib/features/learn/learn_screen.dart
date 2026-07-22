@@ -16,10 +16,16 @@ import 'track_screen.dart';
 /// slug the app doesn't know yet still renders from the catalog with default
 /// styling, so adding a course on the web never hides it here.
 class _Meta {
-  const _Meta(this.emoji, this.color, this.category);
+  const _Meta(this.emoji, this._color, this.category);
   final String emoji;
-  final Color color;
+  final Color? _color;
   final String category;
+
+  /// A null accent means "no dedicated colour" and falls back to the brand
+  /// green. Resolved here rather than stored, because [GwColors.primary] is
+  /// theme-aware: a `_Meta` built during a data load would otherwise freeze
+  /// the light-mode green into `_tracks` and ignore a later theme switch.
+  Color get color => _color ?? GwColors.primary;
 }
 
 const _coding = "coding";
@@ -116,8 +122,7 @@ class _LearnScreenState extends State<LearnScreen> {
           title: (t["title"] ?? slug).toString(),
           description: (t["description"] ?? "").toString(),
           total: lessons is List ? lessons.length : 0,
-          meta: _meta[slug] ??
-              const _Meta("📘", GwColors.primary, _other),
+          meta: _meta[slug] ?? const _Meta("📘", null, _other),
         ));
       }
       if (mounted) {
@@ -356,7 +361,7 @@ class _LearnScreenState extends State<LearnScreen> {
                         color: GwColors.ink,
                         borderRadius: BorderRadius.circular(13),
                       ),
-                      child: const Icon(Icons.code,
+                      child: Icon(Icons.code,
                           color: GwColors.primaryBright, size: 24),
                     ),
                     const SizedBox(width: 12),
@@ -372,12 +377,12 @@ class _LearnScreenState extends State<LearnScreen> {
                                   context,
                                   "Write and run HTML / JS / Python live",
                                   "HTML / JS / Python ကို တိုက်ရိုက် ရေးစမ်း"),
-                              style: const TextStyle(
+                              style: TextStyle(
                                   color: GwColors.inkSoft, fontSize: 12.5)),
                         ],
                       ),
                     ),
-                    const Icon(Icons.open_in_new,
+                    Icon(Icons.open_in_new,
                         color: GwColors.inkSoft, size: 18),
                   ],
                 ),
@@ -385,8 +390,8 @@ class _LearnScreenState extends State<LearnScreen> {
             ),
 
             if (_loading && _tracks.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 60),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 60),
                 child: Center(
                     child: CircularProgressIndicator(color: GwColors.primary)),
               )
@@ -395,7 +400,7 @@ class _LearnScreenState extends State<LearnScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 40),
                 child: Column(
                   children: [
-                    const Icon(Icons.cloud_off,
+                    Icon(Icons.cloud_off,
                         size: 48, color: GwColors.inkSoft),
                     const SizedBox(height: 10),
                     Text(
@@ -406,7 +411,7 @@ class _LearnScreenState extends State<LearnScreen> {
                     const SizedBox(height: 4),
                     Text(_error!,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: GwColors.inkSoft, fontSize: 12)),
                   ],
                 ),
@@ -458,7 +463,7 @@ class _LearnScreenState extends State<LearnScreen> {
             Text(subtitle,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                     color: GwColors.inkSoft, fontSize: 11, height: 1.3)),
           ],
         ),
@@ -546,7 +551,7 @@ class _LearnScreenState extends State<LearnScreen> {
                                   fontSize: 15)),
                         ),
                         if (finished)
-                          const Icon(Icons.check_circle,
+                          Icon(Icons.check_circle,
                               color: GwColors.primary, size: 17)
                         else if (done > 0)
                           Text("$done/${t.total}",
@@ -562,7 +567,7 @@ class _LearnScreenState extends State<LearnScreen> {
                           : "${t.total} ${tr(context, "lessons", "သင်ခန်းစာ")}",
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: GwColors.inkSoft, fontSize: 12.5),
                     ),
                     const SizedBox(height: 7),
@@ -572,7 +577,7 @@ class _LearnScreenState extends State<LearnScreen> {
                         const SizedBox(width: 8),
                         Text(
                           "${t.total} ${tr(context, "lessons", "ခန်း")}",
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: GwColors.inkSoft, fontSize: 10.5),
                         ),
                       ],
@@ -581,7 +586,7 @@ class _LearnScreenState extends State<LearnScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+              Icon(Icons.chevron_right, color: GwColors.inkSoft),
             ],
           ),
         ),

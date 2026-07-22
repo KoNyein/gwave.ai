@@ -71,7 +71,7 @@ class MapScreen extends StatelessWidget {
                       "can work.",
                   "မှတ်ချက် — မြေပုံနှင့် တည်နေရာ ရွှေ့လျားမှုကို app ထဲမှာ "
                       "ဖွင့်ဖို့ ဖုန်း၏ location ကို ခွင့်ပြုပါ။"),
-              style: const TextStyle(color: GwColors.inkSoft, fontSize: 12.5),
+              style: TextStyle(color: GwColors.inkSoft, fontSize: 12.5),
             ),
           ),
         ],

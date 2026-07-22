@@ -70,7 +70,7 @@ class _LiveClassesScreenState extends State<LiveClassesScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading && _classes.isEmpty
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
@@ -145,13 +145,13 @@ class _LiveClassesScreenState extends State<LiveClassesScreen> {
                                         context,
                                         "Video-grid classroom with screen share (opens in browser)",
                                         "Video grid + screen share (browser တွင် ဖွင့်မည်)"),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         color: GwColors.inkSoft,
                                         fontSize: 12)),
                               ],
                             ),
                           ),
-                          const Icon(Icons.open_in_new,
+                          Icon(Icons.open_in_new,
                               color: GwColors.inkSoft, size: 17),
                         ],
                       ),
@@ -232,13 +232,13 @@ class _LiveClassesScreenState extends State<LiveClassesScreen> {
                     Row(
                       children: [
                         Text(host,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: GwColors.inkSoft, fontSize: 12)),
                         if (c.createdAt != null) ...[
-                          const Text(" · ",
+                          Text(" · ",
                               style: TextStyle(color: GwColors.inkSoft)),
                           Text(timeAgo(c.createdAt!),
-                              style: const TextStyle(
+                              style: TextStyle(
                                   color: GwColors.inkSoft, fontSize: 12)),
                         ],
                       ],
@@ -261,7 +261,7 @@ class _LiveClassesScreenState extends State<LiveClassesScreen> {
                           fontWeight: FontWeight.w900)),
                 )
               else
-                const Icon(Icons.play_circle_outline,
+                Icon(Icons.play_circle_outline,
                     color: GwColors.inkSoft, size: 22),
             ],
           ),

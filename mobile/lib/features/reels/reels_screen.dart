@@ -91,7 +91,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
         heroTag: "createReel",
         backgroundColor: GwColors.primary,
         onPressed: _createReel,
-        child: const Icon(Icons.videocam, color: Colors.white),
+        child: Icon(Icons.videocam, color: GwColors.onPrimary),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: Colors.white))

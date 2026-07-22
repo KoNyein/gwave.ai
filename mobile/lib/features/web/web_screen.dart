@@ -117,13 +117,13 @@ class _WebScreenState extends State<WebScreen> {
                     minHeight: 2.5,
                     backgroundColor: Colors.transparent,
                     valueColor:
-                        const AlwaysStoppedAnimation(GwColors.primary),
+                        AlwaysStoppedAnimation(GwColors.primary),
                   ),
                 )
               : null,
         ),
         body: _web == null
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : WebViewWidget(controller: _web!),
       ),

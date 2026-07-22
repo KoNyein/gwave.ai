@@ -119,7 +119,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined,
+              leading: Icon(Icons.photo_library_outlined,
                   color: GwColors.primary),
               title: Text(tr(ctx, "Choose from gallery", "ဓာတ်ပုံထဲမှ ရွေးရန်")),
               onTap: () {
@@ -129,7 +129,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
             ),
             ListTile(
               leading:
-                  const Icon(Icons.photo_camera_outlined, color: GwColors.primary),
+                  Icon(Icons.photo_camera_outlined, color: GwColors.primary),
               title: Text(tr(ctx, "Take a photo", "ဓာတ်ပုံရိုက်ရန်")),
               onTap: () {
                 Navigator.of(ctx).pop();
@@ -241,7 +241,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
               const Divider(),
               Expanded(
                 child: _loading
-                    ? const Center(
+                    ? Center(
                         child: CircularProgressIndicator(color: GwColors.primary))
                     : _comments.isEmpty
                         ? const GwEmpty(
@@ -295,7 +295,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                                   fontWeight: FontWeight.w700, fontSize: 13)),
                           const SizedBox(width: 6),
                           Text(timeAgo(c.createdAt),
-                              style: const TextStyle(
+                              style: TextStyle(
                                   color: GwColors.inkSoft, fontSize: 11)),
                         ],
                       ),
@@ -357,7 +357,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                       if (count > 0) ...[
                         const SizedBox(width: 8),
                         Text("👍 $count",
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: GwColors.inkSoft, fontSize: 12)),
                       ],
                     ],
@@ -376,7 +376,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: GwColors.surface,
           border: Border(top: BorderSide(color: GwColors.line)),
         ),
@@ -407,7 +407,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                           onTap: () => setState(() => _photoBytes = null),
                           child: Container(
                             padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               color: GwColors.ink,
                               shape: BoxShape.circle,
                             ),
@@ -424,7 +424,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
               children: [
                 IconButton(
                   onPressed: _choosePhotoSource,
-                  icon: const Icon(Icons.add_photo_alternate_outlined,
+                  icon: Icon(Icons.add_photo_alternate_outlined,
                       color: GwColors.primary),
                   tooltip: "Photo",
                 ),
@@ -453,12 +453,12 @@ class _CommentsSheetState extends State<CommentsSheet> {
                 ),
                 IconButton(
                   icon: _sending
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
                               strokeWidth: 2.2, color: GwColors.primary))
-                      : const Icon(Icons.send, color: GwColors.primary),
+                      : Icon(Icons.send, color: GwColors.primary),
                   onPressed: _send,
                 ),
               ],

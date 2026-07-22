@@ -163,7 +163,10 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
     _controller?.dispose();
     _chat.dispose();
     _chatScroll.dispose();
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
+    // Restore the *theme's* chrome, not a hardcoded light-mode style — under
+    // the dark theme `SystemUiOverlayStyle.dark` paints dark status-bar icons
+    // on a black background, i.e. an invisible status bar.
+    SystemChrome.setSystemUIOverlayStyle(gwOverlayStyle());
     super.dispose();
   }
 
@@ -343,7 +346,7 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
           ),
           const Spacer(),
           if (s.isLive)
-            const GwPill(
+            GwPill(
                 label: "LIVE",
                 color: GwColors.live,
                 filled: true,
@@ -462,7 +465,7 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
             TextSpan(children: [
               TextSpan(
                 text: "${l.senderName}  ",
-                style: const TextStyle(
+                style: TextStyle(
                     color: GwColors.primaryBright,
                     fontWeight: FontWeight.w700,
                     fontSize: 13),
@@ -507,12 +510,12 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
           ),
           IconButton(
             icon: _sending
-                ? const SizedBox(
+                ? SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
                         strokeWidth: 2.2, color: GwColors.primaryBright))
-                : const Icon(Icons.send, color: GwColors.primaryBright),
+                : Icon(Icons.send, color: GwColors.primaryBright),
             onPressed: _send,
           ),
         ],

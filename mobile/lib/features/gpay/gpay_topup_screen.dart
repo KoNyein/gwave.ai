@@ -136,7 +136,7 @@ class _GpayTopupScreenState extends State<GpayTopupScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline,
+                Icon(Icons.info_outline,
                     color: GwColors.primary, size: 19),
                 const SizedBox(width: 10),
                 Expanded(
@@ -149,7 +149,7 @@ class _GpayTopupScreenState extends State<GpayTopupScreen> {
                         "ခလုတ်နှိပ်ရင် လုံခြုံတဲ့ Stripe ငွေပေးချေစာမျက်နှာ "
                             "ပွင့်လာပါမယ် (ကတ်/bank)။ ငွေပေးချေပြီးတာနဲ့ "
                             "လက်ကျန်ထဲ အလိုအလျောက် ဝင်ပါမယ်။"),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12.5, color: GwColors.inkSoft),
                   ),
                 ),
@@ -167,12 +167,12 @@ class _GpayTopupScreenState extends State<GpayTopupScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline,
+                  Icon(Icons.error_outline,
                       color: GwColors.live, size: 19),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(_error!,
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: GwColors.live, fontSize: 13)),
                   ),
                 ],
@@ -209,12 +209,12 @@ class _GpayTopupScreenState extends State<GpayTopupScreen> {
             child: ElevatedButton.icon(
               onPressed: _busy ? null : _start,
               icon: _busy
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
                           strokeWidth: 2.4,
-                          valueColor: AlwaysStoppedAnimation(Colors.white)))
+                          valueColor: AlwaysStoppedAnimation(GwColors.onPrimary)))
                   : const Icon(Icons.lock_outline, size: 20),
               label: Text(_busy
                   ? tr(context, "Preparing…", "ပြင်ဆင်နေသည်…")

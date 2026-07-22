@@ -339,7 +339,7 @@ class _PttChannelScreenState extends State<PttChannelScreen>
           TextButton(
               onPressed: () => Navigator.of(ctx).pop(true),
               child: Text(tr(ctx, "Leave", "ထွက်မည်"),
-                  style: const TextStyle(color: GwColors.live))),
+                  style: TextStyle(color: GwColors.live))),
         ],
       ),
     );
@@ -370,7 +370,7 @@ class _PttChannelScreenState extends State<PttChannelScreen>
             Text(
               tr(context, "${widget.channel.memberCount} members",
                   "အဖွဲ့ဝင် ${widget.channel.memberCount} ဦး"),
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12,
                   color: GwColors.inkSoft,
                   fontWeight: FontWeight.w500),
@@ -407,7 +407,7 @@ class _PttChannelScreenState extends State<PttChannelScreen>
           if (widget.channel.joinCode != null) _codeBanner(),
           Expanded(
             child: _loading
-                ? const Center(
+                ? Center(
                     child: CircularProgressIndicator(color: GwColors.primary))
                 : _error != null && _messages.isEmpty
                     ? GwEmpty(
@@ -445,20 +445,20 @@ class _PttChannelScreenState extends State<PttChannelScreen>
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
-            const Icon(Icons.key, size: 15, color: GwColors.primary),
+            Icon(Icons.key, size: 15, color: GwColors.primary),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
                 tr(context,
                     "Join code: ${widget.channel.joinCode} — tap to copy",
                     "Join code: ${widget.channel.joinCode} — ကူးရန် နှိပ်ပါ"),
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 12.5,
                     color: GwColors.primary,
                     fontWeight: FontWeight.w700),
               ),
             ),
-            const Icon(Icons.copy, size: 14, color: GwColors.primary),
+            Icon(Icons.copy, size: 14, color: GwColors.primary),
           ],
         ),
       ),
@@ -505,7 +505,7 @@ class _PttChannelScreenState extends State<PttChannelScreen>
                 children: [
                   if (!isMine)
                     Text(name,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w800,
                             color: GwColors.primary)),
@@ -517,19 +517,19 @@ class _PttChannelScreenState extends State<PttChannelScreen>
                             ? Icons.stop_circle_outlined
                             : Icons.play_circle_fill,
                         size: 28,
-                        color: isMine ? Colors.white : GwColors.primary,
+                        color: isMine ? GwColors.onPrimary : GwColors.primary,
                       ),
                       const SizedBox(width: 8),
                       Icon(Icons.graphic_eq,
                           size: 18,
-                          color: isMine ? Colors.white70 : GwColors.inkSoft),
+                          color: isMine ? GwColors.onPrimarySoft : GwColors.inkSoft),
                       const SizedBox(width: 6),
                       Text(
                         "${secs}s",
                         style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w700,
-                            color: isMine ? Colors.white : GwColors.ink),
+                            color: isMine ? GwColors.onPrimary : GwColors.ink),
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -537,7 +537,7 @@ class _PttChannelScreenState extends State<PttChannelScreen>
                         style: TextStyle(
                             fontSize: 10.5,
                             color:
-                                isMine ? Colors.white70 : GwColors.inkSoft),
+                                isMine ? GwColors.onPrimarySoft : GwColors.inkSoft),
                       ),
                     ],
                   ),
@@ -556,7 +556,7 @@ class _PttChannelScreenState extends State<PttChannelScreen>
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: GwColors.surface,
           border: Border(top: BorderSide(color: GwColors.line)),
         ),

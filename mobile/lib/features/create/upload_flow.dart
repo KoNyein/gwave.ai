@@ -59,7 +59,7 @@ Future<String?> _uploadWithSpinner(
   showDialog(
     context: context,
     barrierDismissible: false,
-    builder: (_) => const Center(
+    builder: (_) => Center(
       child: CircularProgressIndicator(color: GwColors.primary),
     ),
   );

@@ -129,12 +129,12 @@ class _ComposerScreenState extends State<ComposerScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               ),
               child: _busy
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.2,
-                        valueColor: AlwaysStoppedAnimation(Colors.white),
+                        valueColor: AlwaysStoppedAnimation(GwColors.onPrimary),
                       ),
                     )
                   : const Text("Post"),
@@ -179,7 +179,7 @@ class _ComposerScreenState extends State<ComposerScreen> {
             Row(
               children: [
                 Chip(
-                  avatar: const Icon(Icons.emoji_emotions,
+                  avatar: Icon(Icons.emoji_emotions,
                       size: 16, color: GwColors.gold),
                   label: Text(_feeling!),
                   backgroundColor: GwColors.gold.withValues(alpha: 0.12),
@@ -259,16 +259,19 @@ class _ComposerScreenState extends State<ComposerScreen> {
     );
   }
 
+  // `color` is nullable rather than defaulted because GwColors tokens are
+  // theme-aware getters now, so they cannot be const default values.
   Widget _chip(IconData icon, String label, VoidCallback onTap,
-      {bool active = false, Color color = GwColors.primary}) {
+      {bool active = false, Color? color}) {
+    final c = color ?? GwColors.primary;
     return ActionChip(
-      avatar: Icon(icon, size: 18, color: active ? Colors.white : color),
+      avatar: Icon(icon, size: 18, color: active ? GwColors.onPrimary : c),
       label: Text(label),
       labelStyle: TextStyle(
-        color: active ? Colors.white : color,
+        color: active ? GwColors.onPrimary : c,
         fontWeight: FontWeight.w600,
       ),
-      backgroundColor: active ? color : color.withValues(alpha: 0.1),
+      backgroundColor: active ? c : c.withValues(alpha: 0.1),
       side: BorderSide.none,
       onPressed: onTap,
     );
@@ -348,7 +351,7 @@ class _FeelingSheet extends StatelessWidget {
                           Text(f.$2,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   color: GwColors.inkSoft)),
