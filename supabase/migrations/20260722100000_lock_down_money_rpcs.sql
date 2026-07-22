@@ -43,3 +43,20 @@ exception when others then
 end $$;
 
 notify pgrst, 'reload schema';
+
+-- Second pass, same audit: `enqueue_webhook(webhook_event, uuid, jsonb)` inserts
+-- straight into webhook_deliveries for whichever owner is passed, with no auth
+-- check of any kind, and anon held EXECUTE. That let anyone make gwave deliver
+-- attacker-authored JSON to any user's registered webhook URL — forged events
+-- from a trusted sender. No application code calls it; the webhook_on_* triggers
+-- do, and triggers run as the definer rather than as the caller, so revoking the
+-- API roles doesn't touch them.
+revoke execute on function public.enqueue_webhook(public.webhook_event, uuid, jsonb)
+  from anon, authenticated;
+
+-- Left alone deliberately: record_game_play(uuid) has no auth check either, but
+-- it only bumps a play counter and IS called from src/lib/actions/games.ts with
+-- the user's own client — revoking would break game plays to stop counter
+-- inflation, which is a bad trade.
+
+notify pgrst, 'reload schema';
