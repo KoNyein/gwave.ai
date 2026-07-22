@@ -21,12 +21,13 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams?: { link?: string };
+  // Next 15: searchParams is a Promise in the generated PageProps.
+  searchParams?: Promise<{ link?: string }>;
 }) {
   const t = await getTranslations("settings");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  const linkResult = searchParams?.link;
+  const linkResult = (await searchParams)?.link;
   const adminTheme = await getSiteTheme();
 
   const supabase = await createClient();
