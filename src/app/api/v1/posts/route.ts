@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateApiRequest, parseLimit } from "@/lib/api-auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/data/admin";
 
 /** GET /api/v1/posts — recent PUBLIC posts. Scope: read:posts. */
 export async function GET(request: NextRequest) {

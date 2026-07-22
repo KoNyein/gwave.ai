@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { PttChannel, PttMessage } from "@/types/database";
 import type { AuthorSummary } from "@/types/social";
 
@@ -12,8 +12,8 @@ export interface PttChannelWithCount extends PttChannel {
 export async function getMyPttChannels(
   userId: string,
 ): Promise<PttChannelWithCount[]> {
-  const supabase = await createClient();
-  const { data: memberships } = await supabase
+  const db = await createClient();
+  const { data: memberships } = await db
     .from("ptt_channel_members")
     .select("channel:ptt_channels(*)")
     .eq("user_id", userId)
@@ -24,7 +24,7 @@ export async function getMyPttChannels(
     .filter((c): c is PttChannel => Boolean(c));
   if (channels.length === 0) return [];
 
-  const { data: counts } = await supabase
+  const { data: counts } = await db
     .from("ptt_channel_members")
     .select("channel_id")
     .in(
@@ -46,8 +46,8 @@ export async function getMyPttChannels(
 export async function getPttChannel(
   channelId: string,
 ): Promise<PttChannel | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("ptt_channels")
     .select("*")
     .eq("id", channelId)
@@ -64,8 +64,8 @@ export async function getPttMessages(
   channelId: string,
   limit = 50,
 ): Promise<PttMessageWithPerson[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("ptt_messages")
     .select(
       "*, person:profiles!ptt_messages_user_id_fkey(id, username, full_name, avatar_url)",

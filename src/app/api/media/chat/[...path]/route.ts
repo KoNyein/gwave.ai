@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getCurrentProfile } from "@/lib/auth";
 import { CHAT_BUCKET, mediaUrl } from "@/lib/media";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 /**
  * Serves one chat attachment out of the private "chat-media" bucket.
@@ -60,12 +60,12 @@ export async function GET(request: NextRequest, props: { params: Promise<{ path:
     return NextResponse.json({ error: "Invalid path." }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const db = await createClient();
 
   // Authorization happens here, explicitly, before we try to sign. Doing it the
   // other way round — sign, and treat a failure as "not allowed" — would make a
   // missing object and a forbidden object indistinguishable.
-  const { data: meta } = await supabase
+  const { data: meta } = await db
     .rpc("chat_object_meta", { p_path: path })
     .maybeSingle<{ kind: string; file_name: string | null }>();
 
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ path:
   const lifetime = LIFETIMES[meta.kind] ?? DEFAULT_LIFETIME;
   const download = request.nextUrl.searchParams.has("dl");
 
-  const { data: signed, error } = await supabase.storage
+  const { data: signed, error } = await db.storage
     .from(CHAT_BUCKET)
     .createSignedUrl(path, lifetime.sign, {
       // The filename comes from the row we just authorized, never from the query

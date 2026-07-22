@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { acknowledgeAlert } from "@/lib/actions/iot";
 import { timeAgo } from "@/lib/format";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import { cn } from "@/lib/utils";
 import type { AlertWithDevice } from "@/lib/db/iot";
 import type { AlertSeverity } from "@/types/database";
@@ -43,8 +43,8 @@ export function HomeAlerts({
 
   // New alerts stream in over realtime (RLS-scoped to this owner).
   React.useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
+    const db = createClient();
+    const channel = db
       .channel(`home-alerts:${userId}`)
       .on(
         "postgres_changes",
@@ -53,7 +53,7 @@ export function HomeAlerts({
       )
       .subscribe();
     return () => {
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [userId, router]);
 

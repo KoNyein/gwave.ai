@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
 import { registerBroadcast, removeBroadcast } from "@/lib/cctv";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { UserCamera } from "@/types/database";
 
 async function getUserId(): Promise<string | null> {
@@ -87,8 +87,8 @@ export async function createCamera(input: {
     }
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("user_cameras")
     .insert({
       owner_id: userId,
@@ -168,8 +168,8 @@ export async function setCameraHlsUrl(input: {
   if (!userId) return { ok: false, error: "Not signed in" };
 
   const { id, hlsUrl } = parsed.data;
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("user_cameras")
     .update({ hls_url: hlsUrl === "" ? null : hlsUrl })
     .eq("id", id)
@@ -204,8 +204,8 @@ export async function setCameraVisibility(input: {
       ? new Date(Date.now() + durationMinutes * 60_000).toISOString()
       : null;
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("user_cameras")
     .update({ is_public: isPublic, public_until: publicUntil })
     .eq("id", id)
@@ -228,8 +228,8 @@ export async function regenerateShareToken(input: {
   }
 
   const shareToken = randomBytes(16).toString("hex");
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("user_cameras")
     .update({ share_token: shareToken })
     .eq("id", input.id)
@@ -254,16 +254,16 @@ export async function deleteCamera(input: {
     return { ok: false, error: "Invalid input" };
   }
 
-  const supabase = await createClient();
+  const db = await createClient();
   // Fetch the stream id first (owner-scoped) so we can clean up the media server.
-  const { data: cam } = await supabase
+  const { data: cam } = await db
     .from("user_cameras")
     .select("stream_id")
     .eq("id", input.id)
     .eq("owner_id", userId)
     .maybeSingle<Pick<UserCamera, "stream_id">>();
 
-  const { error } = await supabase
+  const { error } = await db
     .from("user_cameras")
     .delete()
     .eq("id", input.id)
@@ -296,8 +296,8 @@ export async function ptzCommand(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
-  const { data: cam } = await supabase
+  const db = await createClient();
+  const { data: cam } = await db
     .from("user_cameras")
     .select("ptz_url")
     .eq("id", cameraId)
@@ -342,9 +342,9 @@ export async function saveClip(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
+  const db = await createClient();
   // Confirm the caller owns the camera before recording against it.
-  const { data: cam } = await supabase
+  const { data: cam } = await db
     .from("user_cameras")
     .select("id")
     .eq("id", parsed.data.cameraId)
@@ -352,7 +352,7 @@ export async function saveClip(
     .maybeSingle<{ id: string }>();
   if (!cam) return { ok: false, error: "Camera not found" };
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("camera_clips")
     .insert({
       camera_id: parsed.data.cameraId,
@@ -386,8 +386,8 @@ export async function recordCameraAlert(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
-  const { data: cam } = await supabase
+  const db = await createClient();
+  const { data: cam } = await db
     .from("user_cameras")
     .select("id")
     .eq("id", parsed.data.cameraId)
@@ -395,7 +395,7 @@ export async function recordCameraAlert(
     .maybeSingle<{ id: string }>();
   if (!cam) return { ok: false, error: "Camera not found" };
 
-  const { error } = await supabase.from("camera_alerts").insert({
+  const { error } = await db.from("camera_alerts").insert({
     camera_id: parsed.data.cameraId,
     owner_id: userId,
     kind: parsed.data.kind,
@@ -412,8 +412,8 @@ export async function markCameraAlertsSeen(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
-  const supabase = await createClient();
-  let q = supabase
+  const db = await createClient();
+  let q = db
     .from("camera_alerts")
     .update({ seen: true })
     .eq("owner_id", userId)
@@ -443,9 +443,9 @@ export async function shareCameraWithGroup(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
+  const db = await createClient();
   // Confirm ownership up front for a clear error (RLS also enforces it).
-  const { data: cam } = await supabase
+  const { data: cam } = await db
     .from("user_cameras")
     .select("id")
     .eq("id", parsed.data.cameraId)
@@ -454,7 +454,7 @@ export async function shareCameraWithGroup(
   if (!cam) return { ok: false, error: "Camera not found" };
 
   if (parsed.data.share) {
-    const { error } = await supabase
+    const { error } = await db
       .from("camera_group_shares")
       .upsert(
         { camera_id: parsed.data.cameraId, group_id: parsed.data.groupId },
@@ -462,7 +462,7 @@ export async function shareCameraWithGroup(
       );
     if (error) return { ok: false, error: error.message };
   } else {
-    const { error } = await supabase
+    const { error } = await db
       .from("camera_group_shares")
       .delete()
       .eq("camera_id", parsed.data.cameraId)

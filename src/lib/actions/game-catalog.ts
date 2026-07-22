@@ -5,13 +5,13 @@ import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 async function requireStaff(): Promise<string | null> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return null;
-  const { data: profile } = await supabase
+  const { data: profile } = await db
     .from("profiles")
     .select("role")
     .eq("id", user.id)
@@ -51,8 +51,8 @@ export async function addCatalogGame(input: {
   }
   const { title, thumbnailUrl, gameUrl, category, sortOrder } = parsed.data;
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("game_catalog")
     .insert({
       title,
@@ -82,8 +82,8 @@ export async function setCatalogGameActive(input: {
   if (!z.string().uuid().safeParse(input.id).success) {
     return { ok: false, error: "Invalid input" };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("game_catalog")
     .update({ is_active: input.isActive })
     .eq("id", input.id);
@@ -101,8 +101,8 @@ export async function deleteCatalogGame(input: {
   if (!z.string().uuid().safeParse(input.id).success) {
     return { ok: false, error: "Invalid input" };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("game_catalog")
     .delete()
     .eq("id", input.id);

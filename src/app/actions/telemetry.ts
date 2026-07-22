@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import { getCurrentUser } from "@/lib/auth";
 
 /**
@@ -10,10 +10,10 @@ import { getCurrentUser } from "@/lib/auth";
  */
 export async function captureTimezone(tz: string): Promise<void> {
   if (!tz || tz.length > 60) return;
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return;
-  await supabase
+  await db
     .from("profiles")
     .update({ timezone: tz })
     .eq("id", user.id)

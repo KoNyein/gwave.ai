@@ -39,7 +39,7 @@ Conversion formula: `amount(from) ÷ rate_per_usd(from) × rate_per_usd(to)`.
 
 ### Phase B — Real-time rates
 - **Exchange-rate API** ချိတ် — Open Exchange Rates / Fixer.io / ဗဟိုဘဏ် feed။
-  Scheduled job (cron / edge function) က `currency_rates.rate_per_usd` ကို
+  Scheduled job (cron / Lambda) က `currency_rates.rate_per_usd` ကို
   update လုပ်; UI/DB function မပြောင်းရ (rate row သာ ရေးသည်)။
 - Crypto price — **Chainlink price feeds** / CoinGecko oracle → BTC/ETH/USDT။
 - Rate history table + staleness badge (feed ရပ်သွားရင် admin သိရန်)။
@@ -74,7 +74,8 @@ Conversion formula: `amount(from) ÷ rate_per_usd(from) × rate_per_usd(to)`.
 
 ## Tech notes
 
-- **DB:** PostgreSQL (Supabase) — ACID transactions၊ RLS။ Hot-path cache
+- **DB:** PostgreSQL (**Amazon RDS**, self-hosted PostgREST ကနေ ဝင်ရောက်) —
+  ACID transactions၊ RLS။ Hot-path cache
   အတွက် Redis နောက်မှ ထည့်နိုင်။
 - **Services:** ယခု conversion engine က in-DB SQL function; load
   တက်လာရင် Node/Go **microservice** အဖြစ် ခွဲထုတ်ရန် interface အဆင်သင့်။

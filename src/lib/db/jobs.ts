@@ -1,7 +1,7 @@
 import "server-only";
 import { getCurrentUser } from "@/lib/auth";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { Job, JobApplication } from "@/types/database";
 import type { AuthorSummary } from "@/types/social";
 
@@ -25,8 +25,8 @@ export async function getJobs(opts: {
   category?: string;
   q?: string;
 } = {}): Promise<JobWithEmployer[]> {
-  const supabase = await createClient();
-  let query = supabase
+  const db = await createClient();
+  let query = db
     .from("jobs")
     .select(`*, ${EMPLOYER_EMBED}`)
     .eq("status", "open")
@@ -41,8 +41,8 @@ export async function getJobs(opts: {
 
 /** A single job with its employer. */
 export async function getJob(id: string): Promise<JobWithEmployer | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("jobs")
     .select(`*, ${EMPLOYER_EMBED}`)
     .eq("id", id)
@@ -53,10 +53,10 @@ export async function getJob(id: string): Promise<JobWithEmployer | null> {
 
 /** The caller's own postings (any status), newest first. */
 export async function getMyJobs(): Promise<Job[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return [];
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("jobs")
     .select("*")
     .eq("employer_id", user.id)
@@ -70,8 +70,8 @@ export async function getMyJobs(): Promise<Job[]> {
 export async function getJobApplications(
   jobId: string,
 ): Promise<JobApplicationWithApplicant[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("job_applications")
     .select(
       "*, applicant:profiles!job_applications_applicant_id_fkey(id, username, full_name, avatar_url)",
@@ -85,10 +85,10 @@ export async function getJobApplications(
 
 /** The caller's own applications, with the job they applied to. */
 export async function getMyApplications(): Promise<MyApplication[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return [];
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("job_applications")
     .select("*, job:jobs(id, title, category, status)")
     .eq("applicant_id", user.id)
@@ -102,10 +102,10 @@ export async function getMyApplications(): Promise<MyApplication[]> {
 export async function getMyApplicationForJob(
   jobId: string,
 ): Promise<string | null> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return null;
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("job_applications")
     .select("id")
     .eq("job_id", jobId)

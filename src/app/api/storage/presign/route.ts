@@ -9,8 +9,8 @@ import { getCurrentProfile } from "@/lib/auth";
 
 /**
  * Hands the browser a short-lived, single-object S3 PUT URL so it can upload
- * straight to S3 — the same shape Supabase Storage's client upload had, minus
- * Supabase. The object key is always `<caller uid>/<uuid>.<ext>`, mirroring the
+ * straight to S3 — the same shape the legacy object storage's client upload had,
+ * minus that backend. The object key is always `<caller uid>/<uuid>.<ext>`, mirroring the
  * old bucket layout so existing DB paths keep resolving after the switch.
  *
  * Credentials come from the EC2 instance role (default provider chain) — no
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
   }
 
   // The key is namespaced by the caller's own id, so a user can only ever write
-  // into their own folder — the same guarantee the Supabase storage RLS gave.
+  // into their own folder — the same guarantee the legacy storage RLS gave.
   const profile = await getCurrentProfile();
   if (!profile) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });

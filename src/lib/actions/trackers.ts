@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 async function getUserId(): Promise<string | null> {
   const user = await getCurrentUser();
@@ -31,8 +31,8 @@ export async function createTracker(input: {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("trackers")
     .insert({
       owner_id: userId,
@@ -72,8 +72,8 @@ export async function updateTrackerLocation(input: {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("trackers")
     .update({
       latitude: parsed.data.latitude,
@@ -93,8 +93,8 @@ export async function updateTrackerLocation(input: {
 export async function deleteTracker(id: string): Promise<ActionResult<null>> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("trackers")
     .delete()
     .eq("id", id)

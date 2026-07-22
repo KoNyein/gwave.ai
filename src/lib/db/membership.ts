@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type {
   MembershipPlan,
   Payment,
@@ -22,8 +22,8 @@ export interface MemberRow {
 }
 
 export async function getPlans(): Promise<MembershipPlan[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("membership_plans")
     .select("*")
     .eq("active", true)
@@ -35,8 +35,8 @@ export async function getPlans(): Promise<MembershipPlan[]> {
 export async function getMySubscription(
   userId: string,
 ): Promise<SubscriptionWithPlan | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("subscriptions")
     .select("*, plan:membership_plans!subscriptions_plan_id_fkey(*)")
     .eq("user_id", userId)
@@ -47,8 +47,8 @@ export async function getMySubscription(
 
 /** PromptPay payments waiting for admin review. */
 export async function getReviewQueue(): Promise<PaymentWithProfile[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("payments")
     .select(
       "*, profile:profiles!payments_user_id_fkey(id, username, full_name, avatar_url)",
@@ -68,12 +68,12 @@ export async function getReviewQueue(): Promise<PaymentWithProfile[]> {
 
 /** All live subscriptions with their owners (admin member table). */
 export async function getMembers(search?: string): Promise<MemberRow[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   let profileFilter: string[] | null = null;
 
   if (search && search.trim().length >= 2) {
     const pattern = `%${search.trim().replace(/[%_\\]/g, "\\$&")}%`;
-    const { data: profiles } = await supabase
+    const { data: profiles } = await db
       .from("profiles")
       .select("id")
       .or(`username.ilike.${pattern},full_name.ilike.${pattern}`)
@@ -82,7 +82,7 @@ export async function getMembers(search?: string): Promise<MemberRow[]> {
     if (profileFilter.length === 0) return [];
   }
 
-  let query = supabase
+  let query = db
     .from("subscriptions")
     .select(
       `*,
@@ -112,12 +112,12 @@ export interface RevenuePoint {
 
 /** Succeeded payment totals per month for the last 12 months. */
 export async function getRevenueByMonth(): Promise<RevenuePoint[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   const since = new Date();
   since.setMonth(since.getMonth() - 11);
   since.setDate(1);
 
-  const { data } = await supabase
+  const { data } = await db
     .from("payments")
     .select("amount, created_at")
     .eq("status", "succeeded")
@@ -141,21 +141,21 @@ export interface MembershipStats {
 }
 
 export async function getMembershipStats(): Promise<MembershipStats> {
-  const supabase = await createClient();
+  const db = await createClient();
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
   const [activeRes, reviewRes, revenueRes] = await Promise.all([
-    supabase
+    db
       .from("subscriptions")
       .select("id", { count: "exact", head: true })
       .eq("status", "active"),
-    supabase
+    db
       .from("payments")
       .select("id", { count: "exact", head: true })
       .eq("status", "awaiting_review"),
-    supabase
+    db
       .from("payments")
       .select("amount")
       .eq("status", "succeeded")

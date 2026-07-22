@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { Story } from "@/types/database";
 import type { AuthorSummary, StoryGroup } from "@/types/social";
 
@@ -13,9 +13,9 @@ interface StoryRow extends Story {
  * the story bar. The viewer's own group comes first, then unviewed groups.
  */
 export async function getStoryGroups(userId: string): Promise<StoryGroup[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   const [storiesRes, viewsRes] = await Promise.all([
-    supabase
+    db
       .from("stories")
       .select(
         "*, author:profiles!stories_author_id_fkey(id, username, full_name, avatar_url)",
@@ -24,7 +24,7 @@ export async function getStoryGroups(userId: string): Promise<StoryGroup[]> {
       .order("created_at", { ascending: true })
       .limit(200)
       .returns<StoryRow[]>(),
-    supabase.from("story_views").select("story_id").eq("viewer_id", userId),
+    db.from("story_views").select("story_id").eq("viewer_id", userId),
   ]);
 
   const viewed = new Set((viewsRes.data ?? []).map((v) => v.story_id));

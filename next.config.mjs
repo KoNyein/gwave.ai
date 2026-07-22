@@ -97,6 +97,13 @@ const csp = [
   // *.tile.openstreetmap.org serves the Leaflet map tiles for location share.
   // https: allows Shop product images, which come from arbitrary external
   // merchant hosts (affiliate/dropship listings imported from other sites).
+  //
+  // NOTE on *.supabase.co here and in media-src/connect-src below: it is NOT the
+  // data plane. gwave's data API is our own PostgREST/Realtime at
+  // https://gwave.cc/sb, which is same-origin and covered by 'self'. These
+  // entries only keep pre-2026-07-17 media URLs (rows still holding a hosted
+  // Supabase Storage link) from being blocked. Safe to drop once no such row
+  // remains — verify before removing; a dropped CSP source fails silently.
   "img-src 'self' blob: data: https: https://*.supabase.co https://lh3.googleusercontent.com https://image.mux.com https://*.tile.openstreetmap.org",
   // *.live-video.net serves Amazon IVS HLS (Low-Latency playback + Real-Time
   // composite replays).
@@ -155,6 +162,9 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
+        // Legacy only: media rows created before the 2026-07-17 AWS migration.
+        // Current media is on CloudFront (NEXT_PUBLIC_S3_CDN); the data API is
+        // same-origin at /sb. Not evidence the backend is Supabase.
         protocol: "https",
         hostname: "*.supabase.co",
       },

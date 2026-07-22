@@ -4,7 +4,7 @@ import { ArrowLeft, Keyboard } from "lucide-react";
 
 import { TypingTutor } from "@/components/learn/typing-tutor";
 import { getCurrentProfile } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 export const metadata = { title: "Typing Tutor" };
 export const dynamic = "force-dynamic";
@@ -13,8 +13,8 @@ export default async function TypingTutorPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("typing_scores")
     .select("wpm")
     .eq("user_id", profile.id)

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 /**
  * Web-push the other participants of a conversation.
@@ -20,13 +20,13 @@ export async function notifyConversation(
   try {
     // Dynamic: keeps `web-push` (Node-only) out of anything the client compiles.
     const { sendPushToUser } = await import("@/lib/push");
-    const supabase = await createClient();
+    const db = await createClient();
     const [{ data: parts }, { data: sender }] = await Promise.all([
-      supabase
+      db
         .from("conversation_participants")
         .select("user_id")
         .eq("conversation_id", conversationId),
-      supabase
+      db
         .from("profiles")
         .select("full_name, username")
         .eq("id", senderId)

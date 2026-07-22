@@ -1,11 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { updateSession } from "@/lib/supabase/middleware";
+import { updateSession } from "@/lib/data/middleware";
 
 /**
  * In-memory fixed-window rate limiter (per container instance). A backstop
  * against single-IP request floods; edge DDoS/bandwidth protection is handled
- * by Cloudflare in front. Realtime signaling (Supabase) and LiveKit media go
+ * by Cloudflare in front. Realtime signaling (our self-hosted Realtime) and LiveKit media go
  * to other origins, so they are unaffected by this limit.
  */
 const WINDOW_MS = 60_000;

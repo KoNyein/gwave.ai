@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { ShopProduct } from "@/types/database";
 
 export type LiveSaleProduct = Pick<
@@ -12,8 +12,8 @@ export type LiveSaleProduct = Pick<
 export async function getLiveProducts(
   streamId: string,
 ): Promise<LiveSaleProduct[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("live_products")
     .select(
       "product:shop_products(id, title, image_url, price, currency, kind, seller_id)",
@@ -30,8 +30,8 @@ export async function getLiveProducts(
 export async function getMySellableProducts(
   userId: string,
 ): Promise<LiveSaleProduct[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("shop_products")
     .select("id, title, image_url, price, currency, kind, seller_id")
     .eq("seller_id", userId)

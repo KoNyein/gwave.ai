@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/data/admin";
+import { createClient } from "@/lib/data/server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  * and whether the profile row exists. Exposes only the caller's own user id.
  */
 export async function GET() {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
 
   let dbSeesSession: boolean | null = null;
@@ -25,7 +25,7 @@ export async function GET() {
   if (user) {
     // Profiles are readable by any *authenticated* DB session, so an empty
     // result for our own row means the JWT never reached PostgREST.
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("profiles")
       .select("id")
       .eq("id", user.id)

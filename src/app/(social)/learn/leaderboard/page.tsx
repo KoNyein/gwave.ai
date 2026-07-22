@@ -5,7 +5,7 @@ import { ArrowLeft, Trophy } from "lucide-react";
 import { LeaderboardTabs } from "@/components/learn/leaderboard-tabs";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { getCurrentProfile } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import { levelForPoints } from "@/lib/learn/levels";
 
 export const metadata = { title: "Learn Leaderboard" };
@@ -22,8 +22,8 @@ interface Row {
 }
 
 async function fetchBoard(period: "all" | "month"): Promise<Row[]> {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("learn_leaderboard", {
+  const db = await createClient();
+  const { data } = await db.rpc("learn_leaderboard", {
     p_period: period,
     p_limit: 50,
   });

@@ -23,8 +23,10 @@ services:
         # NEXT_PUBLIC_* are inlined into the client bundle at BUILD time, so they
         # must be interpolated here from --env-file. Server secrets are injected
         # at runtime via env_file below.
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        # Data API = our PostgREST + Realtime over RDS, not Supabase. Legacy
+        # NEXT_PUBLIC_SUPABASE_* names accepted as a fallback during the rename.
+        NEXT_PUBLIC_DATA_API_URL: ${NEXT_PUBLIC_DATA_API_URL:-${NEXT_PUBLIC_SUPABASE_URL:-}}
+        NEXT_PUBLIC_DATA_API_KEY: ${NEXT_PUBLIC_DATA_API_KEY:-${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://gwave.cc}
         NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-}
         NEXT_PUBLIC_TURN_URL: ${NEXT_PUBLIC_TURN_URL:-}

@@ -2,7 +2,7 @@ import "server-only";
 import { getCurrentUser } from "@/lib/auth";
 
 import { rankAds, type AdCandidate } from "@/lib/ads/rank";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type {
   Boost,
   BoostDailyStat,
@@ -18,8 +18,8 @@ export async function pickBoostForFeed(
   targetType: BoostTarget,
   limit = 10,
 ): Promise<BoostServeRow | null> {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("get_feed_boosts", {
+  const db = await createClient();
+  const { data } = await db.rpc("get_feed_boosts", {
     p_target_type: targetType,
     p_limit: limit,
     p_freq_cap: 4,
@@ -36,11 +36,11 @@ export interface BoostWithPreview extends Boost {
 }
 
 async function previewFor(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  db: Awaited<ReturnType<typeof createClient>>,
   b: Boost,
 ): Promise<{ title: string; image: string | null }> {
   if (b.target_type === "post") {
-    const { data } = await supabase
+    const { data } = await db
       .from("posts")
       .select("content")
       .eq("id", b.target_id)
@@ -48,14 +48,14 @@ async function previewFor(
     return { title: data?.content?.slice(0, 80) || "Post", image: null };
   }
   if (b.target_type === "shop_product") {
-    const { data } = await supabase
+    const { data } = await db
       .from("shop_products")
       .select("title, image_url")
       .eq("id", b.target_id)
       .maybeSingle<{ title: string; image_url: string | null }>();
     return { title: data?.title || "Product", image: data?.image_url ?? null };
   }
-  const { data } = await supabase
+  const { data } = await db
     .from("pos_products")
     .select("name")
     .eq("id", b.target_id)
@@ -65,11 +65,11 @@ async function previewFor(
 
 /** The caller's own campaigns, newest first, each with a target preview. */
 export async function getMyBoosts(): Promise<BoostWithPreview[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return [];
 
-  const { data } = await supabase
+  const { data } = await db
     .from("boosts")
     .select("*")
     .eq("owner_id", user.id)
@@ -78,7 +78,7 @@ export async function getMyBoosts(): Promise<BoostWithPreview[]> {
 
   const boosts = data ?? [];
   return Promise.all(
-    boosts.map(async (b) => ({ ...b, preview: await previewFor(supabase, b) })),
+    boosts.map(async (b) => ({ ...b, preview: await previewFor(db, b) })),
   );
 }
 
@@ -87,8 +87,8 @@ export async function getBoostDailyStats(
   boostId: string,
   days = 30,
 ): Promise<BoostDailyStat[]> {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("boost_daily_stats", {
+  const db = await createClient();
+  const { data } = await db.rpc("boost_daily_stats", {
     p_boost: boostId,
     p_days: days,
   });
@@ -108,12 +108,12 @@ export interface BoostableTargets {
 }
 
 export async function getBoostableTargets(): Promise<BoostableTargets> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { posts: [], shopProducts: [], posProducts: [] };
 
   const [posts, products, stores] = await Promise.all([
-    supabase
+    db
       .from("posts")
       .select("id, content, created_at")
       .eq("author_id", user.id)
@@ -122,14 +122,14 @@ export async function getBoostableTargets(): Promise<BoostableTargets> {
       .order("created_at", { ascending: false })
       .limit(20)
       .returns<{ id: string; content: string }[]>(),
-    supabase
+    db
       .from("shop_products")
       .select("id, title")
       .eq("seller_id", user.id)
       .order("created_at", { ascending: false })
       .limit(50)
       .returns<{ id: string; title: string }[]>(),
-    supabase
+    db
       .from("stores")
       .select("id")
       .eq("owner_id", user.id)
@@ -139,7 +139,7 @@ export async function getBoostableTargets(): Promise<BoostableTargets> {
   let posProducts: { id: string; label: string }[] = [];
   const storeIds = (stores.data ?? []).map((s) => s.id);
   if (storeIds.length) {
-    const { data } = await supabase
+    const { data } = await db
       .from("pos_products")
       .select("id, name")
       .in("store_id", storeIds)

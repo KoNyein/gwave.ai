@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 const upsertSchema = z.object({
   subject_type: z.enum(["profile", "page", "shop_product"]),
@@ -22,8 +22,8 @@ export async function upsertReview(
   if (!parsed.success) return { ok: false, error: "Please give a rating of 1–5." };
   const d = parsed.data;
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("upsert_review", {
+  const db = await createClient();
+  const { data, error } = await db.rpc("upsert_review", {
     p_subject_type: d.subject_type,
     p_subject_id: d.subject_id,
     p_rating: d.rating,
@@ -36,10 +36,10 @@ export async function upsertReview(
 
 /** Delete the caller's own review. */
 export async function deleteReview(reviewId: string): Promise<ActionResult> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
-  const { error } = await supabase
+  const { error } = await db
     .from("reviews")
     .delete()
     .eq("id", reviewId)

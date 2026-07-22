@@ -6,7 +6,7 @@ import { Cctv, Film, Lightbulb, Sprout, Video } from "lucide-react";
 
 import { timeAgo } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import type { RecentClip } from "@/lib/db/cctv";
 import type { Device } from "@/types/database";
 
@@ -44,10 +44,10 @@ export function FarmHomeMonitor({
   );
 
   React.useEffect(() => {
-    const supabase = createClient();
+    const db = createClient();
 
     // New recordings land instantly on the dashboard.
-    const clipsChannel = supabase
+    const clipsChannel = db
       .channel(`dash-clips:${userId}`)
       .on(
         "postgres_changes",
@@ -69,7 +69,7 @@ export function FarmHomeMonitor({
       .subscribe();
 
     // Sensor readings update in place (filtered client-side to my devices).
-    const readingsChannel = supabase
+    const readingsChannel = db
       .channel(`dash-readings:${userId}`)
       .on(
         "postgres_changes",
@@ -88,8 +88,8 @@ export function FarmHomeMonitor({
       .subscribe();
 
     return () => {
-      void supabase.removeChannel(clipsChannel);
-      void supabase.removeChannel(readingsChannel);
+      void db.removeChannel(clipsChannel);
+      void db.removeChannel(readingsChannel);
     };
   }, [userId, deviceIds]);
 

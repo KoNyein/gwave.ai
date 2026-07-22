@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient as createPostgrestClient } from "@supabase/supabase-js";
 
 import { publicEnv } from "@/lib/env";
 import type { Database } from "@/types/database";
@@ -17,15 +17,19 @@ function readCookie(name: string): string | null {
 }
 
 /**
- * Supabase *data* client for Client Components. Auth is handled by Cognito; this
+ * Data-API client for Client Components. Auth is handled by Cognito; this
  * client just carries the app's data token (the `gw_at` cookie) as its bearer,
  * via the `accessToken` hook so both REST and Realtime authenticate as the
  * signed-in user. Subject to RLS — never use for privileged operations.
+ *
+ * `@supabase/supabase-js` is a PostgREST client, and our AWS data plane
+ * (PostgREST + Realtime over RDS, at NEXT_PUBLIC_DATA_API_URL) serves exactly
+ * that wire protocol — the package stays, the hosted Supabase service is gone.
  */
 export function createClient() {
-  return createSupabaseClient<Database>(
-    publicEnv.NEXT_PUBLIC_SUPABASE_URL,
-    publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  return createPostgrestClient<Database>(
+    publicEnv.NEXT_PUBLIC_DATA_API_URL,
+    publicEnv.NEXT_PUBLIC_DATA_API_KEY,
     {
       accessToken: async () => readCookie(AT_COOKIE),
     },

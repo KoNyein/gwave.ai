@@ -2,7 +2,7 @@
 # ---------------------------------------------------------------------------
 # coturn TURN/STUN server for gwave.ai messenger audio/video calls.
 #
-# WebRTC signaling already runs over Supabase realtime; this relay lets calls
+# WebRTC signaling already runs over our self-hosted Realtime; this relay lets calls
 # connect through strict/symmetric NATs and mobile carriers.
 #
 # Run on a fresh Ubuntu 22.04 EC2 (t3.small is plenty), as root (sudo -i).

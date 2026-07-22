@@ -5,8 +5,8 @@ import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
 import { getCurrentProfile } from "@/lib/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/data/admin";
+import { createClient } from "@/lib/data/server";
 
 const applySchema = z.object({
   bio: z.string().trim().min(1).max(1000),
@@ -25,9 +25,9 @@ export async function applyToTeach(
   if (!profile) return { ok: false, error: "Not authenticated." };
   if (profile.is_teacher) return { ok: false, error: "Already a teacher." };
 
-  const supabase = await createClient();
+  const db = await createClient();
   // Resubmitting re-opens a rejected application as pending.
-  const { error } = await supabase.from("teacher_applications").upsert(
+  const { error } = await db.from("teacher_applications").upsert(
     {
       user_id: profile.id,
       bio: parsed.data.bio,
@@ -57,8 +57,8 @@ export async function reviewTeacherApplication(
   const canReview = ["admin", "super_admin"].includes(reviewer.role);
   if (!canReview) return { ok: false, error: "Not allowed." };
 
-  const supabase = await createClient();
-  const { data: app, error } = await supabase
+  const db = await createClient();
+  const { data: app, error } = await db
     .from("teacher_applications")
     .update({
       status: decision,

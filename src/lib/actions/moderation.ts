@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { getCurrentProfile } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 const uuid = z.string().uuid();
 
@@ -21,8 +21,8 @@ export async function blockUser(targetId: string): Promise<ActionResult> {
     return { ok: false, error: "You can't block yourself." };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("blocks")
     .insert({ blocker_id: profile.id, blocked_id: targetId });
   // 23505 = already blocked; treat as success.
@@ -40,8 +40,8 @@ export async function unblockUser(targetId: string): Promise<ActionResult> {
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("blocks")
     .delete()
     .match({ blocker_id: profile.id, blocked_id: targetId });
@@ -54,8 +54,8 @@ export async function unblockUser(targetId: string): Promise<ActionResult> {
 export async function isBlockedByMe(targetId: string): Promise<boolean> {
   const profile = await getCurrentProfile();
   if (!profile) return false;
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("blocks")
     .select("blocked_id")
     .match({ blocker_id: profile.id, blocked_id: targetId })

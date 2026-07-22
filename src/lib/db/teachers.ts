@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { TeacherApplication } from "@/types/database";
 import type { AuthorSummary } from "@/types/social";
 
@@ -12,8 +12,8 @@ export interface TeacherApplicationWithUser extends TeacherApplication {
 export async function getMyTeacherApplication(
   userId: string,
 ): Promise<TeacherApplication | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("teacher_applications")
     .select("*")
     .eq("user_id", userId)
@@ -25,8 +25,8 @@ export async function getMyTeacherApplication(
 export async function getTeacherApplications(): Promise<
   TeacherApplicationWithUser[]
 > {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("teacher_applications")
     .select(
       "*, user:profiles!teacher_applications_user_id_fkey(id, username, full_name, avatar_url)",

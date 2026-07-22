@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { displayName } from "@/lib/format";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import type { LiveChatMessage } from "@/types/database";
 import type { AuthorSummary } from "@/types/social";
 
@@ -51,11 +51,11 @@ export function LiveOverlay({
   }, []);
 
   React.useEffect(() => {
-    const supabase = createClient();
+    const db = createClient();
     profileCache.current.set(currentUser.id, currentUser);
 
     // New chat messages → show over the video, expire after 9s (keep last 4).
-    const chat = supabase
+    const chat = db
       .channel(`live-overlay-chat:${streamId}`)
       .on(
         "postgres_changes",
@@ -69,7 +69,7 @@ export function LiveOverlay({
           const row = payload.new as LiveChatMessage;
           let author = profileCache.current.get(row.user_id);
           if (!author) {
-            const { data } = await supabase
+            const { data } = await db
               .from("profiles")
               .select("id, username, full_name, avatar_url")
               .eq("id", row.user_id)
@@ -100,7 +100,7 @@ export function LiveOverlay({
       .subscribe();
 
     // Reactions (ReactionBar + DoubleTapHeart broadcast on this channel).
-    const reactions = supabase.channel(`live-reactions:${streamId}`, {
+    const reactions = db.channel(`live-reactions:${streamId}`, {
       config: { broadcast: { self: true } },
     });
     reactions
@@ -111,8 +111,8 @@ export function LiveOverlay({
       .subscribe();
 
     return () => {
-      void supabase.removeChannel(chat);
-      void supabase.removeChannel(reactions);
+      void db.removeChannel(chat);
+      void db.removeChannel(reactions);
     };
   }, [streamId, currentUser, spawnFloater]);
 

@@ -41,7 +41,7 @@ import {
   sendDeviceCommand,
 } from "@/lib/actions/iot";
 import type { SceneWithSchedules } from "@/lib/db/iot";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import { cn } from "@/lib/utils";
 import type { Device } from "@/types/database";
 
@@ -257,8 +257,8 @@ export function SmartHome({
 
   // Confirm optimistic toggles when the device echoes its state.
   React.useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
+    const db = createClient();
+    const channel = db
       .channel(`home:${userId}`)
       .on(
         "postgres_changes",
@@ -280,7 +280,7 @@ export function SmartHome({
       )
       .subscribe();
     return () => {
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [userId]);
 

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 
 /**
  * Reads a feature flag (publicly readable). Returns `defaultValue` until
@@ -15,8 +15,8 @@ export function useFeatureFlag(key: string, defaultValue = false): boolean {
 
   React.useEffect(() => {
     let cancelled = false;
-    const supabase = createClient();
-    supabase
+    const db = createClient();
+    db
       .from("feature_flags")
       .select("enabled")
       .eq("key", key)

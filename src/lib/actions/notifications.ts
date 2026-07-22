@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { ActionResult } from "@/lib/actions/posts";
 
 export async function markNotificationRead(
@@ -13,8 +13,8 @@ export async function markNotificationRead(
   if (!z.string().uuid().safeParse(notificationId).success) {
     return { ok: false, error: "Invalid notification." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("notifications")
     .update({ read: true })
     .eq("id", notificationId);
@@ -24,11 +24,11 @@ export async function markNotificationRead(
 }
 
 export async function markAllNotificationsRead(): Promise<ActionResult> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
-  const { error } = await supabase
+  const { error } = await db
     .from("notifications")
     .update({ read: true })
     .eq("recipient_id", user.id)

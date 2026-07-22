@@ -1,8 +1,19 @@
 import { z } from "zod";
 
 const publicSchema = z.object({
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  /**
+   * The gwave data plane: our self-hosted PostgREST + Realtime in front of RDS,
+   * served at https://gwave.cc/sb. This is NOT Supabase — gwave moved off the
+   * hosted service on 2026-07-17 (data on RDS, storage on S3/CloudFront, auth on
+   * Cognito). The `@supabase/supabase-js` package is still the client for it
+   * because it speaks PostgREST, which is exactly what the AWS side serves.
+   *
+   * DATA_API_KEY is the anon-role HS256 JWT. PostgREST ignores `apikey` and
+   * reads the bearer, but self-hosted Realtime decodes this value as a JWT to
+   * authorise the socket — so it must stay a real JWT, not a placeholder.
+   */
+  NEXT_PUBLIC_DATA_API_URL: z.string().url(),
+  NEXT_PUBLIC_DATA_API_KEY: z.string().min(1),
   NEXT_PUBLIC_SITE_URL: z.string().url().default("http://localhost:3000"),
   /**
    * Google OAuth web client ID. Only needed for One Tap (the sign-in prompt
@@ -16,9 +27,10 @@ const publicSchema = z.object({
   NEXT_PUBLIC_COGNITO_DOMAIN: z.string().url().optional(),
   NEXT_PUBLIC_COGNITO_CLIENT_ID: z.string().optional(),
   /**
-   * CloudFront domain for media (e.g. https://xxxx.cloudfront.net). When set,
-   * the app reads and writes media on S3 instead of Supabase Storage. Unset =
-   * Supabase Storage (the default), so this flips the whole storage backend.
+   * CloudFront domain for media (e.g. https://xxxx.cloudfront.net). Set in
+   * production, where all media lives on S3 behind CloudFront. Unset falls back
+   * to the legacy object-storage path on the data API, which is only reachable
+   * on pre-2026-07-17 installs — production has this set.
    */
   NEXT_PUBLIC_S3_CDN: z.string().url().optional(),
   /**
@@ -42,10 +54,25 @@ const publicSchema = z.object({
 /**
  * Public environment variables, validated at module load.
  * These are safe to expose to the browser bundle.
+ *
+ * NEXT_PUBLIC_DATA_API_URL / _KEY were renamed from NEXT_PUBLIC_SUPABASE_URL /
+ * NEXT_PUBLIC_SUPABASE_ANON_KEY (the backend is not Supabase — see the schema
+ * above). Both spellings are accepted, new name first, so a deploy carrying only
+ * the old build args keeps working. The old names are still baked into the
+ * production image and /etc/gwave-web.env; drop this fallback only once every
+ * builder and env file has been confirmed to set the new names.
+ *
+ * These must stay LITERAL `process.env.NEXT_PUBLIC_*` member expressions —
+ * Next.js inlines public env vars into the client bundle by static analysis, so
+ * a computed lookup (process.env[name]) would silently evaluate to undefined in
+ * the browser.
  */
 export const publicEnv = publicSchema.parse({
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  NEXT_PUBLIC_DATA_API_URL:
+    process.env.NEXT_PUBLIC_DATA_API_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
+  NEXT_PUBLIC_DATA_API_KEY:
+    process.env.NEXT_PUBLIC_DATA_API_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_COGNITO_DOMAIN: process.env.NEXT_PUBLIC_COGNITO_DOMAIN,

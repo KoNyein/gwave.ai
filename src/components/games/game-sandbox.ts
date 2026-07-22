@@ -3,7 +3,7 @@
  *
  * The srcdoc iframe's sandbox="allow-scripts" gives the game an opaque
  * origin, but sandboxing alone does NOT block network requests — and the
- * inherited page CSP allows hosts like *.supabase.co, which would be an
+ * inherited page CSP allows hosts like *.db.co, which would be an
  * exfiltration channel for untrusted code. A meta CSP combines with the
  * page policy by intersection (it can only tighten it), so prepending this
  * tag enforces the "no network" guarantee: no fetch/XHR/WebSocket/beacon,

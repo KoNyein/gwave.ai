@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Full user flows — require a REAL local Supabase stack with migrations +
+ * Full user flows — require a REAL local Postgres + PostgREST stack with migrations +
  * seed applied (demo1@gwave.ai / password123). Enable with:
  *
  *   E2E_FULL=1 pnpm e2e
  */
 const fullRun = process.env.E2E_FULL === "1";
-test.skip(!fullRun, "Set E2E_FULL=1 with a real Supabase stack to run flows");
+test.skip(!fullRun, "Set E2E_FULL=1 with a real Postgres/PostgREST stack to run flows");
 
 async function login(page: import("@playwright/test").Page, email: string) {
   await page.goto("/login");

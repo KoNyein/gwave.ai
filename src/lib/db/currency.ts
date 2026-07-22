@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createAnonClient } from "@/lib/supabase/anon";
+import { createAnonClient } from "@/lib/data/anon";
 import type { CurrencyMeta } from "@/lib/currency";
 
 /**
@@ -9,8 +9,8 @@ import type { CurrencyMeta } from "@/lib/currency";
  * anon client works anywhere (including the tools hub for logged-out users).
  */
 export async function getActiveCurrencies(): Promise<CurrencyMeta[]> {
-  const supabase = createAnonClient();
-  const { data } = await supabase
+  const db = createAnonClient();
+  const { data } = await db
     .from("currency_rates")
     .select("code, rate_per_usd, name, symbol, kind, decimals, flag, updated_at")
     .eq("is_active", true)

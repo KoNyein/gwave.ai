@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/data/admin";
 import { distanceMeters, formatDistance } from "@/lib/geolocation";
 import { sendPushToUser } from "@/lib/push";
 import type { SosCategory } from "@/types/database";

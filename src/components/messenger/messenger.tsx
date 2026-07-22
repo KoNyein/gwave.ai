@@ -68,7 +68,7 @@ import {
   uploadChatMedia,
   uploadVoice,
 } from "@/lib/media";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/types/database";
 import type {
@@ -289,7 +289,7 @@ export function Messenger({
     [currentUser],
   );
 
-  // WebRTC audio/video calls (Supabase Realtime signaling).
+  // WebRTC audio/video calls (signalled over our self-hosted Realtime).
   const call = useCall(currentUser, handleCallLog);
 
   const refreshConversations = React.useCallback(async () => {
@@ -370,8 +370,8 @@ export function Messenger({
     setPeerLastReadAt(otherParticipant?.last_read_at ?? null);
 
     // Per-conversation channel: typing broadcasts + peer read receipts.
-    const supabase = createClient();
-    const channel = supabase
+    const db = createClient();
+    const channel = db
       .channel(`conversation:${activeId}`)
       .on("broadcast", { event: "typing" }, (payload) => {
         if (payload.payload?.userId !== currentUser.id) {
@@ -404,15 +404,15 @@ export function Messenger({
     return () => {
       cancelled = true;
       convoChannelRef.current = null;
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, currentUser.id]);
 
   // Global channel: every message insert visible to this user (RLS-scoped).
   React.useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
+    const db = createClient();
+    const channel = db
       .channel(`messages:${currentUser.id}`)
       .on(
         "postgres_changes",
@@ -487,7 +487,7 @@ export function Messenger({
       });
 
     return () => {
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [currentUser, refreshConversations, reloadThread]);
 

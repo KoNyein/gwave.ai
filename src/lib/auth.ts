@@ -9,7 +9,7 @@ import {
   type AgeBand,
 } from "@/lib/age";
 import { readOrRefreshSession, type Session } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { Profile, UserRole } from "@/types/database";
 
 export type AuthUser = Session;
@@ -43,8 +43,8 @@ export const getCurrentProfile = cache(
     const user = await getCurrentUser();
     if (!user) return null;
 
-    const supabase = await createClient();
-    const { data } = await supabase
+    const db = await createClient();
+    const { data } = await db
       .from("profiles")
       .select("*")
       .eq("id", user.id)

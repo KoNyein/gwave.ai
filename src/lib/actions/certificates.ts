@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 
 import { TRACKS } from "@/lib/learn/lessons";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/data/admin";
+import { createClient } from "@/lib/data/server";
 import type { ActionResult } from "@/lib/actions/posts";
 
 /**
@@ -17,7 +17,7 @@ import type { ActionResult } from "@/lib/actions/posts";
 export async function claimCertificate(
   trackSlug: string,
 ): Promise<ActionResult<{ certificateId: string }>> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
 
@@ -25,7 +25,7 @@ export async function claimCertificate(
   if (!track) return { ok: false, error: "Unknown course" };
   const totalLessons = track.lessons.length;
 
-  const { count } = await supabase
+  const { count } = await db
     .from("lesson_progress")
     .select("lesson_slug", { count: "exact", head: true })
     .eq("user_id", user.id)

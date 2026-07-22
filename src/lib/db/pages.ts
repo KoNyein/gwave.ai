@@ -1,11 +1,11 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { Page } from "@/types/database";
 
 export async function getPageBySlug(slug: string): Promise<Page | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("pages")
     .select("*")
     .eq("slug", slug)
@@ -17,8 +17,8 @@ export async function isFollowingPage(
   pageId: string,
   userId: string,
 ): Promise<boolean> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("page_followers")
     .select("page_id")
     .eq("page_id", pageId)
@@ -28,14 +28,14 @@ export async function isFollowingPage(
 }
 
 export async function getMyPages(userId: string): Promise<Page[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   const [ownedRes, followedRes] = await Promise.all([
-    supabase
+    db
       .from("pages")
       .select("*")
       .eq("owner_id", userId)
       .order("created_at", { ascending: false }),
-    supabase
+    db
       .from("page_followers")
       .select("page:pages!page_followers_page_id_fkey(*)")
       .eq("user_id", userId)
@@ -54,10 +54,10 @@ export async function getDiscoverPages(
   userId: string,
   limit = 20,
 ): Promise<Page[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   const [{ data: follows }, { data: pages }] = await Promise.all([
-    supabase.from("page_followers").select("page_id").eq("user_id", userId),
-    supabase
+    db.from("page_followers").select("page_id").eq("user_id", userId),
+    db
       .from("pages")
       .select("*")
       .order("follower_count", { ascending: false })

@@ -6,7 +6,7 @@ import { Loader2, Mic, Play, Radio, WifiOff } from "lucide-react";
 
 import { sendPttMessage } from "@/lib/actions/ptt";
 import { mediaUrl, uploadVoice } from "@/lib/media";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import type { PttMessageWithPerson } from "@/lib/db/ptt";
 
 function pickMime(): string | undefined {
@@ -67,8 +67,8 @@ export function PttRoom({
 
   // Realtime: auto-play voices from others and refresh the list.
   React.useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
+    const db = createClient();
+    const channel = db
       .channel(`ptt:${channelId}`)
       .on(
         "postgres_changes",
@@ -94,7 +94,7 @@ export function PttRoom({
       )
       .subscribe();
     return () => {
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [channelId, myUserId, router]);
 

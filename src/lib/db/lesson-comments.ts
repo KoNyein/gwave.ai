@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { AuthorSummary } from "@/types/social";
 
 export interface LessonComment {
@@ -18,8 +18,8 @@ export async function getLessonComments(
   trackSlug: string,
   lessonSlug: string,
 ): Promise<LessonComment[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("lesson_comments")
     .select(
       "id, track_slug, lesson_slug, author_id, body, created_at, author:profiles!lesson_comments_author_id_fkey(id, username, full_name, avatar_url, role)",

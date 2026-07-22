@@ -14,15 +14,15 @@ import {
 } from "@/components/ui/card";
 import { getAuditLogs, getSiteName, getSiteTheme } from "@/lib/db/admin";
 import { displayName, timeAgo } from "@/lib/format";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 export default async function AdminSettingsPage() {
   const t = await getTranslations("admin");
-  const supabase = await createClient();
+  const db = await createClient();
   const [siteName, siteTheme, flagsRes, auditLogs] = await Promise.all([
     getSiteName(),
     getSiteTheme(),
-    supabase.from("feature_flags").select("*").order("key"),
+    db.from("feature_flags").select("*").order("key"),
     getAuditLogs(100),
   ]);
 

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createAnonClient } from "@/lib/supabase/anon";
+import { createAnonClient } from "@/lib/data/anon";
 
 export interface CreatorRow {
   author_id: string;
@@ -16,7 +16,7 @@ export interface CreatorRow {
 export async function getCreatorLeaderboard(
   limit = 50,
 ): Promise<CreatorRow[]> {
-  const supabase = createAnonClient();
-  const { data } = await supabase.rpc("creator_leaderboard", { p_limit: limit });
+  const db = createAnonClient();
+  const { data } = await db.rpc("creator_leaderboard", { p_limit: limit });
   return (data as CreatorRow[] | null) ?? [];
 }

@@ -1,10 +1,10 @@
 import { publicEnv } from "@/lib/env";
 import { mediaUrl } from "@/lib/media-url";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 
 /**
  * When a CloudFront domain is configured the app reads and writes media on S3;
- * otherwise it stays on Supabase Storage. One flag flips the whole storage
+ * otherwise it stays on the legacy (pre-S3) object storage. One flag flips the whole storage
  * backend, so the migration is reversible and testable without a code change.
  */
 const S3_CDN = publicEnv.NEXT_PUBLIC_S3_CDN;
@@ -12,7 +12,7 @@ const S3_CDN = publicEnv.NEXT_PUBLIC_S3_CDN;
 /**
  * Upload a blob under `<userId>/<uuid>.<ext>` and return that key. On S3 it asks
  * the server for a presigned PUT (the browser uploads straight to S3); on
- * Supabase it uses the storage client. The key layout is identical either way,
+ * legacy storage it uses the object-storage client. The key layout is identical either way,
  * so a stored path resolves under whichever backend is active.
  */
 /**
@@ -52,8 +52,8 @@ async function putObject(
   }
 
   const path = `${userId}/${crypto.randomUUID()}.${ext}`;
-  const supabase = createClient();
-  const { error } = await supabase.storage
+  const db = createClient();
+  const { error } = await db.storage
     .from(bucket)
     .upload(path, body, { contentType, cacheControl: "31536000" });
   if (error) throw new Error(error.message);
@@ -65,11 +65,11 @@ async function putObject(
  * return its stored path.
  *
  * This exists so the slip/KYC forms go through the same putObject branch as every
- * other upload. They previously called `supabase.storage.from("slips").upload()`
- * directly, which meant that after the S3 cutover the write still went to Supabase
+ * other upload. They previously called `db.storage.from("slips").upload()`
+ * directly, which meant that after the S3 cutover the write still went to the legacy
  * Storage while the admin pages read from S3 — so a freshly uploaded slip could
  * never be displayed. Routing them here keeps write and read on the same backend:
- * presigned S3 PUT when NEXT_PUBLIC_S3_CDN is set, Supabase Storage otherwise.
+ * presigned S3 PUT when NEXT_PUBLIC_S3_CDN is set, legacy object storage otherwise.
  *
  * Throws on failure — unlike the old inline calls, callers must handle it.
  */
@@ -135,8 +135,8 @@ const VOICE_EXTENSIONS: Record<string, string> = {
 
 /**
  * Public URL for a stored media object — CloudFront when S3 is active, else
- * Supabase. Defined in lib/media-url so server-only callers can import the URL
- * helper without dragging in the browser Supabase client and the canvas image
+ * legacy storage. Defined in lib/media-url so server-only callers can import the
+ * URL helper without dragging in the browser data client and the canvas image
  * pipeline this module also contains. Re-exported here so existing
  * `@/lib/media` imports are unchanged. Imported (not just re-exported) because
  * chatMediaUrl below calls it, and `export ... from` creates no local binding.
@@ -154,8 +154,8 @@ export { mediaUrl };
  *
  * On the S3/CloudFront backend there is no private chat bucket yet, so fall back
  * to the same public URL the rest of the app uses — chat media stays readable as
- * it is today rather than 404ing through a route that only understands Supabase
- * Storage. The private-route path is Supabase-Storage-only until an S3-native
+ * it is today rather than 404ing through a route that only understands the
+ * legacy storage. The private-route path is legacy-storage-only until an S3-native
  * signing flow (presigned GET / CloudFront signed URLs) lands.
  */
 export function chatMediaUrl(
@@ -168,7 +168,7 @@ export function chatMediaUrl(
 }
 
 /**
- * Bucket for a chat upload. Private "chat-media" on Supabase Storage; on
+ * Bucket for a chat upload. Private "chat-media" on the legacy object storage; on
  * S3/CloudFront there is no separate private chat bucket, so it goes to the
  * shared "media" bucket like every other upload (i.e. current prod behaviour).
  */
@@ -407,7 +407,7 @@ export async function uploadChatFile(
  * Uploads a recorded CCTV clip (MediaRecorder gives a webm Blob). Separate from
  * uploadVoice/uploadFile so it can carry a larger cap and a video MIME. Goes to
  * the public "media" bucket via putObject, so it works under whichever backend
- * (S3 or Supabase Storage) is active — matching how the rest of media.ts uploads.
+ * (S3 or the legacy object storage) is active — matching how the rest of media.ts uploads.
  */
 export async function uploadClip(
   userId: string,

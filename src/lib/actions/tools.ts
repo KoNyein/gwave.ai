@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { ActionResult } from "@/lib/actions/posts";
 
 const rateSchema = z.object({
@@ -25,8 +25,8 @@ export async function updateCurrencyRate(
   // The G-Pay peg is fixed: 1 G-Pay = 1 MMK. MMK's USD rate may move, but it
   // must stay a positive number — the peg itself is enforced in code, not here.
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("currency_rates")
     .update({ rate_per_usd: parsed.data.ratePerUsd })
     .eq("code", parsed.data.code);

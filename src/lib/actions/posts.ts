@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { ReactionType } from "@/types/database";
 import type { PostViewer } from "@/types/social";
 
@@ -77,7 +77,7 @@ export async function createPost(
     };
   }
 
-  const supabase = await createClient();
+  const db = await createClient();
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
@@ -88,7 +88,7 @@ export async function createPost(
   // the SELECT RLS check and reports a false "row-level security" violation.
   const postId = crypto.randomUUID();
 
-  const { error } = await supabase.from("posts").insert({
+  const { error } = await db.from("posts").insert({
     id: postId,
     author_id: userId,
     content: parsed.data.content.trim(),
@@ -109,7 +109,7 @@ export async function createPost(
   }
 
   if (parsed.data.media.length > 0) {
-    const { error: mediaError } = await supabase.from("post_media").insert(
+    const { error: mediaError } = await db.from("post_media").insert(
       parsed.data.media.map((m, index) => ({
         post_id: postId,
         media_type: m.media_type,
@@ -120,7 +120,7 @@ export async function createPost(
       })),
     );
     if (mediaError) {
-      await supabase.from("posts").delete().eq("id", postId);
+      await db.from("posts").delete().eq("id", postId);
       return { ok: false, error: mediaError.message };
     }
   }
@@ -159,14 +159,14 @@ export async function importPost(
     return { ok: false, error: "A post needs text or media." };
   }
 
-  const supabase = await createClient();
+  const db = await createClient();
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
   const when = new Date(parsed.data.createdAt);
   const createdAt = (when.getTime() > Date.now() ? new Date() : when).toISOString();
 
-  const { data: post, error } = await supabase
+  const { data: post, error } = await db
     .from("posts")
     .insert({
       author_id: userId,
@@ -181,7 +181,7 @@ export async function importPost(
   }
 
   if (parsed.data.media.length > 0) {
-    const { error: mediaError } = await supabase.from("post_media").insert(
+    const { error: mediaError } = await db.from("post_media").insert(
       parsed.data.media.map((m, index) => ({
         post_id: post.id,
         media_type: m.media_type,
@@ -192,7 +192,7 @@ export async function importPost(
       })),
     );
     if (mediaError) {
-      await supabase.from("posts").delete().eq("id", post.id);
+      await db.from("posts").delete().eq("id", post.id);
       return { ok: false, error: mediaError.message };
     }
   }
@@ -202,8 +202,8 @@ export async function importPost(
 }
 
 export async function deletePost(postId: string): Promise<ActionResult> {
-  const supabase = await createClient();
-  const { error } = await supabase.from("posts").delete().eq("id", postId);
+  const db = await createClient();
+  const { error } = await db.from("posts").delete().eq("id", postId);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/feed");
   return { ok: true, data: undefined };
@@ -221,12 +221,12 @@ export async function sharePost(
   const parsed = sharePostSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid share." };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
   // Sharing a share re-shares the original post.
-  const { data: target } = await supabase
+  const { data: target } = await db
     .from("posts")
     .select("id, shared_post_id")
     .eq("id", parsed.data.postId)
@@ -236,7 +236,7 @@ export async function sharePost(
   // See createPost: avoid INSERT ... RETURNING so the SELECT RLS policy
   // does not reject the freshly-inserted row.
   const postId = crypto.randomUUID();
-  const { error } = await supabase.from("posts").insert({
+  const { error } = await db.from("posts").insert({
     id: postId,
     author_id: userId,
     content: parsed.data.content.trim(),
@@ -263,7 +263,7 @@ export async function setReaction(
     return { ok: false, error: "Invalid reaction." };
   }
 
-  const supabase = await createClient();
+  const db = await createClient();
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
@@ -274,7 +274,7 @@ export async function setReaction(
   }
 
   if (type === null) {
-    const { error } = await supabase
+    const { error } = await db
       .from("reactions")
       .delete()
       .eq("user_id", userId)
@@ -283,7 +283,7 @@ export async function setReaction(
     return { ok: true, data: undefined };
   }
 
-  const { data: existing } = await supabase
+  const { data: existing } = await db
     .from("reactions")
     .select("id, type")
     .eq("user_id", userId)
@@ -292,7 +292,7 @@ export async function setReaction(
 
   if (existing) {
     if (existing.type === type) return { ok: true, data: undefined };
-    const { error } = await supabase
+    const { error } = await db
       .from("reactions")
       .update({ type })
       .eq("id", existing.id);
@@ -300,7 +300,7 @@ export async function setReaction(
     return { ok: true, data: undefined };
   }
 
-  const { error } = await supabase.from("reactions").insert({
+  const { error } = await db.from("reactions").insert({
     user_id: userId,
     [column]: targetId,
     type,
@@ -310,7 +310,7 @@ export async function setReaction(
   // Push the post owner (only on a fresh post reaction).
   if ("postId" in target) {
     void (async () => {
-      const { data: post } = await supabase
+      const { data: post } = await db
         .from("posts")
         .select("author_id")
         .eq("id", target.postId)
@@ -348,11 +348,11 @@ export async function addComment(
   const parsed = addCommentSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid comment." };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const { data: comment, error } = await supabase
+  const { data: comment, error } = await db
     .from("comments")
     .insert({
       post_id: parsed.data.postId,
@@ -369,7 +369,7 @@ export async function addComment(
 
   // Push the post owner about the new comment.
   void (async () => {
-    const { data: post } = await supabase
+    const { data: post } = await db
       .from("posts")
       .select("author_id")
       .eq("id", parsed.data.postId)
@@ -388,8 +388,8 @@ export async function addComment(
 }
 
 export async function deleteComment(commentId: string): Promise<ActionResult> {
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("comments")
     .delete()
     .eq("id", commentId);
@@ -407,8 +407,8 @@ export async function recordPostView(postId: string): Promise<void> {
   const userId = await getUserId();
   if (!userId) return;
 
-  const supabase = await createClient();
-  await supabase
+  const db = await createClient();
+  await db
     .from("post_views")
     .upsert(
       { post_id: postId, viewer_id: userId },
@@ -430,8 +430,8 @@ export async function getPostViewers(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("post_views")
     .select(
       "viewed_at, viewer:profiles!post_views_viewer_id_fkey(id, username, full_name, avatar_url)",
@@ -465,8 +465,8 @@ export async function updatePost(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("posts")
     .update({
       content: parsed.data.content.trim(),

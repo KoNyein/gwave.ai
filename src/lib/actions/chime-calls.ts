@@ -11,7 +11,7 @@ import {
   joinChimeMeeting,
   type ChimeJoinInfo,
 } from "@/lib/chime";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 const uuid = z.string().uuid();
 
@@ -20,8 +20,8 @@ async function inConversation(
   userId: string,
   conversationId: string,
 ): Promise<boolean> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("conversation_participants")
     .select("user_id")
     .eq("conversation_id", conversationId)
@@ -32,7 +32,7 @@ async function inConversation(
 
 /**
  * Caller: create the Chime meeting for a call and get this user's join info.
- * The meeting id travels to the callee through the existing supabase call
+ * The meeting id travels to the callee through the existing data-API call
  * signaling; the callee then calls joinChimeCall.
  */
 export async function startChimeCall(

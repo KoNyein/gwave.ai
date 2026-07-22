@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { FamilyCircle } from "@/types/database";
 
 async function getUserId(): Promise<string | null> {
@@ -22,8 +22,8 @@ export async function createFamilyCircle(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_family_circle", {
+  const db = await createClient();
+  const { data, error } = await db.rpc("create_family_circle", {
     p_name: parsed.data,
   });
   // The RPC returns the new family_circles row (a single object, though the
@@ -45,8 +45,8 @@ export async function joinFamilyCircle(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("join_family_circle", {
+  const db = await createClient();
+  const { data, error } = await db.rpc("join_family_circle", {
     p_code: parsed.data,
   });
   if (error || !data) {
@@ -71,8 +71,8 @@ export async function setFamilySharing(input: {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("family_memberships")
     .update({ sharing_enabled: parsed.data.enabled })
     .eq("circle_id", parsed.data.circleId)
@@ -92,8 +92,8 @@ export async function leaveFamilyCircle(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("family_memberships")
     .delete()
     .eq("circle_id", circleId)
@@ -121,8 +121,8 @@ export async function updateMyLocation(input: {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("member_locations").upsert(
+  const db = await createClient();
+  const { error } = await db.from("member_locations").upsert(
     {
       user_id: userId,
       latitude: parsed.data.latitude,

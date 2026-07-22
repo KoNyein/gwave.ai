@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { ActionResult } from "@/lib/actions/posts";
 
 const uuid = z.string().uuid();
@@ -36,12 +36,12 @@ export async function createPage(
     };
   }
 
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
   const slug = slugify(parsed.data.name);
-  const { error } = await supabase.from("pages").insert({
+  const { error } = await db.from("pages").insert({
     name: parsed.data.name.trim(),
     slug,
     category: parsed.data.category?.trim() || null,
@@ -58,11 +58,11 @@ export async function followPage(pageId: string): Promise<ActionResult> {
   if (!uuid.safeParse(pageId).success) {
     return { ok: false, error: "Invalid page." };
   }
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
-  const { error } = await supabase.from("page_followers").insert({
+  const { error } = await db.from("page_followers").insert({
     page_id: pageId,
     user_id: user.id,
   });
@@ -77,11 +77,11 @@ export async function unfollowPage(pageId: string): Promise<ActionResult> {
   if (!uuid.safeParse(pageId).success) {
     return { ok: false, error: "Invalid page." };
   }
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
-  const { error } = await supabase
+  const { error } = await db
     .from("page_followers")
     .delete()
     .eq("page_id", pageId)

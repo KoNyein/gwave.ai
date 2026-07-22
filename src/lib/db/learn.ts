@@ -1,15 +1,15 @@
 import "server-only";
 
 import { getLesson, getTrack } from "@/lib/learn/lessons";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { LessonProgress, MemberProject } from "@/types/database";
 
 /** All progress rows for a user (RLS restricts to their own anyway). */
 export async function getProgressForUser(
   userId: string,
 ): Promise<LessonProgress[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("lesson_progress")
     .select("*")
     .eq("user_id", userId);
@@ -21,8 +21,8 @@ export async function getTrackProgress(
   userId: string,
   trackSlug: string,
 ): Promise<Map<string, LessonProgress>> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("lesson_progress")
     .select("*")
     .eq("user_id", userId)
@@ -46,8 +46,8 @@ export interface ResumePoint {
 export async function getResumePointForUser(
   userId: string,
 ): Promise<ResumePoint | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("lesson_progress")
     .select("*")
     .eq("user_id", userId)
@@ -76,8 +76,8 @@ export async function getProjectForLesson(
   trackSlug: string,
   lessonSlug: string,
 ): Promise<MemberProject | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("member_projects")
     .select("*")
     .eq("user_id", userId)
@@ -96,8 +96,8 @@ export async function getProjectsForUser(
   userId: string,
   limit = 12,
 ): Promise<ProjectSummary[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("member_projects")
     .select("*")
     .eq("user_id", userId)
@@ -114,7 +114,7 @@ export async function getProjectsForUser(
  * learning_points definer function — individual lesson rows stay private).
  */
 export async function getLearningPoints(userId: string): Promise<number> {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("learning_points", { uid: userId });
+  const db = await createClient();
+  const { data } = await db.rpc("learning_points", { uid: userId });
   return typeof data === "number" ? data : 0;
 }

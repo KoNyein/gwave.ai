@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 const RANGES: Record<string, { hours: number; buckets: number }> = {
   "24h": { hours: 24, buckets: 96 },
@@ -14,7 +14,7 @@ const RANGES: Record<string, { hours: number; buckets: number }> = {
  * Time-bucketed averages for the history charts. RLS scopes to the owner.
  */
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   }
 
   const since = new Date(Date.now() - range.hours * 3600_000).toISOString();
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("sensor_readings")
     .select("value, ts")
     .eq("device_id", deviceId)

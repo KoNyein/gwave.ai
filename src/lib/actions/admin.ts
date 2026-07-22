@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/data/admin";
+import { createClient } from "@/lib/data/server";
 import { isSiteTheme } from "@/lib/theme";
 import type { ActionResult } from "@/lib/actions/posts";
 import type { UserRole } from "@/types/database";
@@ -13,10 +13,10 @@ import type { UserRole } from "@/types/database";
 const uuid = z.string().uuid();
 
 async function requireAdminId(): Promise<string | null> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return null;
-  const { data: profile } = await supabase
+  const { data: profile } = await db
     .from("profiles")
     .select("role")
     .eq("id", user.id)
@@ -27,10 +27,10 @@ async function requireAdminId(): Promise<string | null> {
 }
 
 async function requireModeratorId(): Promise<string | null> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return null;
-  const { data: profile } = await supabase
+  const { data: profile } = await db
     .from("profiles")
     .select("role")
     .eq("id", user.id)
@@ -205,14 +205,14 @@ export async function reportContent(
   if (!uuid.safeParse(targetId).success || reason.trim().length < 3) {
     return { ok: false, error: "Please describe the problem (3+ chars)." };
   }
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
   if ("profileId" in target && target.profileId === user.id) {
     return { ok: false, error: "You can't report yourself." };
   }
 
-  const { error } = await supabase.from("reports").insert({
+  const { error } = await db.from("reports").insert({
     reporter_id: user.id,
     post_id: "postId" in target ? target.postId : null,
     comment_id: "commentId" in target ? target.commentId : null,
@@ -315,8 +315,8 @@ export async function updateSiteName(name: string): Promise<ActionResult> {
   const adminId = await requireAdminId();
   if (!adminId) return { ok: false, error: "Admin access required." };
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("site_settings")
     .upsert({ key: "general", value: { site_name: parsed.data } });
   if (error) return { ok: false, error: error.message };
@@ -333,8 +333,8 @@ export async function updateSiteTheme(theme: string): Promise<ActionResult> {
   const adminId = await requireAdminId();
   if (!adminId) return { ok: false, error: "Admin access required." };
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("site_settings")
     .upsert({ key: "appearance", value: { theme } });
   if (error) return { ok: false, error: error.message };
@@ -360,8 +360,8 @@ export async function saveFeatureFlag(
     return { ok: false, error: "Key: lowercase letters, digits, _ . -" };
   }
   // RLS enforces developer+; call with the user's session.
-  const supabase = await createClient();
-  const { error } = await supabase.from("feature_flags").upsert({
+  const db = await createClient();
+  const { error } = await db.from("feature_flags").upsert({
     key: parsed.data,
     enabled,
     description: description?.trim().slice(0, 200) || null,

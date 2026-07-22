@@ -11,7 +11,7 @@ import { UserAvatar } from "@/components/social/user-avatar";
 import { markConversationRead, sendMessage } from "@/lib/actions/messages";
 import { displayName } from "@/lib/format";
 import { usePersistentState } from "@/lib/hooks/use-persistent-state";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/types/database";
 import type {
@@ -183,8 +183,8 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
   // Global realtime: every message this user can see.
   React.useEffect(() => {
     if (inert) return;
-    const supabase = createClient();
-    const channel = supabase
+    const db = createClient();
+    const channel = db
       .channel(`dock:${currentUser.id}`)
       .on(
         "postgres_changes",
@@ -256,7 +256,7 @@ export function ChatDock({ currentUser }: { currentUser: AuthorSummary }) {
         if (status === "SUBSCRIBED") void loadConversations();
       });
     return () => {
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [currentUser, loadConversations, openChat, inert]);
 

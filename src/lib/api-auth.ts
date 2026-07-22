@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { API_SCOPES, type ApiScope } from "@/lib/api-scopes";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/data/admin";
 import type { ApiKey } from "@/types/database";
 
 export { API_SCOPES, type ApiScope };

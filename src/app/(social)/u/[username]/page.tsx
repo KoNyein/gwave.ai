@@ -27,7 +27,7 @@ import { PRESENCE } from "@/lib/presence";
 import type { PresenceStatus } from "@/types/database";
 import { displayName, initials } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 export default async function ProfilePage(
   props: {
@@ -40,8 +40,8 @@ export default async function ProfilePage(
   if (!viewer) redirect("/login");
   if (!viewer.username) redirect("/onboarding");
 
-  const supabase = await createClient();
-  const { data: profile } = await supabase
+  const db = await createClient();
+  const { data: profile } = await db
     .from("profiles")
     .select("*")
     .eq("username", params.username)
@@ -72,7 +72,7 @@ export default async function ProfilePage(
       getProfilePhotos(profile.id).catch(() => []),
       isSelf
         ? Promise.resolve(null)
-        : supabase
+        : db
             .from("blocks")
             .select("blocked_id")
             .match({ blocker_id: viewer.id, blocked_id: profile.id })
@@ -90,21 +90,21 @@ export default async function ProfilePage(
   // Extra profile stats + the public pages this person runs.
   const [postCountRes, followerRes, followingRes, ownedPagesRes] =
     await Promise.all([
-      supabase
+      db
         .from("posts")
         .select("id", { count: "exact", head: true })
         .eq("author_id", profile.id)
         .is("group_id", null)
         .is("page_id", null),
-      supabase
+      db
         .from("follows")
         .select("follower_id", { count: "exact", head: true })
         .eq("followee_id", profile.id),
-      supabase
+      db
         .from("follows")
         .select("followee_id", { count: "exact", head: true })
         .eq("follower_id", profile.id),
-      supabase
+      db
         .from("pages")
         .select("id, name, slug, avatar_url")
         .eq("owner_id", profile.id)

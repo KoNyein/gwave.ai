@@ -22,7 +22,7 @@ import { getMyCameras, getMyRecentClips } from "@/lib/db/cctv";
 import { getMyGpayAccount } from "@/lib/db/gpay";
 import { getDevices, getLatestReadings } from "@/lib/db/iot";
 import { getLearningPoints } from "@/lib/db/learn";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import { displayName } from "@/lib/format";
 
 export const metadata = { title: "My dashboard" };
@@ -41,7 +41,7 @@ export default async function UserDashboardPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
 
-  const supabase = await createClient();
+  const db = await createClient();
   const [
     postsRes,
     friendsRes,
@@ -52,25 +52,25 @@ export default async function UserDashboardPage() {
     points,
     gpay,
   ] = await Promise.all([
-    supabase
+    db
       .from("posts")
       .select("id", { count: "exact", head: true })
       .eq("author_id", profile.id),
-    supabase
+    db
       .from("friendships")
       .select("id", { count: "exact", head: true })
       .eq("status", "accepted")
       .or(`requester_id.eq.${profile.id},addressee_id.eq.${profile.id}`),
-    supabase
+    db
       .from("lesson_progress")
       .select("lesson_slug", { count: "exact", head: true })
       .eq("user_id", profile.id)
       .eq("status", "completed"),
-    supabase
+    db
       .from("shop_orders")
       .select("id", { count: "exact", head: true })
       .eq("buyer_id", profile.id),
-    supabase
+    db
       .from("shop_products")
       .select("id", { count: "exact", head: true })
       .eq("seller_id", profile.id),

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentProfile } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 export type PrivacyResult = { ok: true } | { ok: false; error: string };
 
@@ -18,8 +18,8 @@ export async function requestAccountDeletion(
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("deletion_requests").upsert({
+  const db = await createClient();
+  const { error } = await db.from("deletion_requests").upsert({
     user_id: profile.id,
     reason: reason?.slice(0, 1000) || null,
   });
@@ -32,8 +32,8 @@ export async function cancelAccountDeletion(): Promise<PrivacyResult> {
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("deletion_requests")
     .delete()
     .eq("user_id", profile.id);
@@ -49,11 +49,11 @@ export async function exportMyData(): Promise<
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const [posts, comments, friendships] = await Promise.all([
-    supabase.from("posts").select("*").eq("author_id", profile.id),
-    supabase.from("comments").select("*").eq("author_id", profile.id),
-    supabase
+    db.from("posts").select("*").eq("author_id", profile.id),
+    db.from("comments").select("*").eq("author_id", profile.id),
+    db
       .from("friendships")
       .select("*")
       .or(`requester_id.eq.${profile.id},addressee_id.eq.${profile.id}`),

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 
 import { getMyStore, getProducts } from "@/lib/db/pos";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 function csvField(value: string | number | null): string {
   const text = String(value ?? "");
@@ -11,7 +11,7 @@ function csvField(value: string | number | null): string {
 
 /** GET /api/pos/products.csv — product + stock export for the user's store. */
 export async function GET() {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -23,7 +23,7 @@ export async function GET() {
 
   const products = await getProducts(context.store.id, true);
   const header = "name,category,sku,barcode,price,cost,stock,active";
-  const { data: categories } = await supabase
+  const { data: categories } = await db
     .from("pos_categories")
     .select("id, name")
     .eq("store_id", context.store.id);

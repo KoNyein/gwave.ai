@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type {
   FamilyCircle,
   FamilyMembership,
@@ -14,8 +14,8 @@ export interface CircleWithMine extends FamilyCircle {
 
 /** Circles the caller belongs to, with their own sharing flag. */
 export async function getMyCircles(userId: string): Promise<CircleWithMine[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("family_memberships")
     .select("sharing_enabled, circle:family_circles(*)")
     .eq("user_id", userId)
@@ -37,8 +37,8 @@ export interface CircleMember {
 export async function getCircleMembers(
   circleId: string,
 ): Promise<CircleMember[]> {
-  const supabase = await createClient();
-  const { data: memberships } = await supabase
+  const db = await createClient();
+  const { data: memberships } = await db
     .from("family_memberships")
     .select(
       "user_id, sharing_enabled, profile:profiles!family_memberships_user_id_fkey(id, username, full_name, avatar_url)",
@@ -54,7 +54,7 @@ export async function getCircleMembers(
   if (rows.length === 0) return [];
 
   const ids = rows.map((r) => r.user_id);
-  const { data: locations } = await supabase
+  const { data: locations } = await db
     .from("member_locations")
     .select("*")
     .in("user_id", ids)
@@ -82,9 +82,9 @@ export interface FamilyMapPerson {
 export async function getFamilyPeopleForMap(
   userId: string,
 ): Promise<FamilyMapPerson[]> {
-  const supabase = await createClient();
+  const db = await createClient();
 
-  const { data: myRows } = await supabase
+  const { data: myRows } = await db
     .from("family_memberships")
     .select("circle_id")
     .eq("user_id", userId)
@@ -92,7 +92,7 @@ export async function getFamilyPeopleForMap(
   const circleIds = (myRows ?? []).map((r) => r.circle_id);
   if (circleIds.length === 0) return [];
 
-  const { data: memberRows } = await supabase
+  const { data: memberRows } = await db
     .from("family_memberships")
     .select(
       "user_id, sharing_enabled, profile:profiles!family_memberships_user_id_fkey(id, username, full_name, avatar_url)",
@@ -112,7 +112,7 @@ export async function getFamilyPeopleForMap(
   }
   if (byId.size === 0) return [];
 
-  const { data: locations } = await supabase
+  const { data: locations } = await db
     .from("member_locations")
     .select("*")
     .in("user_id", [...byId.keys()])

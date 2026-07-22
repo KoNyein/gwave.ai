@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { ActionResult } from "@/lib/actions/posts";
 
 const uuid = z.string().uuid();
@@ -45,10 +45,10 @@ export async function registerDevice(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
+  const db = await createClient();
   const secret = randomBytes(24).toString("base64url");
 
-  const { data: device, error } = await supabase
+  const { data: device, error } = await db
     .from("devices")
     .insert({
       owner_id: userId,
@@ -65,7 +65,7 @@ export async function registerDevice(
   }
 
   const topic = `gwave/${device.id}`;
-  const { error: topicError } = await supabase
+  const { error: topicError } = await db
     .from("devices")
     .update({ topic })
     .eq("id", device.id);
@@ -90,8 +90,8 @@ export async function updateDevice(
     .safeParse(updates);
   if (!parsed.success) return { ok: false, error: "Invalid update." };
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("devices")
     .update(parsed.data)
     .eq("id", deviceId);
@@ -104,8 +104,8 @@ export async function deleteDevice(deviceId: string): Promise<ActionResult> {
   if (!uuid.safeParse(deviceId).success) {
     return { ok: false, error: "Invalid device." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase.from("devices").delete().eq("id", deviceId);
+  const db = await createClient();
+  const { error } = await db.from("devices").delete().eq("id", deviceId);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/farm", "layout");
   return { ok: true, data: undefined };
@@ -122,8 +122,8 @@ export async function sendDeviceCommand(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("device_commands").insert({
+  const db = await createClient();
+  const { error } = await db.from("device_commands").insert({
     device_id: deviceId,
     issued_by: userId,
     command,
@@ -162,8 +162,8 @@ export async function createRule(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("automation_rules").insert({
+  const db = await createClient();
+  const { error } = await db.from("automation_rules").insert({
     owner_id: userId,
     name: parsed.data.name.trim(),
     trigger_device_id: parsed.data.triggerDeviceId,
@@ -191,8 +191,8 @@ export async function setRuleEnabled(
   if (!uuid.safeParse(ruleId).success) {
     return { ok: false, error: "Invalid rule." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("automation_rules")
     .update({ enabled })
     .eq("id", ruleId);
@@ -205,8 +205,8 @@ export async function deleteRule(ruleId: string): Promise<ActionResult> {
   if (!uuid.safeParse(ruleId).success) {
     return { ok: false, error: "Invalid rule." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("automation_rules")
     .delete()
     .eq("id", ruleId);
@@ -219,8 +219,8 @@ export async function acknowledgeAlert(alertId: string): Promise<ActionResult> {
   if (!uuid.safeParse(alertId).success) {
     return { ok: false, error: "Invalid alert." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("alerts")
     .update({ acknowledged: true })
     .eq("id", alertId);
@@ -254,8 +254,8 @@ export async function createScene(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("scenes").insert({
+  const db = await createClient();
+  const { error } = await db.from("scenes").insert({
     owner_id: userId,
     name: parsed.data.name.trim(),
     actions: parsed.data.actions.map((action) => ({
@@ -272,8 +272,8 @@ export async function deleteScene(sceneId: string): Promise<ActionResult> {
   if (!uuid.safeParse(sceneId).success) {
     return { ok: false, error: "Invalid scene." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase.from("scenes").delete().eq("id", sceneId);
+  const db = await createClient();
+  const { error } = await db.from("scenes").delete().eq("id", sceneId);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/home");
   return { ok: true, data: undefined };
@@ -287,8 +287,8 @@ export async function runScene(sceneId: string): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { data: scene } = await supabase
+  const db = await createClient();
+  const { data: scene } = await db
     .from("scenes")
     .select("actions")
     .eq("id", sceneId)
@@ -301,7 +301,7 @@ export async function runScene(sceneId: string): Promise<ActionResult> {
   }[];
   if (actions.length === 0) return { ok: true, data: undefined };
 
-  const { error } = await supabase.from("device_commands").insert(
+  const { error } = await db.from("device_commands").insert(
     actions.map((action) => ({
       device_id: action.device_id,
       issued_by: userId,
@@ -326,8 +326,8 @@ export async function createSchedule(
   const userId = await getUserId();
   if (!userId) return { ok: false, error: "Not authenticated." };
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("scene_schedules").insert({
+  const db = await createClient();
+  const { error } = await db.from("scene_schedules").insert({
     owner_id: userId,
     scene_id: parsed.data.sceneId,
     run_at: parsed.data.runAt,
@@ -344,8 +344,8 @@ export async function deleteSchedule(
   if (!uuid.safeParse(scheduleId).success) {
     return { ok: false, error: "Invalid schedule." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("scene_schedules")
     .delete()
     .eq("id", scheduleId);

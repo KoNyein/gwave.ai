@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { API_SCOPES, hashApiKey } from "@/lib/api-auth";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { ActionResult } from "@/lib/actions/posts";
 import type { WebhookEvent } from "@/types/database";
 
@@ -45,9 +45,9 @@ export async function createApiKey(
   const secret = randomBytes(24).toString("base64url");
   const fullKey = `gw_${prefix}_${secret}`;
 
-  const supabase = await createClient();
+  const db = await createClient();
   // RLS enforces developer+ on insert.
-  const { error } = await supabase.from("api_keys").insert({
+  const { error } = await db.from("api_keys").insert({
     owner_id: userId,
     name: parsed.data.name.trim(),
     prefix,
@@ -65,8 +65,8 @@ export async function revokeApiKey(keyId: string): Promise<ActionResult> {
   if (!uuid.safeParse(keyId).success) {
     return { ok: false, error: "Invalid key." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("api_keys")
     .update({ revoked: true })
     .eq("id", keyId);
@@ -82,8 +82,8 @@ export async function rotateApiKey(
   if (!uuid.safeParse(keyId).success) {
     return { ok: false, error: "Invalid key." };
   }
-  const supabase = await createClient();
-  const { data: existing } = await supabase
+  const db = await createClient();
+  const { data: existing } = await db
     .from("api_keys")
     .select("name, scopes, rate_limit")
     .eq("id", keyId)
@@ -128,8 +128,8 @@ export async function createWebhook(
   if (!userId) return { ok: false, error: "Not authenticated." };
 
   const secret = `whsec_${randomBytes(24).toString("base64url")}`;
-  const supabase = await createClient();
-  const { error } = await supabase.from("webhooks").insert({
+  const db = await createClient();
+  const { error } = await db.from("webhooks").insert({
     owner_id: userId,
     url: parsed.data.url,
     events: parsed.data.events.filter((event): event is WebhookEvent =>
@@ -150,8 +150,8 @@ export async function setWebhookActive(
   if (!uuid.safeParse(webhookId).success) {
     return { ok: false, error: "Invalid webhook." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("webhooks")
     .update({ active })
     .eq("id", webhookId);
@@ -164,8 +164,8 @@ export async function deleteWebhook(webhookId: string): Promise<ActionResult> {
   if (!uuid.safeParse(webhookId).success) {
     return { ok: false, error: "Invalid webhook." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("webhooks")
     .delete()
     .eq("id", webhookId);
@@ -183,10 +183,10 @@ export async function deleteWebhook(webhookId: string): Promise<ActionResult> {
  * COOLIFY_API_TOKEN and COOLIFY_APP_UUID env vars on the server.
  */
 export async function triggerRedeploy(): Promise<ActionResult<{ message: string }>> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not authenticated." };
-  const { data: profile } = await supabase
+  const { data: profile } = await db
     .from("profiles")
     .select("role")
     .eq("id", user.id)

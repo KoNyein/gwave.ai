@@ -60,7 +60,7 @@ export function GpayRegistrationForm({
     // Upload a newly chosen payment slip + face scan to the private "slips"
     // bucket first; we store only their paths. Editing without a new capture
     // keeps the old one. uploadSlip picks the backend (presigned S3 PUT when
-    // NEXT_PUBLIC_S3_CDN is set, Supabase Storage otherwise) so the write always
+    // NEXT_PUBLIC_S3_CDN is set, the legacy object storage otherwise) so the write always
     // lands where the admin pages read from.
     let slipPath = "";
     let facePath = "";

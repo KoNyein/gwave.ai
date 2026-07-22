@@ -7,7 +7,7 @@ import { UserAvatar } from "@/components/social/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { displayName } from "@/lib/format";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import type { LiveChatMessage } from "@/types/database";
 import type { AuthorSummary } from "@/types/social";
 
@@ -53,10 +53,10 @@ export function LiveChat({
   }, [messages.length]);
 
   React.useEffect(() => {
-    const supabase = createClient();
+    const db = createClient();
     profileCache.current.set(currentUser.id, currentUser);
 
-    const channel = supabase
+    const channel = db
       .channel(`live-chat:${streamId}`)
       .on(
         "postgres_changes",
@@ -70,7 +70,7 @@ export function LiveChat({
           const row = payload.new as LiveChatMessage;
           let author = profileCache.current.get(row.user_id);
           if (!author) {
-            const { data } = await supabase
+            const { data } = await db
               .from("profiles")
               .select("id, username, full_name, avatar_url")
               .eq("id", row.user_id)
@@ -93,7 +93,7 @@ export function LiveChat({
       .subscribe();
 
     return () => {
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [streamId, currentUser]);
 
@@ -104,8 +104,8 @@ export function LiveChat({
     setPending(true);
     setError(null);
 
-    const supabase = createClient();
-    const { error: insertError } = await supabase
+    const db = createClient();
+    const { error: insertError } = await db
       .from("live_chat_messages")
       .insert({ stream_id: streamId, user_id: currentUser.id, content });
     setPending(false);

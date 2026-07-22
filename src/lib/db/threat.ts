@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { ThreatAlert } from "@/types/database";
 import type { AuthorSummary } from "@/types/social";
 
@@ -10,8 +10,8 @@ export interface ThreatWithReporter extends ThreatAlert {
 
 /** Active (unexpired) threat warnings, newest first. */
 export async function getActiveThreats(): Promise<ThreatWithReporter[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("threat_alerts")
     .select(
       "*, reporter:profiles!threat_alerts_reporter_id_fkey(id, username, full_name, avatar_url)",

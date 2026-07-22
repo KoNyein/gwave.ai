@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import type { ActionResult } from "@/lib/actions/posts";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { BoostDailyStat } from "@/types/database";
 
 const createSchema = z.object({
@@ -37,8 +37,8 @@ export async function createBoost(
     return { ok: false, error: "Daily cap can't exceed the total budget." };
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_boost", {
+  const db = await createClient();
+  const { data, error } = await db.rpc("create_boost", {
     p_target_type: d.target_type,
     p_target_id: d.target_id,
     p_headline: d.headline ?? null,
@@ -57,15 +57,15 @@ export async function createBoost(
 /** Record a sponsored-card impression (billed once per viewer/day server-side). */
 export async function recordBoostImpression(boostId: string): Promise<void> {
   if (!boostId) return;
-  const supabase = await createClient();
-  await supabase.rpc("record_boost_impression", { p_boost: boostId });
+  const db = await createClient();
+  await db.rpc("record_boost_impression", { p_boost: boostId });
 }
 
 /** Record a sponsored-card click (free engagement signal). */
 export async function recordBoostClick(boostId: string): Promise<void> {
   if (!boostId) return;
-  const supabase = await createClient();
-  await supabase.rpc("record_boost_click", { p_boost: boostId });
+  const db = await createClient();
+  await db.rpc("record_boost_click", { p_boost: boostId });
 }
 
 /** Pause or resume one of the caller's campaigns. */
@@ -73,8 +73,8 @@ export async function setBoostStatus(
   boostId: string,
   status: "active" | "paused",
 ): Promise<ActionResult> {
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("set_boost_status", {
+  const db = await createClient();
+  const { error } = await db.rpc("set_boost_status", {
     p_boost: boostId,
     p_status: status,
   });
@@ -89,8 +89,8 @@ export async function fetchBoostDailyStats(
   days = 30,
 ): Promise<BoostDailyStat[]> {
   if (!boostId) return [];
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("boost_daily_stats", {
+  const db = await createClient();
+  const { data } = await db.rpc("boost_daily_stats", {
     p_boost: boostId,
     p_days: days,
   });
@@ -106,8 +106,8 @@ export async function fetchBoostDailyStats(
 export async function cancelBoost(
   boostId: string,
 ): Promise<ActionResult<number>> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("cancel_boost", {
+  const db = await createClient();
+  const { data, error } = await db.rpc("cancel_boost", {
     p_boost: boostId,
   });
   if (error) return { ok: false, error: error.message };

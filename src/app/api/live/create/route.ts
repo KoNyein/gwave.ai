@@ -7,7 +7,7 @@ import { createIvsChannel, deleteIvsChannel, ivsIsDefaultProvider } from "@/lib/
 import { createIvsStage, deleteIvsStage } from "@/lib/ivs-realtime";
 import { livekitConfigured } from "@/lib/livekit";
 import { getMux } from "@/lib/mux";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/data/admin";
 
 /** Short, unguessable-enough LiveKit room name. */
 function newLivekitRoom(): string {

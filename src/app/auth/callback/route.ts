@@ -11,7 +11,7 @@ import { authEnv } from "@/lib/env";
 import { cognito } from "@/lib/auth/cognito";
 import { setSession } from "@/lib/auth/session";
 import { verifyDataToken } from "@/lib/auth/tokens";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 /**
  * The origin as the *browser* sees it (behind the reverse proxy the request URL
@@ -184,8 +184,8 @@ export async function GET(request: Request) {
         });
 
         // New users (no username on their profile) go to onboarding.
-        const supabase = await createClient();
-        const { data: profile } = await supabase
+        const db = await createClient();
+        const { data: profile } = await db
           .from("profiles")
           .select("username")
           .eq("id", profileId)

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 import { cn } from "@/lib/utils";
 import type { AuthorSummary } from "@/types/social";
 
@@ -46,7 +46,7 @@ type SignalPayload = {
 /**
  * A Zoom / Google-Meet-style multi-party video room. Everyone who opens the
  * same room id joins a WebRTC *mesh*: each pair of participants holds a direct
- * peer connection, so media flows P2P (no media server). Supabase Realtime
+ * peer connection, so media flows P2P (no media server). Our self-hosted Realtime
  * carries presence (who's here) and the offer/answer/ICE signalling. A
  * deterministic rule — the lexicographically smaller id makes the offer —
  * ensures exactly one side initiates per pair.
@@ -158,8 +158,8 @@ export function MeetRoom({
 
   React.useEffect(() => {
     let cancelled = false;
-    const supabase = createClient();
-    const channel = supabase.channel(`meet:${roomId}`, {
+    const db = createClient();
+    const channel = db.channel(`meet:${roomId}`, {
       config: { presence: { key: me } },
     });
     channelRef.current = channel;
@@ -242,7 +242,7 @@ export function MeetRoom({
       Object.values(pcs.current).forEach((pc) => pc.close());
       pcs.current = {};
       localStream.current?.getTracks().forEach((t) => t.stop());
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, me]);

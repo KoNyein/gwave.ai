@@ -16,8 +16,17 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # NEXT_PUBLIC_* vars are inlined into the client bundle at build time, so any the
-# browser needs (Supabase, TURN for calls, CCTV player/HLS origins, VAPID push,
-# maps, game frames) must be passed as build args here — not just at runtime.
+# browser needs (the data API, TURN for calls, CCTV player/HLS origins, VAPID
+# push, maps, game frames) must be passed as build args here — not just at runtime.
+#
+# DATA_API_{URL,KEY} point at our self-hosted PostgREST + Realtime over RDS
+# (https://gwave.cc/sb) — not Supabase, which gwave left on 2026-07-17. They were
+# formerly named NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY; both
+# spellings are accepted below (new name wins) so a builder that still passes only
+# the old args produces a working image. Drop the legacy pair once every builder
+# and env file sets the new names.
+ARG NEXT_PUBLIC_DATA_API_URL
+ARG NEXT_PUBLIC_DATA_API_KEY
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_SITE_URL
@@ -37,6 +46,10 @@ ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ARG NEXT_PUBLIC_COGNITO_DOMAIN
 ARG NEXT_PUBLIC_COGNITO_CLIENT_ID
 ARG NEXT_PUBLIC_S3_CDN
+ENV NEXT_PUBLIC_DATA_API_URL=${NEXT_PUBLIC_DATA_API_URL:-$NEXT_PUBLIC_SUPABASE_URL}
+ENV NEXT_PUBLIC_DATA_API_KEY=${NEXT_PUBLIC_DATA_API_KEY:-$NEXT_PUBLIC_SUPABASE_ANON_KEY}
+# Legacy spellings kept in the build env so any straggling reference still
+# resolves during `next build`. Remove together with the ARGs above.
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { SosAlert } from "@/types/database";
 import type { AuthorSummary } from "@/types/social";
 
@@ -15,8 +15,8 @@ export interface SosAlertWithPerson extends SosAlert {
  * alerts + the caller's own, so any signed-in user can see who needs help.
  */
 export async function getActiveSosAlerts(): Promise<SosAlertWithPerson[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("sos_alerts")
     .select(
       "*, person:profiles!sos_alerts_user_id_fkey(id, username, full_name, avatar_url)",
@@ -36,7 +36,7 @@ export async function getActiveSosAlerts(): Promise<SosAlertWithPerson[]> {
   const alerts = data ?? [];
   if (alerts.length === 0) return [];
 
-  const { data: responders, error: respErr } = await supabase
+  const { data: responders, error: respErr } = await db
     .from("sos_responders")
     .select("alert_id")
     .in(
@@ -60,8 +60,8 @@ export async function getActiveSosAlerts(): Promise<SosAlertWithPerson[]> {
 
 /** The caller's own open SOS alert, if any. */
 export async function getMyActiveSos(userId: string): Promise<SosAlert | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("sos_alerts")
     .select("*")
     .eq("user_id", userId)

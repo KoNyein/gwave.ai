@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { FarmDashboard } from "@/components/farm/farm-dashboard";
 import { getCurrentProfile } from "@/lib/auth";
 import { getDevices, getLatestReadings } from "@/lib/db/iot";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 export default async function FarmPage() {
   const t = await getTranslations("farm");
@@ -20,8 +20,8 @@ export default async function FarmPage() {
   );
 
   // One query for sparkline history, grouped per device+metric.
-  const supabase = await createClient();
-  const { data: recent } = await supabase
+  const db = await createClient();
+  const { data: recent } = await db
     .from("sensor_readings")
     .select("device_id, metric, value, ts")
     .in(

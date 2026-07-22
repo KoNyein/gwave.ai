@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getMux } from "@/lib/mux";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/data/admin";
 
 /**
  * POST /api/live/webhook — Mux event sink. The signature is verified with

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Smoke suite: runs against any environment (even a dummy Supabase URL) —
+ * Smoke suite: runs against any environment (even a dummy data-API URL) —
  * verifies routing, auth guards, public pages and security headers.
  */
 

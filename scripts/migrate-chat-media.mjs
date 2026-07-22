@@ -39,6 +39,20 @@ if (!["copy", "verify", "purge"].includes(mode)) {
   process.exit(1);
 }
 
+/**
+ * First of `names` that is set. Lets this script run against either the current
+ * NEXT_PUBLIC_DATA_API_* names or the legacy NEXT_PUBLIC_SUPABASE_* ones that
+ * are still present in older env files.
+ */
+function reqEnvAny(...names) {
+  for (const name of names) {
+    const v = process.env[name];
+    if (v) return v;
+  }
+  console.error(`none of ${names.join(", ")} is set.`);
+  process.exit(1);
+}
+
 function reqEnv(name) {
   const v = process.env[name];
   if (!v) {
@@ -63,8 +77,8 @@ async function serviceClient() {
     .sign(key);
 
   return createClient(
-    reqEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    reqEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+    reqEnvAny("NEXT_PUBLIC_DATA_API_URL", "NEXT_PUBLIC_SUPABASE_URL"),
+    reqEnvAny("NEXT_PUBLIC_DATA_API_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY"),
     {
       accessToken: async () => token,
       auth: { persistSession: false },

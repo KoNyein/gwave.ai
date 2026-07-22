@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { LiveStream } from "@/types/database";
 import type { AuthorSummary } from "@/types/social";
 
@@ -28,13 +28,13 @@ const HOST_SELECT =
 const STALE_LIVE_HOURS = 12;
 
 export async function listStreams(limit = 30): Promise<LiveStreamWithHost[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   const staleCutoff = new Date(
     Date.now() - STALE_LIVE_HOURS * 60 * 60 * 1000,
   ).toISOString();
 
   const [liveRes, pastRes] = await Promise.all([
-    supabase
+    db
       .from("live_streams")
       .select(HOST_SELECT)
       .eq("status", "live")
@@ -42,7 +42,7 @@ export async function listStreams(limit = 30): Promise<LiveStreamWithHost[]> {
       .order("started_at", { ascending: false })
       .limit(limit)
       .returns<LiveStreamWithHost[]>(),
-    supabase
+    db
       .from("live_streams")
       .select(HOST_SELECT)
       .or(`status.neq.live,started_at.lt.${staleCutoff}`)
@@ -56,8 +56,8 @@ export async function listStreams(limit = 30): Promise<LiveStreamWithHost[]> {
 export async function getStream(
   id: string,
 ): Promise<LiveStreamWithHost | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("live_streams")
     .select(HOST_SELECT)
     .eq("id", id)
@@ -70,8 +70,8 @@ export async function getStream(
  * stream, so this is null for everyone else by construction.
  */
 export async function getStreamKey(streamId: string): Promise<string | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("live_stream_keys")
     .select("stream_key")
     .eq("stream_id", streamId)
@@ -81,8 +81,8 @@ export async function getStreamKey(streamId: string): Promise<string | null> {
 
 /** Recent chat history for first paint (realtime takes over after). */
 export async function getRecentChat(streamId: string, limit = 50) {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("live_chat_messages")
     .select(
       "*, author:profiles!live_chat_messages_user_id_fkey(id, username, full_name, avatar_url)",
@@ -114,8 +114,8 @@ export async function getHostDashboard(
   hostId: string,
   limit = 30,
 ): Promise<HostDashboard> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("live_streams")
     .select("*")
     .eq("host_id", hostId)
@@ -127,11 +127,11 @@ export async function getHostDashboard(
   const stats = await Promise.all(
     streams.map(async (stream) => {
       const [reactRes, chatRes] = await Promise.all([
-        supabase
+        db
           .from("live_reactions")
           .select("id", { count: "exact", head: true })
           .eq("stream_id", stream.id),
-        supabase
+        db
           .from("live_chat_messages")
           .select("id", { count: "exact", head: true })
           .eq("stream_id", stream.id),
@@ -168,8 +168,8 @@ export async function getHostDashboard(
 
 /** Live classes for /learn/live: live now first, then upcoming, then past. */
 export async function listClasses(limit = 40): Promise<LiveStreamWithHost[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("live_streams")
     .select(HOST_SELECT)
     .eq("kind", "class")

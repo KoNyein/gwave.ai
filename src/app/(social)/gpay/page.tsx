@@ -13,7 +13,7 @@ import {
   getMyGpayAccount,
 } from "@/lib/db/gpay";
 import { s3SlipsEnabled, signedSlipUrl } from "@/lib/storage/signed-read";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 export const metadata = { title: "G-Pay" };
 export const dynamic = "force-dynamic";
@@ -37,15 +37,15 @@ export default async function GpayPage() {
   // Whether the caller has a transaction PIN set (gates outgoing transfers).
   let hasPin = false;
   if (account?.status === "active") {
-    const supabase = await createClient();
-    const { data } = await supabase.rpc("gpay_has_pin");
+    const db = await createClient();
+    const { data } = await db.rpc("gpay_has_pin");
     hasPin = data === true;
   }
 
   // Signed URLs for admins to view each account's KPay slip + KYC face scan
   // (private bucket). On S3 we sign a GET ourselves; otherwise fall back to
-  // Supabase Storage. Without the S3 branch, uploads land in S3 while this still
-  // asks Supabase for an object that is no longer there — and the error is
+  // the legacy object storage. Without the S3 branch, uploads land in S3 while this
+  // still asks the legacy backend for an object that is no longer there — and the error is
   // dropped, so the KYC image silently renders as nothing.
   const slipUrls: Record<string, string> = {};
   const faceUrls: Record<string, string> = {};

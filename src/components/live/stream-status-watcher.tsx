@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 
 /**
  * Refreshes the page when this stream's row changes (idle → live → ended),
@@ -13,8 +13,8 @@ export function StreamStatusWatcher({ streamId }: { streamId: string }) {
   const router = useRouter();
 
   React.useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
+    const db = createClient();
+    const channel = db
       .channel(`live-status:${streamId}`)
       .on(
         "postgres_changes",
@@ -28,7 +28,7 @@ export function StreamStatusWatcher({ streamId }: { streamId: string }) {
       )
       .subscribe();
     return () => {
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [streamId, router]);
 

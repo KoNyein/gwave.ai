@@ -1,7 +1,7 @@
 import "server-only";
 import { getCurrentUser } from "@/lib/auth";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { GpayAccount, GpayTransaction, GpayTxnKind } from "@/types/database";
 
 /** A party (account) on one side of a transaction, for the admin ledger. */
@@ -30,8 +30,8 @@ export interface GpayTxnDetail {
 export async function getAllGpayTransactions(
   limit = 300,
 ): Promise<GpayTxnDetail[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("gpay_transactions")
     .select(
       "id, kind, amount, note, created_at, from:gpay_accounts!gpay_transactions_from_account_fkey(user_id, full_name, phone), to:gpay_accounts!gpay_transactions_to_account_fkey(user_id, full_name, phone)",
@@ -45,10 +45,10 @@ export async function getAllGpayTransactions(
 
 /** The caller's own G-Pay account (RLS-scoped), or null if not registered. */
 export async function getMyGpayAccount(): Promise<GpayAccount | null> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return null;
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("gpay_accounts")
     .select("*")
     .eq("user_id", user.id)
@@ -67,8 +67,8 @@ export async function getGpayTransactions(
   accountId: string,
   limit = 50,
 ): Promise<GpayTransaction[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("gpay_transactions")
     .select("*")
     .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
@@ -81,8 +81,8 @@ export async function getGpayTransactions(
 
 /** Admin review queue: every account, newest first (RLS lets admins read all). */
 export async function getAllGpayAccounts(): Promise<GpayAccount[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("gpay_accounts")
     .select("*")
     .order("created_at", { ascending: false })

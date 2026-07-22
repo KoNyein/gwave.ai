@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 export type TrackerType = "bluetooth" | "wifi" | "nfc" | "airtag" | "other";
 
@@ -21,8 +21,8 @@ export interface Tracker {
 
 /** The caller's own trackers (RLS-scoped to auth.uid()). */
 export async function getMyTrackers(ownerId: string): Promise<Tracker[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("trackers")
     .select("*")
     .eq("owner_id", ownerId)

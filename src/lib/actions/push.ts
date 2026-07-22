@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import { getCurrentUser } from "@/lib/auth";
 import type { ActionResult } from "@/lib/actions/posts";
 
@@ -15,14 +15,14 @@ export interface PushSubscriptionInput {
 export async function savePushSubscription(
   input: PushSubscriptionInput,
 ): Promise<ActionResult> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
   if (!input.endpoint || !input.p256dh || !input.auth) {
     return { ok: false, error: "Invalid subscription" };
   }
 
-  const { error } = await supabase.from("push_subscriptions").upsert(
+  const { error } = await db.from("push_subscriptions").upsert(
     {
       user_id: user.id,
       endpoint: input.endpoint,
@@ -40,8 +40,8 @@ export async function savePushSubscription(
 export async function deletePushSubscription(
   endpoint: string,
 ): Promise<ActionResult> {
-  const supabase = await createClient();
-  const { error } = await supabase
+  const db = await createClient();
+  const { error } = await db
     .from("push_subscriptions")
     .delete()
     .eq("endpoint", endpoint);

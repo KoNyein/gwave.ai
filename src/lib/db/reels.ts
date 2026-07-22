@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 
 import { rankItems } from "@/lib/feed/rank";
 import { mediaUrl } from "@/lib/media-url";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type {
   CreatorEarning,
   CreatorStatBucket,
@@ -27,8 +27,8 @@ async function decorate(
 ): Promise<ReelWithAuthor[]> {
   let liked = new Set<string>();
   if (userId && rows.length) {
-    const supabase = await createClient();
-    const { data } = await supabase
+    const db = await createClient();
+    const { data } = await db
       .from("reel_likes")
       .select("reel_id")
       .eq("user_id", userId)
@@ -56,11 +56,11 @@ const SELECT =
  * (likes + watch minutes) and whether the viewer follows the creator.
  */
 export async function getReelsFeed(limit = 20): Promise<ReelWithAuthor[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
 
   // Pull a bounded recent pool, then rank it.
-  const { data } = await supabase
+  const { data } = await db
     .from("reels")
     .select(SELECT)
     .eq("is_public", true)
@@ -71,7 +71,7 @@ export async function getReelsFeed(limit = 20): Promise<ReelWithAuthor[]> {
   // Who does the viewer follow? (affinity boost)
   let followIds = new Set<string>();
   if (user) {
-    const { data: follows } = await supabase
+    const { data: follows } = await db
       .from("follows")
       .select("followee_id")
       .eq("follower_id", user.id);
@@ -102,10 +102,10 @@ export async function getReelsFeed(limit = 20): Promise<ReelWithAuthor[]> {
 
 /** The caller's own reels, newest first. */
 export async function getMyReels(): Promise<ReelWithAuthor[]> {
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return [];
-  const { data } = await supabase
+  const { data } = await db
     .from("reels")
     .select(SELECT)
     .eq("owner_id", user.id)
@@ -123,17 +123,17 @@ export async function getCreatorSummary(): Promise<CreatorSummary> {
     totalEarned: 0,
     balance: 0,
   };
-  const supabase = await createClient();
+  const db = await createClient();
   const user = await getCurrentUser();
   if (!user) return empty;
 
   const [{ data: reels }, { data: earnings }] = await Promise.all([
-    supabase
+    db
       .from("reels")
       .select("view_count, like_count, watch_seconds")
       .eq("owner_id", user.id)
       .returns<Pick<Reel, "view_count" | "like_count" | "watch_seconds">[]>(),
-    supabase
+    db
       .from("creator_earnings")
       .select("amount_mmk, paid_out")
       .eq("user_id", user.id)
@@ -175,15 +175,15 @@ function toBucket(row: StatRow): CreatorStatBucket {
 
 /** Per-day creator analytics (Myanmar time) for the last `days` days. */
 export async function getCreatorDailyStats(days = 30): Promise<CreatorStatBucket[]> {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("creator_daily_stats", { p_days: days });
+  const db = await createClient();
+  const { data } = await db.rpc("creator_daily_stats", { p_days: days });
   return ((data as StatRow[] | null) ?? []).map(toBucket);
 }
 
 /** Per-month creator analytics for the last `months` months. */
 export async function getCreatorMonthlyStats(months = 12): Promise<CreatorStatBucket[]> {
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("creator_monthly_stats", {
+  const db = await createClient();
+  const { data } = await db.rpc("creator_monthly_stats", {
     p_months: months,
   });
   return ((data as StatRow[] | null) ?? []).map(toBucket);

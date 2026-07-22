@@ -2,12 +2,12 @@ import { getTranslations } from "next-intl/server";
 
 import { FeatureFlagsEditor } from "@/components/admin/settings-forms";
 import { Card, CardContent } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 
 export default async function DevFlagsPage() {
   const t = await getTranslations("dev");
-  const supabase = await createClient();
-  const { data: flags } = await supabase
+  const db = await createClient();
+  const { data: flags } = await db
     .from("feature_flags")
     .select("*")
     .order("key");

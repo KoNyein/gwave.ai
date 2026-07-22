@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Heart } from "lucide-react";
 
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/data/client";
 
 interface Burst {
   key: number;
@@ -33,15 +33,15 @@ export function DoubleTapHeart({
   > | null>(null);
 
   React.useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase.channel(`live-reactions:${streamId}`, {
+    const db = createClient();
+    const channel = db.channel(`live-reactions:${streamId}`, {
       config: { broadcast: { self: true } },
     });
     channel.subscribe();
     channelRef.current = channel;
     return () => {
       channelRef.current = null;
-      void supabase.removeChannel(channel);
+      void db.removeChannel(channel);
     };
   }, [streamId]);
 
@@ -59,8 +59,8 @@ export function DoubleTapHeart({
       event: "reaction",
       payload: { emoji: "❤️" },
     });
-    const supabase = createClient();
-    void supabase
+    const db = createClient();
+    void db
       .from("live_reactions")
       .insert({ stream_id: streamId, user_id: userId, emoji: "❤️" })
       .then(() => undefined);

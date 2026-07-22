@@ -3,18 +3,16 @@
 Work through this top-to-bottom before pointing `social.gwave.cc` at
 production traffic.
 
-> **Shortcut:** `scripts/deploy-production.sh` automates §1's migrations +
-> seeds and §3's Edge Functions in one command, then verifies `/api/health`:
->
-> ```bash
-> SUPABASE_PROJECT_REF=<ref> PROD_DB_URL='postgresql://...' \
->   ./scripts/deploy-production.sh
-> ```
+> **⚠️ `scripts/deploy-production.sh` is OBSOLETE** — it drove the hosted
+> Supabase project that gwave no longer has (migrated to AWS on 2026-07-17) and
+> now refuses to run. Migrations go to **RDS** with `psql`; the app is rolled out
+> with `deploy/ecr-redeploy.sh` (`sudo gwave-redeploy` on the box).
 
 ## 1. Database & security
 
-- [ ] Apply all migrations to the production Supabase project:
-      `supabase db push` (chain 0001 → 0010).
+- [ ] Apply all migrations to the production **RDS** database with `psql`
+      (`supabase/migrations/` — the directory name is historical; there is no
+      Supabase project and no `supabase db push` target).
 - [ ] Run the knowledge seed once:
       `psql "$PROD_DB_URL" -f supabase/seed/knowledge_seed.sql`.
       Do **NOT** run `supabase/seed/seed.sql` (demo users) in production.
@@ -26,20 +24,26 @@ production traffic.
 - [ ] Run the RLS audit against a staging copy:
       `psql "$DB_URL" -v ON_ERROR_STOP=1 -f scripts/rls-audit.sql`
       — must end with "RLS audit passed".
-- [ ] Verify the two storage-policy blocks applied (media, slips); if the
-      migration skipped them (`insufficient privilege` notice), create
-      them in the dashboard as documented in the migration files.
+- [ ] Storage is on **S3 + CloudFront** (AWS), not on database storage
+      policies — access is enforced by the bucket policy plus server-side
+      uploads/presigned URLs. The historical `media`/`slips` storage-policy
+      blocks in the migrations no longer govern file access.
 - [ ] Confirm XSS posture: user content is rendered as plain text (React
       escaping) everywhere; the only `dangerouslySetInnerHTML` is the
       server-generated PromptPay QR SVG. Keep it that way — never render
       user HTML without a sanitizer.
-- [ ] Supabase Auth: enable email confirmations, set rate limits, add
-      the production callback URL, enable the Google provider.
+- [ ] **Amazon Cognito** (auth): email confirmation, rate limits, the
+      production callback URL, and the Google identity provider are configured
+      in the Cognito user pool / Hosted UI — **not** in a Supabase dashboard.
+      The old hosted-Supabase Google OAuth client is dead; do not debug it.
 
 ## 2. Environment (Coolify app)
 
-- [ ] `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` (server only — never expose)
+- [ ] `NEXT_PUBLIC_DATA_API_URL`, `NEXT_PUBLIC_DATA_API_KEY`
+      (renamed from `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`;
+      both old names still work as a runtime fallback — see `src/lib/env.ts`)
+- [ ] `APP_JWT_PRIVATE_KEY` / `APP_JWT_PUBLIC_JWK` + the `COGNITO_*` values
+      (server only — never expose)
 - [ ] `NEXT_PUBLIC_SITE_URL=https://social.gwave.cc`
 - [ ] `STRIPE_SECRET_KEY` (live), `STRIPE_WEBHOOK_SECRET` (from the
       dashboard webhook pointing at `/api/webhooks/stripe`)
@@ -53,10 +57,13 @@ production traffic.
 - [ ] Deploy EMQX (Coolify service): **disable anonymous access**,
       create a bridge user, enable TLS on 8883 for real devices.
 - [ ] Deploy `services/iot-bridge` with `MQTT_URL`, `MQTT_USERNAME`,
-      `MQTT_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TZ`.
-- [ ] Deploy + schedule Edge Functions:
-      `supabase functions deploy cleanup-stories deliver-webhooks`
-      with hourly (`0 * * * *`) and per-minute (`* * * * *`) schedules.
+      `MQTT_PASSWORD`, `DATA_API_URL`, `DATA_API_SERVICE_KEY`, `TZ`
+      (renamed from `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`; the old names
+      are still accepted as a fallback).
+- [ ] Edge Functions (`cleanup-stories`, `deliver-webhooks`) ran on the hosted
+      Supabase project and are **not deployable on AWS** — there is no Edge
+      Functions runtime here. Schedule the equivalent work another way if
+      needed.
 - [ ] Stripe dashboard: add the production webhook endpoint and copy its
       signing secret; send a test event.
 
@@ -67,7 +74,7 @@ production traffic.
       `E2E_BASE_URL=https://staging... pnpm e2e -- e2e/smoke.spec.ts`
       (all 9 tests green — checks auth guards, security headers,
       public API 401, health endpoint).
-- [ ] Full flows against a seeded staging stack:
+- [ ] Full flows against a seeded staging database + data API:
       `E2E_FULL=1 pnpm e2e` (post/react/comment, strain search,
       POS sale, API key + authenticated call).
 - [ ] Load test: `k6 run -e BASE_URL=... -e COOKIE=... scripts/load-test-feed.js`
@@ -84,7 +91,7 @@ production traffic.
       `NEXT_PUBLIC_SENTRY_DSN` if set; for full tracing run
       `npx @sentry/wizard@latest -i nextjs` as a follow-up.
 - [ ] Coolify health check on the container: path `/api/health`.
-- [ ] Backups: enable Supabase PITR (Pro plan) **and** schedule a
+- [ ] Backups: enable **RDS** automated backups / PITR **and** schedule a
       nightly logical dump:
       `pg_dump "$PROD_DB_URL" -Fc -f backup-$(date +%F).dump`
       shipped off-box (cron on the EC2 host or a GitHub Action).

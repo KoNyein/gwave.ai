@@ -3,7 +3,7 @@ import { defineConfig } from "@playwright/test";
 /**
  * E2E config. `pnpm e2e` starts the production build and runs the smoke
  * suite. Full user-flow specs (signup → post → …) additionally need a real
- * Supabase project: set E2E_FULL=1 plus real NEXT_PUBLIC_SUPABASE_* env.
+ * data API: set E2E_FULL=1 plus real NEXT_PUBLIC_DATA_API_* env.
  */
 export default defineConfig({
   testDir: "./e2e",

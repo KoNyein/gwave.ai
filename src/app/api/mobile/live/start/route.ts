@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { verifyDataToken } from "@/lib/auth/tokens";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/data/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

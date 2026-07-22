@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/data/server";
 import type { UserCamera } from "@/types/database";
 
 /** A camera as shown to a viewer — never includes the private rtsp_url. */
@@ -13,8 +13,8 @@ const PUBLIC_COLS =
 
 /** The owner's own cameras (full rows, RLS-scoped to auth.uid()). */
 export async function getMyCameras(ownerId: string): Promise<UserCamera[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("user_cameras")
     .select("*")
     .eq("owner_id", ownerId)
@@ -29,8 +29,8 @@ export async function getMyCamera(
   ownerId: string,
   id: string,
 ): Promise<UserCamera | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("user_cameras")
     .select("*")
     .eq("id", id)
@@ -48,8 +48,8 @@ export async function getMyCamera(
 export async function getSharedCamera(
   token: string,
 ): Promise<PublicCamera | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("user_cameras")
     .select(PUBLIC_COLS)
     .eq("share_token", token)
@@ -72,8 +72,8 @@ export async function getCameraClips(
   cameraId: string,
   limit = 30,
 ): Promise<CameraClip[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("camera_clips")
     .select("id, camera_id, storage_path, duration_seconds, kind, created_at")
     .eq("camera_id", cameraId)
@@ -96,8 +96,8 @@ export async function getMyRecentClips(
   ownerId: string,
   limit = 6,
 ): Promise<RecentClip[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from("camera_clips")
     .select(
       "id, camera_id, storage_path, duration_seconds, kind, created_at, camera:user_cameras!camera_clips_camera_id_fkey(id, title)",
@@ -124,8 +124,8 @@ export async function getCameraAlerts(
   cameraId: string,
   limit = 30,
 ): Promise<CameraAlert[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("camera_alerts")
     .select("id, camera_id, kind, clip_id, note, seen, created_at")
     .eq("camera_id", cameraId)
@@ -140,8 +140,8 @@ export async function getCameraAlerts(
 export async function getCameraGroupShareIds(
   cameraId: string,
 ): Promise<string[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("camera_group_shares")
     .select("group_id")
     .eq("camera_id", cameraId)
@@ -152,8 +152,8 @@ export async function getCameraGroupShareIds(
 
 /** Cameras shared with a group — RLS lets members read them (no rtsp_url). */
 export async function getGroupCameras(groupId: string): Promise<PublicCamera[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const db = await createClient();
+  const { data, error } = await db
     .from("camera_group_shares")
     .select(`camera:user_cameras!camera_group_shares_camera_id_fkey(${PUBLIC_COLS})`)
     .eq("group_id", groupId)
