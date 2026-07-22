@@ -3,12 +3,20 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../feed/feed_screen.dart';
 import '../live/live_list_screen.dart';
+import '../messenger/conversations_screen.dart';
 import '../reels/reels_screen.dart';
 import '../shop/shop_screen.dart';
 import '../profile/profile_screen.dart';
 
-/// The signed-in root: five native tabs behind one bottom navigation bar,
+/// The signed-in root: six native tabs behind one bottom navigation bar,
 /// matching the web super-app's primary sections.
+///
+/// Chat has a tab because messaging is a daily destination. It used to be
+/// reachable only from one icon in the Feed app bar, so from any other tab
+/// there was no way to open it at all.
+///
+/// Tab indices are referenced by `ProfileScreen`'s shortcuts — keep the two in
+/// step when reordering.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -28,6 +36,7 @@ class _HomeShellState extends State<HomeShell> {
       // Only the visible Reels tab should play (and make sound); pass whether
       // it's the selected tab so it pauses when the user switches away.
       ReelsScreen(active: _index == 1),
+      const ConversationsScreen(),
       const LiveListScreen(),
       const ShopScreen(),
       ProfileScreen(onSelectTab: _selectTab),
@@ -76,6 +85,11 @@ class _HomeShellState extends State<HomeShell> {
                   icon: Icon(Icons.play_circle_outline, color: GwColors.inkSoft),
                   selectedIcon: Icon(Icons.play_circle, color: GwColors.primary),
                   label: "Reels",
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.chat_bubble_outline, color: GwColors.inkSoft),
+                  selectedIcon: Icon(Icons.chat_bubble, color: GwColors.primary),
+                  label: "Chat",
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.videocam_outlined, color: GwColors.inkSoft),

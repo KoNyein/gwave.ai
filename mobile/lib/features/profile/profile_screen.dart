@@ -182,7 +182,7 @@ class ProfileScreen extends StatelessWidget {
         _MenuEntry(Icons.group_outlined, "Friends", native: _Native.friends),
         _MenuEntry(Icons.grid_view_outlined, "Groups", native: _Native.groups),
         _MenuEntry(Icons.flag_outlined, "Pages", web: "/pages"),
-        _MenuEntry(Icons.sensors, "Live", tab: 2),
+        _MenuEntry(Icons.sensors, "Live", tab: 3),
         _MenuEntry(Icons.record_voice_over_outlined, "Walkie",
             native: _Native.talk),
         _MenuEntry(Icons.movie_outlined, "Reels", tab: 1),
@@ -204,7 +204,7 @@ class ProfileScreen extends StatelessWidget {
       ]),
       _MenuSection("Shop & Business", Icons.storefront_outlined,
           const Color(0xFF7A4DD6), [
-        _MenuEntry(Icons.storefront_outlined, "Shop", tab: 3),
+        _MenuEntry(Icons.storefront_outlined, "Shop", tab: 4),
         _MenuEntry(Icons.work_outline, "Jobs", native: _Native.jobs),
         _MenuEntry(Icons.point_of_sale_outlined, "POS", native: _Native.pos),
         _MenuEntry(Icons.rocket_launch_outlined, "Boost", web: "/boost"),
