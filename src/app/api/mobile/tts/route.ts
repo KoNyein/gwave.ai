@@ -49,12 +49,14 @@ async function fetchSpeech(text: string, tl: string): Promise<Buffer> {
   const buffers: Buffer[] = [];
   const pieces = chunk(text);
   for (let i = 0; i < pieces.length; i++) {
+    const piece = pieces[i];
+    if (!piece) continue;
     const url =
       "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob" +
       `&tl=${encodeURIComponent(tl)}` +
       `&total=${pieces.length}&idx=${i}` +
-      `&textlen=${pieces[i].length}` +
-      `&q=${encodeURIComponent(pieces[i])}`;
+      `&textlen=${piece.length}` +
+      `&q=${encodeURIComponent(piece)}`;
     const res = await fetch(url, {
       headers: {
         // A browser-like UA is required or the endpoint returns 403.

@@ -49,12 +49,13 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
 
   // Retry a couple of times on the (very unlikely) join-code collision.
-  let channel: {
+  type Channel = {
     id: string;
     name: string;
     join_code: string;
     owner_id: string;
-  } | null = null;
+  };
+  let channel: Channel | null = null;
   for (let attempt = 0; attempt < 4 && !channel; attempt++) {
     const { data, error } = await admin
       .from("ptt_channels")
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
       .select("id, name, join_code, owner_id")
       .single();
     if (!error && data) {
-      channel = data as typeof channel;
+      channel = data as unknown as Channel;
       break;
     }
     // 23505 = unique_violation (duplicate join code) — try a new code.
