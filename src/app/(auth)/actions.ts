@@ -21,6 +21,7 @@ import { z } from "zod";
 import { authEnv } from "@/lib/env";
 import { cognito, identityFromTokens, secretHash } from "@/lib/auth/cognito";
 import { CU_COOKIE, clearSession, readSession, setSession } from "@/lib/auth/session";
+import { mintDataToken } from "@/lib/auth/tokens";
 import { checkAuthRateLimit } from "@/lib/rate-limit";
 
 /**
@@ -192,6 +193,38 @@ export async function signInWithGoogle(formData?: FormData): Promise<void> {
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("identity_provider", "Google");
   url.searchParams.set("state", next);
+  redirect(url.toString());
+}
+
+/**
+ * Link the signed-in account's Google identity: stash a signed link-intent
+ * cookie carrying the CURRENT profile id, then run the normal Hosted-UI Google
+ * flow with state=link. The callback re-points the Google-federated Cognito
+ * user's custom:profile_id at this profile, so every future Google sign-in —
+ * web and app alike — lands in this account instead of a separate one.
+ */
+export async function startGoogleLink(): Promise<void> {
+  const session = await readSession();
+  if (!session) redirect("/login");
+
+  const intent = await mintDataToken(session.id, { email: session.email });
+  (await cookies()).set("gw_link", intent, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 600, // the Google round-trip takes seconds; keep the window small
+  });
+
+  const { domain, clientId } = authEnv.cognito;
+  const redirectUri = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://gwave.cc"}/auth/callback`;
+  const url = new URL(`${domain}/oauth2/authorize`);
+  url.searchParams.set("client_id", clientId);
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("scope", "openid email profile");
+  url.searchParams.set("redirect_uri", redirectUri);
+  url.searchParams.set("identity_provider", "Google");
+  url.searchParams.set("state", "link");
   redirect(url.toString());
 }
 

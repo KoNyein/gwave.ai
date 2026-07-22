@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 import {
   AdminUpdateUserAttributesCommand,
@@ -10,6 +10,7 @@ import { decodeJwt } from "jose";
 import { authEnv } from "@/lib/env";
 import { cognito } from "@/lib/auth/cognito";
 import { setSession } from "@/lib/auth/session";
+import { verifyDataToken } from "@/lib/auth/tokens";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -113,6 +114,44 @@ export async function GET(request: Request) {
         const cognitoUsername =
           (claims["cognito:username"] as string) ?? (claims.sub as string) ?? "";
         const email = typeof claims.email === "string" ? claims.email : undefined;
+
+        // Account linking (state=link): a signed-in user asked to attach this
+        // Google identity to their EXISTING account. The signed gw_link cookie
+        // (set by startGoogleLink) names the target profile; re-point the
+        // Google-federated Cognito user's custom:profile_id at it so every
+        // future Google sign-in — web and app — resolves to that account.
+        if (requested === "link") {
+          const store = await cookies();
+          const intent = await verifyDataToken(store.get("gw_link")?.value);
+          store.delete("gw_link");
+          if (!intent?.sub) {
+            return NextResponse.redirect(`${origin}/settings?link=expired`);
+          }
+          try {
+            await cognito().send(
+              new AdminUpdateUserAttributesCommand({
+                UserPoolId: authEnv.cognito.userPoolId,
+                Username: cognitoUsername,
+                UserAttributes: [
+                  { Name: "custom:profile_id", Value: intent.sub },
+                ],
+              }),
+            );
+          } catch {
+            return NextResponse.redirect(`${origin}/settings?link=failed`);
+          }
+          // Stay signed into the linked (existing) account, now backed by the
+          // Google user's refresh token.
+          await setSession({
+            profileId: intent.sub,
+            email: intent.email ?? email,
+            cognitoUsername,
+            accessToken: tokens.access_token,
+            idToken: tokens.id_token,
+            refreshToken: tokens.refresh_token,
+          });
+          return NextResponse.redirect(`${origin}/settings?link=google_ok`);
+        }
 
         // A first-time Google user has no custom:profile_id yet — mint one and
         // back-fill it on the Cognito user so subsequent logins are stable.

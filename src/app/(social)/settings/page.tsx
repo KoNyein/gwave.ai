@@ -8,6 +8,8 @@ import { AppUpdate } from "@/components/settings/app-update";
 import { GeneralSettings } from "@/components/settings/general-settings";
 import { PushManager } from "@/components/pwa/push-manager";
 import { PrivacySettings } from "@/components/social/privacy-settings";
+import { startGoogleLink } from "@/app/(auth)/actions";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
 import { getSiteTheme } from "@/lib/db/admin";
@@ -16,10 +18,15 @@ import { createClient } from "@/lib/supabase/server";
 export const metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams?: { link?: string };
+}) {
   const t = await getTranslations("settings");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
+  const linkResult = searchParams?.link;
   const adminTheme = await getSiteTheme();
 
   const supabase = await createClient();
@@ -103,6 +110,36 @@ export default async function SettingsPage() {
             emailVerified={Boolean(user)}
             lastSignInAt={null}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            🔗 Linked accounts · အကောင့် ချိတ်ဆက်ခြင်း
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {linkResult === "google_ok" ? (
+            <p className="rounded-lg bg-primary/10 p-3 text-sm font-medium text-primary">
+              ✅ Google အကောင့် ချိတ်ဆက်ပြီးပါပြီ — နောက်ပိုင်း Google နဲ့
+              ဝင်တိုင်း ဒီအကောင့်ထဲ တန်းရောက်ပါမယ် (app ရော web ရော)။
+            </p>
+          ) : linkResult === "expired" || linkResult === "failed" ? (
+            <p className="rounded-lg bg-destructive/10 p-3 text-sm font-medium text-destructive">
+              Google ချိတ်ဆက်မှု မအောင်မြင်ပါ — ထပ်စမ်းကြည့်ပါ။
+            </p>
+          ) : null}
+          <p className="text-sm text-muted-foreground">
+            Google အကောင့်ကို ဒီအကောင့်နဲ့ ချိတ်လိုက်ရင် — app ထဲမှာရော
+            website မှာရော <b>Google တစ်ချက်နှိပ်ရုံ</b>နဲ့ ဒီအကောင့်
+            (friends, messenger, G-Pay အားလုံးပါ) ထဲ တန်းဝင်လို့ရပါမယ်။
+          </p>
+          <form action={startGoogleLink}>
+            <Button type="submit" variant="outline" className="gap-2">
+              🔗 Link Google account · Google ချိတ်မည်
+            </Button>
+          </form>
         </CardContent>
       </Card>
 
