@@ -26,10 +26,10 @@ export const metadata = {
 };
 export const dynamic = "force-dynamic";
 
-/** Direct download for the native Android app, published by the
- * "Build Flutter APK" workflow as the rolling `mobile-latest` release. */
-const APK_URL =
-  "https://github.com/KoNyein/gwave.ai/releases/download/mobile-latest/gwave.apk";
+/** Direct download for the native Android app. Served from our own domain
+ * (`/download/apk` streams the rolling `mobile-latest` build), so users
+ * download straight from gwave.cc instead of being sent to GitHub. */
+const APK_URL = "/download/apk";
 
 const FEATURES = [
   {
