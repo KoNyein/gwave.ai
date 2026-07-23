@@ -26,13 +26,32 @@ export async function ensureProfile(
     const admin = createAdminClient();
     const { data: existing } = await admin
       .from("profiles")
-      .select("id")
+      .select("id, username")
       .eq("id", profileId)
       .maybeSingle();
-    if (existing) return;
+
+    // Every web page treats a missing username as "onboarding not done" and
+    // redirects to /onboarding — which, inside the app's signed-in web views
+    // (messenger calls, G-Pay, health...), walled app-registered accounts out
+    // of every web feature. Give app-minted profiles a generated username up
+    // front (users can still change it in onboarding/settings), and back-fill
+    // existing rows on their next token mint so old accounts self-heal.
+    const fallbackUsername = `user_${profileId.replace(/-/g, "").slice(0, 10)}`;
+
+    if (existing) {
+      if (!existing.username) {
+        await admin
+          .from("profiles")
+          .update({ username: fallbackUsername })
+          .eq("id", profileId)
+          .is("username", null);
+      }
+      return;
+    }
 
     const { error } = await admin.from("profiles").insert({
       id: profileId,
+      username: fallbackUsername,
       full_name: details.fullName ?? null,
       avatar_url: details.avatarUrl ?? null,
     });
