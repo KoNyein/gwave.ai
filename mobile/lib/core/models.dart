@@ -213,6 +213,11 @@ class LiveStream {
 
   bool get isLive => status == "live";
 
+  /// A finished broadcast that actually has something to play back.
+  bool get hasReplay =>
+      (recordingPath != null && recordingPath!.isNotEmpty) ||
+      (vodPlaybackId != null && vodPlaybackId!.isNotEmpty);
+
   factory LiveStream.fromJson(Map<String, dynamic> j) {
     final hostJson = j["host"] ?? j["profiles"];
     return LiveStream(

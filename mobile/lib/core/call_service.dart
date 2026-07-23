@@ -91,9 +91,44 @@ class CallService extends ChangeNotifier {
 
   /// Connect to Realtime and subscribe to our personal ring inbox. Call once
   /// after sign-in; safe to call again (no-op if already connected).
+  /// Ring-inbox health, shown in Settings so "calls never ring" is visible
+  /// instead of a silent mystery: connecting → ready | error…
+  String ringStatus = "off";
+  Timer? _reconnect;
+
+  void _setRing(String s) {
+    if (ringStatus == s) return;
+    ringStatus = s;
+    notifyListeners();
+  }
+
+  void _scheduleReconnect() {
+    _reconnect ??= Timer(const Duration(seconds: 8), () {
+      _reconnect = null;
+      if (!inCall) ensureConnected();
+    });
+  }
+
+  /// Rebuild the socket + inbox unless they're already healthy. Called on app
+  /// resume and after channel errors — Android kills sockets in background.
+  Future<void> ensureConnected() async {
+    if (api.session == null || inCall) return;
+    if (ringStatus == "ready") return;
+    try {
+      if (_ringInbox != null) _rt?.removeChannel(_ringInbox!);
+    } catch (_) {}
+    try {
+      _rt?.disconnect();
+    } catch (_) {}
+    _ringInbox = null;
+    _rt = null;
+    await connect();
+  }
+
   Future<void> connect() async {
     if (_ringInbox != null || api.session == null) return;
     try {
+      _setRing("connecting");
       await api.freshToken(); // ensure the JWT is valid before we auth realtime
       final token = api.session!.token;
       _rt = RealtimeClient(
@@ -101,13 +136,31 @@ class CallService extends ChangeNotifier {
         params: {"apikey": AppConfig.supabaseAnonKey},
       );
       _rt!.setAuth(token);
+      _rt!.onClose((_) {
+        _setRing("reconnecting");
+        _scheduleReconnect();
+      });
+      _rt!.onError((e) {
+        _setRing("socket error");
+        _scheduleReconnect();
+      });
       _rt!.connect();
 
       final inbox = _rt!.channel("calls:$_myId");
       inbox
         ..onBroadcast(event: "ring", callback: _onRing)
         ..onBroadcast(event: "cancel", callback: _onCancel);
-      inbox.subscribe();
+      inbox.subscribe((status, [error]) {
+        if (status == RealtimeSubscribeStatus.subscribed) {
+          _setRing("ready");
+        } else if (status == RealtimeSubscribeStatus.channelError ||
+            status == RealtimeSubscribeStatus.timedOut) {
+          _setRing("error: ${error ?? status.name}");
+          _scheduleReconnect();
+        } else if (status == RealtimeSubscribeStatus.closed) {
+          _setRing("closed");
+        }
+      });
       _ringInbox = inbox;
 
       // The data token expires; a reconnect with the stale token silently
@@ -123,8 +176,10 @@ class CallService extends ChangeNotifier {
           // offline — the next tick retries
         }
       });
-    } catch (_) {
+    } catch (e) {
       // Calls just won't ring; the rest of the app is unaffected.
+      _setRing("error: $e");
+      _scheduleReconnect();
     }
   }
 
@@ -494,6 +549,7 @@ class CallService extends ChangeNotifier {
     _ringTimer?.cancel();
     _durationTimer?.cancel();
     _authRefresh?.cancel();
+    _reconnect?.cancel();
     _localRenderer.dispose();
     _remoteRenderer.dispose();
     if (_ringInbox != null) _rt?.removeChannel(_ringInbox!);

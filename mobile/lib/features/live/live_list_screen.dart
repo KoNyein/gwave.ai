@@ -53,7 +53,9 @@ class _LiveListScreenState extends State<LiveListScreen> {
   @override
   Widget build(BuildContext context) {
     final live = _streams.where((s) => s.isLive).toList();
-    final past = _streams.where((s) => !s.isLive).toList();
+    // Only replays that can actually play — ended rows with no recording are
+    // dead weight that made the list look broken.
+    final past = _streams.where((s) => !s.isLive && s.hasReplay).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -266,8 +268,15 @@ class _LiveCard extends StatelessWidget {
   }
 
   Widget _thumb() {
-    final poster = stream.host?.coverUrl;
-    if (poster != null && poster.isNotEmpty) {
+    // Best visual available: host's cover photo, else their avatar blown up.
+    final cover = stream.host?.coverUrl;
+    final avatar = stream.host?.avatarUrl;
+    final poster = (cover != null && cover.isNotEmpty)
+        ? cover
+        : (avatar != null && avatar.isNotEmpty)
+            ? avatar
+            : null;
+    if (poster != null) {
       return CachedNetworkImage(
         imageUrl: poster,
         fit: BoxFit.cover,

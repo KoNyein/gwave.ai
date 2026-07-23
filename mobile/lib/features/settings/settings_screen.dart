@@ -352,9 +352,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.symmetric(vertical: 18),
             child: Center(
               child: Text(
-                AppConfig.appBuild > 0
-                    ? "Gwave v1.0.${AppConfig.appBuild}"
-                    : "Gwave (dev build)",
+                "${AppConfig.appBuild > 0 ? "Gwave v1.0.${AppConfig.appBuild}" : "Gwave (dev build)"}"
+                " · calls: ${context.watch<CallService>().ringStatus}",
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                     color: GwColors.inkSoft,
                     fontSize: 12.5,

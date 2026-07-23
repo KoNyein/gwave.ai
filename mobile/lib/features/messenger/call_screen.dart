@@ -328,9 +328,25 @@ class CallOverlay extends StatefulWidget {
   State<CallOverlay> createState() => _CallOverlayState();
 }
 
-class _CallOverlayState extends State<CallOverlay> {
+class _CallOverlayState extends State<CallOverlay>
+    with WidgetsBindingObserver {
   CallPhase _last = CallPhase.idle;
   bool _routeOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Android kills the Realtime socket in background; rebuild the ring inbox
+    // the moment the app comes back so calls ring again.
+    if (state == AppLifecycleState.resumed) {
+      context.read<CallService>().ensureConnected();
+    }
+  }
 
   /// Looping ringtone (incoming) / ringback (outgoing) + vibration pulses.
   final AudioPlayer _ring = AudioPlayer();
@@ -355,6 +371,7 @@ class _CallOverlayState extends State<CallOverlay> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _vibrate?.cancel();
     _ring.dispose();
     super.dispose();

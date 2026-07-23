@@ -174,25 +174,56 @@ class Repository {
   }
 
   // ---- Live -----------------------------------------------------------------
+  // Flat queries only: a resource embed here 500s whenever PostgREST's schema
+  // cache goes stale, and a dead live list looks like "nobody can see lives".
+
+  /// Fetch profiles for a set of ids and return them keyed by id.
+  Future<Map<String, Map<String, dynamic>>> _profilesByIds(
+    Iterable<String> ids,
+  ) async {
+    final unique = ids.toSet()..removeWhere((e) => e.isEmpty);
+    if (unique.isEmpty) return {};
+    try {
+      final rows = await api.select("profiles", query: {
+        "select": _profileCols,
+        "id": "in.(${unique.join(",")})",
+        "limit": "${unique.length}",
+      });
+      return {for (final r in rows) r["id"].toString(): r};
+    } catch (_) {
+      return {}; // names just fall back to "Gwave user"
+    }
+  }
 
   Future<List<LiveStream>> liveStreams({bool onlyLive = false}) async {
     final rows = await api.select("live_streams", query: {
-      "select": "*,host:profiles!live_streams_host_id_fkey($_profileCols)",
+      "select": "*",
       if (onlyLive) "status": "eq.live",
       if (!onlyLive) "status": "in.(live,ended)",
       "order": "created_at.desc",
       "limit": "40",
     });
+    final hosts =
+        await _profilesByIds(rows.map((r) => "${r["host_id"] ?? ""}"));
+    for (final r in rows) {
+      final host = hosts["${r["host_id"]}"];
+      if (host != null) r["host"] = host;
+    }
     return rows.map(LiveStream.fromJson).toList();
   }
 
   Future<LiveStream?> stream(String id) async {
     final rows = await api.select("live_streams", query: {
-      "select": "*,host:profiles!live_streams_host_id_fkey($_profileCols)",
+      "select": "*",
       "id": "eq.$id",
       "limit": "1",
     });
-    return rows.isEmpty ? null : LiveStream.fromJson(rows.first);
+    if (rows.isEmpty) return null;
+    final row = rows.first;
+    final hosts = await _profilesByIds(["${row["host_id"] ?? ""}"]);
+    final host = hosts["${row["host_id"]}"];
+    if (host != null) row["host"] = host;
+    return LiveStream.fromJson(row);
   }
 
   /// Live chat for a stream, oldest→newest. Pass [sinceIso] to fetch only
@@ -203,13 +234,18 @@ class Repository {
     int limit = 60,
   }) async {
     final rows = await api.select("live_chat_messages", query: {
-      "select":
-          "*,sender:profiles!live_chat_messages_user_id_fkey($_profileCols)",
+      "select": "*",
       "stream_id": "eq.$streamId",
       if (sinceIso != null) "created_at": "gt.$sinceIso",
       "order": "created_at.asc",
       "limit": "$limit",
     });
+    final senders =
+        await _profilesByIds(rows.map((r) => "${r["user_id"] ?? ""}"));
+    for (final r in rows) {
+      final sender = senders["${r["user_id"]}"];
+      if (sender != null) r["sender"] = sender;
+    }
     return rows.map(LiveChatMessage.fromJson).toList();
   }
 
