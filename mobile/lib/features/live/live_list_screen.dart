@@ -271,7 +271,7 @@ class _LiveCardState extends State<_LiveCard> {
     final host = stream.host?.displayName ?? "Host";
     return InkWell(
       borderRadius: BorderRadius.circular(GwRadius.lg),
-      onTap: onTap,
+      onTap: widget.onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(GwRadius.lg),
         child: AspectRatio(
