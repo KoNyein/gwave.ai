@@ -116,8 +116,20 @@ class _LiveListScreenState extends State<LiveListScreen> {
   }
 
   void _open(LiveStream s) {
+    // One-page TikTok-style viewing: swipe up/down moves between broadcasts
+    // without ever bouncing back to this list.
+    final watchable = [
+      ..._streams.where((x) => x.isLive),
+      ..._streams.where((x) => !x.isLive && x.hasReplay),
+    ];
+    final idx = watchable.indexWhere((x) => x.id == s.id);
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => LiveWatchScreen(stream: s)),
+      MaterialPageRoute(
+        builder: (_) => LiveSwipeScreen(
+          streams: watchable.isEmpty ? [s] : watchable,
+          initialIndex: idx < 0 ? 0 : idx,
+        ),
+      ),
     );
   }
 
@@ -141,6 +153,33 @@ class _LiveListScreenState extends State<LiveListScreen> {
             ),
         ],
       );
+}
+
+/// Full-screen vertical pager over every watchable broadcast — the TikTok
+/// pattern: swipe up for the next live/replay, swipe down for the previous,
+/// chat/reactions stay overlaid on the video. One page, no list round-trips.
+class LiveSwipeScreen extends StatelessWidget {
+  const LiveSwipeScreen({
+    super.key,
+    required this.streams,
+    required this.initialIndex,
+  });
+  final List<LiveStream> streams;
+  final int initialIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: PageView.builder(
+        scrollDirection: Axis.vertical,
+        controller: PageController(initialPage: initialIndex),
+        itemCount: streams.length,
+        itemBuilder: (_, i) =>
+            LiveWatchScreen(key: ValueKey(streams[i].id), stream: streams[i]),
+      ),
+    );
+  }
 }
 
 class _LiveCard extends StatelessWidget {

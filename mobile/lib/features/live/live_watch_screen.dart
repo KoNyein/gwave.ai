@@ -9,6 +9,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../core/api_client.dart';
 import '../../core/app_state.dart';
+import '../../core/config.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
@@ -100,10 +101,9 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
     if (s.recordingPath != null && s.recordingPath!.isNotEmpty) {
       final rp = s.recordingPath!;
       if (rp.startsWith("http")) return rp;
-      final base = const String.fromEnvironment("IVS_RECORDING_BASE",
-          defaultValue: "");
-      if (base.isNotEmpty) return "$base/$rp";
-      return resolveMedia(rp, bucket: "recordings");
+      // Served by the web server's /recordings proxy (streams from the
+      // private IVS recordings bucket via the instance role).
+      return "${AppConfig.apiBase}/recordings/$rp";
     }
     if (s.vodPlaybackId != null && s.vodPlaybackId!.isNotEmpty) {
       return "https://stream.mux.com/${s.vodPlaybackId}.m3u8";
@@ -309,7 +309,11 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          _video(),
+          // Double-tap anywhere on the video to send a heart (TikTok-style).
+          GestureDetector(
+            onDoubleTap: () => _react("❤️"),
+            child: _video(),
+          ),
           // Top + bottom scrims for legibility.
           const DecoratedBox(
             decoration: BoxDecoration(
