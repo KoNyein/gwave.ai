@@ -7,6 +7,7 @@ import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/api_client.dart';
 import '../../core/app_state.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
@@ -131,9 +132,11 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
         }
       }
       if (mounted) setState(() => _lkConnected = true);
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
-        setState(() => _error = "Couldn't connect to the live stream.");
+        setState(() => _error = e is ApiException
+            ? e.message
+            : "Couldn't connect to the live stream.");
       }
     }
   }

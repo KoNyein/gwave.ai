@@ -109,10 +109,26 @@ class CallService extends ChangeNotifier {
         ..onBroadcast(event: "cancel", callback: _onCancel);
       inbox.subscribe();
       _ringInbox = inbox;
+
+      // The data token expires; a reconnect with the stale token silently
+      // kills the ring inbox until app restart. Refresh the socket auth well
+      // inside the token lifetime.
+      _authRefresh?.cancel();
+      _authRefresh = Timer.periodic(const Duration(minutes: 20), (_) async {
+        try {
+          await api.freshToken();
+          final t = api.session?.token;
+          if (t != null) _rt?.setAuth(t);
+        } catch (_) {
+          // offline — the next tick retries
+        }
+      });
     } catch (_) {
       // Calls just won't ring; the rest of the app is unaffected.
     }
   }
+
+  Timer? _authRefresh;
 
   Future<void> _ensureRenderers() async {
     if (_renderersReady) return;
@@ -326,6 +342,8 @@ class CallService extends ChangeNotifier {
 
   Future<void> _openMedia() async {
     _pc = await createPeerConnection(await _iceConfig());
+    speakerOn = video; // video → loudspeaker, voice → earpiece
+    Helper.setSpeakerphoneOn(speakerOn);
     _localStream = await navigator.mediaDevices.getUserMedia({
       "audio": true,
       "video": video
@@ -392,6 +410,16 @@ class CallService extends ChangeNotifier {
   void switchCamera() {
     final tracks = _localStream?.getVideoTracks() ?? [];
     if (tracks.isNotEmpty) Helper.switchCamera(tracks.first);
+  }
+
+  /// Speakerphone routing. Audio calls default to the earpiece (quiet, easy to
+  /// mistake for silence); video calls default to the loudspeaker.
+  bool speakerOn = false;
+
+  void toggleSpeaker() {
+    speakerOn = !speakerOn;
+    Helper.setSpeakerphoneOn(speakerOn);
+    notifyListeners();
   }
 
   // ---- Teardown -------------------------------------------------------------
@@ -465,6 +493,7 @@ class CallService extends ChangeNotifier {
   void dispose() {
     _ringTimer?.cancel();
     _durationTimer?.cancel();
+    _authRefresh?.cancel();
     _localRenderer.dispose();
     _remoteRenderer.dispose();
     if (_ringInbox != null) _rt?.removeChannel(_ringInbox!);

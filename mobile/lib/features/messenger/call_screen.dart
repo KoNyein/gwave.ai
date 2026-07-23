@@ -153,6 +153,15 @@ class CallScreen extends StatelessWidget {
                     active: call.muted,
                     onTap: call.toggleMute,
                   ),
+                  const SizedBox(width: 18),
+                  _round(
+                    icon: call.speakerOn
+                        ? Icons.volume_up
+                        : Icons.hearing,
+                    label: "Speaker",
+                    active: call.speakerOn,
+                    onTap: call.toggleSpeaker,
+                  ),
                   if (call.video) ...[
                     const SizedBox(width: 18),
                     _round(

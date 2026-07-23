@@ -346,6 +346,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
           ),
+
+          // Version footer — lets support tell instantly which build a user runs.
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: Center(
+              child: Text(
+                AppConfig.appBuild > 0
+                    ? "Gwave v1.0.${AppConfig.appBuild}"
+                    : "Gwave (dev build)",
+                style: const TextStyle(
+                    color: GwColors.inkSoft,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
         ],
       ),
     );
