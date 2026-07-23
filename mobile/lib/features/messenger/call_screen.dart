@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:provider/provider.dart';
 
@@ -319,6 +323,34 @@ class _CallOverlayState extends State<CallOverlay> {
   CallPhase _last = CallPhase.idle;
   bool _routeOpen = false;
 
+  /// Looping ringtone (incoming) / ringback (outgoing) + vibration pulses.
+  final AudioPlayer _ring = AudioPlayer();
+  Timer? _vibrate;
+
+  void _updateRing(CallPhase phase) {
+    _vibrate?.cancel();
+    _vibrate = null;
+    if (phase == CallPhase.incoming) {
+      _ring.setReleaseMode(ReleaseMode.loop);
+      _ring.play(AssetSource("ringtone.wav"), volume: 1.0);
+      HapticFeedback.vibrate();
+      _vibrate = Timer.periodic(
+          const Duration(milliseconds: 1200), (_) => HapticFeedback.vibrate());
+    } else if (phase == CallPhase.outgoing) {
+      _ring.setReleaseMode(ReleaseMode.loop);
+      _ring.play(AssetSource("ringback.wav"), volume: 0.6);
+    } else {
+      _ring.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _vibrate?.cancel();
+    _ring.dispose();
+    super.dispose();
+  }
+
   /// The user minimized the call screen to keep using the app; the media keeps
   /// flowing in CallService and a floating pill brings the screen back.
   bool _minimized = false;
@@ -335,6 +367,7 @@ class _CallOverlayState extends State<CallOverlay> {
     if (phase != _last) {
       _last = phase;
       if (!_inCall(phase)) _minimized = false;
+      _updateRing(phase);
       WidgetsBinding.instance.addPostFrameCallback((_) => _sync(phase));
     }
     return Stack(
