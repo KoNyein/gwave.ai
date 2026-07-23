@@ -1,0 +1,33 @@
+name: Cleanup merged branches
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Delete branches listed in .github/cleanup-branches.txt
+        run: |
+          deleted=0; skipped=0
+          while IFS= read -r b; do
+            [ -z "$b" ] && continue
+            case "$b" in main|claude/phase-1-implementation-7ysxtj) echo "refusing to delete protected branch $b"; continue;; esac
+            if git push origin --delete "$b" 2>/dev/null; then
+              echo "deleted: $b"; deleted=$((deleted+1))
+            else
+              echo "skipped (missing or protected): $b"; skipped=$((skipped+1))
+            fi
+          done < .github/cleanup-branches.txt
+          echo "== done: $deleted deleted, $skipped skipped =="
+      - name: Delete superseded TWA releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for tag in android-build-6 android-build-7 android-build-11; do
+            gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag && echo "release deleted: $tag" || echo "release missing: $tag"
+          done
