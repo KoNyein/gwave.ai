@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import { FeedLiveCard } from "@/components/social/feed-live-card";
+
 const URL_RE = /https?:\/\/[^\s<>"')\]]+/;
 
 interface Preview {
@@ -17,15 +19,21 @@ interface Preview {
  * user text: image, title, description and domain, all tappable. Renders
  * nothing until the preview endpoint returns something worth showing.
  */
+const LIVE_LINK_RE =
+  /(?:https?:\/\/(?:www\.)?gwave\.cc)?\/live\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
+
 export function LinkPreview({ text }: { text: string }) {
   const url = React.useMemo(() => {
     const m = text.match(URL_RE);
     return m ? m[0].replace(/[).,!?၊။…]+$/, "") : null;
   }, [text]);
+  // Live-announcement links get a real live card (with inline video when the
+  // broadcast has HLS) instead of a generic OG preview box.
+  const liveId = React.useMemo(() => text.match(LIVE_LINK_RE)?.[1], [text]);
   const [preview, setPreview] = React.useState<Preview | null>(null);
 
   React.useEffect(() => {
-    if (!url) return;
+    if (!url || LIVE_LINK_RE.test(text)) return;
     let cancelled = false;
     void fetch(`/api/link-preview?url=${encodeURIComponent(url)}`)
       .then((res) => (res.ok ? (res.json() as Promise<Preview>) : null))
@@ -38,6 +46,7 @@ export function LinkPreview({ text }: { text: string }) {
     };
   }, [url]);
 
+  if (liveId) return <FeedLiveCard streamId={liveId} />;
   if (!url || !preview) return null;
 
   let host = "";
