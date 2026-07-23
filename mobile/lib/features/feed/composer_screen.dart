@@ -23,6 +23,7 @@ class _ComposerScreenState extends State<ComposerScreen> {
   final _location = TextEditingController();
   bool _busy = false;
   bool _showLocation = false;
+  bool _protected = false; // forbid screenshots / saving of this post's photos
   String? _feeling; // e.g. "😊 feeling happy"
 
   final List<_PickedImage> _images = [];
@@ -102,6 +103,7 @@ class _ComposerScreenState extends State<ComposerScreen> {
         content,
         locationName: _showLocation ? _location.text.trim() : null,
         media: media,
+        protected: _protected,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -252,8 +254,32 @@ class _ComposerScreenState extends State<ComposerScreen> {
                   active: _feeling != null),
               _chip(Icons.videocam_outlined, "Go Live", _goLive,
                   color: GwColors.live),
+              _chip(
+                _protected ? Icons.lock : Icons.lock_outline,
+                "ဤဓာတ်ပုံကို screenshot / save ခွင့်မပြုပါ",
+                () => setState(() => _protected = !_protected),
+                active: _protected,
+              ),
             ],
           ),
+          if (_protected) ...[
+            const SizedBox(height: 10),
+            const Row(
+              children: [
+                Icon(Icons.shield_outlined,
+                    size: 15, color: GwColors.inkSoft),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    "ကာကွယ်ထားသည် — အခြားသူများ screenshot / ဖန်သားပြင်ရိုက်ကူးခြင်း "
+                    "မပြုနိုင်ပါ။",
+                    style: TextStyle(
+                        fontSize: 12, color: GwColors.inkSoft, height: 1.3),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

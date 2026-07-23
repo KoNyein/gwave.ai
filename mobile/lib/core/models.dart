@@ -69,6 +69,7 @@ class Post {
     this.locationName,
     this.author,
     this.media = const [],
+    this.protected = false,
   });
 
   final String id;
@@ -81,6 +82,11 @@ class Post {
   final String? locationName;
   final Profile? author;
   final List<PostMedia> media;
+
+  /// When true the poster forbade screenshots / saving: the viewer raises
+  /// FLAG_SECURE and hides every share/save affordance. Backed by
+  /// `posts.protected` (default false); flows through the app's `select("*")`.
+  final bool protected;
 
   PostMedia? get firstImage {
     for (final m in media) {
@@ -111,6 +117,7 @@ class Post {
           ? Profile.fromJson(authorJson)
           : null,
       media: media,
+      protected: j["protected"] == true,
     );
   }
 }

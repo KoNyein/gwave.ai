@@ -10,6 +10,7 @@ import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../web/web_screen.dart';
 import '../../widgets/common.dart';
+import '../../widgets/secure_image_viewer.dart';
 import '../live/live_watch_screen.dart';
 import 'comments_sheet.dart';
 import 'reactions.dart';
@@ -163,20 +164,32 @@ class _PostCardState extends State<PostCard> {
             ],
             if (p.firstImage != null) ...[
               const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(GwRadius.md),
-                child: CachedNetworkImage(
+              // A protected photo is never rendered inline in the scrolling
+              // feed — FLAG_SECURE can't be guaranteed per-card there — so it
+              // is hidden behind a tap-to-view lock that opens the secure
+              // full-screen viewer (which raises FLAG_SECURE). Unprotected
+              // photos show inline as before.
+              if (p.protected)
+                _ProtectedImageLock(
                   imageUrl:
                       resolveMedia(p.firstImage!.storagePath, bucket: "media")!,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  placeholder: (_, __) => Container(
-                    height: 200,
-                    color: GwColors.surfaceMuted,
+                  caption: p.content,
+                )
+              else
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(GwRadius.md),
+                  child: CachedNetworkImage(
+                    imageUrl: resolveMedia(p.firstImage!.storagePath,
+                        bucket: "media")!,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    placeholder: (_, __) => Container(
+                      height: 200,
+                      color: GwColors.surfaceMuted,
+                    ),
+                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
                   ),
-                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
                 ),
-              ),
             ],
             const SizedBox(height: 12),
             if (_likes > 0 || _comments > 0)
@@ -205,7 +218,20 @@ class _PostCardState extends State<PostCard> {
                 _reactionAction(),
                 _action(Icons.mode_comment_outlined, "Comment",
                     GwColors.inkSoft, _openComments),
-                _action(Icons.share_outlined, "Share", GwColors.inkSoft, () {}),
+                // Protected posts offer no share / forward affordance.
+                if (p.protected)
+                  _action(Icons.lock_outline, "Protected",
+                      GwColors.inkSoft.withValues(alpha: 0.5), () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            "ဤပို့စ်သည် ကာကွယ်ထားသဖြင့် မျှဝေ၍မရပါ။"),
+                      ),
+                    );
+                  })
+                else
+                  _action(Icons.share_outlined, "Share", GwColors.inkSoft,
+                      () {}),
               ],
             ),
           ],
@@ -362,6 +388,54 @@ class _RichPostBodyState extends State<_RichPostBody> {
       TextSpan(
         style: const TextStyle(fontSize: 15, height: 1.4, color: GwColors.ink),
         children: spans,
+      ),
+    );
+  }
+}
+
+/// Placeholder shown in place of a protected post's photo in the feed. The
+/// blurred image itself is never rendered inline; tapping opens the secure
+/// full-screen viewer where FLAG_SECURE is active.
+class _ProtectedImageLock extends StatelessWidget {
+  const _ProtectedImageLock({required this.imageUrl, this.caption});
+
+  final String imageUrl;
+  final String? caption;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => SecureImageViewer.open(
+        context,
+        imageUrl: imageUrl,
+        caption: caption,
+      ),
+      child: Container(
+        height: 220,
+        decoration: BoxDecoration(
+          color: GwColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(GwRadius.md),
+          border: Border.all(color: GwColors.line),
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline, size: 34, color: GwColors.primary),
+            SizedBox(height: 10),
+            Text(
+              "ကာကွယ်ထားသော ဓာတ်ပုံ",
+              style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  color: GwColors.ink),
+            ),
+            SizedBox(height: 4),
+            Text(
+              "ကြည့်ရန် တို့ပါ • screenshot / save မရပါ",
+              style: TextStyle(fontSize: 12, color: GwColors.inkSoft),
+            ),
+          ],
+        ),
       ),
     );
   }
