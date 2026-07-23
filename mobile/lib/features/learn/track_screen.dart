@@ -123,7 +123,7 @@ class _TrackScreenState extends State<TrackScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading && _lessons.isEmpty
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : _error != null && _lessons.isEmpty
                 ? ListView(children: [
@@ -258,7 +258,7 @@ class _TrackScreenState extends State<TrackScreen> {
                                     ],
                                   ),
                                 ),
-                                const Icon(Icons.chevron_right,
+                                Icon(Icons.chevron_right,
                                     color: GwColors.inkSoft),
                               ],
                             ),
@@ -306,7 +306,7 @@ class _TrackScreenState extends State<TrackScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: done
-                    ? const Icon(Icons.check, color: Colors.white, size: 18)
+                    ? Icon(Icons.check, color: GwColors.onPrimary, size: 18)
                     : Center(
                         child: Text("${index + 1}",
                             style: TextStyle(
@@ -337,7 +337,7 @@ class _TrackScreenState extends State<TrackScreen> {
                         const SizedBox(width: 4),
                         Text(
                           minutes != null ? "$minutes min" : kind,
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: GwColors.inkSoft, fontSize: 11.5),
                         ),
                       ],
@@ -345,7 +345,7 @@ class _TrackScreenState extends State<TrackScreen> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right,
+              Icon(Icons.chevron_right,
                   color: GwColors.inkSoft, size: 20),
             ],
           ),

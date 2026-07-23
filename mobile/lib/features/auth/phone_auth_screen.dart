@@ -122,7 +122,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                     ? "We texted a code to ${_phone.text.trim()}"
                     : "We'll text you a one-time code",
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 15, color: GwColors.inkSoft),
+                style: TextStyle(fontSize: 15, color: GwColors.inkSoft),
               ),
               const SizedBox(height: 22),
               if (!_codeSent)
@@ -161,12 +161,12 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline,
+                      Icon(Icons.error_outline,
                           color: GwColors.live, size: 19),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(_error!,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: GwColors.live, fontSize: 13)),
                       ),
                     ],
@@ -179,13 +179,13 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                 child: ElevatedButton(
                   onPressed: _busy ? null : (_codeSent ? _verify : _sendCode),
                   child: _busy
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 22,
                           height: 22,
                           child: CircularProgressIndicator(
                               strokeWidth: 2.4,
                               valueColor:
-                                  AlwaysStoppedAnimation(Colors.white)),
+                                  AlwaysStoppedAnimation(GwColors.onPrimary)),
                         )
                       : Text(_codeSent ? "Verify" : "Send code",
                           style: const TextStyle(fontSize: 16)),

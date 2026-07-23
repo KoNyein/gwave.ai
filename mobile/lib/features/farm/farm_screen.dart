@@ -55,7 +55,7 @@ class _FarmScreenState extends State<FarmScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : _error != null && _devices.isEmpty
                 ? ListView(children: [
@@ -118,7 +118,7 @@ class _FarmScreenState extends State<FarmScreen> {
                               fontWeight: FontWeight.w800, fontSize: 15)),
                       Text(
                         [d.type, if (d.zone != null) d.zone].join(" · "),
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: GwColors.inkSoft, fontSize: 12),
                       ),
                     ],
@@ -153,10 +153,10 @@ class _FarmScreenState extends State<FarmScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(r.metric,
-              style: const TextStyle(color: GwColors.inkSoft, fontSize: 11)),
+              style: TextStyle(color: GwColors.inkSoft, fontSize: 11)),
           Text(
             _fmt(r.value),
-            style: const TextStyle(
+            style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 18,
                 color: GwColors.primaryDark),

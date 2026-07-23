@@ -226,7 +226,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                           fontWeight: FontWeight.w800,
                           fontSize: 15)),
                 ),
-                const GwPill(
+                GwPill(
                     label: "LIVE",
                     color: GwColors.live,
                     filled: true,
@@ -251,7 +251,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(GwRadius.md),
-                  borderSide: const BorderSide(color: GwColors.primaryBright),
+                  borderSide: BorderSide(color: GwColors.primaryBright),
                 ),
               ),
             ),
@@ -260,7 +260,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
               Text(_error!,
                   textAlign: TextAlign.center,
                   style:
-                      const TextStyle(color: GwColors.live, fontSize: 13)),
+                      TextStyle(color: GwColors.live, fontSize: 13)),
               const SizedBox(height: 10),
             ],
             SizedBox(
@@ -398,7 +398,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
               child: Text(_error!,
                   textAlign: TextAlign.center,
                   style:
-                      const TextStyle(color: GwColors.live, fontSize: 13)),
+                      TextStyle(color: GwColors.live, fontSize: 13)),
             ),
           ),
 

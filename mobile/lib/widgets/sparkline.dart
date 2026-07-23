@@ -6,17 +6,22 @@ import '../core/theme.dart';
 /// their min/max, with an optional soft fill under the line. Used for sensor
 /// history on the Farm device detail screen.
 class Sparkline extends StatelessWidget {
-  const Sparkline({
+  // Not `const`, for the same reason as GwPill: it resolves a theme-aware
+  // GwColors default in `build`, and a const call site would never rebuild.
+  // ignore: prefer_const_constructors_in_immutables
+  Sparkline({
     super.key,
     required this.values,
-    this.color = GwColors.primary,
+    // Nullable rather than defaulted: GwColors tokens are theme-aware getters
+    // and so cannot be const default values.
+    this.color,
     this.height = 64,
     this.fill = true,
     this.strokeWidth = 2,
   });
 
   final List<double> values;
-  final Color color;
+  final Color? color;
   final double height;
   final bool fill;
   final double strokeWidth;
@@ -27,7 +32,8 @@ class Sparkline extends StatelessWidget {
       height: height,
       width: double.infinity,
       child: CustomPaint(
-        painter: _SparkPainter(values, color, fill, strokeWidth),
+        painter: _SparkPainter(
+            values, color ?? GwColors.primary, fill, strokeWidth),
       ),
     );
   }

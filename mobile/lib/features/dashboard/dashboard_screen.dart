@@ -86,7 +86,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 fontWeight: FontWeight.w900, fontSize: 16)),
                         if (me?.username != null)
                           Text("@${me!.username}",
-                              style: const TextStyle(
+                              style: TextStyle(
                                   color: GwColors.inkSoft, fontSize: 13)),
                       ],
                     ),
@@ -95,7 +95,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onPressed: () => _openWeb("/settings"),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: GwColors.primary,
-                      side: const BorderSide(color: GwColors.line),
+                      side: BorderSide(color: GwColors.line),
                     ),
                     child: const Text("Settings"),
                   ),
@@ -105,8 +105,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 14),
 
             if (_loading && _stats == null)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 60),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 60),
                 child: Center(
                     child: CircularProgressIndicator(color: GwColors.primary)),
               )
@@ -236,7 +236,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: const TextStyle(
                     fontSize: 24, fontWeight: FontWeight.w900)),
             Text(label,
-                style: const TextStyle(
+                style: TextStyle(
                     color: GwColors.inkSoft, fontSize: 12)),
           ],
         ),
@@ -272,10 +272,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ActionChip(
                   avatar: Icon(a.$1, size: 18, color: GwColors.primary),
                   label: Text(a.$2),
-                  labelStyle: const TextStyle(
+                  labelStyle: TextStyle(
                       color: GwColors.ink, fontWeight: FontWeight.w600),
                   backgroundColor: GwColors.surfaceMuted,
-                  side: const BorderSide(color: GwColors.line),
+                  side: BorderSide(color: GwColors.line),
                   onPressed: () => _openWeb(a.$3),
                 ),
             ],

@@ -142,7 +142,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          icon: const Icon(Icons.check_circle,
+          icon: Icon(Icons.check_circle,
               color: GwColors.primary, size: 44),
           title: Text(tr(context, "Sale complete", "ရောင်းပြီးပါပြီ")),
           content: Text(receipt != null
@@ -177,7 +177,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.schedule, color: GwColors.gold, size: 40),
+        icon: Icon(Icons.schedule, color: GwColors.gold, size: 40),
         title: Text(tr(context, "No open shift", "Shift မဖွင့်ရသေးပါ")),
         content: Text(tr(context, "Open today's shift (set the cash float) before selling.", "မရောင်းခင် ဒီနေ့အတွက် shift အရင်ဖွင့်ပါ (cash float သတ်မှတ်ရန်)။")),
         actions: [
@@ -232,13 +232,13 @@ class _PosSellScreenState extends State<PosSellScreen> {
                   child: ElevatedButton(
                     onPressed: _charging ? null : _charge,
                     child: _charging
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 22,
                             height: 22,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2.4,
                                 valueColor:
-                                    AlwaysStoppedAnimation(Colors.white)))
+                                    AlwaysStoppedAnimation(GwColors.onPrimary)))
                         : Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -256,7 +256,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
               ),
             ),
       body: _loading && _products.isEmpty
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(color: GwColors.primary))
           : _error != null && _stores.isEmpty
               ? GwEmpty(
@@ -297,7 +297,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
                                 Expanded(
                                   child: Row(
                                     children: [
-                                      const Icon(Icons.storefront_outlined,
+                                      Icon(Icons.storefront_outlined,
                                           color: GwColors.primary, size: 20),
                                       const SizedBox(width: 8),
                                       Expanded(
@@ -403,8 +403,8 @@ class _PosSellScreenState extends State<PosSellScreen> {
                           borderRadius: BorderRadius.circular(11),
                         ),
                         child: Text("×$qty",
-                            style: const TextStyle(
-                                color: Colors.white,
+                            style: TextStyle(
+                                color: GwColors.onPrimary,
                                 fontWeight: FontWeight.w800,
                                 fontSize: 12)),
                       ),
@@ -423,7 +423,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
                       style: const TextStyle(
                           fontWeight: FontWeight.w700, fontSize: 12.5)),
                   Text(money(p.price, store.currency),
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: GwColors.primaryDark,
                           fontWeight: FontWeight.w800,
                           fontSize: 12)),
@@ -470,7 +470,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
 
   Widget _ph() => Container(
         color: GwColors.surfaceMuted,
-        child: const Center(
+        child: Center(
           child: Icon(Icons.inventory_2_outlined,
               color: GwColors.inkSoft, size: 26),
         ),
@@ -483,7 +483,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.storefront_outlined,
+            Icon(Icons.storefront_outlined,
                 size: 56, color: GwColors.primary),
             const SizedBox(height: 14),
             Text(tr(context, "No store yet", "ဆိုင် မရှိသေးပါ"),
@@ -497,7 +497,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
                   "POS သုံးဖို့ ဆိုင်တစ်ခု အရင်ဖွင့်ပါ — ဆိုင်ဖွင့်ခြင်း၊ "
                       "ပစ္စည်း ထည့်ခြင်းကို web POS မှာ လုပ်နိုင်ပါတယ်။"),
               textAlign: TextAlign.center,
-              style: const TextStyle(color: GwColors.inkSoft, fontSize: 13.5),
+              style: TextStyle(color: GwColors.inkSoft, fontSize: 13.5),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(

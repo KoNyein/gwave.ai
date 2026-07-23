@@ -46,7 +46,7 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: GwColors.surface,
-          border: const Border(top: BorderSide(color: GwColors.line)),
+          border: Border(top: BorderSide(color: GwColors.line)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -75,7 +75,7 @@ class _HomeShellState extends State<HomeShell> {
               height: 64,
               selectedIndex: _index,
               onDestinationSelected: (i) => setState(() => _index = i),
-              destinations: const [
+              destinations: [
                 NavigationDestination(
                   icon: Icon(Icons.home_outlined, color: GwColors.inkSoft),
                   selectedIcon: Icon(Icons.home, color: GwColors.primary),

@@ -17,7 +17,7 @@ class GwAvatar extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: GwColors.primaryGradient,
       ),
@@ -55,38 +55,49 @@ class GwAvatar extends StatelessWidget {
 
 /// A pill/chip used across the app (categories, tags, LIVE badge).
 class GwPill extends StatelessWidget {
-  const GwPill({
+  // Deliberately not `const`: this widget resolves theme-aware GwColors in
+  // `build`, and a `const GwPill(...)` call site would be canonicalised, so
+  // `Element.updateChild` would skip its rebuild and it would keep painting
+  // the old palette after a theme switch.
+  // ignore: prefer_const_constructors_in_immutables
+  GwPill({
     super.key,
     required this.label,
-    this.color = GwColors.primary,
+    // Nullable rather than defaulted: GwColors tokens are theme-aware getters
+    // and so cannot be const default values.
+    this.color,
     this.filled = false,
     this.icon,
   });
 
   final String label;
-  final Color color;
+  final Color? color;
   final bool filled;
   final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
+    final c = color ?? GwColors.primary;
+    // A filled pill paints on the brand green, which is bright in dark mode —
+    // `onPrimary` flips to near-black there so the label stays readable.
+    final on = c == GwColors.primary ? GwColors.onPrimary : Colors.white;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: filled ? color : color.withValues(alpha: 0.12),
+        color: filled ? c : c.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: filled ? Colors.white : color),
+            Icon(icon, size: 14, color: filled ? on : c),
             const SizedBox(width: 5),
           ],
           Text(
             label,
             style: TextStyle(
-              color: filled ? Colors.white : color,
+              color: filled ? on : c,
               fontWeight: FontWeight.w700,
               fontSize: 12,
             ),
@@ -123,7 +134,7 @@ class GwEmpty extends StatelessWidget {
               Text(
                 subtitle!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: GwColors.inkSoft),
+                style: TextStyle(color: GwColors.inkSoft),
               ),
             ],
           ],

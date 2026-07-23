@@ -150,7 +150,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addSheet,
         backgroundColor: GwColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: GwColors.onPrimary,
         icon: const Icon(Icons.add),
         label: Text(tr(context, "Add expense", "ကုန်ကျစရိတ် ထည့်ရန်")),
       ),
@@ -158,7 +158,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading && _expenses.isEmpty
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
@@ -220,7 +220,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                 "${_catLabel(entry.key)} · ${money(entry.value, "Ks")}"),
                             labelStyle: const TextStyle(fontSize: 12),
                             backgroundColor: GwColors.surface,
-                            side: const BorderSide(color: GwColors.line),
+                            side: BorderSide(color: GwColors.line),
                           ),
                       ],
                     ),
@@ -453,7 +453,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
                       : "${_due!.day}/${_due!.month}/${_due!.year}"),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: GwColors.ink,
-                    side: const BorderSide(color: GwColors.line),
+                    side: BorderSide(color: GwColors.line),
                   ),
                 ),
               ),
@@ -472,7 +472,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(_error!,
                   style:
-                      const TextStyle(color: GwColors.live, fontSize: 13)),
+                      TextStyle(color: GwColors.live, fontSize: 13)),
             ),
           SizedBox(
             width: double.infinity,
@@ -480,12 +480,12 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
             child: ElevatedButton(
               onPressed: _busy ? null : _save,
               child: _busy
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
                           strokeWidth: 2.4,
-                          valueColor: AlwaysStoppedAnimation(Colors.white)))
+                          valueColor: AlwaysStoppedAnimation(GwColors.onPrimary)))
                   : Text(tr(context, "Save", "သိမ်းမည်")),
             ),
           ),

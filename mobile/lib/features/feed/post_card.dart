@@ -127,22 +127,22 @@ class _PostCardState extends State<PostCard> {
                         children: [
                           Text(
                             timeAgo(p.createdAt),
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: GwColors.inkSoft,
                               fontSize: 12,
                             ),
                           ),
                           if (p.locationName != null) ...[
-                            const Text(" · ",
+                            Text(" · ",
                                 style: TextStyle(color: GwColors.inkSoft)),
-                            const Icon(Icons.place,
+                            Icon(Icons.place,
                                 size: 12, color: GwColors.inkSoft),
                             const SizedBox(width: 2),
                             Flexible(
                               child: Text(
                                 p.locationName!,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: GwColors.inkSoft,
                                   fontSize: 12,
                                 ),
@@ -154,7 +154,7 @@ class _PostCardState extends State<PostCard> {
                     ],
                   ),
                 ),
-                const Icon(Icons.more_horiz, color: GwColors.inkSoft),
+                Icon(Icons.more_horiz, color: GwColors.inkSoft),
               ],
             ),
             if (p.content.trim().isNotEmpty) ...[
@@ -185,16 +185,16 @@ class _PostCardState extends State<PostCard> {
                 child: Row(
                   children: [
                     if (_likes > 0) ...[
-                      const Icon(Icons.favorite, size: 14, color: GwColors.heart),
+                      Icon(Icons.favorite, size: 14, color: GwColors.heart),
                       const SizedBox(width: 4),
                       Text("$_likes",
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: GwColors.inkSoft, fontSize: 12)),
                     ],
                     const Spacer(),
                     if (_comments > 0)
                       Text("$_comments comments",
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: GwColors.inkSoft, fontSize: 12)),
                   ],
                 ),
@@ -232,7 +232,7 @@ class _PostCardState extends State<PostCard> {
               if (r != null)
                 Text(r.emoji, style: const TextStyle(fontSize: 17))
               else
-                const Icon(Icons.favorite_border,
+                Icon(Icons.favorite_border,
                     size: 19, color: GwColors.inkSoft),
               const SizedBox(width: 6),
               Text(r?.label ?? "Like",
@@ -348,7 +348,7 @@ class _RichPostBodyState extends State<_RichPostBody> {
       spans.add(TextSpan(
         text: token,
         recognizer: recognizer,
-        style: const TextStyle(
+        style: TextStyle(
           color: GwColors.primary,
           fontWeight: FontWeight.w600,
         ),
@@ -360,7 +360,7 @@ class _RichPostBodyState extends State<_RichPostBody> {
     }
     return Text.rich(
       TextSpan(
-        style: const TextStyle(fontSize: 15, height: 1.4, color: GwColors.ink),
+        style: TextStyle(fontSize: 15, height: 1.4, color: GwColors.ink),
         children: spans,
       ),
     );

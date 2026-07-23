@@ -104,8 +104,8 @@ class _GamesScreenState extends State<GamesScreen> {
             ),
             const SizedBox(height: 6),
             if (_loading && _community.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 40),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
                 child: Center(
                     child: CircularProgressIndicator(color: GwColors.primary)),
               )
@@ -155,7 +155,7 @@ class _GamesScreenState extends State<GamesScreen> {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: GwColors.inkSoft, fontSize: 10.5)),
+                style: TextStyle(color: GwColors.inkSoft, fontSize: 10.5)),
           ],
         ),
       ),
@@ -192,27 +192,27 @@ class _GamesScreenState extends State<GamesScreen> {
                       Text(g.description!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: GwColors.inkSoft, fontSize: 12.5)),
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        const Icon(Icons.play_arrow,
+                        Icon(Icons.play_arrow,
                             size: 14, color: GwColors.inkSoft),
                         const SizedBox(width: 2),
                         Text("${g.playsCount} plays",
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: GwColors.inkSoft, fontSize: 11.5)),
                         if (g.author != null) ...[
                           const SizedBox(width: 8),
-                          const Text("·",
+                          Text("·",
                               style: TextStyle(color: GwColors.inkSoft)),
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(g.author!.displayName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     color: GwColors.inkSoft, fontSize: 11.5)),
                           ),
                         ],
@@ -228,7 +228,7 @@ class _GamesScreenState extends State<GamesScreen> {
                   color: GwColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text("Play",
+                child: Text("Play",
                     style: TextStyle(
                         color: GwColors.primary,
                         fontWeight: FontWeight.w800,

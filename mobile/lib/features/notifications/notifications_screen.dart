@@ -51,7 +51,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : _error != null && _items.isEmpty
                 ? ListView(children: [
@@ -93,11 +93,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 style: const TextStyle(fontWeight: FontWeight.w800)),
             TextSpan(
                 text: " ${_verb(n.type)}",
-                style: const TextStyle(color: GwColors.ink)),
+                style: TextStyle(color: GwColors.ink)),
           ]),
         ),
         subtitle: Text(timeAgo(n.createdAt),
-            style: const TextStyle(color: GwColors.inkSoft, fontSize: 12)),
+            style: TextStyle(color: GwColors.inkSoft, fontSize: 12)),
         trailing: Icon(_icon(n.type), color: GwColors.primary, size: 20),
       ),
     );

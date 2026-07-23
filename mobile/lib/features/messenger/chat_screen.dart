@@ -181,7 +181,7 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
             child: _loading
-                ? const Center(
+                ? Center(
                     child: CircularProgressIndicator(color: GwColors.primary))
                 : _messages.isEmpty
                     ? const GwEmpty(
@@ -227,13 +227,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: CachedNetworkImage(
                   imageUrl: resolveMedia(m.imagePath, bucket: "media") ?? "",
                   fit: BoxFit.cover,
-                  placeholder: (_, __) => const SizedBox(
+                  placeholder: (_, __) => SizedBox(
                     height: 160,
                     child: Center(
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: GwColors.primary)),
                   ),
-                  errorWidget: (_, __, ___) => const SizedBox(
+                  errorWidget: (_, __, ___) => SizedBox(
                     height: 120,
                     child: Icon(Icons.broken_image_outlined,
                         color: GwColors.inkSoft),
@@ -243,7 +243,7 @@ class _ChatScreenState extends State<ChatScreen> {
             : Text(
                 m.content,
                 style: TextStyle(
-                  color: mine ? Colors.white : GwColors.ink,
+                  color: mine ? GwColors.onPrimary : GwColors.ink,
                   fontSize: 15,
                   height: 1.3,
                 ),
@@ -257,14 +257,14 @@ class _ChatScreenState extends State<ChatScreen> {
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: GwColors.surface,
           border: Border(top: BorderSide(color: GwColors.line)),
         ),
         child: Row(
           children: [
             IconButton(
-                icon: const Icon(Icons.add_photo_alternate_outlined,
+                icon: Icon(Icons.add_photo_alternate_outlined,
                     color: GwColors.primary),
                 onPressed: _sendPhoto),
             Expanded(
@@ -292,12 +292,12 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             IconButton(
               icon: _sending
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
                           strokeWidth: 2.2, color: GwColors.primary))
-                  : const Icon(Icons.send, color: GwColors.primary),
+                  : Icon(Icons.send, color: GwColors.primary),
               onPressed: _send,
             ),
           ],

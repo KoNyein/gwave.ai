@@ -46,7 +46,7 @@ class ProfileScreen extends StatelessWidget {
           SliverAppBar(
             expandedHeight: 172,
             pinned: true,
-            backgroundColor: GwColors.primary,
+            backgroundColor: GwColors.isDark ? GwColors.bg : GwColors.primary,
             flexibleSpace: FlexibleSpaceBar(
               background: _cover(me?.coverUrl),
             ),
@@ -81,13 +81,13 @@ class ProfileScreen extends StatelessWidget {
                           fontSize: 22, fontWeight: FontWeight.w900)),
                   if (me?.username != null)
                     Text("@${me!.username}",
-                        style: const TextStyle(color: GwColors.inkSoft)),
+                        style: TextStyle(color: GwColors.inkSoft)),
                   if (me?.bio != null && me!.bio!.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(32, 10, 32, 0),
                       child: Text(me.bio!,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: GwColors.inkSoft)),
+                          style: TextStyle(color: GwColors.inkSoft)),
                     ),
                   const SizedBox(height: 18),
                   Padding(
@@ -107,7 +107,7 @@ class ProfileScreen extends StatelessWidget {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: GwColors.primary,
                             backgroundColor: GwColors.surface,
-                            side: const BorderSide(color: GwColors.line),
+                            side: BorderSide(color: GwColors.line),
                             padding: const EdgeInsets.all(14),
                           ),
                           child: const Icon(Icons.open_in_new, size: 18),
@@ -154,7 +154,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _coverPh() => const DecoratedBox(
+  Widget _coverPh() => DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -267,7 +267,7 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(width: 10),
                 Text(
                   s.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: GwColors.ink,
@@ -324,7 +324,7 @@ class ProfileScreen extends StatelessWidget {
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               height: 1.1,
               fontWeight: FontWeight.w600,
@@ -349,27 +349,30 @@ class ProfileScreen extends StatelessWidget {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
-    Color color = GwColors.primary,
+    // Nullable, not defaulted: GwColors tokens are theme-aware getters and so
+    // are no longer const-able default values.
+    Color? color,
     bool trailing = true,
   }) {
+    final c = color ?? GwColors.primary;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
       leading: Container(
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: c.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: color, size: 20),
+        child: Icon(icon, color: c, size: 20),
       ),
       title: Text(label,
           style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 15,
-              color: color == GwColors.live ? GwColors.live : GwColors.ink)),
+              color: c == GwColors.live ? GwColors.live : GwColors.ink)),
       trailing: trailing
-          ? const Icon(Icons.chevron_right, color: GwColors.inkSoft)
+          ? Icon(Icons.chevron_right, color: GwColors.inkSoft)
           : null,
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(GwRadius.lg)),

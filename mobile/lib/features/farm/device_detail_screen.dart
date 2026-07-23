@@ -55,7 +55,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : _error != null
                 ? ListView(children: [
@@ -103,13 +103,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(metric,
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: GwColors.inkSoft,
                         fontWeight: FontWeight.w600,
                         fontSize: 13)),
                 const Spacer(),
                 Text(_fmt(current),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 26,
                         color: GwColors.primaryDark)),
@@ -125,7 +125,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 _stat("Max", max),
                 const Spacer(),
                 Text("${series.length} readings",
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: GwColors.inkSoft, fontSize: 12)),
               ],
             ),
@@ -138,7 +138,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   Widget _stat(String label, double v) => Row(
         children: [
           Text("$label ",
-              style: const TextStyle(color: GwColors.inkSoft, fontSize: 12)),
+              style: TextStyle(color: GwColors.inkSoft, fontSize: 12)),
           Text(_fmt(v),
               style: const TextStyle(
                   fontWeight: FontWeight.w700, fontSize: 13)),

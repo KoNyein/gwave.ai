@@ -196,7 +196,7 @@ class _JobsScreenState extends State<JobsScreen> {
               color: GwColors.primary,
               onRefresh: _load,
               child: _loading && _jobs.isEmpty
-                  ? const Center(
+                  ? Center(
                       child:
                           CircularProgressIndicator(color: GwColors.primary))
                   : _error != null && _jobs.isEmpty
@@ -270,14 +270,14 @@ class _JobsScreenState extends State<JobsScreen> {
                           ].join(" · "),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: GwColors.inkSoft, fontSize: 12.5),
                         ),
                       ],
                     ),
                   ),
                   Text(timeAgo(j.createdAt),
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: GwColors.inkSoft, fontSize: 11.5)),
                 ],
               ),
@@ -294,12 +294,12 @@ class _JobsScreenState extends State<JobsScreen> {
                     child: Text(_salary(j),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 13,
                             color: GwColors.primaryDark)),
                   ),
-                  const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+                  Icon(Icons.chevron_right, color: GwColors.inkSoft),
                 ],
               ),
             ],
@@ -365,7 +365,7 @@ class JobDetailScreen extends StatelessWidget {
                         if (job.location != null && job.location!.isNotEmpty)
                           job.location!,
                       ].join(" · "),
-                      style: const TextStyle(color: GwColors.inkSoft),
+                      style: TextStyle(color: GwColors.inkSoft),
                     ),
                   ],
                 ),
@@ -601,7 +601,7 @@ class _ApplySheetState extends State<_ApplySheet> {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(_error!,
                     style:
-                        const TextStyle(color: GwColors.live, fontSize: 13)),
+                        TextStyle(color: GwColors.live, fontSize: 13)),
               ),
             const SizedBox(height: 14),
             SizedBox(
@@ -610,12 +610,12 @@ class _ApplySheetState extends State<_ApplySheet> {
               child: ElevatedButton(
                 onPressed: _busy ? null : _submit,
                 child: _busy
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
                             strokeWidth: 2.4,
-                            valueColor: AlwaysStoppedAnimation(Colors.white)))
+                            valueColor: AlwaysStoppedAnimation(GwColors.onPrimary)))
                     : Text(tr(context, "Submit application", "လျှောက်လွှာ တင်မည်")),
               ),
             ),

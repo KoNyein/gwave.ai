@@ -50,7 +50,7 @@ class _CctvScreenState extends State<CctvScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : _error != null && _cameras.isEmpty
                 ? ListView(children: [
@@ -134,7 +134,7 @@ class _CctvScreenState extends State<CctvScreen> {
                       style: const TextStyle(
                           fontWeight: FontWeight.w700, fontSize: 14)),
                   Text(c.zone ?? c.cameraType,
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: GwColors.inkSoft, fontSize: 12)),
                 ],
               ),
