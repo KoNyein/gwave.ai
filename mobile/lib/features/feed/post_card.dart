@@ -417,7 +417,7 @@ class _ProtectedImageLock extends StatelessWidget {
           borderRadius: BorderRadius.circular(GwRadius.md),
           border: Border.all(color: GwColors.line),
         ),
-        child: const Column(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.lock_outline, size: 34, color: GwColors.primary),

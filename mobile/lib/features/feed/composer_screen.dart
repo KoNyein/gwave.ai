@@ -264,7 +264,7 @@ class _ComposerScreenState extends State<ComposerScreen> {
           ),
           if (_protected) ...[
             const SizedBox(height: 10),
-            const Row(
+            Row(
               children: [
                 Icon(Icons.shield_outlined,
                     size: 15, color: GwColors.inkSoft),

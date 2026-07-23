@@ -85,7 +85,7 @@ class _SecureImageViewerState extends State<SecureImageViewer> {
                 child: CachedNetworkImage(
                   imageUrl: widget.imageUrl,
                   fit: BoxFit.contain,
-                  placeholder: (_, __) => const Center(
+                  placeholder: (_, __) => Center(
                     child: CircularProgressIndicator(
                         color: GwColors.primaryBright),
                   ),
