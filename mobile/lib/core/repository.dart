@@ -392,6 +392,41 @@ class Repository {
     return rows.map(ShopProduct.fromJson).toList();
   }
 
+  // ---- Presence -------------------------------------------------------------
+
+  /// Heartbeat: stamp my profiles.last_seen_at so others see me online.
+  /// Best-effort — silently a no-op until the column exists in the database.
+  Future<void> heartbeat() async {
+    try {
+      await api.update("profiles", {
+        "last_seen_at": DateTime.now().toUtc().toIso8601String(),
+      }, filter: {
+        "id": "eq.${api.session!.profileId}",
+      });
+    } catch (_) {}
+  }
+
+  /// last_seen_at for a set of users (messenger online dots). Returns {} when
+  /// the presence column isn't deployed yet, so callers just skip the dots.
+  Future<Map<String, DateTime>> presenceFor(List<String> userIds) async {
+    if (userIds.isEmpty) return {};
+    try {
+      final rows = await api.select("profiles", query: {
+        "select": "id,last_seen_at",
+        "id": "in.(${userIds.toSet().join(",")})",
+        "limit": "200",
+      });
+      final out = <String, DateTime>{};
+      for (final r in rows) {
+        final t = DateTime.tryParse("${r["last_seen_at"]}")?.toLocal();
+        if (t != null) out[r["id"].toString()] = t;
+      }
+      return out;
+    } catch (_) {
+      return {};
+    }
+  }
+
   // ---- Messenger ------------------------------------------------------------
 
   Future<List<Conversation>> conversations() async {

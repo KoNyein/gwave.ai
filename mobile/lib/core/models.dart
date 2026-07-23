@@ -16,6 +16,7 @@ class Profile {
     this.bio,
     this.role,
     this.isTeacher = false,
+    this.lastSeenAt,
   });
 
   final String id;
@@ -26,6 +27,14 @@ class Profile {
   final String? bio;
   final String? role;
   final bool isTeacher;
+
+  /// Presence heartbeat (profiles.last_seen_at). Filled only where a screen
+  /// fetches it; "online" means seen within the last 2 minutes.
+  final DateTime? lastSeenAt;
+
+  bool get isOnline =>
+      lastSeenAt != null &&
+      DateTime.now().difference(lastSeenAt!) < const Duration(minutes: 2);
 
   String get displayName =>
       (fullName != null && fullName!.trim().isNotEmpty)
@@ -43,6 +52,7 @@ class Profile {
         bio: _s(j["bio"]),
         role: _s(j["role"]),
         isTeacher: j["is_teacher"] == true,
+        lastSeenAt: DateTime.tryParse("${j["last_seen_at"]}")?.toLocal(),
       );
 }
 

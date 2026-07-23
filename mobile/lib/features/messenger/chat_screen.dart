@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -32,13 +34,33 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _load();
+    _pollPresence();
+    _presenceTimer =
+        Timer.periodic(const Duration(seconds: 45), (_) => _pollPresence());
   }
 
   @override
   void dispose() {
+    _presenceTimer?.cancel();
     _input.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// Messenger-style presence for the chat header ("Active now").
+  DateTime? _peerSeen;
+  Timer? _presenceTimer;
+
+  bool get _peerOnline =>
+      _peerSeen != null &&
+      DateTime.now().difference(_peerSeen!) < const Duration(minutes: 2);
+
+  Future<void> _pollPresence() async {
+    final other = widget.conversation.other;
+    if (other == null || !mounted) return;
+    final p =
+        await context.read<AppState>().repo.presenceFor([other.id]);
+    if (mounted) setState(() => _peerSeen = p[other.id]);
   }
 
   Future<void> _load() async {
@@ -163,8 +185,23 @@ class _ChatScreenState extends State<ChatScreen> {
             GwAvatar(name: widget.conversation.displayTitle, size: 36),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(widget.conversation.displayTitle,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(widget.conversation.displayTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w800)),
+                  if (_peerOnline)
+                    const Text("Active now",
+                        style: TextStyle(
+                            fontSize: 11.5,
+                            color: Color(0xFF31A24C),
+                            fontWeight: FontWeight.w600)),
+                ],
+              ),
             ),
           ],
         ),
