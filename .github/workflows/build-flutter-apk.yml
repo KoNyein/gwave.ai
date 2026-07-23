@@ -315,6 +315,7 @@ jobs:
             --dart-define=SUPABASE_URL="$SUPABASE_URL"
             --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
             --dart-define=IVS_RECORDING_BASE="$IVS_RECORDING_BASE"
+            --dart-define=APP_BUILD=${{ github.run_number }}
           )
           # Universal APK (runs on every phone) — the recommended download.
           flutter build apk --"$MODE" \
@@ -372,7 +373,10 @@ jobs:
           [ -f app-arm64-v8a-release.apk ]   && cp app-arm64-v8a-release.apk   gwave-arm64-v8a.apk   || true
           [ -f app-armeabi-v7a-release.apk ] && cp app-armeabi-v7a-release.apk gwave-armeabi-v7a.apk || true
           [ -f app-x86_64-release.apk ]      && cp app-x86_64-release.apk      gwave-x86_64.apk      || true
-          ls -la gwave*.apk
+          # Version manifest: the app polls this to show the in-app
+          # "update available" banner.
+          echo '{"build": ${{ github.run_number }}, "name": "1.0.${{ github.run_number }}"}' > version.json
+          ls -la gwave*.apk version.json
 
       - name: Publish APK to Release
         if: ${{ (github.event.inputs.build_mode || 'release') == 'release' }}
@@ -391,5 +395,6 @@ jobs:
             mobile/build/app/outputs/flutter-apk/gwave-arm64-v8a.apk
             mobile/build/app/outputs/flutter-apk/gwave-armeabi-v7a.apk
             mobile/build/app/outputs/flutter-apk/gwave-x86_64.apk
+            mobile/build/app/outputs/flutter-apk/version.json
           fail_on_unmatched_files: false
           make_latest: "true"
