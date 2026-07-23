@@ -107,7 +107,7 @@ const csp = [
   "img-src 'self' blob: data: https: https://*.supabase.co https://lh3.googleusercontent.com https://image.mux.com https://*.tile.openstreetmap.org",
   // *.live-video.net serves Amazon IVS HLS (Low-Latency playback + Real-Time
   // composite replays).
-  `media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com https://d10t7bibe827e7.cloudfront.net https://*.live-video.net${cctvHlsSrc}`,
+  `media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com https://d10t7bibe827e7.cloudfront.net https://d2fvsrmhrcdf.cloudfront.net https://*.live-video.net${cctvHlsSrc}`,
   "font-src 'self' data:",
   // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.
   // *.live-video.net is Amazon IVS: Real-Time stage signaling (wss + https) and
@@ -115,7 +115,7 @@ const csp = [
   // times out ([JOIN_ERROR]) because the browser silently blocks the socket.
   // *.chime.aws is the Amazon Chime SDK's meeting signaling/media control for
   // messenger calls (flagged; harmless to allow ahead of the client wiring).
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com https://gwave-media-8acd2816.s3.ap-southeast-1.amazonaws.com https://d10t7bibe827e7.cloudfront.net https://*.tile.openstreetmap.org https://*.live-video.net wss://*.live-video.net https://*.chime.aws wss://*.chime.aws${cctvHlsSrc}${livekitConnectSrc}${googleMapsConnectSrc}${kvsConnectSrc}`,
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com https://gwave-media-8acd2816.s3.ap-southeast-1.amazonaws.com https://d10t7bibe827e7.cloudfront.net https://d2fvsrmhrcdf.cloudfront.net https://*.tile.openstreetmap.org https://*.live-video.net wss://*.live-video.net https://*.chime.aws wss://*.chime.aws${cctvHlsSrc}${livekitConnectSrc}${googleMapsConnectSrc}${kvsConnectSrc}`,
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
   `frame-src 'self' https://www.youtube-nocookie.com https://accounts.google.com${cctvFrameSrc}${gameFrameSrc}${googleMapsSrc}`,

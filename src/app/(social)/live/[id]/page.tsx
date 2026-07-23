@@ -91,13 +91,16 @@ export default async function LiveStreamPage(
       stream.status = "live";
     }
   }
-  // Auto-saved replay: an ended browser broadcast plays back its recording
-  // instead of the "broadcast ended" placeholder. Egress recordings resolve via
-  // their own base, Agora recordings via the Agora base, and both fall back to
-  // the media CDN when a dedicated base isn't configured.
+  // Auto-saved replay: an ended broadcast plays back its recording instead of
+  // the "broadcast ended" placeholder. Both IVS paths (Real-Time stage composite
+  // AND Low-Latency channel recording — the shipping mobile app's path) resolve
+  // through the IVS replay CDN; LiveKit/Agora resolve via their own bases; all
+  // fall back to the media CDN when a dedicated base isn't configured.
+  const isIvsReplay = isIvs || isIvsStage;
+  const canReplay = isBrowserLive || isIvs;
   const replayUrl =
-    isBrowserLive && stream.status === "ended" && stream.recording_path
-      ? (isIvsStage ? ivsRecordingUrl(stream.recording_path) : null) ??
+    canReplay && stream.status === "ended" && stream.recording_path
+      ? (isIvsReplay ? ivsRecordingUrl(stream.recording_path) : null) ??
         recordingPlaybackUrl(stream.recording_path) ??
         agoraRecordingUrl(stream.recording_path) ??
         mediaUrl(stream.recording_path)
@@ -205,8 +208,8 @@ export default async function LiveStreamPage(
                   className="mx-auto max-h-[80vh] w-full rounded-xl border bg-black"
                 />
               )
-            ) : isBrowserLive && stream.status === "ended" ? (
-              // Ended browser broadcast with no saved replay: say so plainly
+            ) : canReplay && stream.status === "ended" ? (
+              // Ended broadcast with no saved replay: say so plainly
               // instead of a bare "ended" placeholder that reads as a blank
               // screen. A replay appears here automatically once recording is
               // enabled and the file finishes processing.
