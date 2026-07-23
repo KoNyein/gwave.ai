@@ -24,3 +24,10 @@ jobs:
             fi
           done < .github/cleanup-branches.txt
           echo "== done: $deleted deleted, $skipped skipped =="
+      - name: Delete superseded TWA releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for tag in android-build-6 android-build-7 android-build-11; do
+            gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag && echo "release deleted: $tag" || echo "release missing: $tag"
+          done
