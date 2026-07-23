@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -20,25 +22,52 @@ class _LiveListScreenState extends State<LiveListScreen> {
   List<LiveStream> _streams = [];
   bool _loading = true;
   String? _error;
+  Timer? _refresh;
 
   @override
   void initState() {
     super.initState();
     _load();
+    // New broadcasts appear without a manual pull-to-refresh.
+    _refresh = Timer.periodic(
+        const Duration(seconds: 20), (_) => _load(quiet: true));
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  @override
+  void dispose() {
+    _refresh?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load({bool quiet = false}) async {
+    if (!quiet) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
-      final s = await context.read<AppState>().repo.liveStreams();
-      setState(() => _streams = s);
+      final repo = context.read<AppState>().repo;
+      final api = context.read<AppState>().api;
+      var s = await repo.liveStreams();
+      // A browser broadcast that died without ending stays "live" forever.
+      // Requesting a watch token makes the server check the room and mark
+      // dead ones ended — do that for stale-looking lives, then re-fetch.
+      final suspicious = s.where((x) =>
+          x.isLive &&
+          (x.livekitRoom?.isNotEmpty ?? false) &&
+          x.createdAt != null &&
+          DateTime.now().difference(x.createdAt!).inMinutes > 10);
+      if (suspicious.isNotEmpty) {
+        await Future.wait(suspicious
+            .map((x) => api.liveToken(x.id).then((_) {}).catchError((_) {})));
+        s = await repo.liveStreams();
+      }
+      if (mounted) setState(() => _streams = s);
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted && !quiet) setState(() => _error = e.toString());
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && !quiet) setState(() => _loading = false);
     }
   }
 
