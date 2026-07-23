@@ -60,6 +60,7 @@ export function NotificationsButton({ userId }: { userId: string }) {
           comment_reply: t("commentReply", { name }),
           post_share: t("postShare", { name }),
           new_follower: t("newFollower", { name }),
+          live_started: t("liveStarted", { name }),
           device_alert: t("deviceAlert"),
         }[n.type] ?? t("title")
       );

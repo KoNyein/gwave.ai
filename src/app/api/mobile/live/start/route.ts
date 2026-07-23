@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
 
 import { verifyDataToken } from "@/lib/auth/tokens";
 import { createAdminClient } from "@/lib/data/admin";
+import { notifyFollowersOfLive } from "@/lib/live-notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,17 +58,42 @@ export async function POST(request: NextRequest) {
 
   // Feed announcement, once and best-effort — a hiccup must not block going live.
   const site = process.env.NEXT_PUBLIC_SITE_URL || "https://gwave.cc";
-  await admin
-    .from("posts")
-    .insert({
-      author_id: claims.sub,
-      content: `🔴 Live — ${stream.title ?? "Live"}\n${site}/live/${stream.id}`,
-      visibility: "public",
-    })
-    .then(
-      () => undefined,
-      () => undefined,
+  let announcementPostId: string | null = null;
+  try {
+    const { data: post } = await admin
+      .from("posts")
+      .insert({
+        author_id: claims.sub,
+        content: `🔴 Live — ${stream.title ?? "Live"}\n${site}/live/${stream.id}`,
+        visibility: "public",
+      })
+      .select("id")
+      .maybeSingle();
+    announcementPostId = (post?.id as string | null) ?? null;
+  } catch {
+    /* best-effort: a feed hiccup must not block going live. */
+  }
+
+  // Notify the host's followers — exactly once per stream. Claim the marker
+  // atomically (only the first idle->live transition flips it from null), so a
+  // reconnect that calls /start again never re-notifies. The fan-out runs after
+  // the response is sent so a large follower list never slows going live.
+  const { data: claimed } = await admin
+    .from("live_streams")
+    .update({ followers_notified_at: new Date().toISOString() })
+    .eq("id", stream.id)
+    .is("followers_notified_at", null)
+    .select("id");
+  if (claimed && claimed.length > 0) {
+    after(() =>
+      notifyFollowersOfLive({
+        hostId: claims.sub,
+        streamId: stream.id,
+        streamTitle: stream.title,
+        announcementPostId,
+      }),
     );
+  }
 
   return NextResponse.json({ ok: true });
 }

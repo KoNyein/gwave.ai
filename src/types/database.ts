@@ -37,7 +37,8 @@ export type NotificationType =
   | "comment_reply"
   | "post_share"
   | "new_follower"
-  | "device_alert";
+  | "device_alert"
+  | "live_started";
 
 export type DeviceType = "sensor" | "switch" | "camera" | "controller";
 
@@ -133,6 +134,8 @@ export interface LiveStream {
   scheduled_at: string | null;
   started_at: string | null;
   ended_at: string | null;
+  /** Set once when the host's followers were pushed the go-live alert. */
+  followers_notified_at: string | null;
   created_at: string;
 }
 
@@ -3053,6 +3056,10 @@ export type Database = {
       are_friends: {
         Args: { user_a: string; user_b: string };
         Returns: boolean;
+      };
+      live_heartbeat: {
+        Args: { p_stream: string };
+        Returns: number;
       };
       can_view_post: {
         Args: { post_author: string; post_vis: PostVisibility };
