@@ -412,6 +412,17 @@ class Repository {
         "id": "eq.${api.session!.profileId}",
       });
     } catch (_) {}
+    // Report which build this phone runs — separate call so a missing
+    // app_build column can never break presence.
+    if (AppConfig.appBuild > 0) {
+      try {
+        await api.update("profiles", {
+          "app_build": AppConfig.appBuild,
+        }, filter: {
+          "id": "eq.${api.session!.profileId}",
+        });
+      } catch (_) {}
+    }
   }
 
   /// last_seen_at for a set of users (messenger online dots). Returns {} when
