@@ -188,7 +188,8 @@
     "commentReply": "{name} replied to your comment.",
     "postShare": "{name} shared your post.",
     "newFollower": "{name} started following you.",
-    "deviceAlert": "A device automation rule was triggered — check your farm alerts."
+    "deviceAlert": "A device automation rule was triggered — check your farm alerts.",
+    "liveStarted": "{name} is live now."
   },
   "farm": {
     "title": "Farm dashboard",

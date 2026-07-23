@@ -37,6 +37,7 @@ export function NotificationItem({
     post_share: t("postShare", { name: actorName }),
     new_follower: t("newFollower", { name: actorName }),
     device_alert: t("deviceAlert"),
+    live_started: t("liveStarted", { name: actorName }),
   }[notification.type];
 
   return (

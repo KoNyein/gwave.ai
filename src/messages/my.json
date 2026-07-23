@@ -188,7 +188,8 @@
     "commentReply": "{name} က သင့်မှတ်ချက်ကို ပြန်ဖြေခဲ့သည်။",
     "postShare": "{name} က သင့်ပို့စ်ကို မျှဝေခဲ့သည်။",
     "newFollower": "{name} က သင့်ကို စတင်စောင့်ကြည့်နေပါပြီ။",
-    "deviceAlert": "စက်ပစ္စည်း automation rule တစ်ခု အလုပ်လုပ်ခဲ့သည် — ခြံ alert များကို စစ်ပါ။"
+    "deviceAlert": "စက်ပစ္စည်း automation rule တစ်ခု အလုပ်လုပ်ခဲ့သည် — ခြံ alert များကို စစ်ပါ။",
+    "liveStarted": "{name} က တိုက်ရိုက် လွှင့်နေပါပြီ။"
   },
   "farm": {
     "title": "ခြံ dashboard",
