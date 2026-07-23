@@ -141,10 +141,11 @@ export async function stopIvsComposition(
   }
 }
 
-/** Public URL a saved IVS recording plays from (CloudFront/S3 over the
- * recordings bucket), or null when unset. */
+/** Public URL a saved IVS recording plays from. Defaults to the app's own
+ * /recordings proxy (which streams from the private bucket via the instance
+ * role), so replays work without a CloudFront distribution or env config. */
 export function ivsRecordingUrl(path: string | null): string | null {
-  const base = process.env.NEXT_PUBLIC_IVS_RECORDING_BASE;
-  if (!path || !base) return null;
+  const base = process.env.NEXT_PUBLIC_IVS_RECORDING_BASE ?? "/recordings";
+  if (!path) return null;
   return `${base.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
 }
