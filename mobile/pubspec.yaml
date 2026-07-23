@@ -65,6 +65,7 @@ dependencies:
   # code written on it.
   nfc_manager: ^3.3.0
   # Share posts to other apps (system share sheet).
+  nearby_connections: ^4.3.0
   share_plus: ^10.0.0
 
 dev_dependencies:
