@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { PresenceHeartbeat } from "@/components/presence/presence-heartbeat";
 import { requireUser } from "@/lib/auth";
 
 export default async function SocialLayout({
@@ -11,5 +12,10 @@ export default async function SocialLayout({
   // accounts without a username and made the site feel broken. The feed shows
   // a gentle "complete your profile" card instead, and brand-new sign-ups are
   // still routed to onboarding once by the auth callback.
-  return <AppShell>{children}</AppShell>;
+  return (
+    <AppShell>
+      <PresenceHeartbeat />
+      {children}
+    </AppShell>
+  );
 }
