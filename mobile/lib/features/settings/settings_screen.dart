@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_state.dart';
+import '../../core/call_service.dart';
 import '../../core/config.dart';
 import '../../core/i18n.dart';
 import '../../core/repository.dart';

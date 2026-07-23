@@ -2,8 +2,10 @@ import 'package:share_plus/share_plus.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../core/app_state.dart';
 import '../../core/i18n.dart';
@@ -434,38 +436,156 @@ class _LiveBanner extends StatefulWidget {
 class _LiveBannerState extends State<_LiveBanner> {
   LiveStream? _stream;
 
+  // Inline video preview: HLS (app broadcasts) plays muted; browser (LiveKit)
+  // lives join the room as a muted subscriber — real video in the feed.
+  VideoPlayerController? _vc;
+  lk.Room? _lkRoom;
+  lk.EventsListener<lk.RoomEvent>? _lkListener;
+  lk.VideoTrack? _lkVideo;
+
   @override
   void initState() {
     super.initState();
     _load();
   }
 
+  @override
+  void dispose() {
+    _vc?.dispose();
+    _lkListener?.dispose();
+    final room = _lkRoom;
+    if (room != null) room.disconnect().then((_) => room.dispose());
+    super.dispose();
+  }
+
   Future<void> _load() async {
     try {
       final s = await context.read<AppState>().repo.stream(widget.streamId);
       if (mounted) setState(() => _stream = s);
+      if (s != null) await _initPreview(s);
     } catch (_) {}
+  }
+
+  Future<void> _initPreview(LiveStream s) async {
+    if (!mounted || !s.isLive) return;
+    final hls = s.ivsPlaybackUrl;
+    if (hls != null && hls.isNotEmpty) {
+      try {
+        final c = VideoPlayerController.networkUrl(Uri.parse(hls));
+        _vc = c;
+        await c.initialize();
+        await c.setVolume(0);
+        await c.play();
+        if (mounted) setState(() {});
+      } catch (_) {}
+      return;
+    }
+    final lkRoomName = s.livekitRoom;
+    if (lkRoomName == null || lkRoomName.isEmpty) return;
+    try {
+      final t = await context.read<AppState>().api.liveToken(s.id);
+      final room = lk.Room(
+        roomOptions: const lk.RoomOptions(adaptiveStream: true, dynacast: true),
+      );
+      _lkRoom = room;
+      final listener = room.createListener();
+      _lkListener = listener;
+      listener.on<lk.TrackSubscribedEvent>((e) {
+        final track = e.track;
+        if (track is lk.VideoTrack && mounted) {
+          setState(() => _lkVideo = track);
+        }
+        if (track is lk.RemoteAudioTrack) {
+          track.setVolume(0); // preview is silent; sound lives in the player
+        }
+      });
+      await room.connect(t.url, t.token);
+      for (final p in room.remoteParticipants.values) {
+        for (final pub in p.videoTrackPublications) {
+          final track = pub.track;
+          if (track is lk.VideoTrack) _lkVideo = track;
+        }
+        for (final pub in p.audioTrackPublications) {
+          final track = pub.track;
+          if (track is lk.RemoteAudioTrack) track.setVolume(0);
+        }
+      }
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  Widget? _preview() {
+    if (_vc != null && _vc!.value.isInitialized) {
+      return AspectRatio(
+        aspectRatio: 16 / 9,
+        child: VideoPlayer(_vc!),
+      );
+    }
+    if (_lkVideo != null) {
+      return AspectRatio(
+        aspectRatio: 16 / 9,
+        child: lk.VideoTrackRenderer(_lkVideo!, fit: lk.VideoViewFit.cover),
+      );
+    }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     final live = _stream?.isLive ?? false;
+    final preview = _preview();
     return InkWell(
       borderRadius: BorderRadius.circular(GwRadius.md),
       onTap: _stream == null
           ? null
           : () => Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => LiveWatchScreen(stream: _stream!))),
-      child: Container(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(GwRadius.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (preview != null)
+              Stack(
+                children: [
+                  preview,
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: GwColors.live,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text("LIVE",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.6)),
+                    ),
+                  ),
+                ],
+              ),
+            _bannerRow(context, live),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _bannerRow(BuildContext context, bool live) {
+    return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [Color(0xFF1B2417), Color(0xFF0B0F08)],
           ),
-          borderRadius: BorderRadius.circular(GwRadius.md),
         ),
         child: Row(
           children: [
@@ -513,8 +633,6 @@ class _LiveBannerState extends State<_LiveBanner> {
             ),
             const Icon(Icons.chevron_right, color: Colors.white54),
           ],
-        ),
-      ),
-    );
+        ));
   }
 }
