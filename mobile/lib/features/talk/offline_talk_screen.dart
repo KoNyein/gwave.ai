@@ -48,6 +48,10 @@ class _OfflineTalkScreenState extends State<OfflineTalkScreen> {
   final _scroll = ScrollController();
   bool _running = false;
   String _status = "";
+
+  /// Human error kind: null = fine, "gms" = Play-Services Nearby missing,
+  /// "permission" = user denied permissions, "other" = anything else.
+  String? _errorKind;
   String _myName = "Gwave";
 
   @override
@@ -81,9 +85,12 @@ class _OfflineTalkScreenState extends State<OfflineTalkScreen> {
   }
 
   Future<void> _start() async {
+    setState(() => _errorKind = null);
     if (!await _permissions()) {
-      setState(() =>
-          _status = "Bluetooth/တည်နေရာ ခွင့်ပြုချက် လိုအပ်ပါသည်။");
+      setState(() {
+        _errorKind = "permission";
+        _status = "";
+      });
       return;
     }
     setState(() {
@@ -116,8 +123,33 @@ class _OfflineTalkScreenState extends State<OfflineTalkScreen> {
         },
       );
     } catch (e) {
-      if (mounted) setState(() => _status = "စတင်မရပါ — $e");
+      if (!mounted) return;
+      final msg = "$e";
+      setState(() {
+        _running = false;
+        _errorKind = msg.contains("CONNECTIONS_API") ||
+                msg.contains("API_DISABLED") ||
+                msg.contains("API_NOT_CONNECTED")
+            ? "gms"
+            : msg.contains("PERMISSION") || msg.contains("permission")
+                ? "permission"
+                : "other";
+        _status = "";
+      });
     }
+  }
+
+  Future<void> _retry() async {
+    await Nearby().stopAdvertising();
+    await Nearby().stopDiscovery();
+    await Nearby().stopAllEndpoints();
+    if (mounted) {
+      setState(() {
+        _peers.clear();
+        _errorKind = null;
+      });
+    }
+    await _start();
   }
 
   void _onConnectionInitiated(String id, ConnectionInfo info) {
@@ -215,23 +247,86 @@ class _OfflineTalkScreenState extends State<OfflineTalkScreen> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final found = _peers.values.where((p) => !p.connected).toList();
-    final connected = _peers.values.where((p) => p.connected).toList();
-    return Scaffold(
-      appBar: AppBar(title: const Text("📡 Offline စကားပြော")),
-      body: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.fromLTRB(14, 10, 14, 4),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: GwColors.primaryGradient,
-              borderRadius: BorderRadius.circular(GwRadius.md),
+
+  /// Status header: green when running, amber with a plain-language fix when
+  /// something is wrong — never a raw exception.
+  Widget _headerCard() {
+    if (_errorKind != null) {
+      final gms = _errorKind == "gms";
+      final perm = _errorKind == "permission";
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF3E0),
+          borderRadius: BorderRadius.circular(GwRadius.md),
+          border: Border.all(color: const Color(0xFFFFB74D)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.info_outline,
+                    color: Color(0xFFE65100), size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    gms
+                        ? "ဒီဖုန်းမှာ Google Play Services (Nearby) မရနိုင်သေးပါ"
+                        : perm
+                            ? "ခွင့်ပြုချက် လိုအပ်နေပါသည်"
+                            : "ချိတ်ဆက်မှု စတင်မရသေးပါ",
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 14),
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 8),
+            Text(
+              gms
+                  ? "ပြင်နည်း:\n၁။ ဖုန်း Settings → Apps → Google Play Services ကို ဖွင့် (Enable) ထားပါ\n၂။ Play Store မှာ Google Play Services ကို update လုပ်ပါ\n၃။ ဖုန်း restart လုပ်ပြီး ထပ်စမ်းပါ\n(Google မပါတဲ့ ဖုန်းအချို့မှာ ဒီစနစ် မရနိုင်ပါ)"
+                  : perm
+                      ? "Offline ချိတ်ဆက်ဖို့ Bluetooth နဲ့ တည်နေရာ ခွင့်ပြုချက် လိုပါတယ် — \"ခွင့်ပြုချက်ဖွင့်ရန်\" နှိပ်ပြီး Allow လုပ်ပေးပါ။"
+                      : "Bluetooth နဲ့ Location ဖွင့်ထားကြောင်း စစ်ပြီး ထပ်စမ်းကြည့်ပါ။",
+              style: const TextStyle(
+                  fontSize: 12.5, height: 1.5, color: GwColors.ink),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                FilledButton.icon(
+                  onPressed: _retry,
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text("ထပ်စမ်းရန်"),
+                ),
+                if (perm) ...[
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: openAppSettings,
+                    icon: const Icon(Icons.settings, size: 16),
+                    label: const Text("ခွင့်ပြုချက်ဖွင့်ရန်"),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: GwColors.primaryGradient,
+        borderRadius: BorderRadius.circular(GwRadius.md),
+      ),
+      child: Row(
+        children: [
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -243,14 +338,114 @@ class _OfflineTalkScreenState extends State<OfflineTalkScreen> {
                 const SizedBox(height: 2),
                 Text(
                   _status.isEmpty
-                      ? "Bluetooth + WiFi နဲ့ အနီးအနား (~၁၀၀ မီတာ) ဖုန်းချင်း တိုက်ရိုက်ပြောနိုင်သည်။"
+                      ? "သင့်နာမည်: $_myName — အနီးအနားဖုန်းတွေက ဒီနာမည်ကို မြင်ရပါမယ်။"
                       : _status,
-                  style: const TextStyle(
-                      color: Colors.white70, fontSize: 12),
+                  style:
+                      const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],
             ),
           ),
+          if (_running)
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.white70),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Empty-chat area: a clear how-to instead of a bare placeholder.
+  Widget _emptyGuide(bool hasConnection) {
+    if (hasConnection) {
+      return const Center(
+        child: GwEmpty(
+          icon: Icons.check_circle_outline,
+          title: "ချိတ်ဆက်ပြီးပါပြီ — စကားစပြောပါ",
+          subtitle: "အောက်က 📍 ခလုတ်နဲ့ တည်နေရာလည်း ပို့လို့ရပါတယ်။",
+        ),
+      );
+    }
+    const steps = [
+      ("1", "ဖုန်း ၂ လုံးလုံးမှာ Gwave app ဖွင့်ပါ"),
+      ("2", "၂ လုံးလုံးမှာ ဒီ Offline စကားပြော စာမျက်နှာကို ဖွင့်ထားပါ"),
+      ("3", "Bluetooth နဲ့ Location (GPS) ဖွင့်ထားပါ"),
+      ("4", "ဖုန်းချင်း အနီးအနား (မီတာ ၁၀၀ အတွင်း) ထားပါ"),
+      ("5", "အပေါ်မှာ တစ်ဖက်ဖုန်းနာမည် ပေါ်လာရင် နှိပ်ပြီး ချိတ်ပါ"),
+    ];
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: GwColors.surface,
+            borderRadius: BorderRadius.circular(GwRadius.lg),
+            boxShadow: GwShadow.card,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.wifi_tethering,
+                      color: GwColors.primary, size: 22),
+                  SizedBox(width: 8),
+                  Text("ဘယ်လိုသုံးရမလဲ",
+                      style: TextStyle(
+                          fontSize: 15.5, fontWeight: FontWeight.w900)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              for (final st in steps)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 22,
+                        height: 22,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: GwColors.primary.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(st.$1,
+                            style: const TextStyle(
+                                color: GwColors.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800)),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(st.$2,
+                            style: const TextStyle(
+                                fontSize: 13.5, height: 1.4)),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final found = _peers.values.where((p) => !p.connected).toList();
+    final connected = _peers.values.where((p) => p.connected).toList();
+    return Scaffold(
+      appBar: AppBar(title: const Text("📡 Offline စကားပြော")),
+      body: Column(
+        children: [
+          _headerCard(),
           if (found.isNotEmpty)
             SizedBox(
               height: 46,
@@ -274,18 +469,7 @@ class _OfflineTalkScreenState extends State<OfflineTalkScreen> {
             ),
           Expanded(
             child: _messages.isEmpty
-                ? Center(
-                    child: GwEmpty(
-                      icon: _running
-                          ? Icons.wifi_tethering
-                          : Icons.portable_wifi_off,
-                      title: connected.isEmpty
-                          ? "အနီးအနားက Gwave ဖုန်းကို စောင့်နေသည်"
-                          : "ချိတ်ဆက်ပြီးပါပြီ — စကားစပြောပါ",
-                      subtitle:
-                          "တစ်ဖက်ဖုန်းမှာလည်း ဒီစာမျက်နှာ ဖွင့်ထားရပါမယ်။",
-                    ),
-                  )
+                ? _emptyGuide(connected.isNotEmpty)
                 : ListView.builder(
                     controller: _scroll,
                     padding: const EdgeInsets.all(14),
