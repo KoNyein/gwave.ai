@@ -495,8 +495,9 @@ class _LiveBannerState extends State<_LiveBanner> {
         if (track is lk.VideoTrack && mounted) {
           setState(() => _lkVideo = track);
         }
-        if (track is lk.RemoteAudioTrack) {
-          track.setVolume(0); // preview is silent; sound lives in the player
+        if (track is lk.AudioTrack) {
+          // Preview is silent; sound lives in the full player.
+          e.publication.unsubscribe();
         }
       });
       await room.connect(t.url, t.token);
@@ -506,8 +507,7 @@ class _LiveBannerState extends State<_LiveBanner> {
           if (track is lk.VideoTrack) _lkVideo = track;
         }
         for (final pub in p.audioTrackPublications) {
-          final track = pub.track;
-          if (track is lk.RemoteAudioTrack) track.setVolume(0);
+          pub.unsubscribe();
         }
       }
       if (mounted) setState(() {});
