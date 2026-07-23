@@ -55,12 +55,12 @@ class _StoriesBarState extends State<StoriesBar> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(Icons.photo, color: GwColors.primary),
+              leading: const Icon(Icons.photo, color: GwColors.primary),
               title: const Text("Photo"),
               onTap: () => Navigator.of(ctx).pop("image"),
             ),
             ListTile(
-              leading: Icon(Icons.videocam, color: GwColors.primary),
+              leading: const Icon(Icons.videocam, color: GwColors.primary),
               title: const Text("Video"),
               onTap: () => Navigator.of(ctx).pop("video"),
             ),
@@ -124,13 +124,13 @@ class _StoriesBarState extends State<StoriesBar> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(2.5),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: GwColors.liveGradient,
                     ),
                     child: Container(
                       padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         color: GwColors.bg,
                       ),
@@ -182,7 +182,7 @@ class _StoriesBarState extends State<StoriesBar> {
                       border: Border.all(color: GwColors.bg, width: 2),
                     ),
                     padding: const EdgeInsets.all(2),
-                    child: Icon(Icons.add, color: GwColors.onPrimary, size: 15),
+                    child: const Icon(Icons.add, color: Colors.white, size: 15),
                   ),
                 ),
               ],

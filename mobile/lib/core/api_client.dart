@@ -184,6 +184,10 @@ class ApiClient {
       _session = s.copyWith(
         token: j["token"] as String,
         expiresAt: DateTime.now().add(Duration(seconds: expiresIn)),
+        // Adopt the server's profile id: if the account was re-linked to a
+        // different profile (support fixing a mismatch), the refreshed token's
+        // subject changes and every client-side filter must follow it.
+        profileId: (j["profileId"] as String?) ?? s.profileId,
       );
       await _store.write(_session!);
       return true;
@@ -315,6 +319,31 @@ class ApiClient {
     return j["url"] as String;
   }
 
+  /// Open a G-Pay wallet from the app: submit the KYC details natively (the
+  /// same upsert as the web form). A fresh account starts `pending` until an
+  /// admin approves it. Returns the account row (id, status, balance…).
+  Future<Map<String, dynamic>?> gpayRegister({
+    required String fullName,
+    required String nrcNumber,
+    required String phone,
+    required String email,
+    required String address,
+    String telegram = "",
+    String viber = "",
+  }) async {
+    final j = await _mobilePost("/api/mobile/gpay/register", {
+      "fullName": fullName,
+      "nrcNumber": nrcNumber,
+      "phone": phone,
+      "email": email,
+      "telegram": telegram,
+      "viber": viber,
+      "address": address,
+    });
+    final a = j["account"];
+    return a is Map ? a.cast<String, dynamic>() : null;
+  }
+
   /// Join a walkie-talkie channel by its 6-character code. Server-side because
   /// a non-member can't see the channel row under RLS to resolve the code.
   /// Returns the channel id.
@@ -424,6 +453,157 @@ class ApiClient {
     return (j["comment"] as Map).cast<String, dynamic>();
   }
 
+  // ---- Marketplace + Dating -------------------------------------------------
+  // Both features read/write through the mobile API (service role) with the
+  // data token as bearer — same shape as /subject-comments.
+
+  Future<Map<String, dynamic>> _mobileGet(
+    String path, [
+    Map<String, String>? query,
+  ]) async {
+    await _ensureFreshToken();
+    final s = _session;
+    if (s == null) throw ApiException("Not signed in.");
+    final uri = Uri.parse("${AppConfig.apiBase}$path")
+        .replace(queryParameters: (query?.isEmpty ?? true) ? null : query);
+    final res = await _http.get(uri, headers: {
+      "Authorization": "Bearer ${s.token}",
+    }).timeout(const Duration(seconds: 15));
+    final j = _decode(res);
+    if (res.statusCode >= 400 || j == null) {
+      throw ApiException(
+        (j?["error"] ?? "Request failed.").toString(),
+        res.statusCode,
+      );
+    }
+    return j;
+  }
+
+  Future<Map<String, dynamic>> _mobilePost(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    await _ensureFreshToken();
+    final s = _session;
+    if (s == null) throw ApiException("Not signed in.");
+    final res = await _http
+        .post(
+          Uri.parse("${AppConfig.apiBase}$path"),
+          headers: {
+            "Authorization": "Bearer ${s.token}",
+            "content-type": "application/json",
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 20));
+    final j = _decode(res);
+    if (res.statusCode >= 400 || j == null) {
+      throw ApiException(
+        (j?["error"] ?? "Request failed.").toString(),
+        res.statusCode,
+      );
+    }
+    return j;
+  }
+
+  /// Marketplace feed (newest first). [mine] switches to my own listings
+  /// (any status); otherwise active listings, optionally filtered.
+  Future<List<Map<String, dynamic>>> marketList({
+    String? q,
+    String? category,
+    bool mine = false,
+  }) async {
+    final j = await _mobileGet("/api/mobile/market", {
+      if (q != null && q.isNotEmpty) "q": q,
+      if (category != null && category.isNotEmpty) "category": category,
+      if (mine) "mine": "1",
+    });
+    return ((j["listings"] as List?) ?? const [])
+        .cast<Map<String, dynamic>>();
+  }
+
+  /// Create a marketplace listing. [photos] are storage keys from
+  /// [uploadBytes]. Returns the new row.
+  Future<Map<String, dynamic>> marketCreate({
+    required String title,
+    required String description,
+    required num price,
+    required String category,
+    required String location,
+    List<String> photos = const [],
+    String currency = "MMK",
+  }) async {
+    final j = await _mobilePost("/api/mobile/market", {
+      "title": title,
+      "description": description,
+      "price": price,
+      "currency": currency,
+      "category": category,
+      "location": location,
+      "photos": photos,
+    });
+    return (j["listing"] as Map).cast<String, dynamic>();
+  }
+
+  /// Seller marks a listing active/sold/hidden.
+  Future<void> marketSetStatus(String id, String status) =>
+      _mobilePost("/api/mobile/market/status", {"id": id, "status": status});
+
+  /// My dating profile, or null when not set up yet.
+  Future<Map<String, dynamic>?> datingMe() async {
+    final j = await _mobileGet("/api/mobile/dating");
+    final p = j["profile"];
+    return p is Map ? p.cast<String, dynamic>() : null;
+  }
+
+  /// Create/update my dating profile (18+; the server checks the birth year).
+  Future<Map<String, dynamic>> datingSave({
+    required String displayName,
+    required int birthYear,
+    required String gender,
+    required String lookingFor,
+    String bio = "",
+    String city = "",
+    List<String> photos = const [],
+    bool active = true,
+  }) async {
+    final j = await _mobilePost("/api/mobile/dating", {
+      "displayName": displayName,
+      "birthYear": birthYear,
+      "gender": gender,
+      "lookingFor": lookingFor,
+      "bio": bio,
+      "city": city,
+      "photos": photos,
+      "active": active,
+    });
+    return (j["profile"] as Map).cast<String, dynamic>();
+  }
+
+  /// The swipe deck (unswiped, preference-matched, active profiles).
+  Future<List<Map<String, dynamic>>> datingCandidates() async {
+    final j = await _mobileGet("/api/mobile/dating/candidates");
+    return ((j["candidates"] as List?) ?? const [])
+        .cast<Map<String, dynamic>>();
+  }
+
+  /// Like/pass on [targetId]. Returns true when the like was mutual (match!).
+  Future<bool> datingSwipe(String targetId, {required bool liked}) async {
+    final j = await _mobilePost("/api/mobile/dating/swipe", {
+      "targetId": targetId,
+      "liked": liked,
+    });
+    return j["matched"] == true;
+  }
+
+  /// My matches, newest first, each with the other side's dating profile
+  /// (`dating`) and account info (`account`).
+  Future<List<Map<String, dynamic>>> datingMatches() async {
+    final j = await _mobileGet("/api/mobile/dating/matches");
+    return ((j["matches"] as List?) ?? const [])
+        .cast<Map<String, dynamic>>();
+  }
+
   // ---- Live broadcasting ----------------------------------------------------
 
   Future<Map<String, dynamic>> _liveCall(
@@ -452,11 +632,23 @@ class ApiClient {
   }
 
   /// Provision an IVS channel for a native broadcast. Returns id + the RTMPS
-  /// ingest URL and stream key the phone encoder pushes to.
+  /// ingest URL and stream key the phone encoder pushes to. An optional
+  /// location tag shows 📍 on the live card.
   Future<({String id, String ingestUrl, String streamKey})> liveCreate(
-    String title,
-  ) async {
-    final j = await _liveCall("/api/mobile/live/create", {"title": title});
+    String title, {
+    String? locationName,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final j = await _liveCall("/api/mobile/live/create", {
+      "title": title,
+      if (locationName != null && locationName.isNotEmpty)
+        "locationName": locationName,
+      if (latitude != null && longitude != null) ...{
+        "latitude": latitude,
+        "longitude": longitude,
+      },
+    });
     return (
       id: j["id"].toString(),
       ingestUrl: j["ingestUrl"].toString(),
@@ -469,6 +661,13 @@ class ApiClient {
 
   /// End the broadcast (stops the IVS channel, marks the row ended).
   Future<void> liveEnd(String id) => _liveCall("/api/mobile/live/end", {"id": id});
+
+  /// Viewer token for a browser-broadcast Live (LiveKit SFU). Those streams
+  /// have no HLS URL, so the app joins the room like the web viewer does.
+  Future<({String url, String token})> liveToken(String streamId) async {
+    final j = await _mobilePost("/api/mobile/live/token", {"id": streamId});
+    return (url: j["url"].toString(), token: j["token"].toString());
+  }
 
   // ---- Learn catalog --------------------------------------------------------
 

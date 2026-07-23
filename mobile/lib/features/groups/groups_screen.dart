@@ -99,7 +99,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading && _mine.isEmpty && _discover.isEmpty
-            ? Center(
+            ? const Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : _error != null && _mine.isEmpty && _discover.isEmpty
                 ? ListView(children: [
@@ -185,14 +185,14 @@ class _GroupsScreenState extends State<GroupsScreen> {
                             fontWeight: FontWeight.w800, fontSize: 15)),
                     Text(
                       "${g.memberCount} members${g.privacy == "private" ? " · Private" : ""}",
-                      style: TextStyle(
+                      style: const TextStyle(
                           color: GwColors.inkSoft, fontSize: 12.5),
                     ),
                   ],
                 ),
               ),
               if (g.isMember)
-                Icon(Icons.chevron_right, color: GwColors.inkSoft)
+                const Icon(Icons.chevron_right, color: GwColors.inkSoft)
               else if (busy)
                 const SizedBox(
                     width: 20,
@@ -216,7 +216,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
   Widget _ph() => Container(
         color: GwColors.primary.withValues(alpha: 0.12),
-        child: Icon(Icons.groups_2, color: GwColors.primary, size: 26),
+        child: const Icon(Icons.groups_2, color: GwColors.primary, size: 26),
       );
 }
 
@@ -264,7 +264,7 @@ class _GroupFeedScreenState extends State<GroupFeedScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading && _posts.isEmpty
-            ? Center(
+            ? const Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : _error != null && _posts.isEmpty
                 ? ListView(children: [

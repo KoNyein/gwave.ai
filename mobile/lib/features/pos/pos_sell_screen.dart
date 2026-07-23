@@ -1,6 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_state.dart';
@@ -13,9 +18,14 @@ import '../web/web_screen.dart';
 import '../../widgets/common.dart';
 
 /// Native POS Sell — the web `/pos/sell` counter as a phone screen: pick a
-/// store, tap products into the cart, and charge (cash) through the same
+/// store, tap products into the cart, and charge through the same
 /// `create_sale` RPC the web uses, which validates the open shift, claims the
 /// receipt number and writes stock movements atomically.
+///
+/// Tenders: cash, real G-Pay (customer phone + PIN through pos_settle_gpay),
+/// and a G-Pay QR the customer scans to pay. After the sale the receipt can be
+/// printed as an 80mm ticket via the system print dialog (Bluetooth/WiFi
+/// receipt printers, save as PDF, share).
 class PosSellScreen extends StatefulWidget {
   const PosSellScreen({super.key});
 
@@ -110,24 +120,88 @@ class _PosSellScreenState extends State<PosSellScreen> {
     final store = _store;
     if (store == null || _cart.isEmpty || _charging) return;
     final total = _total;
-    final ok = await showDialog<bool>(
+
+    // 1) Pick the tender.
+    final method = await showModalBottomSheet<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(tr(context, "Charge (cash)", "ငွေရှင်းမည် (cash)")),
-        content: Text("$_count ${tr(context, "items", "ခု")} — ${money(total, store.currency)}"),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: Text(tr(context, "Cancel", "မလုပ်တော့ပါ"))),
-          ElevatedButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: Text(tr(context, "Charge", "ရှင်းမည်"))),
-        ],
+      backgroundColor: GwColors.bg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+              child: Text(
+                "$_count ${tr(ctx, "items", "ခု")} — ${money(total, store.currency)}",
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 17),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.payments_outlined,
+                  color: GwColors.primary),
+              title: Text(tr(ctx, "Cash", "ငွေသား")),
+              onTap: () => Navigator.of(ctx).pop("cash"),
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code_2, color: GwColors.primary),
+              title: Text(tr(ctx, "G-Pay QR (customer scans)",
+                  "G-Pay QR (ဝယ်သူ scan ဖတ်၍ပေး)")),
+              onTap: () => Navigator.of(ctx).pop("qr"),
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance_wallet_outlined,
+                  color: GwColors.primary),
+              title: Text(tr(ctx, "G-Pay (phone + PIN)",
+                  "G-Pay (ဖုန်း + PIN ဖြင့်)")),
+              onTap: () => Navigator.of(ctx).pop("gpay"),
+            ),
+            const SizedBox(height: 6),
+          ],
+        ),
       ),
     );
-    if (ok != true) return;
+    if (method == null || !mounted) return;
 
+    // 2) Collect / confirm the payment for the chosen tender.
+    if (method == "qr") {
+      final paid = await _showQrPayment(store, total);
+      if (paid != true) return;
+    } else if (method == "gpay") {
+      final settled = await _collectGpay(store, total);
+      if (settled != true) return;
+    } else {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(tr(context, "Charge (cash)", "ငွေရှင်းမည် (cash)")),
+          content: Text(
+              "$_count ${tr(context, "items", "ခု")} — ${money(total, store.currency)}"),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(tr(context, "Cancel", "မလုပ်တော့ပါ"))),
+            ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(tr(context, "Charge", "ရှင်းမည်"))),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+    if (!mounted) return;
+
+    // 3) Record the sale (stock + receipt number) and offer a printed ticket.
     setState(() => _charging = true);
+    // Snapshot the lines before the cart clears, for the printed receipt.
+    final lines = [
+      for (final e in _cart.entries)
+        if (_productById(e.key) != null)
+          (product: _productById(e.key)!, quantity: e.value),
+    ];
     try {
       final receipt = await context.read<AppState>().repo.createSale(
             storeId: store.id,
@@ -136,19 +210,40 @@ class _PosSellScreenState extends State<PosSellScreen> {
                 (productId: e.key, quantity: e.value),
             ],
             total: total,
+            method: method,
           );
       if (!mounted) return;
       setState(() => _cart.clear());
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          icon: Icon(Icons.check_circle,
+          icon: const Icon(Icons.check_circle,
               color: GwColors.primary, size: 44),
           title: Text(tr(context, "Sale complete", "ရောင်းပြီးပါပြီ")),
           content: Text(receipt != null
               ? "${tr(context, "Receipt", "ဘောင်ချာနံပါတ်")} #$receipt\n${money(total, store.currency)}"
               : money(total, store.currency)),
           actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _printReceipt(
+                  store: store,
+                  receipt: receipt,
+                  lines: lines,
+                  total: total,
+                  method: method,
+                );
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.print_outlined, size: 18),
+                  const SizedBox(width: 6),
+                  Text(tr(ctx, "Print", "Print ထုတ်မည်")),
+                ],
+              ),
+            ),
             TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
                 child: const Text("OK")),
@@ -171,13 +266,276 @@ class _PosSellScreenState extends State<PosSellScreen> {
     }
   }
 
+  PosProduct? _productById(String id) {
+    for (final p in _products) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
+
+  /// Show the store's G-Pay QR for the amount; the customer scans it with
+  /// their app (G-Pay → Scan) and sends the money. The seller confirms once
+  /// the transfer notification arrives.
+  Future<bool?> _showQrPayment(PosStore store, double total) async {
+    final acc = await context.read<AppState>().repo.myGpayAccount();
+    if (!mounted) return false;
+    final phone = acc?.phone ?? "";
+    if (phone.isEmpty || acc?.isActive != true) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(tr(
+            context,
+            "You need an active G-Pay wallet to receive QR payments.",
+            "QR ဖြင့် ငွေလက်ခံရန် သင့်မှာ active G-Pay wallet ရှိရပါမည်။")),
+      ));
+      return false;
+    }
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr(ctx, "Scan to pay", "Scan ဖတ်၍ ငွေပေးရန်")),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: QrImageView(data: "gpay:$phone", size: 190),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              money(total, store.currency),
+              style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: GwColors.primary),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              tr(
+                  ctx,
+                  "Customer: open Gwave → G-Pay → Scan, send the amount, then show you the confirmation.",
+                  "ဝယ်သူ — Gwave app ထဲ G-Pay → Scan ဖွင့်ပြီး ပမာဏ ပေးပို့ပါ။ ပို့ပြီးကြောင်း အတည်ပြုချက်ကို ပြပါစေ။"),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12.5, color: GwColors.inkSoft),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(tr(ctx, "Cancel", "မလုပ်တော့ပါ"))),
+          ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(
+                  tr(ctx, "Payment received", "ငွေလက်ခံရရှိပြီ"))),
+        ],
+      ),
+    );
+  }
+
+  /// Real G-Pay settlement at the counter: the customer gives their wallet
+  /// phone and authorises with their own PIN; pos_settle_gpay moves the money.
+  Future<bool?> _collectGpay(PosStore store, double total) async {
+    final phoneCtl = TextEditingController();
+    final pinCtl = TextEditingController();
+    try {
+      return await showDialog<bool>(
+        context: context,
+        builder: (ctx) {
+          bool busy = false;
+          String? err;
+          return StatefulBuilder(
+            builder: (ctx, setDlg) => AlertDialog(
+              title: Text(tr(ctx, "G-Pay payment", "G-Pay ဖြင့် ရှင်းမည်")),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(money(total, store.currency),
+                      style: const TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w900,
+                          color: GwColors.primary)),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: phoneCtl,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: tr(ctx, "Customer G-Pay phone",
+                          "ဝယ်သူ G-Pay ဖုန်းနံပါတ်"),
+                      prefixIcon: const Icon(Icons.phone_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: pinCtl,
+                    keyboardType: TextInputType.number,
+                    obscureText: true,
+                    maxLength: 6,
+                    decoration: InputDecoration(
+                      labelText: tr(ctx, "Customer PIN (they type it)",
+                          "ဝယ်သူ PIN (ဝယ်သူကိုယ်တိုင် ရိုက်ရန်)"),
+                      prefixIcon: const Icon(Icons.password),
+                      counterText: "",
+                    ),
+                  ),
+                  if (err != null) ...[
+                    const SizedBox(height: 8),
+                    Text(err!,
+                        style: const TextStyle(
+                            color: GwColors.live, fontSize: 12.5)),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                    onPressed:
+                        busy ? null : () => Navigator.of(ctx).pop(false),
+                    child: Text(tr(ctx, "Cancel", "မလုပ်တော့ပါ"))),
+                ElevatedButton(
+                  onPressed: busy
+                      ? null
+                      : () async {
+                          setDlg(() {
+                            busy = true;
+                            err = null;
+                          });
+                          try {
+                            await context.read<AppState>().repo.posSettleGpay(
+                                  storeId: store.id,
+                                  customerPhone: phoneCtl.text.trim(),
+                                  amount: total,
+                                  pin: pinCtl.text.trim(),
+                                );
+                            if (ctx.mounted) Navigator.of(ctx).pop(true);
+                          } catch (e) {
+                            setDlg(() {
+                              busy = false;
+                              err = e.toString();
+                            });
+                          }
+                        },
+                  child: busy
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : Text(tr(ctx, "Take payment", "ငွေကောက်ခံမည်")),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } finally {
+      phoneCtl.dispose();
+      pinCtl.dispose();
+    }
+  }
+
+  /// Build an 80mm receipt PDF and hand it to the system print dialog.
+  Future<void> _printReceipt({
+    required PosStore store,
+    required int? receipt,
+    required List<({PosProduct product, int quantity})> lines,
+    required double total,
+    required String method,
+  }) async {
+    try {
+      // Padauk covers Burmese product/store names; bundled so printing works
+      // offline at the counter.
+      final fontData = await rootBundle.load("assets/Padauk-Regular.ttf");
+      final font = pw.Font.ttf(fontData);
+      final bold = pw.TextStyle(
+          font: font, fontSize: 11, fontWeight: pw.FontWeight.bold);
+      final normal = pw.TextStyle(font: font, fontSize: 9.5);
+      final now = DateTime.now();
+      final stamp =
+          "${now.year}-${now.month.toString().padLeft(2, "0")}-${now.day.toString().padLeft(2, "0")} "
+          "${now.hour.toString().padLeft(2, "0")}:${now.minute.toString().padLeft(2, "0")}";
+
+      final doc = pw.Document();
+      doc.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.roll80,
+          build: (ctx) => pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+            children: [
+              pw.Center(
+                  child: pw.Text(store.name,
+                      style: pw.TextStyle(
+                          font: font,
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.bold))),
+              pw.SizedBox(height: 2),
+              pw.Center(child: pw.Text("Gwave POS", style: normal)),
+              pw.SizedBox(height: 6),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(receipt != null ? "Receipt #$receipt" : "Receipt",
+                      style: normal),
+                  pw.Text(stamp, style: normal),
+                ],
+              ),
+              pw.Divider(),
+              for (final l in lines)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 2),
+                  child: pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Expanded(
+                          child: pw.Text(
+                              "${l.product.name} × ${l.quantity}",
+                              style: normal)),
+                      pw.Text(
+                          money(l.product.price * l.quantity, store.currency),
+                          style: normal),
+                    ],
+                  ),
+                ),
+              pw.Divider(),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text("TOTAL", style: bold),
+                  pw.Text(money(total, store.currency), style: bold),
+                ],
+              ),
+              pw.SizedBox(height: 2),
+              pw.Text("Paid: ${method.toUpperCase()}", style: normal),
+              pw.SizedBox(height: 8),
+              pw.Center(
+                  child:
+                      pw.Text("ကျေးဇူးတင်ပါသည် — Thank you!", style: normal)),
+            ],
+          ),
+        ),
+      );
+      await Printing.layoutPdf(
+        onLayout: (_) => doc.save(),
+        name: receipt != null ? "receipt-$receipt.pdf" : "receipt.pdf",
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Couldn't print — $e")),
+        );
+      }
+    }
+  }
+
   /// Selling needs an open shift; opening one (with a cash float) lives in the
   /// web POS back-office for now.
   Future<void> _shiftDialog() async {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: Icon(Icons.schedule, color: GwColors.gold, size: 40),
+        icon: const Icon(Icons.schedule, color: GwColors.gold, size: 40),
         title: Text(tr(context, "No open shift", "Shift မဖွင့်ရသေးပါ")),
         content: Text(tr(context, "Open today's shift (set the cash float) before selling.", "မရောင်းခင် ဒီနေ့အတွက် shift အရင်ဖွင့်ပါ (cash float သတ်မှတ်ရန်)။")),
         actions: [
@@ -232,13 +590,13 @@ class _PosSellScreenState extends State<PosSellScreen> {
                   child: ElevatedButton(
                     onPressed: _charging ? null : _charge,
                     child: _charging
-                        ? SizedBox(
+                        ? const SizedBox(
                             width: 22,
                             height: 22,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2.4,
                                 valueColor:
-                                    AlwaysStoppedAnimation(GwColors.onPrimary)))
+                                    AlwaysStoppedAnimation(Colors.white)))
                         : Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -256,7 +614,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
               ),
             ),
       body: _loading && _products.isEmpty
-          ? Center(
+          ? const Center(
               child: CircularProgressIndicator(color: GwColors.primary))
           : _error != null && _stores.isEmpty
               ? GwEmpty(
@@ -297,7 +655,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
                                 Expanded(
                                   child: Row(
                                     children: [
-                                      Icon(Icons.storefront_outlined,
+                                      const Icon(Icons.storefront_outlined,
                                           color: GwColors.primary, size: 20),
                                       const SizedBox(width: 8),
                                       Expanded(
@@ -403,8 +761,8 @@ class _PosSellScreenState extends State<PosSellScreen> {
                           borderRadius: BorderRadius.circular(11),
                         ),
                         child: Text("×$qty",
-                            style: TextStyle(
-                                color: GwColors.onPrimary,
+                            style: const TextStyle(
+                                color: Colors.white,
                                 fontWeight: FontWeight.w800,
                                 fontSize: 12)),
                       ),
@@ -423,7 +781,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
                       style: const TextStyle(
                           fontWeight: FontWeight.w700, fontSize: 12.5)),
                   Text(money(p.price, store.currency),
-                      style: TextStyle(
+                      style: const TextStyle(
                           color: GwColors.primaryDark,
                           fontWeight: FontWeight.w800,
                           fontSize: 12)),
@@ -470,7 +828,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
 
   Widget _ph() => Container(
         color: GwColors.surfaceMuted,
-        child: Center(
+        child: const Center(
           child: Icon(Icons.inventory_2_outlined,
               color: GwColors.inkSoft, size: 26),
         ),
@@ -483,7 +841,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.storefront_outlined,
+            const Icon(Icons.storefront_outlined,
                 size: 56, color: GwColors.primary),
             const SizedBox(height: 14),
             Text(tr(context, "No store yet", "ဆိုင် မရှိသေးပါ"),
@@ -497,7 +855,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
                   "POS သုံးဖို့ ဆိုင်တစ်ခု အရင်ဖွင့်ပါ — ဆိုင်ဖွင့်ခြင်း၊ "
                       "ပစ္စည်း ထည့်ခြင်းကို web POS မှာ လုပ်နိုင်ပါတယ်။"),
               textAlign: TextAlign.center,
-              style: TextStyle(color: GwColors.inkSoft, fontSize: 13.5),
+              style: const TextStyle(color: GwColors.inkSoft, fontSize: 13.5),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(

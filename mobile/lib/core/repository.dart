@@ -1,4 +1,6 @@
 
+import 'dart:math';
+
 import 'api_client.dart';
 import 'config.dart';
 import 'models.dart';
@@ -32,16 +34,21 @@ class Repository {
   Future<Post?> createPost(
     String content, {
     String? locationName,
+    double? latitude,
+    double? longitude,
     List<PostMedia> media = const [],
-    bool protected = false,
   }) async {
     final row = await api.insert("posts", {
       "author_id": api.session!.profileId,
       "content": content,
       "visibility": "public",
-      "protected": protected,
       if (locationName != null && locationName.isNotEmpty)
         "location_name": locationName,
+      // Coordinates travel as a pair (posts_location_pair constraint).
+      if (latitude != null && longitude != null) ...{
+        "latitude": latitude,
+        "longitude": longitude,
+      },
     });
     if (row == null) return null;
     final postId = row["id"].toString();
@@ -277,6 +284,9 @@ class Repository {
     String videoPath, {
     String? caption,
     bool originalConfirmed = true,
+    String? locationName,
+    double? latitude,
+    double? longitude,
   }) async {
     await api.insert("reels", {
       "owner_id": api.session!.profileId,
@@ -284,6 +294,12 @@ class Repository {
       "is_public": true,
       "original_confirmed": originalConfirmed,
       if (caption != null && caption.trim().isNotEmpty) "caption": caption.trim(),
+      if (locationName != null && locationName.isNotEmpty)
+        "location_name": locationName,
+      if (latitude != null && longitude != null) ...{
+        "latitude": latitude,
+        "longitude": longitude,
+      },
     });
   }
 
@@ -341,13 +357,77 @@ class Repository {
 
   Future<List<Conversation>> conversations() async {
     final myId = api.session?.profileId;
+    // Embed-free on purpose: PostgREST resource embeds 500 whenever its schema
+    // cache goes stale after a migration (until the container restarts), which
+    // made the whole messenger look broken every time the schema changed.
+    // Flat filter queries never hit that cache, so assemble the participant
+    // shape ourselves.
     final rows = await api.select("conversations", query: {
-      "select":
-          "*,participants:conversation_participants(user_id,profile:profiles!conversation_participants_user_id_fkey($_profileCols))",
+      "select": "*",
       "order": "last_message_at.desc",
       "limit": "40",
     });
-    return rows.map((r) => Conversation.fromJson(r, myId: myId)).toList();
+    if (rows.isEmpty) return [];
+    final convIds = rows.map((r) => r["id"].toString()).toList();
+    var parts = <Map<String, dynamic>>[];
+    try {
+      parts = await api.select("conversation_participants", query: {
+        "select": "conversation_id,user_id",
+        "conversation_id": "in.(${convIds.join(",")})",
+        "limit": "400",
+      });
+    } catch (_) {
+      // Participant names are cosmetic — the list still renders as "Chat".
+    }
+    final userIds = parts
+        .map((p) => p["user_id"].toString())
+        .where((id) => id != myId)
+        .toSet()
+        .toList();
+    final profById = <String, Map<String, dynamic>>{};
+    if (userIds.isNotEmpty) {
+      try {
+        final profiles = await api.select("profiles", query: {
+          "select": _profileCols,
+          "id": "in.(${userIds.join(",")})",
+          "limit": "400",
+        });
+        for (final p in profiles) {
+          profById[p["id"].toString()] = p;
+        }
+      } catch (_) {}
+    }
+    final partsByConv = <String, List<Map<String, dynamic>>>{};
+    for (final p in parts) {
+      (partsByConv[p["conversation_id"].toString()] ??= []).add({
+        "user_id": p["user_id"],
+        "profile": profById[p["user_id"].toString()],
+      });
+    }
+    return rows.map((r) {
+      r["participants"] = partsByConv[r["id"].toString()] ?? const [];
+      return Conversation.fromJson(r, myId: myId);
+    }).toList();
+  }
+
+  /// Open (or create) the 1-to-1 conversation with [friend] and return it,
+  /// ready to hand to the chat screen. Uses the same `get_or_create_direct_
+  /// conversation` RPC the web uses, so both clients land in the same thread.
+  Future<Conversation> openConversationWith(Profile friend) async {
+    final res =
+        await api.rpc("get_or_create_direct_conversation", {"other_user": friend.id});
+    final id = res is String
+        ? res
+        : (res is Map
+            ? (res["id"] ?? res.values.first).toString()
+            : res.toString());
+    if (id.isEmpty) throw Exception("Couldn't open the chat.");
+    return Conversation(
+      id: id,
+      isGroup: false,
+      lastMessageAt: DateTime.now(),
+      other: friend,
+    );
   }
 
   Future<List<Message>> messages(String conversationId, {int limit = 50}) async {
@@ -383,6 +463,137 @@ class Repository {
     return row == null ? null : Message.fromJson(row);
   }
 
+  // ---- GPS Map / SOS --------------------------------------------------------
+
+  /// Every open SOS alert (active or just-marked-safe), newest first, each with
+  /// the person who raised it. RLS scopes this to open alerts + the caller's.
+  Future<List<Map<String, dynamic>>> activeSosAlerts() async {
+    return api.select("sos_alerts", query: {
+      "select":
+          "id,user_id,status,latitude,longitude,message,created_at,person:profiles!sos_alerts_user_id_fkey($_profileCols)",
+      "status": "in.(active,safe)",
+      "order": "created_at.desc",
+      "limit": "100",
+    });
+  }
+
+  /// Raise (or refresh) my own SOS at [lat],[lng]. Updates my open alert if I
+  /// already have one, else creates it.
+  Future<void> sendSos(double lat, double lng, {String? message}) async {
+    final me = api.session!.profileId;
+    final mine = await api.select("sos_alerts", query: {
+      "select": "id",
+      "user_id": "eq.$me",
+      "status": "in.(active,safe)",
+      "limit": "1",
+    });
+    final fields = <String, dynamic>{
+      "status": "active",
+      "latitude": lat,
+      "longitude": lng,
+      if (message != null && message.trim().isNotEmpty) "message": message.trim(),
+    };
+    if (mine.isNotEmpty) {
+      await api.update("sos_alerts", fields,
+          filter: {"id": "eq.${mine.first["id"]}"});
+    } else {
+      await api.insert("sos_alerts", {"user_id": me, ...fields});
+    }
+  }
+
+  /// Close my own SOS ("safe" | "resolved" | "cancelled").
+  Future<void> setMySosStatus(String status) async {
+    final me = api.session!.profileId;
+    await api.update("sos_alerts", {"status": status},
+        filter: {"user_id": "eq.$me", "status": "in.(active,safe)"});
+  }
+
+  /// Volunteer to help someone's SOS (idempotent per responder).
+  Future<void> respondToSos(String alertId) async {
+    await api.insert("sos_responders", {
+      "alert_id": alertId,
+      "user_id": api.session!.profileId,
+    });
+  }
+
+  /// My family circles, each row = my membership + the circle
+  /// (id, name, invite_code, owner_id) and my sharing switch.
+  Future<List<Map<String, dynamic>>> familyCircles() async {
+    return api.select("family_memberships", query: {
+      "select":
+          "sharing_enabled,joined_at,circle:family_circles(id,name,invite_code,owner_id)",
+      "user_id": "eq.${api.session!.profileId}",
+      "order": "joined_at.asc",
+      "limit": "20",
+    });
+  }
+
+  /// Everyone in a circle, with their latest shared position when visible.
+  Future<List<Map<String, dynamic>>> familyCircleMembers(
+      String circleId) async {
+    return api.select("family_memberships", query: {
+      "select":
+          "user_id,sharing_enabled,person:profiles!family_memberships_user_id_fkey($_profileCols)",
+      "circle_id": "eq.$circleId",
+      "limit": "100",
+    });
+  }
+
+  /// Create a circle (returns nothing useful — reload after). The RPC also
+  /// makes the caller its first member.
+  Future<void> createFamilyCircle(String name) =>
+      api.rpc("create_family_circle", {"p_name": name});
+
+  /// Join by invite code.
+  Future<void> joinFamilyCircle(String code) =>
+      api.rpc("join_family_circle", {"p_code": code.trim()});
+
+  /// My per-circle sharing switch.
+  Future<void> setFamilySharing(String circleId, bool enabled) async {
+    await api.update("family_memberships", {"sharing_enabled": enabled},
+        filter: {
+          "circle_id": "eq.$circleId",
+          "user_id": "eq.${api.session!.profileId}",
+        });
+  }
+
+  Future<void> leaveFamilyCircle(String circleId) =>
+      api.deleteRows("family_memberships", filter: {
+        "circle_id": "eq.$circleId",
+        "user_id": "eq.${api.session!.profileId}",
+      });
+
+  /// Family members' latest shared locations (best-effort — returns [] if the
+  /// feature/table isn't reachable so the map still renders).
+  Future<List<Map<String, dynamic>>> familyLocations() async {
+    try {
+      return await api.select("member_locations", query: {
+        "select":
+            "user_id,latitude,longitude,updated_at,person:profiles!member_locations_user_id_fkey($_profileCols)",
+        "order": "updated_at.desc",
+        "limit": "100",
+      });
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Publish my live location so family circles can see me (best-effort).
+  Future<void> shareMyLocation(double lat, double lng) async {
+    try {
+      await api.upsert(
+        "member_locations",
+        {
+          "user_id": api.session!.profileId,
+          "latitude": lat,
+          "longitude": lng,
+          "updated_at": DateTime.now().toUtc().toIso8601String(),
+        },
+        onConflict: "user_id",
+      );
+    } catch (_) {}
+  }
+
   // ---- Farm / IoT -----------------------------------------------------------
 
   Future<List<Device>> devices() async {
@@ -395,6 +606,49 @@ class Repository {
   }
 
   /// Latest value per (device, metric): pull a recent window and reduce.
+  /// Register a device from the phone (same shape as the web's
+  /// registerDevice): insert with a placeholder topic + fresh secret, then
+  /// point the topic at gwave/<id>. Returns the MQTT credentials — show them
+  /// once so the farmer can flash them onto the ESP32/controller.
+  Future<({String id, String topic, String secret})?> registerDevice({
+    required String name,
+    required String type,
+    String zone = "default",
+  }) async {
+    final rand = Random();
+    final secret = List.generate(
+        32, (_) => rand.nextInt(16).toRadixString(16)).join();
+    final row = await api.insert("devices", {
+      "owner_id": api.session!.profileId,
+      "name": name,
+      "type": type,
+      "zone": zone.isEmpty ? "default" : zone,
+      "protocol": "mqtt",
+      "topic": "pending-${DateTime.now().microsecondsSinceEpoch}-"
+          "${rand.nextInt(0x7fffffff)}",
+      "secret": secret,
+    });
+    if (row == null) return null;
+    final id = row["id"].toString();
+    final topic = "gwave/$id";
+    await api.update("devices", {"topic": topic}, filter: {"id": "eq.$id"});
+    return (id: id, topic: topic, secret: secret);
+  }
+
+  /// Queue an MQTT command; the bridge publishes it to <topic>/cmd —
+  /// e.g. {"power": true} for a switch.
+  Future<void> sendDeviceCommand(
+      String deviceId, Map<String, dynamic> command) async {
+    await api.insert("device_commands", {
+      "device_id": deviceId,
+      "issued_by": api.session!.profileId,
+      "command": command,
+    });
+  }
+
+  Future<void> deleteDevice(String deviceId) =>
+      api.deleteRows("devices", filter: {"id": "eq.$deviceId"});
+
   Future<Map<String, List<SensorReading>>> latestReadings() async {
     final rows = await api.select("sensor_readings", query: {
       "select": "device_id,metric,value,ts",
@@ -842,17 +1096,38 @@ class Repository {
 
   // ---- POS ------------------------------------------------------------------
 
-  /// Stores the caller belongs to (owner or staff), via their membership rows.
+  /// Stores the caller can sell in: ones they own plus ones they're staff of.
+  /// Owned stores are matched on stores.owner_id directly (like the web POS) —
+  /// an owner doesn't necessarily have a store_members row.
   Future<List<PosStore>> myStores() async {
-    final rows = await api.select("store_members", query: {
-      "select": "store:stores(id,name,currency)",
-      "user_id": "eq.${api.session!.profileId}",
+    final me = api.session!.profileId;
+    final owned = await api.select("stores", query: {
+      "select": "id,name,currency",
+      "owner_id": "eq.$me",
       "limit": "20",
     });
+    List<Map<String, dynamic>> memberRows = const [];
+    try {
+      memberRows = await api.select("store_members", query: {
+        "select": "store:stores(id,name,currency)",
+        "user_id": "eq.$me",
+        "limit": "20",
+      });
+    } catch (_) {
+      // Membership lookup is additive; owned stores alone are fine.
+    }
+    final seen = <String>{};
     final stores = <PosStore>[];
-    for (final r in rows) {
+    for (final s in owned) {
+      final st = PosStore.fromJson(s);
+      if (seen.add(st.id)) stores.add(st);
+    }
+    for (final r in memberRows) {
       final s = r["store"];
-      if (s is Map<String, dynamic>) stores.add(PosStore.fromJson(s));
+      if (s is Map<String, dynamic>) {
+        final st = PosStore.fromJson(s);
+        if (seen.add(st.id)) stores.add(st);
+      }
     }
     return stores;
   }
@@ -868,13 +1143,15 @@ class Repository {
     return rows.map(PosProduct.fromJson).toList();
   }
 
-  /// Ring up a cash sale via the create_sale RPC (validates membership + open
+  /// Ring up a sale via the create_sale RPC (validates membership + open
   /// shift, claims the receipt number, and writes stock movements atomically).
-  /// Returns the receipt number.
+  /// [method] is the tender: cash | gpay | qr | card. Returns the receipt
+  /// number.
   Future<int?> createSale({
     required String storeId,
     required List<({String productId, int quantity})> items,
     required double total,
+    String method = "cash",
   }) async {
     final res = await api.rpc("create_sale", {
       "p_store_id": storeId,
@@ -883,7 +1160,7 @@ class Repository {
           {"product_id": it.productId, "quantity": it.quantity, "discount": 0},
       ],
       "p_payments": [
-        {"method": "cash", "amount": total},
+        {"method": method, "amount": total},
       ],
     });
     if (res is List && res.isNotEmpty) {
@@ -893,6 +1170,78 @@ class Repository {
       }
     }
     return null;
+  }
+
+  /// Take a real in-store G-Pay payment: the customer authorises with their
+  /// wallet phone + transaction PIN and the pos_settle_gpay RPC moves the
+  /// money (customer → store owner) atomically. Call before [createSale] with
+  /// method "gpay".
+  Future<void> posSettleGpay({
+    required String storeId,
+    required String customerPhone,
+    required double amount,
+    required String pin,
+  }) async {
+    await api.rpc("pos_settle_gpay", {
+      "p_store_id": storeId,
+      "p_customer_phone": customerPhone,
+      "p_amount": amount,
+      "p_pin": pin,
+    });
+  }
+
+  // ---- Boost (ad campaigns) -------------------------------------------------
+
+  /// My ad campaigns, newest first.
+  Future<List<Map<String, dynamic>>> myBoosts() async {
+    return api.select("boosts", query: {
+      "select":
+          "id,headline,target_type,target_id,budget_mmk,spent_mmk,daily_cap_mmk,bid_mmk,status,impressions,clicks,start_at,end_at,created_at",
+      "owner_id": "eq.${api.session!.profileId}",
+      "order": "created_at.desc",
+      "limit": "50",
+    });
+  }
+
+  /// Pause/resume a campaign ("active" | "paused").
+  Future<void> setBoostStatus(String boostId, String status) =>
+      api.rpc("set_boost_status", {"p_boost": boostId, "p_status": status});
+
+  /// Cancel a campaign — the unspent escrow refunds to the wallet.
+  Future<void> cancelBoost(String boostId) =>
+      api.rpc("cancel_boost", {"p_boost": boostId});
+
+  /// Start a campaign for one of my posts (escrows the budget from G-Pay).
+  Future<void> createPostBoost({
+    required String postId,
+    String? headline,
+    required double budgetMmk,
+    required double dailyCapMmk,
+    double bidMmk = 5,
+    int days = 7,
+  }) async {
+    await api.rpc("create_boost", {
+      "p_target_type": "post",
+      "p_target_id": postId,
+      "p_headline": headline,
+      "p_budget_mmk": budgetMmk,
+      "p_daily_cap_mmk": dailyCapMmk,
+      "p_bid_mmk": bidMmk,
+      "p_days": days,
+      "p_audience": {},
+    });
+  }
+
+  /// My own recent posts (for the boost target picker).
+  Future<List<Post>> myPosts({int limit = 20}) async {
+    final rows = await api.select("posts", query: {
+      "select": "*,media:post_media(storage_path,media_type,position)",
+      "author_id": "eq.${api.session!.profileId}",
+      "removed_at": "is.null",
+      "order": "created_at.desc",
+      "limit": "$limit",
+    });
+    return rows.map(Post.fromJson).toList();
   }
 
   // ---- Knowledge (strains + minerals) ---------------------------------------
@@ -1086,6 +1435,19 @@ class Repository {
   /// Save the display name and/or gender collected at sign-up. Only the fields
   /// given are written; `gender` is one of male|female|other (see the
   /// profile_gender migration).
+  /// Change my cover photo (an already-uploaded storage path) — the same
+  /// profiles.cover_url the web hero uses. Pass null-like empty to clear.
+  Future<void> setCoverPhoto(String path) async {
+    await api.update("profiles", {"cover_url": path},
+        filter: {"id": "eq.${api.session!.profileId}"});
+  }
+
+  /// Change my profile photo (avatar).
+  Future<void> setAvatarPhoto(String path) async {
+    await api.update("profiles", {"avatar_url": path},
+        filter: {"id": "eq.${api.session!.profileId}"});
+  }
+
   Future<void> setProfileBasics({String? fullName, String? gender}) async {
     final patch = <String, dynamic>{};
     if (fullName != null && fullName.trim().isNotEmpty) {

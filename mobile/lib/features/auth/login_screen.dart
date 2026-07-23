@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_state.dart';
 import '../../core/config.dart';
 import '../../core/theme.dart';
+import 'google_auth_screen.dart';
 import 'phone_auth_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -117,19 +117,17 @@ class _LoginScreenState extends State<LoginScreen> {
   /// bounces the code back into the app as `gwave://auth?code=...`, which
   /// AppState catches to finish sign-in (no Cognito console change needed).
   Future<void> _google() async {
-    final url = Uri.parse("${AppConfig.cognitoDomain}/oauth2/authorize").replace(
-      queryParameters: {
-        "identity_provider": "Google",
-        "response_type": "code",
-        "client_id": AppConfig.cognitoClientId,
-        "scope": "openid email",
-        "redirect_uri": AppConfig.googleRedirectUri,
-        "state": "mobile",
-      },
-    );
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
+    if (!AppConfig.googleEnabled) {
+      setState(() => _error =
+          "Google sign-in isn't configured on this build.");
+      return;
     }
+    // Run the Cognito/Google flow inside the app and catch the auth code
+    // directly — no external browser bounce (which was landing users on the
+    // web /onboarding page instead of back in the app).
+    final code = await GoogleAuthScreen.run(context);
+    if (!mounted || code == null || code.isEmpty) return;
+    await context.read<AppState>().completeGoogleSignIn(code);
   }
 
   @override
@@ -139,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final googleError = appState.googleError;
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(gradient: GwColors.primaryGradient),
+        decoration: const BoxDecoration(gradient: GwColors.primaryGradient),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -195,9 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Container(
                       padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
                       decoration: BoxDecoration(
-                        // Was a hardcoded white slab; follows the theme so it
-                        // does not stay white on the dark login page.
-                        color: GwColors.surface,
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(GwRadius.lg),
                         boxShadow: [
                           BoxShadow(
@@ -219,6 +215,36 @@ class _LoginScreenState extends State<LoginScreen> {
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: -0.4),
                             ),
+                            if (!_register) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: GwColors.surfaceMuted,
+                                  borderRadius:
+                                      BorderRadius.circular(GwRadius.sm),
+                                ),
+                                child: const Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(Icons.info_outline,
+                                        size: 16, color: GwColors.primary),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        "Sign in with the SAME method you used before "
+                                        "(email, phone, or Google). Each is a separate "
+                                        "account — mixing them shows an empty profile.",
+                                        style: TextStyle(
+                                            fontSize: 11.5,
+                                            height: 1.35,
+                                            color: GwColors.inkSoft),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 20),
                             if (!AppConfig.isConfigured) ...[
                               _configBanner(),
@@ -264,7 +290,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             if (_isPhone(_email.text.trim()) && _register) ...[
                               const SizedBox(height: 6),
-                              Text(
+                              const Text(
                                 "📱 Phone signup uses an SMS code — no password needed.",
                                 style: TextStyle(
                                     color: GwColors.inkSoft, fontSize: 12),
@@ -338,7 +364,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                               const SizedBox(height: 14),
-                              Align(
+                              const Align(
                                 alignment: Alignment.centerLeft,
                                 child: Text("Gender",
                                     style: TextStyle(
@@ -384,7 +410,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             if (AppConfig.googleEnabled) ...[
                               const SizedBox(height: 14),
                               Row(
-                                children: [
+                                children: const [
                                   Expanded(child: Divider(color: GwColors.line)),
                                   Padding(
                                     padding:
@@ -417,7 +443,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: GwColors.ink,
                                     side:
-                                        BorderSide(color: GwColors.line),
+                                        const BorderSide(color: GwColors.line),
                                   ),
                                 ),
                               ),
@@ -443,7 +469,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     style: TextStyle(fontSize: 15)),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: GwColors.ink,
-                                  side: BorderSide(color: GwColors.line),
+                                  side: const BorderSide(color: GwColors.line),
                                 ),
                               ),
                             ),
@@ -455,7 +481,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   _register
                                       ? "Already have an account?"
                                       : "New to Gwave?",
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                       color: GwColors.inkSoft, fontSize: 13),
                                 ),
                                 TextButton(
@@ -528,11 +554,11 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         child: Row(
           children: [
-            Icon(Icons.error_outline, color: GwColors.live, size: 19),
+            const Icon(Icons.error_outline, color: GwColors.live, size: 19),
             const SizedBox(width: 8),
             Expanded(
               child: Text(msg,
-                  style: TextStyle(color: GwColors.live, fontSize: 13)),
+                  style: const TextStyle(color: GwColors.live, fontSize: 13)),
             ),
           ],
         ),
@@ -544,7 +570,7 @@ class _LoginScreenState extends State<LoginScreen> {
           color: GwColors.gold.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(GwRadius.sm),
         ),
-        child: Text(
+        child: const Text(
           "Backend not configured — build with --dart-define SUPABASE_URL and "
           "SUPABASE_ANON_KEY.",
           style: TextStyle(fontSize: 12, color: GwColors.primaryDark),

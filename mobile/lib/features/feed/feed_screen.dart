@@ -123,7 +123,7 @@ class _FeedScreenState extends State<FeedScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: GwColors.primary,
         onPressed: _openComposer,
-        child: Icon(Icons.edit, color: GwColors.onPrimary),
+        child: const Icon(Icons.edit, color: Colors.white),
       ),
       body: RefreshIndicator(
         color: GwColors.primary,
@@ -135,7 +135,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
   Widget _buildBody() {
     if (_loading) {
-      return Center(
+      return const Center(
         child: CircularProgressIndicator(color: GwColors.primary),
       );
     }
@@ -174,8 +174,8 @@ class _FeedScreenState extends State<FeedScreen> {
         if (i == 0) return const StoriesBar();
         final idx = i - 1;
         if (idx >= _posts.length) {
-          return Padding(
-            padding: const EdgeInsets.all(20),
+          return const Padding(
+            padding: EdgeInsets.all(20),
             child: Center(
               child: CircularProgressIndicator(color: GwColors.primary),
             ),

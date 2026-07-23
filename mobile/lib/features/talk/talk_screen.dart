@@ -221,8 +221,8 @@ class _TalkScreenState extends State<TalkScreen> {
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
             const SizedBox(height: 10),
             if (_loading && _channels.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
                 child: Center(
                     child: CircularProgressIndicator(color: GwColors.primary)),
               )
@@ -270,7 +270,7 @@ class _TalkScreenState extends State<TalkScreen> {
                   color: GwColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(13),
                 ),
-                child: Icon(Icons.radio, color: GwColors.primary, size: 21),
+                child: const Icon(Icons.radio, color: GwColors.primary, size: 21),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -284,19 +284,19 @@ class _TalkScreenState extends State<TalkScreen> {
                             fontWeight: FontWeight.w700, fontSize: 15)),
                     if (c.joinCode != null)
                       Text("Code: ${c.joinCode}",
-                          style: TextStyle(
+                          style: const TextStyle(
                               color: GwColors.inkSoft, fontSize: 11.5)),
                   ],
                 ),
               ),
-              Icon(Icons.people_outline,
+              const Icon(Icons.people_outline,
                   size: 16, color: GwColors.inkSoft),
               const SizedBox(width: 4),
               Text("${c.memberCount}",
-                  style: TextStyle(
+                  style: const TextStyle(
                       color: GwColors.inkSoft, fontWeight: FontWeight.w600)),
               const SizedBox(width: 6),
-              Icon(Icons.chevron_right, color: GwColors.inkSoft),
+              const Icon(Icons.chevron_right, color: GwColors.inkSoft),
             ],
           ),
         ),

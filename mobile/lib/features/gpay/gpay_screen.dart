@@ -9,6 +9,7 @@ import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/theme.dart';
 import '../web/web_screen.dart';
+import 'gpay_register_screen.dart';
 import '../../widgets/common.dart';
 import 'gpay_scan_screen.dart';
 import 'gpay_send_screen.dart';
@@ -85,7 +86,7 @@ class _GpayScreenState extends State<GpayScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading && _account == null && !_noAccount
-            ? Center(
+            ? const Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
@@ -364,7 +365,7 @@ class _GpayScreenState extends State<GpayScreen> {
                         fontWeight: FontWeight.w800, fontSize: 15)),
                 const SizedBox(height: 2),
                 Text(subtitle,
-                    style: TextStyle(
+                    style: const TextStyle(
                         color: GwColors.inkSoft, fontSize: 13)),
               ],
             ),
@@ -391,7 +392,7 @@ class _GpayScreenState extends State<GpayScreen> {
               color: GwColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(18),
             ),
-            child: Icon(Icons.account_balance_wallet,
+            child: const Icon(Icons.account_balance_wallet,
                 color: GwColors.primary, size: 30),
           ),
           const SizedBox(height: 14),
@@ -401,20 +402,26 @@ class _GpayScreenState extends State<GpayScreen> {
           Text(
             tr(
                 context,
-                "Fill in your KYC details to send, top up and scan QR. "
-                    "For security the form runs on the web.",
-                "ငွေလွှဲ၊ ငွေဖြည့်၊ QR scan အတွက် KYC အချက်အလက်ဖြည့်ပြီး "
-                    "အကောင့်ဖွင့်ပါ။ လုံခြုံမှုအတွက် web တွင် ဖြည့်ရပါမည်။"),
+                "Fill in your KYC details to send, top up and scan QR — "
+                    "right here in the app.",
+                "ငွေလွှဲ၊ ငွေဖြည့်၊ QR scan အတွက် KYC အချက်အလက်ကို "
+                    "app ထဲမှာပဲ ဖြည့်ပြီး အကောင့်ဖွင့်နိုင်ပါပြီ။"),
             textAlign: TextAlign.center,
-            style: TextStyle(color: GwColors.inkSoft, fontSize: 13),
+            style: const TextStyle(color: GwColors.inkSoft, fontSize: 13),
           ),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             height: 48,
             child: ElevatedButton.icon(
-              onPressed: () => _openWeb("/gpay"),
-              icon: const Icon(Icons.open_in_new, size: 18),
+              onPressed: () async {
+                final done = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                      builder: (_) => const GpayRegisterScreen()),
+                );
+                if (done == true) _load();
+              },
+              icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
               label: Text(tr(context, "Register", "အကောင့်ဖွင့်ရန်")),
             ),
           ),
@@ -442,7 +449,7 @@ class _GpayScreenState extends State<GpayScreen> {
                       "Website မှာ အကောင့်ဖွင့်ပြီးသားဖြစ်ပြီး ဒီမှာ မပေါ်ဘူးလား? "
                           "ပိုက်ဆံအိတ်သည် အကောင့်ဖွင့်စဉ်က ဝင်ရောက်ခဲ့သော login နှင့် ချိတ်ဆက်ထားပါသည် — "
                           "website မှာသုံးသလို တူညီသော login (email/Google) ဖြင့် app ထဲ ပြန်ဝင်ပါ။"),
-                  style: TextStyle(
+                  style: const TextStyle(
                       color: GwColors.inkSoft, fontSize: 11.5, height: 1.45),
                 ),
                 if (_identity != null) ...[
@@ -450,7 +457,7 @@ class _GpayScreenState extends State<GpayScreen> {
                   Text(
                     tr(context, "Signed in as: $_identity",
                         "လက်ရှိ ဝင်ရောက်ထားသည်: $_identity"),
-                    style: TextStyle(
+                    style: const TextStyle(
                         color: GwColors.ink,
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700),

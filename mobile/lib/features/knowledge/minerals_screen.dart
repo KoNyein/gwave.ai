@@ -134,7 +134,7 @@ class _MineralsScreenState extends State<MineralsScreen> {
               color: GwColors.primary,
               onRefresh: _load,
               child: _loading && _minerals.isEmpty
-                  ? Center(
+                  ? const Center(
                       child:
                           CircularProgressIndicator(color: GwColors.primary))
                   : _error != null && _minerals.isEmpty
@@ -238,11 +238,11 @@ class _MineralsScreenState extends State<MineralsScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style:
-                    TextStyle(color: GwColors.inkSoft, fontSize: 12)),
+                    const TextStyle(color: GwColors.inkSoft, fontSize: 12)),
             if (m.hardnessMohs != null) ...[
               const SizedBox(height: 4),
               Text("Mohs ${m.hardnessMohs}",
-                  style: TextStyle(
+                  style: const TextStyle(
                       color: GwColors.primaryDark,
                       fontWeight: FontWeight.w700,
                       fontSize: 11.5)),
@@ -303,7 +303,7 @@ class MineralDetailScreen extends StatelessWidget {
                               style: const TextStyle(
                                   fontSize: 19, fontWeight: FontWeight.w900)),
                           Text(m.category,
-                              style: TextStyle(
+                              style: const TextStyle(
                                   color: GwColors.inkSoft, fontSize: 13)),
                         ],
                       ),
@@ -336,7 +336,7 @@ class MineralDetailScreen extends StatelessWidget {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("• ",
+                          const Text("• ",
                               style: TextStyle(
                                   color: GwColors.primary,
                                   fontWeight: FontWeight.w900)),
@@ -378,7 +378,7 @@ class MineralDetailScreen extends StatelessWidget {
                   color: GwColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.forum_outlined,
+                child: const Icon(Icons.forum_outlined,
                     color: GwColors.primary, size: 22),
               ),
               const SizedBox(width: 12),
@@ -395,12 +395,12 @@ class MineralDetailScreen extends StatelessWidget {
                     Text(
                         tr(context, "Share a photo, voice note or video",
                             "ဓာတ်ပုံ၊ အသံ သို့မဟုတ် ဗီဒီယို မျှဝေရန်"),
-                        style: TextStyle(
+                        style: const TextStyle(
                             color: GwColors.inkSoft, fontSize: 12)),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: GwColors.inkSoft),
+              const Icon(Icons.chevron_right, color: GwColors.inkSoft),
             ],
           ),
         ),
@@ -413,7 +413,7 @@ class MineralDetailScreen extends StatelessWidget {
           children: [
             Text(k,
                 style:
-                    TextStyle(color: GwColors.inkSoft, fontSize: 13)),
+                    const TextStyle(color: GwColors.inkSoft, fontSize: 13)),
             Text(v,
                 style:
                     const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),

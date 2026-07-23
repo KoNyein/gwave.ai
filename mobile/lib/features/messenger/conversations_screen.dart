@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
+import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
@@ -41,20 +42,109 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     }
   }
 
+  /// Start a new chat: pick a friend, then open (or create) the 1-to-1 thread.
+  Future<void> _startChat() async {
+    final repo = context.read<AppState>().repo;
+    List<Friendship> friends;
+    try {
+      friends = await repo.friends();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Couldn't load friends — $e")),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    if (friends.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(tr(context, "Add friends first to start a chat.",
+            "စကားပြောရန် သူငယ်ချင်း အရင်ထည့်ပါ။")),
+      ));
+      return;
+    }
+
+    final picked = await showModalBottomSheet<Profile>(
+      context: context,
+      backgroundColor: GwColors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Text(tr(ctx, "New message", "စာအသစ်"),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 16)),
+            const SizedBox(height: 6),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: friends.length,
+                itemBuilder: (_, i) {
+                  final f = friends[i].other;
+                  return ListTile(
+                    leading: GwAvatar(
+                        url: resolveMedia(f.avatarUrl),
+                        name: f.displayName,
+                        size: 44),
+                    title: Text(f.displayName,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: f.username != null
+                        ? Text("@${f.username}",
+                            style: const TextStyle(
+                                color: GwColors.inkSoft, fontSize: 12))
+                        : null,
+                    onTap: () => Navigator.of(ctx).pop(f),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+
+    try {
+      final convo = await repo.openConversationWith(picked);
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ChatScreen(conversation: convo)),
+      );
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Couldn't open the chat — $e")),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Chat"),
         actions: [
-          IconButton(icon: const Icon(Icons.edit_square), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.edit_square),
+            tooltip: tr(context, "New message", "စာအသစ်"),
+            onPressed: _startChat,
+          ),
         ],
       ),
       body: RefreshIndicator(
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading
-            ? Center(
+            ? const Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : _error != null && _items.isEmpty
                 ? ListView(children: [
@@ -74,7 +164,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                     : ListView.separated(
                         padding: const EdgeInsets.only(bottom: 90),
                         itemCount: _items.length,
-                        separatorBuilder: (_, __) => Divider(
+                        separatorBuilder: (_, __) => const Divider(
                             height: 1, indent: 78, color: GwColors.line),
                         itemBuilder: (_, i) => _tile(_items[i]),
                       ),
@@ -93,7 +183,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                 color: GwColors.primary.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.groups, color: GwColors.primary),
+              child: const Icon(Icons.groups, color: GwColors.primary),
             )
           : GwAvatar(
               url: resolveMedia(c.other?.avatarUrl),
@@ -106,10 +196,10 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         c.lastMessage ?? "Tap to open",
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: GwColors.inkSoft, fontSize: 13),
+        style: const TextStyle(color: GwColors.inkSoft, fontSize: 13),
       ),
       trailing: Text(timeAgo(c.lastMessageAt),
-          style: TextStyle(color: GwColors.inkSoft, fontSize: 12)),
+          style: const TextStyle(color: GwColors.inkSoft, fontSize: 12)),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => ChatScreen(conversation: c)),
       ),

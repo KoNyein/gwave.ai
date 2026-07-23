@@ -214,7 +214,7 @@ class _GpayScanScreenState extends State<GpayScanScreen> {
               ),
               const SizedBox(height: 2),
               Text(phone,
-                  style: TextStyle(
+                  style: const TextStyle(
                       color: GwColors.inkSoft,
                       fontWeight: FontWeight.w600,
                       fontSize: 14)),
@@ -223,7 +223,7 @@ class _GpayScanScreenState extends State<GpayScanScreen> {
                 tr(context, "Let others scan this QR to pay you",
                     "ဒီ QR ကို scan ခိုင်းပြီး ငွေလက်ခံပါ"),
                 style:
-                    TextStyle(color: GwColors.inkSoft, fontSize: 12.5),
+                    const TextStyle(color: GwColors.inkSoft, fontSize: 12.5),
               ),
             ],
           ],
@@ -248,12 +248,11 @@ class _GpayScanScreenState extends State<GpayScanScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: active ? GwColors.onPrimary : Colors.white, size: 19),
+            Icon(icon, color: Colors.white, size: 19),
             const SizedBox(width: 8),
             Text(label,
-                style: TextStyle(
-                    color: active ? GwColors.onPrimary : Colors.white,
-                    fontWeight: FontWeight.w700)),
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w700)),
           ],
         ),
       ),

@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -9,8 +10,11 @@ import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../web/web_screen.dart';
 import '../../widgets/common.dart';
+import '../boost/boost_screen.dart';
 import '../cctv/cctv_screen.dart';
 import '../dashboard/dashboard_screen.dart';
+import '../dating/dating_screen.dart';
+import '../family/family_screen.dart';
 import '../farm/farm_screen.dart';
 import '../finance/finance_screen.dart';
 import '../friends/friends_screen.dart';
@@ -22,6 +26,7 @@ import '../knowledge/minerals_screen.dart';
 import '../knowledge/strains_screen.dart';
 import '../learn/learn_screen.dart';
 import '../map/map_screen.dart';
+import '../market/market_screen.dart';
 import '../pos/pos_sell_screen.dart';
 import '../settings/settings_screen.dart';
 import '../talk/talk_screen.dart';
@@ -46,9 +51,44 @@ class ProfileScreen extends StatelessWidget {
           SliverAppBar(
             expandedHeight: 172,
             pinned: true,
-            backgroundColor: GwColors.isDark ? GwColors.bg : GwColors.primary,
+            backgroundColor: GwColors.primary,
             flexibleSpace: FlexibleSpaceBar(
-              background: _cover(me?.coverUrl),
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _cover(resolveMedia(me?.coverUrl)),
+                  // Change-cover control, Facebook style (bottom-right).
+                  Positioned(
+                    right: 12,
+                    bottom: 12,
+                    child: InkWell(
+                      onTap: () => _changePhoto(context, cover: true),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.photo_camera_outlined,
+                                color: Colors.white, size: 16),
+                            SizedBox(width: 6),
+                            Text("Cover",
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             actions: [
               IconButton(
@@ -69,10 +109,33 @@ class ProfileScreen extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: GwShadow.card,
                     ),
-                    child: GwAvatar(
-                      url: resolveMedia(me?.avatarUrl),
-                      name: name,
-                      size: 96,
+                    child: Stack(
+                      children: [
+                        GwAvatar(
+                          url: resolveMedia(me?.avatarUrl),
+                          name: name,
+                          size: 96,
+                        ),
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: InkWell(
+                            onTap: () => _changePhoto(context, cover: false),
+                            child: Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                color: GwColors.primary,
+                                shape: BoxShape.circle,
+                                border:
+                                    Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: const Icon(Icons.photo_camera,
+                                  color: Colors.white, size: 15),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -81,13 +144,13 @@ class ProfileScreen extends StatelessWidget {
                           fontSize: 22, fontWeight: FontWeight.w900)),
                   if (me?.username != null)
                     Text("@${me!.username}",
-                        style: TextStyle(color: GwColors.inkSoft)),
+                        style: const TextStyle(color: GwColors.inkSoft)),
                   if (me?.bio != null && me!.bio!.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(32, 10, 32, 0),
                       child: Text(me.bio!,
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: GwColors.inkSoft)),
+                          style: const TextStyle(color: GwColors.inkSoft)),
                     ),
                   const SizedBox(height: 18),
                   Padding(
@@ -107,7 +170,7 @@ class ProfileScreen extends StatelessWidget {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: GwColors.primary,
                             backgroundColor: GwColors.surface,
-                            side: BorderSide(color: GwColors.line),
+                            side: const BorderSide(color: GwColors.line),
                             padding: const EdgeInsets.all(14),
                           ),
                           child: const Icon(Icons.open_in_new, size: 18),
@@ -154,7 +217,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _coverPh() => DecoratedBox(
+  Widget _coverPh() => const DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -182,32 +245,37 @@ class ProfileScreen extends StatelessWidget {
         _MenuEntry(Icons.group_outlined, "Friends", native: _Native.friends),
         _MenuEntry(Icons.grid_view_outlined, "Groups", native: _Native.groups),
         _MenuEntry(Icons.flag_outlined, "Pages", web: "/pages"),
-        _MenuEntry(Icons.sensors, "Live", tab: 3),
+        _MenuEntry(Icons.sensors, "Live", tab: 2),
         _MenuEntry(Icons.record_voice_over_outlined, "Walkie",
             native: _Native.talk),
         _MenuEntry(Icons.movie_outlined, "Reels", tab: 1),
         _MenuEntry(Icons.sports_esports_outlined, "Games",
             native: _Native.games),
+        _MenuEntry(Icons.favorite_outline, "Dating", native: _Native.dating),
       ]),
       _MenuSection("Learning", Icons.school_outlined, const Color(0xFF2E7DB1), [
         _MenuEntry(Icons.menu_book_outlined, "Learn", native: _Native.learn),
         _MenuEntry(Icons.emoji_events_outlined, "Leaderboard", web: "/leaderboard"),
+        _MenuEntry(Icons.monitor_heart_outlined, "Health", web: "/health"),
         _MenuEntry(Icons.spa_outlined, "Wellness", web: "/wellness"),
       ]),
       _MenuSection("Farm & Home", Icons.eco_outlined, const Color(0xFF2E9E5B), [
         _MenuEntry(Icons.agriculture_outlined, "Farm", native: _Native.farm),
         _MenuEntry(Icons.lightbulb_outline, "Smart Home", web: "/home"),
         _MenuEntry(Icons.videocam_outlined, "Cameras", native: _Native.cctv),
-        _MenuEntry(Icons.location_on_outlined, "Family", web: "/family"),
+        _MenuEntry(Icons.location_on_outlined, "Family",
+            native: _Native.family),
         _MenuEntry(Icons.map_outlined, "Map", native: _Native.map),
-        _MenuEntry(Icons.emergency_outlined, "SOS", web: "/map"),
+        _MenuEntry(Icons.emergency_outlined, "SOS", native: _Native.map),
       ]),
       _MenuSection("Shop & Business", Icons.storefront_outlined,
           const Color(0xFF7A4DD6), [
-        _MenuEntry(Icons.storefront_outlined, "Shop", tab: 4),
+        _MenuEntry(Icons.storefront_outlined, "Shop", tab: 3),
+        _MenuEntry(Icons.sell_outlined, "Market", native: _Native.market),
         _MenuEntry(Icons.work_outline, "Jobs", native: _Native.jobs),
         _MenuEntry(Icons.point_of_sale_outlined, "POS", native: _Native.pos),
-        _MenuEntry(Icons.rocket_launch_outlined, "Boost", web: "/boost"),
+        _MenuEntry(Icons.rocket_launch_outlined, "Boost",
+            native: _Native.boost),
         _MenuEntry(Icons.account_balance_wallet_outlined, "G-Pay",
             native: _Native.gpay),
         _MenuEntry(Icons.account_balance_outlined, "Finance",
@@ -238,7 +306,13 @@ class ProfileScreen extends StatelessWidget {
               label: "Log out",
               color: GwColors.live,
               trailing: false,
-              onTap: () => context.read<AppState>().logout(),
+              // Pop to the Navigator root first so the login screen (which
+              // replaces home) isn't hidden under whatever is pushed on top.
+              onTap: () {
+                final state = context.read<AppState>();
+                Navigator.of(context).popUntil((r) => r.isFirst);
+                state.logout();
+              },
             ),
           ),
         ],
@@ -267,7 +341,7 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(width: 10),
                 Text(
                   s.title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: GwColors.ink,
@@ -324,7 +398,7 @@ class ProfileScreen extends StatelessWidget {
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 11,
               height: 1.1,
               fontWeight: FontWeight.w600,
@@ -349,30 +423,27 @@ class ProfileScreen extends StatelessWidget {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
-    // Nullable, not defaulted: GwColors tokens are theme-aware getters and so
-    // are no longer const-able default values.
-    Color? color,
+    Color color = GwColors.primary,
     bool trailing = true,
   }) {
-    final c = color ?? GwColors.primary;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
       leading: Container(
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: c.withValues(alpha: 0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: c, size: 20),
+        child: Icon(icon, color: color, size: 20),
       ),
       title: Text(label,
           style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 15,
-              color: c == GwColors.live ? GwColors.live : GwColors.ink)),
+              color: color == GwColors.live ? GwColors.live : GwColors.ink)),
       trailing: trailing
-          ? Icon(Icons.chevron_right, color: GwColors.inkSoft)
+          ? const Icon(Icons.chevron_right, color: GwColors.inkSoft)
           : null,
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(GwRadius.lg)),
@@ -434,6 +505,18 @@ class ProfileScreen extends StatelessWidget {
       case _Native.minerals:
         _push(context, const MineralsScreen());
         return;
+      case _Native.market:
+        _push(context, const MarketScreen());
+        return;
+      case _Native.dating:
+        _push(context, const DatingScreen());
+        return;
+      case _Native.family:
+        _push(context, const FamilyScreen());
+        return;
+      case _Native.boost:
+        _push(context, const BoostScreen());
+        return;
       case null:
         break;
     }
@@ -442,6 +525,47 @@ class ProfileScreen extends StatelessWidget {
 
   void _push(BuildContext context, Widget screen) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  }
+
+  /// Pick a photo and set it as the cover (or avatar) — uploads to the
+  /// avatars bucket (what resolveMedia expects for profile art) and updates
+  /// profiles.cover_url / avatar_url, then refreshes the header.
+  Future<void> _changePhoto(BuildContext context, {required bool cover}) async {
+    try {
+      final file = await ImagePicker().pickImage(
+          source: ImageSource.gallery,
+          maxWidth: cover ? 2000 : 800,
+          imageQuality: 85);
+      if (file == null || !context.mounted) return;
+      final bytes = await file.readAsBytes();
+      if (!context.mounted) return;
+      final state = context.read<AppState>();
+      // The mobile upload endpoint only signs the media bucket; on the S3
+      // data plane every key resolves through the same CDN, so profile art
+      // lives there too.
+      final path = await state.api.uploadBytes(
+        bytes,
+        ext: "jpg",
+        contentType: "image/jpeg",
+      );
+      if (cover) {
+        await state.repo.setCoverPhoto(path);
+      } else {
+        await state.repo.setAvatarPhoto(path);
+      }
+      await state.refreshMe();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(cover
+                ? "Cover updated 🖼️"
+                : "Profile photo updated 🖼️")));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Couldn't update — $e")));
+      }
+    }
   }
 
   void _openSettings(BuildContext context) =>
@@ -470,6 +594,10 @@ enum _Native {
   learn,
   strains,
   minerals,
+  market,
+  dating,
+  family,
+  boost,
 }
 
 /// One category of the launcher menu: a titled, color-accented card of tiles.
