@@ -272,6 +272,14 @@ class Repository {
     return rows.map(Reel.fromJson).toList();
   }
 
+  /// Report that this viewer is watching a live stream. The RPC records the
+  /// caller's own presence (viewer_id = auth.uid()) and lifts the stream's
+  /// viewer_count to the running peak, so the host dashboard's "Peak viewers"
+  /// is non-zero. Best-effort — callers should swallow failures.
+  Future<void> liveHeartbeat(String streamId) async {
+    await api.rpc("live_heartbeat", {"p_stream": streamId});
+  }
+
   /// Toggle a like on a reel; returns the new liked state (server RPC keeps the
   /// count + like row in sync).
   Future<bool> toggleReelLike(String reelId) async {

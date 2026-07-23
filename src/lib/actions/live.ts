@@ -24,6 +24,9 @@ import {
   startRoomRecording,
 } from "@/lib/livekit";
 import { createClient } from "@/lib/data/server";
+import { createAdminClient } from "@/lib/data/admin";
+import { notifyFollowersOfLive } from "@/lib/live-notify";
+import { after } from "next/server";
 
 export interface LiveStageToken {
   url: string;
@@ -256,17 +259,44 @@ export async function goLive(streamId: string): Promise<ActionResult> {
   // Live tab. Runs once per stream (the status guard above) and best-effort —
   // a feed hiccup must not block going live.
   const site = process.env.NEXT_PUBLIC_SITE_URL || "https://gwave.cc";
-  await db
-    .from("posts")
-    .insert({
-      author_id: user.id,
-      content: `🔴 Live လွှင့်နေပါပြီ — ${stream.title ?? "Live"}\n${site}/live/${streamId}`,
-      visibility: "public",
-    })
-    .then(
-      () => undefined,
-      () => undefined,
+  let announcementPostId: string | null = null;
+  try {
+    const { data: post } = await db
+      .from("posts")
+      .insert({
+        author_id: user.id,
+        content: `🔴 Live လွှင့်နေပါပြီ — ${stream.title ?? "Live"}\n${site}/live/${streamId}`,
+        visibility: "public",
+      })
+      .select("id")
+      .maybeSingle();
+    announcementPostId = (post?.id as string | null) ?? null;
+  } catch {
+    /* best-effort: a feed hiccup must not block going live. */
+  }
+
+  // Notify the host's followers — once per stream. followers_notified_at is a
+  // server-owned column locked to the authenticated role (column-lockdown
+  // policy), so the atomic claim goes through the service role (BYPASSRLS).
+  // Only the first go-live flips it from null; the fan-out runs after the
+  // response so a large follower list never slows going live.
+  const admin = createAdminClient();
+  const { data: claimed } = await admin
+    .from("live_streams")
+    .update({ followers_notified_at: new Date().toISOString() })
+    .eq("id", streamId)
+    .is("followers_notified_at", null)
+    .select("id");
+  if (claimed && claimed.length > 0) {
+    after(() =>
+      notifyFollowersOfLive({
+        hostId: user.id,
+        streamId,
+        streamTitle: stream.title,
+        announcementPostId,
+      }),
     );
+  }
 
   revalidatePath(`/live/${streamId}`);
   return { ok: true, data: undefined };

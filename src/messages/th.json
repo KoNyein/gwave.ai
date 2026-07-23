@@ -185,7 +185,8 @@
     "commentReply": "{name} ตอบกลับความคิดเห็นของคุณ",
     "postShare": "{name} แชร์โพสต์ของคุณ",
     "newFollower": "{name} เริ่มติดตามคุณ",
-    "deviceAlert": "A device automation rule was triggered — check your farm alerts."
+    "deviceAlert": "A device automation rule was triggered — check your farm alerts.",
+    "liveStarted": "{name} กำลังไลฟ์อยู่ตอนนี้"
   },
   "farm": {
     "title": "Farm dashboard",

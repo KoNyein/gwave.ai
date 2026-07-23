@@ -25,6 +25,17 @@ export function ViewerCount({
       config: { presence: { key: viewerId } },
     });
 
+    // Presence gives the live count to viewers; the heartbeat persists it so the
+    // host dashboard's "Peak viewers" is non-zero. live_heartbeat() records this
+    // viewer (viewer_id = auth.uid(), un-spoofable) and lifts live_streams.viewer_count
+    // to the running peak. Best-effort — a failed heartbeat must never break playback.
+    const heartbeat = () => {
+      void db.rpc("live_heartbeat", { p_stream: streamId }).then(
+        () => undefined,
+        () => undefined,
+      );
+    };
+
     channel
       .on("presence", { event: "sync" }, () => {
         setCount(Math.max(1, Object.keys(channel.presenceState()).length));
@@ -32,10 +43,15 @@ export function ViewerCount({
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
           await channel.track({ joined_at: new Date().toISOString() });
+          heartbeat();
         }
       });
 
+    // The RPC counts viewers seen in the last ~25s, so beat well inside that window.
+    const timer = setInterval(heartbeat, 15000);
+
     return () => {
+      clearInterval(timer);
       void db.removeChannel(channel);
     };
   }, [streamId, viewerId]);

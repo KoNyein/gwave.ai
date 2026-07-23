@@ -185,7 +185,8 @@
     "commentReply": "{name} 回复了您的评论。",
     "postShare": "{name} 分享了您的帖子。",
     "newFollower": "{name} 开始关注您。",
-    "deviceAlert": "A device automation rule was triggered — check your farm alerts."
+    "deviceAlert": "A device automation rule was triggered — check your farm alerts.",
+    "liveStarted": "{name} 正在直播。"
   },
   "farm": {
     "title": "Farm dashboard",

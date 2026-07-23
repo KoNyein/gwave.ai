@@ -5,6 +5,7 @@ import {
   EgressClient,
   EncodedFileOutput,
   EncodedFileType,
+  RoomServiceClient,
   S3Upload,
 } from "livekit-server-sdk";
 
@@ -86,6 +87,29 @@ export function egressConfigured(): boolean {
       process.env.LIVEKIT_EGRESS_S3_ACCESS_KEY &&
       process.env.LIVEKIT_EGRESS_S3_SECRET,
   );
+}
+
+/**
+ * Whether the host is currently connected to the room. Used to self-heal
+ * stale `live` rows: a browser broadcast that dies without calling the end
+ * API leaves its row live forever, and viewers tap into a dead stream.
+ * A missing room counts as absent.
+ */
+export async function hostPresentInRoom(
+  room: string,
+  hostId: string,
+): Promise<boolean> {
+  try {
+    const svc = new RoomServiceClient(
+      egressHost(),
+      process.env.LIVEKIT_API_KEY,
+      process.env.LIVEKIT_API_SECRET,
+    );
+    const participants = await svc.listParticipants(room);
+    return participants.some((p) => p.identity === hostId);
+  } catch {
+    return false; // room gone (or LiveKit unreachable) — treat as ended
+  }
 }
 
 /** EgressClient talks HTTP(S); NEXT_PUBLIC_LIVEKIT_URL is a wss:// URL. */

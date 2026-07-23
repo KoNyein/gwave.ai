@@ -53,6 +53,7 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
   final List<_FloatingReaction> _floats = [];
 
   Timer? _poll;
+  Timer? _heartbeat;
   String? _lastChatAt;
   String? _lastReactAt;
   int _viewers = 0;
@@ -74,7 +75,20 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
     // Poll chat, reactions and viewer count while the stream is live.
     if (widget.stream.isLive) {
       _poll = Timer.periodic(const Duration(seconds: 3), (_) => _tick());
+      // Persist this viewer so the host dashboard's "Peak viewers" is non-zero.
+      // The RPC counts viewers seen in the last ~25s, so beat inside that window.
+      _sendHeartbeat();
+      _heartbeat =
+          Timer.periodic(const Duration(seconds: 15), (_) => _sendHeartbeat());
     }
+  }
+
+  /// Best-effort — a failed heartbeat must never disrupt playback or chat.
+  void _sendHeartbeat() {
+    if (!mounted) return;
+    context.read<AppState>().repo.liveHeartbeat(widget.stream.id).catchError(
+      (_) {},
+    );
   }
 
   String? _playbackUrl() {
@@ -222,6 +236,7 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
   @override
   void dispose() {
     _poll?.cancel();
+    _heartbeat?.cancel();
     _lkListener?.dispose();
     final room = _room;
     if (room != null) {
