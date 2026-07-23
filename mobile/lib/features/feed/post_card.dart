@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/app_state.dart';
+import '../../core/config.dart';
 import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
@@ -467,7 +468,30 @@ class _LiveBannerState extends State<_LiveBanner> {
   }
 
   Future<void> _initPreview(LiveStream s) async {
-    if (!mounted || !s.isLive) return;
+    if (!mounted) return;
+    if (!s.isLive) {
+      // Ended broadcast: autoplay the replay muted, Facebook-style.
+      String? url;
+      final rp = s.recordingPath;
+      if (rp != null && rp.isNotEmpty) {
+        url = rp.startsWith("http")
+            ? rp
+            : "${AppConfig.apiBase}/recordings/$rp";
+      } else if (s.vodPlaybackId != null && s.vodPlaybackId!.isNotEmpty) {
+        url = "https://stream.mux.com/${s.vodPlaybackId}.m3u8";
+      }
+      if (url == null) return;
+      try {
+        final c = VideoPlayerController.networkUrl(Uri.parse(url));
+        _vc = c;
+        await c.initialize();
+        await c.setVolume(0);
+        await c.setLooping(true);
+        await c.play();
+        if (mounted) setState(() {});
+      } catch (_) {}
+      return;
+    }
     final hls = s.ivsPlaybackUrl;
     if (hls != null && hls.isNotEmpty) {
       try {
@@ -556,11 +580,14 @@ class _LiveBannerState extends State<_LiveBanner> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 9, vertical: 4),
                       decoration: BoxDecoration(
-                        color: GwColors.live,
+                        color: (_stream?.isLive ?? false)
+                            ? GwColors.live
+                            : Colors.black.withValues(alpha: 0.55),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text("LIVE",
-                          style: TextStyle(
+                      child: Text(
+                          (_stream?.isLive ?? false) ? "LIVE" : "REPLAY",
+                          style: const TextStyle(
                               color: Colors.white,
                               fontSize: 11,
                               fontWeight: FontWeight.w900,
