@@ -440,20 +440,26 @@ export function useCall(
   React.useEffect(() => {
     const db = createClient();
 
+    // Flat queries only: a resource embed here 500s whenever PostgREST's schema
+    // cache goes stale, and a failed lookup silently swallows the ring.
     async function verifyRing(payload: {
       conversationId: string;
       fromId: string;
     }): Promise<AuthorSummary | null> {
-      const { data } = await db
+      const { data: parts } = await db
         .from("conversation_participants")
-        .select(
-          "user_id, profile:profiles!conversation_participants_user_id_fkey(id, username, full_name, avatar_url)",
-        )
+        .select("user_id")
         .eq("conversation_id", payload.conversationId)
-        .returns<{ user_id: string; profile: AuthorSummary }[]>();
-      const includesMe = data?.some((row) => row.user_id === currentUser.id);
-      const caller = data?.find((row) => row.user_id === payload.fromId);
-      return includesMe && caller ? caller.profile : null;
+        .returns<{ user_id: string }[]>();
+      const includesMe = parts?.some((row) => row.user_id === currentUser.id);
+      const includesCaller = parts?.some((row) => row.user_id === payload.fromId);
+      if (!includesMe || !includesCaller) return null;
+      const { data: caller } = await db
+        .from("profiles")
+        .select("id, username, full_name, avatar_url")
+        .eq("id", payload.fromId)
+        .maybeSingle<AuthorSummary>();
+      return caller ?? null;
     }
 
     const channel = db
