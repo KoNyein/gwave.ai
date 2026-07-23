@@ -320,14 +320,53 @@ class Repository {
 
   // ---- Notifications --------------------------------------------------------
 
+  /// My notifications, newest first, each with the acting user's profile.
+  /// Embed-free (see conversations()) so a stale PostgREST schema cache after
+  /// a migration can't take the whole list down.
   Future<List<AppNotification>> notifications() async {
     final rows = await api.select("notifications", query: {
-      "select":
-          "*,actor:profiles!notifications_actor_id_fkey($_profileCols)",
+      "select": "*",
+      "recipient_id": "eq.${api.session!.profileId}",
       "order": "created_at.desc",
       "limit": "50",
     });
+    final actorIds = rows
+        .map((r) => r["actor_id"])
+        .whereType<Object>()
+        .map((e) => e.toString())
+        .toSet()
+        .toList();
+    if (actorIds.isNotEmpty) {
+      try {
+        final profs = await api.select("profiles", query: {
+          "select": _profileCols,
+          "id": "in.(${actorIds.join(",")})",
+          "limit": "100",
+        });
+        final byId = {for (final p in profs) p["id"].toString(): p};
+        for (final r in rows) {
+          r["actor"] = byId[r["actor_id"]?.toString()];
+        }
+      } catch (_) {
+        // Actor names are cosmetic — the list still renders.
+      }
+    }
     return rows.map(AppNotification.fromJson).toList();
+  }
+
+  /// Number of unread notifications (badge on the feed bell).
+  Future<int> unreadNotificationCount() async {
+    try {
+      final rows = await api.select("notifications", query: {
+        "select": "id",
+        "recipient_id": "eq.${api.session!.profileId}",
+        "read": "eq.false",
+        "limit": "100",
+      });
+      return rows.length;
+    } catch (_) {
+      return 0;
+    }
   }
 
   Future<void> markNotificationsRead() async {

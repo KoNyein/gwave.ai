@@ -25,11 +25,13 @@ class _FeedScreenState extends State<FeedScreen> {
   bool _loadingMore = false;
   bool _end = false;
   String? _error;
+  int _unread = 0;
 
   @override
   void initState() {
     super.initState();
     _load(reset: true);
+    _loadUnread();
     _scroll.addListener(() {
       if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 400) {
         _load();
@@ -77,6 +79,12 @@ class _FeedScreenState extends State<FeedScreen> {
     }
   }
 
+  Future<void> _loadUnread() async {
+    final n =
+        await context.read<AppState>().repo.unreadNotificationCount();
+    if (mounted && n != _unread) setState(() => _unread = n);
+  }
+
   Future<void> _openComposer() async {
     final created = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const ComposerScreen()),
@@ -107,10 +115,19 @@ class _FeedScreenState extends State<FeedScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+            icon: Badge(
+              isLabelVisible: _unread > 0,
+              label: Text("$_unread"),
+              backgroundColor: GwColors.live,
+              child: const Icon(Icons.notifications_none),
             ),
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              );
+              // The screen marks everything read — clear the badge on return.
+              if (mounted) setState(() => _unread = 0);
+            },
           ),
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline),

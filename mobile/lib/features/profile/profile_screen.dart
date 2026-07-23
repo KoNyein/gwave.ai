@@ -45,11 +45,16 @@ class ProfileScreen extends StatelessWidget {
     final me = state.me;
     final name = me?.displayName ?? state.api.session?.email ?? "Gwave user";
 
+    // Facebook-style proportional cover: height follows the screen width
+    // (≈1.9:1) so the photo isn't squashed into a thin strip on any device.
+    final coverH =
+        (MediaQuery.of(context).size.width * 0.52).clamp(160.0, 280.0);
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 172,
+            expandedHeight: coverH,
             pinned: true,
             backgroundColor: GwColors.primary,
             flexibleSpace: FlexibleSpaceBar(
@@ -195,25 +200,31 @@ class ProfileScreen extends StatelessWidget {
         ? CachedNetworkImage(
             imageUrl: url,
             fit: BoxFit.cover,
+            alignment: Alignment.center,
             errorWidget: (_, __, ___) => _coverPh(),
             placeholder: (_, __) => _coverPh(),
           )
         : _coverPh();
-    // Gentle bottom scrim so the white avatar and status icons stay legible.
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        base,
-        const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.transparent, Color(0x33000000)],
+    // Rounded bottom corners + a gentle bottom scrim: the photo reads as a
+    // banner card and the white avatar / status icons stay legible on it.
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(26)),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          base,
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0x22000000), Colors.transparent, Color(0x44000000)],
+                stops: [0, 0.45, 1],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
