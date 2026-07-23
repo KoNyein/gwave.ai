@@ -13,21 +13,10 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/data/client";
+import { fetchIceServers, iceServersSync } from "@/lib/webrtc-ice";
 import { cn } from "@/lib/utils";
 import type { AuthorSummary } from "@/types/social";
 
-function iceServers(): RTCIceServer[] {
-  const servers: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
-  const turnUrl = process.env.NEXT_PUBLIC_TURN_URL;
-  if (turnUrl) {
-    servers.push({
-      urls: turnUrl,
-      username: process.env.NEXT_PUBLIC_TURN_USERNAME,
-      credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL,
-    });
-  }
-  return servers;
-}
 
 interface Peer {
   pc: RTCPeerConnection;
@@ -86,7 +75,7 @@ export function MeetRoom({
     (other: string, name: string): RTCPeerConnection => {
       const existing = pcs.current[other];
       if (existing) return existing;
-      const pc = new RTCPeerConnection({ iceServers: iceServers() });
+      const pc = new RTCPeerConnection({ iceServers: iceServersSync() });
       pcs.current[other] = pc;
 
       localStream.current
@@ -158,6 +147,8 @@ export function MeetRoom({
 
   React.useEffect(() => {
     let cancelled = false;
+    // Warm the TURN config cache — ensurePc reads it synchronously.
+    void fetchIceServers();
     const db = createClient();
     const channel = db.channel(`meet:${roomId}`, {
       config: { presence: { key: me } },
