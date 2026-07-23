@@ -23,6 +23,10 @@ dependencies:
   image_picker: ^1.1.2
   mobile_scanner: ^5.2.3
   qr_flutter: ^4.1.0
+  # POS receipts: build an 80mm receipt PDF and hand it to the Android print
+  # dialog (Bluetooth/WiFi receipt printers via print services, or save/share).
+  pdf: ^3.11.1
+  printing: ^5.13.2
   # Native RTMP(S) camera encoder for in-app live broadcasting to IVS.
   apivideo_live_stream: 1.2.0
   permission_handler: ^11.3.1
@@ -36,16 +40,32 @@ dependencies:
   flutter_tts: ^4.0.2
   # In-app code playground: run lesson HTML/CSS/JS locally in a WebView.
   webview_flutter: ^4.9.0
+  # Android WebView controller — grant the GPS map's geolocation prompt.
+  # Broad range so it always matches the version webview_flutter resolves.
+  webview_flutter_android: ">=3.16.0 <5.0.0"
+  # Native GPS map (OpenStreetMap tiles — works without Google Play Services)
+  # + device location. Replaces the embedded web map so it looks native.
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  geolocator: ^13.0.1
   # Native 1:1 messenger calls: WebRTC media + Supabase Realtime broadcast
   # signaling (same protocol as the web client, so calls interoperate).
   # >=0.12 dropped the removed v1-embedding `PluginRegistry.Registrar`, which
-  # no longer compiles against current Flutter (3.29+).
-  flutter_webrtc: ">=0.12.5 <1.0.0"
+  # no longer compiles against current Flutter (3.29+). The upper bound is
+  # wide so pub can match whatever livekit_client pins.
+  flutter_webrtc: ">=0.12.5 <2.0.0"
   realtime_client: ^2.4.0
+  # Watch browser Go Live broadcasts (LiveKit SFU) — they publish over WebRTC
+  # and have no HLS URL, so the app joins the room as a subscriber.
+  livekit_client: ^2.8.0
+  # Family locator: BLE proximity scanner to find a family member's phone or
+  # tracker tag nearby (signal-strength meter).
+  flutter_blue_plus: ^1.32.0
+  # Family locator: share/join a circle by tapping an NFC tag with the invite
+  # code written on it.
+  nfc_manager: ^3.3.0
 
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
   flutter_lints: ^4.0.0
   flutter_launcher_icons: ^0.13.1
 

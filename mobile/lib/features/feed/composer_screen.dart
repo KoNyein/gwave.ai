@@ -1,10 +1,12 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
+import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
@@ -23,8 +25,58 @@ class _ComposerScreenState extends State<ComposerScreen> {
   final _location = TextEditingController();
   bool _busy = false;
   bool _showLocation = false;
-  bool _protected = false; // forbid screenshots / saving of this post's photos
   String? _feeling; // e.g. "😊 feeling happy"
+
+  // GPS check-in: real coordinates attached to the post (optional).
+  double? _lat;
+  double? _lng;
+  bool _gettingLoc = false;
+
+  /// Grab the phone's GPS once and attach it (tap again to detach).
+  Future<void> _tagGps() async {
+    if (_lat != null) {
+      setState(() {
+        _lat = null;
+        _lng = null;
+      });
+      return;
+    }
+    setState(() => _gettingLoc = true);
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        throw Exception(tr(context, "Turn on location on your phone.",
+            "ဖုန်းရဲ့ location ကို ဖွင့်ပါ။"));
+      }
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        throw Exception(tr(context, "Location permission is off.",
+            "Location ခွင့်ပြုချက် ပိတ်ထားသည်။"));
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
+      ).timeout(const Duration(seconds: 12));
+      if (!mounted) return;
+      setState(() {
+        _lat = pos.latitude;
+        _lng = pos.longitude;
+        if (_location.text.trim().isEmpty) {
+          _location.text = tr(context, "My location", "ကျွန်ုပ်တည်နေရာ");
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("$e")));
+      }
+    } finally {
+      if (mounted) setState(() => _gettingLoc = false);
+    }
+  }
 
   final List<_PickedImage> _images = [];
 
@@ -102,8 +154,9 @@ class _ComposerScreenState extends State<ComposerScreen> {
       await repo.createPost(
         content,
         locationName: _showLocation ? _location.text.trim() : null,
+        latitude: _showLocation ? _lat : null,
+        longitude: _showLocation ? _lng : null,
         media: media,
-        protected: _protected,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -131,12 +184,12 @@ class _ComposerScreenState extends State<ComposerScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               ),
               child: _busy
-                  ? SizedBox(
+                  ? const SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.2,
-                        valueColor: AlwaysStoppedAnimation(GwColors.onPrimary),
+                        valueColor: AlwaysStoppedAnimation(Colors.white),
                       ),
                     )
                   : const Text("Post"),
@@ -181,7 +234,7 @@ class _ComposerScreenState extends State<ComposerScreen> {
             Row(
               children: [
                 Chip(
-                  avatar: Icon(Icons.emoji_emotions,
+                  avatar: const Icon(Icons.emoji_emotions,
                       size: 16, color: GwColors.gold),
                   label: Text(_feeling!),
                   backgroundColor: GwColors.gold.withValues(alpha: 0.12),
@@ -195,11 +248,41 @@ class _ComposerScreenState extends State<ComposerScreen> {
             const SizedBox(height: 10),
             TextField(
               controller: _location,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.place_outlined),
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.place_outlined),
                 hintText: "📍 Location",
+                // GPS tag: attach real coordinates, so the post's location
+                // chip can open the map at the exact spot.
+                suffixIcon: _gettingLoc
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child:
+                                CircularProgressIndicator(strokeWidth: 2)),
+                      )
+                    : IconButton(
+                        tooltip: tr(context, "Use my GPS location",
+                            "GPS တည်နေရာ သုံးရန်"),
+                        icon: Icon(Icons.my_location,
+                            color: _lat != null
+                                ? GwColors.primary
+                                : GwColors.inkSoft),
+                        onPressed: _tagGps,
+                      ),
               ),
             ),
+            if (_lat != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 4),
+                child: Text(
+                  tr(context, "📍 GPS attached — tap the pin to remove",
+                      "📍 GPS ချိတ်ပြီး — ဖြုတ်ရန် pin ကို ထပ်နှိပ်ပါ"),
+                  style: const TextStyle(
+                      fontSize: 11.5, color: GwColors.primary),
+                ),
+              ),
           ],
           if (_images.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -254,50 +337,23 @@ class _ComposerScreenState extends State<ComposerScreen> {
                   active: _feeling != null),
               _chip(Icons.videocam_outlined, "Go Live", _goLive,
                   color: GwColors.live),
-              _chip(
-                _protected ? Icons.lock : Icons.lock_outline,
-                "ဤဓာတ်ပုံကို screenshot / save ခွင့်မပြုပါ",
-                () => setState(() => _protected = !_protected),
-                active: _protected,
-              ),
             ],
           ),
-          if (_protected) ...[
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Icon(Icons.shield_outlined,
-                    size: 15, color: GwColors.inkSoft),
-                SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    "ကာကွယ်ထားသည် — အခြားသူများ screenshot / ဖန်သားပြင်ရိုက်ကူးခြင်း "
-                    "မပြုနိုင်ပါ။",
-                    style: TextStyle(
-                        fontSize: 12, color: GwColors.inkSoft, height: 1.3),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ],
       ),
     );
   }
 
-  // `color` is nullable rather than defaulted because GwColors tokens are
-  // theme-aware getters now, so they cannot be const default values.
   Widget _chip(IconData icon, String label, VoidCallback onTap,
-      {bool active = false, Color? color}) {
-    final c = color ?? GwColors.primary;
+      {bool active = false, Color color = GwColors.primary}) {
     return ActionChip(
-      avatar: Icon(icon, size: 18, color: active ? GwColors.onPrimary : c),
+      avatar: Icon(icon, size: 18, color: active ? Colors.white : color),
       label: Text(label),
       labelStyle: TextStyle(
-        color: active ? GwColors.onPrimary : c,
+        color: active ? Colors.white : color,
         fontWeight: FontWeight.w600,
       ),
-      backgroundColor: active ? c : c.withValues(alpha: 0.1),
+      backgroundColor: active ? color : color.withValues(alpha: 0.1),
       side: BorderSide.none,
       onPressed: onTap,
     );
@@ -377,7 +433,7 @@ class _FeelingSheet extends StatelessWidget {
                           Text(f.$2,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
+                              style: const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   color: GwColors.inkSoft)),

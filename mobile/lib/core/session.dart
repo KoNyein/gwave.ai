@@ -47,9 +47,10 @@ class Session {
         expiresAt: DateTime.parse(j["expiresAt"] as String),
       );
 
-  Session copyWith({String? token, DateTime? expiresAt}) => Session(
+  Session copyWith({String? token, DateTime? expiresAt, String? profileId}) =>
+      Session(
         token: token ?? this.token,
-        profileId: profileId,
+        profileId: profileId ?? this.profileId,
         email: email,
         cognitoUsername: cognitoUsername,
         refreshToken: refreshToken,

@@ -12,17 +12,13 @@ class GwReaction {
   final Color color;
 }
 
-/// A getter, not a `final` list: "like" is tinted with [GwColors.primary],
-/// which is theme-aware. A top-level `final` would be initialised lazily on
-/// first access and would then hold the light-mode green for the rest of the
-/// process, so the reaction bar would not follow a theme switch.
-List<GwReaction> get kGwReactions => [
+const List<GwReaction> kGwReactions = [
   GwReaction("like", "👍", "Like", GwColors.primary),
-  const GwReaction("love", "❤️", "Love", Color(0xFFEF4444)),
-  const GwReaction("haha", "😆", "Haha", Color(0xFFF59E0B)),
-  const GwReaction("wow", "😮", "Wow", Color(0xFFF59E0B)),
-  const GwReaction("sad", "😢", "Sad", Color(0xFFF59E0B)),
-  const GwReaction("angry", "😡", "Angry", Color(0xFFEA580C)),
+  GwReaction("love", "❤️", "Love", Color(0xFFEF4444)),
+  GwReaction("haha", "😆", "Haha", Color(0xFFF59E0B)),
+  GwReaction("wow", "😮", "Wow", Color(0xFFF59E0B)),
+  GwReaction("sad", "😢", "Sad", Color(0xFFF59E0B)),
+  GwReaction("angry", "😡", "Angry", Color(0xFFEA580C)),
 ];
 
 GwReaction? gwReactionOf(String? type) {

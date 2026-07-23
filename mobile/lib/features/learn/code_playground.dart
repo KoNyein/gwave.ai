@@ -180,7 +180,7 @@ ${_html.text}
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
               child: Text(tr(context, "Result", "ရလဒ်"),
-                  style: TextStyle(
+                  style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 12.5,
                       color: GwColors.inkSoft)),

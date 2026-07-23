@@ -5,12 +5,13 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_state.dart';
+import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
+import '../map/map_screen.dart';
 import '../web/web_screen.dart';
 import '../../widgets/common.dart';
-import '../../widgets/secure_image_viewer.dart';
 import '../live/live_watch_screen.dart';
 import 'comments_sheet.dart';
 import 'reactions.dart';
@@ -128,24 +129,55 @@ class _PostCardState extends State<PostCard> {
                         children: [
                           Text(
                             timeAgo(p.createdAt),
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: GwColors.inkSoft,
                               fontSize: 12,
                             ),
                           ),
                           if (p.locationName != null) ...[
-                            Text(" · ",
+                            const Text(" · ",
                                 style: TextStyle(color: GwColors.inkSoft)),
-                            Icon(Icons.place,
-                                size: 12, color: GwColors.inkSoft),
-                            const SizedBox(width: 2),
+                            // With coordinates, the tag opens the map right
+                            // at the tagged spot.
                             Flexible(
-                              child: Text(
-                                p.locationName!,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: GwColors.inkSoft,
-                                  fontSize: 12,
+                              child: InkWell(
+                                onTap: p.latitude != null &&
+                                        p.longitude != null
+                                    ? () => Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => MapScreen(
+                                              focusLat: p.latitude,
+                                              focusLng: p.longitude,
+                                              focusLabel: p.locationName,
+                                            ),
+                                          ),
+                                        )
+                                    : null,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.place,
+                                        size: 12,
+                                        color: p.latitude != null
+                                            ? GwColors.primary
+                                            : GwColors.inkSoft),
+                                    const SizedBox(width: 2),
+                                    Flexible(
+                                      child: Text(
+                                        p.locationName!,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: p.latitude != null
+                                              ? GwColors.primary
+                                              : GwColors.inkSoft,
+                                          fontSize: 12,
+                                          fontWeight: p.latitude != null
+                                              ? FontWeight.w700
+                                              : FontWeight.w400,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -155,41 +187,36 @@ class _PostCardState extends State<PostCard> {
                     ],
                   ),
                 ),
-                Icon(Icons.more_horiz, color: GwColors.inkSoft),
+                const Icon(Icons.more_horiz, color: GwColors.inkSoft),
               ],
             ),
             if (p.content.trim().isNotEmpty) ...[
               const SizedBox(height: 12),
               _RichPostBody(content: p.content),
             ],
+            // A live announcement post carries a gwave.cc/live/<id> link —
+            // render a proper Watch-Live banner that opens the native player
+            // instead of leaving viewers with a bare URL.
+            if (_liveStreamId(p.content) != null) ...[
+              const SizedBox(height: 12),
+              _LiveBanner(streamId: _liveStreamId(p.content)!),
+            ],
             if (p.firstImage != null) ...[
               const SizedBox(height: 12),
-              // A protected photo is never rendered inline in the scrolling
-              // feed — FLAG_SECURE can't be guaranteed per-card there — so it
-              // is hidden behind a tap-to-view lock that opens the secure
-              // full-screen viewer (which raises FLAG_SECURE). Unprotected
-              // photos show inline as before.
-              if (p.protected)
-                _ProtectedImageLock(
+              ClipRRect(
+                borderRadius: BorderRadius.circular(GwRadius.md),
+                child: CachedNetworkImage(
                   imageUrl:
                       resolveMedia(p.firstImage!.storagePath, bucket: "media")!,
-                  caption: p.content,
-                )
-              else
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(GwRadius.md),
-                  child: CachedNetworkImage(
-                    imageUrl: resolveMedia(p.firstImage!.storagePath,
-                        bucket: "media")!,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    placeholder: (_, __) => Container(
-                      height: 200,
-                      color: GwColors.surfaceMuted,
-                    ),
-                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  placeholder: (_, __) => Container(
+                    height: 200,
+                    color: GwColors.surfaceMuted,
                   ),
+                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
                 ),
+              ),
             ],
             const SizedBox(height: 12),
             if (_likes > 0 || _comments > 0)
@@ -198,16 +225,16 @@ class _PostCardState extends State<PostCard> {
                 child: Row(
                   children: [
                     if (_likes > 0) ...[
-                      Icon(Icons.favorite, size: 14, color: GwColors.heart),
+                      const Icon(Icons.favorite, size: 14, color: GwColors.heart),
                       const SizedBox(width: 4),
                       Text("$_likes",
-                          style: TextStyle(
+                          style: const TextStyle(
                               color: GwColors.inkSoft, fontSize: 12)),
                     ],
                     const Spacer(),
                     if (_comments > 0)
                       Text("$_comments comments",
-                          style: TextStyle(
+                          style: const TextStyle(
                               color: GwColors.inkSoft, fontSize: 12)),
                   ],
                 ),
@@ -218,20 +245,7 @@ class _PostCardState extends State<PostCard> {
                 _reactionAction(),
                 _action(Icons.mode_comment_outlined, "Comment",
                     GwColors.inkSoft, _openComments),
-                // Protected posts offer no share / forward affordance.
-                if (p.protected)
-                  _action(Icons.lock_outline, "Protected",
-                      GwColors.inkSoft.withValues(alpha: 0.5), () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            "ဤပို့စ်သည် ကာကွယ်ထားသဖြင့် မျှဝေ၍မရပါ။"),
-                      ),
-                    );
-                  })
-                else
-                  _action(Icons.share_outlined, "Share", GwColors.inkSoft,
-                      () {}),
+                _action(Icons.share_outlined, "Share", GwColors.inkSoft, () {}),
               ],
             ),
           ],
@@ -258,7 +272,7 @@ class _PostCardState extends State<PostCard> {
               if (r != null)
                 Text(r.emoji, style: const TextStyle(fontSize: 17))
               else
-                Icon(Icons.favorite_border,
+                const Icon(Icons.favorite_border,
                     size: 19, color: GwColors.inkSoft),
               const SizedBox(width: 6),
               Text(r?.label ?? "Like",
@@ -374,7 +388,7 @@ class _RichPostBodyState extends State<_RichPostBody> {
       spans.add(TextSpan(
         text: token,
         recognizer: recognizer,
-        style: TextStyle(
+        style: const TextStyle(
           color: GwColors.primary,
           fontWeight: FontWeight.w600,
         ),
@@ -386,54 +400,112 @@ class _RichPostBodyState extends State<_RichPostBody> {
     }
     return Text.rich(
       TextSpan(
-        style: TextStyle(fontSize: 15, height: 1.4, color: GwColors.ink),
+        style: const TextStyle(fontSize: 15, height: 1.4, color: GwColors.ink),
         children: spans,
       ),
     );
   }
 }
 
-/// Placeholder shown in place of a protected post's photo in the feed. The
-/// blurred image itself is never rendered inline; tapping opens the secure
-/// full-screen viewer where FLAG_SECURE is active.
-class _ProtectedImageLock extends StatelessWidget {
-  const _ProtectedImageLock({required this.imageUrl, this.caption});
+/// The live stream id when [content] contains a gwave.cc/live/<uuid> link.
+String? _liveStreamId(String content) {
+  final m = RegExp(
+          r"gwave\.cc/live/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})")
+      .firstMatch(content);
+  return m?.group(1);
+}
 
-  final String imageUrl;
-  final String? caption;
+/// A tappable Watch-Live banner for live-announcement posts: loads the stream
+/// row once (LIVE vs replay) and opens the native player on tap.
+class _LiveBanner extends StatefulWidget {
+  const _LiveBanner({required this.streamId});
+  final String streamId;
+
+  @override
+  State<_LiveBanner> createState() => _LiveBannerState();
+}
+
+class _LiveBannerState extends State<_LiveBanner> {
+  LiveStream? _stream;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final s = await context.read<AppState>().repo.stream(widget.streamId);
+      if (mounted) setState(() => _stream = s);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => SecureImageViewer.open(
-        context,
-        imageUrl: imageUrl,
-        caption: caption,
-      ),
+    final live = _stream?.isLive ?? false;
+    return InkWell(
+      borderRadius: BorderRadius.circular(GwRadius.md),
+      onTap: _stream == null
+          ? null
+          : () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => LiveWatchScreen(stream: _stream!))),
       child: Container(
-        height: 220,
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: GwColors.surfaceMuted,
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1B2417), Color(0xFF0B0F08)],
+          ),
           borderRadius: BorderRadius.circular(GwRadius.md),
-          border: Border.all(color: GwColors.line),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
           children: [
-            Icon(Icons.lock_outline, size: 34, color: GwColors.primary),
-            SizedBox(height: 10),
-            Text(
-              "ကာကွယ်ထားသော ဓာတ်ပုံ",
-              style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
-                  color: GwColors.ink),
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: live
+                    ? GwColors.live
+                    : Colors.white.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(live ? Icons.sensors : Icons.play_arrow,
+                  color: Colors.white, size: 26),
             ),
-            SizedBox(height: 4),
-            Text(
-              "ကြည့်ရန် တို့ပါ • screenshot / save မရပါ",
-              style: TextStyle(fontSize: 12, color: GwColors.inkSoft),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _stream?.title ??
+                        tr(context, "Live broadcast", "တိုက်ရိုက်လွှင့်ချက်"),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14.5),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    live
+                        ? tr(context, "🔴 LIVE now — tap to watch",
+                            "🔴 တိုက်ရိုက် — နှိပ်ပြီး ကြည့်ပါ")
+                        : tr(context, "▶ Watch the replay",
+                            "▶ Replay ပြန်ကြည့်ရန်"),
+                    style: TextStyle(
+                        color: live ? const Color(0xFFFF8A8A) : Colors.white70,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
             ),
+            const Icon(Icons.chevron_right, color: Colors.white54),
           ],
         ),
       ),

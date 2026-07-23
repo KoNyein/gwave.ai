@@ -55,7 +55,7 @@ class _LanguagesScreenState extends State<LanguagesScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading && _courses.isEmpty
-            ? Center(
+            ? const Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : _error != null && _courses.isEmpty
                 ? ListView(children: [
@@ -163,21 +163,21 @@ class _LanguagesScreenState extends State<LanguagesScreen> {
                       Text(c["description"].toString(),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
+                          style: const TextStyle(
                               color: GwColors.inkSoft,
                               fontSize: 12,
                               height: 1.35)),
                     const SizedBox(height: 3),
                     Text(
                         "${c["unitCount"] ?? 0} ${tr(context, "units", "ခန်း")} · ${c["phraseCount"] ?? 0} ${tr(context, "phrases", "စကားစု")}",
-                        style: TextStyle(
+                        style: const TextStyle(
                             color: GwColors.primary,
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: GwColors.inkSoft),
+              const Icon(Icons.chevron_right, color: GwColors.inkSoft),
             ],
           ),
         ),
@@ -240,7 +240,7 @@ class _LangCourseScreenState extends State<LangCourseScreen> {
     return Scaffold(
       appBar: AppBar(title: Text("${widget.flag} ${widget.label}")),
       body: _loading
-          ? Center(
+          ? const Center(
               child: CircularProgressIndicator(color: GwColors.primary))
           : _error != null
               ? ListView(children: [
@@ -307,18 +307,18 @@ class _LangCourseScreenState extends State<LangCourseScreen> {
                             fontWeight: FontWeight.w700, fontSize: 14.5)),
                     Text(
                         "${u["subtitle"] ?? ""} · $items ${tr(context, "phrases", "စကားစု")}",
-                        style: TextStyle(
+                        style: const TextStyle(
                             color: GwColors.inkSoft, fontSize: 11.5)),
                   ],
                 ),
               ),
               Text("${index + 1}",
-                  style: TextStyle(
+                  style: const TextStyle(
                       color: GwColors.inkSoft,
                       fontWeight: FontWeight.w700,
                       fontSize: 12)),
               const SizedBox(width: 6),
-              Icon(Icons.chevron_right,
+              const Icon(Icons.chevron_right,
                   color: GwColors.inkSoft, size: 20),
             ],
           ),
@@ -449,9 +449,9 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
                     fontWeight: FontWeight.w700,
                     color: selected ? GwColors.primary : GwColors.ink)),
             subtitle: Text(sub,
-                style: TextStyle(color: GwColors.inkSoft, fontSize: 12)),
+                style: const TextStyle(color: GwColors.inkSoft, fontSize: 12)),
             trailing: selected
-                ? Icon(Icons.check_circle, color: GwColors.primary)
+                ? const Icon(Icons.check_circle, color: GwColors.primary)
                 : null,
             onTap: () {
               setState(() => _speedIndex = i);
@@ -535,9 +535,9 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
             padding: const EdgeInsets.only(right: 8),
             child: TextButton.icon(
               onPressed: _pickSpeed,
-              icon: Icon(Icons.speed, size: 20, color: GwColors.primary),
+              icon: const Icon(Icons.speed, size: 20, color: GwColors.primary),
               label: Text(_speedLabel(context),
-                  style: TextStyle(
+                  style: const TextStyle(
                       color: GwColors.primary, fontWeight: FontWeight.w700)),
             ),
           ),
@@ -596,12 +596,12 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
                                 fontWeight: FontWeight.w800, fontSize: 16)),
                         if ((p["roman"] ?? "").toString().isNotEmpty)
                           Text((p["roman"] ?? "").toString(),
-                              style: TextStyle(
+                              style: const TextStyle(
                                   color: GwColors.primary,
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w600)),
                         Text((p["my"] ?? "").toString(),
-                            style: TextStyle(
+                            style: const TextStyle(
                                 color: GwColors.inkSoft, fontSize: 13)),
                       ],
                     ),
@@ -631,7 +631,7 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
                       color: GwColors.primary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.volume_up,
+                    child: const Icon(Icons.volume_up,
                         color: GwColors.primary, size: 20),
                   ),
                 ],
@@ -691,7 +691,7 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
         Text(
           "${_qIndex + 1} / ${_quizItems.length}",
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
               color: GwColors.inkSoft, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 10),
@@ -723,14 +723,14 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
                   const SizedBox(width: 8),
                   IconButton(
                     onPressed: () => _speak(target),
-                    icon: Icon(Icons.volume_up,
+                    icon: const Icon(Icons.volume_up,
                         color: GwColors.primary, size: 28),
                   ),
                 ],
               ),
               Text(
                 tr(context, "What does this mean?", "အဓိပ္ပာယ် ဘာလဲ?"),
-                style: TextStyle(color: GwColors.inkSoft, fontSize: 13),
+                style: const TextStyle(color: GwColors.inkSoft, fontSize: 13),
               ),
             ],
           ),

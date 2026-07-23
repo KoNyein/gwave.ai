@@ -162,7 +162,7 @@ class _GpaySendScreenState extends State<GpaySendScreen> {
   Widget _confirmRow(String k, String v, {bool bold = false}) => Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(k, style: TextStyle(color: GwColors.inkSoft)),
+          Text(k, style: const TextStyle(color: GwColors.inkSoft)),
           const SizedBox(width: 16),
           Flexible(
             child: Text(v,
@@ -328,7 +328,7 @@ class _GpaySendScreenState extends State<GpaySendScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.shield_outlined,
+                    const Icon(Icons.shield_outlined,
                         color: GwColors.gold, size: 20),
                     const SizedBox(width: 10),
                     Expanded(
@@ -340,7 +340,7 @@ class _GpaySendScreenState extends State<GpaySendScreen> {
                       ),
                     ),
                     Text(tr(context, "Set", "သတ်မှတ်ရန်"),
-                        style: TextStyle(
+                        style: const TextStyle(
                             color: GwColors.primary,
                             fontWeight: FontWeight.w700)),
                   ],
@@ -359,12 +359,12 @@ class _GpaySendScreenState extends State<GpaySendScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.error_outline,
+                  const Icon(Icons.error_outline,
                       color: GwColors.live, size: 19),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(_error!,
-                        style: TextStyle(
+                        style: const TextStyle(
                             color: GwColors.live, fontSize: 13)),
                   ),
                 ],
@@ -378,12 +378,12 @@ class _GpaySendScreenState extends State<GpaySendScreen> {
             child: ElevatedButton.icon(
               onPressed: _busy ? null : _send,
               icon: _busy
-                  ? SizedBox(
+                  ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
                           strokeWidth: 2.4,
-                          valueColor: AlwaysStoppedAnimation(GwColors.onPrimary)))
+                          valueColor: AlwaysStoppedAnimation(Colors.white)))
                   : const Icon(Icons.send, size: 20),
               label: Text(_busy
                   ? tr(context, "Sending…", "ပို့နေသည်…")

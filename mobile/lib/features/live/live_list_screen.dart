@@ -71,7 +71,7 @@ class _LiveListScreenState extends State<LiveListScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading
-            ? Center(child: CircularProgressIndicator(color: GwColors.primary))
+            ? const Center(child: CircularProgressIndicator(color: GwColors.primary))
             : _error != null && _streams.isEmpty
                 ? ListView(children: [
                     const SizedBox(height: 120),
@@ -132,7 +132,7 @@ class _LiveListScreenState extends State<LiveListScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text("$count",
-                  style: TextStyle(
+                  style: const TextStyle(
                       color: GwColors.primary,
                       fontWeight: FontWeight.w700,
                       fontSize: 12)),
@@ -174,7 +174,7 @@ class _LiveCard extends StatelessWidget {
                 top: 12,
                 left: 12,
                 child: stream.isLive
-                    ? GwPill(label: "LIVE", color: GwColors.live, filled: true, icon: Icons.circle)
+                    ? const GwPill(label: "LIVE", color: GwColors.live, filled: true, icon: Icons.circle)
                     : GwPill(
                         label: "REPLAY",
                         color: Colors.black.withValues(alpha: 0.5),
@@ -234,6 +234,24 @@ class _LiveCard extends StatelessWidget {
                               style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.85),
                                   fontSize: 12)),
+                          if (stream.locationName != null &&
+                              stream.locationName!.isNotEmpty)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.place,
+                                    size: 11, color: Colors.white70),
+                                const SizedBox(width: 2),
+                                Flexible(
+                                  child: Text(stream.locationName!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 11)),
+                                ),
+                              ],
+                            ),
                         ],
                       ),
                     ),
@@ -261,7 +279,7 @@ class _LiveCard extends StatelessWidget {
   }
 
   Widget _placeholder() => Container(
-        decoration: BoxDecoration(gradient: GwColors.primaryGradient),
+        decoration: const BoxDecoration(gradient: GwColors.primaryGradient),
         child: const Center(
           child: Icon(Icons.videocam, color: Colors.white54, size: 48),
         ),

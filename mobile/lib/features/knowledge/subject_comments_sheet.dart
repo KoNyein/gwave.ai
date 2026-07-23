@@ -209,7 +209,7 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(Icons.photo_library_outlined,
+              leading: const Icon(Icons.photo_library_outlined,
                   color: GwColors.primary),
               title: Text(tr(ctx, "Photo from gallery", "ဓာတ်ပုံ ရွေးရန်")),
               onTap: () {
@@ -218,7 +218,7 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.photo_camera_outlined,
+              leading: const Icon(Icons.photo_camera_outlined,
                   color: GwColors.primary),
               title: Text(tr(ctx, "Take a photo", "ဓာတ်ပုံရိုက်ရန်")),
               onTap: () {
@@ -227,7 +227,7 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.video_library_outlined,
+              leading: const Icon(Icons.video_library_outlined,
                   color: GwColors.primary),
               title: Text(tr(ctx, "Video from gallery", "ဗီဒီယို ရွေးရန်")),
               onTap: () {
@@ -236,7 +236,7 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.videocam_outlined,
+              leading: const Icon(Icons.videocam_outlined,
                   color: GwColors.primary),
               title: Text(tr(ctx, "Record a video", "ဗီဒီယို ရိုက်ရန်")),
               onTap: () {
@@ -320,7 +320,7 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
                 child: Row(
                   children: [
-                    Icon(Icons.forum_outlined,
+                    const Icon(Icons.forum_outlined,
                         color: GwColors.primary, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
@@ -347,7 +347,7 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
 
   Widget _list(ScrollController controller) {
     if (_loading) {
-      return Center(
+      return const Center(
           child: CircularProgressIndicator(color: GwColors.primary));
     }
     if (_error != null && _comments.isEmpty) {
@@ -444,14 +444,14 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
             placeholder: (_, __) => Container(
               height: 160,
               color: GwColors.surfaceMuted,
-              child: Center(
+              child: const Center(
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: GwColors.primary)),
             ),
             errorWidget: (_, __, ___) => Container(
               height: 120,
               color: GwColors.surfaceMuted,
-              child: Icon(Icons.broken_image_outlined,
+              child: const Icon(Icons.broken_image_outlined,
                   color: GwColors.inkSoft),
             ),
           ),
@@ -470,7 +470,7 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: GwColors.surface,
           border: Border(top: BorderSide(color: GwColors.line)),
         ),
@@ -484,7 +484,7 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
               children: [
                 IconButton(
                   onPressed: _sending ? null : _chooseAttachment,
-                  icon: Icon(Icons.add_photo_alternate_outlined,
+                  icon: const Icon(Icons.add_photo_alternate_outlined,
                       color: GwColors.primary),
                   tooltip: tr(context, "Attach", "ပူးတွဲရန်"),
                 ),
@@ -517,8 +517,8 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
                 ),
                 const SizedBox(width: 4),
                 _sending
-                    ? Padding(
-                        padding: const EdgeInsets.all(10),
+                    ? const Padding(
+                        padding: EdgeInsets.all(10),
                         child: SizedBox(
                           width: 22,
                           height: 22,
@@ -528,7 +528,7 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
                       )
                     : IconButton(
                         onPressed: _send,
-                        icon: Icon(Icons.send, color: GwColors.primary),
+                        icon: const Icon(Icons.send, color: GwColors.primary),
                       ),
               ],
             ),
@@ -567,7 +567,7 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
           const SizedBox(width: 8),
           Expanded(
               child: Text(label,
-                  style: TextStyle(
+                  style: const TextStyle(
                       color: GwColors.primary, fontWeight: FontWeight.w600))),
           if (_mediaType == "image")
             ClipRRect(
@@ -577,7 +577,7 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
             ),
           IconButton(
             onPressed: _clearAttachment,
-            icon: Icon(Icons.close, size: 18, color: GwColors.inkSoft),
+            icon: const Icon(Icons.close, size: 18, color: GwColors.inkSoft),
           ),
         ],
       ),
@@ -594,12 +594,12 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
       ),
       child: Row(
         children: [
-          Icon(Icons.fiber_manual_record, color: GwColors.live, size: 16),
+          const Icon(Icons.fiber_manual_record, color: GwColors.live, size: 16),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               tr(context, "Recording… tap ⏹ to stop", "အသံဖမ်းနေသည်… ရပ်ရန် ⏹ နှိပ်ပါ"),
-              style: TextStyle(
+              style: const TextStyle(
                   color: GwColors.live, fontWeight: FontWeight.w600),
             ),
           ),
@@ -666,7 +666,7 @@ class _AudioBubbleState extends State<_AudioBubble> {
                 color: GwColors.primary, size: 26),
             const SizedBox(width: 8),
             Text(tr(context, "Voice note", "အသံမှတ်ချက်"),
-                style: TextStyle(
+                style: const TextStyle(
                     color: GwColors.primary, fontWeight: FontWeight.w700)),
           ],
         ),

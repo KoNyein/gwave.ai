@@ -9,7 +9,7 @@ class SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(gradient: GwColors.primaryGradient),
+        decoration: const BoxDecoration(gradient: GwColors.primaryGradient),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,

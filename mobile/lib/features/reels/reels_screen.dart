@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/app_state.dart';
+import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
@@ -63,11 +65,56 @@ class _ReelsScreenState extends State<ReelsScreen> {
     if (media == null || !mounted) return;
     final caption = await askCaption(context, title: "Reel caption");
     if (!mounted) return;
+    // Optional location tag (GPS), like posts.
+    double? lat, lng;
+    String? locName;
+    final tag = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr(ctx, "Tag your location?", "တည်နေရာ တွဲတင်မလား?")),
+        content: Text(tr(
+            ctx,
+            "Viewers will see 📍 on your reel and can open it on the map.",
+            "ကြည့်သူများ reel ပေါ်တွင် 📍 မြင်ရပြီး မြေပုံပေါ်တွင် ဖွင့်ကြည့်နိုင်ပါမည်။")),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(tr(ctx, "Skip", "မတွဲပါ"))),
+          ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(tr(ctx, "📍 Tag location", "📍 တည်နေရာ တွဲမည်"))),
+        ],
+      ),
+    );
+    if (tag == true && mounted) {
+      try {
+        var perm = await Geolocator.checkPermission();
+        if (perm == LocationPermission.denied) {
+          perm = await Geolocator.requestPermission();
+        }
+        if (perm != LocationPermission.denied &&
+            perm != LocationPermission.deniedForever) {
+          final pos = await Geolocator.getCurrentPosition(
+            locationSettings:
+                const LocationSettings(accuracy: LocationAccuracy.high),
+          ).timeout(const Duration(seconds: 12));
+          lat = pos.latitude;
+          lng = pos.longitude;
+          locName = tr(context, "My location", "ကျွန်ုပ်တည်နေရာ");
+        }
+      } catch (_) {
+        // Best-effort — the reel still posts without a tag.
+      }
+    }
+    if (!mounted) return;
     try {
-      await context
-          .read<AppState>()
-          .repo
-          .createReel(media.path, caption: caption);
+      await context.read<AppState>().repo.createReel(
+            media.path,
+            caption: caption,
+            locationName: locName,
+            latitude: lat,
+            longitude: lng,
+          );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Reel posted 🎬")),
@@ -91,7 +138,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
         heroTag: "createReel",
         backgroundColor: GwColors.primary,
         onPressed: _createReel,
-        child: Icon(Icons.videocam, color: GwColors.onPrimary),
+        child: const Icon(Icons.videocam, color: Colors.white),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
@@ -307,6 +354,26 @@ class _ReelPageState extends State<_ReelPage> {
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: Colors.white, fontSize: 14)),
+                ],
+                if (r.locationName != null && r.locationName!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.place,
+                          size: 14, color: Colors.white70),
+                      const SizedBox(width: 3),
+                      Flexible(
+                        child: Text(r.locationName!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
                 ],
               ],
             ),

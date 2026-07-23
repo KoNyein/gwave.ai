@@ -128,7 +128,7 @@ class _StrainsScreenState extends State<StrainsScreen> {
               color: GwColors.primary,
               onRefresh: _load,
               child: _loading && _strains.isEmpty
-                  ? Center(
+                  ? const Center(
                       child:
                           CircularProgressIndicator(color: GwColors.primary))
                   : _error != null && _strains.isEmpty
@@ -195,14 +195,14 @@ class _StrainsScreenState extends State<StrainsScreen> {
                         const SizedBox(width: 8),
                         if (s.thc != null)
                           Text("THC ${s.thc}%",
-                              style: TextStyle(
+                              style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: GwColors.inkSoft)),
                         if (s.cbd != null) ...[
                           const SizedBox(width: 8),
                           Text("CBD ${s.cbd}%",
-                              style: TextStyle(
+                              style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: GwColors.inkSoft)),
@@ -214,13 +214,13 @@ class _StrainsScreenState extends State<StrainsScreen> {
                       Text(s.effects.take(3).join(" · "),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
+                          style: const TextStyle(
                               fontSize: 12, color: GwColors.inkSoft)),
                     ],
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: GwColors.inkSoft),
+              const Icon(Icons.chevron_right, color: GwColors.inkSoft),
             ],
           ),
         ),
@@ -346,7 +346,7 @@ class StrainDetailScreen extends StatelessWidget {
                   color: GwColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.forum_outlined,
+                child: const Icon(Icons.forum_outlined,
                     color: GwColors.primary, size: 22),
               ),
               const SizedBox(width: 12),
@@ -361,12 +361,12 @@ class StrainDetailScreen extends StatelessWidget {
                     Text(
                         tr(context, "Share a photo, voice note or video",
                             "ဓာတ်ပုံ၊ အသံ သို့မဟုတ် ဗီဒီယို မျှဝေရန်"),
-                        style: TextStyle(
+                        style: const TextStyle(
                             color: GwColors.inkSoft, fontSize: 12)),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: GwColors.inkSoft),
+              const Icon(Icons.chevron_right, color: GwColors.inkSoft),
             ],
           ),
         ),
@@ -405,7 +405,7 @@ class StrainDetailScreen extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(k, style: TextStyle(color: GwColors.inkSoft, fontSize: 13)),
+            Text(k, style: const TextStyle(color: GwColors.inkSoft, fontSize: 13)),
             Text(v,
                 style:
                     const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),

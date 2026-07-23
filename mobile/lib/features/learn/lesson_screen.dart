@@ -120,7 +120,7 @@ class _LessonScreenState extends State<LessonScreen> {
             maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
       body: _loading
-          ? Center(
+          ? const Center(
               child: CircularProgressIndicator(color: GwColors.primary))
           : _error != null || l == null
               ? ListView(children: [
@@ -284,7 +284,7 @@ class _LessonScreenState extends State<LessonScreen> {
                       context,
                       "This lesson has an interactive playground (run code, build circuits). It opens in the browser.",
                       "ဒီသင်ခန်းစာမှာ code ရေး/စမ်းနိုင်တဲ့ playground ပါဝင်ပါတယ်။ Browser တွင် ဖွင့်ပါမည်။"),
-                  style: TextStyle(
+                  style: const TextStyle(
                       fontSize: 12.5, color: GwColors.inkSoft, height: 1.4),
                 ),
                 const SizedBox(height: 10),
@@ -351,7 +351,7 @@ class _LessonScreenState extends State<LessonScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(tr(context, "Next lesson", "နောက်သင်ခန်းစာ"),
-                            style: TextStyle(
+                            style: const TextStyle(
                                 color: GwColors.inkSoft, fontSize: 11.5)),
                         Text(next["title"]?.toString() ?? "",
                             maxLines: 1,
@@ -505,7 +505,7 @@ class _LessonScreenState extends State<LessonScreen> {
                   padding: const EdgeInsets.only(top: 4),
                   child: Center(
                     child: Text(image["caption"].toString(),
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 11.5, color: GwColors.inkSoft)),
                   ),
                 ),
@@ -561,13 +561,9 @@ class _LessonScreenState extends State<LessonScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              // The "try again" panel used a hardcoded pale amber, which put
-              // near-white body text on a cream fill (1.06:1) in dark mode.
               color: scorePct >= 60
                   ? GwColors.primary.withValues(alpha: 0.1)
-                  : (GwColors.isDark
-                      ? const Color(0xFF2E2508)
-                      : const Color(0xFFFEF3C7)),
+                  : const Color(0xFFFEF3C7),
               borderRadius: BorderRadius.circular(GwRadius.lg),
             ),
             child: Text(
@@ -770,7 +766,7 @@ class _RichLessonText extends StatelessWidget {
           SizedBox(
             width: 20,
             child: Text(marker,
-                style: TextStyle(
+                style: const TextStyle(
                     color: GwColors.primary,
                     fontWeight: FontWeight.w800,
                     fontSize: 13.5)),
@@ -793,7 +789,7 @@ class _RichLessonText extends StatelessWidget {
       if (m.group(1) != null) {
         spans.add(TextSpan(
           text: " ${m.group(1)} ",
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: "monospace",
             fontSize: 12.5,
             color: GwColors.primary,
@@ -812,7 +808,7 @@ class _RichLessonText extends StatelessWidget {
     if (last < text.length) spans.add(TextSpan(text: text.substring(last)));
     return Text.rich(
       TextSpan(
-        style: TextStyle(
+        style: const TextStyle(
             fontSize: 13.5, height: 1.5, color: GwColors.ink),
         children: spans,
       ),

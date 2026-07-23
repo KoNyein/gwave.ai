@@ -67,9 +67,10 @@ class Post {
     required this.shareCount,
     required this.createdAt,
     this.locationName,
+    this.latitude,
+    this.longitude,
     this.author,
     this.media = const [],
-    this.protected = false,
   });
 
   final String id;
@@ -80,13 +81,10 @@ class Post {
   final int shareCount;
   final DateTime createdAt;
   final String? locationName;
+  final double? latitude;
+  final double? longitude;
   final Profile? author;
   final List<PostMedia> media;
-
-  /// When true the poster forbade screenshots / saving: the viewer raises
-  /// FLAG_SECURE and hides every share/save affordance. Backed by
-  /// `posts.protected` (default false); flows through the app's `select("*")`.
-  final bool protected;
 
   PostMedia? get firstImage {
     for (final m in media) {
@@ -113,11 +111,12 @@ class Post {
       shareCount: _i(j["share_count"]),
       createdAt: DateTime.tryParse("${j["created_at"]}")?.toLocal() ?? DateTime.now(),
       locationName: _s(j["location_name"]),
+      latitude: _d(j["latitude"]),
+      longitude: _d(j["longitude"]),
       author: authorJson is Map<String, dynamic>
           ? Profile.fromJson(authorJson)
           : null,
       media: media,
-      protected: j["protected"] == true,
     );
   }
 }
@@ -176,6 +175,8 @@ class LiveStream {
     this.vodPlaybackId,
     this.host,
     this.createdAt,
+    this.locationName,
+    this.livekitRoom,
   });
 
   final String id;
@@ -189,6 +190,11 @@ class LiveStream {
   final String? vodPlaybackId;
   final Profile? host;
   final DateTime? createdAt;
+  final String? locationName;
+
+  /// Set when the broadcast goes through the LiveKit SFU (browser Go Live).
+  /// Those streams have no HLS URL — viewers join the room over WebRTC.
+  final String? livekitRoom;
 
   bool get isLive => status == "live";
 
@@ -206,6 +212,8 @@ class LiveStream {
       vodPlaybackId: _s(j["vod_playback_id"]),
       host: hostJson is Map<String, dynamic> ? Profile.fromJson(hostJson) : null,
       createdAt: DateTime.tryParse("${j["created_at"]}")?.toLocal(),
+      locationName: _s(j["location_name"]),
+      livekitRoom: _s(j["livekit_room"]),
     );
   }
 }
@@ -322,6 +330,7 @@ class Reel {
     required this.viewCount,
     this.posterPath,
     this.caption,
+    this.locationName,
     this.author,
   });
 
@@ -332,6 +341,7 @@ class Reel {
   final int viewCount;
   final String? posterPath;
   final String? caption;
+  final String? locationName;
   final Profile? author;
 
   factory Reel.fromJson(Map<String, dynamic> j) {
@@ -344,6 +354,7 @@ class Reel {
       viewCount: _i(j["view_count"]),
       posterPath: _s(j["poster_path"]),
       caption: _s(j["caption"]),
+      locationName: _s(j["location_name"]),
       author: a is Map<String, dynamic> ? Profile.fromJson(a) : null,
     );
   }

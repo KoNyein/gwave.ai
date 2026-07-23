@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
@@ -33,6 +34,18 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
   VideoPlayerController? _controller;
   bool _ready = false;
   String? _error;
+
+  // Browser Go Live broadcasts publish over the LiveKit SFU (WebRTC) and have
+  // no HLS URL — the app joins the room as a subscriber like the web viewer.
+  lk.Room? _room;
+  lk.EventsListener<lk.RoomEvent>? _lkListener;
+  lk.VideoTrack? _lkVideo;
+  bool _lkConnected = false;
+
+  bool get _useLivekit =>
+      widget.stream.isLive &&
+      (widget.stream.livekitRoom != null &&
+          widget.stream.livekitRoom!.isNotEmpty);
   final _chat = TextEditingController();
   final _chatScroll = ScrollController();
   final List<LiveChatMessage> _lines = [];
@@ -51,7 +64,11 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
     super.initState();
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
     _viewers = widget.stream.viewerCount;
-    _initVideo();
+    if (_useLivekit) {
+      _initLivekit();
+    } else {
+      _initVideo();
+    }
     _loadChat();
     // Poll chat, reactions and viewer count while the stream is live.
     if (widget.stream.isLive) {
@@ -77,6 +94,48 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
       return "https://stream.mux.com/${s.vodPlaybackId}.m3u8";
     }
     return null;
+  }
+
+  /// Join the LiveKit room as a subscriber and show the host's video track.
+  /// Audio tracks play automatically once subscribed.
+  Future<void> _initLivekit() async {
+    try {
+      final t = await context.read<AppState>().api.liveToken(widget.stream.id);
+      final room = lk.Room(
+        roomOptions: const lk.RoomOptions(adaptiveStream: true, dynacast: true),
+      );
+      _room = room;
+      final listener = room.createListener();
+      _lkListener = listener;
+      listener
+        ..on<lk.TrackSubscribedEvent>((e) {
+          final track = e.track;
+          if (track is lk.VideoTrack && mounted) {
+            setState(() => _lkVideo = track);
+          }
+        })
+        ..on<lk.TrackUnsubscribedEvent>((e) {
+          if (e.track == _lkVideo && mounted) {
+            setState(() => _lkVideo = null);
+          }
+        })
+        ..on<lk.RoomDisconnectedEvent>((_) {
+          if (mounted) setState(() => _lkVideo = null);
+        });
+      await room.connect(t.url, t.token);
+      // Pick up a video track the host already published before we joined.
+      for (final p in room.remoteParticipants.values) {
+        for (final pub in p.videoTrackPublications) {
+          final track = pub.track;
+          if (track is lk.VideoTrack) _lkVideo = track;
+        }
+      }
+      if (mounted) setState(() => _lkConnected = true);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = "Couldn't connect to the live stream.");
+      }
+    }
   }
 
   Future<void> _initVideo() async {
@@ -160,13 +219,15 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
   @override
   void dispose() {
     _poll?.cancel();
+    _lkListener?.dispose();
+    final room = _room;
+    if (room != null) {
+      room.disconnect().then((_) => room.dispose());
+    }
     _controller?.dispose();
     _chat.dispose();
     _chatScroll.dispose();
-    // Restore the *theme's* chrome, not a hardcoded light-mode style — under
-    // the dark theme `SystemUiOverlayStyle.dark` paints dark status-bar icons
-    // on a black background, i.e. an invisible status bar.
-    SystemChrome.setSystemUIOverlayStyle(gwOverlayStyle());
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
     super.dispose();
   }
 
@@ -282,6 +343,27 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
         ),
       );
     }
+    if (_useLivekit) {
+      if (_lkVideo != null) {
+        return lk.VideoTrackRenderer(_lkVideo!, fit: lk.VideoViewFit.cover);
+      }
+      if (_lkConnected) {
+        return const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 14),
+              Text("Waiting for the host's video...",
+                  style: TextStyle(color: Colors.white70)),
+            ],
+          ),
+        );
+      }
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    }
     if (!_ready || _controller == null) {
       return const Center(
         child: CircularProgressIndicator(color: Colors.white),
@@ -346,7 +428,7 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
           ),
           const Spacer(),
           if (s.isLive)
-            GwPill(
+            const GwPill(
                 label: "LIVE",
                 color: GwColors.live,
                 filled: true,
@@ -465,7 +547,7 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
             TextSpan(children: [
               TextSpan(
                 text: "${l.senderName}  ",
-                style: TextStyle(
+                style: const TextStyle(
                     color: GwColors.primaryBright,
                     fontWeight: FontWeight.w700,
                     fontSize: 13),
@@ -510,12 +592,12 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
           ),
           IconButton(
             icon: _sending
-                ? SizedBox(
+                ? const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
                         strokeWidth: 2.2, color: GwColors.primaryBright))
-                : Icon(Icons.send, color: GwColors.primaryBright),
+                : const Icon(Icons.send, color: GwColors.primaryBright),
             onPressed: _send,
           ),
         ],

@@ -6,19 +6,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:realtime_client/realtime_client.dart';
 import 'package:record/record.dart';
 
 import '../../core/app_state.dart';
+import '../../core/config.dart';
 import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 
-/// Native walkie-talkie console for one channel. Hold the big mic button to
-/// record; releasing uploads the clip and posts it to the channel. New clips
-/// from other members arrive on a short poll and play automatically — true
-/// walkie-talkie behaviour — and the whole history stays tappable to replay.
+/// Native walkie-talkie console for one channel, Zello-style. Hold the big
+/// mic button to record; releasing uploads the clip and pushes it to everyone
+/// over a Realtime broadcast, where it plays instantly. While a member holds
+/// the button the others see a live "on air" banner, and the header shows who
+/// is online right now (lightweight ping presence). A slow poll remains as a
+/// fallback so clips are never lost if the socket drops.
 class PttChannelScreen extends StatefulWidget {
   const PttChannelScreen({super.key, required this.channel});
   final PttChannel channel;
@@ -48,6 +52,15 @@ class _PttChannelScreenState extends State<PttChannelScreen>
   String? _playingId;
   final List<PttMessage> _playQueue = [];
 
+  // Realtime: instant clip delivery + live "on air" + who's-online pings.
+  RealtimeClient? _rt;
+  RealtimeChannel? _rtChannel;
+  Timer? _pingTimer;
+  final Map<String, DateTime> _onlineSeen = {}; // profile id -> last ping
+  String? _talkingId; // who is holding the button right now
+  String? _talkingName;
+  Timer? _talkingClear; // safety: drop a stuck "on air" if talk_off was lost
+
   late final AnimationController _pulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 700),
@@ -59,7 +72,10 @@ class _PttChannelScreenState extends State<PttChannelScreen>
   void initState() {
     super.initState();
     _load();
-    _poll = Timer.periodic(const Duration(seconds: 3), (_) => _fetchNew());
+    // The Realtime broadcast is the fast path; this poll only backfills
+    // anything missed while the socket was down.
+    _poll = Timer.periodic(const Duration(seconds: 8), (_) => _fetchNew());
+    _connectRealtime();
     _player.onPlayerComplete.listen((_) {
       if (!mounted) return;
       setState(() => _playingId = null);
@@ -70,6 +86,12 @@ class _PttChannelScreenState extends State<PttChannelScreen>
   @override
   void dispose() {
     _poll?.cancel();
+    _pingTimer?.cancel();
+    _talkingClear?.cancel();
+    try {
+      _rtChannel?.unsubscribe();
+      _rt?.disconnect();
+    } catch (_) {}
     _recordTicker?.cancel();
     _pulse.dispose();
     _recorder.dispose();
@@ -79,6 +101,134 @@ class _PttChannelScreenState extends State<PttChannelScreen>
   }
 
   String get _myId => context.read<AppState>().api.session!.profileId;
+
+  /// My identity as broadcast payload (matches Profile.fromJson keys).
+  Map<String, dynamic> get _fromPayload {
+    final me = context.read<AppState>().me;
+    return {
+      "id": _myId,
+      "username": me?.username,
+      "full_name": me?.fullName,
+      "avatar_url": me?.avatarUrl,
+    };
+  }
+
+  // ---- Realtime (Zello-style instant delivery) ------------------------------
+
+  Future<void> _connectRealtime() async {
+    try {
+      final api = context.read<AppState>().api;
+      await api.freshToken();
+      final token = api.session?.token;
+      if (token == null) return;
+      _rt = RealtimeClient(
+        AppConfig.realtimeUrl,
+        params: {"apikey": AppConfig.supabaseAnonKey},
+      );
+      _rt!.setAuth(token);
+      _rt!.connect();
+      final ch = _rt!.channel("ptt:${widget.channel.id}");
+      ch
+        ..onBroadcast(event: "clip", callback: _onClipEvent)
+        ..onBroadcast(event: "talk", callback: _onTalkEvent)
+        ..onBroadcast(event: "ping", callback: _onPingEvent);
+      ch.subscribe();
+      _rtChannel = ch;
+      // Lightweight presence: everyone pings every 25s; entries older than
+      // 70s count as offline.
+      _sendPing();
+      _pingTimer =
+          Timer.periodic(const Duration(seconds: 25), (_) => _sendPing());
+    } catch (_) {
+      // Realtime is an accelerator — the poll still delivers everything.
+    }
+  }
+
+  void _sendPing() {
+    try {
+      _rtChannel?.sendBroadcastMessage(
+        event: "ping",
+        payload: {"from": _fromPayload},
+      );
+    } catch (_) {}
+  }
+
+  void _markOnline(dynamic from) {
+    if (from is! Map) return;
+    final id = from["id"]?.toString();
+    if (id == null || id.isEmpty) return;
+    _onlineSeen[id] = DateTime.now();
+  }
+
+  int get _onlineCount {
+    final cutoff = DateTime.now().subtract(const Duration(seconds: 70));
+    _onlineSeen.removeWhere((_, t) => t.isBefore(cutoff));
+    // Ourselves + everyone recently heard from.
+    return {_myId, ..._onlineSeen.keys}.length;
+  }
+
+  void _onPingEvent(Map<String, dynamic> payload) {
+    _markOnline(payload["from"]);
+    if (mounted) setState(() {});
+  }
+
+  void _onTalkEvent(Map<String, dynamic> payload) {
+    final from = payload["from"];
+    _markOnline(from);
+    if (from is! Map) return;
+    final id = from["id"]?.toString();
+    if (id == null || id == _myId || !mounted) return;
+    final on = payload["on"] == true;
+    setState(() {
+      if (on) {
+        _talkingId = id;
+        _talkingName = Profile.fromJson(Map<String, dynamic>.from(from))
+            .displayName;
+      } else if (_talkingId == id) {
+        _talkingId = null;
+        _talkingName = null;
+      }
+    });
+    _talkingClear?.cancel();
+    if (on) {
+      _talkingClear = Timer(const Duration(seconds: 30), () {
+        if (mounted && _talkingId == id) {
+          setState(() {
+            _talkingId = null;
+            _talkingName = null;
+          });
+        }
+      });
+    }
+  }
+
+  void _onClipEvent(Map<String, dynamic> payload) {
+    final from = payload["from"];
+    _markOnline(from);
+    final raw = payload["message"];
+    if (raw is! Map || from is! Map) return;
+    if (from["id"]?.toString() == _myId) return; // our own broadcast
+    if (!mounted) return;
+    final m = PttMessage(
+      id: raw["id"].toString(),
+      userId: from["id"].toString(),
+      audioPath: (raw["audio_path"] ?? "").toString(),
+      durationMs: (raw["duration_ms"] as num?)?.toInt(),
+      createdAt: DateTime.tryParse("${raw["created_at"]}")?.toLocal() ??
+          DateTime.now(),
+      person: Profile.fromJson(Map<String, dynamic>.from(from)),
+    );
+    if (_messages.any((x) => x.id == m.id)) return;
+    setState(() {
+      _messages = [..._messages, m];
+      _lastSeenIso = m.createdAt.toUtc().toIso8601String();
+      _talkingId = null;
+      _talkingName = null;
+    });
+    _jumpToEnd();
+    _playQueue.add(m);
+    _drainQueue();
+  }
 
   Future<void> _load() async {
     try {
@@ -207,6 +357,13 @@ class _PttChannelScreenState extends State<PttChannelScreen>
         _recording = true;
         _recordElapsed = Duration.zero;
       });
+      // Everyone in the channel sees "on air" the instant the button goes down.
+      try {
+        _rtChannel?.sendBroadcastMessage(
+          event: "talk",
+          payload: {"on": true, "from": _fromPayload},
+        );
+      } catch (_) {}
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -224,6 +381,12 @@ class _PttChannelScreenState extends State<PttChannelScreen>
     final startedAt = _recordStart;
     _recordStart = null;
     setState(() => _recording = false);
+    try {
+      _rtChannel?.sendBroadcastMessage(
+        event: "talk",
+        payload: {"on": false, "from": _fromPayload},
+      );
+    } catch (_) {}
 
     String? path;
     try {
@@ -255,6 +418,19 @@ class _PttChannelScreenState extends State<PttChannelScreen>
           _lastSeenIso = sent.createdAt.toUtc().toIso8601String();
         });
         _jumpToEnd();
+        // Push the clip to everyone instantly — receivers play it on arrival
+        // instead of waiting for their next poll.
+        try {
+          _rtChannel?.sendBroadcastMessage(event: "clip", payload: {
+            "message": {
+              "id": sent.id,
+              "audio_path": sent.audioPath,
+              "duration_ms": sent.durationMs,
+              "created_at": sent.createdAt.toUtc().toIso8601String(),
+            },
+            "from": _fromPayload,
+          });
+        } catch (_) {}
       }
     } catch (e) {
       if (mounted) {
@@ -339,7 +515,7 @@ class _PttChannelScreenState extends State<PttChannelScreen>
           TextButton(
               onPressed: () => Navigator.of(ctx).pop(true),
               child: Text(tr(ctx, "Leave", "ထွက်မည်"),
-                  style: TextStyle(color: GwColors.live))),
+                  style: const TextStyle(color: GwColors.live))),
         ],
       ),
     );
@@ -367,13 +543,29 @@ class _PttChannelScreenState extends State<PttChannelScreen>
           children: [
             Text(widget.channel.name,
                 maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text(
-              tr(context, "${widget.channel.memberCount} members",
-                  "အဖွဲ့ဝင် ${widget.channel.memberCount} ဦး"),
-              style: TextStyle(
-                  fontSize: 12,
-                  color: GwColors.inkSoft,
-                  fontWeight: FontWeight.w500),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF2E9E5B),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  tr(
+                      context,
+                      "$_onlineCount online · ${widget.channel.memberCount} members",
+                      "Online $_onlineCount ဦး · အဖွဲ့ဝင် ${widget.channel.memberCount} ဦး"),
+                  style: const TextStyle(
+                      fontSize: 12,
+                      color: GwColors.inkSoft,
+                      fontWeight: FontWeight.w500),
+                ),
+              ],
             ),
           ],
         ),
@@ -405,9 +597,10 @@ class _PttChannelScreenState extends State<PttChannelScreen>
       body: Column(
         children: [
           if (widget.channel.joinCode != null) _codeBanner(),
+          if (_talkingName != null) _onAirBanner(),
           Expanded(
             child: _loading
-                ? Center(
+                ? const Center(
                     child: CircularProgressIndicator(color: GwColors.primary))
                 : _error != null && _messages.isEmpty
                     ? GwEmpty(
@@ -436,6 +629,31 @@ class _PttChannelScreenState extends State<PttChannelScreen>
     );
   }
 
+  /// Live "on air" strip while another member is holding their mic button.
+  Widget _onAirBanner() {
+    return Container(
+      width: double.infinity,
+      color: GwColors.live.withValues(alpha: 0.10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          const Icon(Icons.settings_voice, size: 16, color: GwColors.live),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              tr(context, "🔴 $_talkingName is talking…",
+                  "🔴 $_talkingName ပြောနေသည်…"),
+              style: const TextStyle(
+                  fontSize: 13,
+                  color: GwColors.live,
+                  fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _codeBanner() {
     return InkWell(
       onTap: _copyCode,
@@ -445,20 +663,20 @@ class _PttChannelScreenState extends State<PttChannelScreen>
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
-            Icon(Icons.key, size: 15, color: GwColors.primary),
+            const Icon(Icons.key, size: 15, color: GwColors.primary),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
                 tr(context,
                     "Join code: ${widget.channel.joinCode} — tap to copy",
                     "Join code: ${widget.channel.joinCode} — ကူးရန် နှိပ်ပါ"),
-                style: TextStyle(
+                style: const TextStyle(
                     fontSize: 12.5,
                     color: GwColors.primary,
                     fontWeight: FontWeight.w700),
               ),
             ),
-            Icon(Icons.copy, size: 14, color: GwColors.primary),
+            const Icon(Icons.copy, size: 14, color: GwColors.primary),
           ],
         ),
       ),
@@ -505,7 +723,7 @@ class _PttChannelScreenState extends State<PttChannelScreen>
                 children: [
                   if (!isMine)
                     Text(name,
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w800,
                             color: GwColors.primary)),
@@ -517,19 +735,19 @@ class _PttChannelScreenState extends State<PttChannelScreen>
                             ? Icons.stop_circle_outlined
                             : Icons.play_circle_fill,
                         size: 28,
-                        color: isMine ? GwColors.onPrimary : GwColors.primary,
+                        color: isMine ? Colors.white : GwColors.primary,
                       ),
                       const SizedBox(width: 8),
                       Icon(Icons.graphic_eq,
                           size: 18,
-                          color: isMine ? GwColors.onPrimarySoft : GwColors.inkSoft),
+                          color: isMine ? Colors.white70 : GwColors.inkSoft),
                       const SizedBox(width: 6),
                       Text(
                         "${secs}s",
                         style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w700,
-                            color: isMine ? GwColors.onPrimary : GwColors.ink),
+                            color: isMine ? Colors.white : GwColors.ink),
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -537,7 +755,7 @@ class _PttChannelScreenState extends State<PttChannelScreen>
                         style: TextStyle(
                             fontSize: 10.5,
                             color:
-                                isMine ? GwColors.onPrimarySoft : GwColors.inkSoft),
+                                isMine ? Colors.white70 : GwColors.inkSoft),
                       ),
                     ],
                   ),
@@ -556,7 +774,7 @@ class _PttChannelScreenState extends State<PttChannelScreen>
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: GwColors.surface,
           border: Border(top: BorderSide(color: GwColors.line)),
         ),
