@@ -33,11 +33,13 @@ class Repository {
     String content, {
     String? locationName,
     List<PostMedia> media = const [],
+    bool protected = false,
   }) async {
     final row = await api.insert("posts", {
       "author_id": api.session!.profileId,
       "content": content,
       "visibility": "public",
+      "protected": protected,
       if (locationName != null && locationName.isNotEmpty)
         "location_name": locationName,
     });
