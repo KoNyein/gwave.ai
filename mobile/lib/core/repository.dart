@@ -615,8 +615,7 @@ class Repository {
   /// the person who raised it. RLS scopes this to open alerts + the caller's.
   Future<List<Map<String, dynamic>>> activeSosAlerts() async {
     return api.select("sos_alerts", query: {
-      "select":
-          "id,user_id,status,latitude,longitude,message,created_at,person:profiles!sos_alerts_user_id_fkey($_profileCols)",
+      "select": "*,person:profiles!sos_alerts_user_id_fkey($_profileCols)",
       "status": "in.(active,safe)",
       "order": "created_at.desc",
       "limit": "100",
@@ -625,7 +624,15 @@ class Repository {
 
   /// Raise (or refresh) my own SOS at [lat],[lng]. Updates my open alert if I
   /// already have one, else creates it.
-  Future<void> sendSos(double lat, double lng, {String? message}) async {
+  Future<void> sendSos(
+    double lat,
+    double lng, {
+    String? message,
+    String? reason,
+    String? phone,
+    String? mediaPath,
+    String? mediaKind,
+  }) async {
     final me = api.session!.profileId;
     final mine = await api.select("sos_alerts", query: {
       "select": "id",
@@ -644,6 +651,20 @@ class Repository {
           filter: {"id": "eq.${mine.first["id"]}"});
     } else {
       await api.insert("sos_alerts", {"user_id": me, ...fields});
+    }
+    // Detail columns (reason/phone/media) ship separately — a database that
+    // hasn't run sos-details.sql yet must never block the core SOS.
+    final details = <String, dynamic>{
+      if (reason != null && reason.isNotEmpty) "reason": reason,
+      if (phone != null && phone.trim().isNotEmpty) "phone": phone.trim(),
+      if (mediaPath != null && mediaPath.isNotEmpty) "media_path": mediaPath,
+      if (mediaKind != null && mediaKind.isNotEmpty) "media_kind": mediaKind,
+    };
+    if (details.isNotEmpty) {
+      try {
+        await api.update("sos_alerts", details,
+            filter: {"user_id": "eq.$me", "status": "in.(active,safe)"});
+      } catch (_) {}
     }
   }
 
