@@ -53,182 +53,185 @@ class ProfileScreen extends StatelessWidget {
     final coverH =
         (MediaQuery.of(context).size.width * 0.42).clamp(150.0, 240.0);
 
+    const avatarSize = 108.0;
+    const avatarOverlap = 54.0; // half the avatar hangs over the cover edge
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            expandedHeight: coverH,
-            pinned: true,
-            backgroundColor: GwColors.primary,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _cover(resolveMedia(me?.coverUrl)),
-                  // Change-cover control, Facebook style (bottom-right).
-                  Positioned(
-                    right: 12,
-                    bottom: 12,
-                    child: InkWell(
-                      onTap: () => _changePhoto(context, cover: true),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.45),
-                          borderRadius: BorderRadius.circular(20),
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Cover + avatar live in ONE Stack so the avatar always paints
+                // on top of the cover. (A pinned SliverAppBar used to paint
+                // over the translated avatar and swallow its top half.)
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Column(
+                      children: [
+                        SizedBox(
+                          height: coverH,
+                          width: double.infinity,
+                          child: _cover(resolveMedia(me?.coverUrl)),
                         ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
+                        // Room for the hanging half of the avatar.
+                        const SizedBox(height: avatarOverlap + 10),
+                      ],
+                    ),
+                    // Settings gear over the cover's top-right.
+                    Positioned(
+                      top: MediaQuery.of(context).padding.top + 2,
+                      right: 4,
+                      child: IconButton(
+                        icon: Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.35),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.settings,
+                              color: Colors.white, size: 20),
+                        ),
+                        onPressed: () => _openSettings(context),
+                      ),
+                    ),
+                    // Change-cover control, Facebook style (bottom-right of
+                    // the cover itself).
+                    Positioned(
+                      right: 12,
+                      bottom: avatarOverlap + 10 + 12,
+                      child: InkWell(
+                        onTap: () => _changePhoto(context, cover: true),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.45),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.photo_camera_outlined,
+                                  color: Colors.white, size: 16),
+                              SizedBox(width: 6),
+                              Text("Cover",
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // The avatar, overlapping the cover's bottom-left with a
+                    // thick page-background ring — classic Facebook.
+                    Positioned(
+                      left: 16,
+                      top: coverH - avatarOverlap,
+                      child: Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: const BoxDecoration(
+                          color: GwColors.bg,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Stack(
                           children: [
-                            Icon(Icons.photo_camera_outlined,
-                                color: Colors.white, size: 16),
-                            SizedBox(width: 6),
-                            Text("Cover",
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w700)),
+                            GwAvatar(
+                              url: resolveMedia(me?.avatarUrl),
+                              name: name,
+                              size: avatarSize,
+                            ),
+                            Positioned(
+                              right: 2,
+                              bottom: 2,
+                              child: InkWell(
+                                onTap: () =>
+                                    _changePhoto(context, cover: false),
+                                child: Container(
+                                  width: 34,
+                                  height: 34,
+                                  decoration: BoxDecoration(
+                                    color: GwColors.surfaceMuted,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: GwColors.bg, width: 2.5),
+                                  ),
+                                  child: const Icon(Icons.photo_camera,
+                                      color: GwColors.ink, size: 17),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.settings, color: Colors.white),
-                onPressed: () => _openSettings(context),
-              ),
-            ],
-          ),
-          SliverToBoxAdapter(
-            // Facebook-style header: the avatar hangs over the cover's bottom
-            // edge on the LEFT with a thick background ring; name, @username
-            // and bio sit left-aligned beneath it, then the action buttons.
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+                  ],
+                ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Transform.translate(
-                        offset: const Offset(0, -48),
-                        child: Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: const BoxDecoration(
-                            color: GwColors.bg,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Stack(
-                            children: [
-                              GwAvatar(
-                                url: resolveMedia(me?.avatarUrl),
-                                name: name,
-                                size: 108,
-                              ),
-                              Positioned(
-                                right: 2,
-                                bottom: 2,
-                                child: InkWell(
-                                  onTap: () =>
-                                      _changePhoto(context, cover: false),
-                                  child: Container(
-                                    width: 34,
-                                    height: 34,
-                                    decoration: BoxDecoration(
-                                      color: GwColors.surfaceMuted,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                          color: GwColors.bg, width: 2.5),
-                                    ),
-                                    child: const Icon(Icons.photo_camera,
-                                        color: GwColors.ink, size: 17),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                      Text(name,
+                          style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5)),
+                      if (me?.username != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text("@${me!.username}",
+                              style: const TextStyle(
+                                  color: GwColors.inkSoft, fontSize: 14)),
                         ),
-                      ),
-                      Transform.translate(
-                        offset: const Offset(0, -36),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(name,
-                                style: const TextStyle(
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.5)),
-                            if (me?.username != null)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Text("@${me!.username}",
-                                    style: const TextStyle(
-                                        color: GwColors.inkSoft,
-                                        fontSize: 14)),
-                              ),
-                            if (me?.bio != null && me!.bio!.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Text(me.bio!,
-                                    style: const TextStyle(
-                                        color: GwColors.ink,
-                                        fontSize: 14.5,
-                                        height: 1.35)),
-                              ),
-                            const SizedBox(height: 14),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () => _openSettings(context),
-                                    icon: const Icon(Icons.edit, size: 18),
-                                    label: const Text("Edit Profile"),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                OutlinedButton(
-                                  onPressed: () => _openWeb(
-                                      context, "/u/${me?.username ?? ''}"),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: GwColors.primary,
-                                    backgroundColor: GwColors.surface,
-                                    side:
-                                        const BorderSide(color: GwColors.line),
-                                    padding: const EdgeInsets.all(14),
-                                  ),
-                                  child:
-                                      const Icon(Icons.open_in_new, size: 18),
-                                ),
-                              ],
+                      if (me?.bio != null && me!.bio!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(me.bio!,
+                              style: const TextStyle(
+                                  color: GwColors.ink,
+                                  fontSize: 14.5,
+                                  height: 1.35)),
+                        ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => _openSettings(context),
+                              icon: const Icon(Icons.edit, size: 18),
+                              label: const Text("Edit Profile"),
                             ),
-                            const SizedBox(height: 6),
-                            const Divider(color: GwColors.line, height: 20),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 10),
+                          OutlinedButton(
+                            onPressed: () =>
+                                _openWeb(context, "/u/${me?.username ?? ''}"),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: GwColors.primary,
+                              backgroundColor: GwColors.surface,
+                              side: const BorderSide(color: GwColors.line),
+                              padding: const EdgeInsets.all(14),
+                            ),
+                            child: const Icon(Icons.open_in_new, size: 18),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 6),
+                      const Divider(color: GwColors.line, height: 20),
                     ],
                   ),
                 ),
-                Transform.translate(
-                  offset: const Offset(0, -20),
-                  child: Column(
-                    children: [
-                      _menu(context),
-                      // Facebook-style timeline: your own posts right on the
-                      // profile, newest first.
-                      const _MyPostsSection(),
-                      const SizedBox(height: 30),
-                    ],
-                  ),
-                ),
+                _menu(context),
+                // Facebook-style timeline: your own posts right on the
+                // profile, newest first.
+                const _MyPostsSection(),
+                const SizedBox(height: 30),
               ],
             ),
           ),
