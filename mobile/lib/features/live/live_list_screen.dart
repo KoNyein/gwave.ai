@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:video_player/video_player.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
+import '../../core/config.dart';
 import '../../core/models.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
@@ -210,10 +212,59 @@ class LiveSwipeScreen extends StatelessWidget {
   }
 }
 
-class _LiveCard extends StatelessWidget {
+class _LiveCard extends StatefulWidget {
   const _LiveCard({required this.stream, required this.onTap});
   final LiveStream stream;
   final VoidCallback onTap;
+
+  @override
+  State<_LiveCard> createState() => _LiveCardState();
+}
+
+class _LiveCardState extends State<_LiveCard> {
+  LiveStream get stream => widget.stream;
+  VideoPlayerController? _vc;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPreview();
+  }
+
+  @override
+  void dispose() {
+    _vc?.dispose();
+    super.dispose();
+  }
+
+  /// TikTok-style: the card itself plays the video (muted). Live HLS for app
+  /// broadcasts, the saved recording for replays.
+  Future<void> _initPreview() async {
+    final s = stream;
+    String? url;
+    if (s.isLive && (s.ivsPlaybackUrl?.isNotEmpty ?? false)) {
+      url = s.ivsPlaybackUrl;
+    } else if (!s.isLive && s.hasReplay) {
+      final rp = s.recordingPath;
+      if (rp != null && rp.isNotEmpty) {
+        url = rp.startsWith("http")
+            ? rp
+            : "${AppConfig.apiBase}/recordings/$rp";
+      } else if (s.vodPlaybackId?.isNotEmpty ?? false) {
+        url = "https://stream.mux.com/${s.vodPlaybackId}.m3u8";
+      }
+    }
+    if (url == null) return;
+    try {
+      final c = VideoPlayerController.networkUrl(Uri.parse(url!));
+      _vc = c;
+      await c.initialize();
+      await c.setVolume(0);
+      await c.setLooping(!s.isLive);
+      await c.play();
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -335,6 +386,17 @@ class _LiveCard extends StatelessWidget {
   }
 
   Widget _thumb() {
+    if (_vc != null && _vc!.value.isInitialized) {
+      return FittedBox(
+        fit: BoxFit.cover,
+        clipBehavior: Clip.hardEdge,
+        child: SizedBox(
+          width: _vc!.value.size.width,
+          height: _vc!.value.size.height,
+          child: VideoPlayer(_vc!),
+        ),
+      );
+    }
     // Best visual available: host's cover photo, else their avatar blown up.
     final cover = stream.host?.coverUrl;
     final avatar = stream.host?.avatarUrl;
