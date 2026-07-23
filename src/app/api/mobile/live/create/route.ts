@@ -20,6 +20,10 @@ export const dynamic = "force-dynamic";
 const schema = z.object({
   title: z.string().min(1).max(120),
   description: z.string().max(1000).optional(),
+  // Optional location tag (shown as a pin on the live card).
+  locationName: z.string().trim().max(120).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
 });
 
 function bearer(request: NextRequest): string | undefined {
@@ -71,6 +75,13 @@ export async function POST(request: NextRequest) {
       ivs_ingest_url: channel.ingestUrl,
       ivs_playback_url: channel.playbackUrl,
       kind: "stream",
+      ...(parsed.data.locationName
+        ? { location_name: parsed.data.locationName }
+        : {}),
+      ...(parsed.data.latitude !== undefined &&
+      parsed.data.longitude !== undefined
+        ? { latitude: parsed.data.latitude, longitude: parsed.data.longitude }
+        : {}),
     })
     .select("id")
     .single();
