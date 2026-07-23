@@ -33,7 +33,9 @@ async function publicOrigin(fallback: string): Promise<string> {
  * users — e.g. the attribute was back-filled after the token was issued — so
  * an absent claim must never be trusted on its own.
  */
-async function storedProfileId(username: string): Promise<string | null> {
+async function storedProfileId(
+  username: string,
+): Promise<string | null | undefined> {
   if (!username) return null;
   try {
     const out = await cognito().send(
@@ -47,7 +49,11 @@ async function storedProfileId(username: string): Promise<string | null> {
       null
     );
   } catch {
-    return null;
+    // The lookup itself failed (IAM permissions, throttling, network) — that
+    // is "unknown", NOT "absent". Callers must never overwrite the stored
+    // attribute based on this, or a transient failure permanently unlinks
+    // the account from its profile.
+    return undefined;
   }
 }
 
@@ -58,7 +64,7 @@ async function storedProfileId(username: string): Promise<string | null> {
 async function profileIdForEmail(
   email: string | undefined,
   selfUsername: string,
-): Promise<string | null> {
+): Promise<string | null | undefined> {
   if (!email) return null;
   try {
     const out = await cognito().send(
@@ -76,7 +82,8 @@ async function profileIdForEmail(
       if (pid) return pid;
     }
   } catch {
-    // Best effort — fall back to a fresh profile.
+    // Lookup failed — unknown, not "no match" (see storedProfileId).
+    return undefined;
   }
   return null;
 }
@@ -219,20 +226,33 @@ export async function GET(request: Request) {
           profileId = claimed;
         } else {
           const stored = await storedProfileId(cognitoUsername);
-          const linked =
-            stored ?? (await profileIdForEmail(email, cognitoUsername));
-          profileId = linked ?? randomUUID();
-          await cognito()
-            .send(
-              new AdminUpdateUserAttributesCommand({
-                UserPoolId: authEnv.cognito.userPoolId,
-                Username: cognitoUsername,
-                UserAttributes: [
-                  { Name: "custom:profile_id", Value: profileId },
-                ],
-              }),
-            )
-            .catch(() => {});
+          let linked: string | null | undefined;
+          if (typeof stored === "string") {
+            linked = stored;
+          } else if (stored === null) {
+            linked = await profileIdForEmail(email, cognitoUsername);
+          } else {
+            // User-store read failed — we know nothing; don't make a
+            // persistent decision from it.
+            linked = undefined;
+          }
+          profileId = typeof linked === "string" ? linked : randomUUID();
+          // Back-fill ONLY when the user store definitively had no value.
+          // Writing over an attribute we merely failed to READ was the bug
+          // that kept re-pointing accounts at fresh empty profiles.
+          if (stored === null && linked !== undefined) {
+            await cognito()
+              .send(
+                new AdminUpdateUserAttributesCommand({
+                  UserPoolId: authEnv.cognito.userPoolId,
+                  Username: cognitoUsername,
+                  UserAttributes: [
+                    { Name: "custom:profile_id", Value: profileId },
+                  ],
+                }),
+              )
+              .catch(() => {});
+          }
         }
 
         await setSession({
