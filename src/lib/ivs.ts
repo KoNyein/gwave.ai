@@ -1,5 +1,7 @@
 import "server-only";
 
+import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
+
 import {
   CreateChannelCommand,
   DeleteChannelCommand,
@@ -86,6 +88,49 @@ export async function createIvsChannel(name: string): Promise<IvsChannel> {
     streamKey: key,
     playbackUrl: playback,
   };
+}
+
+/**
+ * The S3 key of the newest recording IVS wrote for a channel, or null. IVS
+ * lays recordings out as ivs/v1/<account>/<channelId>/<y>/<m>/<d>/<H>/<M>/
+ * <recordingId>/media/hls/master.m3u8 (zero-padded, so lexicographic order is
+ * chronological). Nothing stores this key when a plain channel stops — no
+ * EventBridge webhook is wired — so the end/verify routes derive it here.
+ */
+export async function latestIvsRecordingPath(
+  channelArn: string,
+): Promise<string | null> {
+  const bucket = process.env.IVS_RECORDING_BUCKET;
+  const m = channelArn.match(/^arn:aws:ivs:[^:]+:(\d+):channel\/(.+)$/);
+  if (!bucket || !m) return null;
+  try {
+    const s3 = new S3Client({
+      region:
+        process.env.IVS_REGION || process.env.AWS_REGION || "ap-southeast-1",
+    });
+    const prefix = `ivs/v1/${m[1]}/${m[2]}/`;
+    let token: string | undefined;
+    let latest: string | null = null;
+    do {
+      const res = await s3.send(
+        new ListObjectsV2Command({
+          Bucket: bucket,
+          Prefix: prefix,
+          ContinuationToken: token,
+        }),
+      );
+      for (const obj of res.Contents ?? []) {
+        const key = obj.Key ?? "";
+        if (key.endsWith("/media/hls/master.m3u8") && (!latest || key > latest)) {
+          latest = key;
+        }
+      }
+      token = res.IsTruncated ? res.NextContinuationToken : undefined;
+    } while (token);
+    return latest;
+  } catch {
+    return null;
+  }
 }
 
 /**
