@@ -36,12 +36,17 @@ class Profile {
       lastSeenAt != null &&
       DateTime.now().difference(lastSeenAt!) < const Duration(minutes: 2);
 
-  String get displayName =>
-      (fullName != null && fullName!.trim().isNotEmpty)
-          ? fullName!.trim()
-          : (username?.trim().isNotEmpty ?? false)
-              ? username!.trim()
-              : "Gwave user";
+  /// Auto-generated placeholder usernames (user_<id-prefix>, minted so the
+  /// web stops forcing onboarding) — not something to show as a person's name.
+  static final _autoUsername = RegExp(r'^user_[0-9a-f]{6,}$');
+
+  String get displayName {
+    final fn = fullName?.trim() ?? "";
+    if (fn.isNotEmpty) return fn;
+    final un = username?.trim() ?? "";
+    if (un.isNotEmpty && !_autoUsername.hasMatch(un)) return un;
+    return "Gwave user";
+  }
 
   factory Profile.fromJson(Map<String, dynamic> j) => Profile(
         id: j["id"].toString(),
