@@ -7,6 +7,10 @@ import '../../core/theme.dart';
 import 'google_auth_screen.dart';
 import 'phone_auth_screen.dart';
 
+/// One-story auth screen in a single deep-green look: a Sign in / Sign up
+/// switch up top, and the sign-up form collects everything the account needs
+/// (name, phone/email, password, birth date, gender) in one pass. Phone
+/// identifiers hand over to the SMS-code flow; Google stays one tap.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -45,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
       initialDate: _dob ?? DateTime(now.year - 20, now.month, now.day),
       firstDate: DateTime(1900),
       lastDate: now,
-      helpText: "Select your date of birth",
+      helpText: "မွေးနေ့ ရွေးပါ",
     );
     if (picked != null) setState(() => _dob = picked);
   }
@@ -64,11 +68,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!_formKey.currentState!.validate()) return;
     if (_register && _dob == null) {
-      setState(() => _error = "Please select your date of birth.");
+      setState(() => _error = "မွေးနေ့ ရွေးပေးပါ။");
       return;
     }
     if (_register && _gender == null) {
-      setState(() => _error = "Please choose your gender.");
+      setState(() => _error = "ကျား/မ ရွေးပေးပါ။");
       return;
     }
     FocusScope.of(context).unfocus();
@@ -112,396 +116,389 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Open the Cognito Hosted UI straight into the Google flow. The redirect is
-  /// the web's registered /auth/callback with `state=mobile` — the server
-  /// bounces the code back into the app as `gwave://auth?code=...`, which
-  /// AppState catches to finish sign-in (no Cognito console change needed).
+  /// Open the Cognito Hosted UI straight into the Google flow (in-app).
   Future<void> _google() async {
     if (!AppConfig.googleEnabled) {
-      setState(() => _error =
-          "Google sign-in isn't configured on this build.");
+      setState(() => _error = "Google sign-in isn't configured on this build.");
       return;
     }
-    // Run the Cognito/Google flow inside the app and catch the auth code
-    // directly — no external browser bounce (which was landing users on the
-    // web /onboarding page instead of back in the app).
     final code = await GoogleAuthScreen.run(context);
     if (!mounted || code == null || code.isEmpty) return;
     await context.read<AppState>().completeGoogleSignIn(code);
   }
+
+  // ---- Green-glass form styling ---------------------------------------------
+
+  InputDecoration _dec(String label, IconData icon, {Widget? suffix}) {
+    OutlineInputBorder border(Color c, [double w = 1.2]) => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: c, width: w),
+        );
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Colors.white70, fontSize: 14),
+      prefixIcon: Icon(icon, color: Colors.white70, size: 21),
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.12),
+      enabledBorder: border(Colors.white24),
+      focusedBorder: border(Colors.white, 1.6),
+      errorBorder: border(const Color(0xFFFFCDD2)),
+      focusedErrorBorder: border(const Color(0xFFFFCDD2), 1.6),
+      errorStyle: const TextStyle(color: Color(0xFFFFE082), fontSize: 12),
+      isDense: true,
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+    );
+  }
+
+  static const _fieldText = TextStyle(color: Colors.white, fontSize: 15.5);
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final googleBusy = appState.googleBusy;
     final googleError = appState.googleError;
+    final phoneId = _isPhone(_email.text.trim());
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: GwColors.primaryGradient),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [GwColors.primaryBright, GwColors.primary, GwColors.primaryDark],
+          ),
+        ),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 20),
-                    Center(
-                      child: Container(
-                        width: 96,
-                        height: 96,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Brand.
+                      Center(
+                        child: Container(
+                          width: 84,
+                          height: 84,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.18),
+                                blurRadius: 18,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Image.asset("assets/icon-512.png",
+                              fit: BoxFit.contain),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        "Gwave",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(26),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.12),
-                              blurRadius: 18,
-                              offset: const Offset(0, 8),
-                            ),
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -1,
+                        ),
+                      ),
+                      Text(
+                        "Learning & smart-life platform",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 13.5),
+                      ),
+                      const SizedBox(height: 22),
+
+                      // Sign in / Sign up switch — one story, one place.
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            _modeTab("ဝင်မည်", false),
+                            _modeTab("အကောင့်ဖွင့်မည်", true),
                           ],
                         ),
-                        child: Image.asset(
-                          "assets/icon-512.png",
-                          fit: BoxFit.contain,
+                      ),
+                      const SizedBox(height: 18),
+
+                      if (!AppConfig.isConfigured) ...[
+                        _notice(
+                            "Backend not configured — build with --dart-define "
+                            "SUPABASE_URL and SUPABASE_ANON_KEY."),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // ---- Sign-up collects everything in one pass ----
+                      if (_register) ...[
+                        TextFormField(
+                          controller: _name,
+                          style: _fieldText,
+                          cursorColor: Colors.white,
+                          textCapitalization: TextCapitalization.words,
+                          autofillHints: const [AutofillHints.name],
+                          decoration:
+                              _dec("နာမည် (Profile name)", Icons.person_outline),
+                          validator: (v) =>
+                              (_register && (v == null || v.trim().length < 2))
+                                  ? "နာမည် ထည့်ပါ"
+                                  : null,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      TextFormField(
+                        controller: _email,
+                        style: _fieldText,
+                        cursorColor: Colors.white,
+                        keyboardType: TextInputType.emailAddress,
+                        autofillHints: const [
+                          AutofillHints.email,
+                          AutofillHints.telephoneNumber,
+                        ],
+                        decoration: _dec("ဖုန်းနံပါတ် သို့မဟုတ် Email",
+                            Icons.person_pin_outlined),
+                        validator: (v) {
+                          final t = (v ?? "").trim();
+                          if (t.contains("@")) return null;
+                          if (_isPhone(t)) return null;
+                          return "ဖုန်းနံပါတ် သို့မဟုတ် email ထည့်ပါ";
+                        },
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      if (phoneId) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          "📱 ဖုန်းနံပါတ်ဆိုရင် SMS ကုဒ်နဲ့ ဝင်ရမှာမို့ password မလိုပါ။",
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.8),
+                              fontSize: 12),
+                        ),
+                      ],
+
+                      if (!phoneId) ...[
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _password,
+                          style: _fieldText,
+                          cursorColor: Colors.white,
+                          obscureText: _obscure,
+                          autofillHints: const [AutofillHints.password],
+                          decoration: _dec(
+                            "Password",
+                            Icons.lock_outline,
+                            suffix: IconButton(
+                              icon: Icon(
+                                  _obscure
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                  color: Colors.white70,
+                                  size: 20),
+                              onPressed: () =>
+                                  setState(() => _obscure = !_obscure),
+                            ),
+                          ),
+                          validator: (v) => (v == null || v.length < 6)
+                              ? "အနည်းဆုံး စာလုံး ၆ လုံး"
+                              : null,
+                          onFieldSubmitted: (_) => _register ? null : _submit(),
+                        ),
+                      ],
+
+                      if (_register && !phoneId) ...[
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _confirm,
+                          style: _fieldText,
+                          cursorColor: Colors.white,
+                          obscureText: _obscureConfirm,
+                          decoration: _dec(
+                            "Password အတည်ပြု",
+                            Icons.lock_outline,
+                            suffix: IconButton(
+                              icon: Icon(
+                                  _obscureConfirm
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                  color: Colors.white70,
+                                  size: 20),
+                              onPressed: () => setState(
+                                  () => _obscureConfirm = !_obscureConfirm),
+                            ),
+                          ),
+                          validator: (v) =>
+                              (v != _password.text) ? "Password မတူပါ" : null,
+                          onFieldSubmitted: (_) => _submit(),
+                        ),
+                      ],
+
+                      if (_register) ...[
+                        const SizedBox(height: 12),
+                        InkWell(
+                          onTap: _busy ? null : _pickDob,
+                          borderRadius: BorderRadius.circular(14),
+                          child: InputDecorator(
+                            decoration: _dec("မွေးနေ့", Icons.cake_outlined),
+                            child: Text(
+                              _dob == null ? "မွေးနေ့ ရွေးပါ" : _fmtDob(_dob!),
+                              style: TextStyle(
+                                  color: _dob == null
+                                      ? Colors.white54
+                                      : Colors.white,
+                                  fontSize: 15.5),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            _genderChip("male", "ကျား", Icons.male),
+                            const SizedBox(width: 8),
+                            _genderChip("female", "မ", Icons.female),
+                            const SizedBox(width: 8),
+                            _genderChip("other", "အခြား", Icons.transgender),
+                          ],
+                        ),
+                      ],
+
+                      if (_error != null) ...[
+                        const SizedBox(height: 12),
+                        _errorBox(_error!),
+                      ],
+
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        height: 52,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: GwColors.primaryDark,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15)),
+                          ),
+                          onPressed: _busy ? null : _submit,
+                          child: _busy
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2.4,
+                                      color: GwColors.primary),
+                                )
+                              : Text(
+                                  _register
+                                      ? "အကောင့်ဖွင့်မည်"
+                                      : "ဝင်မည်",
+                                  style: const TextStyle(
+                                      fontSize: 16.5,
+                                      fontWeight: FontWeight.w800),
+                                ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      "Gwave",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 34,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -1,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "The super-app for farmers",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 14),
-                    ),
-                    const SizedBox(height: 30),
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(GwRadius.lg),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.10),
-                            blurRadius: 24,
-                            offset: const Offset(0, 10),
+
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: Colors.white24)),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10),
+                            child: Text("သို့မဟုတ်",
+                                style: TextStyle(
+                                    color: Colors.white70, fontSize: 12.5)),
                           ),
+                          Expanded(child: Divider(color: Colors.white24)),
                         ],
                       ),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              _register ? "Create your account" : "Welcome back",
-                              style: const TextStyle(
-                                  fontSize: 23,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.4),
-                            ),
-                            if (!_register) ...[
-                              const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: GwColors.surfaceMuted,
-                                  borderRadius:
-                                      BorderRadius.circular(GwRadius.sm),
-                                ),
-                                child: const Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(Icons.info_outline,
-                                        size: 16, color: GwColors.primary),
-                                    SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        "Sign in with the SAME method you used before "
-                                        "(email, phone, or Google). Each is a separate "
-                                        "account — mixing them shows an empty profile.",
-                                        style: TextStyle(
-                                            fontSize: 11.5,
-                                            height: 1.35,
-                                            color: GwColors.inkSoft),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                            const SizedBox(height: 20),
-                            if (!AppConfig.isConfigured) ...[
-                              _configBanner(),
-                              const SizedBox(height: 12),
-                            ],
-                            if (_register) ...[
-                              TextFormField(
-                                controller: _name,
-                                textCapitalization: TextCapitalization.words,
-                                autofillHints: const [AutofillHints.name],
-                                decoration: const InputDecoration(
-                                  labelText: "Profile name",
-                                  prefixIcon: Icon(Icons.person_outline),
-                                ),
-                                validator: (v) =>
-                                    (_register && (v == null || v.trim().length < 2))
-                                        ? "Enter your name"
-                                        : null,
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                            TextFormField(
-                              controller: _email,
-                              keyboardType: TextInputType.emailAddress,
-                              autofillHints: const [
-                                AutofillHints.email,
-                                AutofillHints.telephoneNumber,
-                              ],
-                              decoration: const InputDecoration(
-                                labelText: "Phone or Email",
-                                hintText: "09xxxxxxxxx or you@example.com",
-                                prefixIcon: Icon(Icons.person_pin_outlined),
-                              ),
-                              validator: (v) {
-                                final t = (v ?? "").trim();
-                                if (t.contains("@")) return null; // email
-                                if (_isPhone(t)) return null; // phone number
-                                return "Enter your phone number or email";
-                              },
-                              // Rebuild so the password fields hide/show as the
-                              // identifier switches between phone and email.
-                              onChanged: (_) => setState(() {}),
-                            ),
-                            if (_isPhone(_email.text.trim()) && _register) ...[
-                              const SizedBox(height: 6),
-                              const Text(
-                                "📱 Phone signup uses an SMS code — no password needed.",
+                      const SizedBox(height: 14),
+
+                      if (AppConfig.googleEnabled) ...[
+                        SizedBox(
+                          height: 50,
+                          child: OutlinedButton.icon(
+                            onPressed: (googleBusy || _busy) ? null : _google,
+                            icon: googleBusy
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2.2,
+                                        color: Colors.white),
+                                  )
+                                : const Icon(Icons.g_mobiledata,
+                                    size: 30, color: Colors.white),
+                            label: const Text("Google နဲ့ ဆက်လုပ်မည်",
                                 style: TextStyle(
-                                    color: GwColors.inkSoft, fontSize: 12),
-                              ),
-                            ],
-                            const SizedBox(height: 12),
-                            if (!_isPhone(_email.text.trim()))
-                            TextFormField(
-                              controller: _password,
-                              obscureText: _obscure,
-                              autofillHints: const [AutofillHints.password],
-                              decoration: InputDecoration(
-                                labelText: "Password",
-                                prefixIcon: const Icon(Icons.lock_outline),
-                                suffixIcon: IconButton(
-                                  icon: Icon(_obscure
-                                      ? Icons.visibility_off_outlined
-                                      : Icons.visibility_outlined),
-                                  onPressed: () =>
-                                      setState(() => _obscure = !_obscure),
-                                ),
-                              ),
-                              validator: (v) => (v == null || v.length < 6)
-                                  ? "At least 6 characters"
-                                  : null,
-                              onFieldSubmitted: (_) => _register ? null : _submit(),
+                                    fontSize: 15, color: Colors.white)),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.white38),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15)),
                             ),
-                            if (_register) ...[
-                              if (!_isPhone(_email.text.trim())) ...[
-                              const SizedBox(height: 12),
-                              TextFormField(
-                                controller: _confirm,
-                                obscureText: _obscureConfirm,
-                                decoration: InputDecoration(
-                                  labelText: "Confirm password",
-                                  prefixIcon: const Icon(Icons.lock_outline),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(_obscureConfirm
-                                        ? Icons.visibility_off_outlined
-                                        : Icons.visibility_outlined),
-                                    onPressed: () => setState(
-                                        () => _obscureConfirm = !_obscureConfirm),
-                                  ),
-                                ),
-                                validator: (v) => (v != _password.text)
-                                    ? "Passwords don't match"
-                                    : null,
-                                onFieldSubmitted: (_) => _submit(),
-                              ),
-                              ],
-                              const SizedBox(height: 12),
-                              InkWell(
-                                onTap: _busy ? null : _pickDob,
-                                borderRadius:
-                                    BorderRadius.circular(GwRadius.sm),
-                                child: InputDecorator(
-                                  decoration: const InputDecoration(
-                                    labelText: "Date of birth",
-                                    prefixIcon: Icon(Icons.cake_outlined),
-                                  ),
-                                  child: Text(
-                                    _dob == null
-                                        ? "Select your date of birth"
-                                        : _fmtDob(_dob!),
-                                    style: TextStyle(
-                                      color: _dob == null
-                                          ? GwColors.inkSoft
-                                          : GwColors.ink,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              const Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text("Gender",
-                                    style: TextStyle(
-                                        color: GwColors.inkSoft, fontSize: 13)),
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  _genderChip("male", "ကျား", Icons.male),
-                                  const SizedBox(width: 8),
-                                  _genderChip("female", "မ", Icons.female),
-                                  const SizedBox(width: 8),
-                                  _genderChip(
-                                      "other", "အခြား", Icons.transgender),
-                                ],
-                              ),
-                            ],
-                            if (_error != null) ...[
-                              const SizedBox(height: 12),
-                              _errorBox(_error!),
-                            ],
-                            const SizedBox(height: 18),
-                            SizedBox(
-                              height: 50,
-                              child: ElevatedButton(
-                                onPressed: _busy ? null : _submit,
-                                child: _busy
-                                    ? const SizedBox(
-                                        width: 22,
-                                        height: 22,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.4,
-                                          valueColor: AlwaysStoppedAnimation(
-                                              Colors.white),
-                                        ),
-                                      )
-                                    : Text(
-                                        _register ? "Sign up" : "Sign in",
-                                        style: const TextStyle(fontSize: 16),
-                                      ),
-                              ),
-                            ),
-                            if (AppConfig.googleEnabled) ...[
-                              const SizedBox(height: 14),
-                              Row(
-                                children: const [
-                                  Expanded(child: Divider(color: GwColors.line)),
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(horizontal: 10),
-                                    child: Text("or",
-                                        style: TextStyle(
-                                            color: GwColors.inkSoft,
-                                            fontSize: 13)),
-                                  ),
-                                  Expanded(child: Divider(color: GwColors.line)),
-                                ],
-                              ),
-                              const SizedBox(height: 14),
-                              SizedBox(
-                                height: 50,
-                                child: OutlinedButton.icon(
-                                  onPressed:
-                                      (googleBusy || _busy) ? null : _google,
-                                  icon: googleBusy
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                              strokeWidth: 2.2),
-                                        )
-                                      : const Icon(Icons.g_mobiledata,
-                                          size: 30, color: Color(0xFF4285F4)),
-                                  label: const Text("Continue with Google",
-                                      style: TextStyle(fontSize: 15)),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: GwColors.ink,
-                                    side:
-                                        const BorderSide(color: GwColors.line),
-                                  ),
-                                ),
-                              ),
-                              if (googleError != null) ...[
-                                const SizedBox(height: 12),
-                                _errorBox(googleError),
-                              ],
-                            ],
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              height: 50,
-                              child: OutlinedButton.icon(
-                                onPressed: _busy
-                                    ? null
-                                    : () => Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                const PhoneAuthScreen(),
-                                          ),
-                                        ),
-                                icon: const Icon(Icons.smartphone, size: 20),
-                                label: const Text("Continue with phone",
-                                    style: TextStyle(fontSize: 15)),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: GwColors.ink,
-                                  side: const BorderSide(color: GwColors.line),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  _register
-                                      ? "Already have an account?"
-                                      : "New to Gwave?",
-                                  style: const TextStyle(
-                                      color: GwColors.inkSoft, fontSize: 13),
-                                ),
-                                TextButton(
-                                  onPressed: _busy
-                                      ? null
-                                      : () => setState(() {
-                                            _register = !_register;
-                                            _error = null;
-                                          }),
-                                  child: Text(_register ? "Sign in" : "Sign up"),
-                                ),
-                              ],
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
-                  ],
+                        if (googleError != null) ...[
+                          const SizedBox(height: 12),
+                          _errorBox(googleError),
+                        ],
+                        const SizedBox(height: 10),
+                      ],
+
+                      if (!_register)
+                        _notice(
+                            "အရင်သုံးခဲ့တဲ့ နည်းလမ်း (email / ဖုန်း / Google) "
+                            "အတိုင်းပဲ ပြန်ဝင်ပါ — မတူရင် အကောင့်အသစ် ဖြစ်သွားနိုင်ပါတယ်။"),
+                    ],
+                  ),
                 ),
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _modeTab(String label, bool register) {
+    final selected = _register == register;
+    return Expanded(
+      child: InkWell(
+        onTap: _busy
+            ? null
+            : () => setState(() {
+                  _register = register;
+                  _error = null;
+                }),
+        borderRadius: BorderRadius.circular(13),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            color: selected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: selected ? GwColors.primaryDark : Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 14.5,
             ),
           ),
         ),
@@ -513,31 +510,32 @@ class _LoginScreenState extends State<LoginScreen> {
     final selected = _gender == value;
     return Expanded(
       child: InkWell(
-        borderRadius: BorderRadius.circular(GwRadius.sm),
+        borderRadius: BorderRadius.circular(14),
         onTap: _busy ? null : () => setState(() => _gender = value),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(vertical: 13),
           decoration: BoxDecoration(
             color: selected
-                ? GwColors.primary.withValues(alpha: 0.12)
-                : GwColors.surfaceMuted,
-            borderRadius: BorderRadius.circular(GwRadius.md),
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: selected ? GwColors.primary : GwColors.line,
-              width: selected ? 1.8 : 1.4,
+              color: selected ? Colors.white : Colors.white24,
+              width: 1.2,
             ),
           ),
           child: Column(
             children: [
               Icon(icon,
-                  size: 22,
-                  color: selected ? GwColors.primary : GwColors.inkSoft),
+                  size: 21,
+                  color: selected ? GwColors.primaryDark : Colors.white70),
               const SizedBox(height: 3),
               Text(label,
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: selected ? GwColors.primary : GwColors.ink,
+                    color: selected ? GwColors.primaryDark : Colors.white,
                   )),
             ],
           ),
@@ -549,31 +547,45 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _errorBox(String msg) => Container(
         padding: const EdgeInsets.all(11),
         decoration: BoxDecoration(
-          color: GwColors.live.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(GwRadius.sm),
+          color: const Color(0xFFB71C1C).withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFFFCDD2), width: 0.8),
         ),
         child: Row(
           children: [
-            const Icon(Icons.error_outline, color: GwColors.live, size: 19),
+            const Icon(Icons.error_outline,
+                color: Color(0xFFFFCDD2), size: 19),
             const SizedBox(width: 8),
             Expanded(
               child: Text(msg,
-                  style: const TextStyle(color: GwColors.live, fontSize: 13)),
+                  style:
+                      const TextStyle(color: Colors.white, fontSize: 13)),
             ),
           ],
         ),
       );
 
-  Widget _configBanner() => Container(
+  Widget _notice(String msg) => Container(
         padding: const EdgeInsets.all(11),
         decoration: BoxDecoration(
-          color: GwColors.gold.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(GwRadius.sm),
+          color: Colors.white.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: const Text(
-          "Backend not configured — build with --dart-define SUPABASE_URL and "
-          "SUPABASE_ANON_KEY.",
-          style: TextStyle(fontSize: 12, color: GwColors.primaryDark),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.info_outline, size: 16, color: Colors.white70),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                msg,
+                style: TextStyle(
+                    fontSize: 11.5,
+                    height: 1.4,
+                    color: Colors.white.withValues(alpha: 0.85)),
+              ),
+            ),
+          ],
         ),
       );
 }
