@@ -55,12 +55,11 @@ class _LiveListScreenState extends State<LiveListScreen> {
       // dead ones ended — do that for stale-looking lives, then re-fetch.
       final suspicious = s.where((x) =>
           x.isLive &&
-          (x.livekitRoom?.isNotEmpty ?? false) &&
           x.createdAt != null &&
           DateTime.now().difference(x.createdAt!).inMinutes > 10);
       if (suspicious.isNotEmpty) {
         await Future.wait(suspicious
-            .map((x) => api.liveToken(x.id).then((_) {}).catchError((_) {})));
+            .map((x) => api.liveVerify(x.id).then((_) {}).catchError((_) {})));
         s = await repo.liveStreams();
       }
       if (mounted) setState(() => _streams = s);

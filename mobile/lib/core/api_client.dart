@@ -453,6 +453,22 @@ class ApiClient {
     return (j["comment"] as Map).cast<String, dynamic>();
   }
 
+  /// Web-push the callee about an incoming call (works even when their tab
+  /// can't receive the realtime ring). Fire-and-forget beside the broadcast.
+  Future<void> callNotify(String conversationId, bool video) async {
+    await _mobilePost("/api/mobile/call/notify", {
+      "conversationId": conversationId,
+      "video": video,
+    });
+  }
+
+  /// Ask the server whether a broadcast is really still live (it checks the
+  /// media plane and self-heals dead rows). Returns the resulting status.
+  Future<String> liveVerify(String streamId) async {
+    final j = await _mobilePost("/api/mobile/live/verify", {"id": streamId});
+    return (j["status"] ?? "").toString();
+  }
+
   /// Runtime ICE (STUN/TURN) config shared with the web client. The TURN
   /// relay is what carries call audio when both peers sit behind carrier NAT.
   Future<List<Map<String, dynamic>>> iceServers() async {

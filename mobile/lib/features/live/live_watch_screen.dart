@@ -169,6 +169,21 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
       await c.play();
       if (mounted) setState(() => _ready = true);
     } catch (e) {
+      if (!mounted) return;
+      // A "live" whose HLS won't play is usually a broadcast that died
+      // without ending — ask the server to check the channel for real.
+      if (widget.stream.isLive) {
+        try {
+          final st = await context
+              .read<AppState>()
+              .api
+              .liveVerify(widget.stream.id);
+          if (mounted && st == "ended") {
+            setState(() => _error = "This broadcast has ended.");
+            return;
+          }
+        } catch (_) {}
+      }
       if (mounted) setState(() => _error = "Couldn't play the video.");
     }
   }

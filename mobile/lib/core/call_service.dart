@@ -249,6 +249,10 @@ class CallService extends ChangeNotifier {
     _joinCallChannel(_callId!);
     await _openMedia();
 
+    // Web-push the callee too — reaches a web callee whose tab can't get the
+    // realtime broadcast (closed, backgrounded, stale JS). Best-effort.
+    api.callNotify(conversationId, withVideo).catchError((_) {});
+
     // Ring the callee's inbox.
     _peerRing = _rt!.channel("calls:${target.id}");
     _peerRing!.subscribe((status, [error]) {
