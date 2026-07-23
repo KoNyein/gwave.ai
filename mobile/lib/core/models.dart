@@ -840,10 +840,6 @@ class PosProduct {
         price: _d(j["price"]) ?? 0,
         sku: _s(j["sku"]),
         imagePath: _s(j["image_path"]),
-        filePath: _s(j["file_path"]),
-        fileKind: _s(j["file_kind"]),
-        durationSeconds:
-            j["duration_seconds"] is num ? (j["duration_seconds"] as num).toInt() : null,
       );
 }
 
@@ -1010,5 +1006,10 @@ class Message {
         createdAt:
             DateTime.tryParse("${j["created_at"]}")?.toLocal() ?? DateTime.now(),
         imagePath: _s(j["image_path"]),
+        filePath: _s(j["file_path"]),
+        fileKind: _s(j["file_kind"]),
+        durationSeconds: j["duration_seconds"] is num
+            ? (j["duration_seconds"] as num).toInt()
+            : null,
       );
 }

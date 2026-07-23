@@ -81,7 +81,7 @@ class _ChatScreenState extends State<ChatScreen> {
             .read<AppState>()
             .repo
             .sendVoiceMessage(widget.conversation.id, storagePath,
-                secs.clamp(1, 600));
+                secs.clamp(1, 600).toInt());
         if (msg != null && mounted) {
           setState(() => _messages.add(msg));
           _jumpToBottom();
