@@ -453,6 +453,18 @@ class ApiClient {
     return (j["comment"] as Map).cast<String, dynamic>();
   }
 
+  /// Runtime ICE (STUN/TURN) config shared with the web client. The TURN
+  /// relay is what carries call audio when both peers sit behind carrier NAT.
+  Future<List<Map<String, dynamic>>> iceServers() async {
+    final j = await _mobileGet("/api/webrtc/ice");
+    final list = j["iceServers"];
+    if (list is! List) throw ApiException("Bad ICE config.");
+    return list
+        .whereType<Map>()
+        .map((e) => e.cast<String, dynamic>())
+        .toList();
+  }
+
   // ---- Marketplace + Dating -------------------------------------------------
   // Both features read/write through the mobile API (service role) with the
   // data token as bearer — same shape as /subject-comments.

@@ -62,12 +62,30 @@ class CallService extends ChangeNotifier {
   String get _myId => api.session!.profileId;
   bool get inCall => phase != CallPhase.idle;
 
-  static const _iceServers = {
+  static const _fallbackIce = {
     "iceServers": [
       {"urls": "stun:stun.l.google.com:19302"},
       {"urls": "stun:stun1.l.google.com:19302"},
     ],
   };
+
+  /// Runtime ICE config from the server — carries the TURN relay both peers
+  /// need behind carrier NAT (STUN-only calls connect but stay silent).
+  Map<String, dynamic>? _fetchedIce;
+
+  Future<Map<String, dynamic>> _iceConfig() async {
+    if (_fetchedIce != null) return _fetchedIce!;
+    try {
+      final servers = await api.iceServers();
+      if (servers.isNotEmpty) {
+        _fetchedIce = {"iceServers": servers};
+        return _fetchedIce!;
+      }
+    } catch (_) {
+      // offline or old server — fall back to STUN only
+    }
+    return _fallbackIce;
+  }
 
   // ---- Realtime connection --------------------------------------------------
 
@@ -307,7 +325,7 @@ class CallService extends ChangeNotifier {
   // ---- Media ----------------------------------------------------------------
 
   Future<void> _openMedia() async {
-    _pc = await createPeerConnection(_iceServers);
+    _pc = await createPeerConnection(await _iceConfig());
     _localStream = await navigator.mediaDevices.getUserMedia({
       "audio": true,
       "video": video
