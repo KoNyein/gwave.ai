@@ -840,6 +840,10 @@ class PosProduct {
         price: _d(j["price"]) ?? 0,
         sku: _s(j["sku"]),
         imagePath: _s(j["image_path"]),
+        filePath: _s(j["file_path"]),
+        fileKind: _s(j["file_kind"]),
+        durationSeconds:
+            j["duration_seconds"] is num ? (j["duration_seconds"] as num).toInt() : null,
       );
 }
 
@@ -978,6 +982,9 @@ class Message {
     required this.content,
     required this.createdAt,
     this.imagePath,
+    this.filePath,
+    this.fileKind,
+    this.durationSeconds,
   });
 
   final String id;
@@ -986,6 +993,14 @@ class Message {
   final String content;
   final DateTime createdAt;
   final String? imagePath;
+
+  /// Attachment (web parity): file_kind 'audio' = voice message with
+  /// duration_seconds; 'video'/'file' render as a link for now.
+  final String? filePath;
+  final String? fileKind;
+  final int? durationSeconds;
+
+  bool get isVoice => fileKind == "audio" && (filePath?.isNotEmpty ?? false);
 
   factory Message.fromJson(Map<String, dynamic> j) => Message(
         id: j["id"].toString(),

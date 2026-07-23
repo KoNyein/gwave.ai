@@ -523,6 +523,23 @@ class Repository {
     return row == null ? null : Message.fromJson(row);
   }
 
+  /// Send a voice message: an AAC clip already uploaded to chat-media.
+  /// Mirrors the web's voice notes (file_kind 'audio' + duration_seconds).
+  Future<Message?> sendVoiceMessage(
+    String conversationId,
+    String storagePath,
+    int durationSeconds,
+  ) async {
+    final row = await api.insert("messages", {
+      "conversation_id": conversationId,
+      "sender_id": api.session!.profileId,
+      "file_path": storagePath,
+      "file_kind": "audio",
+      "duration_seconds": durationSeconds < 1 ? 1 : durationSeconds,
+    });
+    return row == null ? null : Message.fromJson(row);
+  }
+
   /// Send a photo message (already uploaded to the media bucket). `content`
   /// defaults to '' server-side; the row is valid because image_path is set.
   Future<Message?> sendImageMessage(

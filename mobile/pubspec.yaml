@@ -64,6 +64,8 @@ dependencies:
   # Family locator: share/join a circle by tapping an NFC tag with the invite
   # code written on it.
   nfc_manager: ^3.3.0
+  # Share posts to other apps (system share sheet).
+  share_plus: ^10.0.0
 
 dev_dependencies:
   flutter_lints: ^4.0.0

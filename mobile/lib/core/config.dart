@@ -85,6 +85,17 @@ class AppConfig {
   static String get realtimeUrl =>
       "${_supabaseUrl.replaceFirst(RegExp(r'^http'), 'ws')}/realtime/v1";
 
+  /// CI build number (--dart-define=APP_BUILD, the workflow run number).
+  /// 0 in local/dev builds, which disables the update banner.
+  static const int appBuild = int.fromEnvironment("APP_BUILD", defaultValue: 0);
+
+  /// The rolling release's version manifest, published next to gwave.apk.
+  static const String versionManifestUrl =
+      "https://github.com/KoNyein/gwave.ai/releases/download/mobile-latest/version.json";
+
+  /// Where users grab the newest APK.
+  static String get downloadUrl => "$apiBase/download/apk";
+
   static bool get isConfigured =>
       _supabaseUrl.isNotEmpty && _supabaseAnonKey.isNotEmpty;
 

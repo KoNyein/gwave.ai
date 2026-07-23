@@ -1,5 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../core/config.dart';
 
 import '../../core/app_state.dart';
 import '../../core/models.dart';
@@ -26,12 +32,14 @@ class _FeedScreenState extends State<FeedScreen> {
   bool _end = false;
   String? _error;
   int _unread = 0;
+  int _newerBuild = 0; // > 0 when the release carries a newer APK
 
   @override
   void initState() {
     super.initState();
     _load(reset: true);
     _loadUnread();
+    _checkUpdate();
     _scroll.addListener(() {
       if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 400) {
         _load();
@@ -77,6 +85,22 @@ class _FeedScreenState extends State<FeedScreen> {
         });
       }
     }
+  }
+
+  /// In-app update check: compare our CI build number against the rolling
+  /// release's version.json. Best-effort; dev builds (APP_BUILD=0) skip it.
+  Future<void> _checkUpdate() async {
+    if (AppConfig.appBuild <= 0) return;
+    try {
+      final res = await http
+          .get(Uri.parse(AppConfig.versionManifestUrl))
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode != 200) return;
+      final latest = (jsonDecode(res.body)["build"] as num?)?.toInt() ?? 0;
+      if (mounted && latest > AppConfig.appBuild) {
+        setState(() => _newerBuild = latest);
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadUnread() async {
@@ -142,10 +166,49 @@ class _FeedScreenState extends State<FeedScreen> {
         onPressed: _openComposer,
         child: const Icon(Icons.edit, color: Colors.white),
       ),
-      body: RefreshIndicator(
-        color: GwColors.primary,
-        onRefresh: () => _load(reset: true),
-        child: _buildBody(),
+      body: Column(
+        children: [
+          if (_newerBuild > 0)
+            Material(
+              color: GwColors.primary,
+              child: InkWell(
+                onTap: () => launchUrl(Uri.parse(AppConfig.downloadUrl),
+                    mode: LaunchMode.externalApplication),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.system_update,
+                          color: Colors.white, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "Update ရနိုင်ပါပြီ (v1.0.$_newerBuild) — နှိပ်ပြီး ဒေါင်းလုဒ်ဆွဲပါ",
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() => _newerBuild = 0),
+                        child: const Icon(Icons.close,
+                            color: Colors.white70, size: 17),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          Expanded(
+            child: RefreshIndicator(
+              color: GwColors.primary,
+              onRefresh: () => _load(reset: true),
+              child: _buildBody(),
+            ),
+          ),
+        ],
       ),
     );
   }
