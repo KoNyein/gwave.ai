@@ -31,6 +31,22 @@ function sweep(now: number): void {
 }
 
 export async function middleware(request: NextRequest) {
+  // Old links and search results still point at this repo's Vercel
+  // deployments (gwave-ai.vercel.app, preview URLs) — an outdated app with a
+  // different auth setup, where users get stranded. Since Vercel deploys this
+  // same code, the deployment itself bounces every visitor to the real site.
+  const host =
+    request.headers.get("x-forwarded-host") ??
+    request.headers.get("host") ??
+    "";
+  if (host.endsWith(".vercel.app")) {
+    const url = new URL(request.url);
+    return NextResponse.redirect(
+      `https://gwave.cc${url.pathname}${url.search}`,
+      308,
+    );
+  }
+
   const now = Date.now();
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
