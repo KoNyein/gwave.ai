@@ -189,6 +189,25 @@ export default async function WelcomePage() {
               Not sure? The recommended button above works everywhere.
             </p>
           </div>
+
+          {/* iPhone: no sideloading on iOS — install the PWA instead. */}
+          <div className="mt-2 w-full max-w-md rounded-xl border bg-card/60 p-4 text-left">
+            <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold">
+              <Smartphone className="h-4 w-4" /> iPhone သုံးသူများအတွက်
+            </p>
+            <ol className="list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
+              <li>
+                Safari မှာ <span className="font-semibold">gwave.cc</span> ကိုဖွင့်ပါ
+              </li>
+              <li>
+                အောက်က <span className="font-semibold">Share (⬆️)</span> ခလုတ်ကိုနှိပ်ပါ
+              </li>
+              <li>
+                <span className="font-semibold">&ldquo;Add to Home Screen&rdquo;</span>{" "}
+                ကိုရွေးပါ — Gwave app icon ရောက်လာပြီး app လိုပဲ သုံးလို့ရပါပြီ
+              </li>
+            </ol>
+          </div>
         </div>
       </section>
 

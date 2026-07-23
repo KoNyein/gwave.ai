@@ -17,7 +17,17 @@ export default async function LivePage() {
 
   const streams = await listStreams();
   const liveNow = streams.filter((s) => s.status === "live");
-  const rest = streams.filter((s) => s.status !== "live");
+  // Same cleanup the app got: an ended broadcast with nothing to play, or a
+  // "waiting" row someone abandoned hours ago, is dead weight that makes the
+  // page look broken. Show replays (and my own recent drafts) only.
+  const staleMs = 2 * 60 * 60 * 1000;
+  const rest = streams.filter((s) => {
+    if (s.status === "live") return false;
+    if (s.status === "ended") return Boolean(s.recording_path);
+    const mine = s.host_id === profile.id;
+    const fresh = Date.now() - new Date(s.created_at).getTime() < staleMs;
+    return mine && fresh; // idle/waiting: only my own recent one
+  });
 
   return (
     <div className="space-y-5">
