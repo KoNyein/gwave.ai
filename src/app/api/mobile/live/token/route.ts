@@ -3,7 +3,12 @@ import { z } from "zod";
 
 import { verifyDataToken } from "@/lib/auth/tokens";
 import { createAdminClient } from "@/lib/data/admin";
-import { livekitConfigured, livekitUrl, mintLivekitToken } from "@/lib/livekit";
+import {
+  hostPresentInRoom,
+  livekitConfigured,
+  livekitUrl,
+  mintLivekitToken,
+} from "@/lib/livekit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,7 +52,7 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const { data: stream } = await admin
     .from("live_streams")
-    .select("id, host_id, status, livekit_room")
+    .select("id, host_id, status, livekit_room, created_at")
     .eq("id", parsed.data.id)
     .maybeSingle();
   if (!stream) {
@@ -66,6 +71,27 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Self-heal stale rows: a browser broadcast that died without calling the
+  // end API stays `live` forever. If the host is no longer in the room (and
+  // the stream isn't brand new — the host may still be joining), mark it
+  // ended so it stops appearing in live lists. Viewers never see a dead room.
+  const isHost = stream.host_id === claims.sub;
+  const ageMs = Date.now() - new Date(stream.created_at as string).getTime();
+  if (!isHost && ageMs > 3 * 60_000) {
+    const present = await hostPresentInRoom(stream.livekit_room, stream.host_id);
+    if (!present) {
+      await admin
+        .from("live_streams")
+        .update({ status: "ended", ended_at: new Date().toISOString() })
+        .eq("id", stream.id)
+        .eq("status", "live");
+      return NextResponse.json(
+        { error: "This broadcast has ended." },
+        { status: 410 },
+      );
+    }
+  }
+
   const { data: profile } = await admin
     .from("profiles")
     .select("full_name, username")
@@ -74,7 +100,6 @@ export async function POST(request: NextRequest) {
   const name =
     profile?.full_name?.trim() || profile?.username?.trim() || "Viewer";
 
-  const isHost = stream.host_id === claims.sub;
   const token = await mintLivekitToken({
     room: stream.livekit_room,
     identity: claims.sub,
