@@ -50,7 +50,7 @@ const schema = z.object({
 async function storedProfileId(
   userPoolId: string,
   username: string,
-): Promise<string | null> {
+): Promise<string | null | undefined> {
   if (!username) return null;
   try {
     const out = await cognito().send(
@@ -61,7 +61,11 @@ async function storedProfileId(
       null
     );
   } catch {
-    return null;
+    // The lookup itself failed (IAM permissions, throttling, network) — that
+    // is "unknown", NOT "absent". Callers must never overwrite the stored
+    // attribute based on this, or a transient failure permanently unlinks
+    // the account from its profile.
+    return undefined;
   }
 }
 
@@ -69,7 +73,7 @@ async function profileIdForEmail(
   userPoolId: string,
   email: string | undefined,
   selfUsername: string,
-): Promise<string | null> {
+): Promise<string | null | undefined> {
   if (!email) return null;
   try {
     const out = await cognito().send(
@@ -87,7 +91,8 @@ async function profileIdForEmail(
       if (pid) return pid;
     }
   } catch {
-    // Best effort — fall back to a fresh profile.
+    // Lookup failed — unknown, not "no match" (see storedProfileId).
+    return undefined;
   }
   return null;
 }
@@ -159,21 +164,33 @@ export async function POST(request: Request) {
       // If an account already exists with this (Google-verified) email — e.g.
       // one created earlier with email/password — link the Google login to it
       // instead of stranding the user on a fresh, empty profile.
-      const linkedId =
-        stored ?? (await profileIdForEmail(userPoolId, email, cognitoUsername));
-      profileId = linkedId ?? randomUUID();
+      let linkedId: string | null | undefined;
+      if (typeof stored === "string") {
+        linkedId = stored;
+      } else if (stored === null) {
+        linkedId = await profileIdForEmail(userPoolId, email, cognitoUsername);
+      } else {
+        // User-store read failed — we know nothing; don't trust email lookup
+        // either for a persistent decision.
+        linkedId = undefined;
+      }
+      profileId = typeof linkedId === "string" ? linkedId : randomUUID();
       isNewUser = linkedId === null;
-      // Back-fill custom:profile_id so every later login is stable and both
-      // Cognito users (Google + email/password) resolve to the same profile.
-      await cognito()
-        .send(
-          new AdminUpdateUserAttributesCommand({
-            UserPoolId: userPoolId,
-            Username: cognitoUsername,
-            UserAttributes: [{ Name: "custom:profile_id", Value: profileId }],
-          }),
-        )
-        .catch(() => {});
+      // Back-fill custom:profile_id ONLY when the user store definitively had
+      // no value. Writing over an attribute we merely failed to READ was the
+      // bug that kept re-pointing accounts at fresh empty profiles — a random
+      // session-only id is recoverable; a clobbered attribute is not.
+      if (stored === null && linkedId !== undefined) {
+        await cognito()
+          .send(
+            new AdminUpdateUserAttributesCommand({
+              UserPoolId: userPoolId,
+              Username: cognitoUsername,
+              UserAttributes: [{ Name: "custom:profile_id", Value: profileId }],
+            }),
+          )
+          .catch(() => {});
+      }
     }
 
     // The profiles row must exist before any FK write (live_streams, PTT,
