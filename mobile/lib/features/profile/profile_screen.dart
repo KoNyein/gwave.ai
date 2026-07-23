@@ -6,8 +6,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_state.dart';
 import '../../core/config.dart';
+import '../../core/i18n.dart';
+import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
+import '../feed/post_card.dart';
 import '../web/web_screen.dart';
 import '../../widgets/common.dart';
 import '../boost/boost_screen.dart';
@@ -219,6 +222,9 @@ class ProfileScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       _menu(context),
+                      // Facebook-style timeline: your own posts right on the
+                      // profile, newest first.
+                      const _MyPostsSection(),
                       const SizedBox(height: 30),
                     ],
                   ),
@@ -662,4 +668,72 @@ class _MenuEntry {
   final int? tab;
   final _Native? native;
   final String? web;
+}
+
+/// Facebook-style timeline on the profile: the signed-in user's own posts,
+/// loaded lazily and rendered with the same cards as the feed.
+class _MyPostsSection extends StatefulWidget {
+  const _MyPostsSection();
+
+  @override
+  State<_MyPostsSection> createState() => _MyPostsSectionState();
+}
+
+class _MyPostsSectionState extends State<_MyPostsSection> {
+  List<Post> _posts = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final posts = await context.read<AppState>().repo.myPosts(limit: 15);
+      if (mounted) setState(() => _posts = posts);
+    } catch (_) {
+      // The profile stays useful without the timeline.
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+          child: Text(
+            tr(context, "Posts", "ပို့စ်များ"),
+            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+          ),
+        ),
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+                child: CircularProgressIndicator(color: GwColors.primary)),
+          )
+        else if (_posts.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Text(
+              tr(context, "No posts yet — share something from the Feed tab.",
+                  "ပို့စ် မရှိသေးပါ — Feed tab ကနေ တစ်ခုခု မျှဝေကြည့်ပါ။"),
+              style: const TextStyle(color: GwColors.inkSoft, fontSize: 13),
+            ),
+          )
+        else
+          for (final p in _posts)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: PostCard(post: p),
+            ),
+      ],
+    );
+  }
 }

@@ -1271,14 +1271,16 @@ class Repository {
     });
   }
 
-  /// My own recent posts (for the boost target picker).
-  Future<List<Post>> myPosts({int limit = 20}) async {
+  /// My own recent posts (profile timeline + the boost target picker).
+  Future<List<Post>> myPosts({int limit = 20, int offset = 0}) async {
     final rows = await api.select("posts", query: {
-      "select": "*,media:post_media(storage_path,media_type,position)",
+      "select":
+          "*,author:profiles!posts_author_id_fkey($_profileCols),media:post_media(storage_path,media_type,position)",
       "author_id": "eq.${api.session!.profileId}",
       "removed_at": "is.null",
       "order": "created_at.desc",
       "limit": "$limit",
+      "offset": "$offset",
     });
     return rows.map(Post.fromJson).toList();
   }
