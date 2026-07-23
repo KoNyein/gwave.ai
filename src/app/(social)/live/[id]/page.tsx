@@ -39,7 +39,7 @@ import {
 import { createClient } from "@/lib/data/server";
 import { displayName, liveStreamTitle, timeAgo } from "@/lib/format";
 import { agoraRecordingUrl } from "@/lib/agora";
-import { isIvsChannelLive } from "@/lib/ivs";
+import { isIvsChannelLive, latestIvsRecordingPath } from "@/lib/ivs";
 import { ivsRecordingUrl } from "@/lib/ivs-realtime";
 import { recordingPlaybackUrl } from "@/lib/livekit";
 import { mediaUrl } from "@/lib/media-url";
@@ -90,6 +90,31 @@ export default async function LiveStreamPage(
         .eq("status", "idle");
       stream.status = "live";
     }
+  }
+  // …and the reverse: a "live" IVS stream whose channel is actually offline is
+  // a broadcast that died without ending — viewers got a broken "Source Not
+  // Supported" player. Mark it ended (linking the recording when one exists)
+  // so the page renders the ended/replay state instead.
+  if (
+    isIvs &&
+    stream.status === "live" &&
+    stream.ivs_channel_arn &&
+    Date.now() - new Date(stream.created_at).getTime() > 3 * 60_000 &&
+    !(await isIvsChannelLive(stream.ivs_channel_arn))
+  ) {
+    const recordingPath = await latestIvsRecordingPath(stream.ivs_channel_arn);
+    const admin = createAdminClient();
+    await admin
+      .from("live_streams")
+      .update({
+        status: "ended",
+        ended_at: new Date().toISOString(),
+        ...(recordingPath ? { recording_path: recordingPath } : {}),
+      })
+      .eq("id", stream.id)
+      .eq("status", "live");
+    stream.status = "ended";
+    if (recordingPath) stream.recording_path = recordingPath;
   }
   // Auto-saved replay: an ended browser broadcast plays back its recording
   // instead of the "broadcast ended" placeholder. Egress recordings resolve via
@@ -244,6 +269,11 @@ export default async function LiveStreamPage(
                 status={stream.status}
                 title={stream.title}
                 src={isIvs ? stream.ivs_playback_url : null}
+                vodSrc={
+                  isIvs && stream.status === "ended" && stream.recording_path
+                    ? ivsRecordingUrl(stream.recording_path)
+                    : null
+                }
               />
             )}
             {stream.status === "live" ? (
