@@ -20,9 +20,9 @@ import { Button } from "@/components/ui/button";
 import { getCurrentProfile } from "@/lib/auth";
 
 export const metadata = {
-  title: "Gwave — the super-app for farmers",
+  title: "Gwave — learning & smart-life platform for Myanmar",
   description:
-    "Social network, learning, marketplace and smart-farm tech for farmers — all in one app.",
+    "Learn a little every day with one account for life — Internet, cloud computing and natural science — inside a friendly Myanmar social community. All-in-one smart-lifestyle app.",
 };
 export const dynamic = "force-dynamic";
 
@@ -53,34 +53,34 @@ const APK_VARIANTS = [
 
 const FEATURES = [
   {
+    icon: GraduationCap,
+    title: "Learn a little every day",
+    body: "Free courses in Internet & cloud computing, coding, AI, electronics, robotics and natural science — 60 lessons each, with quizzes, code playgrounds and certificates.",
+  },
+  {
     icon: Users,
-    title: "Social network",
-    body: "Connect with fellow farmers and share posts, photos and videos.",
+    title: "Social community",
+    body: "Share posts, photos, reels and live streams — learn and grow together with friends across Myanmar.",
   },
   {
     icon: MessageCircle,
     title: "Messenger + games",
-    body: "Realtime chat, voice/video calls, and play chess and Kyar.",
-  },
-  {
-    icon: GraduationCap,
-    title: "Free courses",
-    body: "Coding, AI, Electronics, Robotics and Agriculture — 60 lessons each.",
+    body: "Realtime chat, voice/video calls, walkie-talkie channels, and games like chess and Kyar.",
   },
   {
     icon: ShoppingBag,
-    title: "Buy + sell",
-    body: "Trade products, run dropship/affiliate stores, track deliveries.",
+    title: "Marketplace + G-Pay",
+    body: "Buy and sell, run a store with the built-in POS, and pay friends with the G-Pay wallet.",
   },
   {
     icon: Cpu,
-    title: "Smart Farm IoT",
-    body: "Sensors, automatic irrigation, and a dashboard to watch your farm.",
+    title: "Smart farm & smart life",
+    body: "Connect sensors and switches, watch live dashboards, automate your farm or home — real IoT you can learn from.",
   },
   {
     icon: Wrench,
-    title: "Farming tools",
-    body: "EC/PPM, VPD, profit calculators, strain and mineral references.",
+    title: "Everyday tools",
+    body: "Calculators, finance tracker, family locator, SOS map, and science references — one account for your whole smart life.",
   },
 ];
 
@@ -112,15 +112,24 @@ export default async function WelcomePage() {
       {/* Hero */}
       <section className="mx-auto max-w-5xl px-4 pb-10 pt-8 text-center sm:pt-16">
         <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
-          <Sprout className="h-3.5 w-3.5 text-primary" /> For farmers
+          <Sprout className="h-3.5 w-3.5 text-primary" /> Learning &amp;
+          smart-life platform for Myanmar
         </span>
         <h1 className="mx-auto mt-4 max-w-2xl text-3xl font-bold leading-tight sm:text-4xl">
-          Farming, learning and community —{" "}
-          <span className="text-primary">all in one place</span>
+          Learn a little every day —{" "}
+          <span className="text-primary">one account for a smarter life</span>
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-          Gwave is a super-app for farmers, bringing together a social
-          network, free education, a marketplace and smart-farm technology.
+          Gwave is an all-in-one smart-lifestyle application for Myanmar. From
+          young learners up, keep one account for life and study a little every
+          day — the Internet, cloud computing and natural science — inside a
+          friendly social community, with a marketplace and smart-farm
+          technology built in.
+        </p>
+        <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
+          မြန်မာလူငယ်များအတွက် — account တစ်ခုတည်းနဲ့ Internet၊ Cloud Computing
+          နဲ့ သဘာဝသိပ္ပံပညာတွေကို တစ်နေ့နည်းနည်းချင်း လေ့လာနိုင်တဲ့ social
+          platform ဖြစ်ပါတယ်။
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Button asChild size="lg">
@@ -209,10 +218,11 @@ export default async function WelcomePage() {
         <div className="rounded-3xl border bg-primary/5 p-8 text-center">
           <Bot className="mx-auto h-9 w-9 text-primary" />
           <h2 className="mt-3 text-xl font-bold">
-            Join the Gwave community today
+            Start learning with Gwave today
           </h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            It&apos;s free, and you can install it as an app on your phone.
+            It&apos;s free — learn a little every day, and keep one account for
+            your whole smart life. Install it as an app on your phone.
           </p>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
             <Button asChild size="lg">
