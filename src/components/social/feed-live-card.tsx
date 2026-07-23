@@ -4,6 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { Radio, PlayCircle } from "lucide-react";
 
+import Hls from "hls.js";
+
 import { createClient } from "@/lib/data/client";
 
 interface StreamInfo {
@@ -51,22 +53,40 @@ export function FeedLiveCard({ streamId }: { streamId: string }) {
     };
   }, [streamId]);
 
-  // Inline muted preview for HLS lives (Safari plays m3u8 natively; other
-  // browsers show the card and play on the live page).
+  // Inline muted autoplay for both lives (HLS) and finished replays — Safari
+  // plays m3u8 natively, everything else goes through hls.js.
+  const src = React.useMemo(() => {
+    if (!info) return null;
+    if (info.status === "live") return info.ivs_playback_url;
+    if (info.recording_path) {
+      return info.recording_path.startsWith("http")
+        ? info.recording_path
+        : `/recordings/${info.recording_path.replace(/^\/+/, "")}`;
+    }
+    return null;
+  }, [info]);
+
   React.useEffect(() => {
     const v = videoRef.current;
-    const src = info?.status === "live" ? info.ivs_playback_url : null;
     if (!v || !src) return;
     if (v.canPlayType("application/vnd.apple.mpegurl")) {
       v.src = src;
       void v.play().catch(() => undefined);
+      return;
     }
-  }, [info]);
+    if (Hls.isSupported()) {
+      const hls = new Hls({ capLevelToPlayerSize: true });
+      hls.loadSource(src);
+      hls.attachMedia(v);
+      void v.play().catch(() => undefined);
+      return () => hls.destroy();
+    }
+  }, [src]);
 
   if (!info) return null;
   const live = info.status === "live";
   const replayable = !live && Boolean(info.recording_path);
-  const showVideo = live && Boolean(info.ivs_playback_url);
+  const showVideo = Boolean(src);
 
   return (
     <Link
@@ -81,10 +101,23 @@ export function FeedLiveCard({ streamId }: { streamId: string }) {
             muted
             playsInline
             autoPlay
+            loop
             className="h-full w-full object-cover"
           />
-          <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">
-            <Radio className="h-3 w-3 animate-pulse" /> LIVE
+          <span
+            className={`absolute left-3 top-3 flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white ${
+              live ? "bg-red-600" : "bg-black/60"
+            }`}
+          >
+            {live ? (
+              <>
+                <Radio className="h-3 w-3 animate-pulse" /> LIVE
+              </>
+            ) : (
+              <>
+                <PlayCircle className="h-3 w-3" /> REPLAY
+              </>
+            )}
           </span>
         </div>
       ) : null}

@@ -110,10 +110,14 @@ function SpeakButton({
   text,
   lang,
   large,
+  onBeforePlay,
 }: {
   text: string;
   lang: string;
   large?: boolean;
+  /** Runs right before TTS starts — e.g. stop an active mic session, which
+   *  otherwise silences speech playback on iOS Safari. */
+  onBeforePlay?: () => void;
 }) {
   const t = useTranslations("lang");
   // Detect support only after mount. On the server (and the first client
@@ -128,7 +132,10 @@ function SpeakButton({
       type="button"
       disabled={!supported}
       title={supported ? t("playAudio") : t("ttsUnsupported")}
-      onClick={() => speak(text, lang)}
+      onClick={() => {
+        onBeforePlay?.();
+        speak(text, lang);
+      }}
       className={`flex items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 disabled:opacity-40 ${
         large ? "h-14 w-14" : "h-10 w-10"
       }`}
@@ -287,7 +294,15 @@ function SpeakMode({
           <p className="text-xs text-muted-foreground">{item.roman}</p>
           <p className="text-sm text-muted-foreground">{item.my}</p>
           <div className="mt-1">
-            <SpeakButton text={item.target} lang={lang} />
+            <SpeakButton
+              text={item.target}
+              lang={lang}
+              onBeforePlay={() => {
+                // An open mic session mutes TTS on iOS Safari — stop it first.
+                recRef.current?.stop();
+                setListening(false);
+              }}
+            />
           </div>
         </div>
 

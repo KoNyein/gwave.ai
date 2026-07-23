@@ -2,21 +2,60 @@
 // external service — the browser does text-to-speech and speech recognition
 // locally (recognition may use an OS/cloud engine depending on the browser).
 
+// iOS Safari loads voices asynchronously — getVoices() is often empty on the
+// first call and only fills after a `voiceschanged` event, so keep a cache.
+let voicesCache: SpeechSynthesisVoice[] = [];
+let voicesListenerAttached = false;
+// Keep the active utterance referenced: WebKit garbage-collects utterances
+// mid-speech, which cuts the audio off silently.
+let activeUtterance: SpeechSynthesisUtterance | null = null;
+
+function loadVoices(synth: SpeechSynthesis): SpeechSynthesisVoice[] {
+  const now = synth.getVoices();
+  if (now.length > 0) voicesCache = now;
+  if (!voicesListenerAttached) {
+    voicesListenerAttached = true;
+    synth.addEventListener?.("voiceschanged", () => {
+      const v = synth.getVoices();
+      if (v.length > 0) voicesCache = v;
+    });
+  }
+  return voicesCache;
+}
+
 /** Speak `text` in the given BCP-47 language using the best matching voice. */
 export function speak(text: string, lang: string): void {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
   const synth = window.speechSynthesis;
-  synth.cancel(); // stop anything already playing
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang = lang;
   utter.rate = 0.9; // a touch slower, easier for a learner to follow
-  const voices = synth.getVoices();
-  const primary = lang.split("-")[0] ?? lang;
+  const voices = loadVoices(synth);
+  const primary = (lang.split("-")[0] ?? lang).toLowerCase();
   const match =
     voices.find((v) => v.lang === lang) ??
-    voices.find((v) => v.lang.startsWith(primary));
+    voices.find((v) => v.lang.toLowerCase().startsWith(primary));
   if (match) utter.voice = match;
-  synth.speak(utter);
+  activeUtterance = utter;
+  utter.onend = utter.onerror = () => {
+    if (activeUtterance === utter) activeUtterance = null;
+  };
+  const kick = () => {
+    synth.speak(utter);
+    // iOS Safari can be stuck "paused" after a cancel or backgrounding, and
+    // then speak() queues silently forever — resume() unsticks it.
+    synth.resume();
+  };
+  if (synth.speaking || synth.pending) {
+    // WebKit drops an utterance queued in the same tick as cancel(); give the
+    // engine a beat to actually flush before speaking again.
+    synth.cancel();
+    setTimeout(kick, 120);
+  } else {
+    // Nothing to cancel — speak synchronously inside the user gesture (iOS
+    // requires the first speak() of a page to happen inside one).
+    kick();
+  }
 }
 
 export function isTtsSupported(): boolean {
