@@ -7,6 +7,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { notifyIncomingCall } from "@/lib/actions/calls";
 import { sendMessage } from "@/lib/actions/messages";
 import { createClient } from "@/lib/data/client";
+import { fetchIceServers } from "@/lib/webrtc-ice";
 import type { AuthorSummary } from "@/types/social";
 
 // WebRTC audio/video calls for the 1:1 messenger. Our self-hosted Realtime
@@ -21,8 +22,9 @@ import type { AuthorSummary } from "@/types/social";
 //   ◀─ ice ─▶  (trickle, both directions)
 //   ── hangup ────────▶  (either side)
 //
-// STUN is Google's public server; an optional TURN relay can be configured
-// with NEXT_PUBLIC_TURN_URL/USERNAME/CREDENTIAL for strict NATs.
+// STUN/TURN config comes from /api/webrtc/ice at call time (see
+// src/lib/webrtc-ice.ts) — the TURN relay is required for peers behind
+// carrier NAT, where STUN-only calls connect but stay silent.
 
 export type CallStatus =
   | "idle"
@@ -77,20 +79,6 @@ export interface CallLogMessage {
   content: string;
 }
 
-function iceServers(): RTCIceServer[] {
-  const servers: RTCIceServer[] = [
-    { urls: "stun:stun.l.google.com:19302" },
-  ];
-  const turnUrl = process.env.NEXT_PUBLIC_TURN_URL;
-  if (turnUrl) {
-    servers.push({
-      urls: turnUrl,
-      username: process.env.NEXT_PUBLIC_TURN_USERNAME,
-      credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL,
-    });
-  }
-  return servers;
-}
 
 function formatDuration(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
@@ -253,7 +241,7 @@ export function useCall(
           localStream.getTracks().forEach((track) => track.stop());
           throw new Error("Call ended before media was ready.");
         }
-        const pc = new RTCPeerConnection({ iceServers: iceServers() });
+        const pc = new RTCPeerConnection({ iceServers: await fetchIceServers() });
         s.pc = pc;
         s.localStream = localStream;
         localStream
@@ -440,20 +428,26 @@ export function useCall(
   React.useEffect(() => {
     const db = createClient();
 
+    // Flat queries only: a resource embed here 500s whenever PostgREST's schema
+    // cache goes stale, and a failed lookup silently swallows the ring.
     async function verifyRing(payload: {
       conversationId: string;
       fromId: string;
     }): Promise<AuthorSummary | null> {
-      const { data } = await db
+      const { data: parts } = await db
         .from("conversation_participants")
-        .select(
-          "user_id, profile:profiles!conversation_participants_user_id_fkey(id, username, full_name, avatar_url)",
-        )
+        .select("user_id")
         .eq("conversation_id", payload.conversationId)
-        .returns<{ user_id: string; profile: AuthorSummary }[]>();
-      const includesMe = data?.some((row) => row.user_id === currentUser.id);
-      const caller = data?.find((row) => row.user_id === payload.fromId);
-      return includesMe && caller ? caller.profile : null;
+        .returns<{ user_id: string }[]>();
+      const includesMe = parts?.some((row) => row.user_id === currentUser.id);
+      const includesCaller = parts?.some((row) => row.user_id === payload.fromId);
+      if (!includesMe || !includesCaller) return null;
+      const { data: caller } = await db
+        .from("profiles")
+        .select("id, username, full_name, avatar_url")
+        .eq("id", payload.fromId)
+        .maybeSingle<AuthorSummary>();
+      return caller ?? null;
     }
 
     const channel = db
