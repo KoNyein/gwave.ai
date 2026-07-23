@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { verifyDataToken } from "@/lib/auth/tokens";
 import { createAdminClient } from "@/lib/data/admin";
-import { isIvsChannelLive } from "@/lib/ivs";
+import { isIvsChannelLive, latestIvsRecordingPath } from "@/lib/ivs";
 import { hostPresentInRoom } from "@/lib/livekit";
 
 export const runtime = "nodejs";
@@ -57,9 +57,16 @@ export async function POST(request: NextRequest) {
     alive = await isIvsChannelLive(stream.ivs_channel_arn);
   }
   if (!alive) {
+    const recordingPath = stream.ivs_channel_arn
+      ? await latestIvsRecordingPath(stream.ivs_channel_arn)
+      : null;
     await admin
       .from("live_streams")
-      .update({ status: "ended", ended_at: new Date().toISOString() })
+      .update({
+        status: "ended",
+        ended_at: new Date().toISOString(),
+        ...(recordingPath ? { recording_path: recordingPath } : {}),
+      })
       .eq("id", stream.id)
       .eq("status", "live");
     return NextResponse.json({ status: "ended" });

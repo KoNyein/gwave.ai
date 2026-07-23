@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { verifyDataToken } from "@/lib/auth/tokens";
-import { stopIvsStream } from "@/lib/ivs";
+import { latestIvsRecordingPath, stopIvsStream } from "@/lib/ivs";
 import { createAdminClient } from "@/lib/data/admin";
 
 export const runtime = "nodejs";
@@ -44,13 +44,21 @@ export async function POST(request: NextRequest) {
   }
   if (stream.status === "ended") return NextResponse.json({ ok: true });
 
+  let recordingPath: string | null = null;
   if (stream.ivs_channel_arn) {
     await stopIvsStream(stream.ivs_channel_arn).catch(() => undefined);
+    // IVS auto-records to S3 but nothing reports the key back — derive it so
+    // the replay is linked the moment the broadcast ends.
+    recordingPath = await latestIvsRecordingPath(stream.ivs_channel_arn);
   }
 
   const { error } = await admin
     .from("live_streams")
-    .update({ status: "ended", ended_at: new Date().toISOString() })
+    .update({
+      status: "ended",
+      ended_at: new Date().toISOString(),
+      ...(recordingPath ? { recording_path: recordingPath } : {}),
+    })
     .eq("id", stream.id);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
