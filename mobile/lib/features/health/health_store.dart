@@ -1,13 +1,18 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/api_client.dart';
 
-/// On-device store for the Health module. Health data is highly personal, so it
-/// stays on the phone (SharedPreferences JSON) — nothing is uploaded to the
-/// server. The user can still export a PDF report to show a doctor. Cloud sync
-/// could be a later opt-in; the privacy-first default is local-only.
+/// On-device store for the Health module. The phone copy (SharedPreferences
+/// JSON) is the fast source of truth, but every change is also mirrored to the
+/// user's own row in the server table `public.health_state` (a single JSON
+/// snapshot, owner-only RLS). That means health data **auto-saves, auto-updates
+/// and restores**: sign out and back in — or reinstall, or switch phones — and
+/// the whole history comes back instead of vanishing. Call [attachCloud] +
+/// [restoreFromCloud] on sign-in and [detachCloud] on sign-out (AppState does
+/// this).
 class HealthStore {
   static const _kVitals = "gw_health_vitals";
   static const _kCycle = "gw_health_cycle";
@@ -15,8 +20,169 @@ class HealthStore {
   static const _kMedId = "gw_health_medid";
   static const _kReport = "gw_health_report_prefs";
   static const _kEvents = "gw_health_events";
+  static const _kOwner = "gw_health_owner"; // profileId the local copy belongs to
+
+  /// Every key that is mirrored to the cloud snapshot.
+  static const _syncKeys = [_kVitals, _kCycle, _kMeds, _kMedId, _kReport, _kEvents];
 
   static Future<SharedPreferences> get _p => SharedPreferences.getInstance();
+
+  // ---- Cloud auto-sync ------------------------------------------------------
+
+  static ApiClient? _cloud;
+  static Timer? _syncTimer;
+
+  /// Wire the store to the signed-in user's API client so future saves mirror
+  /// to the cloud. Safe to call repeatedly.
+  static void attachCloud(ApiClient api) => _cloud = api;
+
+  /// Stop mirroring (called on sign-out). The local copy is *kept* — signing
+  /// back in must never lose it — but a different account signing in later will
+  /// clear it in [restoreFromCloud] and load its own snapshot instead.
+  static void detachCloud() {
+    _cloud = null;
+    _syncTimer?.cancel();
+    _syncTimer = null;
+  }
+
+  /// Debounced push of the whole snapshot — coalesces a burst of edits (e.g. a
+  /// full scan saving six vitals at once) into one upload.
+  static void _scheduleSync() {
+    final api = _cloud;
+    if (api == null) return;
+    _syncTimer?.cancel();
+    _syncTimer = Timer(const Duration(seconds: 3), () => _pushSnapshot(api));
+  }
+
+  /// The full local health state as a JSON-safe map (decoded per key). Only
+  /// keys that hold data are included.
+  static Future<Map<String, dynamic>> _rawSnapshot() async {
+    final p = await _p;
+    final out = <String, dynamic>{};
+    for (final k in _syncKeys) {
+      final raw = p.getString(k);
+      if (raw != null && raw.isNotEmpty) {
+        try {
+          out[k] = jsonDecode(raw);
+        } catch (_) {}
+      }
+    }
+    return out;
+  }
+
+  /// Best-effort mirror of the whole store to `public.health_state`. The local
+  /// copy stays authoritative, so a missing table / offline device never blocks
+  /// a save.
+  static Future<void> _pushSnapshot(ApiClient api) async {
+    final pid = api.session?.profileId;
+    if (pid == null) return;
+    try {
+      await api.upsert(
+        "health_state",
+        {
+          "user_id": pid,
+          "data": await _rawSnapshot(),
+          "updated_at": DateTime.now().toUtc().toIso8601String(),
+        },
+        onConflict: "user_id",
+      );
+    } catch (_) {
+      // Table not migrated yet / offline — the on-device copy is enough.
+    }
+  }
+
+  /// Pull the signed-in user's cloud snapshot and merge it into the local copy.
+  /// Call once on every sign-in. Merge policy:
+  ///  * lists (vitals, events, cycle, meds) — union by identity, so nothing on
+  ///    either side is lost;
+  ///  * single objects (Medical ID, report prefs) — cloud fills in only when
+  ///    the phone has none yet.
+  /// A fresh install (empty phone) therefore gets everything back; an existing
+  /// phone keeps its data and gains anything the cloud had.
+  static Future<void> restoreFromCloud(ApiClient api) async {
+    final pid = api.session?.profileId;
+    if (pid == null) return;
+    final p = await _p;
+
+    // Different account on this shared device → drop the previous user's data
+    // before loading this user's, so accounts never bleed into each other.
+    final owner = p.getString(_kOwner);
+    if (owner != null && owner != pid) {
+      for (final k in _syncKeys) {
+        await p.remove(k);
+      }
+    }
+    await p.setString(_kOwner, pid);
+
+    Map<String, dynamic>? cloud;
+    try {
+      final rows = await api.select("health_state", query: {
+        "select": "data",
+        "user_id": "eq.$pid",
+        "limit": "1",
+      });
+      if (rows.isNotEmpty) {
+        cloud = (rows.first["data"] as Map?)?.cast<String, dynamic>();
+      }
+    } catch (_) {
+      return; // table not migrated / offline — keep whatever is local
+    }
+    if (cloud == null || cloud.isEmpty) {
+      // Nothing in the cloud yet — seed it from whatever this phone holds.
+      await _pushSnapshot(api);
+      return;
+    }
+
+    await _mergeList(p, _kVitals, cloud, (j) => "${j["id"]}");
+    await _mergeList(p, _kEvents, cloud, (j) => "${j["id"]}");
+    await _mergeList(p, _kCycle, cloud, (j) => "${j["start"]}");
+    await _mergeList(p, _kMeds, cloud, (j) => "${j["name"]}");
+    await _adoptIfAbsent(p, _kMedId, cloud);
+    await _adoptIfAbsent(p, _kReport, cloud);
+
+    // The merge may have added local-only rows the cloud lacked; push the
+    // reconciled result straight back so both sides converge.
+    await _pushSnapshot(api);
+  }
+
+  /// Union a list-valued key: append every cloud item whose identity isn't
+  /// already present locally.
+  static Future<void> _mergeList(
+    SharedPreferences p,
+    String key,
+    Map<String, dynamic> cloud,
+    String Function(Map<String, dynamic>) idOf,
+  ) async {
+    final cloudList =
+        (cloud[key] as List?)?.cast<Map<String, dynamic>>() ?? const [];
+    if (cloudList.isEmpty) return;
+    final localRaw = p.getString(key);
+    final localList = (localRaw != null && localRaw.isNotEmpty)
+        ? (jsonDecode(localRaw) as List).cast<Map<String, dynamic>>()
+        : <Map<String, dynamic>>[];
+    final seen = localList.map(idOf).toSet();
+    var changed = localRaw == null;
+    for (final c in cloudList) {
+      if (seen.add(idOf(c))) {
+        localList.add(c);
+        changed = true;
+      }
+    }
+    if (changed) await p.setString(key, jsonEncode(localList));
+  }
+
+  /// Adopt a single-object key from the cloud only when the phone has none.
+  static Future<void> _adoptIfAbsent(
+    SharedPreferences p,
+    String key,
+    Map<String, dynamic> cloud,
+  ) async {
+    final existing = p.getString(key);
+    if (existing != null && existing.isNotEmpty) return;
+    final v = cloud[key];
+    if (v == null) return;
+    await p.setString(key, jsonEncode(v));
+  }
 
   // ---- Vitals ---------------------------------------------------------------
 
@@ -34,6 +200,7 @@ class HealthStore {
     all.insert(0, r);
     await (await _p)
         .setString(_kVitals, jsonEncode(all.map((e) => e.toJson()).toList()));
+    _scheduleSync();
   }
 
   static Future<void> deleteVital(String id) async {
@@ -41,6 +208,7 @@ class HealthStore {
       ..removeWhere((e) => e.id == id);
     await (await _p)
         .setString(_kVitals, jsonEncode(all.map((e) => e.toJson()).toList()));
+    _scheduleSync();
   }
 
   /// The most recent reading of each vital type (for the hub summary).
@@ -67,6 +235,7 @@ class HealthStore {
   static Future<void> saveCycles(List<CycleEntry> list) async {
     await (await _p)
         .setString(_kCycle, jsonEncode(list.map((e) => e.toJson()).toList()));
+    _scheduleSync();
   }
 
   static Future<void> addCycle(CycleEntry c) async {
@@ -89,6 +258,7 @@ class HealthStore {
   static Future<void> saveMeds(List<Medication> list) async {
     await (await _p)
         .setString(_kMeds, jsonEncode(list.map((e) => e.toJson()).toList()));
+    _scheduleSync();
   }
 
   // ---- Medical ID -----------------------------------------------------------
@@ -101,6 +271,7 @@ class HealthStore {
 
   static Future<void> saveMedicalId(MedicalId m) async {
     await (await _p).setString(_kMedId, jsonEncode(m.toJson()));
+    _scheduleSync();
   }
 
   // ---- Report include/exclude prefs ----------------------------------------
@@ -113,6 +284,7 @@ class HealthStore {
 
   static Future<void> saveReportPrefs(ReportPrefs p) async {
     await (await _p).setString(_kReport, jsonEncode(p.toJson()));
+    _scheduleSync();
   }
 
   // ---- Activity journal (THC / meds / meals / exercise …) -------------------
@@ -131,6 +303,7 @@ class HealthStore {
     all.insert(0, e);
     await (await _p)
         .setString(_kEvents, jsonEncode(all.map((x) => x.toJson()).toList()));
+    _scheduleSync();
   }
 
   static Future<void> deleteEvent(String id) async {
@@ -138,6 +311,7 @@ class HealthStore {
       ..removeWhere((e) => e.id == id);
     await (await _p)
         .setString(_kEvents, jsonEncode(all.map((x) => x.toJson()).toList()));
+    _scheduleSync();
   }
 }
 

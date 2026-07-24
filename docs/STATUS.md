@@ -51,7 +51,16 @@
 
 ## Changelog
 
-- 2026-07-24 (latest): App batch → **Gwave v1.0.142** (`mobile-latest`).
+- 2026-07-24: **Health data now auto-saves & restores across logout/login,
+  reinstall, and new phones.** `HealthStore` mirrors the whole module (vitals,
+  oximeter/full-scan, cycle, meds, Medical ID, activity journal, report prefs)
+  to a per-user JSON snapshot in `public.health_state` (owner-only RLS) — a
+  debounced push on every change, and a merge-restore on every sign-in
+  (`AppState._afterSignIn`). A different account signing in on a shared device
+  clears the previous user's local copy first, so accounts never bleed. Fixes
+  the reported bug where health data vanished after logout→re-login. Requires
+  the `supabase/sql-editor-bundles/health-state.sql` migration on RDS.
+- 2026-07-24: App batch → **Gwave v1.0.142** (`mobile-latest`).
   Standard gestures (full-screen photo viewer pinch-zoom, story drag-to-dismiss),
   Health module (PPG heart-wave, vitals, cycle, meds, Medical ID, doctor PDF
   report — all on-device), dark-mode readability fixes (strains/minerals/offline

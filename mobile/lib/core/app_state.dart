@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 
+import '../features/health/health_store.dart';
 import 'api_client.dart';
 import 'models.dart';
 import 'repository.dart';
@@ -47,6 +48,15 @@ class AppState extends ChangeNotifier {
         Timer.periodic(const Duration(seconds: 60), (_) => repo.heartbeat());
   }
 
+  /// Run after every successful sign-in: wire the Health store to the cloud and
+  /// restore this user's health data (vitals, oximeter, activity journal, etc.)
+  /// so nothing is lost across logout/login, reinstall, or a new phone.
+  /// Best-effort and fire-and-forget — never blocks the UI.
+  void _afterSignIn() {
+    HealthStore.attachCloud(api);
+    HealthStore.restoreFromCloud(api);
+  }
+
   /// Google sign-in progress + error, surfaced to the login screen. The flow
   /// completes asynchronously via the `gwave://auth` deep link, so it can't be
   /// awaited from the button press.
@@ -63,6 +73,7 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       _loadMe();
       _startPresence();
+      _afterSignIn();
     } else {
       status = AuthStatus.signedOut;
       notifyListeners();
@@ -86,6 +97,7 @@ class AppState extends ChangeNotifier {
     status = AuthStatus.signedIn;
     notifyListeners();
     _startPresence();
+    _afterSignIn();
     await _loadMe();
   }
 
@@ -112,6 +124,7 @@ class AppState extends ChangeNotifier {
     }
     status = AuthStatus.signedIn;
     notifyListeners();
+    _afterSignIn();
     await _loadMe();
   }
 
@@ -141,6 +154,7 @@ class AppState extends ChangeNotifier {
       await api.googleExchange(code);
       status = AuthStatus.signedIn;
       notifyListeners();
+      _afterSignIn();
       await _loadMe();
     } catch (e) {
       googleError = e.toString();
@@ -178,6 +192,7 @@ class AppState extends ChangeNotifier {
     if (signedIn) {
       status = AuthStatus.signedIn;
       notifyListeners();
+      _afterSignIn();
       await _loadMe();
     }
     return signedIn;
@@ -187,12 +202,14 @@ class AppState extends ChangeNotifier {
     await api.phoneVerify(phone, code);
     status = AuthStatus.signedIn;
     notifyListeners();
+    _afterSignIn();
     await _loadMe();
   }
 
   Future<void> logout() async {
     _presence?.cancel();
     _presence = null;
+    HealthStore.detachCloud();
     await api.logout();
     me = null;
     status = AuthStatus.signedOut;
