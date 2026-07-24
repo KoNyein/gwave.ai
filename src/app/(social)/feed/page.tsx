@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { LiveNowRail } from "@/components/social/live-now-rail";
 import { PostFeed } from "@/components/social/post-feed";
 import { StoryBar } from "@/components/stories/story-bar";
 import { getCurrentProfile } from "@/lib/auth";
+import { listLiveNow } from "@/lib/db/live";
 import { getFeed } from "@/lib/db/posts";
 import { getStoryGroups } from "@/lib/db/stories";
 
@@ -13,9 +15,10 @@ export default async function FeedPage() {
     redirect("/login");
   }
 
-  const [initialPage, storyGroups] = await Promise.all([
+  const [initialPage, storyGroups, liveNow] = await Promise.all([
     getFeed(profile.id),
     getStoryGroups(profile.id),
+    listLiveNow(),
   ]);
 
   const currentUser = {
@@ -41,6 +44,7 @@ export default async function FeedPage() {
           <span aria-hidden>→</span>
         </Link>
       ) : null}
+      <LiveNowRail streams={liveNow} />
       <StoryBar groups={storyGroups} currentUser={currentUser} />
       <PostFeed
         initialPage={initialPage}
