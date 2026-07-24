@@ -3,8 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { Radio } from "lucide-react";
-import Hls from "hls.js";
 
+import { attachPreviewHls } from "@/lib/hls-quality";
 import type { LiveNowEntry } from "@/lib/db/live";
 
 /**
@@ -37,18 +37,8 @@ function LiveNowCard({ stream }: { stream: LiveNowEntry }) {
   React.useEffect(() => {
     const v = videoRef.current;
     if (!v || !src) return;
-    if (v.canPlayType("application/vnd.apple.mpegurl")) {
-      v.src = src;
-      void v.play().catch(() => undefined);
-      return;
-    }
-    if (Hls.isSupported()) {
-      const hls = new Hls({ capLevelToPlayerSize: true });
-      hls.loadSource(src);
-      hls.attachMedia(v);
-      void v.play().catch(() => undefined);
-      return () => hls.destroy();
-    }
+    const player = attachPreviewHls(v, src);
+    return () => player.destroy();
   }, [src]);
 
   return (

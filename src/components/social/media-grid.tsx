@@ -86,6 +86,10 @@ function Lightbox({
       <img
         src={src}
         alt=""
+        // Full-resolution, high-priority async decode so the opened photo is as
+        // sharp as the source — no downscale, no decode jank.
+        decoding="async"
+        fetchPriority="high"
         onClick={(event) => event.stopPropagation()}
         className="max-h-[92vh] max-w-[96vw] object-contain"
       />
@@ -175,7 +179,11 @@ export function MediaGrid({ media }: { media: PostMedia[] }) {
               <img
                 src={mediaUrl(item.storage_path)}
                 alt=""
-                loading="lazy"
+                // First image loads eagerly (it's usually above the fold); the
+                // rest lazy-load. Async decode keeps scrolling smooth.
+                loading={index === 0 ? "eager" : "lazy"}
+                decoding="async"
+                fetchPriority={index === 0 ? "high" : "auto"}
                 className={cn(
                   "h-full w-full object-cover",
                   visible.length === 1 &&
