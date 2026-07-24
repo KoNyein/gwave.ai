@@ -62,11 +62,16 @@ export interface IvsChannel {
 
 /**
  * Create an IVS channel for one broadcast. LOW latency + BASIC type covers
- * 480p→1080p adaptive; the recording configuration (when set) makes IVS write
- * the HLS/MP4 recording to its S3 bucket automatically on stream end.
+ * 480p→1080p adaptive; the recording configuration is attached only when the
+ * host opted in (`record`), so IVS writes the HLS/MP4 replay to S3 on stream
+ * end for opt-in broadcasts and skips recording entirely otherwise — the
+ * international-standard "record → replay" behaviour.
  */
-export async function createIvsChannel(name: string): Promise<IvsChannel> {
-  const recordingArn = process.env.IVS_RECORDING_CONFIG_ARN;
+export async function createIvsChannel(
+  name: string,
+  record = false,
+): Promise<IvsChannel> {
+  const recordingArn = record ? process.env.IVS_RECORDING_CONFIG_ARN : undefined;
   const res = await ivsClient().send(
     new CreateChannelCommand({
       name,
