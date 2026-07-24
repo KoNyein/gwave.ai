@@ -225,6 +225,9 @@ class _PostCardState extends State<PostCard> {
                       resolveMedia(p.firstImage!.storagePath, bucket: "media")!,
                   fit: BoxFit.cover,
                   width: double.infinity,
+                  // Sharper downscale than Flutter's default low-quality
+                  // filter, so feed photos aren't soft on Retina screens.
+                  filterQuality: FilterQuality.medium,
                   placeholder: (_, __) => Container(
                     height: 200,
                     color: GwColors.surfaceMuted,

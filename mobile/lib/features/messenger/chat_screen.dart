@@ -384,6 +384,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: CachedNetworkImage(
                   imageUrl: resolveMedia(m.imagePath, bucket: "media") ?? "",
                   fit: BoxFit.cover,
+                  filterQuality: FilterQuality.medium,
                   placeholder: (_, __) => const SizedBox(
                     height: 160,
                     child: Center(

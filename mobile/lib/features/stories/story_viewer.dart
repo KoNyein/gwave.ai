@@ -83,6 +83,7 @@ class _StoryViewerState extends State<StoryViewer>
               CachedNetworkImage(
                 imageUrl: media,
                 fit: BoxFit.contain,
+                filterQuality: FilterQuality.medium,
                 errorWidget: (_, __, ___) => const SizedBox(),
               )
             else
