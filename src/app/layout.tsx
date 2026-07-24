@@ -40,6 +40,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#3B6D11",
+  // Let the standalone PWA draw under the iPhone notch / home indicator; the
+  // shell then pads itself with env(safe-area-inset-*) so nothing is hidden.
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({
@@ -61,11 +64,12 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className={inter.className}>
-        {/* Apply a per-user eye-friendly theme before paint (no flash). */}
+        {/* Apply the per-user site theme AND light/dark colour mode before
+            paint, so there's no flash of the wrong appearance. */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var t=localStorage.getItem('gwave-appearance');if(t){document.documentElement.setAttribute('data-theme',t);}}catch(e){}",
+              "try{var t=localStorage.getItem('gwave-appearance');if(t){document.documentElement.setAttribute('data-theme',t);}var m=localStorage.getItem('gw-color-mode')||'system';var d=m==='dark'||(m==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);}catch(e){}",
           }}
         />
         <NextIntlClientProvider messages={messages}>

@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 
 import { GlobalSearch } from "@/components/layout/global-search";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MobileMenu } from "@/components/layout/mobile-menu";
 import { NotificationsButton } from "@/components/layout/notifications-button";
 import { PRIMARY_NAV } from "@/components/layout/nav-items";
@@ -58,6 +59,7 @@ export function Navbar({ profile }: { profile: Profile | null }) {
 
         {/* Right: actions */}
         <div className="ml-auto flex items-center gap-1">
+          <ThemeToggle />
           <LocaleSwitcher />
           <Button
             variant="ghost"
