@@ -440,36 +440,54 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
   }
 
   /// One patient-monitor readout tile: label + big coloured number + unit.
+  /// Tappable — opens a details sheet explaining the metric and its ranges.
   Widget _vitalTile(String label, String value, String unit, Color color,
-      {bool big = false}) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label,
-            style: TextStyle(
-                color: color.withValues(alpha: 0.8),
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.5)),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
+      {bool big = false, VoidCallback? onTap}) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(value,
-                style: TextStyle(
-                    color: color,
-                    fontSize: big ? 52 : 30,
-                    fontWeight: FontWeight.w900,
-                    height: 1,
-                    fontFeatures: const [FontFeature.tabularFigures()])),
-            const SizedBox(width: 3),
-            Text(unit,
-                style: TextStyle(
-                    color: color.withValues(alpha: 0.6), fontSize: 11)),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label,
+                    style: TextStyle(
+                        color: color.withValues(alpha: 0.8),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5)),
+                if (onTap != null) ...[
+                  const SizedBox(width: 3),
+                  Icon(Icons.info_outline,
+                      size: 11, color: color.withValues(alpha: 0.6)),
+                ],
+              ],
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(value,
+                    style: TextStyle(
+                        color: color,
+                        fontSize: big ? 52 : 30,
+                        fontWeight: FontWeight.w900,
+                        height: 1,
+                        fontFeatures: const [FontFeature.tabularFigures()])),
+                const SizedBox(width: 3),
+                Text(unit,
+                    style: TextStyle(
+                        color: color.withValues(alpha: 0.6), fontSize: 11)),
+              ],
+            ),
           ],
         ),
-      ],
+      ),
     );
   }
 
@@ -483,14 +501,271 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
       children: [
         _vitalTile("HR", _bpm > 0 ? "$_bpm" : "--", "bpm",
             const Color(0xFF39E67B),
-            big: true),
+            big: true, onTap: () => _showMetricInfo("HR")),
         _vitalTile("RESP", _respiratory > 0 ? "$_respiratory" : "--", "/min",
-            const Color(0xFF44C8FF)),
-        _vitalTile("HRV", _hrvMs > 0 ? "$_hrvMs" : "--", "ms", GwColors.gold),
-        _vitalTile(
-            "CALM", _calmness > 0 ? "$_calmness" : "--", "%", calmColor),
+            const Color(0xFF44C8FF), onTap: () => _showMetricInfo("RESP")),
+        _vitalTile("HRV", _hrvMs > 0 ? "$_hrvMs" : "--", "ms", GwColors.gold,
+            onTap: () => _showMetricInfo("HRV")),
+        _vitalTile("CALM", _calmness > 0 ? "$_calmness" : "--", "%", calmColor,
+            onTap: () => _showMetricInfo("CALM")),
       ],
     );
+  }
+
+  /// A rich details sheet for one metric: what it is, the normal range, a
+  /// colour-banded scale with a marker at the current reading, and a plain
+  /// interpretation of that reading — so the number actually means something.
+  void _showMetricInfo(String key) {
+    // spec: title, unit, description, normalRange text, scale lo/hi, and the
+    // zones [(start, end, color, en, my)] across that scale.
+    late final String titleEn, titleMy, unit, descEn, descMy, rangeEn, rangeMy;
+    late final double lo, hi;
+    late final List<(double, double, Color, String, String)> zones;
+    double? value;
+
+    const green = Color(0xFF39E67B);
+    final gold = GwColors.gold;
+    final red = GwColors.live;
+
+    switch (key) {
+      case "HR":
+        titleEn = "Heart rate";
+        titleMy = "နှလုံးခုန်နှုန်း";
+        unit = "bpm";
+        value = _bpm > 0 ? _bpm.toDouble() : null;
+        descEn =
+            "How many times your heart beats per minute, read from the pulse in "
+            "your fingertip. It rises with activity, stress or caffeine and "
+            "falls at rest and during sleep.";
+        descMy =
+            "တစ်မိနစ်မှာ နှလုံး ဘယ်နှစ်ချက် ခုန်လဲ — လက်ဖျား pulse ကနေ ဖတ်တာ။ "
+            "လှုပ်ရှား/စိတ်လှုပ်ရှား/ကော်ဖီ သောက်ရင် တက်၊ အနားယူ/အိပ်ရင် ကျ။";
+        rangeEn = "Resting adult: 60–100 bpm (athletes 40–60)";
+        rangeMy = "အနားယူ လူကြီး: ၆၀–၁၀၀ bpm (အားကစားသမား ၄၀–၆၀)";
+        lo = 40;
+        hi = 160;
+        zones = [
+          (40, 60, gold, "Low / athlete", "နိမ့် / အားကစားသမား"),
+          (60, 100, green, "Normal", "ပုံမှန်"),
+          (100, 160, red, "High", "မြင့်"),
+        ];
+        break;
+      case "RESP":
+        titleEn = "Respiratory rate";
+        titleMy = "အသက်ရှူနှုန်း";
+        unit = "/min";
+        value = _respiratory > 0 ? _respiratory.toDouble() : null;
+        descEn =
+            "Breaths per minute, estimated from the tiny way your pulse speeds "
+            "up and slows down as you breathe (respiratory sinus arrhythmia). "
+            "No separate sensor is used.";
+        descMy =
+            "တစ်မိနစ်မှာ ဘယ်နှစ်ကြိမ် အသက်ရှူလဲ — အသက်ရှူတဲ့အခါ pulse "
+            "အနည်းငယ် မြန်/နှေးတာ (RSA) ကနေ ခန့်မှန်းတာ။ သီးခြား sensor မလို။";
+        rangeEn = "Resting adult: 12–20 breaths/min";
+        rangeMy = "အနားယူ လူကြီး: ၁၂–၂၀ ကြိမ်/မိနစ်";
+        lo = 5;
+        hi = 40;
+        zones = [
+          (5, 12, gold, "Low", "နိမ့်"),
+          (12, 20, green, "Normal", "ပုံမှန်"),
+          (20, 40, red, "High", "မြင့်"),
+        ];
+        break;
+      case "HRV":
+        titleEn = "Heart-rate variability (RMSSD)";
+        titleMy = "နှလုံးခုန် ကွဲပြားမှု (HRV)";
+        unit = "ms";
+        value = _hrvMs > 0 ? _hrvMs.toDouble() : null;
+        descEn =
+            "The tiny beat-to-beat difference in the time between heartbeats "
+            "(RMSSD). A HIGHER number is generally better — it reflects a "
+            "relaxed, well-recovered nervous system. It varies a lot by age and "
+            "fitness.";
+        descMy =
+            "နှလုံးခုန် တစ်ချက်နဲ့ တစ်ချက်ကြား အချိန် ကွာဟမှု (RMSSD)။ "
+            "ဂဏန်း မြင့်လေ ကောင်းလေ — ကိုယ်ခန္ဓာ တည်ငြိမ်/ပြန်လည်ကောင်းမွန်မှုကို "
+            "ပြ။ အသက်/ကျန်းမာရေးအလိုက် အများကြီး ကွာတတ်။";
+        rangeEn = "Typical adult (rest): 20–100+ ms";
+        rangeMy = "ပုံမှန် လူကြီး (အနားယူ): ၂၀–၁၀၀+ ms";
+        lo = 0;
+        hi = 120;
+        zones = [
+          (0, 20, red, "Low", "နိမ့်"),
+          (20, 50, gold, "Moderate", "အလယ်အလတ်"),
+          (50, 120, green, "Good", "ကောင်း"),
+        ];
+        break;
+      default: // CALM
+        titleEn = "Calmness";
+        titleMy = "စိတ်တည်ငြိမ်မှု";
+        unit = "%";
+        value = _calmness > 0 ? _calmness.toDouble() : null;
+        descEn =
+            "A 0–100 relaxation score derived from your HRV. Higher means your "
+            "body is in a calmer, more parasympathetic (rest-and-digest) state. "
+            "Slow breathing usually raises it.";
+        descMy =
+            "HRV ကနေ ရေတွက်ထားတဲ့ ၀–၁၀၀ တည်ငြိမ်မှု ရမှတ်။ မြင့်လေ ကိုယ်ခန္ဓာ "
+            "ပိုတည်ငြိမ်/အနားယူ အခြေအနေ။ ဖြည်းဖြည်း အသက်ရှူရင် များသောအားဖြင့် တက်။";
+        rangeEn = "Tense < 35 · Balanced 35–60 · Calm > 60";
+        rangeMy = "တင်းမာ < ၃၅ · အလယ်အလတ် ၃၅–၆၀ · တည်ငြိမ် > ၆၀";
+        lo = 0;
+        hi = 100;
+        zones = [
+          (0, 35, red, "Tense", "တင်းမာ"),
+          (35, 60, gold, "Balanced", "အလယ်အလတ်"),
+          (60, 100, green, "Calm", "တည်ငြိမ်"),
+        ];
+    }
+
+    // Which zone is the current value in?
+    (Color, String, String)? band;
+    if (value != null) {
+      for (final z in zones) {
+        if (value >= z.$1 && value <= z.$2) {
+          band = (z.$3, z.$4, z.$5);
+          break;
+        }
+      }
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF161719),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(tr(context, titleEn, titleMy),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18)),
+            const SizedBox(height: 4),
+            // Current reading + band chip.
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(value != null ? value.toStringAsFixed(0) : "--",
+                    style: TextStyle(
+                        color: band?.$1 ?? Colors.white,
+                        fontSize: 40,
+                        fontWeight: FontWeight.w900,
+                        height: 1,
+                        fontFeatures:
+                            const [FontFeature.tabularFigures()])),
+                const SizedBox(width: 4),
+                Text(unit,
+                    style: const TextStyle(
+                        color: Colors.white54, fontSize: 14)),
+                const Spacer(),
+                if (band != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: band.$1.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(tr(context, band.$2, band.$3),
+                        style: TextStyle(
+                            color: band.$1,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12.5)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _bandScale(value, lo, hi, zones),
+            const SizedBox(height: 14),
+            Text(tr(context, descEn, descMy),
+                style: const TextStyle(
+                    color: Colors.white70, fontSize: 13.5, height: 1.4)),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.check_circle_outline,
+                    size: 16, color: Color(0xFF39E67B)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(tr(context, rangeEn, rangeMy),
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 13,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              tr(context,
+                  "Wellness estimate from a camera pulse — not a medical diagnosis.",
+                  "ကင်မရာ pulse မှ ကျန်းမာရေး ခန့်မှန်းချက်သာ — ဆေးဘက်ဆိုင်ရာ ရောဂါရှာဖွေမှု မဟုတ်ပါ။"),
+              style: const TextStyle(color: Colors.white38, fontSize: 11.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// A colour-banded horizontal scale with a marker at the current value.
+  Widget _bandScale(double? value, double lo, double hi,
+      List<(double, double, Color, String, String)> zones) {
+    return LayoutBuilder(builder: (context, c) {
+      final w = c.maxWidth;
+      double posFor(double v) => ((v - lo) / (hi - lo)).clamp(0.0, 1.0) * w;
+      return SizedBox(
+        height: 34,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Zone bar.
+            Positioned(
+              top: 12,
+              left: 0,
+              right: 0,
+              child: Row(
+                children: [
+                  for (final z in zones)
+                    Expanded(
+                      flex: ((z.$2 - z.$1) * 100).round(),
+                      child: Container(
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: z.$3.withValues(alpha: 0.55),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Marker.
+            if (value != null)
+              Positioned(
+                left: (posFor(value) - 6).clamp(0.0, w - 12),
+                top: 8,
+                child: Container(
+                  width: 12,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(3),
+                    border: Border.all(color: Colors.black, width: 1),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    });
   }
 
   Widget _measureView() {
@@ -502,7 +777,13 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _monitorRow(),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
+        Text(
+          tr(context, "ⓘ Tap a number for details",
+              "ⓘ Number တစ်ခုကို နှိပ်ပြီး အသေးစိတ်ကြည့်ပါ"),
+          style: const TextStyle(color: Colors.white38, fontSize: 11),
+        ),
+        const SizedBox(height: 8),
         // Live status: finger + signal quality, so the user understands what
         // the reading needs.
         if (_measuring) _statusRow(),
