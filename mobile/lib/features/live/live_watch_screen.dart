@@ -430,12 +430,19 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
         child: CircularProgressIndicator(color: Colors.white),
       );
     }
-    return FittedBox(
-      fit: BoxFit.cover,
-      child: SizedBox(
-        width: _controller!.value.size.width,
-        height: _controller!.value.size.height,
-        child: VideoPlayer(_controller!),
+    // Match the source's shape (like TikTok/Facebook): a portrait video fills
+    // the screen (cover); a landscape one (laptop/OBS) is letterboxed (contain)
+    // so nothing important is cropped off the sides.
+    final size = _controller!.value.size;
+    final isPortrait = size.height >= size.width;
+    return Center(
+      child: FittedBox(
+        fit: isPortrait ? BoxFit.cover : BoxFit.contain,
+        child: SizedBox(
+          width: size.width,
+          height: size.height,
+          child: VideoPlayer(_controller!),
+        ),
       ),
     );
   }
