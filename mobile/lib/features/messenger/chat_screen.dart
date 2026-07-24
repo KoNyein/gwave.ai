@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import 'package:flutter/material.dart';
@@ -12,12 +13,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_state.dart';
 import '../../core/call_service.dart';
 import '../../core/config.dart';
+import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../web/web_screen.dart';
 import '../../widgets/common.dart';
 import '../create/upload_flow.dart';
+import 'video_view_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, required this.conversation});
@@ -221,6 +224,150 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _sendVideo() async {
+    final media = await pickAndUploadVideo(context);
+    if (media == null || !mounted) return;
+    final repo = context.read<AppState>().repo;
+    try {
+      final msg = await repo.sendVideoMessage(widget.conversation.id, media.path);
+      if (msg != null && mounted) {
+        setState(() => _messages = [..._messages, msg]);
+        _jumpToBottom();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Couldn't send video — $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendFile() async {
+    FilePickerResult? res;
+    try {
+      res = await FilePicker.platform.pickFiles(withData: true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Couldn't pick file — $e")));
+      }
+      return;
+    }
+    if (res == null || res.files.isEmpty || !mounted) return;
+    final f = res.files.first;
+    final bytes = f.bytes;
+    if (bytes == null) return;
+    if (bytes.lengthInBytes > 100 * 1024 * 1024) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(tr(context, "That file is too large (max 100 MB).",
+                "ဖိုင် အရမ်းကြီးနေသည် (အများဆုံး 100 MB)။"))));
+      }
+      return;
+    }
+    final ext = (f.extension ?? "bin").toLowerCase();
+    final api = context.read<AppState>().api;
+    final repo = context.read<AppState>().repo;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) =>
+          const Center(child: CircularProgressIndicator(color: GwColors.primary)),
+    );
+    try {
+      final path = await api.uploadBytes(bytes,
+          ext: ext, contentType: "application/octet-stream", bucket: "chat-media");
+      final msg =
+          await repo.sendFileMessage(widget.conversation.id, path, f.name);
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (msg != null && mounted) {
+        setState(() => _messages = [..._messages, msg]);
+        _jumpToBottom();
+      }
+    } catch (e) {
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Couldn't send file — $e")),
+        );
+      }
+    }
+  }
+
+  /// Facebook-Messenger-style attachment sheet: Photo / Video / File.
+  Future<void> _attachSheet() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: GwColors.surfaceOf(context),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: GwColors.lineOf(ctx),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _attachTile(ctx, Icons.image_outlined, const Color(0xFF2E9E5B),
+                tr(ctx, "Photo", "ဓာတ်ပုံ"), "photo"),
+            _attachTile(ctx, Icons.videocam_outlined, const Color(0xFF2E7DB1),
+                tr(ctx, "Video", "ဗီဒီယို"), "video"),
+            _attachTile(ctx, Icons.insert_drive_file_outlined,
+                const Color(0xFF7A4DD6), tr(ctx, "File", "ဖိုင်"), "file"),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    switch (choice) {
+      case "photo":
+        await _sendPhoto();
+        break;
+      case "video":
+        await _sendVideo();
+        break;
+      case "file":
+        await _sendFile();
+        break;
+    }
+  }
+
+  Widget _attachTile(BuildContext ctx, IconData icon, Color color, String label,
+      String value) {
+    return ListTile(
+      leading: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.14),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: color),
+      ),
+      title: Text(label,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+      onTap: () => Navigator.of(ctx).pop(value),
+    );
+  }
+
+  Future<void> _openFile(Message m) async {
+    final url = resolveMedia(m.filePath, bucket: "chat-media");
+    if (url == null) return;
+    try {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (_) {}
+  }
+
   /// Native WebRTC calling has no Flutter SDK wired yet, so calls run in the web
   /// messenger. Explain that up front (rather than silently jumping to the
   /// browser) and let the user choose.
@@ -286,12 +433,21 @@ class _ChatScreenState extends State<ChatScreen> {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w800)),
-                  if (_peerOnline)
-                    const Text("Active now",
-                        style: TextStyle(
-                            fontSize: 11.5,
-                            color: Color(0xFF31A24C),
-                            fontWeight: FontWeight.w600)),
+                  if (!widget.conversation.isGroup)
+                    _peerOnline
+                        ? Text(tr(context, "Active now", "အွန်လိုင်းရှိသည်"),
+                            style: const TextStyle(
+                                fontSize: 11.5,
+                                color: Color(0xFF31A24C),
+                                fontWeight: FontWeight.w600))
+                        : _peerSeen != null
+                            ? Text(
+                                tr(context, "Active ${timeAgo(_peerSeen!)}",
+                                    "${timeAgo(_peerSeen!)} က"),
+                                style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: GwColors.inkSoftOf(context)))
+                            : const SizedBox.shrink(),
                 ],
               ),
             ),
@@ -350,7 +506,11 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           border: mine ? null : Border.all(color: GwColors.lineOf(context)),
         ),
-        child: m.isVoice
+        child: m.isVideo
+            ? _videoBubble(m, mine)
+            : m.isFile
+            ? _fileBubble(m, mine)
+            : m.isVoice
             ? InkWell(
                 onTap: () => _playVoice(m),
                 child: Row(
@@ -410,6 +570,90 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Widget _videoBubble(Message m, bool mine) {
+    return InkWell(
+      onTap: () {
+        final url = resolveMedia(m.filePath, bucket: "media");
+        if (url == null) return;
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => VideoViewScreen(url: url, title: "Video"),
+        ));
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 200,
+          height: 130,
+          color: Colors.black,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(Icons.movie_creation_outlined,
+                  color: Colors.white.withValues(alpha: 0.25), size: 46),
+              const CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.black45,
+                child: Icon(Icons.play_arrow, color: Colors.white, size: 28),
+              ),
+              Positioned(
+                left: 8,
+                bottom: 6,
+                child: Row(
+                  children: [
+                    Icon(Icons.videocam,
+                        color: Colors.white.withValues(alpha: 0.9), size: 14),
+                    const SizedBox(width: 4),
+                    Text(tr(context, "Video", "ဗီဒီယို"),
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _fileBubble(Message m, bool mine) {
+    final fg = mine ? Colors.white : GwColors.inkOf(context);
+    return InkWell(
+      onTap: () => _openFile(m),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.description,
+              color: mine ? Colors.white : GwColors.primary, size: 30),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  m.fileName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      color: fg, fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+                Text(tr(context, "Tap to open", "ဖွင့်ရန် နှိပ်ပါ"),
+                    style: TextStyle(
+                        color: mine
+                            ? Colors.white70
+                            : GwColors.inkSoftOf(context),
+                        fontSize: 11.5)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _composer() {
     return SafeArea(
       top: false,
@@ -422,9 +666,10 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Row(
           children: [
             IconButton(
-                icon: const Icon(Icons.add_photo_alternate_outlined,
+                icon: const Icon(Icons.add_circle_outline,
                     color: GwColors.primary),
-                onPressed: _sendPhoto),
+                tooltip: tr(context, "Attach", "ပူးတွဲ"),
+                onPressed: _attachSheet),
             IconButton(
               icon: _sendingVoice
                   ? const SizedBox(

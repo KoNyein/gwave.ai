@@ -1016,6 +1016,21 @@ class Message {
   final int? durationSeconds;
 
   bool get isVoice => fileKind == "audio" && (filePath?.isNotEmpty ?? false);
+  bool get isVideo => fileKind == "video" && (filePath?.isNotEmpty ?? false);
+  bool get isFile => fileKind == "file" && (filePath?.isNotEmpty ?? false);
+  bool get isImage => imagePath != null && imagePath!.isNotEmpty;
+
+  /// A human-friendly attachment name: the caption if present, else the stored
+  /// file's basename, else a generic label.
+  String get fileName {
+    if (content.trim().isNotEmpty) return content.trim();
+    final p = filePath;
+    if (p != null && p.isNotEmpty) {
+      final base = p.split("/").last;
+      return base.isEmpty ? "Attachment" : base;
+    }
+    return "Attachment";
+  }
 
   factory Message.fromJson(Map<String, dynamic> j) => Message(
         id: j["id"].toString(),

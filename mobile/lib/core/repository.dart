@@ -624,6 +624,38 @@ class Repository {
     return row == null ? null : Message.fromJson(row);
   }
 
+  /// Send a video message: an mp4 already uploaded to the media bucket. Stored
+  /// with file_kind 'video' so both the app and the web render it as a player.
+  Future<Message?> sendVideoMessage(
+    String conversationId,
+    String storagePath,
+  ) async {
+    final row = await api.insert("messages", {
+      "conversation_id": conversationId,
+      "sender_id": api.session!.profileId,
+      "file_path": storagePath,
+      "file_kind": "video",
+    });
+    return row == null ? null : Message.fromJson(row);
+  }
+
+  /// Send a document/other file already uploaded to chat-media. `content`
+  /// carries the original filename so the recipient sees a friendly label.
+  Future<Message?> sendFileMessage(
+    String conversationId,
+    String storagePath,
+    String fileName,
+  ) async {
+    final row = await api.insert("messages", {
+      "conversation_id": conversationId,
+      "sender_id": api.session!.profileId,
+      "file_path": storagePath,
+      "file_kind": "file",
+      "content": fileName,
+    });
+    return row == null ? null : Message.fromJson(row);
+  }
+
   // ---- GPS Map / SOS --------------------------------------------------------
 
   /// Every open SOS alert (active or just-marked-safe), newest first, each with

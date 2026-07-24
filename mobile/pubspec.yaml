@@ -21,6 +21,8 @@ dependencies:
   intl: ^0.19.0
   shared_preferences: ^2.2.3
   image_picker: ^1.1.2
+  # Attach any document/file to a chat message.
+  file_picker: ^8.1.2
   mobile_scanner: ^5.2.3
   qr_flutter: ^4.1.0
   # POS receipts: build an 80mm receipt PDF and hand it to the Android print
