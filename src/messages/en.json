@@ -158,7 +158,16 @@
     "mediaPost": "Media post",
     "shareNow": "Share now",
     "sharing": "Sharing...",
-    "sharedToast": "Post shared."
+    "sharedToast": "Post shared.",
+    "external": "Share anywhere",
+    "shareVia": "Share",
+    "qr": "QR",
+    "nfc": "NFC tag",
+    "copyLink": "Copy link",
+    "copied": "Copied",
+    "qrHint": "Scan to open",
+    "nfcWritten": "Written to NFC tag — tap a phone to open.",
+    "nfcFailed": "NFC write failed or was cancelled."
   },
   "friends": {
     "title": "Friends",

@@ -4,6 +4,7 @@ import * as React from "react";
 import { BadgeCheck, Globe, Loader2, Lock, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { QrNfcShare } from "@/components/share/qr-nfc-share";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -135,6 +136,14 @@ export function ShareDialog({
         </div>
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+        {/* Share the post outside Gwave — link / QR / NFC / native sheet. */}
+        <div className="rounded-lg border border-dashed p-3">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">
+            {t("external")}
+          </p>
+          <QrNfcShare path={`/p/${post.id}`} title={displayName(original.author)} />
+        </div>
 
         <Button onClick={handleShare} disabled={submitting}>
           {submitting ? (
