@@ -14,6 +14,7 @@ class HealthStore {
   static const _kMeds = "gw_health_meds";
   static const _kMedId = "gw_health_medid";
   static const _kReport = "gw_health_report_prefs";
+  static const _kEvents = "gw_health_events";
 
   static Future<SharedPreferences> get _p => SharedPreferences.getInstance();
 
@@ -113,6 +114,31 @@ class HealthStore {
   static Future<void> saveReportPrefs(ReportPrefs p) async {
     await (await _p).setString(_kReport, jsonEncode(p.toJson()));
   }
+
+  // ---- Activity journal (THC / meds / meals / exercise …) -------------------
+
+  static Future<List<HealthEvent>> events() async {
+    final raw = (await _p).getString(_kEvents);
+    if (raw == null || raw.isEmpty) return [];
+    final list = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
+    final out = list.map(HealthEvent.fromJson).toList();
+    out.sort((a, b) => b.at.compareTo(a.at)); // newest first
+    return out;
+  }
+
+  static Future<void> addEvent(HealthEvent e) async {
+    final all = await events();
+    all.insert(0, e);
+    await (await _p)
+        .setString(_kEvents, jsonEncode(all.map((x) => x.toJson()).toList()));
+  }
+
+  static Future<void> deleteEvent(String id) async {
+    final all = await events()
+      ..removeWhere((e) => e.id == id);
+    await (await _p)
+        .setString(_kEvents, jsonEncode(all.map((x) => x.toJson()).toList()));
+  }
 }
 
 bool _sameDay(DateTime a, DateTime b) =>
@@ -162,6 +188,50 @@ Future<List<VitalReading>> serverVitals(ApiClient api, {int limit = 200}) async 
               at: DateTime.tryParse("${j["recorded_at"]}")?.toLocal() ??
                   DateTime.now(),
               note: j["note"] as String?,
+            ))
+        .toList();
+  } catch (_) {
+    return [];
+  }
+}
+
+/// Mirror an activity-journal event to the server (public.health_events).
+/// Best-effort, same pattern as pushVitalToServer.
+Future<void> pushEventToServer(ApiClient api, HealthEvent e) async {
+  final pid = api.session?.profileId;
+  if (pid == null) return;
+  try {
+    await api.insert("health_events", {
+      "user_id": pid,
+      "type": e.type,
+      if (e.note != null) "note": e.note,
+      if (e.detail != null) "detail": e.detail,
+      "occurred_at": e.at.toUtc().toIso8601String(),
+    });
+  } catch (_) {
+    // Table not migrated / offline — local copy is enough.
+  }
+}
+
+/// The user's cloud activity events (newest first), or empty if unavailable.
+Future<List<HealthEvent>> serverEvents(ApiClient api, {int limit = 200}) async {
+  final pid = api.session?.profileId;
+  if (pid == null) return [];
+  try {
+    final rows = await api.select("health_events", query: {
+      "select": "id,type,note,detail,occurred_at",
+      "user_id": "eq.$pid",
+      "order": "occurred_at.desc",
+      "limit": "$limit",
+    });
+    return rows
+        .map((j) => HealthEvent(
+              id: "${j["id"]}",
+              type: "${j["type"]}",
+              at: DateTime.tryParse("${j["occurred_at"]}")?.toLocal() ??
+                  DateTime.now(),
+              note: j["note"] as String?,
+              detail: j["detail"] as String?,
             ))
         .toList();
   } catch (_) {
@@ -391,5 +461,91 @@ class ReportPrefs {
         vitals: j["vitals"] != false,
         cycle: j["cycle"] != false,
         medications: j["medications"] != false,
+      );
+}
+
+/// A kind of activity you can journal (cannabis/THC use, a medication, a meal,
+/// exercise, caffeine, a symptom…). `icon` is a Material codepoint kept as an
+/// int so the model stays UI-free.
+class EventType {
+  const EventType(this.key, this.en, this.my, this.icon,
+      {this.detailHintEn = "", this.detailHintMy = ""});
+  final String key;
+  final String en;
+  final String my;
+  final int icon;
+  final String detailHintEn; // e.g. "Amount / method"
+  final String detailHintMy;
+
+  static const cannabis = EventType(
+      "cannabis", "Cannabis / THC", "ဆေးခြောက် / THC", 0xe30a,
+      detailHintEn: "Amount / method (e.g. 0.3g, vape)",
+      detailHintMy: "ပမာဏ / နည်း (ဥပမာ ၀.၃g)");
+  static const medication = EventType(
+      "medication", "Medication", "ဆေးဝါး", 0xe3f3,
+      detailHintEn: "Dose (e.g. 500 mg)", detailHintMy: "Dose (ဥပမာ 500 mg)");
+  static const meal =
+      EventType("meal", "Meal / Food", "အစားအစာ", 0xe56c,
+          detailHintEn: "What you ate", detailHintMy: "ဘာစားလဲ");
+  static const exercise = EventType(
+      "exercise", "Exercise", "လေ့ကျင့်ခန်း", 0xe52f,
+      detailHintEn: "Type / duration (e.g. 30 min run)",
+      detailHintMy: "အမျိုးအစား / ကြာချိန်");
+  static const caffeine = EventType(
+      "caffeine", "Caffeine", "ကဖင်း", 0xe541,
+      detailHintEn: "e.g. 1 coffee", detailHintMy: "ဥပမာ ကော်ဖီ ၁ ခွက်");
+  static const alcohol = EventType("alcohol", "Alcohol", "အရက်", 0xe540,
+      detailHintEn: "e.g. 1 beer", detailHintMy: "ဥပမာ ဘီယာ ၁ လုံး");
+  static const symptom = EventType(
+      "symptom", "Symptom / feeling", "လက္ခဏာ / ခံစားချက်", 0xe13b,
+      detailHintEn: "What you felt", detailHintMy: "ဘာခံစားရလဲ");
+  static const other = EventType("other", "Other", "အခြား", 0xe1bd,
+      detailHintEn: "Note", detailHintMy: "မှတ်ချက်");
+
+  static const all = <EventType>[
+    cannabis,
+    medication,
+    meal,
+    exercise,
+    caffeine,
+    alcohol,
+    symptom,
+    other,
+  ];
+
+  static EventType byKey(String key) =>
+      all.firstWhere((t) => t.key == key, orElse: () => other);
+}
+
+/// One journalled activity at a point in time.
+class HealthEvent {
+  HealthEvent({
+    required this.id,
+    required this.type,
+    required this.at,
+    this.note,
+    this.detail,
+  });
+
+  final String id;
+  final String type; // EventType.key
+  final DateTime at;
+  final String? note;
+  final String? detail; // dose / amount / duration
+
+  Map<String, dynamic> toJson() => {
+        "id": id,
+        "type": type,
+        "at": at.toIso8601String(),
+        "note": note,
+        "detail": detail,
+      };
+
+  factory HealthEvent.fromJson(Map<String, dynamic> j) => HealthEvent(
+        id: "${j["id"]}",
+        type: "${j["type"]}",
+        at: DateTime.tryParse("${j["at"]}") ?? DateTime.now(),
+        note: j["note"] as String?,
+        detail: j["detail"] as String?,
       );
 }

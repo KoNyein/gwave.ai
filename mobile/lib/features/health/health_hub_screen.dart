@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
+import 'activity_log_screen.dart';
 import 'cycle_screen.dart';
 import 'full_scan_screen.dart';
 import 'health_report.dart';
@@ -155,6 +156,15 @@ class _HealthHubScreenState extends State<HealthHubScreen> {
                 "Heart rate, blood pressure, weight, SpO₂, sugar…",
                 "နှလုံးခုန်နှုန်း၊ သွေးဖိအား၊ အလေးချိန်၊ SpO₂…"),
             onTap: () => _go(const VitalsScreen()),
+          ),
+          _tile(
+            icon: Icons.event_note_outlined,
+            color: const Color(0xFF5B8C2A),
+            title: tr(context, "Activity log", "လှုပ်ရှားမှု မှတ်တမ်း"),
+            subtitle: tr(context,
+                "THC, meds, meals, exercise — tied to your heart rate",
+                "THC, ဆေး, အစားအစာ, လေ့ကျင့်ခန်း — နှလုံးခုန်နှုန်းနဲ့ ချိတ်"),
+            onTap: () => _go(const ActivityLogScreen()),
           ),
           _tile(
             icon: Icons.female,
