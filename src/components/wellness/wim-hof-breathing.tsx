@@ -3,59 +3,63 @@
 import * as React from "react";
 import {
   ChevronDown,
+  History,
   Info,
   Play,
   RotateCcw,
   ShieldAlert,
   Square,
+  Video,
   Volume2,
   VolumeX,
   Waves,
   Wind,
 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 /**
- * A full guided Wim Hof–style breathing trainer, built entirely from browser
- * primitives so it ships with the app (no audio/video files, no external CDN —
- * CSP-safe): the visual guidance is an animated SVG orb, the breath cues are
- * Web Audio tones, and the spoken coaching uses the browser's SpeechSynthesis.
- * It runs the classic cycle — power breaths → exhale-hold (retention) →
- * inhale-hold (recovery) — for a configurable number of rounds, records each
- * retention time, and ships with an in-page guide, safety notice and help/FAQ.
+ * A full guided Wim Hof–style breathing trainer, built from browser primitives
+ * so it ships with the app (CSP-safe): the visual guidance is an animated orb +
+ * an SVG cycle infographic, the breath cues are **real breathing sounds**
+ * synthesised from filtered Web Audio noise, and the spoken coaching uses the
+ * browser's SpeechSynthesis. Every string is localised (follows the app's
+ * language toggle), and it ships with a guided video, a step-by-step guide, a
+ * history & science section, a safety notice and a help/FAQ.
  *
  * Not medical advice. Never practise in or near water, while driving, or
  * standing up. See the safety panel below.
  */
 
 type Phase = "idle" | "breathing" | "holdEmpty" | "holdFull" | "finished";
-
 type Pace = "slow" | "medium" | "fast";
 
-// Milliseconds per inhale / exhale for each pace preset.
 const PACE_MS: Record<Pace, { in: number; out: number }> = {
   slow: { in: 2200, out: 2200 },
   medium: { in: 1700, out: 1700 },
   fast: { in: 1300, out: 1300 },
 };
 
-const RECOVERY_SECONDS = 15; // inhale-hold after each retention
-const RETENTION_CAP_SECONDS = 180; // safety auto-advance if someone forgets to tap
+const RECOVERY_SECONDS = 15;
+const RETENTION_CAP_SECONDS = 180;
+// Official guided Wim Hof breathing session (embedded via the CSP-allowed
+// youtube-nocookie domain). If it ever changes, the "open on YouTube" link and
+// the rest of the trainer still work.
+const VIDEO_ID = "tybOi4hjZFQ";
 
 function mmss(total: number): string {
-  const m = Math.floor(total / 60)
-    .toString()
-    .padStart(2, "0");
-  const s = Math.floor(total % 60)
-    .toString()
-    .padStart(2, "0");
+  const m = Math.floor(total / 60).toString().padStart(2, "0");
+  const s = Math.floor(total % 60).toString().padStart(2, "0");
   return `${m}:${s}`;
 }
 
 export function WimHofBreathing() {
-  // ---- Settings (editable while idle) --------------------------------------
+  const t = useTranslations("wellnessBreath");
+  const locale = useLocale();
+
+  // ---- Settings -------------------------------------------------------------
   const [rounds, setRounds] = React.useState(3);
   const [breaths, setBreaths] = React.useState(30);
   const [pace, setPace] = React.useState<Pace>("medium");
@@ -68,18 +72,22 @@ export function WimHofBreathing() {
   const [breathNo, setBreathNo] = React.useState(0);
   const [orbScale, setOrbScale] = React.useState(0.45);
   const [orbMs, setOrbMs] = React.useState(1200);
-  const [orbLabel, setOrbLabel] = React.useState("Ready");
+  const [orbLabel, setOrbLabel] = React.useState(t("ready"));
   const [holdSecs, setHoldSecs] = React.useState(0);
   const [retentions, setRetentions] = React.useState<number[]>([]);
 
-  // Mirror settings into refs so the timed driver always reads current values.
   const cfg = React.useRef({ rounds, breaths, pace, sound, voice });
   React.useEffect(() => {
     cfg.current = { rounds, breaths, pace, sound, voice };
   }, [rounds, breaths, pace, sound, voice]);
 
+  // The idle orb label should follow a language change.
+  React.useEffect(() => {
+    if (phase === "idle") setOrbLabel(t("ready"));
+  }, [t, phase]);
+
   // ---- Scheduling / lifecycle guards ---------------------------------------
-  const runId = React.useRef(0); // bump to cancel any in-flight schedule
+  const runId = React.useRef(0);
   const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const ticker = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const audio = React.useRef<AudioContext | null>(null);
@@ -92,7 +100,7 @@ export function WimHofBreathing() {
     ticker.current = null;
   }, []);
 
-  // ---- Audio + voice helpers -----------------------------------------------
+  // ---- Audio ----------------------------------------------------------------
   const ensureAudio = React.useCallback((): AudioContext | null => {
     if (!cfg.current.sound) return null;
     try {
@@ -110,28 +118,47 @@ export function WimHofBreathing() {
     }
   }, []);
 
-  /** A soft sine tone that optionally glides from → to over its duration. */
-  const tone = React.useCallback(
-    (from: number, to: number, ms: number, peak = 0.16) => {
+  /**
+   * A realistic breath sound: band-pass-filtered white noise whose amplitude
+   * and brightness swell on the inhale and fade on the exhale — it sounds like
+   * actual breathing rather than a beep.
+   */
+  const breathSound = React.useCallback(
+    (kind: "in" | "out", ms: number) => {
       const ctx = ensureAudio();
       if (!ctx) return;
       try {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        const t0 = ctx.currentTime;
         const dur = ms / 1000;
-        osc.frequency.setValueAtTime(from, t0);
-        osc.frequency.linearRampToValueAtTime(to, t0 + dur);
-        gain.gain.setValueAtTime(0.0001, t0);
-        gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.06);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-        osc.connect(gain);
+        const frames = Math.max(1, Math.ceil(ctx.sampleRate * dur));
+        const buf = ctx.createBuffer(1, frames, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        const filt = ctx.createBiquadFilter();
+        filt.type = "bandpass";
+        filt.Q.value = 0.8;
+        const gain = ctx.createGain();
+        const t0 = ctx.currentTime;
+        if (kind === "in") {
+          filt.frequency.setValueAtTime(320, t0);
+          filt.frequency.linearRampToValueAtTime(950, t0 + dur);
+          gain.gain.setValueAtTime(0.0008, t0);
+          gain.gain.exponentialRampToValueAtTime(0.32, t0 + dur * 0.7);
+          gain.gain.exponentialRampToValueAtTime(0.02, t0 + dur);
+        } else {
+          filt.frequency.setValueAtTime(760, t0);
+          filt.frequency.linearRampToValueAtTime(240, t0 + dur);
+          gain.gain.setValueAtTime(0.3, t0);
+          gain.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+        }
+        src.connect(filt);
+        filt.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(t0);
-        osc.stop(t0 + dur + 0.05);
+        src.start(t0);
+        src.stop(t0 + dur + 0.05);
       } catch {
-        // Audio unavailable — the visuals still guide the breath.
+        /* audio unavailable — visuals still guide the breath */
       }
     },
     [ensureAudio],
@@ -158,22 +185,25 @@ export function WimHofBreathing() {
     }
   }, [ensureAudio]);
 
-  const speak = React.useCallback((text: string) => {
-    if (!cfg.current.voice) return;
-    try {
-      const synth = window.speechSynthesis;
-      if (!synth) return;
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.rate = 0.92;
-      u.pitch = 1;
-      synth.speak(u);
-    } catch {
-      /* speech unavailable */
-    }
-  }, []);
+  const speak = React.useCallback(
+    (text: string) => {
+      if (!cfg.current.voice) return;
+      try {
+        const synth = window.speechSynthesis;
+        if (!synth) return;
+        synth.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = locale === "my" ? "my-MM" : "en-US";
+        u.rate = 0.92;
+        synth.speak(u);
+      } catch {
+        /* speech unavailable */
+      }
+    },
+    [locale],
+  );
 
-  // ---- Wake lock (keep the screen on during a session) ----------------------
+  // ---- Wake lock ------------------------------------------------------------
   const requestWakeLock = React.useCallback(async () => {
     try {
       const nav = navigator as Navigator & {
@@ -181,7 +211,7 @@ export function WimHofBreathing() {
       };
       if (nav.wakeLock) wakeLock.current = await nav.wakeLock.request("screen");
     } catch {
-      /* not supported / denied — fine */
+      /* not supported / denied */
     }
   }, []);
 
@@ -194,25 +224,27 @@ export function WimHofBreathing() {
     wakeLock.current = null;
   }, []);
 
-  // ---- Core state machine ---------------------------------------------------
-  // Live values the timed transitions read, kept in refs so a single stable
-  // set of callbacks always sees the current round / retention without being
-  // re-created (which would strand in-flight timers on a stale closure).
+  // ---- State machine (stable callbacks; live values via refs) --------------
   const roundRef = React.useRef(1);
   const holdSecsRef = React.useRef(0);
   React.useEffect(() => {
     holdSecsRef.current = holdSecs;
   }, [holdSecs]);
+  // Latest translator/label helpers for the timed callbacks.
+  const tRef = React.useRef(t);
+  React.useEffect(() => {
+    tRef.current = t;
+  }, [t]);
 
   const startRecovery = React.useCallback(
     (myRun: number, nextRound: number) => {
       if (runId.current !== myRun) return;
       setPhase("holdFull");
-      setOrbLabel("Breathe in — hold");
+      setOrbLabel(tRef.current("holdFullLabel"));
       setOrbMs(2500);
       setOrbScale(1.1);
       gong();
-      speak("Now breathe in deeply, and hold.");
+      speak(tRef.current("voiceRecovery"));
       let left = RECOVERY_SECONDS;
       setHoldSecs(left);
       ticker.current = setInterval(() => {
@@ -226,8 +258,6 @@ export function WimHofBreathing() {
         }
       }, 1000);
     },
-    // startBreathing referenced via closure (stable); listing it would form a
-    // cycle. All are stable so the single instances always match.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [gong, speak],
   );
@@ -236,11 +266,11 @@ export function WimHofBreathing() {
     (myRun: number) => {
       if (runId.current !== myRun) return;
       setPhase("holdFull");
-      setOrbLabel("Breathe in — hold");
+      setOrbLabel(tRef.current("holdFullLabel"));
       setOrbMs(2500);
       setOrbScale(1.1);
       gong();
-      speak("Final recovery breath. Breathe in, and hold.");
+      speak(tRef.current("voiceFinalRecovery"));
       let left = RECOVERY_SECONDS;
       setHoldSecs(left);
       ticker.current = setInterval(() => {
@@ -264,32 +294,26 @@ export function WimHofBreathing() {
     ticker.current = null;
     setRetentions((prev) => [...prev, holdSecsRef.current]);
     const nextRound = roundRef.current + 1;
-    if (nextRound > cfg.current.rounds) {
-      // Last round still gets a recovery breath, then finish.
-      startRecoveryThenFinish(myRun);
-    } else {
-      startRecovery(myRun, nextRound);
-    }
+    if (nextRound > cfg.current.rounds) startRecoveryThenFinish(myRun);
+    else startRecovery(myRun, nextRound);
   }, [startRecovery, startRecoveryThenFinish]);
 
   const startRetention = React.useCallback(
     (myRun: number, thisRound: number) => {
       if (runId.current !== myRun) return;
       setPhase("holdEmpty");
-      setOrbLabel("Exhale — hold empty");
+      setOrbLabel(tRef.current("holdEmptyLabel"));
       setOrbMs(3000);
       setOrbScale(0.4);
       gong();
-      speak(`Round ${thisRound}. Exhale everything, and hold.`);
+      speak(tRef.current("voiceHold", { round: thisRound }));
       let secs = 0;
       setHoldSecs(0);
       ticker.current = setInterval(() => {
         if (runId.current !== myRun) return;
         secs += 1;
         setHoldSecs(secs);
-        if (secs >= RETENTION_CAP_SECONDS) {
-          endRetention(); // safety cap — end the hold automatically
-        }
+        if (secs >= RETENTION_CAP_SECONDS) endRetention();
       }, 1000);
     },
     [gong, speak, endRetention],
@@ -302,7 +326,7 @@ export function WimHofBreathing() {
       setPhase("breathing");
       setRound(thisRound);
       setBreathNo(0);
-      speak(`Round ${thisRound}. Begin power breathing.`);
+      speak(tRef.current("voiceBegin", { round: thisRound }));
       const p = PACE_MS[cfg.current.pace];
       const target = cfg.current.breaths;
 
@@ -313,22 +337,22 @@ export function WimHofBreathing() {
           return;
         }
         setBreathNo(n);
-        setOrbLabel("Breathe in");
+        setOrbLabel(tRef.current("breatheIn"));
         setOrbMs(p.in);
         setOrbScale(1.08);
-        tone(220, 440, p.in);
+        breathSound("in", p.in);
         timer.current = setTimeout(() => {
           if (runId.current !== myRun) return;
-          setOrbLabel("Let go");
+          setOrbLabel(tRef.current("letGo"));
           setOrbMs(p.out);
           setOrbScale(0.45);
-          tone(440, 220, p.out);
+          breathSound("out", p.out);
           timer.current = setTimeout(() => inhale(n + 1), p.out);
         }, p.in);
       };
       inhale(1);
     },
-    [speak, tone, startRetention],
+    [speak, breathSound, startRetention],
   );
 
   const finish = React.useCallback(
@@ -336,10 +360,10 @@ export function WimHofBreathing() {
       if (runId.current !== myRun) return;
       clearTimers();
       setPhase("finished");
-      setOrbLabel("Complete");
+      setOrbLabel(tRef.current("complete"));
       setOrbScale(0.7);
       gong();
-      speak("Well done. Rest, and breathe naturally.");
+      speak(tRef.current("voiceDone"));
       releaseWakeLock();
     },
     [clearTimers, gong, speak, releaseWakeLock],
@@ -356,7 +380,7 @@ export function WimHofBreathing() {
   }, [clearTimers, requestWakeLock, ensureAudio, startBreathing]);
 
   const stop = React.useCallback(() => {
-    runId.current += 1; // invalidate every pending callback
+    runId.current += 1;
     clearTimers();
     try {
       window.speechSynthesis?.cancel();
@@ -366,14 +390,13 @@ export function WimHofBreathing() {
     releaseWakeLock();
     roundRef.current = 1;
     setPhase("idle");
-    setOrbLabel("Ready");
+    setOrbLabel(tRef.current("ready"));
     setOrbScale(0.45);
     setBreathNo(0);
     setHoldSecs(0);
     setRound(1);
   }, [clearTimers, releaseWakeLock]);
 
-  // Cleanup on unmount.
   React.useEffect(() => {
     return () => {
       runId.current += 1;
@@ -389,6 +412,8 @@ export function WimHofBreathing() {
 
   const active = phase !== "idle" && phase !== "finished";
   const p = PACE_MS[pace];
+  const paceWord =
+    pace === "slow" ? t("paceSlow") : pace === "fast" ? t("paceFast") : t("paceMedium");
 
   // ---- Render ---------------------------------------------------------------
   return (
@@ -400,11 +425,8 @@ export function WimHofBreathing() {
             <Wind className="h-5 w-5" />
           </div>
           <div>
-            <p className="font-semibold">Wim Hof breathing</p>
-            <p className="text-sm text-muted-foreground">
-              Guided power breaths, breath-hold retention and recovery — with
-              a visual pacer, sound cues and voice coaching.
-            </p>
+            <p className="font-semibold">{t("title")}</p>
+            <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>
 
@@ -412,17 +434,12 @@ export function WimHofBreathing() {
         <div className="flex gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
           <ShieldAlert className="h-4 w-4 shrink-0" />
           <p>
-            <span className="font-semibold">Safety first.</span> Sit or lie
-            down. <span className="font-semibold">Never</span> practise in or
-            near water, in a bath, while driving, or standing up — the breath
-            holds can make you faint. Tingling or light-headedness is normal;
-            stop if it feels too much. Not advised during pregnancy, or with
-            epilepsy, high blood pressure or heart conditions without a
-            doctor&apos;s clearance.
+            <span className="font-semibold">{t("safetyTitle")}</span>{" "}
+            {t("safetyBody")}
           </p>
         </div>
 
-        {/* The breathing stage */}
+        {/* Breathing stage */}
         <div className="flex flex-col items-center gap-4 py-2">
           <BreathOrb
             scale={orbScale}
@@ -432,56 +449,65 @@ export function WimHofBreathing() {
             holdSecs={holdSecs}
           />
 
-          {/* Live status line */}
-          <div className="text-center">
-            {phase === "breathing" && (
-              <p className="text-sm text-muted-foreground">
-                Round <span className="font-semibold text-foreground">{round}</span> /{" "}
-                {rounds} · Breath{" "}
-                <span className="font-semibold text-foreground tabular-nums">
-                  {breathNo}
-                </span>{" "}
-                / {breaths}
-              </p>
-            )}
-            {phase === "holdEmpty" && (
-              <p className="text-sm text-muted-foreground">
-                Round {round} / {rounds} · Hold after exhale — tap when you need
-                to breathe
-              </p>
-            )}
-            {phase === "holdFull" && (
-              <p className="text-sm text-muted-foreground">
-                Recovery hold · {holdSecs}s
-              </p>
-            )}
-            {phase === "idle" && (
-              <p className="text-sm text-muted-foreground">
-                {rounds} rounds · {breaths} breaths · {pace} pace
-              </p>
-            )}
+          {/* Breath progress dots */}
+          {phase === "breathing" && (
+            <BreathDots total={breaths} current={breathNo} />
+          )}
+
+          {/* Round pips */}
+          {(active || phase === "finished") && rounds > 1 && (
+            <div className="flex items-center gap-1.5">
+              {Array.from({ length: rounds }).map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-2 w-2 rounded-full transition-colors ${
+                    i < round - 1 || phase === "finished"
+                      ? "bg-primary"
+                      : i === round - 1
+                        ? "bg-primary/60 ring-2 ring-primary/30"
+                        : "bg-muted"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Status line */}
+          <div className="min-h-[1.25rem] text-center text-sm text-muted-foreground">
+            {phase === "breathing" &&
+              t("roundBreath", {
+                round,
+                total: rounds,
+                n: breathNo,
+                breaths,
+              })}
+            {phase === "holdEmpty" &&
+              t("roundHoldEmpty", { round, total: rounds })}
+            {phase === "holdFull" && t("recoveryHold", { secs: holdSecs })}
+            {(phase === "idle" || phase === "finished") &&
+              t("config", { rounds, breaths, pace: paceWord })}
           </div>
 
           {/* Controls */}
           <div className="flex flex-wrap items-center justify-center gap-2">
             {phase === "idle" && (
               <Button onClick={start} size="lg">
-                <Play className="mr-1 h-4 w-4" /> Start session
+                <Play className="mr-1 h-4 w-4" /> {t("startSession")}
               </Button>
             )}
             {phase === "holdEmpty" && (
               <Button onClick={endRetention} size="lg">
-                <Waves className="mr-1 h-4 w-4" /> Breathe in →
+                <Waves className="mr-1 h-4 w-4" /> {t("breatheInCta")}
               </Button>
             )}
             {phase === "finished" && (
               <Button onClick={start} size="lg">
-                <RotateCcw className="mr-1 h-4 w-4" /> Go again
+                <RotateCcw className="mr-1 h-4 w-4" /> {t("goAgain")}
               </Button>
             )}
             {active && (
               <Button onClick={stop} variant="outline">
-                <Square className="mr-1 h-4 w-4" /> Stop
+                <Square className="mr-1 h-4 w-4" /> {t("stop")}
               </Button>
             )}
             {(phase === "idle" || phase === "finished") && (
@@ -491,7 +517,7 @@ export function WimHofBreathing() {
                   variant="outline"
                   size="icon"
                   aria-pressed={sound}
-                  aria-label={sound ? "Sound on" : "Sound off"}
+                  aria-label={sound ? t("soundOn") : t("soundOff")}
                   onClick={() => setSound((s) => !s)}
                 >
                   {sound ? (
@@ -507,25 +533,25 @@ export function WimHofBreathing() {
                   aria-pressed={voice}
                   onClick={() => setVoice((v) => !v)}
                 >
-                  Voice {voice ? "on" : "off"}
+                  {voice ? t("voiceOn") : t("voiceOff")}
                 </Button>
               </div>
             )}
           </div>
         </div>
 
-        {/* Settings (idle only) */}
+        {/* Settings */}
         {(phase === "idle" || phase === "finished") && (
           <div className="grid gap-3 rounded-lg bg-muted/50 p-3 sm:grid-cols-3">
             <Stepper
-              label="Rounds"
+              label={t("rounds")}
               value={rounds}
               min={1}
               max={6}
               onChange={setRounds}
             />
             <Stepper
-              label="Breaths / round"
+              label={t("breathsPerRound")}
               value={breaths}
               min={20}
               max={50}
@@ -534,7 +560,7 @@ export function WimHofBreathing() {
             />
             <div>
               <p className="mb-1 text-xs font-medium text-muted-foreground">
-                Pace
+                {t("pace")}
               </p>
               <div className="flex gap-1">
                 {(["slow", "medium", "fast"] as Pace[]).map((x) => (
@@ -542,18 +568,22 @@ export function WimHofBreathing() {
                     key={x}
                     type="button"
                     onClick={() => setPace(x)}
-                    className={`flex-1 rounded-md px-2 py-1.5 text-xs capitalize transition-colors ${
+                    className={`flex-1 rounded-md px-2 py-1.5 text-xs transition-colors ${
                       pace === x
                         ? "bg-primary text-primary-foreground"
                         : "bg-background text-muted-foreground hover:bg-secondary"
                     }`}
                   >
-                    {x}
+                    {x === "slow"
+                      ? t("paceSlow")
+                      : x === "fast"
+                        ? t("paceFast")
+                        : t("paceMedium")}
                   </button>
                 ))}
               </div>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                ~{((p.in + p.out) / 1000).toFixed(1)}s / breath
+                {t("perBreath", { s: ((p.in + p.out) / 1000).toFixed(1) })}
               </p>
             </div>
           </div>
@@ -562,7 +592,7 @@ export function WimHofBreathing() {
         {/* Session summary */}
         {phase === "finished" && retentions.length > 0 && (
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-            <p className="mb-2 text-sm font-semibold">Your retention times</p>
+            <p className="mb-2 text-sm font-semibold">{t("retentionTimes")}</p>
             <div className="flex flex-wrap gap-2">
               {retentions.map((r, i) => (
                 <span
@@ -573,97 +603,109 @@ export function WimHofBreathing() {
                 </span>
               ))}
               <span className="rounded-full bg-primary/15 px-3 py-1 text-sm font-medium text-primary tabular-nums">
-                Best {mmss(Math.max(...retentions))}
+                {t("best", { time: mmss(Math.max(...retentions)) })}
               </span>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Retention naturally lengthens over rounds and with practice —
-              never force it.
+              {t("retentionNote")}
             </p>
           </div>
         )}
 
-        {/* Guide + help */}
+        {/* Infographic — the 4-phase cycle */}
+        <CycleInfographic />
+
+        {/* Guide + video + history + help */}
         <div className="space-y-2">
           <Foldout
             icon={<Info className="h-4 w-4 text-primary" />}
-            title="How the method works — step by step"
+            title={t("guideTitle")}
             defaultOpen={phase === "idle"}
           >
             <ol className="ml-4 list-decimal space-y-2 text-sm text-muted-foreground">
               <li>
-                <span className="font-medium text-foreground">Get settled.</span>{" "}
-                Sit or lie somewhere comfortable and safe, on an empty stomach if
-                you can. Relax your shoulders.
+                <span className="font-medium text-foreground">{t("step1t")}</span>{" "}
+                {t("step1b")}
               </li>
               <li>
                 <span className="font-medium text-foreground">
-                  Power breaths ({breaths}×).
+                  {t("step2t", { breaths })}
                 </span>{" "}
-                Breathe in fully through the nose or mouth, then let the exhale
-                fall out without forcing. Follow the orb — big = in, small = out.
+                {t("step2b")}
+              </li>
+              <li>
+                <span className="font-medium text-foreground">{t("step3t")}</span>{" "}
+                {t("step3b")}
               </li>
               <li>
                 <span className="font-medium text-foreground">
-                  Retention (hold after exhale).
+                  {t("step4t", { secs: RECOVERY_SECONDS })}
                 </span>{" "}
-                After the last breath, exhale and hold with empty lungs. Stay
-                relaxed. Tap <em>Breathe in →</em> when you feel the urge to
-                breathe.
+                {t("step4b", { secs: RECOVERY_SECONDS })}
               </li>
               <li>
-                <span className="font-medium text-foreground">
-                  Recovery ({RECOVERY_SECONDS}s hold).
-                </span>{" "}
-                Take one deep breath in and hold for {RECOVERY_SECONDS} seconds,
-                then release. That completes a round.
-              </li>
-              <li>
-                <span className="font-medium text-foreground">Repeat.</span>{" "}
-                Do {rounds} rounds. Afterwards, sit quietly and notice how you
-                feel.
+                <span className="font-medium text-foreground">{t("step5t")}</span>{" "}
+                {t("step5b", { rounds })}
               </li>
             </ol>
           </Foldout>
 
           <Foldout
+            icon={<Video className="h-4 w-4 text-primary" />}
+            title={t("videoTitle")}
+          >
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">{t("videoNote")}</p>
+              <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
+                <iframe
+                  className="absolute inset-0 h-full w-full"
+                  src={`https://www.youtube-nocookie.com/embed/${VIDEO_ID}`}
+                  title={t("videoTitle")}
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+              <a
+                href={`https://www.youtube.com/watch?v=${VIDEO_ID}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-sm font-medium text-primary hover:underline"
+              >
+                {t("videoOpen")}
+              </a>
+            </div>
+          </Foldout>
+
+          <Foldout
+            icon={<History className="h-4 w-4 text-primary" />}
+            title={t("historyTitle")}
+          >
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>{t("historyOrigins")}</p>
+              <p>{t("historyIceman")}</p>
+              <p>{t("historyScience")}</p>
+            </div>
+          </Foldout>
+
+          <Foldout
             icon={<Waves className="h-4 w-4 text-primary" />}
-            title="Help & FAQ"
+            title={t("faqTitle")}
           >
             <div className="space-y-3 text-sm text-muted-foreground">
-              <FaqRow q="Why do I feel tingling or light-headed?">
-                That&apos;s the normal effect of the deep breathing changing your
-                CO₂ levels. It passes. If it&apos;s uncomfortable, slow down or
-                stop.
+              <FaqRow q={t("faqQ1")}>{t("faqA1")}</FaqRow>
+              <FaqRow q={t("faqQ2")}>
+                {t("faqA2", { cap: RETENTION_CAP_SECONDS / 60 })}
               </FaqRow>
-              <FaqRow q="How long should I hold my breath?">
-                As long as feels calm and comfortable — never strain. It&apos;s
-                common to go longer each round. The app auto-ends a hold at{" "}
-                {RETENTION_CAP_SECONDS / 60} minutes for safety.
-              </FaqRow>
-              <FaqRow q="How often can I practise?">
-                Once a day is a great start, ideally in the morning before
-                eating. Consistency matters more than length.
-              </FaqRow>
-              <FaqRow q="The voice or sound isn't playing?">
-                Some phones block audio until you tap the screen — press{" "}
-                <em>Start session</em> and it will begin. You can also toggle
-                sound and voice with the buttons above.
-              </FaqRow>
-              <FaqRow q="When should I NOT do this?">
-                Skip it if you&apos;re pregnant, or have epilepsy, high blood
-                pressure, cardiovascular disease, or a history of fainting —
-                unless your doctor approves. Never do it in water or while
-                moving.
-              </FaqRow>
+              <FaqRow q={t("faqQ3")}>{t("faqA3")}</FaqRow>
+              <FaqRow q={t("faqQ4")}>{t("faqA4")}</FaqRow>
+              <FaqRow q={t("faqQ5")}>{t("faqA5")}</FaqRow>
             </div>
           </Foldout>
         </div>
 
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          For general wellbeing only — not medical advice, diagnosis or
-          treatment. The Wim Hof Method® is credited to Wim Hof; this is an
-          independent practice aid. Stop and seek help if you feel unwell.
+          {t("disclaimer")}
         </p>
       </CardContent>
     </Card>
@@ -690,7 +732,6 @@ function BreathOrb({
   const holding = phase === "holdEmpty" || phase === "holdFull";
   return (
     <div className="relative flex h-56 w-56 items-center justify-center">
-      {/* Soft outer glow */}
       <div
         className="absolute rounded-full bg-primary/25 blur-2xl"
         style={{
@@ -703,13 +744,11 @@ function BreathOrb({
         }}
         aria-hidden
       />
-      {/* Faint fixed guide ring */}
       <div
         className="absolute rounded-full border border-primary/20"
         style={{ height: "88%", width: "88%" }}
         aria-hidden
       />
-      {/* The living orb */}
       <div
         className={`absolute rounded-full bg-gradient-to-br from-primary/80 to-primary shadow-lg ${
           holding ? "animate-pulse" : ""
@@ -724,9 +763,8 @@ function BreathOrb({
         }}
         aria-hidden
       />
-      {/* Centre readout */}
       <div className="relative z-10 flex flex-col items-center text-center">
-        <span className="text-sm font-medium text-primary-foreground drop-shadow">
+        <span className="px-2 text-sm font-medium text-primary-foreground drop-shadow">
           {label}
         </span>
         {holding && (
@@ -735,6 +773,63 @@ function BreathOrb({
           </span>
         )}
       </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Breath progress dots                                                       */
+/* -------------------------------------------------------------------------- */
+
+function BreathDots({ total, current }: { total: number; current: number }) {
+  return (
+    <div className="flex max-w-[16rem] flex-wrap justify-center gap-1">
+      {Array.from({ length: total }).map((_, i) => (
+        <span
+          key={i}
+          className={`h-1.5 w-1.5 rounded-full transition-colors ${
+            i < current ? "bg-primary" : "bg-muted"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Cycle infographic                                                          */
+/* -------------------------------------------------------------------------- */
+
+function CycleInfographic() {
+  const t = useTranslations("wellnessBreath");
+  const phases = [
+    { n: 1, label: t("phasePower"), icon: <Wind className="h-4 w-4" />, tone: "bg-primary/15 text-primary" },
+    { n: 2, label: t("phaseHold"), icon: <Square className="h-4 w-4" />, tone: "bg-sky-500/15 text-sky-600 dark:text-sky-400" },
+    { n: 3, label: t("phaseRecover"), icon: <Waves className="h-4 w-4" />, tone: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
+    { n: 4, label: t("phaseRepeat"), icon: <RotateCcw className="h-4 w-4" />, tone: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
+  ];
+  return (
+    <div className="rounded-lg border border-border bg-background/50 p-3">
+      <p className="mb-3 text-sm font-semibold">{t("infoTitle")}</p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {phases.map((ph) => (
+          <div
+            key={ph.n}
+            className="flex flex-col items-center gap-1.5 rounded-lg bg-muted/40 p-3 text-center"
+          >
+            <div
+              className={`flex h-9 w-9 items-center justify-center rounded-full ${ph.tone}`}
+            >
+              {ph.icon}
+            </div>
+            <span className="text-[11px] font-medium text-muted-foreground">
+              {ph.n}
+            </span>
+            <span className="text-xs font-medium leading-tight">{ph.label}</span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-[11px] text-muted-foreground">{t("infoNote")}</p>
     </div>
   );
 }
@@ -767,7 +862,7 @@ function Stepper({
           onClick={() => onChange(Math.max(min, value - step))}
           className="h-8 w-8 rounded-md bg-background text-lg leading-none hover:bg-secondary disabled:opacity-40"
           disabled={value <= min}
-          aria-label={`Decrease ${label}`}
+          aria-label={`− ${label}`}
         >
           −
         </button>
@@ -779,7 +874,7 @@ function Stepper({
           onClick={() => onChange(Math.min(max, value + step))}
           className="h-8 w-8 rounded-md bg-background text-lg leading-none hover:bg-secondary disabled:opacity-40"
           disabled={value >= max}
-          aria-label={`Increase ${label}`}
+          aria-label={`+ ${label}`}
         >
           +
         </button>
