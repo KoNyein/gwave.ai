@@ -76,6 +76,53 @@ export function WimHofBreathing() {
   const [holdSecs, setHoldSecs] = React.useState(0);
   const [retentions, setRetentions] = React.useState<number[]>([]);
 
+  // ---- Server-saved practice history ---------------------------------------
+  const [progress, setProgress] = React.useState<{
+    sessions: { id: string; best_s: number; rounds: number; at: string }[];
+    best: number;
+    count: number;
+    streak: number;
+  } | null>(null);
+  const needSaveRef = React.useRef(false);
+
+  const loadProgress = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/wellness/breath/session");
+      if (res.ok) setProgress(await res.json());
+    } catch {
+      /* offline / table not migrated — panel just stays hidden */
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void loadProgress();
+  }, [loadProgress]);
+
+  // Auto-save each completed session to the server, then refresh the history.
+  React.useEffect(() => {
+    if (phase !== "finished" || !needSaveRef.current) return;
+    needSaveRef.current = false;
+    void (async () => {
+      try {
+        await fetch("/api/wellness/breath/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            method: "wim_hof",
+            rounds: cfg.current.rounds,
+            breaths: cfg.current.breaths,
+            pace: cfg.current.pace,
+            retentions,
+          }),
+          keepalive: true,
+        });
+        await loadProgress();
+      } catch {
+        /* best-effort */
+      }
+    })();
+  }, [phase, retentions, loadProgress]);
+
   const cfg = React.useRef({ rounds, breaths, pace, sound, voice });
   React.useEffect(() => {
     cfg.current = { rounds, breaths, pace, sound, voice };
@@ -374,6 +421,7 @@ export function WimHofBreathing() {
     const myRun = runId.current;
     clearTimers();
     setRetentions([]);
+    needSaveRef.current = true; // this run's result should be saved on finish
     void requestWakeLock();
     ensureAudio();
     startBreathing(myRun, 1);
@@ -612,6 +660,42 @@ export function WimHofBreathing() {
           </div>
         )}
 
+        {/* Server-saved practice history (auto-saved every session) */}
+        {(phase === "idle" || phase === "finished") &&
+          progress &&
+          progress.count > 0 && (
+            <div className="rounded-lg border border-border bg-background/50 p-3">
+              <p className="mb-2 text-sm font-semibold">{t("progressTitle")}</p>
+              <div className="mb-3 grid grid-cols-3 gap-2 text-center">
+                <Stat label={t("statStreak")} value={t("days", { n: progress.streak })} />
+                <Stat label={t("statBest")} value={mmss(progress.best)} />
+                <Stat label={t("statSessions")} value={`${progress.count}`} />
+              </div>
+              {/* Best-retention trend (oldest → newest) */}
+              <div className="flex h-14 items-end gap-1">
+                {[...progress.sessions]
+                  .reverse()
+                  .map((s) => {
+                    const h =
+                      progress.best > 0
+                        ? Math.max(6, Math.round((s.best_s / progress.best) * 100))
+                        : 6;
+                    return (
+                      <div
+                        key={s.id}
+                        title={`${mmss(s.best_s)} · ${new Date(s.at).toLocaleDateString()}`}
+                        className="flex-1 rounded-t bg-primary/70"
+                        style={{ height: `${h}%` }}
+                      />
+                    );
+                  })}
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t("progressNote")}
+              </p>
+            </div>
+          )}
+
         {/* Infographic — the 4-phase cycle */}
         <CycleInfographic />
 
@@ -799,6 +883,17 @@ function BreathDots({ total, current }: { total: number; current: number }) {
 /* -------------------------------------------------------------------------- */
 /* Cycle infographic                                                          */
 /* -------------------------------------------------------------------------- */
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-muted/40 p-2">
+      <p className="text-lg font-bold tabular-nums text-primary">{value}</p>
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+    </div>
+  );
+}
 
 function CycleInfographic() {
   const t = useTranslations("wellnessBreath");
