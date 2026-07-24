@@ -195,7 +195,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
   const { data: stream } = await db
     .from("live_streams")
     .select(
-      `id, host_id, status, started_at, title, livekit_room, agora_channel${providerCols}`,
+      `id, host_id, status, started_at, title, record_enabled, livekit_room, agora_channel${providerCols}`,
     )
     .eq("id", streamId)
     .maybeSingle<{
@@ -204,6 +204,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
       status: string;
       started_at: string | null;
       title: string | null;
+      record_enabled: boolean;
       livekit_room: string | null;
       agora_channel: string | null;
       ivs_stage_arn?: string | null;
@@ -221,8 +222,11 @@ export async function goLive(streamId: string): Promise<ActionResult> {
   // and the broadcast proceeds without a recording. The recording columns are
   // only read/written when the relevant provider is configured, so a deploy that
   // predates a recording migration leaves go-live untouched.
+  // Gated by the host's Record choice (international "record → replay" standard).
   const extra: Record<string, string | null> = {};
-  if (stream.livekit_room && egressConfigured()) {
+  if (!stream.record_enabled) {
+    // Host turned Record off — no replay saved.
+  } else if (stream.livekit_room && egressConfigured()) {
     const rec = await startRoomRecording(stream.livekit_room);
     if (rec) {
       extra.recording_egress_id = rec.egressId;
