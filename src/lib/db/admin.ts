@@ -116,6 +116,76 @@ export async function getUsers(search?: string): Promise<Profile[]> {
   return data ?? [];
 }
 
+export interface AdminUserLocation {
+  userId: string;
+  name: string;
+  username: string | null;
+  avatarUrl: string | null;
+  role: string;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  updatedAt: string;
+}
+
+/**
+ * Latest shared location per user, for the admin map. Flat queries only (no
+ * PostgREST embeds) — read the locations, then the matching profiles, and
+ * assemble in code. Only users who opted into location sharing appear here.
+ */
+export async function getUserLocations(
+  limit = 500,
+): Promise<AdminUserLocation[]> {
+  const db = await createClient();
+  const { data: locs } = await db
+    .from("member_locations")
+    .select("user_id, latitude, longitude, accuracy, updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  if (!locs || locs.length === 0) return [];
+
+  // De-dupe to the newest row per user (already ordered newest-first).
+  const seen = new Set<string>();
+  const latest = locs.filter((l) => {
+    const id = l.user_id as string;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+
+  const ids = latest.map((l) => l.user_id as string);
+  const { data: profiles } = await db
+    .from("profiles")
+    .select("id, username, full_name, avatar_url, role")
+    .in("id", ids);
+  const byId = new Map(
+    (profiles ?? []).map((p) => [p.id as string, p]),
+  );
+
+  return latest
+    .map((l) => {
+      const p = byId.get(l.user_id as string);
+      return {
+        userId: l.user_id as string,
+        name:
+          (p?.full_name as string) ||
+          (p?.username as string) ||
+          "Gwave user",
+        username: (p?.username as string) ?? null,
+        avatarUrl: (p?.avatar_url as string) ?? null,
+        role: (p?.role as string) ?? "user",
+        latitude: l.latitude as number,
+        longitude: l.longitude as number,
+        accuracy: (l.accuracy as number) ?? null,
+        updatedAt: l.updated_at as string,
+      };
+    })
+    .filter(
+      (u) =>
+        typeof u.latitude === "number" && typeof u.longitude === "number",
+    );
+}
+
 export interface ReportWithContext extends Report {
   reporter: AuthorSummary;
   post: { id: string; content: string; author: AuthorSummary } | null;
