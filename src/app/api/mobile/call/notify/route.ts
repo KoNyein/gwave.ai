@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { verifyDataToken } from "@/lib/auth/tokens";
 import { createAdminClient } from "@/lib/data/admin";
+import { sendFcmToUser } from "@/lib/fcm";
 import { sendPushToUser } from "@/lib/push";
 
 export const runtime = "nodejs";
@@ -53,19 +54,30 @@ export async function POST(request: NextRequest) {
     .maybeSingle<{ username: string; full_name: string | null }>();
   const name = profile?.full_name || profile?.username || "Gwave";
 
+  const callee = rows.filter((row) => row.user_id !== claims.sub);
   await Promise.all(
-    rows
-      .filter((row) => row.user_id !== claims.sub)
-      .map((row) =>
-        sendPushToUser(row.user_id, {
-          title: parsed.data.video ? `📹 ${name}` : `📞 ${name}`,
-          body: parsed.data.video
-            ? "Video call ခေါ်နေသည် — ဖွင့်ပြီး ဖြေပါ"
-            : "ဖုန်းခေါ်နေသည် — ဖွင့်ပြီး ဖြေပါ",
-          url: "/messages",
-          tag: "gw-incoming-call",
-        }),
-      ),
+    callee.flatMap((row) => [
+      // Web callee (VAPID) — a browser tab that can't get the realtime ring.
+      sendPushToUser(row.user_id, {
+        title: parsed.data.video ? `📹 ${name}` : `📞 ${name}`,
+        body: parsed.data.video
+          ? "Video call ခေါ်နေသည် — ဖွင့်ပြီး ဖြေပါ"
+          : "ဖုန်းခေါ်နေသည် — ဖွင့်ပြီး ဖြေပါ",
+        url: "/messages",
+        tag: "gw-incoming-call",
+      }),
+      // Native callee (FCM) — a phone whose app is closed, so the realtime ring
+      // inbox is dead. A high-priority data message wakes the app to ring.
+      // No-op until FCM is configured; safe to ship ahead of that.
+      sendFcmToUser(row.user_id, {
+        data: {
+          type: "call",
+          video: parsed.data.video ? "1" : "0",
+          conversationId: parsed.data.conversationId,
+          caller: name,
+        },
+      }),
+    ]),
   );
   return NextResponse.json({ ok: true });
 }
