@@ -24,6 +24,8 @@ const schema = z.object({
   locationName: z.string().trim().max(120).optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
+  // Opt-in recording: replay is saved only when the host turned Record on.
+  record: z.boolean().optional().default(true),
 });
 
 function bearer(request: NextRequest): string | undefined {
@@ -51,7 +53,10 @@ export async function POST(request: NextRequest) {
 
   let channel;
   try {
-    channel = await createIvsChannel(`gwave-${claims.sub.slice(0, 8)}`);
+    channel = await createIvsChannel(
+      `gwave-${claims.sub.slice(0, 8)}`,
+      parsed.data.record,
+    );
   } catch (e) {
     return NextResponse.json(
       {
@@ -71,6 +76,7 @@ export async function POST(request: NextRequest) {
       host_id: claims.sub,
       title: parsed.data.title.trim(),
       description: parsed.data.description?.trim() || null,
+      record_enabled: parsed.data.record,
       ivs_channel_arn: channel.channelArn,
       ivs_ingest_url: channel.ingestUrl,
       ivs_playback_url: channel.playbackUrl,

@@ -22,6 +22,9 @@ export function GoLiveForm({
   const [mode, setMode] = React.useState<"camera" | "rtmp">(
     browserBroadcast ? "camera" : "rtmp",
   );
+  // Opt-in recording — on by default (international standard) so the broadcast
+  // becomes a replay after it ends; the host can turn it off.
+  const [record, setRecord] = React.useState(true);
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -38,6 +41,7 @@ export function GoLiveForm({
           title: title.trim(),
           description: description.trim() || undefined,
           mode,
+          record,
         }),
       });
       const body = (await response.json().catch(() => null)) as {
@@ -115,6 +119,38 @@ export function GoLiveForm({
               rows={3}
             />
           </div>
+          {/* Record → replay (international standard, host's choice). */}
+          <button
+            type="button"
+            onClick={() => setRecord((r) => !r)}
+            aria-pressed={record}
+            className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+              record ? "border-primary bg-primary/10" : "hover:bg-muted/50"
+            }`}
+          >
+            <span
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+                record ? "bg-primary" : "bg-muted-foreground/30"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+                  record ? "left-[22px]" : "left-0.5"
+                }`}
+              />
+            </span>
+            <span className="min-w-0">
+              <span className="flex items-center gap-1.5 text-sm font-medium">
+                <Radio className="h-4 w-4 text-red-600" /> ဒီ Live ကို Record
+                လုပ်မယ် (Replay သိမ်း)
+              </span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                {record
+                  ? "Live ပြီးရင် Replay အဖြစ် ပြန်ကြည့်လို့ရပါမယ်။"
+                  : "Record ပိတ်ထားရင် Replay ပြန်ကြည့်လို့ မရပါ။"}
+              </span>
+            </span>
+          </button>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" className="w-full" disabled={pending || !title.trim()}>
             {pending ? (

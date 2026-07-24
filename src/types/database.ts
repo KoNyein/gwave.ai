@@ -129,6 +129,12 @@ export interface LiveStream {
   ivs_stage_arn: string | null;
   ivs_composition_arn: string | null;
   viewer_count: number;
+  /**
+   * Opt-in recording: when true the broadcast is recorded and becomes a replay
+   * after it ends; when false nothing is saved (international "record → replay"
+   * standard, the host's choice at go-live time).
+   */
+  record_enabled: boolean;
   kind: "stream" | "class";
   track_slug: string | null;
   scheduled_at: string | null;
