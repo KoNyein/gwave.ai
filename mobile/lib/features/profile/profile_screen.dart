@@ -18,6 +18,7 @@ import '../cctv/cctv_screen.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../health/health_hub_screen.dart';
 import '../dating/dating_screen.dart';
+import '../drone/drone_scanner_screen.dart';
 import '../family/family_screen.dart';
 import '../farm/farm_screen.dart';
 import '../finance/finance_screen.dart';
@@ -187,15 +188,16 @@ class ProfileScreen extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
                           child: Text("@${me!.username}",
-                              style: const TextStyle(
-                                  color: GwColors.inkSoft, fontSize: 14)),
+                              style: TextStyle(
+                                  color: GwColors.inkSoftOf(context),
+                                  fontSize: 14)),
                         ),
                       if (me?.bio != null && me!.bio!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(me.bio!,
-                              style: const TextStyle(
-                                  color: GwColors.ink,
+                              style: TextStyle(
+                                  color: GwColors.inkOf(context),
                                   fontSize: 14.5,
                                   height: 1.35)),
                         ),
@@ -215,8 +217,8 @@ class ProfileScreen extends StatelessWidget {
                                 _openWeb(context, "/u/${me?.username ?? ''}"),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: GwColors.primary,
-                              backgroundColor: GwColors.surface,
-                              side: const BorderSide(color: GwColors.line),
+                              backgroundColor: GwColors.surfaceOf(context),
+                              side: BorderSide(color: GwColors.lineOf(context)),
                               padding: const EdgeInsets.all(14),
                             ),
                             child: const Icon(Icons.open_in_new, size: 18),
@@ -224,7 +226,7 @@ class ProfileScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 6),
-                      const Divider(color: GwColors.line, height: 20),
+                      Divider(color: GwColors.lineOf(context), height: 20),
                     ],
                   ),
                 ),
@@ -321,6 +323,7 @@ class ProfileScreen extends StatelessWidget {
         _MenuEntry(Icons.location_on_outlined, "Family",
             native: _Native.family),
         _MenuEntry(Icons.map_outlined, "Map", native: _Native.map),
+        _MenuEntry(Icons.radar, "Drone radar", native: _Native.drone),
         _MenuEntry(Icons.emergency_outlined, "SOS", native: _Native.map),
       ]),
       _MenuSection("Shop & Business", Icons.storefront_outlined,
@@ -353,21 +356,42 @@ class ProfileScreen extends StatelessWidget {
         children: [
           for (final s in sections) ...[
             _categoryCard(context, s),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
           ],
+          // Log out
           _card(
-            _menuTile(
-              icon: Icons.logout,
-              label: "Log out",
-              color: GwColors.live,
-              trailing: false,
-              // Pop to the Navigator root first so the login screen (which
-              // replaces home) isn't hidden under whatever is pushed on top.
+            context,
+            InkWell(
+              borderRadius: BorderRadius.circular(GwRadius.lg),
               onTap: () {
                 final state = context.read<AppState>();
                 Navigator.of(context).popUntil((r) => r.isFirst);
                 state.logout();
               },
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: GwColors.live.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: const Icon(Icons.logout,
+                          color: GwColors.live, size: 19),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(tr(context, "Log out", "ထွက်မည်"),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            color: GwColors.live)),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -375,20 +399,29 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  /// A category = a "system module": an accent-tinted header strip on top of a
+  /// theme-aware surface card, then a tight 4-up grid of tinted icon tiles.
   Widget _categoryCard(BuildContext context, _MenuSection s) {
     return _card(
-      Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      context,
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Accent header strip.
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              color: s.accent.withValues(alpha: 0.10),
+              borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(GwRadius.lg)),
+            ),
+            child: Row(
               children: [
                 Container(
                   width: 30,
                   height: 30,
                   decoration: BoxDecoration(
-                    color: s.accent.withValues(alpha: 0.14),
+                    color: s.accent.withValues(alpha: 0.20),
                     borderRadius: BorderRadius.circular(9),
                   ),
                   child: Icon(s.icon, color: s.accent, size: 17),
@@ -396,29 +429,37 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(width: 10),
                 Text(
                   s.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    color: GwColors.ink,
+                    color: GwColors.inkOf(context),
                     letterSpacing: -0.2,
                   ),
                 ),
+                const Spacer(),
+                Text("${s.items.length}",
+                    style: TextStyle(
+                        color: s.accent.withValues(alpha: 0.8),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13)),
               ],
             ),
-            const SizedBox(height: 12),
-            GridView.count(
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
+            child: GridView.count(
               crossAxisCount: 4,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 4,
-              childAspectRatio: 0.80,
+              mainAxisSpacing: 6,
+              crossAxisSpacing: 2,
+              childAspectRatio: 0.82,
               children: s.items
                   .map((e) => _gridTile(context, e, s.accent))
                   .toList(),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -438,12 +479,12 @@ class ProfileScreen extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  accent.withValues(alpha: 0.18),
-                  accent.withValues(alpha: 0.07),
+                  accent.withValues(alpha: 0.22),
+                  accent.withValues(alpha: 0.09),
                 ],
               ),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: accent.withValues(alpha: 0.12)),
+              border: Border.all(color: accent.withValues(alpha: 0.16)),
             ),
             child: Icon(e.icon, color: accent, size: 24),
           ),
@@ -453,11 +494,11 @@ class ProfileScreen extends StatelessWidget {
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               height: 1.1,
               fontWeight: FontWeight.w600,
-              color: GwColors.ink,
+              color: GwColors.inkOf(context),
             ),
           ),
         ],
@@ -465,46 +506,15 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _card(Widget child) => Container(
+  Widget _card(BuildContext context, Widget child) => Container(
         decoration: BoxDecoration(
-          color: GwColors.surface,
+          color: GwColors.surfaceOf(context),
           borderRadius: BorderRadius.circular(GwRadius.lg),
+          border: Border.all(color: GwColors.lineOf(context)),
           boxShadow: GwShadow.card,
         ),
         child: child,
       );
-
-  Widget _menuTile({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    Color color = GwColors.primary,
-    bool trailing = true,
-  }) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(icon, color: color, size: 20),
-      ),
-      title: Text(label,
-          style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: color == GwColors.live ? GwColors.live : GwColors.ink)),
-      trailing: trailing
-          ? const Icon(Icons.chevron_right, color: GwColors.inkSoft)
-          : null,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(GwRadius.lg)),
-      onTap: onTap,
-    );
-  }
 
   void _handle(BuildContext context, _MenuEntry e) {
     if (e.tab != null) {
@@ -574,6 +584,9 @@ class ProfileScreen extends StatelessWidget {
         return;
       case _Native.boost:
         _push(context, const BoostScreen());
+        return;
+      case _Native.drone:
+        _push(context, const DroneScannerScreen());
         return;
       case null:
         break;
@@ -657,6 +670,7 @@ enum _Native {
   family,
   boost,
   health,
+  drone,
 }
 
 /// One category of the launcher menu: a titled, color-accented card of tiles.
@@ -733,7 +747,8 @@ class _MyPostsSectionState extends State<_MyPostsSection> {
             child: Text(
               tr(context, "No posts yet — share something from the Feed tab.",
                   "ပို့စ် မရှိသေးပါ — Feed tab ကနေ တစ်ခုခု မျှဝေကြည့်ပါ။"),
-              style: const TextStyle(color: GwColors.inkSoft, fontSize: 13),
+              style:
+                  TextStyle(color: GwColors.inkSoftOf(context), fontSize: 13),
             ),
           )
         else

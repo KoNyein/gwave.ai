@@ -211,7 +211,6 @@ class _OximeterScreenState extends State<OximeterScreen> {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     _redSeries.add(red);
     _blueSeries.add(blue);
-    _redTimes.add(nowMs);
 
     // Detrend the red channel for the live plethysmograph + beat detection.
     _redAvg = _redAvg == 0 ? red : _redAvg * 0.9 + red * 0.1;
