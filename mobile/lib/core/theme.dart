@@ -84,17 +84,6 @@ class GwShadow {
       ];
 }
 
-/// Standard navigation gestures, app-wide. `CupertinoPageTransitionsBuilder`
-/// gives every pushed screen an iOS-style **edge swipe-back** — drag from the
-/// left screen edge to pop the current page — on Android too, not just iOS.
-/// Applied to both light and dark themes so back-swipe works everywhere.
-const PageTransitionsTheme _gwPageTransitions = PageTransitionsTheme(
-  builders: {
-    TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-    TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-  },
-);
-
 ThemeData buildGwTheme() {
   final base = ThemeData(
     useMaterial3: true,
@@ -111,7 +100,6 @@ ThemeData buildGwTheme() {
   );
 
   return base.copyWith(
-    pageTransitionsTheme: _gwPageTransitions,
     appBarTheme: const AppBarTheme(
       // Facebook keeps its top bar white and flat, content gray below it.
       backgroundColor: GwColors.surface,
@@ -226,7 +214,6 @@ ThemeData buildGwDarkTheme() {
   );
 
   return base.copyWith(
-    pageTransitionsTheme: _gwPageTransitions,
     appBarTheme: const AppBarTheme(
       backgroundColor: GwColors.dSurface,
       foregroundColor: GwColors.dInk,
