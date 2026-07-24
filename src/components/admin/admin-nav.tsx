@@ -13,6 +13,7 @@ import {
   Activity,
   Users,
   Wallet,
+  MapPin,
   type LucideIcon,
 } from "lucide-react";
 
@@ -46,6 +47,7 @@ const SECTIONS: AdminNavSection[] = [
     hint: "အသုံးပြုသူ၊ အသင်းဝင်၊ ဆရာများ စီမံ",
     links: [
       { href: "/admin/users", label: "Users", icon: Users },
+      { href: "/admin/map", label: "Users map", icon: MapPin },
       { href: "/admin/membership", label: "Membership", icon: BadgeCheck },
       { href: "/admin/teachers", label: "Teachers", icon: GraduationCap },
     ],
