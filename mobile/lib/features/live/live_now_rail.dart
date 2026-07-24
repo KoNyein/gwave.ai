@@ -53,7 +53,7 @@ class _LiveNowRailState extends State<LiveNowRail> {
   Widget build(BuildContext context) {
     if (_live.isEmpty) return const SizedBox.shrink();
     return Container(
-      color: GwColors.surface,
+      color: GwColors.surfaceOf(context),
       padding: const EdgeInsets.only(top: 10, bottom: 10),
       margin: const EdgeInsets.only(bottom: 8),
       child: Column(

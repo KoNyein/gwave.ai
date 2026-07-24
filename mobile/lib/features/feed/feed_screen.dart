@@ -279,7 +279,7 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget _composerRow() {
     final me = context.read<AppState>().me;
     return Container(
-      color: GwColors.surface,
+      color: GwColors.surfaceOf(context),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
@@ -296,13 +296,15 @@ class _FeedScreenState extends State<FeedScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
                 decoration: BoxDecoration(
-                  color: GwColors.surface,
+                  color: GwColors.surfaceOf(context),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: GwColors.line, width: 1.2),
+                  border:
+                      Border.all(color: GwColors.lineOf(context), width: 1.2),
                 ),
-                child: const Text(
+                child: Text(
                   "ဘာတွေ တွေးနေလဲ?",
-                  style: TextStyle(color: GwColors.inkSoft, fontSize: 15),
+                  style:
+                      TextStyle(color: GwColors.inkSoftOf(context), fontSize: 15),
                 ),
               ),
             ),
@@ -340,11 +342,11 @@ class _HeaderChip extends StatelessWidget {
           child: Container(
             width: 38,
             height: 38,
-            decoration: const BoxDecoration(
-              color: GwColors.surfaceMuted,
+            decoration: BoxDecoration(
+              color: GwColors.surfaceMutedOf(context),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 21, color: GwColors.ink),
+            child: Icon(icon, size: 21, color: GwColors.inkOf(context)),
           ),
         ),
       ),

@@ -7,6 +7,7 @@ import '../../core/app_state.dart';
 import '../../core/call_service.dart';
 import '../../core/config.dart';
 import '../../core/i18n.dart';
+import '../../core/theme_pref.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../web/web_screen.dart';
@@ -304,6 +305,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     () => _openWeb("/settings")),
                 const Divider(height: 1, indent: 56),
                 _languageRow(context),
+                _themeRow(context),
                 const Divider(height: 1, indent: 56),
                 _row(Icons.workspace_premium_outlined, "Membership",
                     () => _openWeb("/membership")),
@@ -397,6 +399,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
           visualDensity: VisualDensity.compact,
         ),
         onSelectionChanged: (v) => lang.setCode(v.first),
+      ),
+    );
+  }
+
+  /// Light / Dark / System colour mode.
+  Widget _themeRow(BuildContext context) {
+    final pref = context.watch<GwThemePref>();
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: GwColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.brightness_6, color: GwColors.primary, size: 20),
+      ),
+      title: Text(tr(context, "Appearance", "အသွင်အပြင်"),
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
+      trailing: SegmentedButton<ThemeMode>(
+        segments: [
+          ButtonSegment(
+              value: ThemeMode.system,
+              icon: const Icon(Icons.brightness_auto, size: 18),
+              tooltip: tr(context, "System", "စက်အလိုက်")),
+          const ButtonSegment(
+              value: ThemeMode.light, icon: Icon(Icons.light_mode, size: 18)),
+          const ButtonSegment(
+              value: ThemeMode.dark, icon: Icon(Icons.dark_mode, size: 18)),
+        ],
+        selected: {pref.mode},
+        showSelectedIcon: false,
+        style: SegmentedButton.styleFrom(
+          selectedBackgroundColor: GwColors.primary.withValues(alpha: 0.15),
+          selectedForegroundColor: GwColors.primary,
+          visualDensity: VisualDensity.compact,
+        ),
+        onSelectionChanged: (v) => pref.setMode(v.first),
       ),
     );
   }

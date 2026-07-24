@@ -36,8 +36,8 @@ class _HomeShellState extends State<HomeShell> {
       body: IndexedStack(index: _index, children: tabs),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: GwColors.surface,
-          border: const Border(top: BorderSide(color: GwColors.line)),
+          color: GwColors.surfaceOf(context),
+          border: Border(top: BorderSide(color: GwColors.lineOf(context))),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),

@@ -102,7 +102,7 @@ class _StoriesBarState extends State<StoriesBar> {
     // card face, the author's ringed avatar in the corner, name at the bottom.
     return Container(
       height: 176,
-      color: GwColors.surface,
+      color: GwColors.surfaceOf(context),
       margin: const EdgeInsets.only(bottom: 6),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
@@ -146,7 +146,7 @@ class _StoriesBarState extends State<StoriesBar> {
         width: 100,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(GwRadius.md),
-          border: Border.all(color: GwColors.line),
+          border: Border.all(color: GwColors.lineOf(context)),
         ),
         child: Stack(
           clipBehavior: Clip.none,
@@ -162,7 +162,7 @@ class _StoriesBarState extends State<StoriesBar> {
                       child: avatar != null
                           ? Image.network(avatar, fit: BoxFit.cover)
                           : Container(
-                              color: GwColors.surfaceMuted,
+                              color: GwColors.surfaceMutedOf(context),
                               child: const Icon(Icons.person,
                                   size: 44, color: GwColors.inkSoft),
                             ),
@@ -170,7 +170,7 @@ class _StoriesBarState extends State<StoriesBar> {
                   ),
                   Container(
                     width: double.infinity,
-                    color: GwColors.surface,
+                    color: GwColors.surfaceOf(context),
                     padding: const EdgeInsets.only(top: 20, bottom: 8),
                     child: const Text(
                       "Story ဖန်တီးရန်",
