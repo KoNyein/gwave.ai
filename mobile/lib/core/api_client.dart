@@ -481,6 +481,35 @@ class ApiClient {
         .toList();
   }
 
+  // ---- Crowdsourced WiFi map (WiGLE-style) ----------------------------------
+
+  /// Upload scanned WiFi APs observed at a GPS point to the shared map.
+  Future<void> wifiObserve({
+    required double latitude,
+    required double longitude,
+    required List<Map<String, dynamic>> networks,
+  }) =>
+      _mobilePost("/api/mobile/wifi/observe", {
+        "latitude": latitude,
+        "longitude": longitude,
+        "networks": networks,
+      });
+
+  /// The collected WiFi points near a map viewport.
+  Future<List<Map<String, dynamic>>> wifiNearby(
+    double lat,
+    double lng, {
+    double radiusKm = 5,
+  }) async {
+    final j = await _mobileGet("/api/mobile/wifi/nearby", {
+      "lat": "$lat",
+      "lng": "$lng",
+      "radius": "$radiusKm",
+    });
+    final list = j["networks"];
+    return list is List ? list.cast<Map<String, dynamic>>() : [];
+  }
+
   // ---- Marketplace + Dating -------------------------------------------------
   // Both features read/write through the mobile API (service role) with the
   // data token as bearer — same shape as /subject-comments.

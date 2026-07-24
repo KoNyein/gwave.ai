@@ -67,6 +67,8 @@ dependencies:
   # Share posts to other apps (system share sheet).
   nearby_connections: ^4.3.0
   share_plus: ^10.0.0
+  # Scan nearby WiFi access points for the crowdsourced WiFi map (WiGLE-style).
+  wifi_scan: ^0.4.1
 
 dev_dependencies:
   flutter_lints: ^4.0.0

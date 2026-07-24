@@ -19,6 +19,7 @@ import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../live/go_live_screen.dart';
 import '../messenger/chat_screen.dart';
+import 'wifi_map_screen.dart';
 
 /// Native GPS Map — one screen. A real map (OpenStreetMap tiles, so it works on
 /// phones without Google Play Services), the user's own location, the live SOS
@@ -325,6 +326,13 @@ class _MapScreenState extends State<MapScreen> {
       appBar: AppBar(
         title: const Text("GPS Map"),
         actions: [
+          IconButton(
+            tooltip: tr(context, "WiFi map", "WiFi မြေပုံ"),
+            icon: const Icon(Icons.wifi_find),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const WifiMapScreen()),
+            ),
+          ),
           IconButton(
             tooltip: tr(context, "Refresh", "ပြန်ဆွဲ"),
             icon: const Icon(Icons.refresh),
