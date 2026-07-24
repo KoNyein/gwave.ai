@@ -18,6 +18,7 @@ import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../drone/drone_scanner_screen.dart';
 import 'offline_tiles.dart';
 import 'offline_area_sheet.dart';
 import '../live/go_live_screen.dart';
@@ -390,6 +391,13 @@ class _MapScreenState extends State<MapScreen> {
       appBar: AppBar(
         title: const Text("GPS Map"),
         actions: [
+          IconButton(
+            tooltip: tr(context, "Drone radar", "ဒရုန်း ရေဒါ"),
+            icon: const Icon(Icons.radar),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const DroneScannerScreen()),
+            ),
+          ),
           IconButton(
             tooltip: tr(context, "WiFi map", "WiFi မြေပုံ"),
             icon: const Icon(Icons.wifi_find),
