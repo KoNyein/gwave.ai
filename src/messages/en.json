@@ -1477,7 +1477,13 @@
     "voiceRecovery": "Now breathe in deeply, and hold.",
     "voiceFinalRecovery": "Final recovery breath. Breathe in, and hold.",
     "voiceDone": "Well done. Rest, and breathe naturally.",
-    "disclaimer": "For general wellbeing only — not medical advice, diagnosis or treatment. The Wim Hof Method® is credited to Wim Hof; this is an independent practice aid. Stop and seek help if you feel unwell."
+    "disclaimer": "For general wellbeing only — not medical advice, diagnosis or treatment. The Wim Hof Method® is credited to Wim Hof; this is an independent practice aid. Stop and seek help if you feel unwell.",
+    "progressTitle": "Your progress",
+    "statStreak": "Streak",
+    "statBest": "Best hold",
+    "statSessions": "Sessions",
+    "days": "{n}d",
+    "progressNote": "Auto-saved to your account — your history follows you across devices."
   },
   "audio": {
     "title": "Audio",
