@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   ListMusic,
   Lock,
+  Mic2,
   Moon,
   Pause,
   Play,
@@ -15,6 +16,7 @@ import {
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { activeLineIndex, parseLyrics } from "@/lib/audio-lrc";
 import type { AudioChapter } from "@/lib/db/audio";
 
 const SPEEDS = [1, 1.2, 1.5, 2];
@@ -37,6 +39,7 @@ export function AudioPlayer({
   entitled,
   resumePosition,
   resumeSpeed,
+  lyrics,
 }: {
   trackId: string;
   audioUrl: string | null;
@@ -45,9 +48,16 @@ export function AudioPlayer({
   entitled: boolean;
   resumePosition: number;
   resumeSpeed: number;
+  lyrics?: { text: string; synced: boolean };
 }) {
   const t = useTranslations("audio");
   const ref = React.useRef<HTMLAudioElement | null>(null);
+
+  const parsedLyrics = React.useMemo(
+    () => (lyrics ? parseLyrics(lyrics.text) : null),
+    [lyrics],
+  );
+  const [showLyrics, setShowLyrics] = React.useState(false);
 
   const [playing, setPlaying] = React.useState(false);
   const [cur, setCur] = React.useState(resumePosition);
@@ -335,6 +345,16 @@ export function AudioPlayer({
             {t("chapters")}
           </Button>
         )}
+        {parsedLyrics && parsedLyrics.lines.length > 0 && (
+          <Button
+            variant={showLyrics ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowLyrics((v) => !v)}
+          >
+            <Mic2 className="mr-1 h-4 w-4" />
+            {t("lyrics")}
+          </Button>
+        )}
       </div>
 
       {/* Chapter list */}
@@ -361,6 +381,62 @@ export function AudioPlayer({
           ))}
         </ul>
       )}
+
+      {/* Lyrics (karaoke highlight when time-synced) */}
+      {showLyrics && parsedLyrics && parsedLyrics.lines.length > 0 && (
+        <LyricsView
+          lines={parsedLyrics.lines}
+          synced={parsedLyrics.synced}
+          time={cur}
+          onSeek={(to) => seek(to)}
+        />
+      )}
+    </div>
+  );
+}
+
+function LyricsView({
+  lines,
+  synced,
+  time,
+  onSeek,
+}: {
+  lines: { t: number | null; text: string }[];
+  synced: boolean;
+  time: number;
+  onSeek: (to: number) => void;
+}) {
+  const active = synced ? activeLineIndex(lines, time) : -1;
+  const activeRef = React.useRef<HTMLParagraphElement | null>(null);
+
+  React.useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [active]);
+
+  return (
+    <div className="max-h-64 overflow-y-auto rounded-lg border border-border bg-muted/30 p-3 text-center">
+      {lines.map((l, i) => {
+        const isActive = i === active;
+        const clickable = synced && l.t != null;
+        return (
+          <p
+            key={i}
+            ref={isActive ? activeRef : undefined}
+            onClick={clickable ? () => onSeek(l.t as number) : undefined}
+            className={`py-0.5 text-sm leading-relaxed transition-colors ${
+              clickable ? "cursor-pointer" : ""
+            } ${
+              isActive
+                ? "font-semibold text-primary"
+                : synced
+                  ? "text-muted-foreground"
+                  : "text-foreground"
+            }`}
+          >
+            {l.text || " "}
+          </p>
+        );
+      })}
     </div>
   );
 }

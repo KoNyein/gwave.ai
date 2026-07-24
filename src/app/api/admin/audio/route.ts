@@ -39,6 +39,14 @@ interface Body {
   isbn?: string;
   // "mm:ss Title" or "hh:mm:ss Title" per line
   chapters?: string;
+  // musical metadata
+  bpm?: number;
+  music_key?: string;
+  time_sig?: string;
+  mood?: string;
+  release_year?: number;
+  // plain text or LRC ([mm:ss.xx] lines)
+  lyrics?: string;
 }
 
 function parseChapters(raw: string): { idx: number; title: string; start_s: number }[] {
@@ -93,6 +101,11 @@ export async function POST(req: Request) {
       protection: b.protection ?? (isPremium ? "signed" : "free"),
       price: isPremium ? (b.price ?? null) : null,
       currency: b.currency ?? "USD",
+      bpm: b.bpm ?? null,
+      music_key: b.music_key ?? null,
+      time_sig: b.time_sig ?? null,
+      mood: b.mood ?? null,
+      release_year: b.release_year ?? null,
       published_at: new Date().toISOString(),
     })
     .select("id")
@@ -129,6 +142,15 @@ export async function POST(req: Request) {
       const rows = parseChapters(b.chapters).map((c) => ({ ...c, track_id: trackId }));
       if (rows.length) await db.from("audio_chapters").insert(rows);
     }
+  }
+
+  if (b.lyrics?.trim()) {
+    const synced = /\[\d{1,2}:\d{1,2}(?:[.:]\d{1,3})?\]/.test(b.lyrics);
+    await db.from("audio_lyrics").insert({
+      track_id: trackId,
+      lyrics: b.lyrics.slice(0, 20000),
+      synced,
+    });
   }
 
   return NextResponse.json({ ok: true, id: trackId });

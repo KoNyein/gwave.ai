@@ -3,10 +3,12 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { ChevronLeft, Headphones, Music2, Radio } from "lucide-react";
 
+import { AudioFeatures } from "@/components/audio/audio-features";
 import { AudioHelpForm } from "@/components/audio/audio-help-form";
 import { AudioPlayer } from "@/components/audio/audio-player";
 import { AudioPurchase } from "@/components/audio/audio-purchase";
 import { AudioRating, RatingSummary } from "@/components/audio/audio-rating";
+import { AudioShare } from "@/components/audio/audio-share";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
 import {
@@ -133,7 +135,23 @@ export default async function AudioTrackPage({
         entitled={entitled}
         resumePosition={resume?.position_s ?? 0}
         resumeSpeed={resume?.speed ?? 1}
+        lyrics={detail.lyrics}
       />
+
+      {/* Audio features (tempo / key / etc) */}
+      <AudioFeatures
+        track={track}
+        labels={{
+          bpm: t("bpm"),
+          key: t("key"),
+          timeSig: t("timeSig"),
+          mood: t("mood"),
+          year: t("year"),
+        }}
+      />
+
+      {/* Share: native / QR / NFC */}
+      <AudioShare title={track.title} />
 
       {/* Rate this title (once you can play it) */}
       {entitled && <AudioRating trackId={track.id} mine={myRating} />}

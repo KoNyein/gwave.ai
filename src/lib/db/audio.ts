@@ -27,6 +27,16 @@ export interface AudioTrack {
   is_premium: boolean;
   publisher_id: string | null;
   published_at: string | null;
+  bpm: number | null;
+  music_key: string | null;
+  time_sig: string | null;
+  mood: string | null;
+  release_year: number | null;
+}
+
+export interface Lyrics {
+  text: string;
+  synced: boolean;
 }
 
 export interface AudioChapter {
@@ -62,6 +72,7 @@ export interface TrackDetail {
   podcast?: PodcastFacet;
   audiobook?: AudiobookFacet;
   chapters: AudioChapter[];
+  lyrics?: Lyrics;
 }
 
 export interface ResumePoint {
@@ -91,7 +102,7 @@ async function db(): Promise<LooseDb> {
 }
 
 const TRACK_COLS =
-  "id,kind,title,description,cover_url,audio_url,transcript_url,duration_s,protection,price,currency,is_premium,publisher_id,published_at";
+  "id,kind,title,description,cover_url,audio_url,transcript_url,duration_s,protection,price,currency,is_premium,publisher_id,published_at,bpm,music_key,time_sig,mood,release_year";
 
 /** Catalogue for one format, newest first. */
 export async function getTracksByKind(
@@ -148,6 +159,22 @@ export async function getTrackDetail(id: string): Promise<TrackDetail | null> {
       .order("idx", { ascending: true });
     out.chapters = (ch ?? []) as unknown as AudioChapter[];
   }
+
+  // Lyrics (any kind — usually music). Best-effort; table may not be migrated.
+  try {
+    const { data: ly } = await client
+      .from("audio_lyrics")
+      .select("lyrics,synced")
+      .eq("track_id", id)
+      .maybeSingle();
+    if (ly) {
+      const row = ly as unknown as { lyrics: string; synced: boolean };
+      if (row.lyrics) out.lyrics = { text: row.lyrics, synced: row.synced === true };
+    }
+  } catch {
+    /* lyrics table not available yet */
+  }
+
   return out;
 }
 

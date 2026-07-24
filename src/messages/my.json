@@ -1537,6 +1537,20 @@
     "catOther": "အခြား",
     "supportMessage": "ပြဿနာကို ဖော်ပြပါ…",
     "supportSend": "ပို့မယ်",
-    "supportSent": "ပို့ပြီးပါပြီ — ticket #{id} ဖွင့်ထားပါတယ်။ app ထဲမှာ ပြန်ဖြေပါမည်။"
+    "supportSent": "ပို့ပြီးပါပြီ — ticket #{id} ဖွင့်ထားပါတယ်။ app ထဲမှာ ပြန်ဖြေပါမည်။",
+    "lyrics": "သီချင်းစာသား",
+    "bpm": "အမြန်နှုန်း (BPM)",
+    "key": "Key",
+    "timeSig": "Time sig",
+    "mood": "အခံစား",
+    "year": "နှစ်",
+    "share": "Share",
+    "qr": "QR",
+    "nfc": "NFC tag",
+    "copyLink": "Link ကူး",
+    "copied": "ကူးပြီး",
+    "qrHint": "ဒီသီချင်း ဖွင့်ရန် scan ဖတ်ပါ",
+    "nfcWritten": "NFC tag ထဲ ရေးပြီး — ဖုန်းတစ်လုံး တို့ရင် ဖွင့်ပါမည်။",
+    "nfcFailed": "NFC ရေး၍မရ (သို့) ပယ်ဖျက်ခဲ့သည်။"
   }
 }
