@@ -196,13 +196,28 @@ class Repository {
   }
 
   Future<List<LiveStream>> liveStreams({bool onlyLive = false}) async {
-    final rows = await api.select("live_streams", query: {
+    // CRITICAL: fetch *live* and *ended* in separate queries. A single
+    // `status in (live,ended) order by created_at desc limit 40` lets a flood
+    // of recent ended test broadcasts (e.g. an admin testing repeatedly) push
+    // every other user's currently-live stream out of the top 40 — so their
+    // live vanishes for everyone. Querying live on its own guarantees every
+    // ongoing broadcast shows, no matter how many ended rows exist.
+    final liveRows = await api.select("live_streams", query: {
       "select": "*",
-      if (onlyLive) "status": "eq.live",
-      if (!onlyLive) "status": "in.(live,ended)",
+      "status": "eq.live",
       "order": "created_at.desc",
-      "limit": "40",
+      "limit": "100",
     });
+    final rows = <Map<String, dynamic>>[...liveRows];
+    if (!onlyLive) {
+      final endedRows = await api.select("live_streams", query: {
+        "select": "*",
+        "status": "eq.ended",
+        "order": "created_at.desc",
+        "limit": "40",
+      });
+      rows.addAll(endedRows);
+    }
     final hosts =
         await _profilesByIds(rows.map((r) => "${r["host_id"] ?? ""}"));
     for (final r in rows) {
