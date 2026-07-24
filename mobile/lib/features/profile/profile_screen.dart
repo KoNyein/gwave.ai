@@ -13,6 +13,7 @@ import '../../core/theme.dart';
 import '../feed/post_card.dart';
 import '../web/web_screen.dart';
 import '../../widgets/common.dart';
+import '../audio/audio_hub_screen.dart';
 import '../boost/boost_screen.dart';
 import '../cctv/cctv_screen.dart';
 import '../dashboard/dashboard_screen.dart';
@@ -305,7 +306,8 @@ class ProfileScreen extends StatelessWidget {
         _MenuEntry(Icons.record_voice_over_outlined, "Walkie",
             native: _Native.talk),
         _MenuEntry(Icons.movie_outlined, "Reels", tab: 1),
-        _MenuEntry(Icons.library_music_outlined, "Audio", web: "/audio"),
+        _MenuEntry(Icons.library_music_outlined, "Audio",
+            native: _Native.audio),
         _MenuEntry(Icons.sports_esports_outlined, "Games",
             native: _Native.games),
         _MenuEntry(Icons.favorite_outline, "Dating", native: _Native.dating),
@@ -589,6 +591,9 @@ class ProfileScreen extends StatelessWidget {
       case _Native.drone:
         _push(context, const DroneScannerScreen());
         return;
+      case _Native.audio:
+        _push(context, const AudioHubScreen());
+        return;
       case null:
         break;
     }
@@ -672,6 +677,7 @@ enum _Native {
   boost,
   health,
   drone,
+  audio,
 }
 
 /// One category of the launcher menu: a titled, color-accented card of tiles.
