@@ -33,6 +33,11 @@ class CallService extends ChangeNotifier {
   RealtimeChannel? _ringInbox;
   RealtimeChannel? _callChannel; // per-call `call:{callId}`
   RealtimeChannel? _peerRing; // caller → `calls:{peerId}`
+  // Completes when the per-call channel is actually subscribed. Realtime
+  // broadcast is ephemeral, so sending accept/offer/answer/ice before the
+  // socket has joined silently drops them — which used to leave the caller
+  // stuck on "Connecting…". Every signaling send now awaits this first.
+  Completer<void>? _callChannelReady;
 
   RTCPeerConnection? _pc;
   MediaStream? _localStream;
@@ -113,9 +118,14 @@ class CallService extends ChangeNotifier {
 
   /// Rebuild the socket + inbox unless they're already healthy. Called on app
   /// resume and after channel errors — Android kills sockets in background.
-  Future<void> ensureConnected() async {
+  ///
+  /// [force] rebuilds even when we still *think* we're "ready": Android can
+  /// silently drop the websocket in the background without firing onClose, so
+  /// the inbox reads "ready" while it's actually dead and no call ever rings.
+  /// The resume path forces a rebuild to guarantee a live inbox.
+  Future<void> ensureConnected({bool force = false}) async {
     if (api.session == null || inCall) return;
-    if (ringStatus == "ready") return;
+    if (!force && ringStatus == "ready") return;
     try {
       if (_ringInbox != null) _rt?.removeChannel(_ringInbox!);
     } catch (_) {}
@@ -326,8 +336,10 @@ class CallService extends ChangeNotifier {
 
     _joinCallChannel(_callId!);
     await _openMedia();
-    // Tell the caller we picked up — they create and send the offer.
-    _callChannel!.sendBroadcastMessage(event: "accept", payload: {});
+    // Tell the caller we picked up — they create and send the offer. Wait for
+    // the channel to actually join first, or the accept is dropped and the
+    // caller hangs on "Connecting…".
+    await _signal("accept", {});
   }
 
   void decline() {
@@ -355,6 +367,8 @@ class CallService extends ChangeNotifier {
 
   void _joinCallChannel(String callId) {
     final ch = _rt!.channel("call:$callId");
+    final ready = Completer<void>();
+    _callChannelReady = ready;
     ch
       ..onBroadcast(event: "accept", callback: (_) => _onAccept())
       ..onBroadcast(event: "offer", callback: _onOffer)
@@ -362,8 +376,31 @@ class CallService extends ChangeNotifier {
       ..onBroadcast(event: "ice", callback: _onIce)
       ..onBroadcast(event: "decline", callback: (_) => _teardown(log: true))
       ..onBroadcast(event: "hangup", callback: (_) => _teardown(log: true));
-    ch.subscribe();
+    ch.subscribe((status, [error]) {
+      if (status == RealtimeSubscribeStatus.subscribed &&
+          !ready.isCompleted) {
+        ready.complete();
+      }
+    });
     _callChannel = ch;
+  }
+
+  /// Wait until the per-call channel has joined, so a broadcast we send next
+  /// actually reaches the peer (with a safety timeout so we never hang).
+  Future<void> _awaitCallChannel() async {
+    final ready = _callChannelReady;
+    if (ready == null || ready.isCompleted) return;
+    try {
+      await ready.future.timeout(const Duration(seconds: 8));
+    } catch (_) {
+      // Timed out — send anyway; better a possibly-dropped message than a hang.
+    }
+  }
+
+  /// Send a signaling message once the channel is subscribed.
+  Future<void> _signal(String event, Map<String, dynamic> payload) async {
+    await _awaitCallChannel();
+    _callChannel?.sendBroadcastMessage(event: event, payload: payload);
   }
 
   Future<void> _onAccept() async {
@@ -375,7 +412,7 @@ class CallService extends ChangeNotifier {
     notifyListeners();
     final offer = await _pc!.createOffer();
     await _pc!.setLocalDescription(offer);
-    _callChannel!.sendBroadcastMessage(event: "offer", payload: {
+    await _signal("offer", {
       "sdp": {"type": offer.type, "sdp": offer.sdp},
     });
   }
@@ -390,7 +427,7 @@ class CallService extends ChangeNotifier {
     await _drainIce();
     final answer = await _pc!.createAnswer();
     await _pc!.setLocalDescription(answer);
-    _callChannel!.sendBroadcastMessage(event: "answer", payload: {
+    await _signal("answer", {
       "sdp": {"type": answer.type, "sdp": answer.sdp},
     });
   }
@@ -433,10 +470,23 @@ class CallService extends ChangeNotifier {
     _pc = await createPeerConnection(await _iceConfig());
     speakerOn = video; // video → loudspeaker, voice → earpiece
     Helper.setSpeakerphoneOn(speakerOn);
+    // International-standard adaptive video: ask for a 16:9 720p/30fps ideal so
+    // the encoder negotiates a sane resolution and WebRTC scales it down
+    // automatically on weak networks (instead of the unconstrained default that
+    // produced stretched / wrong-sized frames). Audio is echo/noise-processed.
     _localStream = await navigator.mediaDevices.getUserMedia({
-      "audio": true,
+      "audio": {
+        "echoCancellation": true,
+        "noiseSuppression": true,
+        "autoGainControl": true,
+      },
       "video": video
-          ? {"facingMode": "user", "optional": []}
+          ? {
+              "facingMode": "user",
+              "width": {"ideal": 1280},
+              "height": {"ideal": 720},
+              "frameRate": {"ideal": 30},
+            }
           : false,
     });
     _localRenderer.srcObject = _localStream;
@@ -540,6 +590,7 @@ class CallService extends ChangeNotifier {
     _remoteRenderer.srcObject = null;
     _callChannel = null;
     _peerRing = null;
+    _callChannelReady = null;
     _pendingIce.clear();
     _remoteDescSet = false;
     remoteReady = false;

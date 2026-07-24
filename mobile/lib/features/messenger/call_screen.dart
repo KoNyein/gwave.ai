@@ -47,6 +47,20 @@ class CallScreen extends StatelessWidget {
                   call.remoteRenderer,
                   objectFit:
                       RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                  filterQuality: FilterQuality.medium,
+                ),
+              )
+            // Before the remote arrives, fill the screen with our own camera so
+            // a video call shows a correctly-sized picture right away instead of
+            // a blank gradient.
+            else if (call.video)
+              Positioned.fill(
+                child: RTCVideoView(
+                  call.localRenderer,
+                  mirror: true,
+                  objectFit:
+                      RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                  filterQuality: FilterQuality.medium,
                 ),
               )
             else
@@ -344,7 +358,9 @@ class _CallOverlayState extends State<CallOverlay>
     // Android kills the Realtime socket in background; rebuild the ring inbox
     // the moment the app comes back so calls ring again.
     if (state == AppLifecycleState.resumed) {
-      context.read<CallService>().ensureConnected();
+      // Force a rebuild: a socket silently dropped in the background can still
+      // read "ready", so trust nothing and re-establish the ring inbox.
+      context.read<CallService>().ensureConnected(force: true);
     }
   }
 
