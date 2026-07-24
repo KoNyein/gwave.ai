@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import 'cycle_screen.dart';
+import 'full_scan_screen.dart';
 import 'health_report.dart';
 import 'health_store.dart';
 import 'heart_wave_screen.dart';
 import 'medical_id_screen.dart';
 import 'medications_screen.dart';
 import 'oximeter_screen.dart';
+import 'vitals_history_screen.dart';
 import 'vitals_screen.dart';
 
 /// The Health hub — one place for every health function: measure a pulse, log
@@ -66,6 +68,67 @@ class _HealthHubScreenState extends State<HealthHubScreen> {
           ),
           const SizedBox(height: 16),
 
+          // One-tap Full Scan — measure everything at once.
+          InkWell(
+            borderRadius: BorderRadius.circular(GwRadius.lg),
+            onTap: () => _go(const FullScanScreen()),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0F2A16), Color(0xFF16351F)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(GwRadius.lg),
+                border: Border.all(
+                    color: const Color(0xFF39E67B).withValues(alpha: 0.35)),
+                boxShadow: GwShadow.card,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF39E67B).withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.monitor_heart,
+                        color: Color(0xFF39E67B), size: 26),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tr(context, "Full scan — measure all",
+                              "အပြည့်အစုံ တိုင်းတာ"),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          tr(context,
+                              "HR · SpO₂ · respiration · HRV · calmness · PI in one go",
+                              "HR · SpO₂ · အသက်ရှူ · HRV · တည်ငြိမ်မှု · PI တစ်ကြိမ်တည်း"),
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontSize: 12.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Colors.white54),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
           _tile(
             icon: Icons.monitor_heart_outlined,
             color: GwColors.live,
@@ -118,6 +181,15 @@ class _HealthHubScreenState extends State<HealthHubScreen> {
                 "Blood type, allergies, emergency contact",
                 "သွေးအမျိုးအစား၊ ဓာတ်မတည့်မှု၊ အရေးပေါ်ဆက်သွယ်ရန်"),
             onTap: () => _go(const MedicalIdScreen()),
+          ),
+          _tile(
+            icon: Icons.insights_outlined,
+            color: const Color(0xFF2E7DB1),
+            title: tr(context, "Saved data & history", "သိမ်းထားသော data"),
+            subtitle: tr(context,
+                "Re-view every reading, with trends & charts",
+                "မှတ်တမ်းအားလုံး ပြန်ကြည့် — trend + chart နဲ့"),
+            onTap: () => _go(const VitalsHistoryScreen()),
           ),
 
           const SizedBox(height: 16),
