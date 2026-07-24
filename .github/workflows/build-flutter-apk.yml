@@ -13,9 +13,13 @@ on:
         default: release
         options: [release, debug]
   push:
+    # ONLY the canonical mobile dev branch builds & publishes the APK. Web
+    # branches (claude/** off main) and main itself do NOT carry the mobile-only
+    # features (native audio store / health hub / call fixes live only here), so
+    # building from them produced a feature-stripped APK that clobbered the
+    # rolling mobile-latest release. Restricting the trigger prevents that.
     branches:
-      - main
-      - "claude/**"
+      - claude/phase-1-implementation-7ysxtj
     paths:
       - "mobile/**"
       - ".github/workflows/build-flutter-apk.yml"
