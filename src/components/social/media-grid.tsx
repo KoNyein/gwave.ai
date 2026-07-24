@@ -128,11 +128,17 @@ export function MediaGrid({ media }: { media: PostMedia[] }) {
 
   const first = media[0]!;
   if (first.media_type === "video") {
+    // Facebook/TikTok-style: autoplay muted + loop in the feed, with controls
+    // so the viewer can unmute or scrub.
     return (
       <video
         src={mediaUrl(first.storage_path)}
         controls
+        muted
+        autoPlay
+        loop
         playsInline
+        preload="metadata"
         className="max-h-[600px] w-full bg-black"
       />
     );
