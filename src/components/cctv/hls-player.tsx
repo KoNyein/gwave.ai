@@ -63,10 +63,29 @@ export function HlsPlayer({ src, title }: { src: string; title: string }) {
             setState("error");
             return;
           }
-          hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+          hls = new Hls({
+            enableWorker: true,
+            lowLatencyMode: true,
+            capLevelToPlayerSize: false, // reach the sharpest rendition
+            maxBufferLength: 30,
+            backBufferLength: 30,
+          });
+          let mediaRecoveries = 0;
           hls.on(Hls.Events.ERROR, (_evt, data) => {
-            // Only a fatal error means playback truly failed.
-            if (data.fatal) setState("error");
+            if (!data.fatal) return;
+            // Self-heal transient drops before surfacing a hard error, so a
+            // brief network blip doesn't freeze the feed on the last frame.
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+              hls?.startLoad();
+            } else if (
+              data.type === Hls.ErrorTypes.MEDIA_ERROR &&
+              mediaRecoveries < 2
+            ) {
+              mediaRecoveries += 1;
+              hls?.recoverMediaError();
+            } else {
+              setState("error");
+            }
           });
           hls.loadSource(src);
           hls.attachMedia(video);

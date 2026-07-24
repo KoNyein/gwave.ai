@@ -3,7 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { PlayCircle, Radio } from "lucide-react";
-import Hls from "hls.js";
+
+import { attachPreviewHls } from "@/lib/hls-quality";
 
 export interface LiveCardData {
   id: string;
@@ -16,34 +17,14 @@ export interface LiveCardData {
   startedAgo: string | null;
 }
 
-/** Attach an HLS source to a <video>: Safari plays m3u8 natively, everyone
- *  else via hls.js. Returns a cleanup fn. */
-function attachHls(v: HTMLVideoElement, src: string): () => void {
-  if (v.canPlayType("application/vnd.apple.mpegurl")) {
-    v.src = src;
-    void v.play().catch(() => undefined);
-    return () => {
-      v.removeAttribute("src");
-      v.load();
-    };
-  }
-  if (Hls.isSupported()) {
-    const hls = new Hls({ capLevelToPlayerSize: true });
-    hls.loadSource(src);
-    hls.attachMedia(v);
-    void v.play().catch(() => undefined);
-    return () => hls.destroy();
-  }
-  return () => undefined;
-}
-
 function LiveCard({ card }: { card: LiveCardData }) {
   const videoRef = React.useRef<HTMLVideoElement>(null);
 
   React.useEffect(() => {
     const v = videoRef.current;
     if (!v || !card.src) return;
-    return attachHls(v, card.src);
+    const player = attachPreviewHls(v, card.src);
+    return () => player.destroy();
   }, [card.src]);
 
   return (

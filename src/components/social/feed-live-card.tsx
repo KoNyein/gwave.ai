@@ -4,8 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Radio, PlayCircle } from "lucide-react";
 
-import Hls from "hls.js";
-
+import { attachPreviewHls } from "@/lib/hls-quality";
 import { createClient } from "@/lib/data/client";
 
 interface StreamInfo {
@@ -69,18 +68,8 @@ export function FeedLiveCard({ streamId }: { streamId: string }) {
   React.useEffect(() => {
     const v = videoRef.current;
     if (!v || !src) return;
-    if (v.canPlayType("application/vnd.apple.mpegurl")) {
-      v.src = src;
-      void v.play().catch(() => undefined);
-      return;
-    }
-    if (Hls.isSupported()) {
-      const hls = new Hls({ capLevelToPlayerSize: true });
-      hls.loadSource(src);
-      hls.attachMedia(v);
-      void v.play().catch(() => undefined);
-      return () => hls.destroy();
-    }
+    const player = attachPreviewHls(v, src);
+    return () => player.destroy();
   }, [src]);
 
   if (!info) return null;
