@@ -4,7 +4,9 @@ import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 
+import '../../core/app_state.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import 'health_store.dart';
@@ -222,13 +224,20 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
       ),
     );
     if (save == true) {
-      await HealthStore.addVital(VitalReading(
+      final reading = VitalReading(
         id: DateTime.now().microsecondsSinceEpoch.toString(),
         type: VitalType.heartRate.key,
         value: _bpm.toDouble(),
         at: DateTime.now(),
         note: tr(context, "Camera pulse", "ကင်မရာ pulse"),
-      ));
+      );
+      await HealthStore.addVital(reading);
+      if (mounted) {
+        // Also sync to the user's cloud database (best-effort).
+        await pushVitalToServer(
+            context.read<AppState>().api, reading,
+            source: 'camera_ppg');
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(tr(context, "Saved to vitals.", "မှတ်တမ်းသို့ သိမ်းပြီး။"))));
@@ -270,6 +279,64 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
         ),
       );
 
+  /// 0..1 pulse-signal strength from the recent waveform amplitude.
+  double get _signalQuality {
+    if (_wave.length < 20) return 0;
+    final recent = _wave.sublist(_wave.length - 20);
+    var lo = recent.first, hi = recent.first;
+    for (final v in recent) {
+      lo = math.min(lo, v);
+      hi = math.max(hi, v);
+    }
+    return ((hi - lo) / 6).clamp(0.0, 1.0);
+  }
+
+  Widget _statusRow() {
+    final q = _signalQuality;
+    final Color c;
+    final String label;
+    if (!_fingerDetected) {
+      c = GwColors.gold;
+      label = tr(context, "Place fingertip on camera",
+          "လက်ဖျားကို ကင်မရာပေါ်တင်ပါ");
+    } else if (q < 0.35) {
+      c = GwColors.gold;
+      label = tr(context, "Hold still — weak signal", "မလှုပ်ပါနဲ့ — signal အား နည်း");
+    } else {
+      c = const Color(0xFF7ED957);
+      label = tr(context, "Good signal ✓", "signal ကောင်း ✓");
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(_fingerDetected ? Icons.fingerprint : Icons.touch_app,
+              color: c, size: 18),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(label,
+                style: TextStyle(color: c, fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(width: 10),
+          // Signal-strength bars.
+          for (var i = 0; i < 4; i++)
+            Padding(
+              padding: const EdgeInsets.only(left: 2),
+              child: Container(
+                width: 4,
+                height: 8.0 + i * 4,
+                decoration: BoxDecoration(
+                  color: q * 4 > i ? c : Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _measureView() {
     return Column(
       children: [
@@ -285,7 +352,27 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
         ),
         const Text("bpm",
             style: TextStyle(color: Colors.white54, fontSize: 16)),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
+        // Live status: finger + signal quality, so the user understands what
+        // the reading needs.
+        if (_measuring) _statusRow(),
+        const SizedBox(height: 6),
+        // Progress of the measurement window.
+        if (_measuring)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value:
+                    (_measureSeconds - _remaining) / _measureSeconds,
+                minHeight: 5,
+                backgroundColor: Colors.white12,
+                color: const Color(0xFF7ED957),
+              ),
+            ),
+          ),
+        const SizedBox(height: 8),
         // Live waveform.
         Expanded(
           child: Padding(

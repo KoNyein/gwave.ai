@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/api_client.dart';
+
 /// On-device store for the Health module. Health data is highly personal, so it
 /// stays on the phone (SharedPreferences JSON) — nothing is uploaded to the
 /// server. The user can still export a PDF report to show a doctor. Cloud sync
@@ -115,6 +117,57 @@ class HealthStore {
 
 bool _sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
+
+/// Mirror a vital to the user's server database (public.health_vitals) so it
+/// survives a reinstall and can be reviewed from any device. Best-effort: the
+/// on-device copy stays the source of truth, so a missing table / offline
+/// device never blocks the save.
+Future<void> pushVitalToServer(ApiClient api, VitalReading r,
+    {String source = 'manual'}) async {
+  final pid = api.session?.profileId;
+  if (pid == null) return;
+  try {
+    await api.insert("health_vitals", {
+      "user_id": pid,
+      "type": r.type,
+      "value": r.value,
+      if (r.value2 != null) "value2": r.value2,
+      if (r.note != null) "note": r.note,
+      "source": source,
+      "recorded_at": r.at.toUtc().toIso8601String(),
+    });
+  } catch (_) {
+    // Server not reachable / table not migrated yet — local copy is enough.
+  }
+}
+
+/// The user's cloud vitals (newest first), or an empty list if the table isn't
+/// available yet. Used by the cloud history view.
+Future<List<VitalReading>> serverVitals(ApiClient api, {int limit = 200}) async {
+  final pid = api.session?.profileId;
+  if (pid == null) return [];
+  try {
+    final rows = await api.select("health_vitals", query: {
+      "select": "id,type,value,value2,note,recorded_at",
+      "user_id": "eq.$pid",
+      "order": "recorded_at.desc",
+      "limit": "$limit",
+    });
+    return rows
+        .map((j) => VitalReading(
+              id: "${j["id"]}",
+              type: "${j["type"]}",
+              value: (j["value"] as num).toDouble(),
+              value2: (j["value2"] as num?)?.toDouble(),
+              at: DateTime.tryParse("${j["recorded_at"]}")?.toLocal() ??
+                  DateTime.now(),
+              note: j["note"] as String?,
+            ))
+        .toList();
+  } catch (_) {
+    return [];
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Models

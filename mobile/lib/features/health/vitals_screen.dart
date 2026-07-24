@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
+import '../../core/app_state.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
@@ -279,14 +281,19 @@ class _AddVitalSheetState extends State<_AddVitalSheet> {
     final v1 = double.tryParse(_v1.text.trim());
     if (v1 == null) return;
     setState(() => _saving = true);
-    await HealthStore.addVital(VitalReading(
+    final reading = VitalReading(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       type: _type.key,
       value: v1,
       value2: _type.hasSecond ? double.tryParse(_v2.text.trim()) : null,
       at: DateTime.now(),
       note: _note.text.trim().isEmpty ? null : _note.text.trim(),
-    ));
+    );
+    await HealthStore.addVital(reading);
+    if (mounted) {
+      // Mirror to the user's cloud database (best-effort).
+      await pushVitalToServer(context.read<AppState>().api, reading);
+    }
     if (mounted) Navigator.of(context).pop(true);
   }
 
