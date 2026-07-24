@@ -51,6 +51,14 @@
 
 ## Changelog
 
+- 2026-07-24: **Call reliability — re-ring + caller identity.** The outgoing
+  call now re-broadcasts the `ring` to `calls:{callee}` every 3s for the 45s
+  window (Realtime broadcast is ephemeral, so a single ring missed a callee
+  whose socket was mid-reconnect or who opened the app a beat late → caller
+  stuck on "Ringing…"). The callee's `inCall` guard drops duplicate rings, so
+  re-rings are idempotent. The ring payload now carries the caller's
+  profile (name/avatar) so the incoming screen shows who's calling. Note: a
+  fully-closed callee app still needs FCM (documented gap). (mobile branch.)
 - 2026-07-24: **Health data now auto-saves & restores across logout/login,
   reinstall, and new phones.** `HealthStore` mirrors the whole module (vitals,
   oximeter/full-scan, cycle, meds, Medical ID, activity journal, report prefs)

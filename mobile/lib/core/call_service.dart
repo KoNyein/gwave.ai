@@ -54,6 +54,8 @@ class CallService extends ChangeNotifier {
   DateTime? _connectedAt;
   Timer? _durationTimer;
   Timer? _ringTimer;
+  Timer? _reRing; // re-broadcasts the ring so a callee who reconnects catches it
+  Profile? _me; // caller identity attached to the ring, so the callee sees who
   int durationSecs = 0;
   final List<RTCIceCandidate> _pendingIce = [];
   bool _remoteDescSet = false;
@@ -163,6 +165,16 @@ class CallService extends ChangeNotifier {
       });
       _ringInbox = inbox;
 
+      // Cache our own profile so the ring we send carries a name/avatar and the
+      // callee's incoming screen shows who's calling. Best-effort.
+      if (_me == null) {
+        try {
+          _me = await repo.myProfile();
+        } catch (_) {
+          // no cached profile — the ring still works, just without a name
+        }
+      }
+
       // The data token expires; a reconnect with the stale token silently
       // kills the ring inbox until app restart. Refresh the socket auth well
       // inside the token lifetime.
@@ -253,21 +265,37 @@ class CallService extends ChangeNotifier {
     // realtime broadcast (closed, backgrounded, stale JS). Best-effort.
     api.callNotify(conversationId, withVideo).catchError((_) {});
 
-    // Ring the callee's inbox.
-    _peerRing = _rt!.channel("calls:${target.id}");
-    _peerRing!.subscribe((status, [error]) {
-      if (status == RealtimeSubscribeStatus.subscribed) {
-        _peerRing!.sendBroadcastMessage(event: "ring", payload: {
+    // The ring payload — carries our identity so the callee sees who's calling.
+    Map<String, dynamic> ringPayload() => {
           "callId": _callId,
           "conversationId": conversationId,
           "video": withVideo,
           "from": {
             "id": _myId,
-            "username": null,
-            "full_name": null,
-            "avatar_url": null,
+            "username": _me?.username,
+            "full_name": _me?.fullName,
+            "avatar_url": _me?.avatarUrl,
           },
-        });
+        };
+
+    // Ring the callee's inbox. Realtime broadcast is ephemeral — only clients
+    // subscribed at that instant receive it — so we re-broadcast every 3s while
+    // ringing. That way a callee whose socket was mid-reconnect, or who opens
+    // the app a moment later, still catches the ring instead of the caller
+    // hanging on "Ringing…".
+    _peerRing = _rt!.channel("calls:${target.id}");
+    _peerRing!.subscribe((status, [error]) {
+      if (status == RealtimeSubscribeStatus.subscribed) {
+        _peerRing!.sendBroadcastMessage(event: "ring", payload: ringPayload());
+      }
+    });
+    _reRing?.cancel();
+    _reRing = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (phase == CallPhase.outgoing) {
+        _peerRing?.sendBroadcastMessage(event: "ring", payload: ringPayload());
+      } else {
+        _reRing?.cancel();
+        _reRing = null;
       }
     });
 
@@ -341,6 +369,8 @@ class CallService extends ChangeNotifier {
   Future<void> _onAccept() async {
     // Caller side: the callee picked up → create and send the offer.
     if (!_isCaller || _pc == null) return;
+    _reRing?.cancel(); // stop re-broadcasting the ring; they answered
+    _reRing = null;
     phase = CallPhase.connecting;
     notifyListeners();
     final offer = await _pc!.createOffer();
@@ -490,8 +520,10 @@ class CallService extends ChangeNotifier {
     final connected = _connectedAt;
 
     _ringTimer?.cancel();
+    _reRing?.cancel();
     _durationTimer?.cancel();
     _ringTimer = null;
+    _reRing = null;
     _durationTimer = null;
 
     try {
