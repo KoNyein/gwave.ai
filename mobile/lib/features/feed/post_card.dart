@@ -408,9 +408,12 @@ class _RichPostBodyState extends State<_RichPostBody> {
       spans.add(TextSpan(
         text: token,
         recognizer: recognizer,
-        style: const TextStyle(
-          color: GwColors.primary,
+        style: TextStyle(
+          // Web links blue (tappable); @mentions stay brand green.
+          color: isLink ? GwColors.linkOf(context) : GwColors.primary,
           fontWeight: FontWeight.w600,
+          decoration: isLink ? TextDecoration.underline : null,
+          decorationColor: isLink ? GwColors.linkOf(context) : null,
         ),
       ));
       last = m.end;
@@ -420,7 +423,8 @@ class _RichPostBodyState extends State<_RichPostBody> {
     }
     return Text.rich(
       TextSpan(
-        style: const TextStyle(fontSize: 15, height: 1.4, color: GwColors.ink),
+        style: TextStyle(
+            fontSize: 15, height: 1.4, color: GwColors.inkOf(context)),
         children: spans,
       ),
     );

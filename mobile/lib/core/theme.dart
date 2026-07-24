@@ -46,6 +46,10 @@ class GwColors {
       Theme.of(c).brightness == Brightness.dark ? dInkSoft : inkSoft;
   static Color lineOf(BuildContext c) =>
       Theme.of(c).brightness == Brightness.dark ? dLine : line;
+  /// Hyperlink blue — brighter on dark so links stay legible in both themes.
+  static Color linkOf(BuildContext c) => Theme.of(c).brightness == Brightness.dark
+      ? const Color(0xFF5AA7FF)
+      : const Color(0xFF1B74E4);
 
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
