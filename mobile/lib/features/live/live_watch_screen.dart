@@ -14,6 +14,7 @@ import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../web/web_screen.dart';
 
 /// Full-screen, one-screen TikTok-style Live watch. The video fills the screen;
 /// host/title, LIVE + viewer badge, the right action rail, and the overlay chat
@@ -159,6 +160,25 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
   Future<void> _initVideo() async {
     final url = _playbackUrl();
     if (url == null) {
+      // A *live* with no native (HLS/LiveKit) source is a browser WebRTC
+      // broadcast (IVS Real-Time stage) — the app can't decode the stage
+      // directly, so hand off to the authenticated in-app web player, which
+      // plays it. App broadcasts always carry an HLS URL, so this fires only
+      // for browser lives. Replays with no source keep the error.
+      if (widget.stream.isLive) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => WebScreen(
+                path: "/live/${widget.stream.id}",
+                title: widget.stream.title,
+              ),
+            ),
+          );
+        });
+        return;
+      }
       setState(() => _error = "No video for this Live yet.");
       return;
     }

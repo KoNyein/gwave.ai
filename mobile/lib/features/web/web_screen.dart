@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import '../../core/app_state.dart';
 import '../../core/config.dart';
@@ -76,6 +77,13 @@ class _WebScreenState extends State<WebScreen> {
         },
       ))
       ..loadRequest(_target);
+    // Let embedded video/live players start on their own (e.g. the web live
+    // player the app hands browser broadcasts off to) instead of waiting for a
+    // tap.
+    if (controller.platform is AndroidWebViewController) {
+      (controller.platform as AndroidWebViewController)
+          .setMediaPlaybackRequiresUserGesture(false);
+    }
     if (mounted) setState(() => _web = controller);
   }
 
