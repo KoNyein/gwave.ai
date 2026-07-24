@@ -667,9 +667,11 @@ class ApiClient {
     String? locationName,
     double? latitude,
     double? longitude,
+    bool record = true,
   }) async {
     final j = await _liveCall("/api/mobile/live/create", {
       "title": title,
+      "record": record,
       if (locationName != null && locationName.isNotEmpty)
         "locationName": locationName,
       if (latitude != null && longitude != null) ...{
