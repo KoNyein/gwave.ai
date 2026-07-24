@@ -35,6 +35,7 @@ class LiveWatchScreen extends StatefulWidget {
 class _LiveWatchScreenState extends State<LiveWatchScreen> {
   VideoPlayerController? _controller;
   bool _ready = false;
+  bool _muted = false; // viewers can mute; audio is on by default
   String? _error;
 
   // Browser Go Live broadcasts publish over the LiveKit SFU (WebRTC) and have
@@ -166,6 +167,9 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
       _controller = c;
       await c.initialize();
       await c.setLooping(!widget.stream.isLive);
+      // Watching a Live is a listening experience — force full media volume so
+      // muted feed/rail previews or leftover call-audio state can't silence it.
+      await c.setVolume(1.0);
       await c.play();
       if (mounted) setState(() => _ready = true);
     } catch (e) {
@@ -646,6 +650,16 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        _railButton(
+          _muted ? Icons.volume_off : Icons.volume_up,
+          _muted ? "Muted" : "Sound",
+          _muted ? Colors.white54 : Colors.white,
+          onTap: () {
+            setState(() => _muted = !_muted);
+            _controller?.setVolume(_muted ? 0 : 1);
+          },
+        ),
+        const SizedBox(height: 16),
         _railButton(Icons.favorite, "Like", GwColors.heart,
             onTap: () => _react("❤️")),
         const SizedBox(height: 16),
