@@ -196,3 +196,36 @@ export async function isEntitled(trackId: string): Promise<boolean> {
   const { data } = await client.rpc("audio_is_entitled", { p_track: trackId });
   return data === true;
 }
+
+export interface RatingStats {
+  avg: number;
+  count: number;
+}
+
+/** Average rating + count for a track (0/0 if the helper isn't migrated). */
+export async function getRatingStats(trackId: string): Promise<RatingStats> {
+  const client = (await createClient()) as unknown as {
+    rpc(
+      fn: string,
+      args: Record<string, unknown>,
+    ): Res<{ avg_stars: number; cnt: number }[]>;
+  };
+  const { data } = await client.rpc("audio_rating_stats", { p_track: trackId });
+  const row = Array.isArray(data) ? data[0] : null;
+  return { avg: Number(row?.avg_stars ?? 0), count: Number(row?.cnt ?? 0) };
+}
+
+/** The viewer's own star rating for a track, if any. */
+export async function getMyRating(
+  userId: string,
+  trackId: string,
+): Promise<number | null> {
+  const { data } = await (await db())
+    .from("audio_ratings")
+    .select("stars")
+    .eq("user_id", userId)
+    .eq("track_id", trackId)
+    .maybeSingle();
+  const stars = (data as { stars?: number } | null)?.stars;
+  return typeof stars === "number" ? stars : null;
+}

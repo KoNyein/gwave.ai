@@ -5,9 +5,16 @@ import { ChevronLeft, Headphones, Music2, Radio } from "lucide-react";
 
 import { AudioPlayer } from "@/components/audio/audio-player";
 import { AudioPurchase } from "@/components/audio/audio-purchase";
+import { AudioRating, RatingSummary } from "@/components/audio/audio-rating";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
-import { getResume, getTrackDetail, isEntitled } from "@/lib/db/audio";
+import {
+  getMyRating,
+  getRatingStats,
+  getResume,
+  getTrackDetail,
+  isEntitled,
+} from "@/lib/db/audio";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +33,11 @@ export default async function AudioTrackPage({
   ]);
   if (!detail) notFound();
 
-  const [entitled, resume] = await Promise.all([
+  const [entitled, resume, ratingStats, myRating] = await Promise.all([
     isEntitled(trackId),
     getResume(profile.id, trackId),
+    getRatingStats(trackId),
+    getMyRating(profile.id, trackId),
   ]);
 
   const { track, music, podcast, audiobook, chapters } = detail;
@@ -85,6 +94,7 @@ export default async function AudioTrackPage({
           </span>
           <h1 className="text-lg font-bold leading-tight">{track.title}</h1>
           {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+          <RatingSummary avg={ratingStats.avg} count={ratingStats.count} />
           {track.is_premium ? (
             entitled ? (
               <span className="inline-block rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
@@ -123,6 +133,9 @@ export default async function AudioTrackPage({
         resumePosition={resume?.position_s ?? 0}
         resumeSpeed={resume?.speed ?? 1}
       />
+
+      {/* Rate this title (once you can play it) */}
+      {entitled && <AudioRating trackId={track.id} mine={myRating} />}
 
       {/* Description / show notes */}
       {(track.description || podcast?.show_notes) && (
