@@ -7,12 +7,14 @@ class GwColors {
   static const Color primary = Color(0xFF3B6D11); // deep leaf green
   static const Color primaryBright = Color(0xFF7AC943); // fresh sprout
   static const Color primaryDark = Color(0xFF264808);
-  static const Color bg = Color(0xFFEEF5E7); // pale field (airy, matches web)
+  // Facebook-style neutral shell: light gray canvas, pure white cards, near-
+  // black text — the green stays as the brand accent (where FB uses blue).
+  static const Color bg = Color(0xFFF0F2F5); // FB canvas gray
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceMuted = Color(0xFFF3F8EE);
-  static const Color ink = Color(0xFF12160E);
-  static const Color inkSoft = Color(0xFF5B6650);
-  static const Color line = Color(0xFFE1EAD6);
+  static const Color surfaceMuted = Color(0xFFF0F2F5); // pill/input fill
+  static const Color ink = Color(0xFF050505);
+  static const Color inkSoft = Color(0xFF65676B);
+  static const Color line = Color(0xFFE4E6EB);
   static const Color live = Color(0xFFE23B3B);
   static const Color gold = Color(0xFFF4B740);
   static const Color heart = Color(0xFFFF5C8A);
@@ -34,20 +36,21 @@ class GwColors {
 }
 
 class GwRadius {
-  static const double sm = 10;
-  static const double md = 16;
-  static const double lg = 22;
-  static const double xl = 30;
+  // Tighter, Facebook-like corner radii.
+  static const double sm = 8;
+  static const double md = 12;
+  static const double lg = 16;
+  static const double xl = 22;
 }
 
 class GwShadow {
-  /// Soft, low drop shadow used to float white cards on the mint background —
-  /// the same gentle lift the web app gives its content cards.
+  /// Barely-there lift, Facebook style — cards read as flat white sheets on
+  /// the gray canvas with just enough shadow to separate on scroll.
   static List<BoxShadow> get card => [
         BoxShadow(
-          color: const Color(0xFF264808).withValues(alpha: 0.06),
-          blurRadius: 18,
-          offset: const Offset(0, 6),
+          color: Colors.black.withValues(alpha: 0.05),
+          blurRadius: 6,
+          offset: const Offset(0, 1),
         ),
       ];
 }
@@ -69,7 +72,8 @@ ThemeData buildGwTheme() {
 
   return base.copyWith(
     appBarTheme: const AppBarTheme(
-      backgroundColor: GwColors.bg,
+      // Facebook keeps its top bar white and flat, content gray below it.
+      backgroundColor: GwColors.surface,
       foregroundColor: GwColors.ink,
       elevation: 0,
       scrolledUnderElevation: 0.5,
@@ -83,12 +87,12 @@ ThemeData buildGwTheme() {
     ),
     cardTheme: CardThemeData(
       color: GwColors.surface,
-      elevation: 6,
-      shadowColor: GwColors.primaryDark.withValues(alpha: 0.10),
+      elevation: 0.5,
+      shadowColor: Colors.black.withValues(alpha: 0.25),
       surfaceTintColor: Colors.transparent,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(GwRadius.lg),
+        borderRadius: BorderRadius.circular(GwRadius.md),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(

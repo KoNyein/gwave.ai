@@ -9,6 +9,7 @@ import '../../core/config.dart';
 
 import '../../core/app_state.dart';
 import '../../core/models.dart';
+import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../messenger/conversations_screen.dart';
@@ -120,32 +121,27 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(9),
-                border: Border.all(color: GwColors.line),
-              ),
-              child: Image.asset("assets/icon-512.png", fit: BoxFit.contain),
-            ),
-            const SizedBox(width: 8),
-            const Text("Gwave"),
-          ],
+        // Facebook-style masthead: brand wordmark left, round gray action
+        // chips right.
+        title: const Text(
+          "gwave",
+          style: TextStyle(
+            color: GwColors.primary,
+            fontSize: 28,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -1.2,
+            height: 1,
+          ),
         ),
         actions: [
-          IconButton(
-            icon: Badge(
-              isLabelVisible: _unread > 0,
-              label: Text("$_unread"),
-              backgroundColor: GwColors.live,
-              child: const Icon(Icons.notifications_none),
-            ),
-            onPressed: () async {
+          _HeaderChip(
+            icon: Icons.add,
+            onTap: _openComposer,
+          ),
+          _HeaderChip(
+            icon: Icons.notifications,
+            badge: _unread,
+            onTap: () async {
               await Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const NotificationsScreen()),
               );
@@ -153,18 +149,14 @@ class _FeedScreenState extends State<FeedScreen> {
               if (mounted) setState(() => _unread = 0);
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline),
-            onPressed: () => Navigator.of(context).push(
+          _HeaderChip(
+            icon: Icons.chat_bubble,
+            onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const ConversationsScreen()),
             ),
           ),
+          const SizedBox(width: 10),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: GwColors.primary,
-        onPressed: _openComposer,
-        child: const Icon(Icons.edit, color: Colors.white),
       ),
       body: Column(
         children: [
@@ -243,15 +235,24 @@ class _FeedScreenState extends State<FeedScreen> {
         ],
       );
     }
-    // Index 0 is the stories rail; posts follow; a trailing loader while paging.
+    // Index 0 is the composer pill + stories rail; posts follow; a trailing
+    // loader while paging.
     return ListView.separated(
       controller: _scroll,
       padding: const EdgeInsets.only(bottom: 90),
       itemCount: _posts.length + 1 + (_end ? 0 : 1),
       separatorBuilder: (_, i) =>
-          SizedBox(height: i == 0 ? 0 : 12),
+          SizedBox(height: i == 0 ? 0 : 8),
       itemBuilder: (context, i) {
-        if (i == 0) return const StoriesBar();
+        if (i == 0) {
+          return Column(
+            children: [
+              _composerRow(),
+              const SizedBox(height: 8),
+              const StoriesBar(),
+            ],
+          );
+        }
         final idx = i - 1;
         if (idx >= _posts.length) {
           return const Padding(
@@ -266,6 +267,83 @@ class _FeedScreenState extends State<FeedScreen> {
           child: PostCard(post: _posts[idx]),
         );
       },
+    );
+  }
+
+  /// Facebook-style "What's on your mind?" row: my avatar, the composer pill,
+  /// and a photo shortcut — all opening the composer.
+  Widget _composerRow() {
+    final me = context.read<AppState>().me;
+    return Container(
+      color: GwColors.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        children: [
+          GwAvatar(
+            url: resolveMedia(me?.avatarUrl),
+            name: me?.displayName ?? "Me",
+            size: 38,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: GestureDetector(
+              onTap: _openComposer,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                decoration: BoxDecoration(
+                  color: GwColors.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: GwColors.line, width: 1.2),
+                ),
+                child: const Text(
+                  "ဘာတွေ တွေးနေလဲ?",
+                  style: TextStyle(color: GwColors.inkSoft, fontSize: 15),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          IconButton(
+            onPressed: _openComposer,
+            icon: const Icon(Icons.photo_library,
+                color: Color(0xFF45BD62), size: 26),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Round light-gray icon button, the Facebook header chip.
+class _HeaderChip extends StatelessWidget {
+  const _HeaderChip({required this.icon, required this.onTap, this.badge = 0});
+  final IconData icon;
+  final VoidCallback onTap;
+  final int badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Badge(
+          isLabelVisible: badge > 0,
+          label: Text("$badge"),
+          backgroundColor: GwColors.live,
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: const BoxDecoration(
+              color: GwColors.surfaceMuted,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 21, color: GwColors.ink),
+          ),
+        ),
+      ),
     );
   }
 }
