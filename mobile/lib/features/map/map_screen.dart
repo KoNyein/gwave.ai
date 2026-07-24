@@ -10,6 +10,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:wifi_scan/wifi_scan.dart';
 
 import '../../core/app_state.dart';
 import '../../core/i18n.dart';
@@ -184,13 +185,56 @@ class _MapScreenState extends State<MapScreen> {
         );
         mediaKind = "audio";
       }
+      // Advanced rescue: scan nearby WiFi so responders can pinpoint the person
+      // indoors (where GPS is weak) by cross-referencing the WiFi map, and
+      // enrich that shared map with this SOS point. Best-effort — never blocks
+      // the SOS from going out.
+      String rescueNote = details.note ?? "";
+      try {
+        if (await WiFiScan.instance.canStartScan() == CanStartScan.yes) {
+          await WiFiScan.instance.startScan();
+          await Future.delayed(const Duration(seconds: 2));
+          final aps = (await WiFiScan.instance.getScannedResults())
+              .where((a) => a.bssid.isNotEmpty)
+              .toList()
+            ..sort((a, b) => b.level.compareTo(a.level));
+          final top = aps.take(6).toList();
+          if (top.isNotEmpty) {
+            api
+                .wifiObserve(
+                  latitude: me.latitude,
+                  longitude: me.longitude,
+                  networks: top
+                      .map((a) => {
+                            "bssid": a.bssid,
+                            "ssid": a.ssid,
+                            "signal": a.level,
+                            "security": a.capabilities.toUpperCase().contains("WPA")
+                                ? "WPA"
+                                : "OPEN",
+                          })
+                      .toList(),
+                )
+                .catchError((_) {});
+            final list = top
+                .take(3)
+                .map((a) =>
+                    "${a.ssid.isEmpty ? a.bssid : a.ssid} (${a.level}dBm)")
+                .join(", ");
+            rescueNote =
+                "${rescueNote.isEmpty ? "" : "$rescueNote\n"}📡 Nearby WiFi: $list";
+          }
+        }
+      } catch (_) {
+        // No WiFi scan — the SOS still carries GPS + everything else.
+      }
       if (!mounted) return;
       await context.read<AppState>().repo.sendSos(
             me.latitude,
             me.longitude,
             reason: details.reason,
             phone: details.phone,
-            message: details.note,
+            message: rescueNote,
             mediaPath: mediaPath,
             mediaKind: mediaKind,
           );
