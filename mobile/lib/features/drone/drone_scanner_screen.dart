@@ -13,7 +13,12 @@ import 'drone_library_screen.dart';
 import 'drone_map_screen.dart';
 import 'drone_signatures.dart';
 
-/// A detected drone / controller / drone-like radio signal.
+/// How a detection is classified.
+enum HitClass { remoteId, drone, unusual, unknown }
+
+/// A detected radio device — a drone, a controller, or any nearby BLE/Wi-Fi
+/// signal. The scanner tracks EVERY signal (not just drone matches) so the
+/// radar visibly works and can flag anomalies.
 class DroneHit {
   DroneHit({
     required this.key,
@@ -36,23 +41,24 @@ class DroneHit {
     rssiHistory.add(rssi);
   }
 
-  final String key; // BSSID / BLE id — dedup key
+  final String key;
   String label;
   int rssi;
-  final String source; // "BLE", "WiFi", "Remote ID"
+  String source; // "BLE" or "WiFi"
   String? vendor;
   DroneKind kind;
-  String? protocol; // radio link, from the signature DB
-  String? band; // "2.4 GHz" / "5 GHz" / "6 GHz"
+  String? protocol;
+  String? band;
   int? channel;
   String? ssid;
   String? mac;
-  String? remoteId; // operator / serial from Remote ID
-  DroneSignature? sig; // matched catalogue entry (for rich detail)
+  String? remoteId;
+  DroneSignature? sig;
   double? lat;
   double? lng;
-  bool confirmed; // true = parsed Remote ID (high confidence)
+  bool confirmed; // parsed Remote ID
   DateTime seen = DateTime.now();
+  final DateTime firstSeen = DateTime.now();
   final List<int> rssiHistory = [];
 
   void pushRssi(int v) {
@@ -62,14 +68,13 @@ class DroneHit {
     seen = DateTime.now();
   }
 
-  /// Rough distance (m) from RSSI: d = 10^((measuredPower - rssi)/(10*n)).
   double get distanceM {
-    const measuredPower = -59; // RSSI at 1 m
-    const n = 2.7; // path-loss exponent (open-ish air)
+    const measuredPower = -59;
+    const n = 2.7;
     return math.pow(10, (measuredPower - rssi) / (10 * n)).toDouble();
   }
 
-  /// Signal trend from RSSI history: +1 approaching, -1 leaving, 0 steady.
+  /// +1 approaching, -1 leaving, 0 steady.
   int get trend {
     if (rssiHistory.length < 6) return 0;
     final n = rssiHistory.length;
@@ -81,15 +86,32 @@ class DroneHit {
     if (oa - ra > 3) return -1;
     return 0;
   }
+
+  bool get isDroneish => confirmed || vendor != null;
+
+  /// An "unusual" signal worth flagging: any drone-vendor device, or an unknown
+  /// device that is close AND actively approaching (something moving toward you)
+  /// — while ignoring the many stationary Wi-Fi routers / BLE gadgets around.
+  bool get unusual {
+    if (confirmed) return false; // a confirmed drone is a threat, not "unusual"
+    if (vendor != null) return true; // any known drone-maker device
+    return trend > 0 && rssi >= -72; // unknown, close & getting closer
+  }
+
+  HitClass get klass {
+    if (confirmed) return HitClass.remoteId;
+    if (vendor != null) return HitClass.drone;
+    if (unusual) return HitClass.unusual;
+    return HitClass.unknown;
+  }
 }
 
-/// Passive drone-detection radar. The phone listens (never transmits) for the
-/// radios a drone or its controller exposes — Bluetooth LE Remote ID (Open
-/// Drone ID / ASTM F3411) and Wi-Fi — and matches each hit against the built-in
-/// [kDroneSignatures] database to name it and show its protocol/band. It cannot
-/// see proprietary RC links (OcuSync, ELRS, Crossfire, FrSky, analog FPV); the
-/// "What can this detect?" panel and the Signal library explain why. Works
-/// fully offline. A safety aid, not a guarantee.
+/// Passive drone-detection radar. Listens (never transmits) on the phone's BLE
+/// and Wi-Fi radios, tracks every nearby signal, matches drones against the
+/// built-in [kDroneSignatures] database, flags anomalies (unknown signals that
+/// approach) and alerts. Proprietary RC links (OcuSync, ELRS, Crossfire, FrSky,
+/// analog FPV) still need an external SDR — see the capability panel. Works
+/// offline. A safety aid, not a guarantee.
 class DroneScannerScreen extends StatefulWidget {
   const DroneScannerScreen({super.key});
 
@@ -100,6 +122,8 @@ class DroneScannerScreen extends StatefulWidget {
 class _DroneScannerScreenState extends State<DroneScannerScreen>
     with SingleTickerProviderStateMixin {
   final Map<String, DroneHit> _hits = {};
+  final List<_Alert> _alerts = [];
+  final Set<String> _alerted = {}; // keys already alerted (avoid repeat buzz)
   StreamSubscription<List<ScanResult>>? _bleSub;
   Timer? _wifiTimer;
   Timer? _wifiScanTimer;
@@ -107,6 +131,7 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
   Timer? _pruneTimer;
   bool _scanning = false;
   String? _error;
+  String _filter = "priority"; // priority | all | drones | unusual
   late final AnimationController _sweep = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 3),
@@ -144,19 +169,16 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
       _bleSub = FlutterBluePlus.scanResults.listen(_onBle);
       await FlutterBluePlus.startScan(
         continuousUpdates: true,
-        removeIfGone: const Duration(seconds: 20),
+        removeIfGone: const Duration(seconds: 15),
       );
       if (mounted) setState(() => _scanning = true);
 
-      // Trigger fresh Wi-Fi scans (OS-throttled) and read results more often —
-      // reading alone returns cached data, so without startScan the list never
-      // refreshes.
       _triggerWifiScan();
       _wifiScanTimer = Timer.periodic(
-          const Duration(seconds: 30), (_) => _triggerWifiScan());
+          const Duration(seconds: 25), (_) => _triggerWifiScan());
       _readWifi();
       _wifiTimer =
-          Timer.periodic(const Duration(seconds: 6), (_) => _readWifi());
+          Timer.periodic(const Duration(seconds: 5), (_) => _readWifi());
 
       _pruneTimer = Timer.periodic(const Duration(seconds: 2), (_) => _prune());
     } catch (e) {
@@ -164,54 +186,47 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
     }
   }
 
-  // ---- Bluetooth LE (Open Drone ID + vendor names) -------------------------
+  // ---- Bluetooth LE — track EVERY device -----------------------------------
 
   void _onBle(List<ScanResult> results) {
     for (final r in results) {
       final k = r.device.remoteId.str;
       final odid = _parseOpenDroneId(r);
       final name = r.advertisementData.advName.trim();
+      final hit = _hits[k] ??
+          DroneHit(
+            key: k,
+            label: name.isEmpty
+                ? tr(context, "Unknown BLE device", "အမည်မသိ BLE")
+                : name,
+            rssi: r.rssi,
+            source: "BLE",
+            mac: k,
+          );
+      hit.pushRssi(r.rssi);
 
       if (odid != null) {
-        final hit = _hits[k] ??
-            DroneHit(
-                key: k,
-                label: tr(context, "Drone (Remote ID)", "ဒရုန်း (Remote ID)"),
-                rssi: r.rssi,
-                source: "Remote ID",
-                mac: k,
-                protocol: "Remote ID",
-                kind: DroneKind.remoteId,
-                confirmed: true);
-        hit.pushRssi(r.rssi);
         hit.confirmed = true;
+        hit.protocol = "Remote ID";
+        hit.kind = DroneKind.remoteId;
         if (odid.$1 != null && odid.$1!.isNotEmpty) {
           hit.remoteId = odid.$1;
           hit.label = "${tr(context, "Drone", "ဒရုန်း")} · ${odid.$1}";
+        } else {
+          hit.label = tr(context, "Drone (Remote ID)", "ဒရုန်း (Remote ID)");
         }
         if (odid.$2 != null) {
           hit.lat = odid.$2;
           hit.lng = odid.$3;
         }
-        _hits[k] = hit;
-      } else if (name.isNotEmpty) {
+      } else if (name.isNotEmpty && hit.sig == null) {
         final sig = matchSignature(name);
-        if (sig != null) {
-          final hit = _hits[k] ??
-              DroneHit(
-                  key: k,
-                  label: "${sig.vendor} · $name",
-                  rssi: r.rssi,
-                  source: "BLE",
-                  mac: k);
-          hit.pushRssi(r.rssi);
-          _applySig(hit, sig, name);
-          _hits[k] = hit;
-        }
+        if (sig != null) _applySig(hit, sig, name);
       }
+      _hits[k] = hit;
     }
     if (mounted) setState(() {});
-    _evaluateAlarm();
+    _evaluate();
   }
 
   (String?, double?, double?)? _parseOpenDroneId(ScanResult r) {
@@ -224,11 +239,9 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
         }
       }
       if (payload == null || payload.length < 3) return null;
-      if (payload[0] != 0x0D) return null; // ODID app code
+      if (payload[0] != 0x0D) return null;
       final msg = payload.sublist(2);
-      final header = msg[0];
-      final type = (header >> 4) & 0x0F;
-
+      final type = (msg[0] >> 4) & 0x0F;
       String? id;
       double? lat, lng;
       if (type == 0 && msg.length >= 22) {
@@ -253,7 +266,7 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
     return v >= 0x80000000 ? v - 0x100000000 : v;
   }
 
-  // ---- Wi-Fi (SSID + OUI vendor) via signature DB --------------------------
+  // ---- Wi-Fi — track EVERY access point ------------------------------------
 
   Future<void> _triggerWifiScan() async {
     try {
@@ -269,38 +282,39 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
       final results = await WiFiScan.instance.getScannedResults();
       for (final a in results) {
         final ssid = a.ssid.trim();
-        final sig = ssid.isEmpty ? null : matchSignature(ssid);
-        final ouiVendor = vendorForOui(a.bssid);
-        if (sig == null && ouiVendor == null) continue; // not drone-like
-
-        final k = a.bssid;
-        final shownName = ssid.isEmpty ? "(${sig?.vendor ?? ouiVendor})" : ssid;
+        final k = "wifi:${a.bssid}";
         final hit = _hits[k] ??
             DroneHit(
-                key: k,
-                label: "${sig?.vendor ?? ouiVendor} · $shownName",
-                rssi: a.level,
-                source: "WiFi",
-                ssid: ssid.isEmpty ? null : ssid,
-                mac: a.bssid);
+              key: k,
+              label: ssid.isEmpty
+                  ? tr(context, "Hidden Wi-Fi", "ဖုံးထား Wi-Fi")
+                  : ssid,
+              rssi: a.level,
+              source: "WiFi",
+              ssid: ssid.isEmpty ? null : ssid,
+              mac: a.bssid,
+            );
         hit.pushRssi(a.level);
         hit.band = _bandFor(a.frequency);
         hit.channel = _channelFor(a.frequency);
-        if (sig != null) {
-          _applySig(hit, sig, shownName);
-        } else {
-          hit.vendor = ouiVendor;
-          hit.kind = DroneKind.drone;
-          hit.label = "$ouiVendor · $shownName";
+        if (hit.sig == null) {
+          final sig = ssid.isEmpty ? null : matchSignature(ssid);
+          final ouiVendor = vendorForOui(a.bssid);
+          if (sig != null) {
+            _applySig(hit, sig, ssid.isEmpty ? "(${sig.vendor})" : ssid);
+          } else if (ouiVendor != null) {
+            hit.vendor = ouiVendor;
+            hit.kind = DroneKind.drone;
+            hit.label = "$ouiVendor · ${ssid.isEmpty ? "(hidden)" : ssid}";
+          }
         }
         _hits[k] = hit;
       }
       if (mounted) setState(() {});
-      _evaluateAlarm();
+      _evaluate();
     } catch (_) {}
   }
 
-  /// Copy a catalogue match onto a hit.
   void _applySig(DroneHit hit, DroneSignature sig, String shownName) {
     hit.sig = sig;
     hit.vendor = sig.vendor;
@@ -323,23 +337,43 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
     return null;
   }
 
-  // ---- Alarm + housekeeping -------------------------------------------------
+  // ---- Alerts + housekeeping ------------------------------------------------
 
   void _prune() {
     final now = DateTime.now();
-    _hits.removeWhere((_, h) => now.difference(h.seen).inSeconds > 25);
+    _hits.removeWhere((_, h) => now.difference(h.seen).inSeconds > 20);
     if (mounted) setState(() {});
-    _evaluateAlarm();
+    _evaluate();
   }
 
-  bool get _threat => _hits.values.any((h) =>
-      h.confirmed &&
-      h.distanceM <= _alertDistanceM &&
-      DateTime.now().difference(h.seen).inSeconds < 15);
+  bool get _threatActive => _hits.values.any((h) =>
+      (h.confirmed && h.distanceM <= _alertDistanceM) ||
+      (h.vendor != null && h.distanceM <= _alertDistanceM) ||
+      h.unusual);
 
-  void _evaluateAlarm() {
-    if (_threat) {
-      _alarmTimer ??= Timer.periodic(const Duration(milliseconds: 900), (_) {
+  /// Raise alerts for newly-noteworthy devices, and drive the buzzing alarm.
+  void _evaluate() {
+    for (final h in _hits.values) {
+      if (_alerted.contains(h.key)) continue;
+      String? reason;
+      if (h.confirmed) {
+        reason =
+            tr(context, "Drone (Remote ID) detected", "ဒရုန်း (Remote ID) တွေ့");
+      } else if (h.vendor != null) {
+        reason = tr(context, "${h.vendor} device nearby", "${h.vendor} စက် အနီး");
+      } else if (h.unusual) {
+        reason = tr(context, "Unusual signal approaching",
+            "ထူးခြား signal ချဉ်းကပ်လာ");
+      }
+      if (reason != null) {
+        _alerted.add(h.key);
+        _alerts.insert(0, _Alert(reason, h.label, DateTime.now()));
+        if (_alerts.length > 40) _alerts.removeLast();
+        HapticFeedback.heavyImpact();
+      }
+    }
+    if (_threatActive) {
+      _alarmTimer ??= Timer.periodic(const Duration(milliseconds: 1100), (_) {
         HapticFeedback.heavyImpact();
       });
     } else {
@@ -350,41 +384,61 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
 
   // ---- UI helpers -----------------------------------------------------------
 
-  IconData _kindIcon(DroneKind k) {
-    switch (k) {
+  IconData _kindIcon(DroneHit h) {
+    if (h.confirmed) return Icons.flight;
+    switch (h.kind) {
       case DroneKind.controller:
         return Icons.sports_esports;
       case DroneKind.goggles:
         return Icons.visibility;
-      case DroneKind.remoteId:
-        return Icons.flight;
       case DroneKind.drone:
         return Icons.airplanemode_active;
-      case DroneKind.unknown:
-        return Icons.wifi_tethering;
+      default:
+        return h.source == "WiFi" ? Icons.wifi : Icons.bluetooth;
     }
   }
 
-  String _kindLabel(DroneKind k) {
-    switch (k) {
-      case DroneKind.controller:
-        return tr(context, "Controller", "ကွန်ထရိုလာ");
-      case DroneKind.goggles:
-        return tr(context, "Goggles", "မျက်မှန်");
-      case DroneKind.remoteId:
-        return tr(context, "Drone (Remote ID)", "ဒရုန်း (Remote ID)");
-      case DroneKind.drone:
-        return tr(context, "Drone", "ဒရုန်း");
-      case DroneKind.unknown:
-        return tr(context, "Signal", "signal");
+  Color _classColor(HitClass c) {
+    switch (c) {
+      case HitClass.remoteId:
+        return const Color(0xFFE23B54);
+      case HitClass.drone:
+        return const Color(0xFF44C8FF);
+      case HitClass.unusual:
+        return const Color(0xFFF0B429);
+      case HitClass.unknown:
+        return Colors.white38;
     }
+  }
+
+  List<DroneHit> _visible() {
+    var list = _hits.values.toList();
+    switch (_filter) {
+      case "drones":
+        list = list.where((h) => h.isDroneish).toList();
+        break;
+      case "unusual":
+        list = list.where((h) => h.unusual || h.confirmed).toList();
+        break;
+      case "all":
+        break;
+      default: // priority: drones + unusual first, unknowns after
+        list.sort((a, b) {
+          int rank(DroneHit h) =>
+              h.confirmed ? 0 : (h.vendor != null ? 1 : (h.unusual ? 2 : 3));
+          final r = rank(a).compareTo(rank(b));
+          return r != 0 ? r : b.rssi.compareTo(a.rssi);
+        });
+        return list;
+    }
+    list.sort((a, b) => b.rssi.compareTo(a.rssi));
+    return list;
   }
 
   @override
   Widget build(BuildContext context) {
-    final hits = _hits.values.toList()
-      ..sort((a, b) => b.rssi.compareTo(a.rssi));
-    final threat = _threat;
+    final hits = _visible();
+    final threat = _threatActive;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -392,6 +446,7 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
         foregroundColor: Colors.white,
         title: Text(tr(context, "Drone radar", "ဒရုန်း ရေဒါ")),
         actions: [
+          _alertsButton(),
           IconButton(
             tooltip: tr(context, "Signal library", "Signal စာကြည့်တိုက်"),
             icon: const Icon(Icons.menu_book_outlined),
@@ -425,12 +480,43 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
           : Column(
               children: [
                 if (threat) _threatBanner(context),
-                _radar(hits),
-                _summaryBar(hits),
+                _radar(_hits.values.toList()),
+                _summaryBar(),
+                _filterRow(),
                 Expanded(child: _list(hits)),
                 _disclaimer(context),
               ],
             ),
+    );
+  }
+
+  Widget _alertsButton() {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          tooltip: tr(context, "Alerts", "သတိပေးချက်များ"),
+          icon: const Icon(Icons.notifications_none),
+          onPressed: _showAlerts,
+        ),
+        if (_alerts.isNotEmpty)
+          Positioned(
+            right: 6,
+            top: 6,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                  color: GwColors.live, shape: BoxShape.circle),
+              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+              child: Text("${_alerts.length}",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900)),
+            ),
+          ),
+      ],
     );
   }
 
@@ -444,20 +530,22 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
             const Icon(Icons.warning_amber, color: Colors.white),
             const SizedBox(width: 8),
             Text(
-              tr(context, "⚠ Drone nearby!", "⚠ ဒရုန်း အနီးတွင်ရှိသည်!"),
+              tr(context, "⚠ Signal alert — check the list",
+                  "⚠ Signal သတိပေးချက် — စာရင်း စစ်ပါ"),
               style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
-                  fontSize: 16),
+                  fontSize: 15),
             ),
           ],
         ),
       );
 
-  Widget _summaryBar(List<DroneHit> hits) {
-    final rid = hits.where((h) => h.confirmed).length;
-    final wifi = hits.where((h) => h.source == "WiFi").length;
-    final ble = hits.where((h) => h.source == "BLE").length;
+  Widget _summaryBar() {
+    final all = _hits.values;
+    final rid = all.where((h) => h.confirmed).length;
+    final drones = all.where((h) => h.vendor != null).length;
+    final unusual = all.where((h) => h.unusual).length;
     Widget cell(String v, String label, Color c) => Column(
           children: [
             Text(v,
@@ -477,12 +565,44 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          cell("${hits.length}", tr(context, "Total", "စုစုပေါင်း"),
-              Colors.white),
-          cell("$rid", tr(context, "Remote ID", "Remote ID"),
-              const Color(0xFFE23B54)),
-          cell("$wifi", "Wi-Fi", const Color(0xFF44C8FF)),
-          cell("$ble", "BLE", const Color(0xFFF0B429)),
+          cell("${all.length}", tr(context, "Signals", "signal"), Colors.white),
+          cell("$rid", "Remote ID", const Color(0xFFE23B54)),
+          cell("$drones", tr(context, "Drone", "ဒရုန်း"),
+              const Color(0xFF44C8FF)),
+          cell("$unusual", tr(context, "Unusual", "ထူးခြား"),
+              const Color(0xFFF0B429)),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterRow() {
+    final chips = <(String, String)>[
+      ("priority", tr(context, "Priority", "ဦးစားပေး")),
+      ("all", tr(context, "All", "အားလုံး")),
+      ("drones", tr(context, "Drones", "ဒရုန်း")),
+      ("unusual", tr(context, "Unusual", "ထူးခြား")),
+    ];
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        children: [
+          for (final c in chips)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text(c.$2),
+                selected: _filter == c.$1,
+                selectedColor: GwColors.primary,
+                backgroundColor: Colors.white.withValues(alpha: 0.06),
+                labelStyle: TextStyle(
+                    color: _filter == c.$1 ? Colors.white : Colors.white70,
+                    fontSize: 12.5),
+                onSelected: (_) => setState(() => _filter = c.$1),
+              ),
+            ),
         ],
       ),
     );
@@ -490,12 +610,12 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
 
   Widget _radar(List<DroneHit> hits) {
     return SizedBox(
-      height: 250,
+      height: 210,
       child: AnimatedBuilder(
         animation: _sweep,
         builder: (_, __) => CustomPaint(
           size: Size.infinite,
-          painter: _RadarPainter(hits, _sweep.value),
+          painter: _RadarPainter(hits, _sweep.value, _classColor),
         ),
       ),
     );
@@ -511,7 +631,7 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
             children: [
               Text(
                 _scanning
-                    ? tr(context, "Scanning for drones…", "ဒရုန်း ရှာဖွေနေသည်…")
+                    ? tr(context, "Scanning…", "ရှာဖွေနေသည်…")
                     : tr(context, "Idle", "ရပ်နားနေသည်"),
                 style: const TextStyle(color: Colors.white38),
               ),
@@ -539,14 +659,12 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
 
   Widget _rowTile(DroneHit h) {
     final d = h.distanceM;
-    final near = h.confirmed && d <= _alertDistanceM;
+    final c = _classColor(h.klass);
+    final near = (h.confirmed || h.vendor != null) && d <= _alertDistanceM;
     final trend = h.trend;
     final trendIcon = trend > 0
         ? Icons.trending_up
         : (trend < 0 ? Icons.trending_down : Icons.trending_flat);
-    final trendColor = trend > 0
-        ? GwColors.live
-        : (trend < 0 ? const Color(0xFF7ED957) : Colors.white38);
     final q = ((h.rssi + 100) / 60).clamp(0.0, 1.0);
     return InkWell(
       borderRadius: BorderRadius.circular(GwRadius.md),
@@ -554,20 +672,20 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: near
-              ? GwColors.live.withValues(alpha: 0.16)
-              : Colors.white.withValues(alpha: 0.06),
+          color: h.unusual
+              ? const Color(0xFFF0B429).withValues(alpha: 0.12)
+              : (near
+                  ? GwColors.live.withValues(alpha: 0.14)
+                  : Colors.white.withValues(alpha: 0.05)),
           borderRadius: BorderRadius.circular(GwRadius.md),
           border: Border.all(
-              color:
-                  near ? GwColors.live : Colors.white.withValues(alpha: 0.12)),
+              color: h.klass == HitClass.unknown
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : c.withValues(alpha: 0.5)),
         ),
         child: Row(
           children: [
-            Icon(_kindIcon(h.kind),
-                color: near
-                    ? GwColors.live
-                    : (h.confirmed ? const Color(0xFFE23B54) : Colors.white70)),
+            Icon(_kindIcon(h), color: c),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -583,14 +701,25 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700)),
                       ),
-                      const SizedBox(width: 6),
-                      Icon(trendIcon, size: 15, color: trendColor),
+                      if (h.unusual) ...[
+                        const SizedBox(width: 6),
+                        const Icon(Icons.priority_high,
+                            size: 15, color: Color(0xFFF0B429)),
+                      ],
+                      const SizedBox(width: 4),
+                      Icon(trendIcon,
+                          size: 15,
+                          color: trend > 0
+                              ? GwColors.live
+                              : (trend < 0
+                                  ? const Color(0xFF7ED957)
+                                  : Colors.white30)),
                     ],
                   ),
                   Text(
                     [
-                      _kindLabel(h.kind),
                       if (h.protocol != null) h.protocol!,
+                      h.source,
                       if (h.band != null) h.band!,
                       "${h.rssi} dBm",
                       "≈ ${d < 1000 ? "${d.round()} m" : "${(d / 1000).toStringAsFixed(1)} km"}",
@@ -608,32 +737,22 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
               ),
             ),
             const SizedBox(width: 8),
-            Column(
+            Row(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    for (var b = 0; b < 4; b++)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 2),
-                        child: Container(
-                          width: 4,
-                          height: 6.0 + b * 4,
-                          decoration: BoxDecoration(
-                            color: q * 4 > b
-                                ? (near ? GwColors.live : Colors.white)
-                                : Colors.white24,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
+                for (var b = 0; b < 4; b++)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 2),
+                    child: Container(
+                      width: 4,
+                      height: 6.0 + b * 4,
+                      decoration: BoxDecoration(
+                        color: q * 4 > b ? c : Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Icon(Icons.chevron_right,
-                    size: 16, color: Colors.white.withValues(alpha: 0.3)),
+                    ),
+                  ),
               ],
             ),
           ],
@@ -657,10 +776,7 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
           children: [
             Row(
               children: [
-                Icon(_kindIcon(h.kind),
-                    color: h.confirmed
-                        ? const Color(0xFFE23B54)
-                        : const Color(0xFF44C8FF)),
+                Icon(_kindIcon(h), color: _classColor(h.klass)),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(h.sig?.title ?? h.label,
@@ -672,7 +788,6 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
               ],
             ),
             const SizedBox(height: 14),
-            _detailRow(tr(context, "Type", "အမျိုးအစား"), _kindLabel(h.kind)),
             if (h.vendor != null)
               _detailRow(tr(context, "Maker", "ထုတ်လုပ်သူ"), h.vendor!),
             if (h.protocol != null)
@@ -680,7 +795,7 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
             _detailRow(tr(context, "Detected via", "တွေ့ရသည့်လမ်း"),
                 h.confirmed ? "Remote ID (${h.source})" : h.source),
             if (h.band != null)
-              _detailRow(tr(context, "Band", "လှိုင်းအမျိုးအစား"),
+              _detailRow(tr(context, "Band", "လှိုင်း"),
                   "${h.band}${h.channel != null ? "  ·  ch ${h.channel}" : ""}"),
             _detailRow("RSSI", "${h.rssi} dBm"),
             _detailRow(tr(context, "Distance (est.)", "အကွာအဝေး (ခန့်)"),
@@ -706,12 +821,15 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
               h.sig != null
                   ? tr(context, h.sig!.noteEn, h.sig!.noteMy)
                   : (h.confirmed
-                      ? tr(context,
-                          "Broadcasting Remote ID — high-confidence detection.",
-                          "Remote ID ထုတ်လွှင့်နေသည် — ယုံကြည်ရမှုမြင့်။")
-                      : tr(context,
-                          "Detected by its Wi-Fi/BLE radio. Distance is a rough RSSI estimate.",
-                          "Wi-Fi/BLE လှိုင်းဖြင့် တွေ့ရှိ။ အကွာအဝေး RSSI ခန့်မှန်းသာ။")),
+                      ? tr(context, "Broadcasting Remote ID — high confidence.",
+                          "Remote ID ထုတ်လွှင့် — ယုံကြည်ရမှုမြင့်။")
+                      : (h.unusual
+                          ? tr(context,
+                              "Unknown signal that is close and approaching — worth a look.",
+                              "အနီးရောက်ပြီး ချဉ်းကပ်လာတဲ့ အမည်မသိ signal — ဂရုစိုက်သင့်။")
+                          : tr(context,
+                              "A nearby Wi-Fi/BLE device. Not identified as a drone.",
+                              "အနီးက Wi-Fi/BLE စက်။ ဒရုန်းအဖြစ် မသတ်မှတ်ရသေး။"))),
               style: const TextStyle(color: Colors.white54, fontSize: 12.5),
             ),
           ],
@@ -741,6 +859,84 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
         ),
       );
 
+  void _showAlerts() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF161719),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(tr(context, "Alerts", "သတိပေးချက်များ"),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18)),
+                const Spacer(),
+                if (_alerts.isNotEmpty)
+                  TextButton(
+                      onPressed: () {
+                        setState(_alerts.clear);
+                        Navigator.pop(context);
+                      },
+                      child: Text(tr(context, "Clear", "ရှင်း"))),
+              ],
+            ),
+            const SizedBox(height: 4),
+            if (_alerts.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Text(
+                    tr(context,
+                        "No alerts yet. You'll be buzzed when a drone or an unusual signal appears.",
+                        "သတိပေးချက် မရှိသေး။ ဒရုန်း/ထူးခြား signal ပေါ်ရင် တုန်ခါ သတိပေးပါမယ်။"),
+                    style: const TextStyle(color: Colors.white54)),
+              )
+            else
+              ..._alerts.take(30).map((a) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_amber,
+                            color: Color(0xFFF0B429), size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(a.reason,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700)),
+                              Text(a.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      color: Colors.white54, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                        Text(_hhmm(a.at),
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 12)),
+                      ],
+                    ),
+                  )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _hhmm(DateTime t) =>
+      "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+
   void _showCapabilities() {
     Widget line(IconData icon, Color c, String s) => Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -765,15 +961,14 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
           borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
       builder: (_) => DraggableScrollableSheet(
         expand: false,
-        initialChildSize: 0.78,
+        initialChildSize: 0.8,
         maxChildSize: 0.92,
         builder: (_, controller) => ListView(
           controller: controller,
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
           children: [
             Text(
-                tr(context, "What can this radar detect?",
-                    "ဒီ ရေဒါက ဘာတွေ ဖမ်းနိုင်လဲ?"),
+                tr(context, "How this radar works", "ဒီ ရေဒါ ဘယ်လိုအလုပ်လုပ်လဲ"),
                 style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,
@@ -781,8 +976,8 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
             const SizedBox(height: 6),
             Text(
               tr(context,
-                  "A phone can only listen with its Wi-Fi and Bluetooth radios. That limits what is physically possible:",
-                  "ဖုန်းဟာ Wi-Fi နဲ့ Bluetooth လှိုင်းတွေနဲ့ပဲ နားထောင်နိုင်တယ်။ ဒါကြောင့် အမှန်တကယ် ဖမ်းနိုင်တာက ကန့်သတ်ရှိတယ်—"),
+                  "It now lists EVERY nearby Wi-Fi and Bluetooth signal, highlights drones from the built-in database, and buzzes you for an unusual signal — an unknown device that is close and moving toward you.",
+                  "အခု အနီးက Wi-Fi/Bluetooth signal အားလုံးကို ပြ၊ database ထဲက ဒရုန်းတွေကို မီးမောင်းထိုးပြ၊ ထူးခြား signal (အနီးရောက်ပြီး ချဉ်းကပ်လာတဲ့ အမည်မသိစက်) ဆိုရင် တုန်ခါ သတိပေးတယ်။"),
               style: const TextStyle(color: Colors.white54, fontSize: 12.5),
             ),
             const SizedBox(height: 14),
@@ -792,76 +987,37 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
             const SizedBox(height: 8),
             line(Icons.flight, const Color(0xFF7ED957),
                 tr(context,
-                    "Remote ID drones (BLE / Wi-Fi) — most drones sold since 2023 broadcast this, often with live GPS.",
-                    "Remote ID ဒရုန်းများ (BLE / Wi-Fi) — ၂၀၂၃ နောက်ပိုင်း ဒရုန်းအများစု ထုတ်လွှင့်—GPS ပါတတ်။")),
+                    "Remote-ID drones (BLE/Wi-Fi) — most drones sold since 2023, often with live GPS.",
+                    "Remote-ID ဒရုန်းများ (BLE/Wi-Fi) — GPS ပါတတ်။")),
             line(Icons.wifi, const Color(0xFF7ED957),
                 tr(context,
-                    "Wi-Fi drones & controllers running as a hotspot — DJI Wi-Fi, Tello, Parrot, Autel, Hubsan, FIMI… by SSID + maker MAC (OUI), with band + channel.",
-                    "Wi-Fi hotspot လုပ်နေတဲ့ ဒရုန်း/ကွန်ထရိုလာ — DJI Wi-Fi၊ Tello၊ Parrot၊ Autel၊ Hubsan၊ FIMI… SSID + MAC (OUI) ဖြင့်။")),
+                    "Wi-Fi drones & controllers (DJI Wi-Fi, Tello, Parrot, Autel…) by SSID + maker MAC.",
+                    "Wi-Fi ဒရုန်း/ကွန်ထရိုလာ — SSID + MAC ဖြင့်။")),
+            line(Icons.priority_high, const Color(0xFFF0B429),
+                tr(context,
+                    "Unusual signals — any unknown device that is close and approaching.",
+                    "ထူးခြား signal — အနီးရောက်ပြီး ချဉ်းကပ်လာတဲ့ အမည်မသိစက်။")),
             const SizedBox(height: 16),
             Text(
-                tr(context,
-                    "✘ CANNOT detect (needs an external SDR receiver)",
-                    "✘ မဖမ်းနိုင် (SDR receiver အပို လိုသည်)"),
+                tr(context, "✘ CANNOT detect (needs an external SDR)",
+                    "✘ မဖမ်းနိုင် (SDR အပို လိုသည်)"),
                 style: const TextStyle(
                     color: Color(0xFFE23B54), fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             line(Icons.videocam_off, const Color(0xFFE23B54),
                 tr(context,
-                    "DJI OcuSync (O2/O3/O4) — Avata, Mavic, Mini 3/4, DJI FPV. Proprietary hopping link, not Wi-Fi/BLE.",
-                    "DJI OcuSync (O2/O3/O4) — Avata၊ Mavic၊ Mini 3/4၊ DJI FPV။ သီးသန့် hopping link၊ Wi-Fi/BLE မဟုတ်။")),
+                    "DJI OcuSync (Avata, Mavic, Mini 3/4, DJI FPV) — proprietary link, not Wi-Fi/BLE.",
+                    "DJI OcuSync (Avata, Mavic…) — Wi-Fi/BLE မဟုတ်။")),
             line(Icons.settings_remote, const Color(0xFFE23B54),
                 tr(context,
-                    "RC links — ExpressLRS (ELRS), TBS Crossfire/Tracer, FrSky, Spektrum, Flysky. FHSS on 900 MHz / 2.4 GHz a phone can't tune.",
-                    "RC link — ExpressLRS (ELRS)၊ TBS Crossfire/Tracer၊ FrSky၊ Spektrum၊ Flysky။ ၉၀၀MHz/၂.၄GHz FHSS၊ ဖုန်းက မဖမ်းနိုင်။")),
-            line(Icons.blur_on, const Color(0xFFE23B54),
-                tr(context,
-                    "Analog / digital FPV video (5.8 GHz) and any Remote-ID-off or custom-firmware drone.",
-                    "Analog/digital FPV ဗီဒီယို (၅.၈GHz) နဲ့ Remote-ID ပိတ်/custom firmware ဒရုန်း။")),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white12),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.usb, color: Color(0xFF44C8FF), size: 18),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      tr(context,
-                          "To catch OcuSync / ELRS / Crossfire / FrSky you need an external USB SDR (RTL-SDR / HackRF) or a dedicated RF detector. That hardware integration is on our roadmap.",
-                          "OcuSync / ELRS / Crossfire / FrSky ဖမ်းချင်ရင် USB SDR (RTL-SDR / HackRF) (သို့) သီးသန့် RF detector လိုသည်။ ဒီ hardware ချိတ်ဆက်မှုကို ရှေ့ဆက်ထည့်ပါမယ်။"),
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 12.5),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                    "RC links — ELRS, Crossfire, FrSky — 900 MHz/2.4 GHz FHSS a phone can't tune.",
+                    "ELRS, Crossfire, FrSky — ဖုန်းက မဖမ်းနိုင်။")),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const DroneLibraryScreen()));
-                },
-                icon: const Icon(Icons.menu_book_outlined,
-                    color: Colors.white70),
-                label: Text(
-                    tr(context, "Open the Signal library",
-                        "Signal စာကြည့်တိုက် ဖွင့်ရန်"),
-                    style: const TextStyle(color: Colors.white)),
-                style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.white24),
-                    padding: const EdgeInsets.symmetric(vertical: 12)),
-              ),
+            Text(
+              tr(context,
+                  "Tip: your DJI Avata (O3) and the ELRS/Crossfire quad won't appear — those bands need an SDR. Fly a Remote-ID drone nearby to see the radar light up.",
+                  "မှတ်ချက်— DJI Avata (O3) နဲ့ ELRS/Crossfire quad မပေါ်ပါ (SDR လို)။ Remote-ID ဒရုန်းဆို ပေါ်ပါမယ်။"),
+              style: const TextStyle(color: Colors.white38, fontSize: 12),
             ),
           ],
         ),
@@ -876,17 +1032,25 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
         child: Text(
           tr(
               context,
-              "Detects Remote-ID (BLE/Wi-Fi) drones + Wi-Fi drones/controllers within ~100–300 m. DJI OcuSync, ELRS, Crossfire, FrSky & analog FPV need an external SDR — tap ⓘ. A safety aid, not a guarantee.",
-              "Remote-ID (BLE/Wi-Fi) ဒရုန်း + Wi-Fi ဒရုန်း/ကွန်ထရိုလာ (~၁၀၀–၃၀၀m) ကို ဖမ်းသည်။ DJI OcuSync၊ ELRS၊ Crossfire၊ FrSky၊ analog FPV အတွက် SDR အပို လိုသည် — ⓘ ကိုနှိပ်ပါ။ အာမခံချက် မဟုတ်ပါ။"),
+              "Lists all nearby Wi-Fi/BLE signals, flags drones + unusual approaching signals, and buzzes you. DJI OcuSync, ELRS, Crossfire, FrSky & analog FPV need an external SDR — tap ⓘ. A safety aid, not a guarantee.",
+              "အနီးက Wi-Fi/BLE signal အားလုံး ပြ၊ ဒရုန်း + ချဉ်းကပ်လာ ထူးခြား signal သတိပေး။ DJI OcuSync၊ ELRS၊ Crossfire၊ FrSky၊ analog FPV အတွက် SDR လို — ⓘ ။ အာမခံ မဟုတ်။"),
           style: const TextStyle(color: Colors.white38, fontSize: 11),
         ),
       );
 }
 
+class _Alert {
+  _Alert(this.reason, this.label, this.at);
+  final String reason;
+  final String label;
+  final DateTime at;
+}
+
 class _RadarPainter extends CustomPainter {
-  _RadarPainter(this.hits, this.sweep);
+  _RadarPainter(this.hits, this.sweep, this.colorOf);
   final List<DroneHit> hits;
   final double sweep;
+  final Color Function(HitClass) colorOf;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -917,13 +1081,12 @@ class _RadarPainter extends CustomPainter {
       final norm = (h.distanceM / 600).clamp(0.05, 1.0);
       final a = (h.key.hashCode % 360) * math.pi / 180;
       final p = center + Offset(math.cos(a), math.sin(a)) * (maxR * norm);
-      final near = h.confirmed && h.distanceM <= 200;
-      final color = h.confirmed
-          ? const Color(0xFFE23B54)
-          : (h.source == "WiFi"
-              ? const Color(0xFF44C8FF)
-              : const Color(0xFFF0B429));
-      canvas.drawCircle(p, near ? 7 : 5, Paint()..color = color);
+      final c = colorOf(h.klass);
+      final big = h.confirmed || h.vendor != null || h.unusual;
+      if (big) {
+        canvas.drawCircle(p, 9, Paint()..color = c.withValues(alpha: 0.25));
+      }
+      canvas.drawCircle(p, big ? 6 : 3.5, Paint()..color = c);
     }
 
     canvas.drawCircle(center, 5, Paint()..color = Colors.white);
