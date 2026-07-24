@@ -2,11 +2,20 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LayoutDashboard, Plus, Radio, Users } from "lucide-react";
 
-import { UserAvatar } from "@/components/social/user-avatar";
+import { LiveCards, type LiveCardData } from "@/components/live/live-cards";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
 import { listStreams } from "@/lib/db/live";
 import { displayName, liveStreamTitle, timeAgo } from "@/lib/format";
+import { mediaUrl } from "@/lib/media";
+
+/** Resolve a stored recording path to a playable URL (the /recordings proxy). */
+function replaySrc(path: string | null): string | null {
+  if (!path) return null;
+  return path.startsWith("http")
+    ? path
+    : `/recordings/${path.replace(/^\/+/, "")}`;
+}
 
 export const metadata = { title: "Live" };
 export const dynamic = "force-dynamic";
@@ -28,6 +37,27 @@ export default async function LivePage() {
     const fresh = Date.now() - new Date(s.created_at).getTime() < staleMs;
     return mine && fresh; // idle/waiting: only my own recent one
   });
+
+  const liveCards: LiveCardData[] = liveNow.map((s) => ({
+    id: s.id,
+    title: liveStreamTitle(s.title, s.host),
+    hostName: displayName(s.host),
+    hostAvatar: s.host?.avatar_url ? mediaUrl(s.host.avatar_url) : null,
+    src: s.ivs_playback_url ?? null,
+    live: true,
+    viewerCount: s.viewer_count ?? 0,
+    startedAgo: s.started_at ? `started ${timeAgo(s.started_at)}` : null,
+  }));
+  const replayCards: LiveCardData[] = rest.map((s) => ({
+    id: s.id,
+    title: liveStreamTitle(s.title, s.host),
+    hostName: displayName(s.host),
+    hostAvatar: s.host?.avatar_url ? mediaUrl(s.host.avatar_url) : null,
+    src: s.status === "ended" ? replaySrc(s.recording_path) : null,
+    live: false,
+    viewerCount: 0,
+    startedAgo: timeAgo(s.created_at),
+  }));
 
   return (
     <div className="space-y-5">
@@ -86,39 +116,19 @@ export default async function LivePage() {
         </Link>
       </div>
 
-      {liveNow.length > 0 && (
+      {liveCards.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-sm font-bold">Live now</h2>
-          {liveNow.map((stream) => (
-            <Link key={stream.id} href={`/live/${stream.id}`} className="block">
-              <Card className="border-destructive/40 transition-colors hover:bg-muted/50">
-                <CardContent className="flex items-center gap-3 p-4">
-                  <UserAvatar profile={stream.host} linked={false} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">
-                      {liveStreamTitle(stream.title, stream.host)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {displayName(stream.host)}
-                      {stream.started_at
-                        ? ` · started ${timeAgo(stream.started_at)}`
-                        : ""}
-                    </p>
-                  </div>
-                  <span className="flex shrink-0 items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase text-destructive-foreground">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-                    Live
-                  </span>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+          <h2 className="flex items-center gap-1.5 text-sm font-bold">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-red-600" />
+            Live now
+          </h2>
+          <LiveCards cards={liveCards} />
         </section>
       )}
 
       <section className="space-y-2">
         <h2 className="text-sm font-bold">Recent broadcasts</h2>
-        {rest.length === 0 && liveNow.length === 0 ? (
+        {replayCards.length === 0 && liveCards.length === 0 ? (
           <Card>
             <CardContent className="p-6 text-center text-sm text-muted-foreground">
               Nobody is live yet. Be the first — hit{" "}
@@ -126,30 +136,7 @@ export default async function LivePage() {
             </CardContent>
           </Card>
         ) : (
-          rest.map((stream) => (
-            <Link key={stream.id} href={`/live/${stream.id}`} className="block">
-              <Card className="transition-colors hover:bg-muted/50">
-                <CardContent className="flex items-center gap-3 p-4">
-                  <UserAvatar profile={stream.host} linked={false} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">
-                      {liveStreamTitle(stream.title, stream.host)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {displayName(stream.host)} · {timeAgo(stream.created_at)}
-                    </p>
-                  </div>
-                  <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
-                    {stream.status === "ended"
-                      ? stream.recording_path
-                        ? "Replay"
-                        : "Ended"
-                      : "Waiting"}
-                  </span>
-                </CardContent>
-              </Card>
-            </Link>
-          ))
+          <LiveCards cards={replayCards} />
         )}
       </section>
     </div>
