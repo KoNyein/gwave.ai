@@ -9,6 +9,7 @@ import {
   Gamepad2,
   GraduationCap,
   LayoutGrid,
+  Music,
   ShieldAlert,
   Settings as SettingsIcon,
   Activity,
@@ -62,6 +63,7 @@ const SECTIONS: AdminNavSection[] = [
     links: [
       { href: "/admin/moderation", label: "Moderation", icon: ShieldAlert },
       { href: "/admin/games", label: "Games", icon: Gamepad2 },
+      { href: "/admin/audio", label: "Audio", icon: Music },
     ],
   },
   {
