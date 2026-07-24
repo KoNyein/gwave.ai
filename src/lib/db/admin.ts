@@ -1,5 +1,6 @@
 import "server-only";
 
+import { createAdminClient } from "@/lib/data/admin";
 import { createAnonClient } from "@/lib/data/anon";
 import { createClient } from "@/lib/data/server";
 import { DEFAULT_THEME, isSiteTheme, type SiteTheme } from "@/lib/theme";
@@ -285,4 +286,208 @@ export async function getDemographicsRegion(): Promise<DemographicRow[]> {
     label: r.region,
     count: Number(r.count),
   }));
+}
+
+// ---------------------------------------------------------------------------
+// System-wide module metrics — a per-feature data breakdown for the admin
+// "Modules" dashboard. Uses the privileged admin client (BYPASSRLS) so counts
+// reflect the whole system, and counts each table defensively: a table that
+// doesn't exist yet returns `null` (shown as "n/a") instead of throwing.
+// ---------------------------------------------------------------------------
+
+export interface ModuleMetric {
+  label: string;
+  value: number | null;
+  recent?: number | null; // last-7-day count, when meaningful
+}
+
+export interface ModuleSection {
+  title: string;
+  hint: string;
+  metrics: ModuleMetric[];
+}
+
+/** A narrowly-typed view of the PostgREST client for dynamic head-counts. */
+interface CountResult {
+  count: number | null;
+  error: unknown;
+}
+interface CountQuery extends PromiseLike<CountResult> {
+  gte(column: string, value: string): CountQuery;
+  eq(column: string, value: string): CountQuery;
+}
+interface CountClient {
+  from(relation: string): {
+    select(columns: string, opts: { count: "exact"; head: true }): CountQuery;
+  };
+}
+
+type Filter = (q: CountQuery) => CountQuery;
+
+async function countTable(
+  sb: CountClient,
+  table: string,
+  filter?: Filter,
+): Promise<number | null> {
+  try {
+    let q = sb.from(table).select("*", { count: "exact", head: true });
+    if (filter) q = filter(q);
+    const { count, error } = await q;
+    if (error) return null;
+    return count ?? 0;
+  } catch {
+    return null;
+  }
+}
+
+export async function getModuleMetrics(): Promise<ModuleSection[]> {
+  const sb = createAdminClient() as unknown as CountClient;
+  const since7 = new Date();
+  since7.setDate(since7.getDate() - 7);
+  const iso7 = since7.toISOString();
+  const recent: Filter = (q) => q.gte("created_at", iso7);
+
+  // [label, table, filter?, recentTrue?]
+  type Spec = [string, string, Filter?, boolean?];
+  const sections: { title: string; hint: string; specs: Spec[] }[] = [
+    {
+      title: "👥 Social",
+      hint: "Feed, friends, groups, pages, stories, chat",
+      specs: [
+        ["Users", "profiles", undefined, true],
+        ["Posts", "posts", undefined, true],
+        ["Comments", "comments", undefined, true],
+        ["Reactions", "reactions"],
+        ["Shares", "shares"],
+        ["Follows", "follows"],
+        ["Friendships", "friendships"],
+        ["Groups", "groups"],
+        ["Group members", "group_members"],
+        ["Pages", "pages"],
+        ["Page followers", "page_followers"],
+        ["Stories", "stories"],
+        ["Conversations", "conversations"],
+        ["Messages", "messages", undefined, true],
+        ["Notifications", "notifications"],
+      ],
+    },
+    {
+      title: "📺 Live & media",
+      hint: "Broadcasts, live chat, post media & views",
+      specs: [
+        ["Live streams", "live_streams", undefined, true],
+        ["Live now", "live_streams", (q) => q.eq("status", "live")],
+        ["Live chat", "live_chat_messages"],
+        ["Live reactions", "live_reactions"],
+        ["Post media", "post_media"],
+        ["Post views", "post_views"],
+      ],
+    },
+    {
+      title: "🎓 Learning",
+      hint: "Lesson progress, projects, points, teachers",
+      specs: [
+        ["Lesson progress", "lesson_progress", undefined, true],
+        ["Member projects", "member_projects"],
+        ["Learning points", "learning_points"],
+        ["Teacher applications", "teacher_applications"],
+        ["Certificates", "certificates"],
+      ],
+    },
+    {
+      title: "🛒 Commerce (POS / Shop)",
+      hint: "Stores, products, sales, inventory",
+      specs: [
+        ["Stores", "stores"],
+        ["Store members", "store_members"],
+        ["Products", "pos_products"],
+        ["Categories", "pos_categories"],
+        ["Customers", "pos_customers"],
+        ["Sales", "sales", undefined, true],
+        ["Sale items", "sale_items"],
+        ["Shifts", "shifts"],
+        ["Stock movements", "stock_movements"],
+        ["Orders", "orders", undefined, true],
+        ["Marketplace listings", "marketplace_listings"],
+        ["Reviews", "reviews"],
+      ],
+    },
+    {
+      title: "💳 Finance & membership",
+      hint: "Subscriptions, payments, wallet",
+      specs: [
+        ["Subscriptions", "subscriptions"],
+        ["Active members", "subscriptions", (q) => q.eq("status", "active")],
+        ["Payments", "payments", undefined, true],
+        ["Invoices", "invoices"],
+        ["Membership plans", "membership_plans"],
+        ["Boost campaigns", "boost_campaigns"],
+        ["Wallets", "gpay_wallets"],
+      ],
+    },
+    {
+      title: "🌱 Farm & IoT",
+      hint: "Devices, sensors, automation",
+      specs: [
+        ["Devices", "devices"],
+        ["Sensor readings", "sensor_readings", undefined, true],
+        ["Automation rules", "automation_rules"],
+        ["Alerts", "alerts"],
+        ["Scenes", "scenes"],
+        ["Scheduled scenes", "scene_schedules"],
+        ["Device commands", "device_commands"],
+      ],
+    },
+    {
+      title: "❤️ Health & safety",
+      hint: "Vitals, activity journal, locations, moderation",
+      specs: [
+        ["Health vitals", "health_vitals", undefined, true],
+        ["Activity events", "health_events"],
+        ["Shared locations", "member_locations"],
+        ["Reports", "reports", undefined, true],
+        ["Blocks", "blocks"],
+        ["Deletion requests", "deletion_requests"],
+        ["Consents", "consents"],
+      ],
+    },
+    {
+      title: "🧩 Content & games",
+      hint: "Knowledge base, games, wellness",
+      specs: [
+        ["Strains", "strains"],
+        ["Minerals", "minerals"],
+        ["Wellness items", "wellness_items"],
+        ["Games", "games"],
+        ["Dating matches", "matches"],
+        ["Jobs", "jobs"],
+      ],
+    },
+    {
+      title: "🛠 Developer",
+      hint: "API keys, logs, webhooks, flags",
+      specs: [
+        ["API keys", "api_keys"],
+        ["API logs", "api_logs", undefined, true],
+        ["Webhooks", "webhooks"],
+        ["Webhook deliveries", "webhook_deliveries"],
+        ["Feature flags", "feature_flags"],
+        ["Audit logs", "audit_logs", undefined, true],
+      ],
+    },
+  ];
+
+  return Promise.all(
+    sections.map(async (sec) => ({
+      title: sec.title,
+      hint: sec.hint,
+      metrics: await Promise.all(
+        sec.specs.map(async ([label, table, filter, wantRecent]) => ({
+          label,
+          value: await countTable(sb, table, filter),
+          recent: wantRecent ? await countTable(sb, table, recent) : undefined,
+        })),
+      ),
+    })),
+  );
 }

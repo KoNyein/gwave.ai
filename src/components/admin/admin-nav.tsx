@@ -8,6 +8,7 @@ import {
   FlaskConical,
   Gamepad2,
   GraduationCap,
+  LayoutGrid,
   ShieldAlert,
   Settings as SettingsIcon,
   Activity,
@@ -40,7 +41,10 @@ const SECTIONS: AdminNavSection[] = [
   {
     heading: "📊 ခြုံငုံသုံးသပ်ချက်",
     hint: "စာရင်းအင်း၊ ဂရပ်နဲ့ infographic များ",
-    links: [{ href: "/admin", label: "Overview", icon: BarChart3 }],
+    links: [
+      { href: "/admin", label: "Overview", icon: BarChart3 },
+      { href: "/admin/modules", label: "Modules", icon: LayoutGrid },
+    ],
   },
   {
     heading: "👥 လူများ (People)",
