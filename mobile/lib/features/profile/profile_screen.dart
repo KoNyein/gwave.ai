@@ -16,6 +16,7 @@ import '../../widgets/common.dart';
 import '../boost/boost_screen.dart';
 import '../cctv/cctv_screen.dart';
 import '../dashboard/dashboard_screen.dart';
+import '../health/health_hub_screen.dart';
 import '../dating/dating_screen.dart';
 import '../family/family_screen.dart';
 import '../farm/farm_screen.dart';
@@ -309,7 +310,8 @@ class ProfileScreen extends StatelessWidget {
       _MenuSection("Learning", Icons.school_outlined, const Color(0xFF2E7DB1), [
         _MenuEntry(Icons.menu_book_outlined, "Learn", native: _Native.learn),
         _MenuEntry(Icons.emoji_events_outlined, "Leaderboard", web: "/leaderboard"),
-        _MenuEntry(Icons.monitor_heart_outlined, "Health", web: "/health"),
+        _MenuEntry(Icons.monitor_heart_outlined, "Health",
+            native: _Native.health),
         _MenuEntry(Icons.spa_outlined, "Wellness", web: "/wellness"),
       ]),
       _MenuSection("Farm & Home", Icons.eco_outlined, const Color(0xFF2E9E5B), [
@@ -522,6 +524,9 @@ class ProfileScreen extends StatelessWidget {
       case _Native.dashboard:
         _push(context, DashboardScreen(onSelectTab: onSelectTab));
         return;
+      case _Native.health:
+        _push(context, const HealthHubScreen());
+        return;
       case _Native.friends:
         _push(context, const FriendsScreen());
         return;
@@ -651,6 +656,7 @@ enum _Native {
   dating,
   family,
   boost,
+  health,
 }
 
 /// One category of the launcher menu: a titled, color-accented card of tiles.

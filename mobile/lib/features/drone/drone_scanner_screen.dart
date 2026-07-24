@@ -9,6 +9,7 @@ import 'package:wifi_scan/wifi_scan.dart';
 
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
+import 'drone_map_screen.dart';
 
 /// A detected drone / drone-like signal.
 class DroneHit {
@@ -266,6 +267,16 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         title: Text(tr(context, "Drone radar", "ဒရုန်း ရေဒါ")),
+        actions: [
+          IconButton(
+            tooltip: tr(context, "Map", "မြေပုံ"),
+            icon: const Icon(Icons.map_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) =>
+                  DroneMapScreen(liveHits: () => _hits.values.toList()),
+            )),
+          ),
+        ],
       ),
       body: _error != null
           ? Center(
