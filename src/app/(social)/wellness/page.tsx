@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
-import { Flower2, HeartPulse, Radio, Sparkles } from "lucide-react";
+import { Flower2, HeartPulse, Radio, Sparkles, Wind } from "lucide-react";
 
 import { MeditationTimer } from "@/components/wellness/meditation-timer";
+import { WimHofBreathing } from "@/components/wellness/wim-hof-breathing";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
 import { createClient } from "@/lib/data/server";
@@ -64,6 +65,14 @@ export default async function WellnessPage() {
             </Card>
           ))}
         </div>
+      </section>
+
+      {/* Guided breathing (Wim Hof method) */}
+      <section className="space-y-3">
+        <h2 className="flex items-center gap-2 text-sm font-bold">
+          <Wind className="h-4 w-4 text-primary" /> Guided breathing
+        </h2>
+        <WimHofBreathing />
       </section>
 
       {/* Meditation timer */}
