@@ -78,7 +78,7 @@ class _ComposerScreenState extends State<ComposerScreen> {
     }
   }
 
-  final List<_PickedImage> _images = [];
+  final List<_PickedMedia> _media = [];
 
   @override
   void dispose() {
@@ -100,11 +100,47 @@ class _ComposerScreenState extends State<ComposerScreen> {
       final ext = file.name.contains(".")
           ? file.name.split(".").last.toLowerCase()
           : "jpg";
-      setState(() => _images.add(_PickedImage(bytes, ext)));
+      setState(() => _media.add(_PickedMedia(bytes, ext, "image")));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Couldn't pick a photo — $e")),
+        );
+      }
+    }
+  }
+
+  /// Pick a video from the gallery and attach it as a video post — the missing
+  /// half of feed media (the composer only did photos, so users could never
+  /// share a clip and their videos never reached the feed).
+  Future<void> _pickVideo() async {
+    try {
+      final picker = ImagePicker();
+      final file = await picker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(minutes: 10),
+      );
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      // ~200 MB cap so a single PUT stays sane on mobile data.
+      if (bytes.lengthInBytes > 200 * 1024 * 1024) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(tr(
+                  context,
+                  "That video is too large (max 200 MB).",
+                  "ဗီဒီယို အရမ်းကြီးနေသည် (အများဆုံး 200 MB)။"))));
+        }
+        return;
+      }
+      final ext = file.name.contains(".")
+          ? file.name.split(".").last.toLowerCase()
+          : "mp4";
+      setState(() => _media.add(_PickedMedia(bytes, ext, "video")));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Couldn't pick a video — $e")),
         );
       }
     }
@@ -137,19 +173,28 @@ class _ComposerScreenState extends State<ComposerScreen> {
     // Lead the post with the feeling line, Facebook-style, if one is set.
     final content =
         _feeling != null ? "$_feeling\n$typed".trim() : typed;
-    if (content.isEmpty && _images.isEmpty) return;
+    if (content.isEmpty && _media.isEmpty) return;
     setState(() => _busy = true);
     final api = context.read<AppState>().api;
     final repo = context.read<AppState>().repo;
     try {
       final media = <PostMedia>[];
-      for (final img in _images) {
+      for (final m in _media) {
+        final String ext;
+        final String contentType;
+        if (m.type == "video") {
+          ext = _videoExt(m.ext);
+          contentType = ext == "mov" ? "video/quicktime" : "video/mp4";
+        } else {
+          ext = m.ext == "png" ? "png" : "jpg";
+          contentType = m.ext == "png" ? "image/png" : "image/jpeg";
+        }
         final path = await api.uploadBytes(
-          img.bytes,
-          ext: img.ext == "png" ? "png" : "jpg",
-          contentType: img.ext == "png" ? "image/png" : "image/jpeg",
+          m.bytes,
+          ext: ext,
+          contentType: contentType,
         );
-        media.add(PostMedia(storagePath: path, mediaType: "image"));
+        media.add(PostMedia(storagePath: path, mediaType: m.type));
       }
       await repo.createPost(
         content,
@@ -284,29 +329,39 @@ class _ComposerScreenState extends State<ComposerScreen> {
                 ),
               ),
           ],
-          if (_images.isNotEmpty) ...[
+          if (_media.isNotEmpty) ...[
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (var i = 0; i < _images.length; i++)
+                for (var i = 0; i < _media.length; i++)
                   Stack(
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(GwRadius.sm),
-                        child: Image.memory(
-                          _images[i].bytes,
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.cover,
-                        ),
+                        child: _media[i].type == "video"
+                            ? Container(
+                                width: 100,
+                                height: 100,
+                                color: Colors.black,
+                                child: const Center(
+                                  child: Icon(Icons.play_circle_fill,
+                                      color: Colors.white, size: 34),
+                                ),
+                              )
+                            : Image.memory(
+                                _media[i].bytes,
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.cover,
+                              ),
                       ),
                       Positioned(
                         top: 2,
                         right: 2,
                         child: GestureDetector(
-                          onTap: () => setState(() => _images.removeAt(i)),
+                          onTap: () => setState(() => _media.removeAt(i)),
                           child: Container(
                             decoration: const BoxDecoration(
                               color: Colors.black54,
@@ -333,9 +388,10 @@ class _ComposerScreenState extends State<ComposerScreen> {
                 setState(() => _showLocation = !_showLocation);
               }, active: _showLocation),
               _chip(Icons.photo_outlined, "Photo", _pickImage),
+              _chip(Icons.movie_outlined, "Video", _pickVideo),
               _chip(Icons.emoji_emotions_outlined, "Feeling", _pickFeeling,
                   active: _feeling != null),
-              _chip(Icons.videocam_outlined, "Go Live", _goLive,
+              _chip(Icons.sensors, "Go Live", _goLive,
                   color: GwColors.live),
             ],
           ),
@@ -450,8 +506,13 @@ class _FeelingSheet extends StatelessWidget {
   }
 }
 
-class _PickedImage {
-  _PickedImage(this.bytes, this.ext);
+/// Normalize a picked video's extension to something the CDN serves with a
+/// sensible content-type (mp4 for everything except QuickTime .mov).
+String _videoExt(String raw) => raw == "mov" ? "mov" : "mp4";
+
+class _PickedMedia {
+  _PickedMedia(this.bytes, this.ext, this.type); // type: 'image' | 'video'
   final Uint8List bytes;
   final String ext;
+  final String type;
 }
