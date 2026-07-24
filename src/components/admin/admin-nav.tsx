@@ -8,6 +8,8 @@ import {
   FlaskConical,
   Gamepad2,
   GraduationCap,
+  LayoutGrid,
+  Music,
   ShieldAlert,
   Settings as SettingsIcon,
   Activity,
@@ -40,7 +42,10 @@ const SECTIONS: AdminNavSection[] = [
   {
     heading: "📊 ခြုံငုံသုံးသပ်ချက်",
     hint: "စာရင်းအင်း၊ ဂရပ်နဲ့ infographic များ",
-    links: [{ href: "/admin", label: "Overview", icon: BarChart3 }],
+    links: [
+      { href: "/admin", label: "Overview", icon: BarChart3 },
+      { href: "/admin/modules", label: "Modules", icon: LayoutGrid },
+    ],
   },
   {
     heading: "👥 လူများ (People)",
@@ -58,6 +63,7 @@ const SECTIONS: AdminNavSection[] = [
     links: [
       { href: "/admin/moderation", label: "Moderation", icon: ShieldAlert },
       { href: "/admin/games", label: "Games", icon: Gamepad2 },
+      { href: "/admin/audio", label: "Audio", icon: Music },
     ],
   },
   {

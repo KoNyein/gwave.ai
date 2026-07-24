@@ -32,6 +32,14 @@ export default async function GamesPage() {
 
   const builtins = [
     {
+      href: "/games/drone-sim",
+      emoji: "🚁",
+      title: "Drone Champions",
+      description:
+        "FPV drone simulator — race the gates with touch, a gamepad or a radio",
+      show: true,
+    },
+    {
       href: "/games/grow",
       emoji: "🌿",
       title: "Grow Master",
