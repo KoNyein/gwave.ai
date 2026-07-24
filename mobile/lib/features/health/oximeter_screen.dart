@@ -12,40 +12,50 @@ import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import 'health_store.dart';
 
-/// Heart-rate "health wave" using photoplethysmography (PPG): the user covers
-/// the rear camera + torch with a fingertip, and the tiny brightness changes as
-/// blood pulses through the finger are read from the camera frames, drawn as a
-/// live heart-rhythm trace and converted to BPM.
+/// Pulse-oximeter (SpO₂) using camera photoplethysmography. The fingertip over
+/// the rear camera + torch is lit red; as blood pulses, the RED and BLUE light
+/// absorbed by oxygenated vs deoxygenated haemoglobin changes by different
+/// amounts. From the ratio of the pulsatile (AC) to steady (DC) parts of each
+/// colour — the clinical "ratio of ratios" R = (AC_red/DC_red)/(AC_blue/DC_blue)
+/// — we estimate blood-oxygen saturation, together with the pulse rate and a
+/// perfusion index.
 ///
-/// NOTE: this is a PPG pulse wave, not a medical-grade ECG — it estimates heart
-/// rate and rhythm for wellness, and should not be used for diagnosis.
-class HeartWaveScreen extends StatefulWidget {
-  const HeartWaveScreen({super.key});
+/// NOTE: a phone camera is NOT a calibrated medical oximeter. This is a wellness
+/// estimate only and must not be used for diagnosis or to manage a medical
+/// condition. If you feel unwell, seek professional care.
+class OximeterScreen extends StatefulWidget {
+  const OximeterScreen({super.key});
 
   @override
-  State<HeartWaveScreen> createState() => _HeartWaveScreenState();
+  State<OximeterScreen> createState() => _OximeterScreenState();
 }
 
-class _HeartWaveScreenState extends State<HeartWaveScreen> {
+class _OximeterScreenState extends State<OximeterScreen> {
   CameraController? _cam;
   bool _ready = false;
   bool _measuring = false;
   bool _fingerDetected = false;
   String? _error;
 
-  final List<double> _wave = []; // detrended samples for the trace
-  final List<double> _raw = []; // recent raw brightness (for finger check)
-  final List<int> _beatTimes = []; // recent beats (for the running BPM)
-  final List<int> _allBeatTimes = []; // every beat this session (for HRV etc.)
+  // Live plethysmograph trace (detrended red signal).
+  final List<double> _wave = [];
+
+  // Per-frame channel means over the whole measurement window, used for the
+  // ratio-of-ratios once the window completes.
+  final List<double> _redSeries = [];
+  final List<double> _blueSeries = [];
+
+  // Beat detection on the red channel → pulse rate.
+  final List<int> _beatTimes = [];
   int _bpm = 0;
-  // Derived from the same finger pulse — no extra hardware needed.
-  int _respiratory = 0; // breaths / min (from pulse rhythm oscillation)
-  int _hrvMs = 0; // heart-rate variability (RMSSD, ms)
-  int _calmness = 0; // 0..100 calm score from HRV
-  DateTime? _startedAt;
+
+  int _spo2 = 0; // % SpO₂ estimate
+  double _perfusion = 0; // perfusion index %
+  double _redAvg = 0; // slow moving average for detrending
+
   Timer? _ticker;
 
-  static const _measureSeconds = 18;
+  static const _measureSeconds = 22;
   int _remaining = _measureSeconds;
 
   @override
@@ -77,8 +87,9 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
       );
       final ctrl = CameraController(
         rear,
-        ResolutionPreset.low, // small frames → fast sampling
+        ResolutionPreset.low,
         enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.yuv420,
       );
       await ctrl.initialize();
       _cam = ctrl;
@@ -92,15 +103,14 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
     final cam = _cam;
     if (cam == null || !_ready || _measuring) return;
     _wave.clear();
-    _raw.clear();
+    _redSeries.clear();
+    _blueSeries.clear();
     _beatTimes.clear();
-    _allBeatTimes.clear();
     _bpm = 0;
-    _respiratory = 0;
-    _hrvMs = 0;
-    _calmness = 0;
+    _spo2 = 0;
+    _perfusion = 0;
+    _redAvg = 0;
     _remaining = _measureSeconds;
-    _startedAt = DateTime.now();
     setState(() => _measuring = true);
     try {
       await cam.setFlashMode(FlashMode.torch);
@@ -134,126 +144,106 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
     _ticker?.cancel();
     await _stopStream();
     if (!mounted) return;
-    _computeMetrics();
+    _computeSpo2();
     setState(() => _measuring = false);
-    if (_bpm >= 40 && _bpm <= 220) {
+    if (_spo2 >= 70 && _bpm >= 40 && _bpm <= 220) {
       _offerSave();
     }
   }
 
-  /// Derive respiratory rate, HRV and a calmness score from the beat timing of
-  /// the same finger pulse — no extra sensor. Wellness estimates only.
-  void _computeMetrics() {
-    // RR intervals (ms) between consecutive beats, kept to physiological range.
-    final rr = <double>[];
-    for (var i = 1; i < _allBeatTimes.length; i++) {
-      final d = (_allBeatTimes[i] - _allBeatTimes[i - 1]).toDouble();
-      if (d >= 300 && d <= 1500) rr.add(d);
-    }
-    if (rr.length < 4) return;
+  // ---- Frame processing -----------------------------------------------------
 
-    // HRV — RMSSD: root mean square of successive RR differences.
-    var sq = 0.0;
-    for (var i = 1; i < rr.length; i++) {
-      final d = rr[i] - rr[i - 1];
-      sq += d * d;
-    }
-    final rmssd = math.sqrt(sq / (rr.length - 1));
-    _hrvMs = rmssd.round();
+  DateTime _lastRepaint = DateTime.fromMillisecondsSinceEpoch(0);
 
-    // Calmness 0..100 from RMSSD (higher variability ⇒ calmer / more relaxed).
-    _calmness = ((rmssd - 10) / 60 * 100).clamp(0, 100).round();
+  /// Reconstruct approximate mean RED and BLUE from the YUV420 planes over a
+  /// coarse grid of pixels (full-res conversion would be far too slow at frame
+  /// rate). Y is luminance; U/V are the chroma planes (half resolution).
+  void _onFrame(CameraImage image) {
+    if (image.planes.length < 3) return;
+    final yP = image.planes[0];
+    final uP = image.planes[1];
+    final vP = image.planes[2];
+    final w = image.width;
+    final h = image.height;
+    final uvRow = uP.bytesPerRow;
+    final uvPix = uP.bytesPerPixel ?? 1;
 
-    // Respiratory rate — the pulse rhythm oscillates with breathing
-    // (respiratory sinus arrhythmia). Count oscillations of the detrended RR
-    // series over the measured window.
-    final mean = rr.reduce((a, b) => a + b) / rr.length;
-    var crossings = 0;
-    var above = rr.first > mean;
-    for (final v in rr) {
-      final now = v > mean;
-      if (now != above) {
-        crossings++;
-        above = now;
+    double rSum = 0, bSum = 0, ySum = 0;
+    var n = 0;
+    // Sample a ~40x40 grid across the frame.
+    final stepX = math.max(1, w ~/ 40);
+    final stepY = math.max(1, h ~/ 40);
+    for (var y = 0; y < h; y += stepY) {
+      final yRowBase = y * yP.bytesPerRow;
+      final uvRowBase = (y >> 1) * uvRow;
+      for (var x = 0; x < w; x += stepX) {
+        final yi = yRowBase + x;
+        final uvi = uvRowBase + (x >> 1) * uvPix;
+        if (yi >= yP.bytes.length || uvi >= uP.bytes.length ||
+            uvi >= vP.bytes.length) {
+          continue;
+        }
+        final yv = yP.bytes[yi].toDouble();
+        final uv = uP.bytes[uvi].toDouble() - 128.0;
+        final vv = vP.bytes[uvi].toDouble() - 128.0;
+        // BT.601 YUV→RGB (red & blue only).
+        final r = (yv + 1.370705 * vv).clamp(0.0, 255.0);
+        final b = (yv + 1.732446 * uv).clamp(0.0, 255.0);
+        rSum += r;
+        bSum += b;
+        ySum += yv;
+        n++;
       }
     }
-    final windowMin =
-        (_allBeatTimes.last - _allBeatTimes.first) / 1000 / 60;
-    if (windowMin > 0.1) {
-      // Two zero-crossings ≈ one breath cycle.
-      final breaths = crossings / 2 / windowMin;
-      _respiratory = breaths.clamp(5, 40).round();
-    }
-  }
+    if (n == 0) return;
+    final red = rSum / n;
+    final blue = bSum / n;
+    final lum = ySum / n;
 
-  // Called per camera frame. Averages a sampled subset of the luminance (Y)
-  // plane; a covered lens + torch makes the finger glow, and the pulse
-  // modulates that brightness.
-  DateTime _lastSample = DateTime.fromMillisecondsSinceEpoch(0);
-  double _avg = 0;
-  void _onFrame(CameraImage image) {
-    final bytes = image.planes.first.bytes;
-    // Sample every 37th byte — enough signal, negligible cost.
-    var sum = 0;
-    var count = 0;
-    for (var i = 0; i < bytes.length; i += 37) {
-      sum += bytes[i];
-      count++;
-    }
-    if (count == 0) return;
-    final brightness = sum / count;
-
-    // A fingertip over the torch reads bright (Y typically > 100). If it's
-    // dark, the finger isn't placed.
-    final finger = brightness > 90;
+    // Finger present when the frame is bright & red-dominant (torch through
+    // tissue). Otherwise prompt the user.
+    final finger = lum > 90 && red > blue;
     if (finger != _fingerDetected && mounted) {
       setState(() => _fingerDetected = finger);
     }
     if (!finger) return;
 
-    // Low-pass smoothing + detrend (subtract a slow moving average) to isolate
-    // the pulse oscillation.
-    _avg = _avg == 0 ? brightness : _avg * 0.9 + brightness * 0.1;
-    final detrended = brightness - _avg;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    _redSeries.add(red);
+    _blueSeries.add(blue);
+    _redTimes.add(nowMs);
 
-    _raw.add(brightness);
-    if (_raw.length > 60) _raw.removeAt(0);
-
+    // Detrend the red channel for the live plethysmograph + beat detection.
+    _redAvg = _redAvg == 0 ? red : _redAvg * 0.9 + red * 0.1;
+    final detrended = red - _redAvg;
     _wave.add(detrended);
     if (_wave.length > 160) _wave.removeAt(0);
+    _detectBeat(detrended, nowMs);
 
-    _detectBeat(detrended);
-
-    // Repaint at ~30fps max to keep the UI smooth.
     final now = DateTime.now();
-    if (now.difference(_lastSample).inMilliseconds >= 33) {
-      _lastSample = now;
+    if (now.difference(_lastRepaint).inMilliseconds >= 33) {
+      _lastRepaint = now;
       if (mounted) setState(() {});
     }
   }
 
-  // Rising zero-crossing beat detector with a refractory period.
   bool _above = false;
-  void _detectBeat(double v) {
-    const threshold = 0.6; // ignore tiny noise around zero
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
+  void _detectBeat(double v, int nowMs) {
+    const threshold = 0.5;
     if (v > threshold && !_above) {
       _above = true;
-      // Refractory: ignore beats < 300ms apart (>200 bpm).
       if (_beatTimes.isEmpty || nowMs - _beatTimes.last > 300) {
         _beatTimes.add(nowMs);
         if (_beatTimes.length > 12) _beatTimes.removeAt(0);
-        _allBeatTimes.add(nowMs); // full session, for HRV / respiratory
-        _recompute();
+        _recomputeBpm();
       }
     } else if (v < -threshold && _above) {
       _above = false;
     }
   }
 
-  void _recompute() {
+  void _recomputeBpm() {
     if (_beatTimes.length < 3) return;
-    // Average interval between the recent beats → BPM.
     var total = 0;
     for (var i = 1; i < _beatTimes.length; i++) {
       total += _beatTimes[i] - _beatTimes[i - 1];
@@ -264,12 +254,61 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
     if (bpm >= 40 && bpm <= 220) _bpm = bpm;
   }
 
+  /// The ratio-of-ratios SpO₂ estimate, computed once over the full window.
+  /// Drops the first second (torch/auto-exposure settling).
+  void _computeSpo2() {
+    if (_redSeries.length < 30) return;
+    // Skip settling samples.
+    final start = _redSeries.length > 40 ? 15 : 0;
+    final red = _redSeries.sublist(start);
+    final blue = _blueSeries.sublist(start);
+
+    final redDc = _mean(red);
+    final blueDc = _mean(blue);
+    if (redDc <= 0 || blueDc <= 0) return;
+
+    // AC = pulsatile amplitude. Use the RMS of the detrended signal (robust to
+    // single-frame spikes) scaled to peak-to-peak equivalent.
+    final redAc = _pulsatile(red);
+    final blueAc = _pulsatile(blue);
+    if (redAc <= 0 || blueAc <= 0) return;
+
+    _perfusion = (redAc / redDc * 100).clamp(0.0, 20.0);
+
+    final ratio = (redAc / redDc) / (blueAc / blueDc);
+    // Empirical reflectance-PPG calibration. Uncalibrated hardware, so this is
+    // clamped to a plausible wellness range and clearly labelled an estimate.
+    final spo2 = 110.0 - 25.0 * ratio;
+    _spo2 = spo2.clamp(90.0, 100.0).round();
+  }
+
+  double _mean(List<double> xs) =>
+      xs.isEmpty ? 0 : xs.reduce((a, b) => a + b) / xs.length;
+
+  /// Pulsatile amplitude of a signal: RMS about a slow moving-average baseline.
+  double _pulsatile(List<double> xs) {
+    if (xs.length < 4) return 0;
+    var avg = xs.first;
+    var sumSq = 0.0;
+    var n = 0;
+    for (final x in xs) {
+      avg = avg * 0.9 + x * 0.1; // baseline (DC drift)
+      final ac = x - avg;
+      sumSq += ac * ac;
+      n++;
+    }
+    // RMS → approx peak-to-peak (×2√2) for a roughly sinusoidal pulse.
+    return math.sqrt(sumSq / n) * 2.828;
+  }
+
+  // ---- Save -----------------------------------------------------------------
+
   Future<void> _offerSave() async {
-    final calm = _calmness >= 60
-        ? tr(context, "Calm", "တည်ငြိမ်")
-        : (_calmness >= 35
-            ? tr(context, "Balanced", "အလယ်အလတ်")
-            : tr(context, "Tense", "တင်းမာ"));
+    final band = _spo2 >= 95
+        ? tr(context, "Normal", "ပုံမှန်")
+        : (_spo2 >= 90
+            ? tr(context, "Low-normal", "အနည်းငယ်နိမ့်")
+            : tr(context, "Low", "နိမ့်"));
     final save = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -278,15 +317,12 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _resultLine(tr(context, "Heart rate", "နှလုံးခုန်နှုန်း"), "$_bpm bpm"),
-            if (_respiratory > 0)
-              _resultLine(tr(context, "Respiratory", "အသက်ရှူနှုန်း"),
-                  "$_respiratory /min"),
-            if (_hrvMs > 0)
-              _resultLine("HRV", "$_hrvMs ms"),
-            if (_calmness > 0)
-              _resultLine(tr(context, "Calmness", "တည်ငြိမ်မှု"),
-                  "$_calmness% · $calm"),
+            _resultLine(tr(context, "Oxygen (SpO₂)", "အောက်ဆီဂျင် (SpO₂)"),
+                "$_spo2% · $band"),
+            _resultLine(tr(context, "Pulse", "နှလုံးခုန်နှုန်း"), "$_bpm bpm"),
+            if (_perfusion > 0)
+              _resultLine(tr(context, "Perfusion", "သွေးစီးဆင်း (PI)"),
+                  "${_perfusion.toStringAsFixed(1)}%"),
             const SizedBox(height: 10),
             Text(tr(context, "Save to your vitals?", "မှတ်တမ်းသို့ သိမ်းမလား?")),
           ],
@@ -304,34 +340,34 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
     if (save == true) {
       final now = DateTime.now();
       final api = mounted ? context.read<AppState>().api : null;
-      final note =
-          "${tr(context, "Camera pulse", "ကင်မရာ pulse")} · HRV $_hrvMs ms · ${tr(context, "calm", "တည်ငြိမ်")} $_calmness%";
-      final hr = VitalReading(
+      final spo2Reading = VitalReading(
         id: now.microsecondsSinceEpoch.toString(),
-        type: VitalType.heartRate.key,
-        value: _bpm.toDouble(),
+        type: VitalType.spo2.key,
+        value: _spo2.toDouble(),
         at: now,
-        note: note,
+        note:
+            "${tr(context, "Camera oximeter", "ကင်မရာ oximeter")} · PI ${_perfusion.toStringAsFixed(1)}%",
       );
-      await HealthStore.addVital(hr);
-      if (api != null) await pushVitalToServer(api, hr, source: 'camera_ppg');
-      // Respiratory rate rides along from the same measurement.
-      if (_respiratory > 0) {
-        final resp = VitalReading(
+      await HealthStore.addVital(spo2Reading);
+      if (api != null) {
+        await pushVitalToServer(api, spo2Reading, source: 'camera_ppg');
+      }
+      // Pulse rides along from the same measurement.
+      if (_bpm >= 40 && _bpm <= 220) {
+        final hr = VitalReading(
           id: (now.microsecondsSinceEpoch + 1).toString(),
-          type: VitalType.respiratory.key,
-          value: _respiratory.toDouble(),
+          type: VitalType.heartRate.key,
+          value: _bpm.toDouble(),
           at: now,
-          note: tr(context, "From camera pulse", "ကင်မရာ pulse မှ"),
+          note: tr(context, "From camera oximeter", "ကင်မရာ oximeter မှ"),
         );
-        await HealthStore.addVital(resp);
-        if (api != null) {
-          await pushVitalToServer(api, resp, source: 'camera_ppg');
-        }
+        await HealthStore.addVital(hr);
+        if (api != null) await pushVitalToServer(api, hr, source: 'camera_ppg');
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(tr(context, "Saved to vitals.", "မှတ်တမ်းသို့ သိမ်းပြီး။"))));
+            content:
+                Text(tr(context, "Saved to vitals.", "မှတ်တမ်းသို့ သိမ်းပြီး။"))));
       }
     }
   }
@@ -347,6 +383,8 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
         ),
       );
 
+  // ---- UI -------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -354,7 +392,7 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: Text(tr(context, "Heart wave", "နှလုံးလှိုင်း")),
+        title: Text(tr(context, "Oximeter (SpO₂)", "အောက်ဆီမီတာ (SpO₂)")),
       ),
       body: _error != null
           ? _errorView()
@@ -381,7 +419,6 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
         ),
       );
 
-  /// 0..1 pulse-signal strength from the recent waveform amplitude.
   double get _signalQuality {
     if (_wave.length < 20) return 0;
     final recent = _wave.sublist(_wave.length - 20);
@@ -390,7 +427,7 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
       lo = math.min(lo, v);
       hi = math.max(hi, v);
     }
-    return ((hi - lo) / 6).clamp(0.0, 1.0);
+    return ((hi - lo) / 5).clamp(0.0, 1.0);
   }
 
   Widget _statusRow() {
@@ -401,11 +438,12 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
       c = GwColors.gold;
       label = tr(context, "Place fingertip on camera",
           "လက်ဖျားကို ကင်မရာပေါ်တင်ပါ");
-    } else if (q < 0.35) {
+    } else if (q < 0.3) {
       c = GwColors.gold;
-      label = tr(context, "Hold still — weak signal", "မလှုပ်ပါနဲ့ — signal အား နည်း");
+      label =
+          tr(context, "Hold still — weak signal", "မလှုပ်ပါနဲ့ — signal အား နည်း");
     } else {
-      c = const Color(0xFF7ED957);
+      c = const Color(0xFF44C8FF);
       label = tr(context, "Good signal ✓", "signal ကောင်း ✓");
     }
     return Padding(
@@ -421,7 +459,6 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
                 style: TextStyle(color: c, fontWeight: FontWeight.w600)),
           ),
           const SizedBox(width: 10),
-          // Signal-strength bars.
           for (var i = 0; i < 4; i++)
             Padding(
               padding: const EdgeInsets.only(left: 2),
@@ -439,7 +476,6 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
     );
   }
 
-  /// One patient-monitor readout tile: label + big coloured number + unit.
   Widget _vitalTile(String label, String value, String unit, Color color,
       {bool big = false}) {
     return Column(
@@ -465,8 +501,8 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
                     fontFeatures: const [FontFeature.tabularFigures()])),
             const SizedBox(width: 3),
             Text(unit,
-                style: TextStyle(
-                    color: color.withValues(alpha: 0.6), fontSize: 11)),
+                style:
+                    TextStyle(color: color.withValues(alpha: 0.6), fontSize: 11)),
           ],
         ),
       ],
@@ -474,21 +510,24 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
   }
 
   Widget _monitorRow() {
-    final calmColor = _calmness >= 60
-        ? const Color(0xFF39E67B)
-        : (_calmness >= 35 ? GwColors.gold : GwColors.live);
+    final spo2Color = _spo2 == 0
+        ? const Color(0xFF44C8FF)
+        : (_spo2 >= 95
+            ? const Color(0xFF44C8FF)
+            : (_spo2 >= 90 ? GwColors.gold : GwColors.live));
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        _vitalTile("HR", _bpm > 0 ? "$_bpm" : "--", "bpm",
-            const Color(0xFF39E67B),
+        _vitalTile("SpO₂", _spo2 > 0 ? "$_spo2" : "--", "%", spo2Color,
             big: true),
-        _vitalTile("RESP", _respiratory > 0 ? "$_respiratory" : "--", "/min",
-            const Color(0xFF44C8FF)),
-        _vitalTile("HRV", _hrvMs > 0 ? "$_hrvMs" : "--", "ms", GwColors.gold),
+        _vitalTile("PULSE", _bpm > 0 ? "$_bpm" : "--", "bpm",
+            const Color(0xFF39E67B)),
         _vitalTile(
-            "CALM", _calmness > 0 ? "$_calmness" : "--", "%", calmColor),
+            "PI",
+            _perfusion > 0 ? _perfusion.toStringAsFixed(1) : "--",
+            "%",
+            GwColors.gold),
       ],
     );
   }
@@ -497,39 +536,33 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
     return Column(
       children: [
         const SizedBox(height: 18),
-        // Patient-monitor readouts: HR / RESP / HRV / CALM.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _monitorRow(),
         ),
         const SizedBox(height: 12),
-        // Live status: finger + signal quality, so the user understands what
-        // the reading needs.
         if (_measuring) _statusRow(),
         const SizedBox(height: 6),
-        // Progress of the measurement window.
         if (_measuring)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
-                value:
-                    (_measureSeconds - _remaining) / _measureSeconds,
+                value: (_measureSeconds - _remaining) / _measureSeconds,
                 minHeight: 5,
                 backgroundColor: Colors.white12,
-                color: const Color(0xFF7ED957),
+                color: const Color(0xFF44C8FF),
               ),
             ),
           ),
         const SizedBox(height: 8),
-        // Live waveform.
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: CustomPaint(
               size: Size.infinite,
-              painter: _WavePainter(_wave),
+              painter: _PlethPainter(_wave),
             ),
           ),
         ),
@@ -540,10 +573,12 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
                 ? (_fingerDetected
                     ? tr(context, "Hold still… $_remaining s",
                         "မလှုပ်ဘဲ ဆက်ဖိထားပါ… $_remaining s")
-                    : tr(context,
+                    : tr(
+                        context,
                         "Cover the rear camera + flash with your fingertip.",
                         "နောက်ကင်မရာ + flash ကို လက်ဖျားနဲ့ ဖုံးဖိထားပါ။"))
-                : tr(context,
+                : tr(
+                    context,
                     "Cover the rear camera + flash with your fingertip, then Start.",
                     "နောက်ကင်မရာ + flash ကို လက်ဖျားနဲ့ ဖုံးပြီး Start နှိပ်ပါ။"),
             textAlign: TextAlign.center,
@@ -553,9 +588,10 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
           child: Text(
-            tr(context,
-                "PPG pulse estimate for wellness — not a medical ECG.",
-                "PPG pulse ခန့်မှန်းချက်သာ — ဆေးဘက်ဆိုင်ရာ ECG မဟုတ်ပါ။"),
+            tr(
+                context,
+                "SpO₂ estimate from the camera — not a calibrated medical oximeter.",
+                "ကင်မရာ SpO₂ ခန့်မှန်းချက်သာ — တိကျသော ဆေးဘက် oximeter မဟုတ်ပါ။"),
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white38, fontSize: 11),
           ),
@@ -568,10 +604,10 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
               onPressed: _measuring ? _finish : _start,
               style: ElevatedButton.styleFrom(
                 backgroundColor:
-                    _measuring ? GwColors.live : GwColors.primary,
+                    _measuring ? GwColors.live : const Color(0xFF2E7DB1),
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              icon: Icon(_measuring ? Icons.stop : Icons.favorite),
+              icon: Icon(_measuring ? Icons.stop : Icons.spa),
               label: Text(_measuring
                   ? tr(context, "Stop", "ရပ်မည်")
                   : tr(context, "Start", "စတင်မည်")),
@@ -583,24 +619,22 @@ class _HeartWaveScreenState extends State<HeartWaveScreen> {
   }
 }
 
-/// ECG-monitor style trace: classic ECG-paper grid, a glowing green sweep with
-/// a bright leading dot, and a flat baseline when there's no signal — so it
-/// reads like a real patient monitor rather than a random zig-zag.
-class _WavePainter extends CustomPainter {
-  _WavePainter(this.samples);
+/// Monitor-style plethysmograph: ECG-paper grid with a glowing cyan pulse wave
+/// and a bright leading sweep dot; flat baseline when there is no signal.
+class _PlethPainter extends CustomPainter {
+  _PlethPainter(this.samples);
   final List<double> samples;
 
-  static const _green = Color(0xFF39E67B);
+  static const _cyan = Color(0xFF44C8FF);
 
   @override
   void paint(Canvas canvas, Size size) {
-    // ECG-paper grid: fine 8px squares, bold every 5th line.
     const cell = 8.0;
     final minor = Paint()
-      ..color = const Color(0xFF0C2E14)
+      ..color = const Color(0xFF0A2333)
       ..strokeWidth = 0.6;
     final major = Paint()
-      ..color = const Color(0xFF124A20)
+      ..color = const Color(0xFF103A54)
       ..strokeWidth = 1.0;
     for (var x = 0.0; x <= size.width; x += cell) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height),
@@ -613,19 +647,16 @@ class _WavePainter extends CustomPainter {
 
     final mid = size.height / 2;
     if (samples.length < 2) {
-      // No signal → flat monitor baseline.
       canvas.drawLine(
         Offset(0, mid),
         Offset(size.width, mid),
         Paint()
-          ..color = _green.withValues(alpha: 0.7)
+          ..color = _cyan.withValues(alpha: 0.7)
           ..strokeWidth = 2,
       );
       return;
     }
 
-    // Scale by the peak amplitude so the pulse fills ~40% of the height without
-    // stretching a few flat points into a giant zig-zag.
     var maxAbs = 0.6;
     for (final v in samples) {
       maxAbs = math.max(maxAbs, v.abs());
@@ -639,37 +670,32 @@ class _WavePainter extends CustomPainter {
       i == 0 ? path.moveTo(x, y) : path.lineTo(x, y);
     }
 
-    // Soft glow under the trace.
     canvas.drawPath(
       path,
       Paint()
-        ..color = _green.withValues(alpha: 0.25)
+        ..color = _cyan.withValues(alpha: 0.25)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 6
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
     );
-    // Crisp trace.
     canvas.drawPath(
       path,
       Paint()
-        ..color = _green
+        ..color = _cyan
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.4
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round,
     );
-    // Bright leading dot (the sweep head).
     final lastX = dx * (samples.length - 1);
-    final lastY =
-        (mid - samples.last * scale).clamp(2.0, size.height - 2);
+    final lastY = (mid - samples.last * scale).clamp(2.0, size.height - 2);
     canvas.drawCircle(Offset(lastX, lastY), 8,
-        Paint()..color = _green.withValues(alpha: 0.35));
-    canvas.drawCircle(
-        Offset(lastX, lastY), 3.5, Paint()..color = Colors.white);
+        Paint()..color = _cyan.withValues(alpha: 0.35));
+    canvas.drawCircle(Offset(lastX, lastY), 3.5, Paint()..color = Colors.white);
   }
 
   @override
-  bool shouldRepaint(covariant _WavePainter old) => true;
+  bool shouldRepaint(covariant _PlethPainter old) => true;
 }

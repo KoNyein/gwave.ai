@@ -8,6 +8,7 @@ import 'health_store.dart';
 import 'heart_wave_screen.dart';
 import 'medical_id_screen.dart';
 import 'medications_screen.dart';
+import 'oximeter_screen.dart';
 import 'vitals_screen.dart';
 
 /// The Health hub — one place for every health function: measure a pulse, log
@@ -42,7 +43,7 @@ class _HealthHubScreenState extends State<HealthHubScreen> {
   @override
   Widget build(BuildContext context) {
     final hr = _latest["heart_rate"];
-    final bp = _latest["bp"];
+    final spo2 = _latest["spo2"];
     final steps = _latest["steps"];
     return Scaffold(
       appBar: AppBar(title: Text(tr(context, "Health", "ကျန်းမာရေး"))),
@@ -55,8 +56,8 @@ class _HealthHubScreenState extends State<HealthHubScreen> {
               _summary(Icons.favorite, GwColors.live,
                   hr != null ? "${hr.display}" : "--", "bpm"),
               const SizedBox(width: 10),
-              _summary(Icons.monitor_heart, const Color(0xFF2E7DB1),
-                  bp != null ? bp.display : "--", "mmHg"),
+              _summary(Icons.spa, const Color(0xFF2E7DB1),
+                  spo2 != null ? "${spo2.display}%" : "--", "SpO₂"),
               const SizedBox(width: 10),
               _summary(Icons.directions_walk, const Color(0xFF2E9E5B),
                   steps != null ? steps.display : "--",
@@ -73,6 +74,15 @@ class _HealthHubScreenState extends State<HealthHubScreen> {
                 "Measure your heart rate with the camera",
                 "ကင်မရာနဲ့ နှလုံးခုန်နှုန်း တိုင်းပါ"),
             onTap: () => _go(const HeartWaveScreen()),
+          ),
+          _tile(
+            icon: Icons.spa,
+            color: const Color(0xFF2E7DB1),
+            title: tr(context, "Oximeter (SpO₂)", "အောက်ဆီမီတာ (SpO₂)"),
+            subtitle: tr(context,
+                "Measure blood-oxygen & pulse with the camera",
+                "ကင်မရာနဲ့ သွေးအောက်ဆီဂျင်နဲ့ pulse တိုင်းပါ"),
+            onTap: () => _go(const OximeterScreen()),
           ),
           _tile(
             icon: Icons.favorite_border,
