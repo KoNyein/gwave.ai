@@ -181,7 +181,7 @@ class _MineralsScreenState extends State<MineralsScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: GwColors.surface,
+          color: GwColors.surfaceOf(context),
           borderRadius: BorderRadius.circular(GwRadius.lg),
           boxShadow: GwShadow.card,
         ),
@@ -218,12 +218,14 @@ class _MineralsScreenState extends State<MineralsScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: GwColors.surfaceMuted,
+                      color: GwColors.surfaceMutedOf(context),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(m.symbol!,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 12)),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                            color: GwColors.inkOf(context))),
                   ),
               ],
             ),
@@ -231,14 +233,16 @@ class _MineralsScreenState extends State<MineralsScreen> {
             Text(m.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w800, fontSize: 14.5)),
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14.5,
+                    color: GwColors.inkOf(context))),
             const SizedBox(height: 2),
             Text(m.category,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style:
-                    const TextStyle(color: GwColors.inkSoft, fontSize: 12)),
+                    TextStyle(color: GwColors.inkSoftOf(context), fontSize: 12)),
             if (m.hardnessMohs != null) ...[
               const SizedBox(height: 4),
               Text("Mohs ${m.hardnessMohs}",
@@ -269,7 +273,7 @@ class MineralDetailScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: GwColors.surface,
+              color: GwColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(GwRadius.lg),
               boxShadow: GwShadow.card,
             ),
@@ -300,11 +304,14 @@ class MineralDetailScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(m.name,
-                              style: const TextStyle(
-                                  fontSize: 19, fontWeight: FontWeight.w900)),
+                              style: TextStyle(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w900,
+                                  color: GwColors.inkOf(context))),
                           Text(m.category,
-                              style: const TextStyle(
-                                  color: GwColors.inkSoft, fontSize: 13)),
+                              style: TextStyle(
+                                  color: GwColors.inkSoftOf(context),
+                                  fontSize: 13)),
                         ],
                       ),
                     ),
@@ -312,20 +319,25 @@ class MineralDetailScreen extends StatelessWidget {
                 ),
                 const Divider(height: 24),
                 if (m.hardnessMohs != null)
-                  _fact("💠 မာကျောမှု (Mohs)", "${m.hardnessMohs} / 10"),
+                  _fact(context, "💠 မာကျောမှု (Mohs)", "${m.hardnessMohs} / 10"),
                 if (m.density != null)
-                  _fact("⚖️ သိပ်သည်းဆ", "${m.density} g/cm³"),
+                  _fact(context, "⚖️ သိပ်သည်းဆ", "${m.density} g/cm³"),
               ],
             ),
           ),
           if (m.description != null && m.description!.isNotEmpty) ...[
             const SizedBox(height: 12),
-            _section("အကြောင်းအရာ",
-                Text(m.description!, style: const TextStyle(height: 1.5))),
+            _section(
+                context,
+                "အကြောင်းအရာ",
+                Text(m.description!,
+                    style: TextStyle(
+                        height: 1.5, color: GwColors.inkOf(context)))),
           ],
           if (m.uses.isNotEmpty) ...[
             const SizedBox(height: 12),
             _section(
+              context,
               "အသုံးပြုပုံများ",
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -342,7 +354,9 @@ class MineralDetailScreen extends StatelessWidget {
                                   fontWeight: FontWeight.w900)),
                           Expanded(
                               child: Text(u,
-                                  style: const TextStyle(height: 1.4))),
+                                  style: TextStyle(
+                                      height: 1.4,
+                                      color: GwColors.inkOf(context)))),
                         ],
                       ),
                     ),
@@ -365,7 +379,7 @@ class MineralDetailScreen extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: GwColors.surface,
+            color: GwColors.surfaceOf(context),
             borderRadius: BorderRadius.circular(GwRadius.lg),
             boxShadow: GwShadow.card,
           ),
@@ -389,43 +403,48 @@ class MineralDetailScreen extends StatelessWidget {
                     Text(
                         tr(context, "Comments & experience",
                             "မှတ်ချက် နှင့် အတွေ့အကြုံ"),
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 14.5)),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14.5,
+                            color: GwColors.inkOf(context))),
                     const SizedBox(height: 2),
                     Text(
                         tr(context, "Share a photo, voice note or video",
                             "ဓာတ်ပုံ၊ အသံ သို့မဟုတ် ဗီဒီယို မျှဝေရန်"),
-                        style: const TextStyle(
-                            color: GwColors.inkSoft, fontSize: 12)),
+                        style: TextStyle(
+                            color: GwColors.inkSoftOf(context), fontSize: 12)),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+              Icon(Icons.chevron_right, color: GwColors.inkSoftOf(context)),
             ],
           ),
         ),
       );
 
-  Widget _fact(String k, String v) => Padding(
+  Widget _fact(BuildContext context, String k, String v) => Padding(
         padding: const EdgeInsets.only(bottom: 6),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(k,
                 style:
-                    const TextStyle(color: GwColors.inkSoft, fontSize: 13)),
+                    TextStyle(color: GwColors.inkSoftOf(context), fontSize: 13)),
             Text(v,
-                style:
-                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    color: GwColors.inkOf(context))),
           ],
         ),
       );
 
-  Widget _section(String title, Widget child) => Container(
+  Widget _section(BuildContext context, String title, Widget child) =>
+      Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: GwColors.surface,
+          color: GwColors.surfaceOf(context),
           borderRadius: BorderRadius.circular(GwRadius.lg),
           boxShadow: GwShadow.card,
         ),
@@ -433,8 +452,10 @@ class MineralDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w800, fontSize: 14.5)),
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14.5,
+                    color: GwColors.inkOf(context))),
             const SizedBox(height: 10),
             child,
           ],
