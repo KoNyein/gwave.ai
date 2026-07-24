@@ -7,11 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_state.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
+import 'wellness_common.dart';
+import 'wellness_video.dart';
 
 /// A full guided Wim Hof–style breathing trainer, native for the app.
 ///
@@ -43,7 +44,6 @@ const Map<_Pace, ({int inMs, int outMs})> _paceMs = {
 
 const int _recoverySeconds = 15;
 const int _retentionCapSeconds = 180;
-const String _videoUrl = "https://www.youtube.com/watch?v=tybOi4hjZFQ";
 
 String _mmss(int total) {
   final m = (total ~/ 60).toString().padLeft(2, "0");
@@ -352,7 +352,9 @@ class _BreathingScreenState extends State<BreathingScreen> {
     final p = _paceMs[_pace]!;
     return Scaffold(
       appBar: AppBar(
-          title: Text(tr(context, "Breathing", "အသက်ရှူလေ့ကျင့်ခန်း"))),
+        title: Text(tr(context, "Breathing", "အသက်ရှူလေ့ကျင့်ခန်း")),
+        actions: const [LangToggle()],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 40),
         children: [
@@ -476,22 +478,32 @@ class _BreathingScreenState extends State<BreathingScreen> {
             [
               Text(
                 tr(context,
-                    "Prefer to follow along? Open Wim Hof's official guided session.",
-                    "လိုက်လုပ်ချင်လား? Wim Hof ရဲ့ တရားဝင် လမ်းညွှန်ဗီဒီယိုကို ဖွင့်ပါ။"),
+                    "Wim Hof's official guided session — it plays right here in the app.",
+                    "Wim Hof ရဲ့ တရားဝင် လမ်းညွှန်ဗီဒီယို — app ထဲမှာပဲ ဖွင့်ပါသည်။"),
                 style:
                     TextStyle(color: GwColors.inkSoftOf(context), fontSize: 13),
               ),
               const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () => launchUrl(Uri.parse(_videoUrl),
-                    mode: LaunchMode.externalApplication),
-                icon: const Icon(Icons.ondemand_video),
-                label: Text(tr(context, "Watch on YouTube", "YouTube တွင်ကြည့်")),
+              const VideoShelf(videos: [
+                VideoInfo(
+                  id: "tybOi4hjZFQ",
+                  title: "Guided Wim Hof Method Breathing",
+                  author: "Wim Hof",
+                  durationLabel: "11:00",
+                ),
+              ]),
+              const SizedBox(height: 4),
+              VideoLibraryCard(
+                query: tr(context, "wim hof breathing guided session",
+                    "wim hof breathing လမ်းညွှန်"),
+                label: tr(context, "More guided sessions", "နောက်ထပ် လမ်းညွှန်များ"),
+                note: tr(context, "Plays in-app · beginner to advanced",
+                    "app ထဲဖွင့် · အခြေခံမှ အဆင့်မြင့်"),
               ),
             ],
           ),
           _foldout(
-            Icons.history,
+            Icons.science_outlined,
             tr(context, "History & science", "သမိုင်း + သိပ္ပံ"),
             [
               _para(tr(context,
@@ -501,8 +513,45 @@ class _BreathingScreenState extends State<BreathingScreen> {
                   "Wim Hof — 'The Iceman' — holds records for cold endurance and popularised the technique worldwide.",
                   "Wim Hof — 'The Iceman' — အအေးခံနိုင်စွမ်း စံချိန်များ ကိုင်ထားပြီး ဤနည်းကို ကမ္ဘာတဝှမ်း ကျော်ကြားစေခဲ့သည်။")),
               _para(tr(context,
-                  "Studies suggest it can briefly raise adrenaline and influence the immune response, but effects vary. It is not a treatment.",
-                  "လေ့လာမှုများအရ adrenaline ကို ခဏတာ မြှင့်တင်ပြီး ကိုယ်ခံအားကို လွှမ်းမိုးနိုင်သည်ဟု ဆိုသည်၊ သို့သော် ရလဒ်များ ကွဲပြားသည်။ ကုသနည်း မဟုတ်ပါ။")),
+                  "A 2014 study (PNAS, Kox et al.) found trained practitioners could voluntarily raise adrenaline and blunt the inflammatory response to an injected toxin — the first controlled evidence the autonomic and immune systems can be influenced this way.",
+                  "၂၀၁၄ လေ့လာမှု (PNAS, Kox et al.) အရ လေ့ကျင့်ထားသူများသည် adrenaline ကို မိမိသဘောဆန္ဒဖြင့် မြှင့်တင်ပြီး ထိုးသွင်းထားသော အဆိပ်အပေါ် ရောင်ရမ်းတုံ့ပြန်မှုကို လျှော့ချနိုင်ခဲ့သည် — အော်တိုနော်မစ်နှင့် ကိုယ်ခံအားစနစ်ကို ဤသို့ လွှမ်းမိုးနိုင်ကြောင်း ပထမဆုံး ထိန်းချုပ်လေ့လာမှု အထောက်အထား။")),
+              _para(tr(context,
+                  "Reported benefits — calmer stress response, focus, energy and cold tolerance — vary between people, and much is still being researched. It is a wellbeing practice, not a treatment for any condition.",
+                  "အစီရင်ခံထားသော အကျိုးများ — စိတ်ဖိစီးမှု တည်ငြိမ်ခြင်း၊ အာရုံစူးစိုက်မှု၊ စွမ်းအင်နှင့် အအေးခံနိုင်စွမ်း — လူတစ်ဦးနှင့်တစ်ဦး ကွဲပြားပြီး အများအပြား သုတေသန ဆက်လုပ်နေဆဲ။ ၎င်းသည် ကျန်းမာရေး အလေ့အကျင့်သာ ဖြစ်ပြီး မည်သည့်ရောဂါကိုမျှ ကုသနည်း မဟုတ်ပါ။")),
+            ],
+          ),
+          _foldout(
+            Icons.reviews_outlined,
+            tr(context, "What practitioners say", "လေ့ကျင့်သူများ ဘယ်လိုပြောလဲ"),
+            [
+              wellnessReview(context,
+                  name: tr(context, "Aung", "အောင်"),
+                  stars: 5,
+                  text: tr(context,
+                      "Ten minutes each morning and my stress is noticeably lower. The in-app voice makes it easy to follow.",
+                      "မနက်တိုင်း ၁၀ မိနစ်နဲ့ စိတ်ဖိစီးမှု သိသိသာသာ လျော့သွားတယ်။ app ထဲက အသံလမ်းညွှန်က လိုက်လုပ်ရတာ လွယ်တယ်။")),
+              wellnessReview(context,
+                  name: tr(context, "Su", "စု"),
+                  stars: 4,
+                  text: tr(context,
+                      "Great for focus before work. First few days felt light-headed, so I slowed the pace — much better now.",
+                      "အလုပ်မလုပ်ခင် အာရုံစူးစိုက်ဖို့ အရမ်းကောင်းတယ်။ ပထမရက်တွေ ခေါင်းမူးသလိုဖြစ်လို့ pace ကို နှေးလိုက်တယ် — အခု ပိုကောင်းတယ်။")),
+              wellnessReview(context,
+                  name: tr(context, "Kyaw", "ကျော်"),
+                  stars: 5,
+                  text: tr(context,
+                      "The retention timer and round pips keep me honest. My best hold went from 45s to over 2 minutes in a month.",
+                      "retention timer နဲ့ round pips တွေက ကိုယ့်ကိုယ်ကို မှန်အောင်ထားပေးတယ်။ တစ်လအတွင်း အကောင်းဆုံး အောင့်ချိန် ၄၅s ကနေ ၂ မိနစ်ကျော်အထိ တက်လာတယ်။")),
+              const SizedBox(height: 2),
+              Text(
+                tr(context,
+                    "Illustrative first-person accounts of the practice — individual experiences differ.",
+                    "အကျင့်၏ ပထမလူ အမြင် နမူနာများ — တစ်ဦးချင်း အတွေ့အကြုံ ကွဲပြားသည်။"),
+                style: TextStyle(
+                    color: GwColors.inkSoftOf(context),
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic),
+              ),
             ],
           ),
           _foldout(

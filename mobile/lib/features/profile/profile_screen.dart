@@ -20,7 +20,7 @@ import '../dashboard/dashboard_screen.dart';
 import '../health/health_hub_screen.dart';
 import '../dating/dating_screen.dart';
 import '../drone/drone_scanner_screen.dart';
-import '../wellness/breathing_screen.dart';
+import '../wellness/wellness_hub_screen.dart';
 import '../family/family_screen.dart';
 import '../farm/farm_screen.dart';
 import '../finance/finance_screen.dart';
@@ -597,7 +597,7 @@ class ProfileScreen extends StatelessWidget {
         _push(context, const AudioHubScreen());
         return;
       case _Native.wellness:
-        _push(context, const BreathingScreen());
+        _push(context, const WellnessHubScreen());
         return;
       case null:
         break;
