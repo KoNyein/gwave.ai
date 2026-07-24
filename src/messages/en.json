@@ -1527,6 +1527,8 @@
     "helpOfflineT": "Offline listening.",
     "helpOfflineB": "Download purchased titles inside the app to listen without data. Files stay encrypted in the app.",
     "helpSupportT": "Getting help.",
-    "helpSupportB": "Use the Help Center → Audio for failed purchases or playback issues; you'll get a ticket and an in-app reply."
+    "helpSupportB": "Use the Help Center → Audio for failed purchases or playback issues; you'll get a ticket and an in-app reply.",
+    "yourRating": "Your rating",
+    "thanks": "Thanks!"
   }
 }

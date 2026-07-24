@@ -1527,6 +1527,8 @@
     "helpOfflineT": "Offline နားထောင်ခြင်း။",
     "helpOfflineB": "ဝယ်ထားတဲ့ ခေါင်းစဉ်တွေကို app ထဲမှာ download လုပ်ပြီး data မလိုဘဲ နားထောင်ပါ။ ဖိုင်တွေ app ထဲမှာ encrypt ဖြစ်ထားပါတယ်။",
     "helpSupportT": "အကူအညီ ရယူခြင်း။",
-    "helpSupportB": "ဝယ်ယူမှု/ဖွင့်၍မရ ပြဿနာအတွက် Help Center → Audio ကို သုံးပါ — ticket ရပြီး app ထဲမှာ ပြန်ဖြေပါမည်။"
+    "helpSupportB": "ဝယ်ယူမှု/ဖွင့်၍မရ ပြဿနာအတွက် Help Center → Audio ကို သုံးပါ — ticket ရပြီး app ထဲမှာ ပြန်ဖြေပါမည်။",
+    "yourRating": "သင့် အဆင့်သတ်မှတ်ချက်",
+    "thanks": "ကျေးဇူးတင်ပါတယ်!"
   }
 }
