@@ -27,6 +27,76 @@ const HOST_SELECT =
  */
 const STALE_LIVE_HOURS = 12;
 
+/** A compact currently-live entry for the feed "Live now" rail. */
+export interface LiveNowEntry {
+  id: string;
+  title: string | null;
+  status: string;
+  ivs_playback_url: string | null;
+  hostName: string;
+  hostAvatar: string | null;
+  viewerCount: number;
+}
+
+/**
+ * Every stream broadcasting right now — regardless of who the viewer follows —
+ * so the feed's "Live now" rail reaches every user. Flat queries only (no
+ * PostgREST embeds on this hot path); the host profile is joined in code.
+ */
+export async function listLiveNow(limit = 20): Promise<LiveNowEntry[]> {
+  const db = await createClient();
+  const staleCutoff = new Date(
+    Date.now() - STALE_LIVE_HOURS * 60 * 60 * 1000,
+  ).toISOString();
+
+  const { data: streams } = await db
+    .from("live_streams")
+    .select("id, title, status, ivs_playback_url, host_id, viewer_count")
+    .eq("status", "live")
+    .gte("started_at", staleCutoff)
+    .order("started_at", { ascending: false })
+    .limit(limit)
+    .returns<
+      {
+        id: string;
+        title: string | null;
+        status: string;
+        ivs_playback_url: string | null;
+        host_id: string;
+        viewer_count: number | null;
+      }[]
+    >();
+  if (!streams || streams.length === 0) return [];
+
+  const hostIds = [...new Set(streams.map((s) => s.host_id))];
+  const { data: hosts } = await db
+    .from("profiles")
+    .select("id, username, full_name, avatar_url")
+    .in("id", hostIds)
+    .returns<
+      {
+        id: string;
+        username: string | null;
+        full_name: string | null;
+        avatar_url: string | null;
+      }[]
+    >();
+  const byId = new Map((hosts ?? []).map((h) => [h.id, h]));
+
+  return streams.map((s) => {
+    const h = byId.get(s.host_id);
+    return {
+      id: s.id,
+      title: s.title,
+      status: s.status,
+      ivs_playback_url: s.ivs_playback_url,
+      hostName: h?.full_name || h?.username || "Gwave user",
+      hostAvatar: h?.avatar_url ?? null,
+      viewerCount: s.viewer_count ?? 0,
+    };
+  });
+}
+
 export async function listStreams(limit = 30): Promise<LiveStreamWithHost[]> {
   const db = await createClient();
   const staleCutoff = new Date(
