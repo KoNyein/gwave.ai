@@ -108,6 +108,15 @@ class Post {
     return media.isNotEmpty ? media.first : null;
   }
 
+  /// The first attached video, if the post has one. Rendered as an inline
+  /// player in the feed (an image widget can't display a video).
+  PostMedia? get firstVideo {
+    for (final m in media) {
+      if (m.mediaType == "video") return m;
+    }
+    return null;
+  }
+
   factory Post.fromJson(Map<String, dynamic> j) {
     final authorJson = j["author"] ?? j["profiles"];
     final mediaJson = j["media"] ?? j["post_media"];

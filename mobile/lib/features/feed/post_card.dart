@@ -205,7 +205,18 @@ class _PostCardState extends State<PostCard> {
               const SizedBox(height: 12),
               _LiveBanner(streamId: _liveStreamId(p.content)!),
             ],
-            if (p.firstImage != null) ...[
+            // Video posts play inline (muted autoplay, tap for sound); an image
+            // widget can't render a video, so this must come before firstImage.
+            if (p.firstVideo != null) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(GwRadius.md),
+                child: _PostVideo(
+                  url: resolveMedia(p.firstVideo!.storagePath,
+                      bucket: "media")!,
+                ),
+              ),
+            ] else if (p.firstImage != null) ...[
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(GwRadius.md),
@@ -661,5 +672,110 @@ class _LiveBannerState extends State<_LiveBanner> {
             const Icon(Icons.chevron_right, color: Colors.white54),
           ],
         ));
+  }
+}
+
+/// Inline feed video for an uploaded video post. Autoplays muted and loops
+/// (TikTok/Facebook style); tap toggles sound, long-standard controls appear
+/// on tap. Falls back to a tap-to-play poster if autoplay init fails.
+class _PostVideo extends StatefulWidget {
+  const _PostVideo({required this.url});
+  final String url;
+
+  @override
+  State<_PostVideo> createState() => _PostVideoState();
+}
+
+class _PostVideoState extends State<_PostVideo> {
+  VideoPlayerController? _vc;
+  bool _muted = true;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  @override
+  void dispose() {
+    _vc?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _init() async {
+    try {
+      final c = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+      _vc = c;
+      await c.initialize();
+      await c.setVolume(0);
+      await c.setLooping(true);
+      await c.play();
+      if (mounted) setState(() {});
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  void _toggleSound() {
+    final c = _vc;
+    if (c == null) return;
+    setState(() => _muted = !_muted);
+    c.setVolume(_muted ? 0 : 1);
+    if (!c.value.isPlaying) c.play();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = _vc;
+    if (_failed) {
+      return AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Container(
+          color: Colors.black,
+          child: const Center(
+            child: Icon(Icons.videocam_off, color: Colors.white54, size: 40),
+          ),
+        ),
+      );
+    }
+    if (c == null || !c.value.isInitialized) {
+      return AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Container(
+          color: GwColors.surfaceMuted,
+          child: const Center(
+            child: CircularProgressIndicator(color: GwColors.primary),
+          ),
+        ),
+      );
+    }
+    return GestureDetector(
+      onTap: _toggleSound,
+      child: AspectRatio(
+        aspectRatio: c.value.aspectRatio == 0 ? 16 / 9 : c.value.aspectRatio,
+        child: Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            VideoPlayer(c),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _muted ? Icons.volume_off : Icons.volume_up,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
