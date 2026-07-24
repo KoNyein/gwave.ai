@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { ChevronLeft, Headphones, Music2, Radio } from "lucide-react";
 
+import { AudioHelpForm } from "@/components/audio/audio-help-form";
 import { AudioPlayer } from "@/components/audio/audio-player";
 import { AudioPurchase } from "@/components/audio/audio-purchase";
 import { AudioRating, RatingSummary } from "@/components/audio/audio-rating";
@@ -178,6 +179,9 @@ export default async function AudioTrackPage({
           <p><span className="font-medium text-foreground">3. {t("helpPlayerT")}</span> {t("helpPlayerB")}</p>
           <p><span className="font-medium text-foreground">4. {t("helpOfflineT")}</span> {t("helpOfflineB")}</p>
           <p><span className="font-medium text-foreground">5. {t("helpSupportT")}</span> {t("helpSupportB")}</p>
+          <div className="border-t border-border pt-3">
+            <AudioHelpForm trackId={track.id} />
+          </div>
         </div>
       </details>
     </div>
