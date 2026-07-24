@@ -18,6 +18,8 @@ import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import 'offline_tiles.dart';
+import 'offline_area_sheet.dart';
 import '../live/go_live_screen.dart';
 import '../messenger/chat_screen.dart';
 import 'wifi_map_screen.dart';
@@ -364,6 +366,24 @@ class _MapScreenState extends State<MapScreen> {
     return "${(m / 1000).toStringAsFixed(1)} km";
   }
 
+  /// Download the currently-visible area for offline use.
+  void _openOfflineSheet() {
+    final cam = _map.camera;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => OfflineAreaSheet(
+        bounds: cam.visibleBounds,
+        centerZoom: cam.zoom,
+        layerKey: _satellite ? "sat" : "osm",
+        urlTemplate: _satellite
+            ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            : "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        userAgent: "ai.gwave.app",
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -404,6 +424,12 @@ class _MapScreenState extends State<MapScreen> {
                     : "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 userAgentPackageName: "ai.gwave.app",
                 maxZoom: 19,
+                // Offline-first: every tile is cached to disk, then served from
+                // disk (works with no connection). Namespaced per layer.
+                tileProvider: CachingTileProvider(
+                  layerKey: _satellite ? "sat" : "osm",
+                  userAgent: "ai.gwave.app",
+                ),
               ),
               MarkerLayer(markers: _markers()),
             ],
@@ -411,6 +437,19 @@ class _MapScreenState extends State<MapScreen> {
 
           // Top: emergency actions.
           Positioned(top: 10, left: 12, right: 12, child: _topControls()),
+
+          // Offline area download.
+          Positioned(
+            right: 16,
+            bottom: 372,
+            child: FloatingActionButton.small(
+              heroTag: "offline",
+              backgroundColor: Colors.white,
+              foregroundColor: GwColors.primary,
+              onPressed: _openOfflineSheet,
+              child: const Icon(Icons.download_for_offline_outlined),
+            ),
+          ),
 
           // Map / Satellite layer toggle.
           Positioned(

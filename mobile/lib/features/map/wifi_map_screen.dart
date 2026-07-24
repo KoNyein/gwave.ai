@@ -10,6 +10,7 @@ import 'package:wifi_scan/wifi_scan.dart';
 import '../../core/app_state.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
+import 'offline_tiles.dart';
 
 /// WiGLE-style crowdsourced WiFi map. Scanning nearby access points at your GPS
 /// location contributes them to a shared map everyone can browse — the more
@@ -254,6 +255,8 @@ class _WifiMapScreenState extends State<WifiMapScreen> {
                 urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 userAgentPackageName: "ai.gwave.app",
                 maxZoom: 19,
+                tileProvider:
+                    CachingTileProvider(layerKey: "osm", userAgent: "ai.gwave.app"),
               ),
               MarkerLayer(markers: _markers()),
             ],
