@@ -167,7 +167,6 @@ class CachingTileProvider extends TileProvider {
   CachingTileProvider({
     required this.layerKey,
     required this.userAgent,
-    super.headers,
   });
 
   final String layerKey;
