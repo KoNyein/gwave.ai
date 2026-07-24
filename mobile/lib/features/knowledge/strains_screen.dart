@@ -171,7 +171,7 @@ class _StrainsScreenState extends State<StrainsScreen> {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: GwColors.surface,
+            color: GwColors.surfaceOf(context),
             borderRadius: BorderRadius.circular(GwRadius.lg),
             boxShadow: GwShadow.card,
           ),
@@ -186,8 +186,10 @@ class _StrainsScreenState extends State<StrainsScreen> {
                     Text(s.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 15.5)),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15.5,
+                            color: GwColors.inkOf(context))),
                     const SizedBox(height: 3),
                     Row(
                       children: [
@@ -195,17 +197,17 @@ class _StrainsScreenState extends State<StrainsScreen> {
                         const SizedBox(width: 8),
                         if (s.thc != null)
                           Text("THC ${s.thc}%",
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
-                                  color: GwColors.inkSoft)),
+                                  color: GwColors.inkSoftOf(context))),
                         if (s.cbd != null) ...[
                           const SizedBox(width: 8),
                           Text("CBD ${s.cbd}%",
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
-                                  color: GwColors.inkSoft)),
+                                  color: GwColors.inkSoftOf(context))),
                         ],
                       ],
                     ),
@@ -214,13 +216,14 @@ class _StrainsScreenState extends State<StrainsScreen> {
                       Text(s.effects.take(3).join(" · "),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 12, color: GwColors.inkSoft)),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: GwColors.inkSoftOf(context))),
                     ],
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+              Icon(Icons.chevron_right, color: GwColors.inkSoftOf(context)),
             ],
           ),
         ),
@@ -267,7 +270,7 @@ class StrainDetailScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: GwColors.surface,
+              color: GwColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(GwRadius.lg),
               boxShadow: GwShadow.card,
             ),
@@ -285,38 +288,43 @@ class StrainDetailScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 14),
-                if (s.thc != null) _bar("THC", s.thc!, 30, GwColors.live),
-                if (s.cbd != null) _bar("CBD", s.cbd!, 20, GwColors.primary),
+                if (s.thc != null) _bar(context, "THC", s.thc!, 30, GwColors.live),
+                if (s.cbd != null)
+                  _bar(context, "CBD", s.cbd!, 20, GwColors.primary),
                 if (s.floweringWeeks != null ||
                     s.yieldIndoor != null ||
                     s.yieldOutdoor != null) ...[
                   const Divider(height: 24),
                   if (s.floweringWeeks != null)
-                    _fact("🌸 ပန်းပွင့်ချိန်", "${s.floweringWeeks} ပတ်"),
+                    _fact(context, "🌸 ပန်းပွင့်ချိန်", "${s.floweringWeeks} ပတ်"),
                   if (s.yieldIndoor != null)
-                    _fact("🏠 အထွက် (အတွင်း)", s.yieldIndoor!),
+                    _fact(context, "🏠 အထွက် (အတွင်း)", s.yieldIndoor!),
                   if (s.yieldOutdoor != null)
-                    _fact("🌤 အထွက် (အပြင်)", s.yieldOutdoor!),
+                    _fact(context, "🌤 အထွက် (အပြင်)", s.yieldOutdoor!),
                 ],
               ],
             ),
           ),
           if (s.description != null && s.description!.isNotEmpty) ...[
             const SizedBox(height: 12),
-            _section("အကြောင်းအရာ",
-                Text(s.description!, style: const TextStyle(height: 1.5))),
+            _section(
+                context,
+                "အကြောင်းအရာ",
+                Text(s.description!,
+                    style: TextStyle(
+                        height: 1.5, color: GwColors.inkOf(context)))),
           ],
           if (s.effects.isNotEmpty) ...[
             const SizedBox(height: 12),
-            _section("Effects", _chips(s.effects, color)),
+            _section(context, "Effects", _chips(s.effects, color)),
           ],
           if (s.flavors.isNotEmpty) ...[
             const SizedBox(height: 12),
-            _section("Flavors", _chips(s.flavors, GwColors.gold)),
+            _section(context, "Flavors", _chips(s.flavors, GwColors.gold)),
           ],
           if (s.terpenes.isNotEmpty) ...[
             const SizedBox(height: 12),
-            _section("Terpenes", _chips(s.terpenes, GwColors.primary)),
+            _section(context, "Terpenes", _chips(s.terpenes, GwColors.primary)),
           ],
           const SizedBox(height: 12),
           _commentsButton(context, "strain", s.id, s.name),
@@ -333,7 +341,7 @@ class StrainDetailScreen extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: GwColors.surface,
+            color: GwColors.surfaceOf(context),
             borderRadius: BorderRadius.circular(GwRadius.lg),
             boxShadow: GwShadow.card,
           ),
@@ -355,69 +363,82 @@ class StrainDetailScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(tr(context, "Comments & experience", "မှတ်ချက် နှင့် အတွေ့အကြုံ"),
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 14.5)),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14.5,
+                            color: GwColors.inkOf(context))),
                     const SizedBox(height: 2),
                     Text(
                         tr(context, "Share a photo, voice note or video",
                             "ဓာတ်ပုံ၊ အသံ သို့မဟုတ် ဗီဒီယို မျှဝေရန်"),
-                        style: const TextStyle(
-                            color: GwColors.inkSoft, fontSize: 12)),
+                        style: TextStyle(
+                            color: GwColors.inkSoftOf(context), fontSize: 12)),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+              Icon(Icons.chevron_right, color: GwColors.inkSoftOf(context)),
             ],
           ),
         ),
       );
 
-  Widget _bar(String label, double v, double max, Color color) => Padding(
+  Widget _bar(BuildContext context, String label, double v, double max,
+          Color color) =>
+      Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Row(
           children: [
             SizedBox(
                 width: 44,
                 child: Text(label,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 13))),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: GwColors.inkOf(context)))),
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: LinearProgressIndicator(
                   value: (v / max).clamp(0, 1),
                   minHeight: 9,
-                  backgroundColor: GwColors.surfaceMuted,
+                  backgroundColor: GwColors.surfaceMutedOf(context),
                   valueColor: AlwaysStoppedAnimation(color),
                 ),
               ),
             ),
             const SizedBox(width: 10),
             Text("$v%",
-                style:
-                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    color: GwColors.inkOf(context))),
           ],
         ),
       );
 
-  Widget _fact(String k, String v) => Padding(
+  Widget _fact(BuildContext context, String k, String v) => Padding(
         padding: const EdgeInsets.only(bottom: 6),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(k, style: const TextStyle(color: GwColors.inkSoft, fontSize: 13)),
+            Text(k,
+                style: TextStyle(
+                    color: GwColors.inkSoftOf(context), fontSize: 13)),
             Text(v,
-                style:
-                    const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: GwColors.inkOf(context))),
           ],
         ),
       );
 
-  Widget _section(String title, Widget child) => Container(
+  Widget _section(BuildContext context, String title, Widget child) =>
+      Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: GwColors.surface,
+          color: GwColors.surfaceOf(context),
           borderRadius: BorderRadius.circular(GwRadius.lg),
           boxShadow: GwShadow.card,
         ),
@@ -425,8 +446,10 @@ class StrainDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w800, fontSize: 14.5)),
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14.5,
+                    color: GwColors.inkOf(context))),
             const SizedBox(height: 10),
             child,
           ],

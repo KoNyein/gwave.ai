@@ -279,7 +279,9 @@ class _OfflineTalkScreenState extends State<OfflineTalkScreen> {
                             ? "ခွင့်ပြုချက် လိုအပ်နေပါသည်"
                             : "ချိတ်ဆက်မှု စတင်မရသေးပါ",
                     style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 14),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: GwColors.ink),
                   ),
                 ),
               ],
@@ -382,7 +384,7 @@ class _OfflineTalkScreenState extends State<OfflineTalkScreen> {
         child: Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: GwColors.surface,
+            color: GwColors.surfaceOf(context),
             borderRadius: BorderRadius.circular(GwRadius.lg),
             boxShadow: GwShadow.card,
           ),
@@ -390,14 +392,16 @@ class _OfflineTalkScreenState extends State<OfflineTalkScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.wifi_tethering,
+                  const Icon(Icons.wifi_tethering,
                       color: GwColors.primary, size: 22),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text("ဘယ်လိုသုံးရမလဲ",
                       style: TextStyle(
-                          fontSize: 15.5, fontWeight: FontWeight.w900)),
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w900,
+                          color: GwColors.inkOf(context))),
                 ],
               ),
               const SizedBox(height: 12),
@@ -424,8 +428,10 @@ class _OfflineTalkScreenState extends State<OfflineTalkScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(st.$2,
-                            style: const TextStyle(
-                                fontSize: 13.5, height: 1.4)),
+                            style: TextStyle(
+                                fontSize: 13.5,
+                                height: 1.4,
+                                color: GwColors.inkOf(context))),
                       ),
                     ],
                   ),
@@ -502,7 +508,7 @@ class _OfflineTalkScreenState extends State<OfflineTalkScreen> {
                             decoration: BoxDecoration(
                               color: m.mine
                                   ? GwColors.primary
-                                  : GwColors.surface,
+                                  : GwColors.surfaceOf(context),
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: GwShadow.card,
                             ),
@@ -521,7 +527,7 @@ class _OfflineTalkScreenState extends State<OfflineTalkScreen> {
                                   style: TextStyle(
                                     color: m.mine
                                         ? Colors.white
-                                        : GwColors.ink,
+                                        : GwColors.inkOf(context),
                                     fontSize: 14,
                                     decoration: loc
                                         ? TextDecoration.underline
@@ -557,7 +563,7 @@ class _OfflineTalkScreenState extends State<OfflineTalkScreen> {
                             ? "ချိတ်ဆက်ပြီးမှ စာပို့နိုင်ပါမယ်"
                             : "စာရိုက်ပါ…",
                         filled: true,
-                        fillColor: GwColors.surface,
+                        fillColor: GwColors.surfaceMutedOf(context),
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 10),
                         border: OutlineInputBorder(
