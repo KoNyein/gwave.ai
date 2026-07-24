@@ -135,7 +135,7 @@ class _GamesScreenState extends State<GamesScreen> {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: GwColors.surface,
+          color: GwColors.surfaceOf(context),
           borderRadius: BorderRadius.circular(GwRadius.lg),
           boxShadow: GwShadow.card,
         ),
@@ -155,7 +155,7 @@ class _GamesScreenState extends State<GamesScreen> {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: GwColors.inkSoft, fontSize: 10.5)),
+                style: TextStyle(color: GwColors.inkSoftOf(context), fontSize: 10.5)),
           ],
         ),
       ),
@@ -171,7 +171,7 @@ class _GamesScreenState extends State<GamesScreen> {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: GwColors.surface,
+            color: GwColors.surfaceOf(context),
             borderRadius: BorderRadius.circular(GwRadius.lg),
             boxShadow: GwShadow.card,
           ),
@@ -192,28 +192,28 @@ class _GamesScreenState extends State<GamesScreen> {
                       Text(g.description!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: GwColors.inkSoft, fontSize: 12.5)),
+                          style: TextStyle(
+                              color: GwColors.inkSoftOf(context), fontSize: 12.5)),
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        const Icon(Icons.play_arrow,
-                            size: 14, color: GwColors.inkSoft),
+                        Icon(Icons.play_arrow,
+                            size: 14, color: GwColors.inkSoftOf(context)),
                         const SizedBox(width: 2),
                         Text("${g.playsCount} plays",
-                            style: const TextStyle(
-                                color: GwColors.inkSoft, fontSize: 11.5)),
+                            style: TextStyle(
+                                color: GwColors.inkSoftOf(context), fontSize: 11.5)),
                         if (g.author != null) ...[
                           const SizedBox(width: 8),
-                          const Text("·",
-                              style: TextStyle(color: GwColors.inkSoft)),
+                          Text("·",
+                              style: TextStyle(color: GwColors.inkSoftOf(context))),
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(g.author!.displayName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    color: GwColors.inkSoft, fontSize: 11.5)),
+                                style: TextStyle(
+                                    color: GwColors.inkSoftOf(context), fontSize: 11.5)),
                           ),
                         ],
                       ],

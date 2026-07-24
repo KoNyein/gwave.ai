@@ -24,7 +24,7 @@ class CommentsSheet extends StatefulWidget {
     return showModalBottomSheet<int>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: GwColors.bg,
+      backgroundColor: GwColors.bgOf(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -110,7 +110,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
   void _choosePhotoSource() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: GwColors.surface,
+      backgroundColor: GwColors.surfaceOf(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
@@ -231,7 +231,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: GwColors.line,
+                  color: GwColors.lineOf(context),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -281,9 +281,9 @@ class _CommentsSheetState extends State<CommentsSheet> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: GwColors.surface,
+                    color: GwColors.surfaceOf(context),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: GwColors.line),
+                    border: Border.all(color: GwColors.lineOf(context)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -295,8 +295,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
                                   fontWeight: FontWeight.w700, fontSize: 13)),
                           const SizedBox(width: 6),
                           Text(timeAgo(c.createdAt),
-                              style: const TextStyle(
-                                  color: GwColors.inkSoft, fontSize: 11)),
+                              style: TextStyle(
+                                  color: GwColors.inkSoftOf(context), fontSize: 11)),
                         ],
                       ),
                       if (c.content.trim().isNotEmpty) ...[
@@ -315,7 +315,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                             width: double.infinity,
                             placeholder: (_, __) => Container(
                               height: 140,
-                              color: GwColors.surfaceMuted,
+                              color: GwColors.surfaceMutedOf(context),
                             ),
                             errorWidget: (_, __, ___) =>
                                 const SizedBox.shrink(),
@@ -349,7 +349,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: mine?.color ?? GwColors.inkSoft,
+                              color: mine?.color ?? GwColors.inkSoftOf(context),
                             ),
                           ),
                         ),
@@ -357,8 +357,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
                       if (count > 0) ...[
                         const SizedBox(width: 8),
                         Text("👍 $count",
-                            style: const TextStyle(
-                                color: GwColors.inkSoft, fontSize: 12)),
+                            style: TextStyle(
+                                color: GwColors.inkSoftOf(context), fontSize: 12)),
                       ],
                     ],
                   ),
@@ -376,9 +376,9 @@ class _CommentsSheetState extends State<CommentsSheet> {
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-        decoration: const BoxDecoration(
-          color: GwColors.surface,
-          border: Border(top: BorderSide(color: GwColors.line)),
+        decoration: BoxDecoration(
+          color: GwColors.surfaceOf(context),
+          border: Border(top: BorderSide(color: GwColors.lineOf(context))),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -407,8 +407,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
                           onTap: () => setState(() => _photoBytes = null),
                           child: Container(
                             padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
-                              color: GwColors.ink,
+                            decoration: BoxDecoration(
+                              color: GwColors.inkOf(context),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(Icons.close,
@@ -431,7 +431,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: GwColors.surfaceMuted,
+                      color: GwColors.surfaceMutedOf(context),
                       borderRadius: BorderRadius.circular(22),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 16),

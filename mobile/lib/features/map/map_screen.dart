@@ -467,7 +467,7 @@ class _MapScreenState extends State<MapScreen> {
               heroTag: "layers",
               backgroundColor: Colors.white,
               foregroundColor:
-                  _satellite ? GwColors.primary : GwColors.inkSoft,
+                  _satellite ? GwColors.primary : GwColors.inkSoftOf(context),
               onPressed: () => setState(() => _satellite = !_satellite),
               child: Icon(
                   _satellite ? Icons.satellite_alt : Icons.layers_outlined),
@@ -677,7 +677,7 @@ class _MapScreenState extends State<MapScreen> {
                   onPressed: () => _closeSos("resolved"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
-                    foregroundColor: GwColors.ink,
+                    foregroundColor: GwColors.inkOf(context),
                   ),
                   child: Text(tr(context, "Close", "ပိတ်မယ်")),
                 ),
@@ -735,8 +735,8 @@ class _MapScreenState extends State<MapScreen> {
       maxChildSize: 0.82,
       builder: (context, controller) {
         return Container(
-          decoration: const BoxDecoration(
-            color: GwColors.surface,
+          decoration: BoxDecoration(
+            color: GwColors.surfaceOf(context),
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 16)],
           ),
@@ -747,7 +747,7 @@ class _MapScreenState extends State<MapScreen> {
                 width: 42,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: GwColors.line,
+                  color: GwColors.lineOf(context),
                   borderRadius: BorderRadius.circular(3),
                 ),
               ),
@@ -789,8 +789,8 @@ class _MapScreenState extends State<MapScreen> {
                             controller: controller,
                             padding: const EdgeInsets.only(bottom: 20),
                             itemCount: _sos.length,
-                            separatorBuilder: (_, __) => const Divider(
-                                height: 1, indent: 72, color: GwColors.line),
+                            separatorBuilder: (_, __) => Divider(
+                                height: 1, indent: 72, color: GwColors.lineOf(context)),
                             itemBuilder: (_, i) => _sosTile(_sos[i]),
                           ),
               ),
@@ -872,8 +872,8 @@ class _MapScreenState extends State<MapScreen> {
                     .join(" — "),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    color: GwColors.ink,
+                style: TextStyle(
+                    color: GwColors.inkOf(context),
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600),
               ),
@@ -949,8 +949,8 @@ class _MapScreenState extends State<MapScreen> {
                 if (person is Map)
                   IconButton(
                     tooltip: tr(context, "Chat", "Chat"),
-                    icon: const Icon(Icons.chat_bubble_outline,
-                        color: GwColors.inkSoft),
+                    icon: Icon(Icons.chat_bubble_outline,
+                        color: GwColors.inkSoftOf(context)),
                     onPressed: () => _chat(Map<String, dynamic>.from(person)),
                   ),
               ],
@@ -1066,8 +1066,8 @@ class _SosSheetState extends State<_SosSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: inset),
       child: Container(
-        decoration: const BoxDecoration(
-          color: GwColors.surface,
+        decoration: BoxDecoration(
+          color: GwColors.surfaceOf(context),
           borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
         ),
         padding: const EdgeInsets.fromLTRB(18, 14, 18, 22),
@@ -1081,7 +1081,7 @@ class _SosSheetState extends State<_SosSheet> {
                   width: 42,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: GwColors.line,
+                    color: GwColors.lineOf(context),
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),
@@ -1097,9 +1097,9 @@ class _SosSheetState extends State<_SosSheet> {
                 ],
               ),
               const SizedBox(height: 4),
-              const Text("ဘာဖြစ်နေလဲ ရွေးပါ — ကူညီမယ့်သူတွေ သိရအောင်",
+              Text("ဘာဖြစ်နေလဲ ရွေးပါ — ကူညီမယ့်သူတွေ သိရအောင်",
                   style:
-                      TextStyle(color: GwColors.inkSoft, fontSize: 12.5)),
+                      TextStyle(color: GwColors.inkSoftOf(context), fontSize: 12.5)),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,

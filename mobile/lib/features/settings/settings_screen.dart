@@ -151,7 +151,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: GwColors.surface,
+              color: GwColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(GwRadius.lg),
               boxShadow: GwShadow.card,
             ),
@@ -198,7 +198,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         fontWeight: FontWeight.w900, fontSize: 17)),
                 if (me?.username != null)
                   Text("@${me!.username}",
-                      style: const TextStyle(color: GwColors.inkSoft)),
+                      style: TextStyle(color: GwColors.inkSoftOf(context))),
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
                   onPressed: _uploadingCover
@@ -214,7 +214,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   label: Text(tr(context, "Change cover photo", "Cover ဓာတ်ပုံ ပြောင်းရန်")),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: GwColors.primary,
-                    side: const BorderSide(color: GwColors.line),
+                    side: BorderSide(color: GwColors.lineOf(context)),
                   ),
                 ),
               ],
@@ -226,7 +226,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: GwColors.surface,
+              color: GwColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(GwRadius.lg),
               boxShadow: GwShadow.card,
             ),
@@ -295,7 +295,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Account rows → web
           Container(
             decoration: BoxDecoration(
-              color: GwColors.surface,
+              color: GwColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(GwRadius.lg),
               boxShadow: GwShadow.card,
             ),
@@ -319,7 +319,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Log out
           Container(
             decoration: BoxDecoration(
-              color: GwColors.surface,
+              color: GwColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(GwRadius.lg),
               boxShadow: GwShadow.card,
             ),
@@ -358,8 +358,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 "${AppConfig.appBuild > 0 ? "Gwave v1.0.${AppConfig.appBuild}" : "Gwave (dev build)"}"
                 " · calls: ${context.watch<CallService>().ringStatus}",
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: GwColors.inkSoft,
+                style: TextStyle(
+                    color: GwColors.inkSoftOf(context),
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600),
               ),
@@ -457,7 +457,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: Text(label,
             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
         trailing:
-            const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+            Icon(Icons.chevron_right, color: GwColors.inkSoftOf(context)),
         onTap: onTap,
       );
 }

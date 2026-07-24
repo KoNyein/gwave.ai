@@ -214,7 +214,7 @@ class _TrackScreenState extends State<TrackScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: GwColors.surface,
+                              color: GwColors.surfaceOf(context),
                               borderRadius:
                                   BorderRadius.circular(GwRadius.lg),
                               border: Border.all(
@@ -258,8 +258,8 @@ class _TrackScreenState extends State<TrackScreen> {
                                     ],
                                   ),
                                 ),
-                                const Icon(Icons.chevron_right,
-                                    color: GwColors.inkSoft),
+                                Icon(Icons.chevron_right,
+                                    color: GwColors.inkSoftOf(context)),
                               ],
                             ),
                           ),
@@ -290,7 +290,7 @@ class _TrackScreenState extends State<TrackScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: GwColors.surface,
+            color: GwColors.surfaceOf(context),
             borderRadius: BorderRadius.circular(GwRadius.md),
             boxShadow: GwShadow.card,
           ),
@@ -327,26 +327,26 @@ class _TrackScreenState extends State<TrackScreen> {
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
-                        color: done ? GwColors.inkSoft : GwColors.ink,
+                        color: done ? GwColors.inkSoftOf(context) : GwColors.inkOf(context),
                       ),
                     ),
                     Row(
                       children: [
                         Icon(_kindIcons[kind] ?? Icons.menu_book_outlined,
-                            size: 13, color: GwColors.inkSoft),
+                            size: 13, color: GwColors.inkSoftOf(context)),
                         const SizedBox(width: 4),
                         Text(
                           minutes != null ? "$minutes min" : kind,
-                          style: const TextStyle(
-                              color: GwColors.inkSoft, fontSize: 11.5),
+                          style: TextStyle(
+                              color: GwColors.inkSoftOf(context), fontSize: 11.5),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right,
-                  color: GwColors.inkSoft, size: 20),
+              Icon(Icons.chevron_right,
+                  color: GwColors.inkSoftOf(context), size: 20),
             ],
           ),
         ),

@@ -152,7 +152,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: GwColors.surface,
+            color: GwColors.surfaceOf(context),
             borderRadius: BorderRadius.circular(GwRadius.lg),
             boxShadow: GwShadow.card,
           ),
@@ -185,14 +185,14 @@ class _GroupsScreenState extends State<GroupsScreen> {
                             fontWeight: FontWeight.w800, fontSize: 15)),
                     Text(
                       "${g.memberCount} members${g.privacy == "private" ? " · Private" : ""}",
-                      style: const TextStyle(
-                          color: GwColors.inkSoft, fontSize: 12.5),
+                      style: TextStyle(
+                          color: GwColors.inkSoftOf(context), fontSize: 12.5),
                     ),
                   ],
                 ),
               ),
               if (g.isMember)
-                const Icon(Icons.chevron_right, color: GwColors.inkSoft)
+                Icon(Icons.chevron_right, color: GwColors.inkSoftOf(context))
               else if (busy)
                 const SizedBox(
                     width: 20,

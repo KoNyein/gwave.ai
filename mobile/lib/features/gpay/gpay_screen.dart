@@ -287,7 +287,7 @@ class _GpayScreenState extends State<GpayScreen> {
   Widget _txnList() {
     return Container(
       decoration: BoxDecoration(
-        color: GwColors.surface,
+        color: GwColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(GwRadius.lg),
         boxShadow: GwShadow.card,
       ),
@@ -365,8 +365,8 @@ class _GpayScreenState extends State<GpayScreen> {
                         fontWeight: FontWeight.w800, fontSize: 15)),
                 const SizedBox(height: 2),
                 Text(subtitle,
-                    style: const TextStyle(
-                        color: GwColors.inkSoft, fontSize: 13)),
+                    style: TextStyle(
+                        color: GwColors.inkSoftOf(context), fontSize: 13)),
               ],
             ),
           ),
@@ -379,7 +379,7 @@ class _GpayScreenState extends State<GpayScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: GwColors.surface,
+        color: GwColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(GwRadius.lg),
         boxShadow: GwShadow.card,
       ),
@@ -407,7 +407,7 @@ class _GpayScreenState extends State<GpayScreen> {
                 "ငွေလွှဲ၊ ငွေဖြည့်၊ QR scan အတွက် KYC အချက်အလက်ကို "
                     "app ထဲမှာပဲ ဖြည့်ပြီး အကောင့်ဖွင့်နိုင်ပါပြီ။"),
             textAlign: TextAlign.center,
-            style: const TextStyle(color: GwColors.inkSoft, fontSize: 13),
+            style: TextStyle(color: GwColors.inkSoftOf(context), fontSize: 13),
           ),
           const SizedBox(height: 16),
           SizedBox(
@@ -434,7 +434,7 @@ class _GpayScreenState extends State<GpayScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: GwColors.surfaceMuted,
+              color: GwColors.surfaceMutedOf(context),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Column(
@@ -449,16 +449,16 @@ class _GpayScreenState extends State<GpayScreen> {
                       "Website မှာ အကောင့်ဖွင့်ပြီးသားဖြစ်ပြီး ဒီမှာ မပေါ်ဘူးလား? "
                           "ပိုက်ဆံအိတ်သည် အကောင့်ဖွင့်စဉ်က ဝင်ရောက်ခဲ့သော login နှင့် ချိတ်ဆက်ထားပါသည် — "
                           "website မှာသုံးသလို တူညီသော login (email/Google) ဖြင့် app ထဲ ပြန်ဝင်ပါ။"),
-                  style: const TextStyle(
-                      color: GwColors.inkSoft, fontSize: 11.5, height: 1.45),
+                  style: TextStyle(
+                      color: GwColors.inkSoftOf(context), fontSize: 11.5, height: 1.45),
                 ),
                 if (_identity != null) ...[
                   const SizedBox(height: 6),
                   Text(
                     tr(context, "Signed in as: $_identity",
                         "လက်ရှိ ဝင်ရောက်ထားသည်: $_identity"),
-                    style: const TextStyle(
-                        color: GwColors.ink,
+                    style: TextStyle(
+                        color: GwColors.inkOf(context),
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700),
                   ),

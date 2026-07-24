@@ -317,7 +317,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: GwColors.surface,
+      backgroundColor: GwColors.surfaceOf(context),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (_) => const _NearbyFinderSheet(),
@@ -381,7 +381,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: GwColors.surface,
+        color: GwColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(GwRadius.lg),
         boxShadow: GwShadow.card,
       ),
@@ -413,8 +413,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       Text(
                         tr(context, "${members.length} members",
                             "အဖွဲ့ဝင် ${members.length} ဦး"),
-                        style: const TextStyle(
-                            fontSize: 12, color: GwColors.inkSoft),
+                        style: TextStyle(
+                            fontSize: 12, color: GwColors.inkSoftOf(context)),
                       ),
                     ],
                   ),
@@ -450,7 +450,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: GwColors.surfaceMuted,
+                  color: GwColors.surfaceMutedOf(context),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -465,7 +465,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
                           fontSize: 13),
                     ),
                     const Spacer(),
-                    const Icon(Icons.copy, size: 14, color: GwColors.inkSoft),
+                    Icon(Icons.copy, size: 14, color: GwColors.inkSoftOf(context)),
                   ],
                 ),
               ),
@@ -473,7 +473,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
             const SizedBox(height: 6),
             // Members with live-location status.
             for (final m in members) _memberRow(m),
-            const Divider(height: 18, color: GwColors.line),
+            Divider(height: 18, color: GwColors.lineOf(context)),
             Row(
               children: [
                 Expanded(
@@ -482,7 +482,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       Icon(
                         sharing ? Icons.location_on : Icons.location_off,
                         size: 18,
-                        color: sharing ? GwColors.primary : GwColors.inkSoft,
+                        color: sharing ? GwColors.primary : GwColors.inkSoftOf(context),
                       ),
                       const SizedBox(width: 6),
                       Flexible(
@@ -548,7 +548,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 : tr(context, "Sharing off", "မျှဝေမှု ပိတ်ထားသည်"),
         style: TextStyle(
             fontSize: 11.5,
-            color: lat != null ? GwColors.primary : GwColors.inkSoft),
+            color: lat != null ? GwColors.primary : GwColors.inkSoftOf(context)),
       ),
       trailing: lat != null && lng != null
           ? IconButton(
@@ -640,7 +640,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
   Widget _toolsCard() {
     return Container(
       decoration: BoxDecoration(
-        color: GwColors.surface,
+        color: GwColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(GwRadius.lg),
         boxShadow: GwShadow.card,
       ),
@@ -734,7 +734,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: GwColors.surface,
+        color: GwColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(GwRadius.lg),
         boxShadow: GwShadow.card,
       ),
@@ -875,14 +875,14 @@ class _NearbyFinderSheetState extends State<_NearbyFinderSheet> {
               tr(context,
                   "Walk toward the device — the bar fills as you get closer.",
                   "စက်ဆီ လျှောက်သွားပါ — နီးလာလေ bar ပြည့်လာလေဖြစ်သည်။"),
-              style: const TextStyle(fontSize: 12, color: GwColors.inkSoft),
+              style: TextStyle(fontSize: 12, color: GwColors.inkSoftOf(context)),
             ),
             const SizedBox(height: 8),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Text(_error!,
-                    style: const TextStyle(color: GwColors.inkSoft)),
+                    style: TextStyle(color: GwColors.inkSoftOf(context))),
               )
             else if (_results.isEmpty)
               Padding(
@@ -893,7 +893,7 @@ class _NearbyFinderSheetState extends State<_NearbyFinderSheet> {
                         ? tr(context, "Scanning...", "ရှာဖွေနေသည်...")
                         : tr(context, "No devices found nearby.",
                             "အနီးအနားတွင် စက်မတွေ့ပါ။"),
-                    style: const TextStyle(color: GwColors.inkSoft),
+                    style: TextStyle(color: GwColors.inkSoftOf(context)),
                   ),
                 ),
               )
@@ -927,20 +927,20 @@ class _NearbyFinderSheetState extends State<_NearbyFinderSheet> {
                           child: LinearProgressIndicator(
                             value: strength,
                             minHeight: 6,
-                            backgroundColor: GwColors.surfaceMuted,
+                            backgroundColor: GwColors.surfaceMutedOf(context),
                             color: strength > 0.66
                                 ? GwColors.primary
                                 : strength > 0.33
                                     ? Colors.orange
-                                    : GwColors.inkSoft,
+                                    : GwColors.inkSoftOf(context),
                           ),
                         ),
                       ),
                       trailing: Text(
                         "${_label(r.rssi, context)}\n${r.rssi} dBm",
                         textAlign: TextAlign.right,
-                        style: const TextStyle(
-                            fontSize: 10.5, color: GwColors.inkSoft),
+                        style: TextStyle(
+                            fontSize: 10.5, color: GwColors.inkSoftOf(context)),
                       ),
                     );
                   },

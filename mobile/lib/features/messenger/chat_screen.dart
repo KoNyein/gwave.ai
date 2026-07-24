@@ -341,14 +341,14 @@ class _ChatScreenState extends State<ChatScreen> {
         constraints: BoxConstraints(
             maxWidth: MediaQuery.of(context).size.width * 0.72),
         decoration: BoxDecoration(
-          color: mine ? GwColors.primary : GwColors.surface,
+          color: mine ? GwColors.primary : GwColors.surfaceOf(context),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(18),
             topRight: const Radius.circular(18),
             bottomLeft: Radius.circular(mine ? 18 : 4),
             bottomRight: Radius.circular(mine ? 4 : 18),
           ),
-          border: mine ? null : Border.all(color: GwColors.line),
+          border: mine ? null : Border.all(color: GwColors.lineOf(context)),
         ),
         child: m.isVoice
             ? InkWell(
@@ -365,13 +365,13 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                     const SizedBox(width: 8),
                     Icon(Icons.graphic_eq,
-                        color: mine ? Colors.white70 : GwColors.inkSoft,
+                        color: mine ? Colors.white70 : GwColors.inkSoftOf(context),
                         size: 20),
                     const SizedBox(width: 6),
                     Text(
                       "${(m.durationSeconds ?? 0) ~/ 60}:${((m.durationSeconds ?? 0) % 60).toString().padLeft(2, '0')}",
                       style: TextStyle(
-                          color: mine ? Colors.white : GwColors.ink,
+                          color: mine ? Colors.white : GwColors.inkOf(context),
                           fontWeight: FontWeight.w700,
                           fontSize: 13),
                     ),
@@ -391,17 +391,17 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: GwColors.primary)),
                   ),
-                  errorWidget: (_, __, ___) => const SizedBox(
+                  errorWidget: (_, __, ___) => SizedBox(
                     height: 120,
                     child: Icon(Icons.broken_image_outlined,
-                        color: GwColors.inkSoft),
+                        color: GwColors.inkSoftOf(context)),
                   ),
                 ),
               )
             : Text(
                 m.content,
                 style: TextStyle(
-                  color: mine ? Colors.white : GwColors.ink,
+                  color: mine ? Colors.white : GwColors.inkOf(context),
                   fontSize: 15,
                   height: 1.3,
                 ),
@@ -415,9 +415,9 @@ class _ChatScreenState extends State<ChatScreen> {
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-        decoration: const BoxDecoration(
-          color: GwColors.surface,
-          border: Border(top: BorderSide(color: GwColors.line)),
+        decoration: BoxDecoration(
+          color: GwColors.surfaceOf(context),
+          border: Border(top: BorderSide(color: GwColors.lineOf(context))),
         ),
         child: Row(
           children: [
@@ -441,7 +441,7 @@ class _ChatScreenState extends State<ChatScreen> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: GwColors.surfaceMuted,
+                  color: GwColors.surfaceMutedOf(context),
                   borderRadius: BorderRadius.circular(22),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 16),

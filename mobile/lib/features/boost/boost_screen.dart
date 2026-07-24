@@ -122,7 +122,7 @@ class _BoostScreenState extends State<BoostScreen> {
     }
     final post = await showModalBottomSheet<Post>(
       context: context,
-      backgroundColor: GwColors.bg,
+      backgroundColor: GwColors.bgOf(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
@@ -202,8 +202,8 @@ class _BoostScreenState extends State<BoostScreen> {
                     ctx,
                     "Runs 7 days. The budget is escrowed from your G-Pay wallet; whatever isn't spent refunds on cancel.",
                     "၇ ရက် လည်ပါမည်။ ဘတ်ဂျက်ကို G-Pay wallet မှ ကြိုတင်ယူထားပြီး မသုံးဖြစ်ပါက ရပ်ချိန် ပြန်အမ်းပါမည်။"),
-                style: const TextStyle(
-                    fontSize: 11.5, color: GwColors.inkSoft),
+                style: TextStyle(
+                    fontSize: 11.5, color: GwColors.inkSoftOf(context)),
               ),
             ],
           ),
@@ -281,14 +281,14 @@ class _BoostScreenState extends State<BoostScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
-                      color: GwColors.surface,
+                      color: GwColors.surfaceOf(context),
                       borderRadius: BorderRadius.circular(GwRadius.lg),
                       boxShadow: GwShadow.card,
                     ),
                     child: Row(
                       children: [
                         _sum(tr(context, "Total budget", "စုစုပေါင်း ဘတ်ဂျက်"),
-                            s.budget, GwColors.ink),
+                            s.budget, GwColors.inkOf(context)),
                         _sum(tr(context, "Spent", "သုံးပြီး"), s.spent,
                             GwColors.primary),
                         _sum(tr(context, "Left (escrow)", "ကျန် (escrow)"),
@@ -325,7 +325,7 @@ class _BoostScreenState extends State<BoostScreen> {
           children: [
             Text(label,
                 style:
-                    const TextStyle(fontSize: 11, color: GwColors.inkSoft)),
+                    TextStyle(fontSize: 11, color: GwColors.inkSoftOf(context))),
             const SizedBox(height: 2),
             Text(money(v, "Ks"),
                 style: TextStyle(
@@ -358,7 +358,7 @@ class _BoostScreenState extends State<BoostScreen> {
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: GwColors.surface,
+        color: GwColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(GwRadius.lg),
         boxShadow: GwShadow.card,
       ),
@@ -403,19 +403,19 @@ class _BoostScreenState extends State<BoostScreen> {
                 ? GwColors.primary
                 : paused
                     ? GwColors.gold
-                    : GwColors.inkSoft,
+                    : GwColors.inkSoftOf(context),
           ),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text("${tr(context, "Spent", "သုံးပြီး")} ${money(spent, "Ks")}",
-                  style: const TextStyle(
-                      fontSize: 12.5, color: GwColors.inkSoft)),
+                  style: TextStyle(
+                      fontSize: 12.5, color: GwColors.inkSoftOf(context))),
               Text(
                   "${tr(context, "Budget", "ဘတ်ဂျက်")} ${money(budget, "Ks")}",
-                  style: const TextStyle(
-                      fontSize: 12.5, color: GwColors.inkSoft)),
+                  style: TextStyle(
+                      fontSize: 12.5, color: GwColors.inkSoftOf(context))),
             ],
           ),
           const SizedBox(height: 5),
@@ -424,7 +424,7 @@ class _BoostScreenState extends State<BoostScreen> {
             child: LinearProgressIndicator(
               value: budget > 0 ? (spent / budget).clamp(0.0, 1.0) : 0,
               minHeight: 8,
-              backgroundColor: GwColors.surfaceMuted,
+              backgroundColor: GwColors.surfaceMutedOf(context),
               valueColor: const AlwaysStoppedAnimation(GwColors.primary),
             ),
           ),
@@ -448,7 +448,7 @@ class _BoostScreenState extends State<BoostScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: GwColors.surfaceMuted,
+            color: GwColors.surfaceMutedOf(context),
             borderRadius: BorderRadius.circular(GwRadius.sm),
           ),
           child: Column(
@@ -456,11 +456,11 @@ class _BoostScreenState extends State<BoostScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(icon, size: 13, color: GwColors.inkSoft),
+                  Icon(icon, size: 13, color: GwColors.inkSoftOf(context)),
                   const SizedBox(width: 4),
                   Text(label,
-                      style: const TextStyle(
-                          fontSize: 11, color: GwColors.inkSoft)),
+                      style: TextStyle(
+                          fontSize: 11, color: GwColors.inkSoftOf(context))),
                 ],
               ),
               const SizedBox(height: 2),

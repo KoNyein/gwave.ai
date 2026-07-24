@@ -126,7 +126,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       ],
                       if (_outgoing.isNotEmpty) ...[
                         _sectionTitle("Requests sent", _outgoing.length,
-                            GwColors.inkSoft),
+                            GwColors.inkSoftOf(context)),
                         const SizedBox(height: 8),
                         _card(_outgoing
                             .map((f) => _personRow(f, sent: true))
@@ -181,7 +181,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     }
     return Container(
       decoration: BoxDecoration(
-        color: GwColors.surface,
+        color: GwColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(GwRadius.lg),
         boxShadow: GwShadow.card,
       ),
@@ -220,8 +220,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       onPressed: () => _accept(f),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.cancel_outlined,
-                          color: GwColors.inkSoft),
+                      icon: Icon(Icons.cancel_outlined,
+                          color: GwColors.inkSoftOf(context)),
                       tooltip: "Decline",
                       onPressed: () => _remove(f, "decline"),
                     ),
@@ -232,7 +232,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       onPressed: () => _remove(f, "cancel"),
                       child: const Text("Cancel"),
                     )
-                  : const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+                  : Icon(Icons.chevron_right, color: GwColors.inkSoftOf(context)),
     );
   }
 }

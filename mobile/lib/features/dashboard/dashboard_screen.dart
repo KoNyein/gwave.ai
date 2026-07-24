@@ -67,7 +67,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: GwColors.surface,
+                color: GwColors.surfaceOf(context),
                 borderRadius: BorderRadius.circular(GwRadius.lg),
                 boxShadow: GwShadow.card,
               ),
@@ -87,8 +87,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 fontWeight: FontWeight.w900, fontSize: 16)),
                         if (me?.username != null)
                           Text("@${me!.username}",
-                              style: const TextStyle(
-                                  color: GwColors.inkSoft, fontSize: 13)),
+                              style: TextStyle(
+                                  color: GwColors.inkSoftOf(context), fontSize: 13)),
                       ],
                     ),
                   ),
@@ -96,7 +96,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onPressed: () => _openWeb("/settings"),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: GwColors.primary,
-                      side: const BorderSide(color: GwColors.line),
+                      side: BorderSide(color: GwColors.lineOf(context)),
                     ),
                     child: const Text("Settings"),
                   ),
@@ -272,7 +272,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: GwColors.surface,
+          color: GwColors.surfaceOf(context),
           borderRadius: BorderRadius.circular(GwRadius.lg),
           boxShadow: GwShadow.card,
         ),
@@ -294,8 +294,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: const TextStyle(
                     fontSize: 24, fontWeight: FontWeight.w900)),
             Text(label,
-                style: const TextStyle(
-                    color: GwColors.inkSoft, fontSize: 12)),
+                style: TextStyle(
+                    color: GwColors.inkSoftOf(context), fontSize: 12)),
           ],
         ),
       ),
@@ -312,7 +312,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: GwColors.surface,
+        color: GwColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(GwRadius.lg),
         boxShadow: GwShadow.card,
       ),
@@ -330,10 +330,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ActionChip(
                   avatar: Icon(a.$1, size: 18, color: GwColors.primary),
                   label: Text(a.$2),
-                  labelStyle: const TextStyle(
-                      color: GwColors.ink, fontWeight: FontWeight.w600),
-                  backgroundColor: GwColors.surfaceMuted,
-                  side: const BorderSide(color: GwColors.line),
+                  labelStyle: TextStyle(
+                      color: GwColors.inkOf(context), fontWeight: FontWeight.w600),
+                  backgroundColor: GwColors.surfaceMutedOf(context),
+                  side: BorderSide(color: GwColors.lineOf(context)),
                   onPressed: () => _openWeb(a.$3),
                 ),
             ],

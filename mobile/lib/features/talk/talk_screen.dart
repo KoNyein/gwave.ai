@@ -225,9 +225,9 @@ class _TalkScreenState extends State<TalkScreen> {
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: GwColors.surface,
+                  color: GwColors.surfaceOf(context),
                   borderRadius: BorderRadius.circular(GwRadius.lg),
-                  border: Border.all(color: GwColors.line),
+                  border: Border.all(color: GwColors.lineOf(context)),
                   boxShadow: GwShadow.card,
                 ),
                 child: Row(
@@ -259,12 +259,12 @@ class _TalkScreenState extends State<TalkScreen> {
                                   context,
                                   "No internet needed — Bluetooth/WiFi direct + GPS share",
                                   "အင်တာနက်မလို — ဖုန်းချင်း တိုက်ရိုက် + တည်နေရာ မျှဝေ"),
-                              style: const TextStyle(
-                                  color: GwColors.inkSoft, fontSize: 12)),
+                              style: TextStyle(
+                                  color: GwColors.inkSoftOf(context), fontSize: 12)),
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+                    Icon(Icons.chevron_right, color: GwColors.inkSoftOf(context)),
                   ],
                 ),
               ),
@@ -311,7 +311,7 @@ class _TalkScreenState extends State<TalkScreen> {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: GwColors.surface,
+            color: GwColors.surfaceOf(context),
             borderRadius: BorderRadius.circular(GwRadius.lg),
             boxShadow: GwShadow.card,
           ),
@@ -338,19 +338,19 @@ class _TalkScreenState extends State<TalkScreen> {
                             fontWeight: FontWeight.w700, fontSize: 15)),
                     if (c.joinCode != null)
                       Text("Code: ${c.joinCode}",
-                          style: const TextStyle(
-                              color: GwColors.inkSoft, fontSize: 11.5)),
+                          style: TextStyle(
+                              color: GwColors.inkSoftOf(context), fontSize: 11.5)),
                   ],
                 ),
               ),
-              const Icon(Icons.people_outline,
-                  size: 16, color: GwColors.inkSoft),
+              Icon(Icons.people_outline,
+                  size: 16, color: GwColors.inkSoftOf(context)),
               const SizedBox(width: 4),
               Text("${c.memberCount}",
-                  style: const TextStyle(
-                      color: GwColors.inkSoft, fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                      color: GwColors.inkSoftOf(context), fontWeight: FontWeight.w600)),
               const SizedBox(width: 6),
-              const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+              Icon(Icons.chevron_right, color: GwColors.inkSoftOf(context)),
             ],
           ),
         ),

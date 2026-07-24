@@ -467,7 +467,7 @@ class _PttChannelScreenState extends State<PttChannelScreen>
     if (!mounted) return;
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: GwColors.bg,
+      backgroundColor: GwColors.bgOf(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
@@ -560,9 +560,9 @@ class _PttChannelScreenState extends State<PttChannelScreen>
                       context,
                       "$_onlineCount online · ${widget.channel.memberCount} members",
                       "Online $_onlineCount ဦး · အဖွဲ့ဝင် ${widget.channel.memberCount} ဦး"),
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 12,
-                      color: GwColors.inkSoft,
+                      color: GwColors.inkSoftOf(context),
                       fontWeight: FontWeight.w500),
                 ),
               ],
@@ -714,9 +714,9 @@ class _PttChannelScreenState extends State<PttChannelScreen>
                     ? GwColors.primary
                     : (playing
                         ? GwColors.primary.withValues(alpha: 0.12)
-                        : GwColors.surface),
+                        : GwColors.surfaceOf(context)),
                 borderRadius: BorderRadius.circular(16),
-                border: isMine ? null : Border.all(color: GwColors.line),
+                border: isMine ? null : Border.all(color: GwColors.lineOf(context)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -740,14 +740,14 @@ class _PttChannelScreenState extends State<PttChannelScreen>
                       const SizedBox(width: 8),
                       Icon(Icons.graphic_eq,
                           size: 18,
-                          color: isMine ? Colors.white70 : GwColors.inkSoft),
+                          color: isMine ? Colors.white70 : GwColors.inkSoftOf(context)),
                       const SizedBox(width: 6),
                       Text(
                         "${secs}s",
                         style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w700,
-                            color: isMine ? Colors.white : GwColors.ink),
+                            color: isMine ? Colors.white : GwColors.inkOf(context)),
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -755,7 +755,7 @@ class _PttChannelScreenState extends State<PttChannelScreen>
                         style: TextStyle(
                             fontSize: 10.5,
                             color:
-                                isMine ? Colors.white70 : GwColors.inkSoft),
+                                isMine ? Colors.white70 : GwColors.inkSoftOf(context)),
                       ),
                     ],
                   ),
@@ -774,9 +774,9 @@ class _PttChannelScreenState extends State<PttChannelScreen>
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-        decoration: const BoxDecoration(
-          color: GwColors.surface,
-          border: Border(top: BorderSide(color: GwColors.line)),
+        decoration: BoxDecoration(
+          color: GwColors.surfaceOf(context),
+          border: Border(top: BorderSide(color: GwColors.lineOf(context))),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -791,7 +791,7 @@ class _PttChannelScreenState extends State<PttChannelScreen>
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: _recording ? GwColors.live : GwColors.inkSoft,
+                color: _recording ? GwColors.live : GwColors.inkSoftOf(context),
               ),
             ),
             const SizedBox(height: 10),

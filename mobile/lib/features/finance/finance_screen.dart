@@ -279,7 +279,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
     final added = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: GwColors.surface,
+      backgroundColor: GwColors.surfaceOf(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(GwRadius.lg)),
       ),
@@ -428,7 +428,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: GwColors.surface,
+                        color: GwColors.surfaceOf(context),
                         borderRadius: BorderRadius.circular(GwRadius.lg),
                         boxShadow: GwShadow.card,
                       ),
@@ -464,9 +464,9 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                                       FontWeight.w600))),
                                       Text(
                                           "${money(entry.value, "Ks")} · ${(entry.value / m.total * 100).toStringAsFixed(0)}%",
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                               fontSize: 12,
-                                              color: GwColors.inkSoft,
+                                              color: GwColors.inkSoftOf(context),
                                               fontWeight: FontWeight.w700)),
                                     ],
                                   ),
@@ -477,7 +477,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                       value: (entry.value / m.total)
                                           .clamp(0.0, 1.0),
                                       minHeight: 6,
-                                      backgroundColor: GwColors.surfaceMuted,
+                                      backgroundColor: GwColors.surfaceMutedOf(context),
                                       valueColor:
                                           const AlwaysStoppedAnimation(
                                               GwColors.primary),
@@ -564,7 +564,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Container(
         decoration: BoxDecoration(
-          color: GwColors.surface,
+          color: GwColors.surfaceOf(context),
           borderRadius: BorderRadius.circular(GwRadius.lg),
           boxShadow: GwShadow.card,
           border: overdue
@@ -592,7 +592,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 decoration: e.isPaid ? TextDecoration.lineThrough : null,
-                color: e.isPaid ? GwColors.inkSoft : GwColors.ink,
+                color: e.isPaid ? GwColors.inkSoftOf(context) : GwColors.inkOf(context),
               )),
           subtitle: Text(
             [
@@ -606,7 +606,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
                 fontSize: 12,
-                color: overdue ? GwColors.live : GwColors.inkSoft),
+                color: overdue ? GwColors.live : GwColors.inkSoftOf(context)),
           ),
           trailing: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -623,7 +623,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color:
-                          e.isPaid ? GwColors.inkSoft : GwColors.primary),
+                          e.isPaid ? GwColors.inkSoftOf(context) : GwColors.primary),
                 ),
               ),
             ],
@@ -734,7 +734,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
                       size: 16,
                       color: _category == c.$1
                           ? GwColors.primary
-                          : GwColors.inkSoft),
+                          : GwColors.inkSoftOf(context)),
                   label: Text(c.$2),
                   selectedColor: GwColors.primary.withValues(alpha: 0.15),
                 ),
@@ -760,8 +760,8 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
                       ? "Due date (optional)"
                       : "${_due!.day}/${_due!.month}/${_due!.year}"),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: GwColors.ink,
-                    side: const BorderSide(color: GwColors.line),
+                    foregroundColor: GwColors.inkOf(context),
+                    side: BorderSide(color: GwColors.lineOf(context)),
                   ),
                 ),
               ),

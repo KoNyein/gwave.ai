@@ -131,7 +131,7 @@ class _LanguagesScreenState extends State<LanguagesScreen> {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: GwColors.surface,
+            color: GwColors.surfaceOf(context),
             borderRadius: BorderRadius.circular(GwRadius.lg),
             boxShadow: GwShadow.card,
           ),
@@ -163,8 +163,8 @@ class _LanguagesScreenState extends State<LanguagesScreen> {
                       Text(c["description"].toString(),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: GwColors.inkSoft,
+                          style: TextStyle(
+                              color: GwColors.inkSoftOf(context),
                               fontSize: 12,
                               height: 1.35)),
                     const SizedBox(height: 3),
@@ -177,7 +177,7 @@ class _LanguagesScreenState extends State<LanguagesScreen> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+              Icon(Icons.chevron_right, color: GwColors.inkSoftOf(context)),
             ],
           ),
         ),
@@ -277,7 +277,7 @@ class _LangCourseScreenState extends State<LangCourseScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
-            color: GwColors.surface,
+            color: GwColors.surfaceOf(context),
             borderRadius: BorderRadius.circular(GwRadius.md),
             boxShadow: GwShadow.card,
           ),
@@ -307,19 +307,19 @@ class _LangCourseScreenState extends State<LangCourseScreen> {
                             fontWeight: FontWeight.w700, fontSize: 14.5)),
                     Text(
                         "${u["subtitle"] ?? ""} · $items ${tr(context, "phrases", "စကားစု")}",
-                        style: const TextStyle(
-                            color: GwColors.inkSoft, fontSize: 11.5)),
+                        style: TextStyle(
+                            color: GwColors.inkSoftOf(context), fontSize: 11.5)),
                   ],
                 ),
               ),
               Text("${index + 1}",
-                  style: const TextStyle(
-                      color: GwColors.inkSoft,
+                  style: TextStyle(
+                      color: GwColors.inkSoftOf(context),
                       fontWeight: FontWeight.w700,
                       fontSize: 12)),
               const SizedBox(width: 6),
-              const Icon(Icons.chevron_right,
-                  color: GwColors.inkSoft, size: 20),
+              Icon(Icons.chevron_right,
+                  color: GwColors.inkSoftOf(context), size: 20),
             ],
           ),
         ),
@@ -435,7 +435,7 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
   void _pickSpeed() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: GwColors.surface,
+      backgroundColor: GwColors.surfaceOf(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(GwRadius.lg)),
       ),
@@ -447,9 +447,9 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
             title: Text(label,
                 style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: selected ? GwColors.primary : GwColors.ink)),
+                    color: selected ? GwColors.primary : GwColors.inkOf(context))),
             subtitle: Text(sub,
-                style: const TextStyle(color: GwColors.inkSoft, fontSize: 12)),
+                style: TextStyle(color: GwColors.inkSoftOf(context), fontSize: 12)),
             trailing: selected
                 ? const Icon(Icons.check_circle, color: GwColors.primary)
                 : null,
@@ -578,7 +578,7 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: GwColors.surface,
+                color: GwColors.surfaceOf(context),
                 borderRadius: BorderRadius.circular(GwRadius.md),
                 boxShadow: GwShadow.card,
               ),
@@ -601,8 +601,8 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w600)),
                         Text((p["my"] ?? "").toString(),
-                            style: const TextStyle(
-                                color: GwColors.inkSoft, fontSize: 13)),
+                            style: TextStyle(
+                                color: GwColors.inkSoftOf(context), fontSize: 13)),
                       ],
                     ),
                   ),
@@ -615,9 +615,9 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
                       width: 38,
                       height: 38,
                       decoration: BoxDecoration(
-                        color: GwColors.surfaceMuted,
+                        color: GwColors.surfaceMutedOf(context),
                         shape: BoxShape.circle,
-                        border: Border.all(color: GwColors.line, width: 1.2),
+                        border: Border.all(color: GwColors.lineOf(context), width: 1.2),
                       ),
                       child: const Center(
                           child: Text("🐢", style: TextStyle(fontSize: 18))),
@@ -691,14 +691,14 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
         Text(
           "${_qIndex + 1} / ${_quizItems.length}",
           textAlign: TextAlign.center,
-          style: const TextStyle(
-              color: GwColors.inkSoft, fontWeight: FontWeight.w700),
+          style: TextStyle(
+              color: GwColors.inkSoftOf(context), fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: GwColors.surface,
+            color: GwColors.surfaceOf(context),
             borderRadius: BorderRadius.circular(GwRadius.lg),
             boxShadow: GwShadow.card,
           ),
@@ -730,7 +730,7 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
               ),
               Text(
                 tr(context, "What does this mean?", "အဓိပ္ပာယ် ဘာလဲ?"),
-                style: const TextStyle(color: GwColors.inkSoft, fontSize: 13),
+                style: TextStyle(color: GwColors.inkSoftOf(context), fontSize: 13),
               ),
             ],
           ),
@@ -761,7 +761,7 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
   Widget _option(int index, String text, String correct) {
     final chosen = _chosen == index;
     final isCorrect = text == correct;
-    Color border = GwColors.line;
+    Color border = GwColors.lineOf(context);
     Color? fill;
     if (_chosen != null) {
       if (isCorrect) {
@@ -788,7 +788,7 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           decoration: BoxDecoration(
-            color: fill ?? GwColors.surface,
+            color: fill ?? GwColors.surfaceOf(context),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: border, width: 1.4),
             boxShadow: GwShadow.card,
