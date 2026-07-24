@@ -6,8 +6,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_state.dart';
 import '../../core/config.dart';
+import '../../core/i18n.dart';
+import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
+import '../feed/post_card.dart';
 import '../web/web_screen.dart';
 import '../../widgets/common.dart';
 import '../boost/boost_screen.dart';
@@ -45,144 +48,191 @@ class ProfileScreen extends StatelessWidget {
     final me = state.me;
     final name = me?.displayName ?? state.api.session?.email ?? "Gwave user";
 
+    // Facebook-style proportional cover: height follows the screen width at
+    // FB's ~2.4:1 banner ratio, so photos crop the same way they do there.
+    final coverH =
+        (MediaQuery.of(context).size.width * 0.42).clamp(150.0, 240.0);
+
+    const avatarSize = 108.0;
+    const avatarOverlap = 54.0; // half the avatar hangs over the cover edge
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            expandedHeight: 172,
-            pinned: true,
-            backgroundColor: GwColors.primary,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _cover(resolveMedia(me?.coverUrl)),
-                  // Change-cover control, Facebook style (bottom-right).
-                  Positioned(
-                    right: 12,
-                    bottom: 12,
-                    child: InkWell(
-                      onTap: () => _changePhoto(context, cover: true),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.45),
-                          borderRadius: BorderRadius.circular(20),
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Cover + avatar live in ONE Stack so the avatar always paints
+                // on top of the cover. (A pinned SliverAppBar used to paint
+                // over the translated avatar and swallow its top half.)
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Column(
+                      children: [
+                        SizedBox(
+                          height: coverH,
+                          width: double.infinity,
+                          child: _cover(resolveMedia(me?.coverUrl)),
                         ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
+                        // Room for the hanging half of the avatar.
+                        const SizedBox(height: avatarOverlap + 10),
+                      ],
+                    ),
+                    // Settings gear over the cover's top-right.
+                    Positioned(
+                      top: MediaQuery.of(context).padding.top + 2,
+                      right: 4,
+                      child: IconButton(
+                        icon: Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.35),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.settings,
+                              color: Colors.white, size: 20),
+                        ),
+                        onPressed: () => _openSettings(context),
+                      ),
+                    ),
+                    // Change-cover control, Facebook style (bottom-right of
+                    // the cover itself).
+                    Positioned(
+                      right: 12,
+                      bottom: avatarOverlap + 10 + 12,
+                      child: InkWell(
+                        onTap: () => _changePhoto(context, cover: true),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.45),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.photo_camera_outlined,
+                                  color: Colors.white, size: 16),
+                              SizedBox(width: 6),
+                              Text("Cover",
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // The avatar, overlapping the cover's bottom-left with a
+                    // thick page-background ring — classic Facebook.
+                    Positioned(
+                      left: 16,
+                      top: coverH - avatarOverlap,
+                      child: Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: const BoxDecoration(
+                          color: GwColors.bg,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Stack(
                           children: [
-                            Icon(Icons.photo_camera_outlined,
-                                color: Colors.white, size: 16),
-                            SizedBox(width: 6),
-                            Text("Cover",
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w700)),
+                            GwAvatar(
+                              url: resolveMedia(me?.avatarUrl),
+                              name: name,
+                              size: avatarSize,
+                            ),
+                            Positioned(
+                              right: 2,
+                              bottom: 2,
+                              child: InkWell(
+                                onTap: () =>
+                                    _changePhoto(context, cover: false),
+                                child: Container(
+                                  width: 34,
+                                  height: 34,
+                                  decoration: BoxDecoration(
+                                    color: GwColors.surfaceMuted,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: GwColors.bg, width: 2.5),
+                                  ),
+                                  child: const Icon(Icons.photo_camera,
+                                      color: GwColors.ink, size: 17),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.settings, color: Colors.white),
-                onPressed: () => _openSettings(context),
-              ),
-            ],
-          ),
-          SliverToBoxAdapter(
-            child: Transform.translate(
-              offset: const Offset(0, -44),
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: GwColors.bg,
-                      shape: BoxShape.circle,
-                      boxShadow: GwShadow.card,
-                    ),
-                    child: Stack(
-                      children: [
-                        GwAvatar(
-                          url: resolveMedia(me?.avatarUrl),
-                          name: name,
-                          size: 96,
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name,
+                          style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5)),
+                      if (me?.username != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text("@${me!.username}",
+                              style: const TextStyle(
+                                  color: GwColors.inkSoft, fontSize: 14)),
                         ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: InkWell(
-                            onTap: () => _changePhoto(context, cover: false),
-                            child: Container(
-                              width: 30,
-                              height: 30,
-                              decoration: BoxDecoration(
-                                color: GwColors.primary,
-                                shape: BoxShape.circle,
-                                border:
-                                    Border.all(color: Colors.white, width: 2),
-                              ),
-                              child: const Icon(Icons.photo_camera,
-                                  color: Colors.white, size: 15),
+                      if (me?.bio != null && me!.bio!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(me.bio!,
+                              style: const TextStyle(
+                                  color: GwColors.ink,
+                                  fontSize: 14.5,
+                                  height: 1.35)),
+                        ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => _openSettings(context),
+                              icon: const Icon(Icons.edit, size: 18),
+                              label: const Text("Edit Profile"),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(name,
-                      style: const TextStyle(
-                          fontSize: 22, fontWeight: FontWeight.w900)),
-                  if (me?.username != null)
-                    Text("@${me!.username}",
-                        style: const TextStyle(color: GwColors.inkSoft)),
-                  if (me?.bio != null && me!.bio!.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(32, 10, 32, 0),
-                      child: Text(me.bio!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: GwColors.inkSoft)),
-                    ),
-                  const SizedBox(height: 18),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _openSettings(context),
-                            icon: const Icon(Icons.edit, size: 18),
-                            label: const Text("Edit Profile"),
+                          const SizedBox(width: 10),
+                          OutlinedButton(
+                            onPressed: () =>
+                                _openWeb(context, "/u/${me?.username ?? ''}"),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: GwColors.primary,
+                              backgroundColor: GwColors.surface,
+                              side: const BorderSide(color: GwColors.line),
+                              padding: const EdgeInsets.all(14),
+                            ),
+                            child: const Icon(Icons.open_in_new, size: 18),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        OutlinedButton(
-                          onPressed: () => _openWeb(context, "/u/${me?.username ?? ''}"),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: GwColors.primary,
-                            backgroundColor: GwColors.surface,
-                            side: const BorderSide(color: GwColors.line),
-                            padding: const EdgeInsets.all(14),
-                          ),
-                          child: const Icon(Icons.open_in_new, size: 18),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      const Divider(color: GwColors.line, height: 20),
+                    ],
                   ),
-                  const SizedBox(height: 22),
-                  _menu(context),
-                  const SizedBox(height: 30),
-                ],
-              ),
+                ),
+                _menu(context),
+                // Facebook-style timeline: your own posts right on the
+                // profile, newest first.
+                const _MyPostsSection(),
+                const SizedBox(height: 30),
+              ],
             ),
           ),
         ],
@@ -195,11 +245,13 @@ class ProfileScreen extends StatelessWidget {
         ? CachedNetworkImage(
             imageUrl: url,
             fit: BoxFit.cover,
+            alignment: Alignment.center,
             errorWidget: (_, __, ___) => _coverPh(),
             placeholder: (_, __) => _coverPh(),
           )
         : _coverPh();
-    // Gentle bottom scrim so the white avatar and status icons stay legible.
+    // Facebook-style: square-edged cover with a gentle top/bottom scrim so
+    // the status icons and the Cover button stay legible on any photo.
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -209,7 +261,8 @@ class ProfileScreen extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Colors.transparent, Color(0x33000000)],
+              colors: [Color(0x22000000), Colors.transparent, Color(0x33000000)],
+              stops: [0, 0.5, 1],
             ),
           ),
         ),
@@ -618,4 +671,72 @@ class _MenuEntry {
   final int? tab;
   final _Native? native;
   final String? web;
+}
+
+/// Facebook-style timeline on the profile: the signed-in user's own posts,
+/// loaded lazily and rendered with the same cards as the feed.
+class _MyPostsSection extends StatefulWidget {
+  const _MyPostsSection();
+
+  @override
+  State<_MyPostsSection> createState() => _MyPostsSectionState();
+}
+
+class _MyPostsSectionState extends State<_MyPostsSection> {
+  List<Post> _posts = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final posts = await context.read<AppState>().repo.myPosts(limit: 15);
+      if (mounted) setState(() => _posts = posts);
+    } catch (_) {
+      // The profile stays useful without the timeline.
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+          child: Text(
+            tr(context, "Posts", "ပို့စ်များ"),
+            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+          ),
+        ),
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+                child: CircularProgressIndicator(color: GwColors.primary)),
+          )
+        else if (_posts.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Text(
+              tr(context, "No posts yet — share something from the Feed tab.",
+                  "ပို့စ် မရှိသေးပါ — Feed tab ကနေ တစ်ခုခု မျှဝေကြည့်ပါ။"),
+              style: const TextStyle(color: GwColors.inkSoft, fontSize: 13),
+            ),
+          )
+        else
+          for (final p in _posts)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: PostCard(post: p),
+            ),
+      ],
+    );
+  }
 }

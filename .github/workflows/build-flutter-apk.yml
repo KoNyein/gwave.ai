@@ -97,6 +97,20 @@ jobs:
                   '    <application',
                   1,
               )
+          # Offline nearby chat (Google Nearby Connections): Android 12+ splits
+          # Bluetooth into runtime permissions, and 13+ adds nearby-wifi.
+          if 'android.permission.BLUETOOTH_ADVERTISE' not in s:
+              s = s.replace(
+                  '<application',
+                  '<uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />\n'
+                  '    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />\n'
+                  '    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />\n'
+                  '    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" android:usesPermissionFlags="neverForLocation" />\n'
+                  '    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />\n'
+                  '    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />\n'
+                  '    <application',
+                  1,
+              )
           # Location for the GPS map — the embedded map's geolocation ("find me",
           # live tracking) is denied without these, so it can't locate the user.
           if 'android.permission.ACCESS_FINE_LOCATION' not in s:

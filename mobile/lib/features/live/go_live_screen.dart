@@ -39,6 +39,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
   bool _busy = false;
   bool _muted = false;
   bool _shareLocation = false; // tag the broadcast with GPS (📍 on the card)
+  bool _record = true; // save a replay after the broadcast ends (opt-in)
   String? _error;
 
   String? _streamId;
@@ -126,6 +127,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
         locationName: locName,
         latitude: lat,
         longitude: lng,
+        record: _record,
       );
       _streamId = s.id;
       _ingestUrl = s.ingestUrl;
@@ -411,6 +413,26 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 style: const TextStyle(color: Colors.white38, fontSize: 12),
               ),
               onChanged: (v) => setState(() => _shareLocation = v),
+            ),
+            SwitchListTile(
+              value: _record,
+              activeColor: GwColors.live,
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                tr(context, "🔴 Record this live (save replay)",
+                    "🔴 ဒီ Live ကို Record လုပ်မယ် (Replay သိမ်း)"),
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                _record
+                    ? tr(context, "Viewers can replay it after you end.",
+                        "Live ပြီးရင် Replay ပြန်ကြည့်လို့ရပါမယ်။")
+                    : tr(context, "No replay will be saved.",
+                        "Replay ပြန်ကြည့်လို့ မရပါ။"),
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
+              ),
+              onChanged: (v) => setState(() => _record = v),
             ),
             const Spacer(),
             if (_error != null) ...[

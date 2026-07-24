@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:provider/provider.dart';
 
@@ -52,6 +56,27 @@ class CallScreen extends StatelessWidget {
                       gradient: GwColors.primaryGradient),
                 ),
               ),
+
+            // Minimize: drop back into the app while the call keeps going.
+            Positioned(
+              top: 46,
+              left: 12,
+              child: SafeArea(
+                child: InkWell(
+                  onTap: () => Navigator.of(context).pop(),
+                  borderRadius: BorderRadius.circular(22),
+                  child: Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.keyboard_arrow_down,
+                        color: Colors.white, size: 26),
+                  ),
+                ),
+              ),
+            ),
 
             // Local preview (video only), top-right.
             if (call.video)
@@ -127,6 +152,15 @@ class CallScreen extends StatelessWidget {
                     label: "Mute",
                     active: call.muted,
                     onTap: call.toggleMute,
+                  ),
+                  const SizedBox(width: 18),
+                  _round(
+                    icon: call.speakerOn
+                        ? Icons.volume_up
+                        : Icons.hearing,
+                    label: "Speaker",
+                    active: call.speakerOn,
+                    onTap: call.toggleSpeaker,
                   ),
                   if (call.video) ...[
                     const SizedBox(width: 18),
@@ -294,40 +328,162 @@ class CallOverlay extends StatefulWidget {
   State<CallOverlay> createState() => _CallOverlayState();
 }
 
-class _CallOverlayState extends State<CallOverlay> {
+class _CallOverlayState extends State<CallOverlay>
+    with WidgetsBindingObserver {
   CallPhase _last = CallPhase.idle;
   bool _routeOpen = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Android kills the Realtime socket in background; rebuild the ring inbox
+    // the moment the app comes back so calls ring again.
+    if (state == AppLifecycleState.resumed) {
+      context.read<CallService>().ensureConnected();
+    }
+  }
+
+  /// Looping ringtone (incoming) / ringback (outgoing) + vibration pulses.
+  final AudioPlayer _ring = AudioPlayer();
+  Timer? _vibrate;
+
+  void _updateRing(CallPhase phase) {
+    _vibrate?.cancel();
+    _vibrate = null;
+    if (phase == CallPhase.incoming) {
+      _ring.setReleaseMode(ReleaseMode.loop);
+      _ring.play(AssetSource("ringtone.wav"), volume: 1.0);
+      HapticFeedback.vibrate();
+      _vibrate = Timer.periodic(
+          const Duration(milliseconds: 1200), (_) => HapticFeedback.vibrate());
+    } else if (phase == CallPhase.outgoing) {
+      _ring.setReleaseMode(ReleaseMode.loop);
+      _ring.play(AssetSource("ringback.wav"), volume: 0.6);
+    } else {
+      _ring.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _vibrate?.cancel();
+    _ring.dispose();
+    super.dispose();
+  }
+
+  /// The user minimized the call screen to keep using the app; the media keeps
+  /// flowing in CallService and a floating pill brings the screen back.
+  bool _minimized = false;
+
+  static bool _inCall(CallPhase p) =>
+      p == CallPhase.outgoing ||
+      p == CallPhase.connecting ||
+      p == CallPhase.active;
+
+  @override
   Widget build(BuildContext context) {
-    final phase = context.watch<CallService>().phase;
+    final call = context.watch<CallService>();
+    final phase = call.phase;
     if (phase != _last) {
       _last = phase;
+      if (!_inCall(phase)) _minimized = false;
+      _updateRing(phase);
       WidgetsBinding.instance.addPostFrameCallback((_) => _sync(phase));
     }
-    return widget.child;
+    return Stack(
+      children: [
+        widget.child,
+        if (_minimized && _inCall(phase))
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 92,
+            child: SafeArea(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    setState(() => _minimized = false);
+                    _sync(phase);
+                  },
+                  borderRadius: BorderRadius.circular(26),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 11),
+                    decoration: BoxDecoration(
+                      gradient: GwColors.primaryGradient,
+                      borderRadius: BorderRadius.circular(26),
+                      boxShadow: GwShadow.card,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.phone_in_talk,
+                            color: Colors.white, size: 19),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            "${call.peer?.displayName ?? "Call"} · ${call.phase == CallPhase.active ? call.durationLabel : "Ringing…"} — ဖုန်းပြန်ဖွင့်ရန် နှိပ်ပါ",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13),
+                          ),
+                        ),
+                        const Icon(Icons.open_in_full,
+                            color: Colors.white70, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   void _sync(CallPhase phase) {
     if (!mounted) return;
     final nav = Navigator.of(context, rootNavigator: true);
     if (phase == CallPhase.incoming && !_routeOpen) {
+      _minimized = false;
       _routeOpen = true;
       nav
           .push(MaterialPageRoute(
               fullscreenDialog: true,
               builder: (_) => const _CallRouter()))
-          .then((_) => _routeOpen = false);
-    } else if ((phase == CallPhase.outgoing ||
-            phase == CallPhase.connecting ||
-            phase == CallPhase.active) &&
-        !_routeOpen) {
+          .then((_) {
+        _routeOpen = false;
+        _afterRouteClosed();
+      });
+    } else if (_inCall(phase) && !_routeOpen && !_minimized) {
       _routeOpen = true;
       nav
           .push(MaterialPageRoute(
               fullscreenDialog: true,
               builder: (_) => const _CallRouter()))
-          .then((_) => _routeOpen = false);
+          .then((_) {
+        _routeOpen = false;
+        _afterRouteClosed();
+      });
+    }
+  }
+
+  /// The call route was popped. If the call is still running, the user chose
+  /// to minimize — show the floating pill instead of re-opening the screen.
+  void _afterRouteClosed() {
+    if (!mounted) return;
+    final phase = context.read<CallService>().phase;
+    if (_inCall(phase)) {
+      setState(() => _minimized = true);
     }
   }
 }

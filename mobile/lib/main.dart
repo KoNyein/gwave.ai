@@ -6,6 +6,7 @@ import 'core/app_state.dart';
 import 'core/call_service.dart';
 import 'core/i18n.dart';
 import 'core/theme.dart';
+import 'core/theme_pref.dart';
 import 'features/auth/login_screen.dart';
 import 'features/messenger/call_screen.dart';
 import 'features/shell/home_shell.dart';
@@ -24,6 +25,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => AppState()..bootstrap()),
         ChangeNotifierProvider(create: (_) => GwLang()),
+        ChangeNotifierProvider(create: (_) => GwThemePref()),
         // Built once from AppState's api/repo; stable across rebuilds.
         ChangeNotifierProxyProvider<AppState, CallService>(
           create: (ctx) {
@@ -47,6 +49,8 @@ class GwaveApp extends StatelessWidget {
       title: "Gwave",
       debugShowCheckedModeBanner: false,
       theme: buildGwTheme(),
+      darkTheme: buildGwDarkTheme(),
+      themeMode: context.watch<GwThemePref>().mode,
       home: const _Root(),
     );
   }

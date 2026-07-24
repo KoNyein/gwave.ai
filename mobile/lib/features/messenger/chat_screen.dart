@@ -1,4 +1,10 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -32,13 +38,121 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _load();
+    _pollPresence();
+    _presenceTimer =
+        Timer.periodic(const Duration(seconds: 45), (_) => _pollPresence());
   }
 
   @override
   void dispose() {
+    _presenceTimer?.cancel();
+    _voiceRecorder.dispose();
+    _voicePlayer.dispose();
     _input.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  // ---- Voice messages ------------------------------------------------------
+  final _voiceRecorder = AudioRecorder();
+  final _voicePlayer = AudioPlayer();
+  bool _recordingVoice = false;
+  bool _sendingVoice = false;
+  DateTime? _voiceStart;
+  String? _playingMessageId;
+
+  /// Tap the mic to start, tap the stop button to send. FB Messenger-style
+  /// voice notes, stored like the web's (file_kind 'audio').
+  Future<void> _toggleVoice() async {
+    if (_sendingVoice) return;
+    if (_recordingVoice) {
+      final path = await _voiceRecorder.stop();
+      final started = _voiceStart;
+      setState(() => _recordingVoice = false);
+      if (path == null || started == null) return;
+      final secs = DateTime.now().difference(started).inSeconds;
+      setState(() => _sendingVoice = true);
+      try {
+        final bytes = await File(path).readAsBytes();
+        final api = context.read<AppState>().api;
+        final storagePath = await api.uploadBytes(bytes,
+            ext: "m4a", contentType: "audio/mp4", bucket: "chat-media");
+        final msg = await context
+            .read<AppState>()
+            .repo
+            .sendVoiceMessage(widget.conversation.id, storagePath,
+                secs.clamp(1, 600).toInt());
+        if (msg != null && mounted) {
+          setState(() => _messages.add(msg));
+          _jumpToBottom();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Couldn't send voice — $e")));
+        }
+      } finally {
+        if (mounted) setState(() => _sendingVoice = false);
+      }
+      return;
+    }
+    if (!await _voiceRecorder.hasPermission()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Microphone permission is required.")));
+      }
+      return;
+    }
+    final dir = await getTemporaryDirectory();
+    await _voiceRecorder.start(
+      const RecordConfig(
+        encoder: AudioEncoder.aacLc,
+        bitRate: 64000,
+        sampleRate: 44100,
+        numChannels: 1,
+      ),
+      path: "${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a",
+    );
+    if (mounted) {
+      setState(() {
+        _recordingVoice = true;
+        _voiceStart = DateTime.now();
+      });
+    }
+  }
+
+  Future<void> _playVoice(Message m) async {
+    final url = resolveMedia(m.filePath, bucket: "chat-media");
+    if (url == null) return;
+    if (_playingMessageId == m.id) {
+      await _voicePlayer.stop();
+      setState(() => _playingMessageId = null);
+      return;
+    }
+    await _voicePlayer.stop();
+    setState(() => _playingMessageId = m.id);
+    await _voicePlayer.play(UrlSource(url));
+    _voicePlayer.onPlayerComplete.first.then((_) {
+      if (mounted && _playingMessageId == m.id) {
+        setState(() => _playingMessageId = null);
+      }
+    });
+  }
+
+  /// Messenger-style presence for the chat header ("Active now").
+  DateTime? _peerSeen;
+  Timer? _presenceTimer;
+
+  bool get _peerOnline =>
+      _peerSeen != null &&
+      DateTime.now().difference(_peerSeen!) < const Duration(minutes: 2);
+
+  Future<void> _pollPresence() async {
+    final other = widget.conversation.other;
+    if (other == null || !mounted) return;
+    final p =
+        await context.read<AppState>().repo.presenceFor([other.id]);
+    if (mounted) setState(() => _peerSeen = p[other.id]);
   }
 
   Future<void> _load() async {
@@ -163,8 +277,23 @@ class _ChatScreenState extends State<ChatScreen> {
             GwAvatar(name: widget.conversation.displayTitle, size: 36),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(widget.conversation.displayTitle,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(widget.conversation.displayTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w800)),
+                  if (_peerOnline)
+                    const Text("Active now",
+                        style: TextStyle(
+                            fontSize: 11.5,
+                            color: Color(0xFF31A24C),
+                            fontWeight: FontWeight.w600)),
+                ],
+              ),
             ),
           ],
         ),
@@ -221,12 +350,41 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           border: mine ? null : Border.all(color: GwColors.line),
         ),
-        child: m.imagePath != null && m.imagePath!.isNotEmpty
+        child: m.isVoice
+            ? InkWell(
+                onTap: () => _playVoice(m),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _playingMessageId == m.id
+                          ? Icons.stop_circle
+                          : Icons.play_circle_fill,
+                      color: mine ? Colors.white : GwColors.primary,
+                      size: 32,
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(Icons.graphic_eq,
+                        color: mine ? Colors.white70 : GwColors.inkSoft,
+                        size: 20),
+                    const SizedBox(width: 6),
+                    Text(
+                      "${(m.durationSeconds ?? 0) ~/ 60}:${((m.durationSeconds ?? 0) % 60).toString().padLeft(2, '0')}",
+                      style: TextStyle(
+                          color: mine ? Colors.white : GwColors.ink,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13),
+                    ),
+                  ],
+                ),
+              )
+            : m.imagePath != null && m.imagePath!.isNotEmpty
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: CachedNetworkImage(
                   imageUrl: resolveMedia(m.imagePath, bucket: "media") ?? "",
                   fit: BoxFit.cover,
+                  filterQuality: FilterQuality.medium,
                   placeholder: (_, __) => const SizedBox(
                     height: 160,
                     child: Center(
@@ -267,6 +425,19 @@ class _ChatScreenState extends State<ChatScreen> {
                 icon: const Icon(Icons.add_photo_alternate_outlined,
                     color: GwColors.primary),
                 onPressed: _sendPhoto),
+            IconButton(
+              icon: _sendingVoice
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2.2, color: GwColors.primary))
+                  : Icon(
+                      _recordingVoice ? Icons.stop_circle : Icons.mic_none,
+                      color:
+                          _recordingVoice ? GwColors.live : GwColors.primary),
+              onPressed: _toggleVoice,
+            ),
             Expanded(
               child: Container(
                 decoration: BoxDecoration(

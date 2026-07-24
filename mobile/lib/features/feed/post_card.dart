@@ -1,10 +1,14 @@
+import 'package:share_plus/share_plus.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../core/app_state.dart';
+import '../../core/config.dart';
 import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
@@ -201,7 +205,18 @@ class _PostCardState extends State<PostCard> {
               const SizedBox(height: 12),
               _LiveBanner(streamId: _liveStreamId(p.content)!),
             ],
-            if (p.firstImage != null) ...[
+            // Video posts play inline (muted autoplay, tap for sound); an image
+            // widget can't render a video, so this must come before firstImage.
+            if (p.firstVideo != null) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(GwRadius.md),
+                child: _PostVideo(
+                  url: resolveMedia(p.firstVideo!.storagePath,
+                      bucket: "media")!,
+                ),
+              ),
+            ] else if (p.firstImage != null) ...[
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(GwRadius.md),
@@ -210,6 +225,9 @@ class _PostCardState extends State<PostCard> {
                       resolveMedia(p.firstImage!.storagePath, bucket: "media")!,
                   fit: BoxFit.cover,
                   width: double.infinity,
+                  // Sharper downscale than Flutter's default low-quality
+                  // filter, so feed photos aren't soft on Retina screens.
+                  filterQuality: FilterQuality.medium,
                   placeholder: (_, __) => Container(
                     height: 200,
                     color: GwColors.surfaceMuted,
@@ -245,7 +263,12 @@ class _PostCardState extends State<PostCard> {
                 _reactionAction(),
                 _action(Icons.mode_comment_outlined, "Comment",
                     GwColors.inkSoft, _openComments),
-                _action(Icons.share_outlined, "Share", GwColors.inkSoft, () {}),
+                _action(Icons.share_outlined, "Share", GwColors.inkSoft, () {
+                  final p = widget.post;
+                  final text = p.content.trim();
+                  Share.share(
+                      "${text.isEmpty ? "Gwave post" : text}\n\nhttps://gwave.cc/p/${p.id}");
+                }),
               ],
             ),
           ],
@@ -388,9 +411,12 @@ class _RichPostBodyState extends State<_RichPostBody> {
       spans.add(TextSpan(
         text: token,
         recognizer: recognizer,
-        style: const TextStyle(
-          color: GwColors.primary,
+        style: TextStyle(
+          // Web links blue (tappable); @mentions stay brand green.
+          color: isLink ? GwColors.linkOf(context) : GwColors.primary,
           fontWeight: FontWeight.w600,
+          decoration: isLink ? TextDecoration.underline : null,
+          decorationColor: isLink ? GwColors.linkOf(context) : null,
         ),
       ));
       last = m.end;
@@ -400,7 +426,8 @@ class _RichPostBodyState extends State<_RichPostBody> {
     }
     return Text.rich(
       TextSpan(
-        style: const TextStyle(fontSize: 15, height: 1.4, color: GwColors.ink),
+        style: TextStyle(
+            fontSize: 15, height: 1.4, color: GwColors.inkOf(context)),
         children: spans,
       ),
     );
@@ -428,38 +455,182 @@ class _LiveBanner extends StatefulWidget {
 class _LiveBannerState extends State<_LiveBanner> {
   LiveStream? _stream;
 
+  // Inline video preview: HLS (app broadcasts) plays muted; browser (LiveKit)
+  // lives join the room as a muted subscriber — real video in the feed.
+  VideoPlayerController? _vc;
+  lk.Room? _lkRoom;
+  lk.EventsListener<lk.RoomEvent>? _lkListener;
+  lk.VideoTrack? _lkVideo;
+
   @override
   void initState() {
     super.initState();
     _load();
   }
 
+  @override
+  void dispose() {
+    _vc?.dispose();
+    _lkListener?.dispose();
+    final room = _lkRoom;
+    if (room != null) room.disconnect().then((_) => room.dispose());
+    super.dispose();
+  }
+
   Future<void> _load() async {
     try {
       final s = await context.read<AppState>().repo.stream(widget.streamId);
       if (mounted) setState(() => _stream = s);
+      if (s != null) await _initPreview(s);
     } catch (_) {}
+  }
+
+  Future<void> _initPreview(LiveStream s) async {
+    if (!mounted) return;
+    if (!s.isLive) {
+      // Ended broadcast: autoplay the replay muted, Facebook-style.
+      String? url;
+      final rp = s.recordingPath;
+      if (rp != null && rp.isNotEmpty) {
+        url = rp.startsWith("http")
+            ? rp
+            : "${AppConfig.apiBase}/recordings/$rp";
+      } else if (s.vodPlaybackId != null && s.vodPlaybackId!.isNotEmpty) {
+        url = "https://stream.mux.com/${s.vodPlaybackId}.m3u8";
+      }
+      if (url == null) return;
+      try {
+        final c = VideoPlayerController.networkUrl(Uri.parse(url));
+        _vc = c;
+        await c.initialize();
+        await c.setVolume(0);
+        await c.setLooping(true);
+        await c.play();
+        if (mounted) setState(() {});
+      } catch (_) {}
+      return;
+    }
+    final hls = s.ivsPlaybackUrl;
+    if (hls != null && hls.isNotEmpty) {
+      try {
+        final c = VideoPlayerController.networkUrl(Uri.parse(hls));
+        _vc = c;
+        await c.initialize();
+        await c.setVolume(0);
+        await c.play();
+        if (mounted) setState(() {});
+      } catch (_) {}
+      return;
+    }
+    final lkRoomName = s.livekitRoom;
+    if (lkRoomName == null || lkRoomName.isEmpty) return;
+    try {
+      final t = await context.read<AppState>().api.liveToken(s.id);
+      final room = lk.Room(
+        roomOptions: const lk.RoomOptions(adaptiveStream: true, dynacast: true),
+      );
+      _lkRoom = room;
+      final listener = room.createListener();
+      _lkListener = listener;
+      listener.on<lk.TrackSubscribedEvent>((e) {
+        final track = e.track;
+        if (track is lk.VideoTrack && mounted) {
+          setState(() => _lkVideo = track);
+        }
+        if (track is lk.AudioTrack) {
+          // Preview is silent; sound lives in the full player.
+          e.publication.unsubscribe();
+        }
+      });
+      await room.connect(t.url, t.token);
+      for (final p in room.remoteParticipants.values) {
+        for (final pub in p.videoTrackPublications) {
+          final track = pub.track;
+          if (track is lk.VideoTrack) _lkVideo = track;
+        }
+        for (final pub in p.audioTrackPublications) {
+          pub.unsubscribe();
+        }
+      }
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  Widget? _preview() {
+    if (_vc != null && _vc!.value.isInitialized) {
+      return AspectRatio(
+        aspectRatio: 16 / 9,
+        child: VideoPlayer(_vc!),
+      );
+    }
+    if (_lkVideo != null) {
+      return AspectRatio(
+        aspectRatio: 16 / 9,
+        child: lk.VideoTrackRenderer(_lkVideo!, fit: lk.VideoViewFit.cover),
+      );
+    }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     final live = _stream?.isLive ?? false;
+    final preview = _preview();
     return InkWell(
       borderRadius: BorderRadius.circular(GwRadius.md),
       onTap: _stream == null
           ? null
           : () => Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => LiveWatchScreen(stream: _stream!))),
-      child: Container(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(GwRadius.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (preview != null)
+              Stack(
+                children: [
+                  preview,
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: (_stream?.isLive ?? false)
+                            ? GwColors.live
+                            : Colors.black.withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                          (_stream?.isLive ?? false) ? "LIVE" : "REPLAY",
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.6)),
+                    ),
+                  ),
+                ],
+              ),
+            _bannerRow(context, live),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _bannerRow(BuildContext context, bool live) {
+    return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [Color(0xFF1B2417), Color(0xFF0B0F08)],
           ),
-          borderRadius: BorderRadius.circular(GwRadius.md),
         ),
         child: Row(
           children: [
@@ -506,6 +677,109 @@ class _LiveBannerState extends State<_LiveBanner> {
               ),
             ),
             const Icon(Icons.chevron_right, color: Colors.white54),
+          ],
+        ));
+  }
+}
+
+/// Inline feed video for an uploaded video post. Autoplays muted and loops
+/// (TikTok/Facebook style); tap toggles sound, long-standard controls appear
+/// on tap. Falls back to a tap-to-play poster if autoplay init fails.
+class _PostVideo extends StatefulWidget {
+  const _PostVideo({required this.url});
+  final String url;
+
+  @override
+  State<_PostVideo> createState() => _PostVideoState();
+}
+
+class _PostVideoState extends State<_PostVideo> {
+  VideoPlayerController? _vc;
+  bool _muted = true;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  @override
+  void dispose() {
+    _vc?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _init() async {
+    try {
+      final c = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+      _vc = c;
+      await c.initialize();
+      await c.setVolume(0);
+      await c.setLooping(true);
+      await c.play();
+      if (mounted) setState(() {});
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  void _toggleSound() {
+    final c = _vc;
+    if (c == null) return;
+    setState(() => _muted = !_muted);
+    c.setVolume(_muted ? 0 : 1);
+    if (!c.value.isPlaying) c.play();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = _vc;
+    if (_failed) {
+      return AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Container(
+          color: Colors.black,
+          child: const Center(
+            child: Icon(Icons.videocam_off, color: Colors.white54, size: 40),
+          ),
+        ),
+      );
+    }
+    if (c == null || !c.value.isInitialized) {
+      return AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Container(
+          color: GwColors.surfaceMuted,
+          child: const Center(
+            child: CircularProgressIndicator(color: GwColors.primary),
+          ),
+        ),
+      );
+    }
+    return GestureDetector(
+      onTap: _toggleSound,
+      child: AspectRatio(
+        aspectRatio: c.value.aspectRatio == 0 ? 16 / 9 : c.value.aspectRatio,
+        child: Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            VideoPlayer(c),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _muted ? Icons.volume_off : Icons.volume_up,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+            ),
           ],
         ),
       ),

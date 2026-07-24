@@ -453,6 +453,63 @@ class ApiClient {
     return (j["comment"] as Map).cast<String, dynamic>();
   }
 
+  /// Web-push the callee about an incoming call (works even when their tab
+  /// can't receive the realtime ring). Fire-and-forget beside the broadcast.
+  Future<void> callNotify(String conversationId, bool video) async {
+    await _mobilePost("/api/mobile/call/notify", {
+      "conversationId": conversationId,
+      "video": video,
+    });
+  }
+
+  /// Ask the server whether a broadcast is really still live (it checks the
+  /// media plane and self-heals dead rows). Returns the resulting status.
+  Future<String> liveVerify(String streamId) async {
+    final j = await _mobilePost("/api/mobile/live/verify", {"id": streamId});
+    return (j["status"] ?? "").toString();
+  }
+
+  /// Runtime ICE (STUN/TURN) config shared with the web client. The TURN
+  /// relay is what carries call audio when both peers sit behind carrier NAT.
+  Future<List<Map<String, dynamic>>> iceServers() async {
+    final j = await _mobileGet("/api/webrtc/ice");
+    final list = j["iceServers"];
+    if (list is! List) throw ApiException("Bad ICE config.");
+    return list
+        .whereType<Map>()
+        .map((e) => e.cast<String, dynamic>())
+        .toList();
+  }
+
+  // ---- Crowdsourced WiFi map (WiGLE-style) ----------------------------------
+
+  /// Upload scanned WiFi APs observed at a GPS point to the shared map.
+  Future<void> wifiObserve({
+    required double latitude,
+    required double longitude,
+    required List<Map<String, dynamic>> networks,
+  }) =>
+      _mobilePost("/api/mobile/wifi/observe", {
+        "latitude": latitude,
+        "longitude": longitude,
+        "networks": networks,
+      });
+
+  /// The collected WiFi points near a map viewport.
+  Future<List<Map<String, dynamic>>> wifiNearby(
+    double lat,
+    double lng, {
+    double radiusKm = 5,
+  }) async {
+    final j = await _mobileGet("/api/mobile/wifi/nearby", {
+      "lat": "$lat",
+      "lng": "$lng",
+      "radius": "$radiusKm",
+    });
+    final list = j["networks"];
+    return list is List ? list.cast<Map<String, dynamic>>() : [];
+  }
+
   // ---- Marketplace + Dating -------------------------------------------------
   // Both features read/write through the mobile API (service role) with the
   // data token as bearer — same shape as /subject-comments.
@@ -639,9 +696,11 @@ class ApiClient {
     String? locationName,
     double? latitude,
     double? longitude,
+    bool record = true,
   }) async {
     final j = await _liveCall("/api/mobile/live/create", {
       "title": title,
+      "record": record,
       if (locationName != null && locationName.isNotEmpty)
         "locationName": locationName,
       if (latitude != null && longitude != null) ...{

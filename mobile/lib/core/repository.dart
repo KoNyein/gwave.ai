@@ -174,25 +174,56 @@ class Repository {
   }
 
   // ---- Live -----------------------------------------------------------------
+  // Flat queries only: a resource embed here 500s whenever PostgREST's schema
+  // cache goes stale, and a dead live list looks like "nobody can see lives".
+
+  /// Fetch profiles for a set of ids and return them keyed by id.
+  Future<Map<String, Map<String, dynamic>>> _profilesByIds(
+    Iterable<String> ids,
+  ) async {
+    final unique = ids.toSet()..removeWhere((e) => e.isEmpty);
+    if (unique.isEmpty) return {};
+    try {
+      final rows = await api.select("profiles", query: {
+        "select": _profileCols,
+        "id": "in.(${unique.join(",")})",
+        "limit": "${unique.length}",
+      });
+      return {for (final r in rows) r["id"].toString(): r};
+    } catch (_) {
+      return {}; // names just fall back to "Gwave user"
+    }
+  }
 
   Future<List<LiveStream>> liveStreams({bool onlyLive = false}) async {
     final rows = await api.select("live_streams", query: {
-      "select": "*,host:profiles!live_streams_host_id_fkey($_profileCols)",
+      "select": "*",
       if (onlyLive) "status": "eq.live",
       if (!onlyLive) "status": "in.(live,ended)",
       "order": "created_at.desc",
       "limit": "40",
     });
+    final hosts =
+        await _profilesByIds(rows.map((r) => "${r["host_id"] ?? ""}"));
+    for (final r in rows) {
+      final host = hosts["${r["host_id"]}"];
+      if (host != null) r["host"] = host;
+    }
     return rows.map(LiveStream.fromJson).toList();
   }
 
   Future<LiveStream?> stream(String id) async {
     final rows = await api.select("live_streams", query: {
-      "select": "*,host:profiles!live_streams_host_id_fkey($_profileCols)",
+      "select": "*",
       "id": "eq.$id",
       "limit": "1",
     });
-    return rows.isEmpty ? null : LiveStream.fromJson(rows.first);
+    if (rows.isEmpty) return null;
+    final row = rows.first;
+    final hosts = await _profilesByIds(["${row["host_id"] ?? ""}"]);
+    final host = hosts["${row["host_id"]}"];
+    if (host != null) row["host"] = host;
+    return LiveStream.fromJson(row);
   }
 
   /// Live chat for a stream, oldest→newest. Pass [sinceIso] to fetch only
@@ -203,13 +234,18 @@ class Repository {
     int limit = 60,
   }) async {
     final rows = await api.select("live_chat_messages", query: {
-      "select":
-          "*,sender:profiles!live_chat_messages_user_id_fkey($_profileCols)",
+      "select": "*",
       "stream_id": "eq.$streamId",
       if (sinceIso != null) "created_at": "gt.$sinceIso",
       "order": "created_at.asc",
       "limit": "$limit",
     });
+    final senders =
+        await _profilesByIds(rows.map((r) => "${r["user_id"] ?? ""}"));
+    for (final r in rows) {
+      final sender = senders["${r["user_id"]}"];
+      if (sender != null) r["sender"] = sender;
+    }
     return rows.map(LiveChatMessage.fromJson).toList();
   }
 
@@ -328,14 +364,53 @@ class Repository {
 
   // ---- Notifications --------------------------------------------------------
 
+  /// My notifications, newest first, each with the acting user's profile.
+  /// Embed-free (see conversations()) so a stale PostgREST schema cache after
+  /// a migration can't take the whole list down.
   Future<List<AppNotification>> notifications() async {
     final rows = await api.select("notifications", query: {
-      "select":
-          "*,actor:profiles!notifications_actor_id_fkey($_profileCols)",
+      "select": "*",
+      "recipient_id": "eq.${api.session!.profileId}",
       "order": "created_at.desc",
       "limit": "50",
     });
+    final actorIds = rows
+        .map((r) => r["actor_id"])
+        .whereType<Object>()
+        .map((e) => e.toString())
+        .toSet()
+        .toList();
+    if (actorIds.isNotEmpty) {
+      try {
+        final profs = await api.select("profiles", query: {
+          "select": _profileCols,
+          "id": "in.(${actorIds.join(",")})",
+          "limit": "100",
+        });
+        final byId = {for (final p in profs) p["id"].toString(): p};
+        for (final r in rows) {
+          r["actor"] = byId[r["actor_id"]?.toString()];
+        }
+      } catch (_) {
+        // Actor names are cosmetic — the list still renders.
+      }
+    }
     return rows.map(AppNotification.fromJson).toList();
+  }
+
+  /// Number of unread notifications (badge on the feed bell).
+  Future<int> unreadNotificationCount() async {
+    try {
+      final rows = await api.select("notifications", query: {
+        "select": "id",
+        "recipient_id": "eq.${api.session!.profileId}",
+        "read": "eq.false",
+        "limit": "100",
+      });
+      return rows.length;
+    } catch (_) {
+      return 0;
+    }
   }
 
   Future<void> markNotificationsRead() async {
@@ -359,6 +434,52 @@ class Repository {
       "limit": "40",
     });
     return rows.map(ShopProduct.fromJson).toList();
+  }
+
+  // ---- Presence -------------------------------------------------------------
+
+  /// Heartbeat: stamp my profiles.last_seen_at so others see me online.
+  /// Best-effort — silently a no-op until the column exists in the database.
+  Future<void> heartbeat() async {
+    try {
+      await api.update("profiles", {
+        "last_seen_at": DateTime.now().toUtc().toIso8601String(),
+      }, filter: {
+        "id": "eq.${api.session!.profileId}",
+      });
+    } catch (_) {}
+    // Report which build this phone runs — separate call so a missing
+    // app_build column can never break presence.
+    if (AppConfig.appBuild > 0) {
+      try {
+        await api.update("profiles", {
+          "app_build": AppConfig.appBuild,
+        }, filter: {
+          "id": "eq.${api.session!.profileId}",
+        });
+      } catch (_) {}
+    }
+  }
+
+  /// last_seen_at for a set of users (messenger online dots). Returns {} when
+  /// the presence column isn't deployed yet, so callers just skip the dots.
+  Future<Map<String, DateTime>> presenceFor(List<String> userIds) async {
+    if (userIds.isEmpty) return {};
+    try {
+      final rows = await api.select("profiles", query: {
+        "select": "id,last_seen_at",
+        "id": "in.(${userIds.toSet().join(",")})",
+        "limit": "200",
+      });
+      final out = <String, DateTime>{};
+      for (final r in rows) {
+        final t = DateTime.tryParse("${r["last_seen_at"]}")?.toLocal();
+        if (t != null) out[r["id"].toString()] = t;
+      }
+      return out;
+    } catch (_) {
+      return {};
+    }
   }
 
   // ---- Messenger ------------------------------------------------------------
@@ -457,6 +578,23 @@ class Repository {
     return row == null ? null : Message.fromJson(row);
   }
 
+  /// Send a voice message: an AAC clip already uploaded to chat-media.
+  /// Mirrors the web's voice notes (file_kind 'audio' + duration_seconds).
+  Future<Message?> sendVoiceMessage(
+    String conversationId,
+    String storagePath,
+    int durationSeconds,
+  ) async {
+    final row = await api.insert("messages", {
+      "conversation_id": conversationId,
+      "sender_id": api.session!.profileId,
+      "file_path": storagePath,
+      "file_kind": "audio",
+      "duration_seconds": durationSeconds < 1 ? 1 : durationSeconds,
+    });
+    return row == null ? null : Message.fromJson(row);
+  }
+
   /// Send a photo message (already uploaded to the media bucket). `content`
   /// defaults to '' server-side; the row is valid because image_path is set.
   Future<Message?> sendImageMessage(
@@ -477,8 +615,7 @@ class Repository {
   /// the person who raised it. RLS scopes this to open alerts + the caller's.
   Future<List<Map<String, dynamic>>> activeSosAlerts() async {
     return api.select("sos_alerts", query: {
-      "select":
-          "id,user_id,status,latitude,longitude,message,created_at,person:profiles!sos_alerts_user_id_fkey($_profileCols)",
+      "select": "*,person:profiles!sos_alerts_user_id_fkey($_profileCols)",
       "status": "in.(active,safe)",
       "order": "created_at.desc",
       "limit": "100",
@@ -487,7 +624,15 @@ class Repository {
 
   /// Raise (or refresh) my own SOS at [lat],[lng]. Updates my open alert if I
   /// already have one, else creates it.
-  Future<void> sendSos(double lat, double lng, {String? message}) async {
+  Future<void> sendSos(
+    double lat,
+    double lng, {
+    String? message,
+    String? reason,
+    String? phone,
+    String? mediaPath,
+    String? mediaKind,
+  }) async {
     final me = api.session!.profileId;
     final mine = await api.select("sos_alerts", query: {
       "select": "id",
@@ -506,6 +651,20 @@ class Repository {
           filter: {"id": "eq.${mine.first["id"]}"});
     } else {
       await api.insert("sos_alerts", {"user_id": me, ...fields});
+    }
+    // Detail columns (reason/phone/media) ship separately — a database that
+    // hasn't run sos-details.sql yet must never block the core SOS.
+    final details = <String, dynamic>{
+      if (reason != null && reason.isNotEmpty) "reason": reason,
+      if (phone != null && phone.trim().isNotEmpty) "phone": phone.trim(),
+      if (mediaPath != null && mediaPath.isNotEmpty) "media_path": mediaPath,
+      if (mediaKind != null && mediaKind.isNotEmpty) "media_kind": mediaKind,
+    };
+    if (details.isNotEmpty) {
+      try {
+        await api.update("sos_alerts", details,
+            filter: {"user_id": "eq.$me", "status": "in.(active,safe)"});
+      } catch (_) {}
     }
   }
 
@@ -1240,14 +1399,16 @@ class Repository {
     });
   }
 
-  /// My own recent posts (for the boost target picker).
-  Future<List<Post>> myPosts({int limit = 20}) async {
+  /// My own recent posts (profile timeline + the boost target picker).
+  Future<List<Post>> myPosts({int limit = 20, int offset = 0}) async {
     final rows = await api.select("posts", query: {
-      "select": "*,media:post_media(storage_path,media_type,position)",
+      "select":
+          "*,author:profiles!posts_author_id_fkey($_profileCols),media:post_media(storage_path,media_type,position)",
       "author_id": "eq.${api.session!.profileId}",
       "removed_at": "is.null",
       "order": "created_at.desc",
       "limit": "$limit",
+      "offset": "$offset",
     });
     return rows.map(Post.fromJson).toList();
   }

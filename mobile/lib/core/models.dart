@@ -16,6 +16,7 @@ class Profile {
     this.bio,
     this.role,
     this.isTeacher = false,
+    this.lastSeenAt,
   });
 
   final String id;
@@ -27,12 +28,25 @@ class Profile {
   final String? role;
   final bool isTeacher;
 
-  String get displayName =>
-      (fullName != null && fullName!.trim().isNotEmpty)
-          ? fullName!.trim()
-          : (username?.trim().isNotEmpty ?? false)
-              ? username!.trim()
-              : "Gwave user";
+  /// Presence heartbeat (profiles.last_seen_at). Filled only where a screen
+  /// fetches it; "online" means seen within the last 2 minutes.
+  final DateTime? lastSeenAt;
+
+  bool get isOnline =>
+      lastSeenAt != null &&
+      DateTime.now().difference(lastSeenAt!) < const Duration(minutes: 2);
+
+  /// Auto-generated placeholder usernames (user_<id-prefix>, minted so the
+  /// web stops forcing onboarding) — not something to show as a person's name.
+  static final _autoUsername = RegExp(r'^user_[0-9a-f]{6,}$');
+
+  String get displayName {
+    final fn = fullName?.trim() ?? "";
+    if (fn.isNotEmpty) return fn;
+    final un = username?.trim() ?? "";
+    if (un.isNotEmpty && !_autoUsername.hasMatch(un)) return un;
+    return "Gwave user";
+  }
 
   factory Profile.fromJson(Map<String, dynamic> j) => Profile(
         id: j["id"].toString(),
@@ -43,6 +57,7 @@ class Profile {
         bio: _s(j["bio"]),
         role: _s(j["role"]),
         isTeacher: j["is_teacher"] == true,
+        lastSeenAt: DateTime.tryParse("${j["last_seen_at"]}")?.toLocal(),
       );
 }
 
@@ -91,6 +106,15 @@ class Post {
       if (m.mediaType == "image") return m;
     }
     return media.isNotEmpty ? media.first : null;
+  }
+
+  /// The first attached video, if the post has one. Rendered as an inline
+  /// player in the feed (an image widget can't display a video).
+  PostMedia? get firstVideo {
+    for (final m in media) {
+      if (m.mediaType == "video") return m;
+    }
+    return null;
   }
 
   factory Post.fromJson(Map<String, dynamic> j) {
@@ -197,6 +221,11 @@ class LiveStream {
   final String? livekitRoom;
 
   bool get isLive => status == "live";
+
+  /// A finished broadcast that actually has something to play back.
+  bool get hasReplay =>
+      (recordingPath != null && recordingPath!.isNotEmpty) ||
+      (vodPlaybackId != null && vodPlaybackId!.isNotEmpty);
 
   factory LiveStream.fromJson(Map<String, dynamic> j) {
     final hostJson = j["host"] ?? j["profiles"];
@@ -968,6 +997,9 @@ class Message {
     required this.content,
     required this.createdAt,
     this.imagePath,
+    this.filePath,
+    this.fileKind,
+    this.durationSeconds,
   });
 
   final String id;
@@ -977,6 +1009,14 @@ class Message {
   final DateTime createdAt;
   final String? imagePath;
 
+  /// Attachment (web parity): file_kind 'audio' = voice message with
+  /// duration_seconds; 'video'/'file' render as a link for now.
+  final String? filePath;
+  final String? fileKind;
+  final int? durationSeconds;
+
+  bool get isVoice => fileKind == "audio" && (filePath?.isNotEmpty ?? false);
+
   factory Message.fromJson(Map<String, dynamic> j) => Message(
         id: j["id"].toString(),
         conversationId: j["conversation_id"].toString(),
@@ -985,5 +1025,10 @@ class Message {
         createdAt:
             DateTime.tryParse("${j["created_at"]}")?.toLocal() ?? DateTime.now(),
         imagePath: _s(j["image_path"]),
+        filePath: _s(j["file_path"]),
+        fileKind: _s(j["file_kind"]),
+        durationSeconds: j["duration_seconds"] is num
+            ? (j["duration_seconds"] as num).toInt()
+            : null,
       );
 }

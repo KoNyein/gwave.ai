@@ -36,6 +36,17 @@ class AppState extends ChangeNotifier {
   AuthStatus status = AuthStatus.loading;
   Profile? me;
 
+  /// Presence heartbeat: stamp last_seen_at every minute while signed in so
+  /// friends see the online dot. Best-effort — a miss just shows us offline.
+  Timer? _presence;
+
+  void _startPresence() {
+    _presence?.cancel();
+    repo.heartbeat();
+    _presence =
+        Timer.periodic(const Duration(seconds: 60), (_) => repo.heartbeat());
+  }
+
   /// Google sign-in progress + error, surfaced to the login screen. The flow
   /// completes asynchronously via the `gwave://auth` deep link, so it can't be
   /// awaited from the button press.
@@ -51,6 +62,7 @@ class AppState extends ChangeNotifier {
       status = AuthStatus.signedIn;
       notifyListeners();
       _loadMe();
+      _startPresence();
     } else {
       status = AuthStatus.signedOut;
       notifyListeners();
@@ -73,6 +85,7 @@ class AppState extends ChangeNotifier {
     await api.login(email, password);
     status = AuthStatus.signedIn;
     notifyListeners();
+    _startPresence();
     await _loadMe();
   }
 
@@ -178,6 +191,8 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _presence?.cancel();
+    _presence = null;
     await api.logout();
     me = null;
     status = AuthStatus.signedOut;
@@ -186,6 +201,7 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
+    _presence?.cancel();
     _linkSub?.cancel();
     super.dispose();
   }

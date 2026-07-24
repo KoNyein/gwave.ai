@@ -6,6 +6,7 @@ import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import 'offline_talk_screen.dart';
 import 'ptt_channel_screen.dart';
 
 /// Native Walkie-talkie home: create a channel, join one with a code, and open
@@ -214,6 +215,59 @@ class _TalkScreenState extends State<TalkScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            // Offline nearby chat — internet-free, Bluetooth/WiFi-Direct.
+            InkWell(
+              borderRadius: BorderRadius.circular(GwRadius.lg),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const OfflineTalkScreen())),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: GwColors.surface,
+                  borderRadius: BorderRadius.circular(GwRadius.lg),
+                  border: Border.all(color: GwColors.line),
+                  boxShadow: GwShadow.card,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: GwColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(Icons.wifi_tethering,
+                          color: GwColors.primary, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                              tr(context, "📡 Offline nearby chat",
+                                  "📡 Offline အနီးအနား စကားပြော"),
+                              style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900)),
+                          const SizedBox(height: 2),
+                          Text(
+                              tr(
+                                  context,
+                                  "No internet needed — Bluetooth/WiFi direct + GPS share",
+                                  "အင်တာနက်မလို — ဖုန်းချင်း တိုက်ရိုက် + တည်နေရာ မျှဝေ"),
+                              style: const TextStyle(
+                                  color: GwColors.inkSoft, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 22),
             Text("${tr(context, "My channels", "ကျွန်တော့် Channel များ")}${_channels.isNotEmpty ? " (${_channels.length})" : ""}",

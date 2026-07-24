@@ -7,11 +7,14 @@ import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/api_client.dart';
 import '../../core/app_state.dart';
+import '../../core/config.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../web/web_screen.dart';
 
 /// Full-screen, one-screen TikTok-style Live watch. The video fills the screen;
 /// host/title, LIVE + viewer badge, the right action rail, and the overlay chat
@@ -33,6 +36,7 @@ class LiveWatchScreen extends StatefulWidget {
 class _LiveWatchScreenState extends State<LiveWatchScreen> {
   VideoPlayerController? _controller;
   bool _ready = false;
+  bool _muted = false; // viewers can mute; audio is on by default
   String? _error;
 
   // Browser Go Live broadcasts publish over the LiveKit SFU (WebRTC) and have
@@ -99,10 +103,9 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
     if (s.recordingPath != null && s.recordingPath!.isNotEmpty) {
       final rp = s.recordingPath!;
       if (rp.startsWith("http")) return rp;
-      final base = const String.fromEnvironment("IVS_RECORDING_BASE",
-          defaultValue: "");
-      if (base.isNotEmpty) return "$base/$rp";
-      return resolveMedia(rp, bucket: "recordings");
+      // Served by the web server's /recordings proxy (streams from the
+      // private IVS recordings bucket via the instance role).
+      return "${AppConfig.apiBase}/recordings/$rp";
     }
     if (s.vodPlaybackId != null && s.vodPlaybackId!.isNotEmpty) {
       return "https://stream.mux.com/${s.vodPlaybackId}.m3u8";
@@ -145,9 +148,11 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
         }
       }
       if (mounted) setState(() => _lkConnected = true);
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
-        setState(() => _error = "Couldn't connect to the live stream.");
+        setState(() => _error = e is ApiException
+            ? e.message
+            : "Couldn't connect to the live stream.");
       }
     }
   }
@@ -155,6 +160,25 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
   Future<void> _initVideo() async {
     final url = _playbackUrl();
     if (url == null) {
+      // A *live* with no native (HLS/LiveKit) source is a browser WebRTC
+      // broadcast (IVS Real-Time stage) — the app can't decode the stage
+      // directly, so hand off to the authenticated in-app web player, which
+      // plays it. App broadcasts always carry an HLS URL, so this fires only
+      // for browser lives. Replays with no source keep the error.
+      if (widget.stream.isLive) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => WebScreen(
+                path: "/live/${widget.stream.id}",
+                title: widget.stream.title,
+              ),
+            ),
+          );
+        });
+        return;
+      }
       setState(() => _error = "No video for this Live yet.");
       return;
     }
@@ -163,9 +187,27 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
       _controller = c;
       await c.initialize();
       await c.setLooping(!widget.stream.isLive);
+      // Watching a Live is a listening experience — force full media volume so
+      // muted feed/rail previews or leftover call-audio state can't silence it.
+      await c.setVolume(1.0);
       await c.play();
       if (mounted) setState(() => _ready = true);
     } catch (e) {
+      if (!mounted) return;
+      // A "live" whose HLS won't play is usually a broadcast that died
+      // without ending — ask the server to check the channel for real.
+      if (widget.stream.isLive) {
+        try {
+          final st = await context
+              .read<AppState>()
+              .api
+              .liveVerify(widget.stream.id);
+          if (mounted && st == "ended") {
+            setState(() => _error = "This broadcast has ended.");
+            return;
+          }
+        } catch (_) {}
+      }
       if (mounted) setState(() => _error = "Couldn't play the video.");
     }
   }
@@ -306,7 +348,11 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          _video(),
+          // Double-tap anywhere on the video to send a heart (TikTok-style).
+          GestureDetector(
+            onDoubleTap: () => _react("❤️"),
+            child: _video(),
+          ),
           // Top + bottom scrims for legibility.
           const DecoratedBox(
             decoration: BoxDecoration(
@@ -384,12 +430,19 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
         child: CircularProgressIndicator(color: Colors.white),
       );
     }
-    return FittedBox(
-      fit: BoxFit.cover,
-      child: SizedBox(
-        width: _controller!.value.size.width,
-        height: _controller!.value.size.height,
-        child: VideoPlayer(_controller!),
+    // Match the source's shape (like TikTok/Facebook): a portrait video fills
+    // the screen (cover); a landscape one (laptop/OBS) is letterboxed (contain)
+    // so nothing important is cropped off the sides.
+    final size = _controller!.value.size;
+    final isPortrait = size.height >= size.width;
+    return Center(
+      child: FittedBox(
+        fit: isPortrait ? BoxFit.cover : BoxFit.contain,
+        child: SizedBox(
+          width: size.width,
+          height: size.height,
+          child: VideoPlayer(_controller!),
+        ),
       ),
     );
   }
@@ -624,6 +677,16 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        _railButton(
+          _muted ? Icons.volume_off : Icons.volume_up,
+          _muted ? "Muted" : "Sound",
+          _muted ? Colors.white54 : Colors.white,
+          onTap: () {
+            setState(() => _muted = !_muted);
+            _controller?.setVolume(_muted ? 0 : 1);
+          },
+        ),
+        const SizedBox(height: 16),
         _railButton(Icons.favorite, "Like", GwColors.heart,
             onTap: () => _react("❤️")),
         const SizedBox(height: 16),

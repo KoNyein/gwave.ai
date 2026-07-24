@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -18,6 +20,8 @@ class ConversationsScreen extends StatefulWidget {
 
 class _ConversationsScreenState extends State<ConversationsScreen> {
   List<Conversation> _items = [];
+  Map<String, DateTime> _presence = {}; // user id → last_seen_at
+  Timer? _presencePoll;
   bool _loading = true;
   String? _error;
 
@@ -25,6 +29,15 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   void initState() {
     super.initState();
     _load();
+    // Keep the online dots fresh while the list is open.
+    _presencePoll =
+        Timer.periodic(const Duration(seconds: 45), (_) => _loadPresence());
+  }
+
+  @override
+  void dispose() {
+    _presencePoll?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -35,11 +48,28 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     try {
       final c = await context.read<AppState>().repo.conversations();
       setState(() => _items = c);
+      _loadPresence();
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _loadPresence() async {
+    if (!mounted) return;
+    final ids = _items
+        .map((c) => c.other?.id)
+        .whereType<String>()
+        .toList();
+    final p = await context.read<AppState>().repo.presenceFor(ids);
+    if (mounted && p.isNotEmpty) setState(() => _presence = p);
+  }
+
+  bool _isOnline(String? userId) {
+    final t = userId == null ? null : _presence[userId];
+    return t != null &&
+        DateTime.now().difference(t) < const Duration(minutes: 2);
   }
 
   /// Start a new chat: pick a friend, then open (or create) the 1-to-1 thread.
@@ -173,6 +203,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   }
 
   Widget _tile(Conversation c) {
+    final online = !c.isGroup && _isOnline(c.other?.id);
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       leading: c.isGroup
@@ -185,18 +216,43 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
               ),
               child: const Icon(Icons.groups, color: GwColors.primary),
             )
-          : GwAvatar(
-              url: resolveMedia(c.other?.avatarUrl),
-              name: c.displayTitle,
-              size: 52,
+          : Stack(
+              clipBehavior: Clip.none,
+              children: [
+                GwAvatar(
+                  url: resolveMedia(c.other?.avatarUrl),
+                  name: c.displayTitle,
+                  size: 52,
+                ),
+                // Messenger-style online dot.
+                if (online)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 15,
+                      height: 15,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF31A24C),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: GwColors.bg, width: 2.5),
+                      ),
+                    ),
+                  ),
+              ],
             ),
       title: Text(c.displayTitle,
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
       subtitle: Text(
-        c.lastMessage ?? "Tap to open",
+        online
+            ? tr(context, "Active now", "အွန်လိုင်းရှိသည်")
+            : (c.lastMessage ?? "Tap to open"),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: GwColors.inkSoft, fontSize: 13),
+        style: TextStyle(
+            color: online ? const Color(0xFF31A24C) : GwColors.inkSoft,
+            fontSize: 13,
+            fontWeight: online ? FontWeight.w600 : FontWeight.w400),
       ),
       trailing: Text(timeAgo(c.lastMessageAt),
           style: const TextStyle(color: GwColors.inkSoft, fontSize: 12)),

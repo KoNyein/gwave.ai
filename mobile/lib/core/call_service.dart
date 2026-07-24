@@ -62,20 +62,73 @@ class CallService extends ChangeNotifier {
   String get _myId => api.session!.profileId;
   bool get inCall => phase != CallPhase.idle;
 
-  static const _iceServers = {
+  static const _fallbackIce = {
     "iceServers": [
       {"urls": "stun:stun.l.google.com:19302"},
       {"urls": "stun:stun1.l.google.com:19302"},
     ],
   };
 
+  /// Runtime ICE config from the server — carries the TURN relay both peers
+  /// need behind carrier NAT (STUN-only calls connect but stay silent).
+  Map<String, dynamic>? _fetchedIce;
+
+  Future<Map<String, dynamic>> _iceConfig() async {
+    if (_fetchedIce != null) return _fetchedIce!;
+    try {
+      final servers = await api.iceServers();
+      if (servers.isNotEmpty) {
+        _fetchedIce = {"iceServers": servers};
+        return _fetchedIce!;
+      }
+    } catch (_) {
+      // offline or old server — fall back to STUN only
+    }
+    return _fallbackIce;
+  }
+
   // ---- Realtime connection --------------------------------------------------
 
   /// Connect to Realtime and subscribe to our personal ring inbox. Call once
   /// after sign-in; safe to call again (no-op if already connected).
+  /// Ring-inbox health, shown in Settings so "calls never ring" is visible
+  /// instead of a silent mystery: connecting → ready | error…
+  String ringStatus = "off";
+  Timer? _reconnect;
+
+  void _setRing(String s) {
+    if (ringStatus == s) return;
+    ringStatus = s;
+    notifyListeners();
+  }
+
+  void _scheduleReconnect() {
+    _reconnect ??= Timer(const Duration(seconds: 8), () {
+      _reconnect = null;
+      if (!inCall) ensureConnected();
+    });
+  }
+
+  /// Rebuild the socket + inbox unless they're already healthy. Called on app
+  /// resume and after channel errors — Android kills sockets in background.
+  Future<void> ensureConnected() async {
+    if (api.session == null || inCall) return;
+    if (ringStatus == "ready") return;
+    try {
+      if (_ringInbox != null) _rt?.removeChannel(_ringInbox!);
+    } catch (_) {}
+    try {
+      _rt?.disconnect();
+    } catch (_) {}
+    _ringInbox = null;
+    _rt = null;
+    await connect();
+  }
+
   Future<void> connect() async {
     if (_ringInbox != null || api.session == null) return;
     try {
+      _setRing("connecting");
       await api.freshToken(); // ensure the JWT is valid before we auth realtime
       final token = api.session!.token;
       _rt = RealtimeClient(
@@ -83,18 +136,54 @@ class CallService extends ChangeNotifier {
         params: {"apikey": AppConfig.supabaseAnonKey},
       );
       _rt!.setAuth(token);
+      _rt!.onClose((_) {
+        _setRing("reconnecting");
+        _scheduleReconnect();
+      });
+      _rt!.onError((e) {
+        _setRing("socket error");
+        _scheduleReconnect();
+      });
       _rt!.connect();
 
       final inbox = _rt!.channel("calls:$_myId");
       inbox
         ..onBroadcast(event: "ring", callback: _onRing)
         ..onBroadcast(event: "cancel", callback: _onCancel);
-      inbox.subscribe();
+      inbox.subscribe((status, [error]) {
+        if (status == RealtimeSubscribeStatus.subscribed) {
+          _setRing("ready");
+        } else if (status == RealtimeSubscribeStatus.channelError ||
+            status == RealtimeSubscribeStatus.timedOut) {
+          _setRing("error: ${error ?? status.name}");
+          _scheduleReconnect();
+        } else if (status == RealtimeSubscribeStatus.closed) {
+          _setRing("closed");
+        }
+      });
       _ringInbox = inbox;
-    } catch (_) {
+
+      // The data token expires; a reconnect with the stale token silently
+      // kills the ring inbox until app restart. Refresh the socket auth well
+      // inside the token lifetime.
+      _authRefresh?.cancel();
+      _authRefresh = Timer.periodic(const Duration(minutes: 20), (_) async {
+        try {
+          await api.freshToken();
+          final t = api.session?.token;
+          if (t != null) _rt?.setAuth(t);
+        } catch (_) {
+          // offline — the next tick retries
+        }
+      });
+    } catch (e) {
       // Calls just won't ring; the rest of the app is unaffected.
+      _setRing("error: $e");
+      _scheduleReconnect();
     }
   }
+
+  Timer? _authRefresh;
 
   Future<void> _ensureRenderers() async {
     if (_renderersReady) return;
@@ -159,6 +248,10 @@ class CallService extends ChangeNotifier {
     // Our own per-call channel: listen for the callee's accept/answer/ice.
     _joinCallChannel(_callId!);
     await _openMedia();
+
+    // Web-push the callee too — reaches a web callee whose tab can't get the
+    // realtime broadcast (closed, backgrounded, stale JS). Best-effort.
+    api.callNotify(conversationId, withVideo).catchError((_) {});
 
     // Ring the callee's inbox.
     _peerRing = _rt!.channel("calls:${target.id}");
@@ -307,7 +400,9 @@ class CallService extends ChangeNotifier {
   // ---- Media ----------------------------------------------------------------
 
   Future<void> _openMedia() async {
-    _pc = await createPeerConnection(_iceServers);
+    _pc = await createPeerConnection(await _iceConfig());
+    speakerOn = video; // video → loudspeaker, voice → earpiece
+    Helper.setSpeakerphoneOn(speakerOn);
     _localStream = await navigator.mediaDevices.getUserMedia({
       "audio": true,
       "video": video
@@ -374,6 +469,16 @@ class CallService extends ChangeNotifier {
   void switchCamera() {
     final tracks = _localStream?.getVideoTracks() ?? [];
     if (tracks.isNotEmpty) Helper.switchCamera(tracks.first);
+  }
+
+  /// Speakerphone routing. Audio calls default to the earpiece (quiet, easy to
+  /// mistake for silence); video calls default to the loudspeaker.
+  bool speakerOn = false;
+
+  void toggleSpeaker() {
+    speakerOn = !speakerOn;
+    Helper.setSpeakerphoneOn(speakerOn);
+    notifyListeners();
   }
 
   // ---- Teardown -------------------------------------------------------------
@@ -447,6 +552,8 @@ class CallService extends ChangeNotifier {
   void dispose() {
     _ringTimer?.cancel();
     _durationTimer?.cancel();
+    _authRefresh?.cancel();
+    _reconnect?.cancel();
     _localRenderer.dispose();
     _remoteRenderer.dispose();
     if (_ringInbox != null) _rt?.removeChannel(_ringInbox!);

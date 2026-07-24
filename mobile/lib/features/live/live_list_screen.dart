@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:video_player/video_player.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
+import '../../core/config.dart';
 import '../../core/models.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
@@ -20,25 +24,51 @@ class _LiveListScreenState extends State<LiveListScreen> {
   List<LiveStream> _streams = [];
   bool _loading = true;
   String? _error;
+  Timer? _refresh;
 
   @override
   void initState() {
     super.initState();
     _load();
+    // New broadcasts appear without a manual pull-to-refresh.
+    _refresh = Timer.periodic(
+        const Duration(seconds: 20), (_) => _load(quiet: true));
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  @override
+  void dispose() {
+    _refresh?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load({bool quiet = false}) async {
+    if (!quiet) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
-      final s = await context.read<AppState>().repo.liveStreams();
-      setState(() => _streams = s);
+      final repo = context.read<AppState>().repo;
+      final api = context.read<AppState>().api;
+      var s = await repo.liveStreams();
+      // A browser broadcast that died without ending stays "live" forever.
+      // Requesting a watch token makes the server check the room and mark
+      // dead ones ended — do that for stale-looking lives, then re-fetch.
+      final suspicious = s.where((x) =>
+          x.isLive &&
+          x.createdAt != null &&
+          DateTime.now().difference(x.createdAt!).inMinutes > 10);
+      if (suspicious.isNotEmpty) {
+        await Future.wait(suspicious
+            .map((x) => api.liveVerify(x.id).then((_) {}).catchError((_) {})));
+        s = await repo.liveStreams();
+      }
+      if (mounted) setState(() => _streams = s);
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted && !quiet) setState(() => _error = e.toString());
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && !quiet) setState(() => _loading = false);
     }
   }
 
@@ -53,7 +83,9 @@ class _LiveListScreenState extends State<LiveListScreen> {
   @override
   Widget build(BuildContext context) {
     final live = _streams.where((s) => s.isLive).toList();
-    final past = _streams.where((s) => !s.isLive).toList();
+    // Only replays that can actually play — ended rows with no recording are
+    // dead weight that made the list look broken.
+    final past = _streams.where((s) => !s.isLive && s.hasReplay).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -114,8 +146,20 @@ class _LiveListScreenState extends State<LiveListScreen> {
   }
 
   void _open(LiveStream s) {
+    // One-page TikTok-style viewing: swipe up/down moves between broadcasts
+    // without ever bouncing back to this list.
+    final watchable = [
+      ..._streams.where((x) => x.isLive),
+      ..._streams.where((x) => !x.isLive && x.hasReplay),
+    ];
+    final idx = watchable.indexWhere((x) => x.id == s.id);
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => LiveWatchScreen(stream: s)),
+      MaterialPageRoute(
+        builder: (_) => LiveSwipeScreen(
+          streams: watchable.isEmpty ? [s] : watchable,
+          initialIndex: idx < 0 ? 0 : idx,
+        ),
+      ),
     );
   }
 
@@ -141,17 +185,93 @@ class _LiveListScreenState extends State<LiveListScreen> {
       );
 }
 
-class _LiveCard extends StatelessWidget {
+/// Full-screen vertical pager over every watchable broadcast — the TikTok
+/// pattern: swipe up for the next live/replay, swipe down for the previous,
+/// chat/reactions stay overlaid on the video. One page, no list round-trips.
+class LiveSwipeScreen extends StatelessWidget {
+  const LiveSwipeScreen({
+    super.key,
+    required this.streams,
+    required this.initialIndex,
+  });
+  final List<LiveStream> streams;
+  final int initialIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: PageView.builder(
+        scrollDirection: Axis.vertical,
+        controller: PageController(initialPage: initialIndex),
+        itemCount: streams.length,
+        itemBuilder: (_, i) =>
+            LiveWatchScreen(key: ValueKey(streams[i].id), stream: streams[i]),
+      ),
+    );
+  }
+}
+
+class _LiveCard extends StatefulWidget {
   const _LiveCard({required this.stream, required this.onTap});
   final LiveStream stream;
   final VoidCallback onTap;
+
+  @override
+  State<_LiveCard> createState() => _LiveCardState();
+}
+
+class _LiveCardState extends State<_LiveCard> {
+  LiveStream get stream => widget.stream;
+  VideoPlayerController? _vc;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPreview();
+  }
+
+  @override
+  void dispose() {
+    _vc?.dispose();
+    super.dispose();
+  }
+
+  /// TikTok-style: the card itself plays the video (muted). Live HLS for app
+  /// broadcasts, the saved recording for replays.
+  Future<void> _initPreview() async {
+    final s = stream;
+    String? url;
+    if (s.isLive && (s.ivsPlaybackUrl?.isNotEmpty ?? false)) {
+      url = s.ivsPlaybackUrl;
+    } else if (!s.isLive && s.hasReplay) {
+      final rp = s.recordingPath;
+      if (rp != null && rp.isNotEmpty) {
+        url = rp.startsWith("http")
+            ? rp
+            : "${AppConfig.apiBase}/recordings/$rp";
+      } else if (s.vodPlaybackId?.isNotEmpty ?? false) {
+        url = "https://stream.mux.com/${s.vodPlaybackId}.m3u8";
+      }
+    }
+    if (url == null) return;
+    try {
+      final c = VideoPlayerController.networkUrl(Uri.parse(url!));
+      _vc = c;
+      await c.initialize();
+      await c.setVolume(0);
+      await c.setLooping(!s.isLive);
+      await c.play();
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
     final host = stream.host?.displayName ?? "Host";
     return InkWell(
       borderRadius: BorderRadius.circular(GwRadius.lg),
-      onTap: onTap,
+      onTap: widget.onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(GwRadius.lg),
         child: AspectRatio(
@@ -266,8 +386,26 @@ class _LiveCard extends StatelessWidget {
   }
 
   Widget _thumb() {
-    final poster = stream.host?.coverUrl;
-    if (poster != null && poster.isNotEmpty) {
+    if (_vc != null && _vc!.value.isInitialized) {
+      return FittedBox(
+        fit: BoxFit.cover,
+        clipBehavior: Clip.hardEdge,
+        child: SizedBox(
+          width: _vc!.value.size.width,
+          height: _vc!.value.size.height,
+          child: VideoPlayer(_vc!),
+        ),
+      );
+    }
+    // Best visual available: host's cover photo, else their avatar blown up.
+    final cover = stream.host?.coverUrl;
+    final avatar = stream.host?.avatarUrl;
+    final poster = (cover != null && cover.isNotEmpty)
+        ? cover
+        : (avatar != null && avatar.isNotEmpty)
+            ? avatar
+            : null;
+    if (poster != null) {
       return CachedNetworkImage(
         imageUrl: poster,
         fit: BoxFit.cover,
