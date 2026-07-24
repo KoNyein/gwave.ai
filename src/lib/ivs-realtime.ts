@@ -11,6 +11,8 @@ import {
   StopCompositionCommand,
 } from "@aws-sdk/client-ivs-realtime";
 
+import { readIvsRecordingManifest } from "@/lib/ivs-recording";
+
 /**
  * Amazon IVS Real-Time — the AWS-native provider for phone-browser Live
  * (FB/TikTok-style). Each broadcast gets an IVS *stage*: the host publishes
@@ -114,9 +116,18 @@ export async function startIvsComposition(
 }
 
 /**
- * Stop a composition and try to resolve where the recording landed. IVS writes
- * HLS under the destination's recording prefix; the master playlist path is
- * stored as the stream's replay when available.
+ * Stop a composition and resolve where the recording landed.
+ *
+ * The composition detail gives us the S3 *prefix*; the exact playlist filename
+ * comes from the recording's own `events/recording-ended.json`, read by
+ * `readIvsRecordingManifest` — we do NOT hardcode the manifest name. (A previous
+ * version guessed `<prefix>/media/hls/master.m3u8`; the real file is
+ * `multivariant.m3u8`, so every Real-Time replay stored a 404.)
+ *
+ * The events file is written asynchronously after stop, so the resolve retries
+ * briefly. If it never appears we return null and the caller leaves
+ * `recording_path` null — a missing replay shows the "no replay yet"
+ * placeholder; a wrong one shows a dead player.
  */
 export async function stopIvsComposition(
   compositionArn: string,
@@ -126,15 +137,15 @@ export async function stopIvsComposition(
     .send(new StopCompositionCommand({ arn: compositionArn }))
     .catch(() => undefined);
   try {
+    // Read the prefix before the composition record is garbage-collected.
     const res = await client.send(
       new GetCompositionCommand({ arn: compositionArn }),
     );
     const s3 = res.composition?.destinations?.find((d) => d.detail?.s3)?.detail
       ?.s3 as { recordingPrefix?: string } | undefined;
+    if (!s3?.recordingPrefix) return { recordingPath: null };
     return {
-      recordingPath: s3?.recordingPrefix
-        ? `${s3.recordingPrefix.replace(/\/+$/, "")}/media/hls/master.m3u8`
-        : null,
+      recordingPath: await readIvsRecordingManifest(s3.recordingPrefix),
     };
   } catch {
     return { recordingPath: null };
