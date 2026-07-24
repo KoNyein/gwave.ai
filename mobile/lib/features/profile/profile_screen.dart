@@ -305,6 +305,7 @@ class ProfileScreen extends StatelessWidget {
         _MenuEntry(Icons.record_voice_over_outlined, "Walkie",
             native: _Native.talk),
         _MenuEntry(Icons.movie_outlined, "Reels", tab: 1),
+        _MenuEntry(Icons.library_music_outlined, "Audio", web: "/audio"),
         _MenuEntry(Icons.sports_esports_outlined, "Games",
             native: _Native.games),
         _MenuEntry(Icons.favorite_outline, "Dating", native: _Native.dating),
