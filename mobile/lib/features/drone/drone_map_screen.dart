@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:provider/provider.dart';
 
+import '../../core/app_state.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../map/offline_tiles.dart';
@@ -34,7 +36,10 @@ class _DroneMapScreenState extends State<DroneMapScreen> {
   final MapController _map = MapController();
   LatLng? _me;
   List<DroneHit> _hits = [];
+  // Networked detections from SDR sensors / other clients (server feed).
+  List<_NetHit> _net = [];
   Timer? _poll;
+  Timer? _netPoll;
 
   @override
   void initState() {
@@ -45,12 +50,30 @@ class _DroneMapScreenState extends State<DroneMapScreen> {
     _poll = Timer.periodic(const Duration(seconds: 2), (_) {
       if (mounted) setState(() => _hits = widget.liveHits());
     });
+    // Pull the networked (SDR) feed too.
+    _fetchNetwork();
+    _netPoll = Timer.periodic(const Duration(seconds: 6), (_) => _fetchNetwork());
   }
 
   @override
   void dispose() {
     _poll?.cancel();
+    _netPoll?.cancel();
     super.dispose();
+  }
+
+  Future<void> _fetchNetwork() async {
+    if (!mounted) return;
+    try {
+      final rows = await context.read<AppState>().api.nearbyDrones(
+            lat: _me?.latitude,
+            lng: _me?.longitude,
+          );
+      if (!mounted) return;
+      setState(() => _net = rows.map(_NetHit.fromJson).toList());
+    } catch (_) {
+      // best-effort — the local scan still drives the map
+    }
   }
 
   Future<void> _locate() async {
@@ -92,8 +115,9 @@ class _DroneMapScreenState extends State<DroneMapScreen> {
   @override
   Widget build(BuildContext context) {
     final center = _me ?? _fallback;
-    final withGps = _hits.where((h) => h.lat != null).length;
-    final total = _hits.length;
+    final withGps = _hits.where((h) => h.lat != null).length +
+        _net.where((n) => n.lat != null).length;
+    final total = _hits.length + _net.length;
     final coverRate = total == 0 ? 0 : (withGps / total * 100).round();
 
     final markers = <Marker>[];
@@ -133,6 +157,20 @@ class _DroneMapScreenState extends State<DroneMapScreen> {
             color: near ? GwColors.live : GwColors.gold,
             size: h.lat != null ? 30 : 24,
           ),
+        ),
+      ));
+    }
+    // Networked (SDR sensor) detections — purple tower markers.
+    for (final n in _net) {
+      if (n.lat == null || n.lng == null) continue;
+      markers.add(Marker(
+        point: LatLng(n.lat!, n.lng!),
+        width: 40,
+        height: 40,
+        child: GestureDetector(
+          onTap: () => _showNet(n),
+          child: const Icon(Icons.cell_tower,
+              color: Color(0xFF8E7BFF), size: 30),
         ),
       ));
     }
@@ -214,6 +252,43 @@ class _DroneMapScreenState extends State<DroneMapScreen> {
         ],
       );
 
+  void _showNet(_NetHit n) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.cell_tower, color: Color(0xFF8E7BFF)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(n.label,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w900, fontSize: 17)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+                "${tr(context, "Networked / SDR sensor", "ကွန်ရက် / SDR sensor")}${n.protocol != null ? " · ${n.protocol}" : ""}${n.rssi != null ? " · ${n.rssi} dBm" : ""}",
+                style: TextStyle(color: GwColors.inkSoftOf(context))),
+            if (n.remoteId != null)
+              Text("ID: ${n.remoteId}",
+                  style: TextStyle(color: GwColors.inkSoftOf(context))),
+            if (n.lat != null)
+              Text(
+                  "📍 ${n.lat!.toStringAsFixed(5)}, ${n.lng!.toStringAsFixed(5)}${n.altitudeM != null ? " · ${n.altitudeM!.round()} m" : ""}",
+                  style: TextStyle(color: GwColors.inkSoftOf(context))),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showHit(DroneHit h) {
     showModalBottomSheet(
       context: context,
@@ -249,4 +324,38 @@ class _DroneMapScreenState extends State<DroneMapScreen> {
       ),
     );
   }
+}
+
+/// A networked detection from the server feed (SDR sensors / other clients).
+class _NetHit {
+  _NetHit({
+    required this.label,
+    this.protocol,
+    this.vendor,
+    this.rssi,
+    this.lat,
+    this.lng,
+    this.altitudeM,
+    this.remoteId,
+  });
+
+  final String label;
+  final String? protocol;
+  final String? vendor;
+  final int? rssi;
+  final double? lat;
+  final double? lng;
+  final double? altitudeM;
+  final String? remoteId;
+
+  factory _NetHit.fromJson(Map<String, dynamic> j) => _NetHit(
+        label: (j["label"] ?? j["vendor"] ?? "Drone").toString(),
+        protocol: j["protocol"] as String?,
+        vendor: j["vendor"] as String?,
+        rssi: (j["rssi"] as num?)?.toInt(),
+        lat: (j["lat"] as num?)?.toDouble(),
+        lng: (j["lng"] as num?)?.toDouble(),
+        altitudeM: (j["altitudeM"] as num?)?.toDouble(),
+        remoteId: j["remoteId"] as String?,
+      );
 }

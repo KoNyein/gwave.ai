@@ -397,6 +397,35 @@ class ApiClient {
   /// Comments on a knowledge entry (a strain or mineral). Read + write go
   /// through the mobile API (service role) so the device isn't blocked by the
   /// table's RLS. Returns rows oldest→newest, each with an embedded `author`.
+  /// Live networked drone detections near a point — signals reported by SDR
+  /// sensors (and other clients) that a phone's own radios can't hear. Public,
+  /// best-effort: returns an empty list before the endpoint is deployed or when
+  /// nothing is nearby, so it never blocks the map.
+  Future<List<Map<String, dynamic>>> nearbyDrones({
+    double? lat,
+    double? lng,
+    int radius = 8000,
+  }) async {
+    final uri =
+        Uri.parse("${AppConfig.apiBase}/api/mobile/drone/nearby").replace(
+      queryParameters: {
+        "radius": "$radius",
+        if (lat != null) "lat": "$lat",
+        if (lng != null) "lng": "$lng",
+      },
+    );
+    try {
+      final res = await _http.get(uri).timeout(const Duration(seconds: 10));
+      final j = _decode(res);
+      if (res.statusCode >= 400 || j == null || j["detections"] is! List) {
+        return [];
+      }
+      return (j["detections"] as List).cast<Map<String, dynamic>>();
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<List<Map<String, dynamic>>> subjectComments(
       String type, String id) async {
     await _ensureFreshToken();
