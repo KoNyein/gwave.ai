@@ -51,6 +51,13 @@
 
 ## Changelog
 
+- 2026-07-24 (later): Media quality upgrade — new `src/lib/hls-quality.ts`
+  with two shared hls.js profiles that auto-recover from fatal network/media
+  errors (feed/rail/grid previews `attachPreviewHls`, watch/CCTV players
+  uncapped high-quality `attachFullHls`), so live previews no longer freeze on
+  a hiccup; feed/lightbox photos get async decode + priority hints + full-res
+  lightbox (PR #351, merged). App: feed/story/chat photos bumped to
+  `FilterQuality.medium` for crisper Retina downscaling (mobile branch).
 - 2026-07-23 (later): IVS replays end-to-end (`latestIvsRecordingPath` +
   `/recordings` proxy, PR #339/#340); media-plane live self-heal + web watch
   page reverse check (PR #337/#342); web feed live cards autoplay via hls.js
