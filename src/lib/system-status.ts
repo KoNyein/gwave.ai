@@ -25,14 +25,33 @@ function isSet(name: string): boolean {
   return Boolean(process.env[name] && process.env[name]!.trim().length > 0);
 }
 
+/**
+ * A required variable. A plain string is one env name; an array is a set of
+ * interchangeable aliases — satisfied when ANY is set, so a feature reading a
+ * value under a legacy name (e.g. the old NEXT_PUBLIC_SUPABASE_* names still
+ * baked into the running image) isn't flagged as missing. The first name is the
+ * canonical one shown in the UI.
+ */
+type VarSpec = string | string[];
+const specName = (v: VarSpec): string => (Array.isArray(v) ? v[0]! : v);
+const specSet = (v: VarSpec): boolean =>
+  Array.isArray(v) ? v.some(isSet) : isSet(v);
+
 function group(
   title: string,
   enables: string,
-  vars: string[],
+  vars: VarSpec[],
   critical: boolean,
 ): StatusGroup {
-  const missing = vars.filter((name) => !isSet(name));
-  return { title, enables, vars, critical, missing, configured: missing.length === 0 };
+  const missing = vars.filter((v) => !specSet(v)).map(specName);
+  return {
+    title,
+    enables,
+    vars: vars.map(specName),
+    critical,
+    missing,
+    configured: missing.length === 0,
+  };
 }
 
 /** Ordered list of integration checks for the admin System Status page. */
@@ -45,8 +64,12 @@ export function getSystemStatus(): StatusGroup[] {
         // Data plane = self-hosted PostgREST/Realtime at NEXT_PUBLIC_DATA_API_URL
         // (gwave.cc/sb → RDS). The privileged path mints its own service_role
         // token (lib/auth/tokens.ts), so no static service-role key is needed.
-        "NEXT_PUBLIC_DATA_API_URL",
-        "NEXT_PUBLIC_DATA_API_KEY",
+        // The legacy NEXT_PUBLIC_SUPABASE_* names are still baked into the
+        // running production image and used as a fallback (see lib/env.ts and
+        // probeDatabase below), so accept either — otherwise this shows a false
+        // "critical missing" while the DB probe reports "ok".
+        ["NEXT_PUBLIC_DATA_API_URL", "NEXT_PUBLIC_SUPABASE_URL"],
+        ["NEXT_PUBLIC_DATA_API_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY"],
         "NEXT_PUBLIC_SITE_URL",
       ],
       true,
