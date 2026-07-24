@@ -29,6 +29,9 @@ const bodySchema = z.object({
   // How the host broadcasts (IVS provider only): phone/browser camera, or an
   // RTMP encoder (OBS / game streaming). Other providers ignore it.
   mode: z.enum(["camera", "rtmp"]).optional().default("camera"),
+  // Opt-in recording: when true the broadcast is saved and becomes a replay
+  // after it ends; when false nothing is recorded (international standard).
+  record: z.boolean().optional().default(true),
 });
 
 /**
@@ -95,6 +98,7 @@ export async function POST(request: Request) {
         host_id: profile.id,
         title: parsed.data.title.trim(),
         description: parsed.data.description?.trim() || null,
+        record_enabled: parsed.data.record,
         ivs_stage_arn: stageArn,
         kind: parsed.data.kind,
         track_slug:
@@ -124,7 +128,10 @@ export async function POST(request: Request) {
   if (ivsIsDefaultProvider()) {
     let channel;
     try {
-      channel = await createIvsChannel(`gwave-${profile.id.slice(0, 8)}`);
+      channel = await createIvsChannel(
+        `gwave-${profile.id.slice(0, 8)}`,
+        parsed.data.record,
+      );
     } catch (e) {
       return NextResponse.json(
         {
@@ -144,6 +151,7 @@ export async function POST(request: Request) {
         host_id: profile.id,
         title: parsed.data.title.trim(),
         description: parsed.data.description?.trim() || null,
+        record_enabled: parsed.data.record,
         ivs_channel_arn: channel.channelArn,
         ivs_ingest_url: channel.ingestUrl,
         ivs_playback_url: channel.playbackUrl,
@@ -191,6 +199,7 @@ export async function POST(request: Request) {
         host_id: profile.id,
         title: parsed.data.title.trim(),
         description: parsed.data.description?.trim() || null,
+        record_enabled: parsed.data.record,
         agora_channel: newAgoraChannel(),
         kind: parsed.data.kind,
         track_slug:
@@ -222,6 +231,7 @@ export async function POST(request: Request) {
         host_id: profile.id,
         title: parsed.data.title.trim(),
         description: parsed.data.description?.trim() || null,
+        record_enabled: parsed.data.record,
         livekit_room: newLivekitRoom(),
         kind: parsed.data.kind,
         track_slug:
@@ -276,6 +286,7 @@ export async function POST(request: Request) {
         host_id: profile.id,
         title: parsed.data.title.trim(),
         description: parsed.data.description?.trim() || null,
+        record_enabled: parsed.data.record,
         mux_stream_id: stream.id,
         mux_playback_id: playbackId,
         kind: parsed.data.kind,

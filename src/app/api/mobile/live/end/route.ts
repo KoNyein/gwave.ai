@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const { data: stream } = await admin
     .from("live_streams")
-    .select("id, host_id, status, ivs_channel_arn")
+    .select("id, host_id, status, ivs_channel_arn, record_enabled")
     .eq("id", parsed.data.id)
     .maybeSingle();
   if (!stream) {
@@ -47,9 +47,11 @@ export async function POST(request: NextRequest) {
   let recordingPath: string | null = null;
   if (stream.ivs_channel_arn) {
     await stopIvsStream(stream.ivs_channel_arn).catch(() => undefined);
-    // IVS auto-records to S3 but nothing reports the key back — derive it so
-    // the replay is linked the moment the broadcast ends.
-    recordingPath = await latestIvsRecordingPath(stream.ivs_channel_arn);
+    // Link the replay only when the host opted in to recording — otherwise no
+    // recording exists (the channel was created without a recording config).
+    if (stream.record_enabled) {
+      recordingPath = await latestIvsRecordingPath(stream.ivs_channel_arn);
+    }
   }
 
   const { error } = await admin

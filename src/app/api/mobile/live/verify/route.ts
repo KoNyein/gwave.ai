@@ -35,7 +35,9 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const { data: stream } = await admin
     .from("live_streams")
-    .select("id, host_id, status, livekit_room, ivs_channel_arn, created_at")
+    .select(
+      "id, host_id, status, livekit_room, ivs_channel_arn, created_at, record_enabled",
+    )
     .eq("id", parsed.data.id)
     .maybeSingle();
   if (!stream) {
@@ -57,9 +59,10 @@ export async function POST(request: NextRequest) {
     alive = await isIvsChannelLive(stream.ivs_channel_arn);
   }
   if (!alive) {
-    const recordingPath = stream.ivs_channel_arn
-      ? await latestIvsRecordingPath(stream.ivs_channel_arn)
-      : null;
+    const recordingPath =
+      stream.ivs_channel_arn && stream.record_enabled
+        ? await latestIvsRecordingPath(stream.ivs_channel_arn)
+        : null;
     await admin
       .from("live_streams")
       .update({
