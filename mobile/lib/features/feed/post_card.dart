@@ -16,6 +16,7 @@ import '../../core/theme.dart';
 import '../map/map_screen.dart';
 import '../web/web_screen.dart';
 import '../../widgets/common.dart';
+import '../../widgets/photo_view_screen.dart';
 import '../live/live_watch_screen.dart';
 import 'comments_sheet.dart';
 import 'reactions.dart';
@@ -218,23 +219,31 @@ class _PostCardState extends State<PostCard> {
               ),
             ] else if (p.firstImage != null) ...[
               const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(GwRadius.md),
-                child: CachedNetworkImage(
-                  imageUrl:
-                      resolveMedia(p.firstImage!.storagePath, bucket: "media")!,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  // Sharper downscale than Flutter's default low-quality
-                  // filter, so feed photos aren't soft on Retina screens.
-                  filterQuality: FilterQuality.medium,
-                  placeholder: (_, __) => Container(
-                    height: 200,
-                    color: GwColors.surfaceMuted,
+              Builder(builder: (ctx) {
+                final url =
+                    resolveMedia(p.firstImage!.storagePath, bucket: "media")!;
+                // Tap the photo to open the full-screen viewer (pinch-zoom,
+                // drag down to dismiss) — the standard feed-photo gesture.
+                return GestureDetector(
+                  onTap: () => PhotoViewScreen.open(ctx, url),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(GwRadius.md),
+                    child: CachedNetworkImage(
+                      imageUrl: url,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      // Sharper downscale than Flutter's default low-quality
+                      // filter, so feed photos aren't soft on Retina screens.
+                      filterQuality: FilterQuality.medium,
+                      placeholder: (_, __) => Container(
+                        height: 200,
+                        color: GwColors.surfaceMuted,
+                      ),
+                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                    ),
                   ),
-                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                ),
-              ),
+                );
+              }),
             ],
             const SizedBox(height: 12),
             if (_likes > 0 || _comments > 0)

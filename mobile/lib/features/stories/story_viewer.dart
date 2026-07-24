@@ -76,6 +76,10 @@ class _StoryViewerState extends State<StoryViewer>
             _next();
           }
         },
+        // Standard story gesture: drag down to dismiss.
+        onVerticalDragEnd: (d) {
+          if ((d.primaryVelocity ?? 0) > 300) Navigator.of(context).maybePop();
+        },
         child: Stack(
           fit: StackFit.expand,
           children: [
