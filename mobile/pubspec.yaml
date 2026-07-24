@@ -69,6 +69,9 @@ dependencies:
   share_plus: ^10.0.0
   # Scan nearby WiFi access points for the crowdsourced WiFi map (WiGLE-style).
   wifi_scan: ^0.4.1
+  # Health: PPG heart-rate — cover the rear camera + torch with a fingertip and
+  # read the red-channel pulse to draw a live heart-rhythm ("health wave").
+  camera: ^0.11.0
 
 dev_dependencies:
   flutter_lints: ^4.0.0

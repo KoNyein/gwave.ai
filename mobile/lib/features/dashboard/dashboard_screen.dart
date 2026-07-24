@@ -7,6 +7,7 @@ import '../../core/config.dart';
 import '../../core/i18n.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
+import '../health/health_hub_screen.dart';
 import '../web/web_screen.dart';
 import '../../widgets/common.dart';
 
@@ -121,6 +122,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _walletBanner(_stats!.walletBalance!),
               if (_stats!.walletBalance != null) const SizedBox(height: 14),
 
+              // Health hub — native, on-device health tracking.
+              _healthCard(),
+              const SizedBox(height: 14),
+
               // Stat grid
               GridView.count(
                 crossAxisCount: 2,
@@ -196,6 +201,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           color: Colors.white,
                           fontSize: 22,
                           fontWeight: FontWeight.w900)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.white),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _healthCard() {
+    return InkWell(
+      borderRadius: BorderRadius.circular(GwRadius.lg),
+      onTap: () => Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const HealthHubScreen())),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFE23B54), Color(0xFFF0768A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(GwRadius.lg),
+          boxShadow: GwShadow.card,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: const Icon(Icons.favorite, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(tr(context, "Health", "ကျန်းမာရေး"),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900)),
+                  Text(
+                      tr(context, "Pulse, vitals, cycle, report",
+                          "Pulse၊ vitals၊ ရာသီ၊ report"),
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 13)),
                 ],
               ),
             ),
