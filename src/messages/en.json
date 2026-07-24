@@ -1529,6 +1529,14 @@
     "helpSupportT": "Getting help.",
     "helpSupportB": "Use the Help Center → Audio for failed purchases or playback issues; you'll get a ticket and an in-app reply.",
     "yourRating": "Your rating",
-    "thanks": "Thanks!"
+    "thanks": "Thanks!",
+    "helpContact": "Contact support",
+    "catPurchase": "Failed purchase",
+    "catPlayback": "Audio not playing",
+    "catRefund": "Refund",
+    "catOther": "Other",
+    "supportMessage": "Describe the problem…",
+    "supportSend": "Send",
+    "supportSent": "Sent — your ticket #{id} is open. We’ll reply in the app."
   }
 }

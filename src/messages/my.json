@@ -1529,6 +1529,14 @@
     "helpSupportT": "အကူအညီ ရယူခြင်း။",
     "helpSupportB": "ဝယ်ယူမှု/ဖွင့်၍မရ ပြဿနာအတွက် Help Center → Audio ကို သုံးပါ — ticket ရပြီး app ထဲမှာ ပြန်ဖြေပါမည်။",
     "yourRating": "သင့် အဆင့်သတ်မှတ်ချက်",
-    "thanks": "ကျေးဇူးတင်ပါတယ်!"
+    "thanks": "ကျေးဇူးတင်ပါတယ်!",
+    "helpContact": "အကူအညီ ဆက်သွယ်ရန်",
+    "catPurchase": "ဝယ်ယူမှု မအောင်မြင်",
+    "catPlayback": "အသံ ဖွင့်၍မရ",
+    "catRefund": "ငွေပြန်အမ်း",
+    "catOther": "အခြား",
+    "supportMessage": "ပြဿနာကို ဖော်ပြပါ…",
+    "supportSend": "ပို့မယ်",
+    "supportSent": "ပို့ပြီးပါပြီ — ticket #{id} ဖွင့်ထားပါတယ်။ app ထဲမှာ ပြန်ဖြေပါမည်။"
   }
 }
