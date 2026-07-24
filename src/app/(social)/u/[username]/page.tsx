@@ -7,6 +7,7 @@ import { FriendButton } from "@/components/social/friend-button";
 import { MessageButton } from "@/components/social/message-button";
 import { MemberBadge } from "@/components/social/member-badge";
 import { ProfileActions } from "@/components/social/profile-actions";
+import { QrNfcShare } from "@/components/share/qr-nfc-share";
 import { PostFeed } from "@/components/social/post-feed";
 import { ProfileTabs } from "@/components/social/profile-tabs";
 import { UserAvatar } from "@/components/social/user-avatar";
@@ -187,6 +188,15 @@ export default async function ProfilePage(
                 <ProfileActions
                   profileId={profile.id}
                   initiallyBlocked={initiallyBlocked}
+                />
+              </div>
+            ) : null}
+            {/* Share this account anywhere — link / QR / NFC / native sheet. */}
+            {profile.username ? (
+              <div className="pb-1">
+                <QrNfcShare
+                  path={`/u/${profile.username}`}
+                  title={displayName(profile)}
                 />
               </div>
             ) : null}

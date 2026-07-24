@@ -158,7 +158,16 @@
     "mediaPost": "မီဒီယာပို့စ်",
     "shareNow": "ယခုမျှဝေရန်",
     "sharing": "မျှဝေနေသည်...",
-    "sharedToast": "ပို့စ်ကို မျှဝေပြီးပါပြီ။"
+    "sharedToast": "ပို့စ်ကို မျှဝေပြီးပါပြီ။",
+    "external": "ဘယ်နေရာမဆို share",
+    "shareVia": "Share",
+    "qr": "QR",
+    "nfc": "NFC tag",
+    "copyLink": "Link ကူး",
+    "copied": "ကူးပြီး",
+    "qrHint": "ဖွင့်ရန် scan ဖတ်ပါ",
+    "nfcWritten": "NFC tag ထဲ ရေးပြီး — ဖုန်းတစ်လုံး တို့ရင် ဖွင့်ပါမည်။",
+    "nfcFailed": "NFC ရေး၍မရ (သို့) ပယ်ဖျက်ခဲ့သည်။"
   },
   "friends": {
     "title": "သူငယ်ချင်းများ",
