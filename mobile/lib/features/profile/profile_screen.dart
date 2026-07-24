@@ -20,6 +20,7 @@ import '../dashboard/dashboard_screen.dart';
 import '../health/health_hub_screen.dart';
 import '../dating/dating_screen.dart';
 import '../drone/drone_scanner_screen.dart';
+import '../wellness/breathing_screen.dart';
 import '../family/family_screen.dart';
 import '../farm/farm_screen.dart';
 import '../finance/finance_screen.dart';
@@ -317,7 +318,8 @@ class ProfileScreen extends StatelessWidget {
         _MenuEntry(Icons.emoji_events_outlined, "Leaderboard", web: "/leaderboard"),
         _MenuEntry(Icons.monitor_heart_outlined, "Health",
             native: _Native.health),
-        _MenuEntry(Icons.spa_outlined, "Wellness", web: "/wellness"),
+        _MenuEntry(Icons.self_improvement_outlined, "Wellness",
+            native: _Native.wellness),
       ]),
       _MenuSection("Farm & Home", Icons.eco_outlined, const Color(0xFF2E9E5B), [
         _MenuEntry(Icons.agriculture_outlined, "Farm", native: _Native.farm),
@@ -594,6 +596,9 @@ class ProfileScreen extends StatelessWidget {
       case _Native.audio:
         _push(context, const AudioHubScreen());
         return;
+      case _Native.wellness:
+        _push(context, const BreathingScreen());
+        return;
       case null:
         break;
     }
@@ -678,6 +683,7 @@ enum _Native {
   health,
   drone,
   audio,
+  wellness,
 }
 
 /// One category of the launcher menu: a titled, color-accented card of tiles.
