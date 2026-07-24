@@ -196,6 +196,110 @@ async function injectSponsoredPost(
   return [...posts.slice(0, slot), ad, ...posts.slice(slot)];
 }
 
+// Discovery: how many public video / live posts from outside the viewer's
+// graph to blend into the first feed page, and where.
+const DISCOVERY_SLOTS = [2, 5, 9];
+
+/**
+ * Recent PUBLIC posts carrying a video, or a live announcement, authored by
+ * people the viewer doesn't already follow — so everyone's videos and live
+ * streams reach the feed (discovery), not just those from your own network.
+ * RLS still applies (public posts are readable by all authenticated users).
+ */
+async function getDiscoveryPosts(
+  viewerId: string,
+  excludeAuthorIds: Set<string>,
+  want: number,
+): Promise<FeedPost[]> {
+  const db = await createClient();
+  // Only look back a couple of weeks so discovery stays fresh and the queries
+  // stay bounded.
+  const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Post ids that have at least one video attachment (recent first).
+  const { data: vidRows } = await db
+    .from("post_media")
+    .select("post_id, created_at")
+    .eq("media_type", "video")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(120)
+    .returns<{ post_id: string }[]>();
+  const videoIds = [...new Set((vidRows ?? []).map((r) => r.post_id))];
+
+  const [videoRes, liveRes] = await Promise.all([
+    videoIds.length > 0
+      ? db
+          .from("posts")
+          .select(POST_SELECT)
+          .in("id", videoIds)
+          .eq("visibility", "public")
+          .is("group_id", null)
+          .is("page_id", null)
+          .is("removed_at", null)
+          .eq("my_reaction.user_id", viewerId)
+          .order("created_at", { ascending: false })
+          .limit(40)
+          .returns<FeedPost[]>()
+      : Promise.resolve({ data: [] as FeedPost[] }),
+    // Live announcement posts carry a "/live/<id>" link in their content.
+    db
+      .from("posts")
+      .select(POST_SELECT)
+      .eq("visibility", "public")
+      .is("removed_at", null)
+      .ilike("content", "%/live/%")
+      .gte("created_at", since)
+      .eq("my_reaction.user_id", viewerId)
+      .order("created_at", { ascending: false })
+      .limit(15)
+      .returns<FeedPost[]>(),
+  ]);
+
+  const seen = new Set<string>();
+  const out: FeedPost[] = [];
+  for (const row of [...(videoRes.data ?? []), ...(liveRes.data ?? [])]) {
+    if (seen.has(row.id)) continue;
+    if (excludeAuthorIds.has(row.author_id)) continue; // already in the graph feed
+    seen.add(row.id);
+    out.push(row);
+  }
+  out.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  return out.slice(0, want);
+}
+
+/**
+ * Blend a few discovery videos / lives into a freshly-loaded first page at
+ * spaced slots (deduped against what's already on screen), so user-posted
+ * videos and live streams surface to everyone — the discovery counterpart to
+ * the graph feed.
+ */
+async function injectDiscoveryPosts(
+  posts: FeedPost[],
+  viewerId: string,
+  graph: FeedGraph,
+): Promise<FeedPost[]> {
+  const onScreen = new Set(posts.map((p) => p.id));
+  const exclude = new Set<string>(graph.authorIds);
+  const discovery = (
+    await getDiscoveryPosts(viewerId, exclude, DISCOVERY_SLOTS.length)
+  )
+    .filter((p) => !onScreen.has(p.id))
+    .map(sortMedia)
+    .map((p) => hideForeignViewCounts(p, viewerId));
+  if (discovery.length === 0) return posts;
+
+  const out = [...posts];
+  let slot = 0;
+  for (const d of discovery) {
+    (d as unknown as { discovered: boolean }).discovered = true;
+    const at = Math.min(DISCOVERY_SLOTS[slot] ?? out.length, out.length);
+    out.splice(at, 0, d);
+    slot += 1;
+  }
+  return out;
+}
+
 /**
  * Personalized, cursor-paginated news feed. Phase 1 surfaces the best recent
  * posts from the viewer's graph; phase 2 continues chronologically through
@@ -271,9 +375,15 @@ export async function getFeed(
     .map(sortMedia)
     .map((p) => hideForeignViewCounts(p, userId));
 
-  // Only the very first page carries a Sponsored slot, so an ad shows up front
-  // without repeating on every infinite-scroll fetch.
+  // Only the very first page blends in discovery videos/lives + a Sponsored
+  // slot, so they show up front without repeating on every infinite-scroll
+  // fetch. Discovery first (best-effort — a hiccup must not break the feed).
   if (offset === 0) {
+    try {
+      page = await injectDiscoveryPosts(page, userId, graph);
+    } catch {
+      /* discovery is a bonus; the graph feed still renders. */
+    }
     page = await injectSponsoredPost(page, userId);
   }
 

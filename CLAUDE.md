@@ -22,7 +22,12 @@ undo each other's work.
 
 - **`main`** is the source of truth. Server changes go on short-lived branches
   off `main` → PR → squash-merge **only after** the "Lint, Typecheck & Build"
-  and "Smoke E2E" checks pass (a Vercel preview alone is NOT green).
+  and "Smoke E2E" GitHub Actions checks pass.
+- **AWS-only hosting.** Production is self-hosted on AWS (Next.js
+  `output: "standalone"` image → ECR → EC2 via SSM). Vercel is NOT used:
+  `vercel.json` sets `git.deploymentEnabled: false` so no Vercel deployments
+  are created, and the middleware 308-redirects any stray `*.vercel.app` host
+  to `gwave.cc`. Never reintroduce a Vercel deploy or link.
 - **`claude/phase-1-implementation-7ysxtj`** is the active mobile dev branch
   (= main + mobile commits). Mobile work is committed there directly; merge
   `origin/main` into it periodically to keep it current.
