@@ -12,7 +12,12 @@ export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="sticky bottom-0 z-40 flex items-center justify-around border-t bg-background py-1 lg:hidden">
+    <nav
+      className="sticky bottom-0 z-40 flex items-center justify-around border-t bg-background py-1 lg:hidden"
+      // Keep the tab row clear of the iPhone home indicator when installed as a
+      // standalone PWA (viewport-fit=cover). Falls back to the normal py-1.
+      style={{ paddingBottom: "max(0.25rem, env(safe-area-inset-bottom))" }}
+    >
       {PRIMARY_NAV.map((item) => {
         const active =
           pathname === item.href || pathname.startsWith(`${item.href}/`);

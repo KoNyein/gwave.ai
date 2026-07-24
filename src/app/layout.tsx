@@ -40,6 +40,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#3B6D11",
+  // Let the standalone PWA draw under the iPhone notch / home indicator; the
+  // shell then pads itself with env(safe-area-inset-*) so nothing is hidden.
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({
