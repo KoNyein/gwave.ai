@@ -51,6 +51,17 @@
 
 ## Changelog
 
+- 2026-07-24 (latest): App batch → **Gwave v1.0.142** (`mobile-latest`).
+  Standard gestures (full-screen photo viewer pinch-zoom, story drag-to-dismiss),
+  Health module (PPG heart-wave, vitals, cycle, meds, Medical ID, doctor PDF
+  report — all on-device), dark-mode readability fixes (strains/minerals/offline
+  chat), offline maps (disk tile cache + region download), drone-detection radar
+  (BLE Remote ID + Wi-Fi heuristic + proximity haptic alarm). Live-list flood
+  fix so every user's live shows. Web: admin Users map (#353). Build note: the
+  APK workflow runs `flutter analyze` with `|| true`, so compile errors only
+  surface at `flutter build` — three slipped through (CupertinoPageTransitions-
+  Builder unresolved on Flutter 3.44, LatLngBounds import, TileProvider
+  super.headers) and were fixed in builds 141→142.
 - 2026-07-24 (later): Media quality upgrade — new `src/lib/hls-quality.ts`
   with two shared hls.js profiles that auto-recover from fatal network/media
   errors (feed/rail/grid previews `attachPreviewHls`, watch/CCTV players
