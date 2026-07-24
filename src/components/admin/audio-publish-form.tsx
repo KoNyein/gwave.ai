@@ -51,6 +51,12 @@ export function AudioPublishForm() {
       album: str("album"),
       genre: str("genre"),
       isrc: str("isrc"),
+      bpm: num("bpm"),
+      music_key: str("music_key"),
+      time_sig: str("time_sig"),
+      mood: str("mood"),
+      release_year: num("release_year"),
+      lyrics: str("lyrics"),
       episode_no: num("episode_no"),
       show_notes: str("show_notes"),
       author: str("author"),
@@ -121,11 +127,33 @@ export function AudioPublishForm() {
 
           {/* Facet fields */}
           {kind === "music" && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Artist" name="artist" />
-              <Field label="Album" name="album" />
-              <Field label="Genre" name="genre" />
-              <Field label="ISRC" name="isrc" />
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Artist" name="artist" />
+                <Field label="Album" name="album" />
+                <Field label="Genre" name="genre" />
+                <Field label="ISRC" name="isrc" />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label="BPM (tempo)" name="bpm" type="number" />
+                <Field label="Key (e.g. C minor)" name="music_key" />
+                <Field label="Time signature (e.g. 4/4)" name="time_sig" />
+                <Field label="Mood" name="mood" />
+                <Field label="Release year" name="release_year" type="number" />
+              </div>
+              <div>
+                <Label htmlFor="lyrics">
+                  Lyrics — plain, or LRC (&quot;[00:12.30] line&quot;) for a synced
+                  karaoke highlight
+                </Label>
+                <textarea
+                  id="lyrics"
+                  name="lyrics"
+                  rows={5}
+                  placeholder={"[00:00.00] First line\n[00:04.50] Second line"}
+                  className="mt-1 w-full rounded-md border border-input bg-background p-2 font-mono text-xs"
+                />
+              </div>
             </div>
           )}
           {kind === "podcast" && (

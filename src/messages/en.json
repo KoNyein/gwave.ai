@@ -1537,6 +1537,20 @@
     "catOther": "Other",
     "supportMessage": "Describe the problem…",
     "supportSend": "Send",
-    "supportSent": "Sent — your ticket #{id} is open. We’ll reply in the app."
+    "supportSent": "Sent — your ticket #{id} is open. We’ll reply in the app.",
+    "lyrics": "Lyrics",
+    "bpm": "Tempo (BPM)",
+    "key": "Key",
+    "timeSig": "Time sig",
+    "mood": "Mood",
+    "year": "Year",
+    "share": "Share",
+    "qr": "QR",
+    "nfc": "NFC tag",
+    "copyLink": "Copy link",
+    "copied": "Copied",
+    "qrHint": "Scan to open this track",
+    "nfcWritten": "Written to NFC tag — tap a phone to open.",
+    "nfcFailed": "NFC write failed or was cancelled."
   }
 }
