@@ -76,6 +76,7 @@ jobs:
             --build-arg NEXT_PUBLIC_COGNITO_DOMAIN="${{ vars.NEXT_PUBLIC_COGNITO_DOMAIN }}" \
             --build-arg NEXT_PUBLIC_COGNITO_CLIENT_ID="${{ vars.NEXT_PUBLIC_COGNITO_CLIENT_ID }}" \
             --build-arg NEXT_PUBLIC_S3_CDN="${{ vars.NEXT_PUBLIC_S3_CDN }}" \
+            --build-arg NEXT_PUBLIC_IVS_RECORDING_BASE="${{ vars.NEXT_PUBLIC_IVS_RECORDING_BASE }}" \
             --build-arg NEXT_PUBLIC_VAPID_PUBLIC_KEY="${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}" \
             --build-arg NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="${{ vars.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}" \
             -t "$IMAGE:gwave" \
