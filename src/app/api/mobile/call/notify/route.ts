@@ -67,14 +67,23 @@ export async function POST(request: NextRequest) {
         tag: "gw-incoming-call",
       }),
       // Native callee (FCM) — a phone whose app is closed, so the realtime ring
-      // inbox is dead. A high-priority data message wakes the app to ring.
-      // No-op until FCM is configured; safe to ship ahead of that.
+      // inbox is dead. The data payload wakes the app when it's foregrounded,
+      // and the notification block makes Android show a ringing heads-up /
+      // lock-screen notification (with sound) when the app is backgrounded or
+      // killed — tapping it opens the app, which reconnects the ring inbox and
+      // catches the caller's re-broadcast ring. No-op until FCM is configured.
       sendFcmToUser(row.user_id, {
         data: {
           type: "call",
           video: parsed.data.video ? "1" : "0",
           conversationId: parsed.data.conversationId,
           caller: name,
+        },
+        notification: {
+          title: parsed.data.video ? `📹 ${name}` : `📞 ${name}`,
+          body: parsed.data.video
+            ? "Video call ခေါ်နေသည် — ဖွင့်ပြီး ဖြေပါ"
+            : "ဖုန်းခေါ်နေသည် — ဖွင့်ပြီး ဖြေပါ",
         },
       }),
     ]),
