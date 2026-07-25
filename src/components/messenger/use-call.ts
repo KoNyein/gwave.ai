@@ -97,6 +97,14 @@ interface Session {
   localStream: MediaStream | null;
   ringChannel: RealtimeChannel | null;
   ringTimer: ReturnType<typeof setTimeout> | null;
+  /**
+   * Re-broadcasts the ring every couple of seconds while the call is still
+   * outgoing. Realtime broadcast is ephemeral — only clients subscribed at
+   * that instant receive it — so a single send is lost whenever the callee's
+   * socket is mid-reconnect or their tab/app opens a moment later, which showed
+   * up as the callee never ringing and the caller logging a missed call.
+   */
+  reRingTimer: ReturnType<typeof setInterval> | null;
   durationTimer: ReturnType<typeof setInterval> | null;
   connectedAt: number | null;
   /** The peer actively declined, as opposed to never picking up. */
@@ -164,6 +172,7 @@ export function useCall(
       clearIncomingTimer();
       if (s) {
         if (s.ringTimer) clearTimeout(s.ringTimer);
+        if (s.reRingTimer) clearInterval(s.reRingTimer);
         if (s.durationTimer) clearInterval(s.durationTimer);
         s.localStream?.getTracks().forEach((track) => track.stop());
         s.pc?.close();
@@ -544,6 +553,7 @@ export function useCall(
         localStream: null,
         ringChannel: null,
         ringTimer: null,
+        reRingTimer: null,
         durationTimer: null,
         connectedAt: null,
         pendingIce: [],
@@ -558,23 +568,35 @@ export function useCall(
         if (s.ringChannel) return; // already ringing (subscribe callbacks repeat)
         const ringChannel = db.channel(`calls:${peer.id}`);
         s.ringChannel = ringChannel;
+        const ringPayload = {
+          callId,
+          conversationId,
+          video,
+          from: {
+            id: currentUser.id,
+            username: currentUser.username,
+            full_name: currentUser.full_name,
+            avatar_url: currentUser.avatar_url,
+          },
+        };
+        const sendRing = () =>
+          void ringChannel.send({
+            type: "broadcast",
+            event: "ring",
+            payload: ringPayload,
+          });
         ringChannel.subscribe((ringStatus) => {
-          if (ringStatus === "SUBSCRIBED") {
-            void ringChannel.send({
-              type: "broadcast",
-              event: "ring",
-              payload: {
-                callId,
-                conversationId,
-                video,
-                from: {
-                  id: currentUser.id,
-                  username: currentUser.username,
-                  full_name: currentUser.full_name,
-                  avatar_url: currentUser.avatar_url,
-                },
-              },
-            });
+          if (ringStatus !== "SUBSCRIBED") return;
+          sendRing();
+          // Re-broadcast every 2s so a callee whose socket was mid-reconnect,
+          // or who opens the app/tab a moment later, still catches the ring
+          // instead of the call landing straight in "Missed". Stops on
+          // cleanup / connect (reRingTimer is cleared there).
+          if (!s.reRingTimer) {
+            s.reRingTimer = setInterval(() => {
+              if (session.current === s && !s.connectedAt) sendRing();
+              else if (s.reRingTimer) clearInterval(s.reRingTimer);
+            }, 2_000);
           }
         });
       });
@@ -624,6 +646,7 @@ export function useCall(
       localStream: null,
       ringChannel: null,
       ringTimer: null,
+      reRingTimer: null,
       durationTimer: null,
       connectedAt: null,
       pendingIce: [],
