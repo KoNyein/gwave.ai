@@ -159,6 +159,22 @@ class ApiClient {
     await _store.clear();
   }
 
+  /// Bring the session up at app start (or resume). An *expired* data token is
+  /// NOT a dead session: the 30-day Cognito refresh token silently re-mints it,
+  /// so we must try a refresh before ever showing sign-in. Returns true when the
+  /// app should treat the user as signed in — which stays true through a network
+  /// blip or a server hiccup; only a genuine 401 (revoked/expired refresh token)
+  /// clears the session and returns false. This is what keeps users logged in
+  /// until they actually log out, instead of bouncing to sign-in every time the
+  /// hourly token lapsed.
+  Future<bool> ensureSession() async {
+    if (_session == null) return false;
+    if (_session!.needsRefresh) await _ensureFreshToken();
+    // _ensureFreshToken clears _session only on a terminal 401; any transient
+    // failure leaves it in place, so "still have a session" == "stay signed in".
+    return _session != null;
+  }
+
   /// Ensure a live token before a data call. Re-mints via the Cognito refresh
   /// token when we're within the refresh window; returns false when the session
   /// is truly over (caller should route to sign-in).
@@ -167,7 +183,9 @@ class ApiClient {
     if (s == null) return false;
     if (!s.needsRefresh) return true;
     if (s.refreshToken == null || s.cognitoUsername == null) {
-      return _keepOrExpire(s);
+      // No refresh material to exchange. Keep the session; nothing here proves
+      // it is dead, and only a 401 below ever ends it.
+      return _keepAlive(s);
     }
     try {
       final res = await _http.post(
@@ -178,7 +196,13 @@ class ApiClient {
           "cognitoUsername": s.cognitoUsername,
         }),
       );
-      if (res.statusCode >= 400) return _keepOrExpire(s);
+      // 401 is the ONLY terminal case: the Cognito refresh token was revoked or
+      // has hit its 30-day limit, so the session is genuinely over.
+      if (res.statusCode == 401) return _endSession();
+      // Any other failure (5xx, throttling, a transient proxy/DNS error) must
+      // NOT sign the user out — a single blocked refresh used to boot people to
+      // the login screen. Keep the stored session and retry on the next call.
+      if (res.statusCode >= 400) return _keepAlive(s);
       final j = _decode(res)!;
       final expiresIn = (j["expiresIn"] as num?)?.toInt() ?? 3600;
       _session = s.copyWith(
@@ -192,15 +216,22 @@ class ApiClient {
       await _store.write(_session!);
       return true;
     } catch (_) {
-      return _keepOrExpire(s);
+      // Offline / DNS / TLS blip — keep the session, never sign out.
+      return _keepAlive(s);
     }
   }
 
-  /// After a failed refresh: keep using a still-valid token, but if it has
-  /// actually expired the session is dead — clear it and bounce to sign-in so a
-  /// fresh login mints a working token (rather than failing every write).
-  bool _keepOrExpire(Session s) {
-    if (!s.isExpired) return true;
+  /// A transient refresh failure. Preserve the stored session (and its 30-day
+  /// Cognito refresh token) so a blip never bounces the user to sign-in. The
+  /// current token stays usable until it actually expires; past that, individual
+  /// data calls may fail until connectivity returns and the next refresh
+  /// succeeds — but the user stays signed in the whole time.
+  bool _keepAlive(Session s) => !s.isExpired;
+
+  /// Terminal: the refresh token is revoked or past its 30-day life (HTTP 401).
+  /// Clear the stored session and route to sign-in so a fresh login mints a
+  /// working token.
+  bool _endSession() {
     _session = null;
     _store.clear();
     onSessionExpired?.call();

@@ -68,7 +68,12 @@ class AppState extends ChangeNotifier {
     // subsequent PostgREST call hits the same gateway/JWKS as the browser.
     await api.loadRuntimeConfig();
     await api.loadSession();
-    if (api.session != null && !api.session!.isExpired) {
+    // An expired data token is NOT a signed-out user: the stored 30-day Cognito
+    // refresh token silently re-mints it. Try that before ever showing sign-in,
+    // and stay signed in through a network blip — ensureSession only returns
+    // false on a genuine 401 (revoked/expired refresh token). This is the fix
+    // for "the app makes me log in again every time I open it".
+    if (await api.ensureSession()) {
       status = AuthStatus.signedIn;
       notifyListeners();
       _loadMe();
