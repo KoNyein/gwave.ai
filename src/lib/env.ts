@@ -67,22 +67,52 @@ const publicSchema = z.object({
  * a computed lookup (process.env[name]) would silently evaluate to undefined in
  * the browser.
  */
+/**
+ * Treat an empty string as "unset". The Docker image bakes NEXT_PUBLIC_* vars
+ * via `ENV X=$X` from a build ARG; an ARG that the deploy workflow doesn't pass
+ * expands to "" — a *defined* empty string, not undefined. That slips past
+ * `.optional()` and then fails `.url()`, which crashed `next build` at page-data
+ * collection (a single unset optional URL var, e.g. NEXT_PUBLIC_IVS_RECORDING_BASE,
+ * took the whole deploy down). Coercing "" → undefined lets optional vars fall
+ * back to their default/undefined and keeps required vars failing loudly. The
+ * literal `process.env.NEXT_PUBLIC_*` member expressions are preserved below so
+ * Next.js still statically inlines them into the client bundle.
+ */
+const absentIfBlank = (value: string | undefined): string | undefined =>
+  value === "" ? undefined : value;
+
 export const publicEnv = publicSchema.parse({
-  NEXT_PUBLIC_DATA_API_URL:
+  NEXT_PUBLIC_DATA_API_URL: absentIfBlank(
     process.env.NEXT_PUBLIC_DATA_API_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
-  NEXT_PUBLIC_DATA_API_KEY:
+  ),
+  NEXT_PUBLIC_DATA_API_KEY: absentIfBlank(
     process.env.NEXT_PUBLIC_DATA_API_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
-  NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-  NEXT_PUBLIC_COGNITO_DOMAIN: process.env.NEXT_PUBLIC_COGNITO_DOMAIN,
-  NEXT_PUBLIC_COGNITO_CLIENT_ID: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID,
-  NEXT_PUBLIC_S3_CDN: process.env.NEXT_PUBLIC_S3_CDN,
-  NEXT_PUBLIC_AGORA_APP_ID: process.env.NEXT_PUBLIC_AGORA_APP_ID,
-  NEXT_PUBLIC_LIVE_PROVIDER: process.env.NEXT_PUBLIC_LIVE_PROVIDER,
-  NEXT_PUBLIC_AGORA_RECORDING_BASE: process.env.NEXT_PUBLIC_AGORA_RECORDING_BASE,
-  NEXT_PUBLIC_IVS_RECORDING_BASE: process.env.NEXT_PUBLIC_IVS_RECORDING_BASE,
-  NEXT_PUBLIC_CALL_PROVIDER: process.env.NEXT_PUBLIC_CALL_PROVIDER,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  ),
+  NEXT_PUBLIC_SITE_URL: absentIfBlank(process.env.NEXT_PUBLIC_SITE_URL),
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID: absentIfBlank(
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+  ),
+  NEXT_PUBLIC_COGNITO_DOMAIN: absentIfBlank(
+    process.env.NEXT_PUBLIC_COGNITO_DOMAIN,
+  ),
+  NEXT_PUBLIC_COGNITO_CLIENT_ID: absentIfBlank(
+    process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID,
+  ),
+  NEXT_PUBLIC_S3_CDN: absentIfBlank(process.env.NEXT_PUBLIC_S3_CDN),
+  NEXT_PUBLIC_AGORA_APP_ID: absentIfBlank(process.env.NEXT_PUBLIC_AGORA_APP_ID),
+  NEXT_PUBLIC_LIVE_PROVIDER: absentIfBlank(
+    process.env.NEXT_PUBLIC_LIVE_PROVIDER,
+  ),
+  NEXT_PUBLIC_AGORA_RECORDING_BASE: absentIfBlank(
+    process.env.NEXT_PUBLIC_AGORA_RECORDING_BASE,
+  ),
+  NEXT_PUBLIC_IVS_RECORDING_BASE: absentIfBlank(
+    process.env.NEXT_PUBLIC_IVS_RECORDING_BASE,
+  ),
+  NEXT_PUBLIC_CALL_PROVIDER: absentIfBlank(
+    process.env.NEXT_PUBLIC_CALL_PROVIDER,
+  ),
 });
 
 function required(name: string): string {
