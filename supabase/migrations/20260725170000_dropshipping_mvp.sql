@@ -10,25 +10,29 @@ create type public.payout_status as enum ('pending', 'approved', 'paid', 'failed
 
 create table public.supplier_profiles (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null unique references auth.users(id) on delete cascade,
-  business_name text not null,
+  user_id uuid not null unique references public.profiles(id) on delete cascade,
+  business_name text not null check (char_length(business_name) between 2 and 120),
   contact_name text,
   phone text,
   country_code text not null default 'TH',
   address jsonb not null default '{}'::jsonb,
   status public.supplier_status not null default 'pending',
-  commission_rate numeric(5,2) not null default 10 check (commission_rate >= 0 and commission_rate <= 100),
+  commission_rate numeric(5,2) not null default 10 check (commission_rate between 0 and 100),
   payout_details jsonb not null default '{}'::jsonb,
   approved_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
+create trigger supplier_profiles_set_updated_at
+  before update on public.supplier_profiles
+  for each row execute function public.handle_updated_at();
+
 create table public.supplier_products (
   id uuid primary key default gen_random_uuid(),
   supplier_id uuid not null references public.supplier_profiles(id) on delete cascade,
   sku text not null,
-  title text not null,
+  title text not null check (char_length(title) between 1 and 160),
   description text,
   images jsonb not null default '[]'::jsonb,
   category_id uuid,
@@ -37,7 +41,7 @@ create table public.supplier_products (
   currency text not null default 'THB',
   stock_quantity integer not null default 0 check (stock_quantity >= 0),
   reserved_quantity integer not null default 0 check (reserved_quantity >= 0),
-  weight_grams integer,
+  weight_grams integer check (weight_grams is null or weight_grams >= 0),
   attributes jsonb not null default '{}'::jsonb,
   shipping_profile jsonb not null default '{}'::jsonb,
   is_active boolean not null default true,
@@ -47,9 +51,13 @@ create table public.supplier_products (
   check (reserved_quantity <= stock_quantity)
 );
 
+create trigger supplier_products_set_updated_at
+  before update on public.supplier_products
+  for each row execute function public.handle_updated_at();
+
 create table public.dropship_listings (
   id uuid primary key default gen_random_uuid(),
-  reseller_id uuid not null references auth.users(id) on delete cascade,
+  reseller_id uuid not null references public.profiles(id) on delete cascade,
   supplier_product_id uuid not null references public.supplier_products(id) on delete cascade,
   title text not null,
   description text,
@@ -62,11 +70,15 @@ create table public.dropship_listings (
   unique (reseller_id, supplier_product_id)
 );
 
+create trigger dropship_listings_set_updated_at
+  before update on public.dropship_listings
+  for each row execute function public.handle_updated_at();
+
 create table public.fulfillment_orders (
   id uuid primary key default gen_random_uuid(),
   order_id uuid not null,
   supplier_id uuid not null references public.supplier_profiles(id),
-  reseller_id uuid not null references auth.users(id),
+  reseller_id uuid not null references public.profiles(id),
   customer_shipping_address jsonb not null,
   status public.fulfillment_status not null default 'pending',
   supplier_subtotal numeric(12,2) not null default 0,
@@ -81,6 +93,10 @@ create table public.fulfillment_orders (
   updated_at timestamptz not null default now(),
   unique (order_id, supplier_id)
 );
+
+create trigger fulfillment_orders_set_updated_at
+  before update on public.fulfillment_orders
+  for each row execute function public.handle_updated_at();
 
 create table public.fulfillment_order_items (
   id uuid primary key default gen_random_uuid(),
@@ -108,6 +124,10 @@ create table public.shipments (
   updated_at timestamptz not null default now()
 );
 
+create trigger shipments_set_updated_at
+  before update on public.shipments
+  for each row execute function public.handle_updated_at();
+
 create table public.supplier_ledger_entries (
   id uuid primary key default gen_random_uuid(),
   supplier_id uuid not null references public.supplier_profiles(id) on delete cascade,
@@ -133,6 +153,10 @@ create table public.supplier_payouts (
   updated_at timestamptz not null default now()
 );
 
+create trigger supplier_payouts_set_updated_at
+  before update on public.supplier_payouts
+  for each row execute function public.handle_updated_at();
+
 create index supplier_products_supplier_idx on public.supplier_products(supplier_id);
 create index supplier_products_active_idx on public.supplier_products(is_active) where is_active = true;
 create index dropship_listings_reseller_idx on public.dropship_listings(reseller_id);
@@ -153,8 +177,8 @@ create policy "supplier reads own profile" on public.supplier_profiles
 for select using (user_id = auth.uid());
 create policy "supplier creates own profile" on public.supplier_profiles
 for insert with check (user_id = auth.uid());
-create policy "supplier updates own pending profile" on public.supplier_profiles
-for update using (user_id = auth.uid() and status in ('pending', 'approved'))
+create policy "supplier updates own profile" on public.supplier_profiles
+for update using (user_id = auth.uid())
 with check (user_id = auth.uid());
 
 create policy "approved catalog is publicly readable" on public.supplier_products
