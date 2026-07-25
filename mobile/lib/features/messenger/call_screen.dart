@@ -40,24 +40,16 @@ class CallScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF0B1F0B),
         body: Stack(
           children: [
-            // Remote video fills the screen when it's a connected video call.
+            // Remote video fills the screen when it's a connected video call —
+            // you always see the OTHER person as the main view. Until the
+            // remote arrives (ringing / connecting), we show a calm gradient
+            // with their avatar + status, not our own face full-screen (which
+            // looked like "I'm seeing myself"). Our own camera stays in the
+            // small self-preview at the top-right instead.
             if (call.video && call.remoteReady)
               Positioned.fill(
                 child: RTCVideoView(
                   call.remoteRenderer,
-                  objectFit:
-                      RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
-                  filterQuality: FilterQuality.medium,
-                ),
-              )
-            // Before the remote arrives, fill the screen with our own camera so
-            // a video call shows a correctly-sized picture right away instead of
-            // a blank gradient.
-            else if (call.video)
-              Positioned.fill(
-                child: RTCVideoView(
-                  call.localRenderer,
-                  mirror: true,
                   objectFit:
                       RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
                   filterQuality: FilterQuality.medium,

@@ -1,10 +1,6 @@
 import 'dart:async';
-import 'dart:math' as math;
-import 'dart:typed_data';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:realtime_client/realtime_client.dart';
@@ -64,12 +60,6 @@ class CallService extends ChangeNotifier {
   Timer? _durationTimer;
   Timer? _ringTimer;
   Timer? _reRing; // re-broadcasts the ring so a callee who reconnects catches it
-  // Ringtone: an asset-free synthesised tone that loops while a call is
-  // ringing (loud two-tone for an incoming call, softer ringback for outgoing)
-  // plus a repeating vibration for the incoming case, so a call is never silent.
-  final AudioPlayer _ringPlayer = AudioPlayer();
-  Timer? _vibrateTimer;
-  bool _ringing = false;
   Profile? _me; // caller identity attached to the ring, so the callee sees who
   int durationSecs = 0;
   final List<RTCIceCandidate> _pendingIce = [];
@@ -246,94 +236,6 @@ class CallService extends ChangeNotifier {
 
   // ---- Incoming -------------------------------------------------------------
 
-  // ---- Ringtone -------------------------------------------------------------
-  Future<void> _startRingtone({required bool incoming}) async {
-    if (_ringing) return;
-    _ringing = true;
-    try {
-      await _ringPlayer.setReleaseMode(ReleaseMode.loop);
-      await _ringPlayer.setVolume(incoming ? 1.0 : 0.5);
-      await _ringPlayer.play(
-        BytesSource(_ringWav(incoming: incoming), mimeType: "audio/wav"),
-      );
-    } catch (_) {/* audio unavailable — the vibration/UI still signal the call */}
-    if (incoming) {
-      // Buzz on start, then keep buzzing on a gentle cadence until answered.
-      HapticFeedback.heavyImpact();
-      _vibrateTimer?.cancel();
-      _vibrateTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
-        HapticFeedback.heavyImpact();
-      });
-    }
-  }
-
-  Future<void> _stopRingtone() async {
-    _vibrateTimer?.cancel();
-    _vibrateTimer = null;
-    if (!_ringing) return;
-    _ringing = false;
-    try {
-      await _ringPlayer.stop();
-    } catch (_) {}
-  }
-
-  /// A looping ring pattern synthesised in memory (no bundled asset). Incoming
-  /// is a bright two-tone burst then a gap; outgoing is a single softer beep —
-  /// each buffer is designed to loop seamlessly.
-  Uint8List _ringWav({required bool incoming}) {
-    const sampleRate = 22050;
-    // One full ring cycle: tone(s) + silence, so looping repeats naturally.
-    final totalMs = incoming ? 3000 : 4000;
-    final frames = (sampleRate * totalMs / 1000).round();
-    final s = Int16List(frames);
-    double toneAt(double t, double freq) => math.sin(2 * math.pi * freq * t);
-    for (var i = 0; i < frames; i++) {
-      final t = i / sampleRate;
-      final ms = t * 1000;
-      double v = 0;
-      if (incoming) {
-        // Two 0.4s tones (440/524 Hz) in the first second, then ~2s silence.
-        if (ms < 400) {
-          v = toneAt(t, 440);
-        } else if (ms >= 500 && ms < 900) {
-          v = toneAt(t, 524);
-        }
-      } else {
-        // A single 0.8s ringback beep (420 Hz) then ~3.2s silence.
-        if (ms < 800) v = toneAt(t, 420);
-      }
-      // Soft attack/release on each active window to avoid clicks.
-      final env = 0.35;
-      s[i] = (v * env * 32767).clamp(-32767.0, 32767.0).toInt();
-    }
-    return _wrapWav(s, sampleRate);
-  }
-
-  Uint8List _wrapWav(Int16List samples, int sampleRate) {
-    final data = samples.buffer.asUint8List();
-    final byteRate = sampleRate * 2;
-    final b = BytesBuilder();
-    void str(String x) => b.add(x.codeUnits);
-    void u32(int v) =>
-        b.add([v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >> 24) & 0xff]);
-    void u16(int v) => b.add([v & 0xff, (v >> 8) & 0xff]);
-    str("RIFF");
-    u32(36 + data.length);
-    str("WAVE");
-    str("fmt ");
-    u32(16);
-    u16(1);
-    u16(1);
-    u32(sampleRate);
-    u32(byteRate);
-    u16(2);
-    u16(16);
-    str("data");
-    u32(data.length);
-    b.add(data);
-    return b.toBytes();
-  }
-
   void _onRing(Map<String, dynamic> payload) {
     if (inCall) return; // busy — let it ring out on the caller's side
     final from = payload["from"];
@@ -348,7 +250,6 @@ class CallService extends ChangeNotifier {
     peer = Profile.fromJson(Map<String, dynamic>.from(from));
     _isCaller = false;
     phase = CallPhase.incoming;
-    _startRingtone(incoming: true);
     // Ring out if the caller vanishes without cancelling.
     _ringTimer?.cancel();
     _ringTimer = Timer(const Duration(seconds: 50), () {
@@ -384,7 +285,6 @@ class CallService extends ChangeNotifier {
     video = withVideo;
     _isCaller = true;
     phase = CallPhase.outgoing;
-    _startRingtone(incoming: false);
     notifyListeners();
 
     // Our own per-call channel: listen for the callee's accept/answer/ice.
@@ -445,7 +345,6 @@ class CallService extends ChangeNotifier {
 
   Future<void> accept() async {
     if (phase != CallPhase.incoming) return;
-    _stopRingtone();
     if (!await _grantPermissions(video)) {
       decline();
       return;
@@ -464,7 +363,6 @@ class CallService extends ChangeNotifier {
   }
 
   void decline() {
-    _stopRingtone();
     _callChannel?.sendBroadcastMessage(event: "decline", payload: {});
     // In the incoming state the call channel may not be joined yet — reply on a
     // freshly joined channel so the caller stops ringing.
@@ -528,7 +426,6 @@ class CallService extends ChangeNotifier {
   Future<void> _onAccept() async {
     // Caller side: the callee picked up → create and send the offer.
     if (!_isCaller || _pc == null) return;
-    _stopRingtone(); // they answered — stop the outgoing ringback
     _reRing?.cancel(); // stop re-broadcasting the ring; they answered
     _reRing = null;
     phase = CallPhase.connecting;
@@ -692,7 +589,6 @@ class CallService extends ChangeNotifier {
     final wasVideo = video;
     final connected = _connectedAt;
 
-    _stopRingtone();
     _ringTimer?.cancel();
     _reRing?.cancel();
     _durationTimer?.cancel();
@@ -759,8 +655,6 @@ class CallService extends ChangeNotifier {
   void dispose() {
     _ringTimer?.cancel();
     _ringWatchdog?.cancel();
-    _vibrateTimer?.cancel();
-    _ringPlayer.dispose();
     _durationTimer?.cancel();
     _authRefresh?.cancel();
     _reconnect?.cancel();
