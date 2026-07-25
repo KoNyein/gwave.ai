@@ -16,7 +16,16 @@ import { authEnv } from "@/lib/env";
 
 const ALG = "ES256";
 const AUDIENCE = "authenticated";
-export const DATA_TOKEN_TTL_SECONDS = 60 * 60; // 1h — matches Cognito access token
+// 24h. This is our own ES256 data-plane bearer (PostgREST + Realtime), NOT the
+// Cognito access token — the Cognito credential still rotates hourly via gw_rt.
+// A 1h TTL used to expire the token *mid-session* on long-open clients: a web
+// tab or the app holds one Realtime socket for hours, and once the token lapsed
+// the server rejected every new channel join with `InvalidJWTToken`. Broadcast
+// channels (calls) join fresh at call time, so calls silently died ("Missed")
+// while already-open postgres_changes subscriptions (chat) kept working. A
+// full-day lifetime keeps the socket authorized across any realistic session;
+// RLS still scopes every row, and gw_rt refreshes the token on navigation.
+export const DATA_TOKEN_TTL_SECONDS = 60 * 60 * 24;
 
 let signingKeyPromise: Promise<CryptoKey> | null = null;
 let verifyKeyPromise: Promise<CryptoKey> | null = null;

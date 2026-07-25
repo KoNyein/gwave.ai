@@ -102,9 +102,9 @@ export async function getDataToken(): Promise<string | null> {
 }
 
 /**
- * readSession plus an on-demand server-side refresh. The gw_at cookie has a
- * 1-hour maxAge, so the browser silently drops it while the 30-day gw_rt is
- * still perfectly valid; without this fallback every Route Handler and Server
+ * readSession plus an on-demand server-side refresh. The gw_at cookie's maxAge
+ * (DATA_TOKEN_TTL_SECONDS) eventually lapses while the 30-day gw_rt is still
+ * perfectly valid; without this fallback every Route Handler and Server
  * Action would answer 401 ("Not authenticated") for up to an hour of activity
  * — e.g. End-stream on /live. When the token is missing/expired but the
  * Cognito refresh token is present, exchange it and re-mint. The cookie write
