@@ -227,6 +227,20 @@ class CallService extends ChangeNotifier {
 
   Timer? _authRefresh;
 
+  /// Re-authorise the Realtime socket with a freshly-minted token right before a
+  /// call joins a channel. The data token lives on the socket from connect time;
+  /// if it lapsed since (server rejects the join as `InvalidJWTToken`), the ring
+  /// or the offer/answer would silently drop and the call lands as "Missed".
+  Future<void> _refreshAuth() async {
+    try {
+      await api.freshToken();
+      final t = api.session?.token;
+      if (t != null) _rt?.setAuth(t);
+    } catch (_) {
+      // Offline or refresh failed — the join will use the current token.
+    }
+  }
+
   Future<void> _ensureRenderers() async {
     if (_renderersReady) return;
     await _localRenderer.initialize();
@@ -312,7 +326,8 @@ class CallService extends ChangeNotifier {
     // subscribed at that instant receive it — so we re-broadcast every 3s while
     // ringing. That way a callee whose socket was mid-reconnect, or who opens
     // the app a moment later, still catches the ring instead of the caller
-    // hanging on "Ringing…".
+    // hanging on "Ringing…". Re-auth first so the channel join is accepted.
+    await _refreshAuth();
     _peerRing = _rt!.channel("calls:${target.id}");
     _peerRing!.subscribe((status, [error]) {
       if (status == RealtimeSubscribeStatus.subscribed) {
@@ -354,6 +369,7 @@ class CallService extends ChangeNotifier {
     phase = CallPhase.connecting;
     notifyListeners();
 
+    await _refreshAuth();
     _joinCallChannel(_callId!);
     await _openMedia();
     // Tell the caller we picked up — they create and send the offer. Wait for
