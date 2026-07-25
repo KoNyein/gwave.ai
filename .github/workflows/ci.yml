@@ -67,10 +67,31 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Audit production dependencies
-        run: pnpm audit --prod --audit-level=high
+      - name: Generate dependency audit report
+        id: audit
+        shell: bash
+        run: |
+          set +e
+          pnpm audit --prod --audit-level=high --json > dependency-audit.json
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload dependency audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit
+          path: dependency-audit.json
+          retention-days: 7
+
+      - name: Enforce dependency audit
+        if: steps.audit.outputs.status != '0'
+        run: |
+          cat dependency-audit.json
+          exit 1
 
       - name: Scan repository for committed secrets
+        if: always()
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
