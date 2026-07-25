@@ -57,6 +57,12 @@ jobs:
             [ -f "$G" ] || continue
             sed -i 's/applicationId "ai.gwave.gwave"/applicationId "ai.gwave.app"/' "$G"
             sed -i 's/applicationId = "ai.gwave.gwave"/applicationId = "ai.gwave.app"/' "$G"
+            # firebase_messaging requires minSdk >= 23; the template defaults to
+            # flutter.minSdkVersion (21), which would fail the manifest merger.
+            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' "$G"
+            sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' "$G"
+            sed -i -E 's/minSdk = 2[012]([^0-9]|$)/minSdk = 23\1/' "$G"
+            sed -i -E 's/minSdkVersion 2[012]([^0-9]|$)/minSdkVersion 23\1/' "$G"
           done
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           python3 - "$MANIFEST" <<'PY'

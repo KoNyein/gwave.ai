@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "695065552030",
+    "project_id": "gen-lang-client-0745825519",
+    "storage_bucket": "gen-lang-client-0745825519.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:695065552030:android:aaaa7273ac48466775c78f",
+        "android_client_info": {
+          "package_name": "ai.gwave.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBKzBq6080XjPmoJ_cJkxoWrGi3DDIMN6o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
