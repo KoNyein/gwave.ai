@@ -491,6 +491,28 @@ class ApiClient {
     });
   }
 
+  /// Register this device's FCM token so the server can ring/notify it even when
+  /// the app is closed. Best-effort — swallows errors so a push hiccup never
+  /// blocks sign-in. Idempotent server-side (re-binds the token to this owner).
+  Future<void> registerPushToken(String token) async {
+    try {
+      await _mobilePost("/api/mobile/push/register", {
+        "token": token,
+        "platform": "android",
+      });
+    } catch (_) {/* push just won't reach this device; the app is unaffected */}
+  }
+
+  /// Drop this device's FCM token (e.g. on sign-out). Best-effort.
+  Future<void> unregisterPushToken(String token) async {
+    try {
+      await _mobilePost("/api/mobile/push/register", {
+        "token": token,
+        "remove": true,
+      });
+    } catch (_) {}
+  }
+
   /// Ask the server whether a broadcast is really still live (it checks the
   /// media plane and self-heals dead rows). Returns the resulting status.
   Future<String> liveVerify(String streamId) async {
