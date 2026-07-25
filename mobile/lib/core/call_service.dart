@@ -147,7 +147,27 @@ class CallService extends ChangeNotifier {
     await connect();
   }
 
+  // A watchdog that keeps the ring inbox genuinely alive. Android can drop the
+  // websocket without firing onClose, leaving `ringStatus` a stale "ready" while
+  // no call ever rings (→ every call lands as "Missed"). The resume handler only
+  // heals on app-resume; this heals while the app sits idle in the foreground.
+  Timer? _ringWatchdog;
+  int _watchdogTicks = 0;
+
+  void _startRingWatchdog() {
+    _ringWatchdog ??= Timer.periodic(const Duration(seconds: 25), (_) {
+      if (api.session == null || inCall) return;
+      _watchdogTicks++;
+      // Heal immediately if the inbox is not confirmed ready; otherwise rebuild
+      // on a slow backstop cadence (~100s) to shake off a silently-dead socket.
+      if (ringStatus != "ready" || _watchdogTicks % 4 == 0) {
+        ensureConnected(force: true);
+      }
+    });
+  }
+
   Future<void> connect() async {
+    _startRingWatchdog();
     if (_ringInbox != null || api.session == null) return;
     try {
       _setRing("connecting");
@@ -738,6 +758,7 @@ class CallService extends ChangeNotifier {
   @override
   void dispose() {
     _ringTimer?.cancel();
+    _ringWatchdog?.cancel();
     _vibrateTimer?.cancel();
     _ringPlayer.dispose();
     _durationTimer?.cancel();
