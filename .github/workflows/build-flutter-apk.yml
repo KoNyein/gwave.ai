@@ -246,12 +246,15 @@ jobs:
           GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
         run: |
           set -e
+          # Prefer the GOOGLE_SERVICES_JSON_BASE64 secret over any committed file,
+          # so the real Firebase config (set once as a repo secret) always wins and
+          # can never be shadowed by a stale/placeholder mobile/google-services.json.
           SRC=""
-          if [ -f google-services.json ]; then
-            SRC=google-services.json
-          elif [ -n "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+          if [ -n "$GOOGLE_SERVICES_JSON_BASE64" ]; then
             echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > /tmp/google-services.json
             SRC=/tmp/google-services.json
+          elif [ -f google-services.json ]; then
+            SRC=google-services.json
           fi
           if [ -z "$SRC" ]; then
             echo "No google-services.json — skipping Firebase/FCM native config (push stays off)."
