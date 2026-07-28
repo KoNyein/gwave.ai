@@ -7,6 +7,7 @@ import '../../core/app_state.dart';
 import '../../core/call_service.dart';
 import '../../core/config.dart';
 import '../../core/i18n.dart';
+import '../../core/skins.dart';
 import '../../core/theme_pref.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
@@ -306,6 +307,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1, indent: 56),
                 _languageRow(context),
                 _themeRow(context),
+                _skinRow(context),
                 const Divider(height: 1, indent: 56),
                 _row(Icons.workspace_premium_outlined, "Membership",
                     () => _openWeb("/membership")),
@@ -441,6 +443,107 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+
+  /// Design skin — the whole app's look: Gwave (green), Sky (Twitter/X
+  /// style), Liberty (Truth style), Tactical (military). Each card previews
+  /// the skin's canvas, card and accent colours; the active one gets an
+  /// accent ring + check.
+  Widget _skinRow(BuildContext context) {
+    final pref = context.watch<GwThemePref>();
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 8),
+            child: Text(
+              tr(context, "Design theme", "ဒီဇိုင်း Theme"),
+              style: const TextStyle(
+                  fontWeight: FontWeight.w700, fontSize: 14.5),
+            ),
+          ),
+          SizedBox(
+            height: 96,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final s in GwSkins.all)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => pref.setSkin(s),
+                      child: Container(
+                        width: 118,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: dark ? s.dSurface : s.bg,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: pref.skin.id == s.id
+                                ? (dark ? s.primaryOnDark : s.primary)
+                                : GwColors.lineOf(context),
+                            width: pref.skin.id == s.id ? 2.2 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                _swatch(dark ? s.dBg : s.bg,
+                                    GwColors.lineOf(context)),
+                                const SizedBox(width: 4),
+                                _swatch(dark ? s.dSurfaceMuted : s.surface,
+                                    GwColors.lineOf(context)),
+                                const SizedBox(width: 4),
+                                _swatch(dark ? s.primaryOnDark : s.primary,
+                                    Colors.transparent),
+                                const Spacer(),
+                                if (pref.skin.id == s.id)
+                                  Icon(Icons.check_circle,
+                                      size: 17,
+                                      color: dark
+                                          ? s.primaryOnDark
+                                          : s.primary),
+                              ],
+                            ),
+                            const Spacer(),
+                            Text(
+                              tr(context, s.nameEn, s.nameMy),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                height: 1.2,
+                                fontWeight: FontWeight.w700,
+                                color: dark ? s.dInk : s.ink,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _swatch(Color fill, Color border) => Container(
+        width: 18,
+        height: 18,
+        decoration: BoxDecoration(
+          color: fill,
+          shape: BoxShape.circle,
+          border: Border.all(color: border),
+        ),
+      );
 
   Widget _row(IconData icon, String label, VoidCallback onTap) => ListTile(
         contentPadding:

@@ -46,12 +46,16 @@ class GwaveApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pref = context.watch<GwThemePref>();
+    // The active skin feeds both theme builders AND GwColors.*Of() helpers;
+    // watching the pref rebuilds the whole tree when the user switches.
+    GwColors.skin = pref.skin;
     return MaterialApp(
       title: "Gwave",
       debugShowCheckedModeBanner: false,
       theme: buildGwTheme(),
       darkTheme: buildGwDarkTheme(),
-      themeMode: context.watch<GwThemePref>().mode,
+      themeMode: pref.mode,
       home: const _Root(),
     );
   }
