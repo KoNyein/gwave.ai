@@ -42,8 +42,6 @@
 
 ## Known gaps / next candidates
 
-- FCM push notifications (calls/messages don't ring when the app is closed;
-  web-push covers open-browser cases only). Needs a Firebase project.
 - LiveKit egress recording envs + IAM access key (see above) so browser
   Go Live sessions get replays like app broadcasts do.
 - Native iOS app (Apple Developer Program, $99/yr, user-side).
@@ -51,6 +49,17 @@
 
 ## Changelog
 
+- 2026-07-28: **FCM push is LIVE end-to-end (closed-app call ring).** Native
+  app package switched to `com.green.gwave` (the app actually registered in
+  Firebase project `gen-lang-client-0745825519`; pre-launch so no user
+  reinstall pain) — workflow scaffolds with `--org com.green`, and
+  `mobile/google-services.json` is committed (a `GOOGLE_SERVICES_JSON_BASE64`
+  secret still wins if set). Server send key `FCM_SERVICE_ACCOUNT_JSON` is set
+  in `/etc/gwave-web.env` and verified inside the container (valid JSON, right
+  project). First com.green.gwave APK = build 173. NOTE: new applicationId ⇒
+  installs as a NEW app; old ai.gwave.app installs must be removed manually
+  and get no update banner. The TWA (`build-apk.yml`, ai.gwave.app) is a
+  separate package, untouched. See docs/FCM_SETUP.md. (mobile branch.)
 - 2026-07-24: **Call reliability — re-ring + caller identity.** The outgoing
   call now re-broadcasts the `ring` to `calls:{callee}` every 3s for the 45s
   window (Realtime broadcast is ephemeral, so a single ring missed a callee
