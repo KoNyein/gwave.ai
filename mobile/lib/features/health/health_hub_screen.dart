@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../core/app_state.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import 'activity_log_screen.dart';
@@ -166,15 +168,18 @@ class _HealthHubScreenState extends State<HealthHubScreen> {
                 "THC, ဆေး, အစားအစာ, လေ့ကျင့်ခန်း — နှလုံးခုန်နှုန်းနဲ့ ချိတ်"),
             onTap: () => _go(const ActivityLogScreen()),
           ),
-          _tile(
-            icon: Icons.female,
-            color: const Color(0xFFD6467E),
-            title: tr(context, "Cycle tracking", "ရာသီစက်ဝန်း"),
-            subtitle: tr(context,
-                "Log periods, predict the next one & fertile window",
-                "ရာသီမှတ်၊ နောက်ရာသီ ခန့်မှန်း"),
-            onTap: () => _go(const CycleScreen()),
-          ),
+          // Cycle tracking is a female-profile feature — sign-up collects
+          // gender, and male/other profiles never see it.
+          if (context.watch<AppState>().me?.gender == "female")
+            _tile(
+              icon: Icons.female,
+              color: const Color(0xFFD6467E),
+              title: tr(context, "Cycle tracking", "ရာသီစက်ဝန်း"),
+              subtitle: tr(context,
+                  "Log periods, predict the next one & fertile window",
+                  "ရာသီမှတ်၊ နောက်ရာသီ ခန့်မှန်း"),
+              onTap: () => _go(const CycleScreen()),
+            ),
           _tile(
             icon: Icons.medication_outlined,
             color: const Color(0xFF7A4DD6),
@@ -366,6 +371,9 @@ class _HealthHubScreenState extends State<HealthHubScreen> {
   Future<void> _exportReport() async {
     final prefs = await HealthStore.reportPrefs();
     if (!mounted) return;
+    // Cycle data never enters a non-female profile's report.
+    if (context.read<AppState>().me?.gender != "female") prefs.cycle = false;
+    if (!mounted) return;
     final go = await showModalBottomSheet<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -383,8 +391,9 @@ class _HealthHubScreenState extends State<HealthHubScreen> {
                   prefs.medicalId, (v) => setSheet(() => prefs.medicalId = v)),
               _check(ctx, tr(context, "Vitals", "Vitals"), prefs.vitals,
                   (v) => setSheet(() => prefs.vitals = v)),
-              _check(ctx, tr(context, "Cycle", "ရာသီ"), prefs.cycle,
-                  (v) => setSheet(() => prefs.cycle = v)),
+              if (context.read<AppState>().me?.gender == "female")
+                _check(ctx, tr(context, "Cycle", "ရာသီ"), prefs.cycle,
+                    (v) => setSheet(() => prefs.cycle = v)),
               _check(ctx, tr(context, "Medications", "ဆေးဝါး"),
                   prefs.medications, (v) => setSheet(() => prefs.medications = v)),
               const SizedBox(height: 12),

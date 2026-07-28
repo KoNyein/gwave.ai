@@ -308,6 +308,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _languageRow(context),
                 _themeRow(context),
                 _skinRow(context),
+                _genderRow(context),
                 const Divider(height: 1, indent: 56),
                 _row(Icons.workspace_premium_outlined, "Membership",
                     () => _openWeb("/membership")),
@@ -531,6 +532,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Gender — collected at sign-up for new accounts; this row lets accounts
+  /// created before that set it (it gates female-only features like the
+  /// cycle tracker).
+  Widget _genderRow(BuildContext context) {
+    final me = context.watch<AppState>().me;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: GwColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.wc, color: GwColors.primary, size: 20),
+      ),
+      title: Text(tr(context, "Gender", "ကျား/မ"),
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
+      trailing: SegmentedButton<String>(
+        segments: [
+          ButtonSegment(value: "male", label: Text(tr(context, "M", "ကျား"))),
+          ButtonSegment(value: "female", label: Text(tr(context, "F", "မ"))),
+          ButtonSegment(value: "other", label: Text(tr(context, "Other", "အခြား"))),
+        ],
+        selected: {me?.gender ?? ""},
+        emptySelectionAllowed: true,
+        showSelectedIcon: false,
+        style: SegmentedButton.styleFrom(
+          selectedBackgroundColor: GwColors.primary.withValues(alpha: 0.15),
+          selectedForegroundColor: GwColors.primary,
+          visualDensity: VisualDensity.compact,
+        ),
+        onSelectionChanged: (v) async {
+          if (v.isEmpty) return;
+          final state = context.read<AppState>();
+          try {
+            await state.repo.setProfileBasics(gender: v.first);
+            await state.refreshMe();
+          } catch (_) {}
+        },
       ),
     );
   }

@@ -249,8 +249,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           fontSize: 16,
                           fontWeight: FontWeight.w900)),
                   Text(
-                      tr(context, "Pulse, vitals, cycle, report",
-                          "Pulse၊ vitals၊ ရာသီ၊ report"),
+                      // Cycle tracking is female-only, so the teaser line
+                      // mentions it only for female profiles.
+                      context.watch<AppState>().me?.gender == "female"
+                          ? tr(context, "Pulse, vitals, cycle, report",
+                              "Pulse၊ vitals၊ ရာသီ၊ report")
+                          : tr(context, "Pulse, vitals, report",
+                              "Pulse၊ vitals၊ report"),
                       style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 13)),

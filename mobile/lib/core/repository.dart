@@ -1646,8 +1646,25 @@ class Repository {
     return rows.isEmpty ? null : Profile.fromJson(rows.first);
   }
 
-  Future<Profile?> myProfile() =>
-      api.session == null ? Future.value(null) : profile(api.session!.profileId);
+  Future<Profile?> myProfile() async {
+    if (api.session == null) return null;
+    final p = await profile(api.session!.profileId);
+    if (p == null) return null;
+    // Gender is fetched separately and leniently: the column ships in
+    // supabase/sql-editor-bundles/profiles-gender.sql, and a DB without it
+    // must not 400 every profile query in the app (authors, friends…).
+    try {
+      final rows = await api.select("profiles", query: {
+        "select": "gender",
+        "id": "eq.${p.id}",
+        "limit": "1",
+      });
+      if (rows.isNotEmpty) p.gender = rows.first["gender"] as String?;
+    } catch (_) {
+      // Column not deployed yet — gender-gated features stay hidden.
+    }
+    return p;
+  }
 
   /// Store the signed-in user's date of birth on their profile (drives the
   /// 18+ age gating). `birth_date` is a DATE column, so send `yyyy-MM-dd`.

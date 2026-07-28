@@ -15,6 +15,7 @@ class Profile {
     this.coverUrl,
     this.bio,
     this.role,
+    this.gender,
     this.isTeacher = false,
     this.lastSeenAt,
   });
@@ -26,6 +27,11 @@ class Profile {
   final String? coverUrl;
   final String? bio;
   final String? role;
+
+  /// male | female | other — collected at sign-up; gates gender-specific
+  /// features (the cycle tracker shows only for female profiles). Mutable:
+  /// fetched leniently after the main profile row (see Repository.myProfile).
+  String? gender;
   final bool isTeacher;
 
   /// Presence heartbeat (profiles.last_seen_at). Filled only where a screen
@@ -56,6 +62,7 @@ class Profile {
         coverUrl: _s(j["cover_url"]),
         bio: _s(j["bio"]),
         role: _s(j["role"]),
+        gender: _s(j["gender"]),
         isTeacher: j["is_teacher"] == true,
         lastSeenAt: DateTime.tryParse("${j["last_seen_at"]}")?.toLocal(),
       );
