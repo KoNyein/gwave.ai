@@ -13,6 +13,7 @@ import 'audio_api.dart';
 import 'audio_models.dart';
 import 'audio_publish_screen.dart';
 import 'audio_track_screen.dart';
+import 'local_music_screen.dart';
 
 /// Native Gwave Audio store — Music / Podcasts / Audiobooks, played and bought
 /// through the same G-Pay-backed catalogue as the web `/audio` page, but as a
@@ -42,15 +43,24 @@ class _AudioHubScreenState extends State<AudioHubScreen>
       appBar: AppBar(
         title: Text(tr(context, "Audio", "အသံ")),
         actions: [
-          // Catalogue management (server enforces admin; hidden otherwise).
-          if (context.watch<AppState>().me?.role == "admin")
-            IconButton(
-              tooltip: tr(context, "Add audio", "အသံ ထည့်ရန်"),
-              icon: const Icon(Icons.add_circle_outline),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AudioPublishScreen()),
-              ),
+          // Play music files already on this phone (offline, any format the
+          // device decodes: mp3/m4a/aac/wav/ogg/flac…).
+          IconButton(
+            tooltip: tr(context, "My device music", "စက်ထဲက သီချင်း"),
+            icon: const Icon(Icons.folder_special_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LocalMusicScreen()),
             ),
+          ),
+          // Publish — artists upload their own tracks; admin manages the
+          // platform catalogue (server enforces the tiers).
+          IconButton(
+            tooltip: tr(context, "Add audio", "အသံ ထည့်ရန်"),
+            icon: const Icon(Icons.add_circle_outline),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AudioPublishScreen()),
+            ),
+          ),
           IconButton(
             tooltip: tr(context, "All-access", "အားလုံးဝင်ရောက်ခွင့်"),
             icon: const Icon(Icons.workspace_premium_outlined),
@@ -178,8 +188,16 @@ class _BrowseListState extends State<_BrowseList>
   }
 
   Future<void> _open(AudioTrack t) async {
+    // Hand the whole browse list over as the play queue so next/prev/shuffle
+    // and end-of-track auto-advance work.
+    final idx = _tracks.indexWhere((x) => x.id == t.id);
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => AudioTrackScreen(track: t)),
+      MaterialPageRoute(
+          builder: (_) => AudioTrackScreen(
+                track: t,
+                queue: _tracks,
+                startIndex: idx < 0 ? 0 : idx,
+              )),
     );
     // A purchase or new progress made on the detail screen might change badges.
     if (mounted) _load();

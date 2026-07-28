@@ -41,6 +41,11 @@ class _AudioPublishScreenState extends State<AudioPublishScreen> {
   String _audioName = "";
   Uint8List? _coverBytes;
 
+  // Paid plan: premium tracks are bought once from the G-Pay wallet; artist
+  // uploads settle to the artist, admin uploads to the platform.
+  bool _premium = false;
+  final _price = TextEditingController();
+
   bool _busy = false;
   bool _importing = false;
 
@@ -60,6 +65,7 @@ class _AudioPublishScreenState extends State<AudioPublishScreen> {
     _author.dispose();
     _narrator.dispose();
     _rss.dispose();
+    _price.dispose();
     super.dispose();
   }
 
@@ -106,6 +112,12 @@ class _AudioPublishScreenState extends State<AudioPublishScreen> {
           "အသံဖိုင်ရွေးပြီး ခေါင်းစဉ် ထည့်ပါ။"));
       return;
     }
+    final price = double.tryParse(_price.text.trim());
+    if (_premium && (price == null || price <= 0)) {
+      _toast(tr(context, "Set a price for the premium track.",
+          "Premium သီချင်းအတွက် စျေးနှုန်း သတ်မှတ်ပါ။"));
+      return;
+    }
     setState(() => _busy = true);
     final api = context.read<AppState>().api;
     try {
@@ -125,6 +137,11 @@ class _AudioPublishScreenState extends State<AudioPublishScreen> {
         "title": title,
         "audio_url": audioPath,
         if (coverPath != null) "cover_url": coverPath,
+        if (_premium && price != null) ...{
+          "is_premium": true,
+          "price": price,
+          "currency": "USD",
+        },
         if (_kind == "music") ...{
           if (_artist.text.trim().isNotEmpty) "artist": _artist.text.trim(),
           if (_album.text.trim().isNotEmpty) "album": _album.text.trim(),
@@ -206,8 +223,9 @@ class _AudioPublishScreenState extends State<AudioPublishScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Podcast: RSS import is the fast path.
-          if (_kind == "podcast") ...[
+          // Podcast: RSS import is the fast path (catalogue-wide, so admin).
+          if (_kind == "podcast" &&
+              context.watch<AppState>().me?.role == "admin") ...[
             _card(
               context,
               Column(
@@ -357,6 +375,39 @@ class _AudioPublishScreenState extends State<AudioPublishScreen> {
                     ),
                   ),
                 ],
+                const SizedBox(height: 12),
+                // Paid plan — premium tracks sell once from the G-Pay wallet;
+                // artist uploads settle the sale to the artist's wallet.
+                SwitchListTile(
+                  value: _premium,
+                  contentPadding: EdgeInsets.zero,
+                  activeColor: GwColors.gold,
+                  title: Text(
+                      tr(context, "💰 Premium (paid track)",
+                          "💰 Premium (အခပေး)"),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 14)),
+                  subtitle: Text(
+                      tr(
+                          context,
+                          "Buyers pay once with G-Pay; the sale settles to your wallet.",
+                          "ဝယ်သူက G-Pay နဲ့ တစ်ကြိမ်ပေးဝယ်ပြီး ရောင်းရငွေ သင့် wallet ထဲ ဝင်ပါမယ်။"),
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          color: GwColors.inkSoftOf(context))),
+                  onChanged: (v) => setState(() => _premium = v),
+                ),
+                if (_premium)
+                  TextField(
+                    controller: _price,
+                    keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true),
+                    decoration: InputDecoration(
+                      labelText:
+                          tr(context, "Price (USD)", "စျေးနှုန်း (USD)"),
+                      isDense: true,
+                    ),
+                  ),
                 const SizedBox(height: 14),
                 FilledButton.icon(
                   onPressed: _busy ? null : _publish,

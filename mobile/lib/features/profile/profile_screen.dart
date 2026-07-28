@@ -24,6 +24,7 @@ import '../games/games_screen.dart';
 import '../gpay/gpay_screen.dart';
 import '../groups/groups_screen.dart';
 import '../jobs/jobs_screen.dart';
+import '../books/books_screen.dart';
 import '../knowledge/minerals_screen.dart';
 import '../knowledge/strains_screen.dart';
 import '../learn/learn_screen.dart';
@@ -269,6 +270,8 @@ class ProfileScreen extends StatelessWidget {
       ]),
       _MenuSection(tr(context, "Knowledge & Tools", "ဗဟုသုတနှင့် ကိရိယာ"),
           Icons.auto_stories_outlined, const Color(0xFF139C9C), [
+        _MenuEntry(Icons.menu_book_outlined, tr(context, "Books", "စာအုပ်ဆိုင်"),
+            native: _Native.books),
         _MenuEntry(Icons.eco_outlined, tr(context, "Strains", "မျိုးကွဲများ"),
             native: _Native.strains),
         _MenuEntry(Icons.diamond_outlined,
@@ -490,6 +493,9 @@ class ProfileScreen extends StatelessWidget {
       case _Native.learn:
         _push(context, const LearnScreen());
         return;
+      case _Native.books:
+        _push(context, const BooksScreen());
+        return;
       case _Native.strains:
         _push(context, const StrainsScreen());
         return;
@@ -551,6 +557,7 @@ enum _Native {
   finance,
   groups,
   learn,
+  books,
   strains,
   minerals,
   market,

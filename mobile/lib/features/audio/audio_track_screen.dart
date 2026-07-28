@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:math';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -16,12 +20,24 @@ import 'audio_api.dart';
 import 'audio_models.dart';
 
 /// Native "now playing" screen: full-bleed cover, transport controls, a
-/// scrubbable progress bar, ±15s, playback speed, chapters (audiobooks),
-/// karaoke lyrics (music), rating, and G-Pay purchase for premium tracks.
-/// Position auto-saves to `audio_progress` so playback resumes on any device.
+/// scrubbable progress bar, ±10/30s, playback speed, queue with next/prev +
+/// shuffle + repeat (one/all), offline downloads, sleep timer, chapters
+/// (audiobooks), karaoke lyrics (music), rating, and G-Pay purchase for
+/// premium tracks. Position auto-saves to `audio_progress` so playback
+/// resumes on any device.
 class AudioTrackScreen extends StatefulWidget {
-  const AudioTrackScreen({super.key, required this.track});
+  const AudioTrackScreen({
+    super.key,
+    required this.track,
+    this.queue,
+    this.startIndex,
+  });
   final AudioTrack track;
+
+  /// The browse list this track came from — powers next/prev/shuffle/repeat
+  /// and auto-advance when a track ends. Falls back to a one-track queue.
+  final List<AudioTrack>? queue;
+  final int? startIndex;
 
   @override
   State<AudioTrackScreen> createState() => _AudioTrackScreenState();
@@ -56,7 +72,21 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
   StreamSubscription<void>? _completeSub;
   StreamSubscription<PlayerState>? _stateSub;
 
-  AudioTrack get track => widget.track;
+  // Queue + modes.
+  late final List<AudioTrack> _queue = widget.queue ?? [widget.track];
+  late int _qIdx = (widget.startIndex ?? 0)
+      .clamp(0, _queue.isEmpty ? 0 : _queue.length - 1)
+      .toInt();
+  late AudioTrack _current = widget.track;
+  bool _shuffle = false;
+  int _repeat = 0; // 0 off · 1 repeat all · 2 repeat one
+  final _rand = Random();
+
+  // Offline copy (Downloads live in the app documents dir).
+  File? _localFile;
+  bool _downloading = false;
+
+  AudioTrack get track => _current;
 
   @override
   void initState() {
@@ -76,14 +106,72 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
     _stateSub = _player.onPlayerStateChanged.listen((s) {
       if (mounted) setState(() => _playing = s == PlayerState.playing);
     });
-    _completeSub = _player.onPlayerComplete.listen((_) {
+    _completeSub = _player.onPlayerComplete.listen((_) async {
       _saveProgress(completed: true);
-      if (mounted) setState(() => _playing = false);
+      if (!mounted) return;
+      if (_repeat == 2) {
+        // Repeat one: start over.
+        await _player.seek(Duration.zero);
+        await _player.resume();
+        return;
+      }
+      final hasNext =
+          _queue.length > 1 && (_shuffle || _repeat == 1 || _qIdx + 1 < _queue.length);
+      if (hasNext) {
+        await _advance(1, auto: true);
+      } else {
+        setState(() => _playing = false);
+      }
     });
   }
 
-  Future<void> _init() async {
+  /// Move through the queue (dir ±1). Shuffle picks a random other track;
+  /// repeat-all wraps at the ends. Auto-advance stops at the end when neither
+  /// shuffle nor repeat is on.
+  Future<void> _advance(int dir, {bool auto = false}) async {
+    if (_queue.length <= 1) return;
+    int next;
+    if (_shuffle) {
+      next = _rand.nextInt(_queue.length);
+      if (next == _qIdx) next = (next + 1) % _queue.length;
+    } else {
+      next = _qIdx + dir;
+      if (next >= _queue.length) {
+        if (_repeat == 1 || !auto) {
+          next = 0;
+        } else {
+          return;
+        }
+      }
+      if (next < 0) next = _queue.length - 1;
+    }
+    await _loadTrack(next, autoplay: true);
+  }
+
+  /// Swap the screen to another queue entry and (optionally) start playing.
+  Future<void> _loadTrack(int idx, {bool autoplay = false}) async {
+    await _player.stop();
+    if (!mounted) return;
+    setState(() {
+      _qIdx = idx;
+      _current = _queue[idx];
+      _pos = Duration.zero;
+      _dur = Duration.zero;
+      _playing = false;
+      _loading = true;
+      _entitled = false;
+      _chapters = [];
+      _lyrics = null;
+      _myRating = null;
+      _localFile = null;
+      _lastSavedS = -1;
+    });
+    await _init(autoplay: autoplay);
+  }
+
+  Future<void> _init({bool autoplay = false}) async {
     try {
+      _localFile = await _findLocal();
       final results = await Future.wait([
         _api.isEntitled(track.id),
         _api.resume(track.id),
@@ -111,7 +199,8 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
       });
       // Preload so the seek bar has a duration, and jump to the saved point.
       if (entitled && track.audioUrl != null) {
-        await _prepare(seekTo: resume?.positionS ?? 0);
+        await _prepare(seekTo: autoplay ? 0 : (resume?.positionS ?? 0));
+        if (autoplay) await _player.resume();
       }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
@@ -119,10 +208,16 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
   }
 
   Future<void> _prepare({int seekTo = 0}) async {
+    final local = _localFile;
     final url = resolveMedia(track.audioUrl, bucket: "media");
-    if (url == null) return;
+    if (local == null && url == null) return;
     try {
-      await _player.setSourceUrl(url);
+      // Offline copy wins — playback works with no network at all.
+      if (local != null) {
+        await _player.setSource(DeviceFileSource(local.path));
+      } else {
+        await _player.setSourceUrl(url!);
+      }
       await _player.setPlaybackRate(_speeds[_speedIdx]);
       if (seekTo > 0) {
         await _player.seek(Duration(seconds: seekTo));
@@ -131,6 +226,57 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
     } catch (_) {
       // Source may load lazily on first play instead.
     }
+  }
+
+  // ── Offline downloads ─────────────────────────────────────────────────────
+
+  Future<Directory> _dlDir() async {
+    final base = await getApplicationDocumentsDirectory();
+    final d = Directory("${base.path}/audio");
+    if (!await d.exists()) await d.create(recursive: true);
+    return d;
+  }
+
+  String _extOf(String ref) {
+    final m = RegExp(r"\.([A-Za-z0-9]{2,4})(?:\?|$)").firstMatch(ref);
+    return m?.group(1)?.toLowerCase() ?? "mp3";
+  }
+
+  Future<File?> _findLocal() async {
+    final ref = track.audioUrl;
+    if (ref == null) return null;
+    final f = File("${(await _dlDir()).path}/${track.id}.${_extOf(ref)}");
+    return await f.exists() ? f : null;
+  }
+
+  Future<void> _download() async {
+    final ref = track.audioUrl;
+    final url = resolveMedia(ref, bucket: "media");
+    if (ref == null || url == null || _downloading) return;
+    setState(() => _downloading = true);
+    try {
+      final res =
+          await http.get(Uri.parse(url)).timeout(const Duration(minutes: 3));
+      if (res.statusCode >= 400) throw Exception("HTTP ${res.statusCode}");
+      final f = File("${(await _dlDir()).path}/${track.id}.${_extOf(ref)}");
+      await f.writeAsBytes(res.bodyBytes);
+      if (mounted) {
+        setState(() => _localFile = f);
+        _snack(tr(context, "Downloaded — plays offline now 📥",
+            "ဒေါင်းလုဒ်ပြီးပါပြီ — အော့ဖ်လိုင်း နားဆင်နိုင်ပါပြီ 📥"));
+      }
+    } catch (e) {
+      _snack(tr(context, "Download failed — $e", "ဒေါင်းလုဒ် မအောင်မြင်ပါ — $e"));
+    } finally {
+      if (mounted) setState(() => _downloading = false);
+    }
+  }
+
+  Future<void> _removeDownload() async {
+    try {
+      await _localFile?.delete();
+    } catch (_) {}
+    if (mounted) setState(() => _localFile = null);
   }
 
   void _maybeSave(Duration d) {
@@ -184,8 +330,9 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
   }
 
   Future<void> _togglePlay() async {
+    final local = _localFile;
     final url = resolveMedia(track.audioUrl, bucket: "media");
-    if (url == null) {
+    if (local == null && url == null) {
       _snack(tr(context, "This track has no audio yet.",
           "ဒီသီချင်းမှာ အသံ မရှိသေးပါ။"));
       return;
@@ -197,7 +344,8 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
       } else {
         // If we've never started, play from the (possibly preloaded) source.
         if (_pos == Duration.zero && _dur == Duration.zero) {
-          await _player.play(UrlSource(url));
+          await _player.play(
+              local != null ? DeviceFileSource(local.path) : UrlSource(url!));
           await _player.setPlaybackRate(_speeds[_speedIdx]);
         } else {
           await _player.resume();
@@ -272,6 +420,24 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
       appBar: AppBar(
         title: Text(audioKindLabel(context, track.kind)),
         actions: [
+          // Offline download (free/owned tracks only).
+          if (_entitled && track.audioUrl != null)
+            IconButton(
+              tooltip: _localFile != null
+                  ? tr(context, "Remove download", "ဒေါင်းလုဒ် ဖျက်ရန်")
+                  : tr(context, "Download for offline", "အော့ဖ်လိုင်း ဒေါင်းရန်"),
+              icon: _downloading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2.2))
+                  : Icon(_localFile != null
+                      ? Icons.download_done
+                      : Icons.download_outlined),
+              onPressed: _downloading
+                  ? null
+                  : (_localFile != null ? _removeDownload : _download),
+            ),
           IconButton(
             icon: const Icon(Icons.ios_share),
             tooltip: tr(context, "Share", "မျှဝေ"),
@@ -480,47 +646,91 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
   }
 
   Widget _transport() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    final hasQueue = _queue.length > 1;
+    return Column(
       children: [
-        TextButton(
-          onPressed: _cycleSpeed,
-          child: Text("${_speeds[_speedIdx]}×",
-              style: const TextStyle(
-                  fontWeight: FontWeight.w800, color: GwColors.ink)),
-        ),
-        IconButton(
-          iconSize: 34,
-          icon: const Icon(Icons.replay_10),
-          color: GwColors.ink,
-          onPressed: () => _skip(-10),
-        ),
-        GestureDetector(
-          onTap: _togglePlay,
-          child: Container(
-            width: 72,
-            height: 72,
-            decoration: const BoxDecoration(
-              color: GwColors.primary,
-              shape: BoxShape.circle,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            TextButton(
+              onPressed: _cycleSpeed,
+              child: Text("${_speeds[_speedIdx]}×",
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, color: GwColors.ink)),
             ),
-            child: Icon(_playing ? Icons.pause : Icons.play_arrow,
-                color: Colors.white, size: 40),
+            IconButton(
+              iconSize: 34,
+              icon: const Icon(Icons.replay_10),
+              color: GwColors.ink,
+              onPressed: () => _skip(-10),
+            ),
+            GestureDetector(
+              onTap: _togglePlay,
+              child: Container(
+                width: 72,
+                height: 72,
+                decoration: const BoxDecoration(
+                  color: GwColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(_playing ? Icons.pause : Icons.play_arrow,
+                    color: Colors.white, size: 40),
+              ),
+            ),
+            IconButton(
+              iconSize: 34,
+              icon: const Icon(Icons.forward_30),
+              color: GwColors.ink,
+              onPressed: () => _skip(30),
+            ),
+            IconButton(
+              iconSize: 26,
+              icon: const Icon(Icons.bedtime_outlined),
+              color: GwColors.inkSoft,
+              tooltip: tr(context, "Sleep timer", "အိပ်ချိန် တိုင်မာ"),
+              onPressed: _sleepTimer,
+            ),
+          ],
+        ),
+        // Queue row: shuffle · prev · next · repeat (off → all → one).
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            IconButton(
+              iconSize: 24,
+              icon: const Icon(Icons.shuffle),
+              color: _shuffle ? GwColors.primary : GwColors.inkSoft,
+              tooltip: tr(context, "Shuffle", "ရောသမ"),
+              onPressed:
+                  hasQueue ? () => setState(() => _shuffle = !_shuffle) : null,
+            ),
+            IconButton(
+              iconSize: 32,
+              icon: const Icon(Icons.skip_previous),
+              color: hasQueue ? GwColors.ink : GwColors.inkSoft,
+              onPressed: hasQueue ? () => _advance(-1) : null,
+            ),
+            IconButton(
+              iconSize: 32,
+              icon: const Icon(Icons.skip_next),
+              color: hasQueue ? GwColors.ink : GwColors.inkSoft,
+              onPressed: hasQueue ? () => _advance(1) : null,
+            ),
+            IconButton(
+              iconSize: 24,
+              icon: Icon(_repeat == 2 ? Icons.repeat_one : Icons.repeat),
+              color: _repeat > 0 ? GwColors.primary : GwColors.inkSoft,
+              tooltip: tr(context, "Repeat", "ထပ်ဖွင့်"),
+              onPressed: () =>
+                  setState(() => _repeat = (_repeat + 1) % 3),
+            ),
+          ],
+        ),
+        if (hasQueue)
+          Text(
+            "${_qIdx + 1} / ${_queue.length}",
+            style: const TextStyle(color: GwColors.inkSoft, fontSize: 12),
           ),
-        ),
-        IconButton(
-          iconSize: 34,
-          icon: const Icon(Icons.forward_30),
-          color: GwColors.ink,
-          onPressed: () => _skip(30),
-        ),
-        IconButton(
-          iconSize: 26,
-          icon: const Icon(Icons.bedtime_outlined),
-          color: GwColors.inkSoft,
-          tooltip: tr(context, "Sleep timer", "အိပ်ချိန် တိုင်မာ"),
-          onPressed: _sleepTimer,
-        ),
       ],
     );
   }

@@ -568,6 +568,11 @@ class ApiClient {
   Future<Map<String, dynamic>> audioImportRss(String url, {int limit = 20}) =>
       _mobilePost("/api/mobile/audio/import-rss", {"url": url, "limit": limit});
 
+  /// Publish a book to the store (PDF/EPUB uploaded via [uploadBytes] first).
+  /// Admin publishes platform books; anyone else publishes as themselves.
+  Future<Map<String, dynamic>> booksPublish(Map<String, dynamic> body) =>
+      _mobilePost("/api/mobile/books/publish", body);
+
   /// Register this device's FCM token so the server can ring/notify it even when
   /// the app is closed. Best-effort — swallows errors so a push hiccup never
   /// blocks sign-in. Idempotent server-side (re-binds the token to this owner).
