@@ -404,7 +404,10 @@ jobs:
       - name: Build APK
         env:
           API_BASE: ${{ vars.MOBILE_API_BASE || 'https://gwave.cc' }}
-          SUPABASE_URL: ${{ secrets.MOBILE_SUPABASE_URL }}
+          # Fallback data-plane URL if /api/mobile/config is unreachable at app
+          # start. Default to the live gateway so an unset/stale secret can
+          # never quietly point fresh installs at a dead Supabase project.
+          SUPABASE_URL: ${{ secrets.MOBILE_SUPABASE_URL || 'https://gwave.cc/sb' }}
           SUPABASE_ANON_KEY: ${{ secrets.MOBILE_SUPABASE_ANON_KEY }}
           IVS_RECORDING_BASE: ${{ vars.MOBILE_IVS_RECORDING_BASE }}
         run: |

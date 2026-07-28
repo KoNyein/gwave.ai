@@ -48,14 +48,16 @@ class ApiClient {
   /// is what keeps the minted token's `kid` resolvable — a mismatch here is the
   /// "No suitable key or wrong key type" error. Best-effort: on any failure we
   /// keep the build-time `--dart-define` fallback.
-  Future<void> loadRuntimeConfig() async {
+  /// Returns true once the runtime config has been applied (now or earlier).
+  Future<bool> loadRuntimeConfig() async {
+    if (AppConfig.runtimeLoaded) return true;
     try {
       final res = await _http
           .get(Uri.parse("${AppConfig.apiBase}/api/mobile/config"))
           .timeout(const Duration(seconds: 8));
-      if (res.statusCode >= 400) return;
+      if (res.statusCode >= 400) return false;
       final j = _decode(res);
-      if (j == null) return;
+      if (j == null) return false;
       AppConfig.applyRuntime(
         url: j["supabaseUrl"] as String?,
         anonKey: j["supabaseAnonKey"] as String?,
@@ -66,6 +68,7 @@ class ApiClient {
     } catch (_) {
       // Keep the build-time fallback.
     }
+    return AppConfig.runtimeLoaded;
   }
 
   // ---- Auth -----------------------------------------------------------------

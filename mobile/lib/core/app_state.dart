@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../features/health/health_store.dart';
 import 'api_client.dart';
+import 'config.dart';
 import 'models.dart';
 import 'repository.dart';
 import 'session.dart';
@@ -48,6 +49,24 @@ class AppState extends ChangeNotifier {
         Timer.periodic(const Duration(seconds: 60), (_) => repo.heartbeat());
   }
 
+  /// The data-plane URL decides which PostgREST/Realtime the WHOLE app talks
+  /// to. A single missed fetch used to strand the session on the build-time
+  /// fallback: the Realtime socket then joined a stale gateway — Settings
+  /// still said "calls: ready" — while every ring broadcast went to a server
+  /// nobody else was on, and the presence heartbeat silently stopped landing.
+  /// So: retry hard up front, then keep retrying in the background until the
+  /// live config is in.
+  Future<void> _loadRuntimeConfigWithRetry() async {
+    const delays = [Duration.zero, Duration(seconds: 2), Duration(seconds: 5)];
+    for (final delay in delays) {
+      await Future<void>.delayed(delay);
+      if (await api.loadRuntimeConfig()) return;
+    }
+    Timer.periodic(const Duration(seconds: 30), (t) async {
+      if (AppConfig.runtimeLoaded || await api.loadRuntimeConfig()) t.cancel();
+    });
+  }
+
   /// Run after every successful sign-in: wire the Health store to the cloud and
   /// restore this user's health data (vitals, oximeter, activity journal, etc.)
   /// so nothing is lost across logout/login, reinstall, or a new phone.
@@ -66,7 +85,7 @@ class AppState extends ChangeNotifier {
   Future<void> bootstrap() async {
     // Adopt the web app's exact data-plane URL + anon key first, so every
     // subsequent PostgREST call hits the same gateway/JWKS as the browser.
-    await api.loadRuntimeConfig();
+    await _loadRuntimeConfigWithRetry();
     await api.loadSession();
     // An expired data token is NOT a signed-out user: the stored 30-day Cognito
     // refresh token silently re-mints it. Try that before ever showing sign-in,

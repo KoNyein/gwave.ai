@@ -166,6 +166,11 @@ class CallService extends ChangeNotifier {
     if (_ringInbox != null || api.session == null) return;
     try {
       _setRing("connecting");
+      // Never build the socket against the build-time fallback URL when the
+      // live config is one fetch away: a stale gateway "connects" and joins
+      // fine — the footer even says ready — but rings broadcast to a server
+      // no other client is on, so calls die silently in both directions.
+      if (!AppConfig.runtimeLoaded) await api.loadRuntimeConfig();
       await api.freshToken(); // ensure the JWT is valid before we auth realtime
       final token = api.session!.token;
       _rt = RealtimeClient(
@@ -189,7 +194,10 @@ class CallService extends ChangeNotifier {
         ..onBroadcast(event: "cancel", callback: _onCancel);
       inbox.subscribe((status, [error]) {
         if (status == RealtimeSubscribeStatus.subscribed) {
-          _setRing("ready");
+          // "cfg!" = still on the baked fallback data-plane URL — the socket
+          // may be on the wrong server entirely; support can see it at a
+          // glance in the Settings footer.
+          _setRing(AppConfig.runtimeLoaded ? "ready" : "ready·cfg!");
         } else if (status == RealtimeSubscribeStatus.channelError ||
             status == RealtimeSubscribeStatus.timedOut) {
           _setRing("error: ${error ?? status.name}");
