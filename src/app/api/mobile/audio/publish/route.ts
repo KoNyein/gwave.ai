@@ -8,11 +8,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/mobile/audio/publish — publish a catalogue track from the app
- * (admin only; the caller uploads the MP3/cover to the media bucket first and
- * sends the storage paths here). Mirrors /api/admin/audio, which is cookie-
- * session only and therefore unreachable from the native app's bearer-token
- * world. The catalogue is platform-published, so publisher_id stays null.
+ * POST /api/mobile/audio/publish — publish a catalogue track from the app.
+ * The caller uploads the MP3/cover to the media bucket first and sends the
+ * storage paths here. Mirrors /api/admin/audio, which is cookie-session only
+ * and therefore unreachable from the native app's bearer-token world.
+ *
+ * Two publisher tiers:
+ *  - ADMIN publishes platform tracks (publisher_id null — revenue books as a
+ *    wallet fee) and may import RSS feeds.
+ *  - Any signed-in ARTIST publishes their own tracks: publisher_id is set to
+ *    their profile, so premium sales settle to them through the existing
+ *    buy_audio RPC. Artists may price a track (is_premium + price); free is
+ *    the default.
  */
 const schema = z.object({
   kind: z.enum(["music", "podcast", "audiobook"]),
@@ -21,6 +28,10 @@ const schema = z.object({
   cover_url: z.string().max(1000).optional(),
   audio_url: z.string().min(1).max(1000),
   duration_s: z.number().int().positive().optional(),
+  // Paid plan: premium tracks need a wallet price (USD by default).
+  is_premium: z.boolean().default(false),
+  price: z.number().positive().max(10000).optional(),
+  currency: z.string().length(3).default("USD"),
   // music
   artist: z.string().max(200).optional(),
   album: z.string().max(200).optional(),
@@ -52,15 +63,19 @@ export async function POST(request: NextRequest) {
     .select("role")
     .eq("id", claims.sub)
     .maybeSingle<{ role: string | null }>();
-  if (me?.role !== "admin") {
-    return NextResponse.json({ error: "Admin only." }, { status: 403 });
-  }
+  const isAdmin = me?.role === "admin";
 
   const parsed = schema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid track." }, { status: 400 });
   }
   const b = parsed.data;
+  if (b.is_premium && !(b.price && b.price > 0)) {
+    return NextResponse.json(
+      { error: "A premium track needs a price." },
+      { status: 400 },
+    );
+  }
 
   const { data: track, error } = await admin
     .from("audio_tracks")
@@ -71,10 +86,14 @@ export async function POST(request: NextRequest) {
       cover_url: b.cover_url ?? null,
       audio_url: b.audio_url,
       duration_s: b.duration_s ?? null,
-      is_premium: false,
-      protection: "free",
-      currency: "USD",
+      is_premium: b.is_premium,
+      protection: b.is_premium ? "signed" : "free",
+      price: b.is_premium ? b.price : null,
+      currency: b.currency,
       release_year: b.release_year ?? null,
+      // Admin publishes as the platform; artists own their tracks so premium
+      // sales settle to them.
+      publisher_id: isAdmin ? null : claims.sub,
       published_at: new Date().toISOString(),
     })
     .select("id")
