@@ -530,6 +530,24 @@ class ApiClient {
     });
   }
 
+  /// Relay a call-signaling event (accept/offer/answer/ice/decline/hangup/
+  /// cancel) through the server, which re-broadcasts it on the Realtime
+  /// call channel. Used instead of raw socket sends, which field debugging
+  /// showed can silently vanish on some phones while receives keep working.
+  Future<void> callSignal(
+    String callId,
+    String event,
+    Map<String, dynamic> payload, {
+    String? ringUserId,
+  }) async {
+    await _mobilePost("/api/mobile/call/signal", {
+      "callId": callId,
+      "event": event,
+      "payload": payload,
+      if (ringUserId != null) "ringUserId": ringUserId,
+    });
+  }
+
   /// Post a small client-state diagnostics blob; the server just logs it
   /// (`/api/mobile/diag`), making the phone's call-stack state visible in
   /// `docker logs gwave-web` without asking the user for screenshots.

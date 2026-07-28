@@ -425,6 +425,14 @@ class CallService extends ChangeNotifier {
     _ringTimer?.cancel();
     _ringTimer = Timer(const Duration(seconds: 45), () {
       if (phase == CallPhase.outgoing) {
+        // Relay + socket, so the callee's ringing UI clears even when this
+        // socket's sends are being dropped.
+        if (_callId != null) {
+          api
+              .callSignal(_callId!, "cancel", {"callId": _callId},
+                  ringUserId: peer?.id)
+              .catchError((_) {});
+        }
         _peerRing?.sendBroadcastMessage(
             event: "cancel", payload: {"callId": _callId});
         _teardown(log: true);
@@ -473,21 +481,23 @@ class CallService extends ChangeNotifier {
   }
 
   void decline() {
-    _callChannel?.sendBroadcastMessage(event: "decline", payload: {});
-    // In the incoming state the call channel may not be joined yet — reply on a
-    // freshly joined channel so the caller stops ringing.
-    if (_callChannel == null && _callId != null) {
-      final ch = _rt!.channel("call:$_callId");
-      ch.subscribe((status, [_]) {
-        if (status == RealtimeSubscribeStatus.subscribed) {
-          ch.sendBroadcastMessage(event: "decline", payload: {});
-        }
-      });
+    // Server relay first (reliable), socket second (duplicate declines are
+    // harmless — teardown on the peer is idempotent).
+    if (_callId != null) {
+      api.callSignal(_callId!, "decline", {}).catchError((_) {});
     }
+    _callChannel?.sendBroadcastMessage(event: "decline", payload: {});
     _teardown(log: false);
   }
 
   void hangUp() {
+    // Dual-send: hangup/cancel are idempotent on the receiver, so the relay
+    // guarantees delivery even when this socket's sends are being dropped.
+    if (_callId != null) {
+      api
+          .callSignal(_callId!, "hangup", {}, ringUserId: peer?.id)
+          .catchError((_) {});
+    }
     _callChannel?.sendBroadcastMessage(event: "hangup", payload: {});
     _peerRing?.sendBroadcastMessage(event: "cancel", payload: {"callId": _callId});
     _teardown(log: true);
@@ -527,8 +537,22 @@ class CallService extends ChangeNotifier {
     }
   }
 
-  /// Send a signaling message once the channel is subscribed.
+  /// Send a signaling message through the SERVER relay (HTTP up, Realtime
+  /// broadcast out). Field debugging (build 183) showed this phone's socket
+  /// sends can silently vanish while receives work — the callee's accept
+  /// arrived but our offer/hangup never reached them. The relay is the
+  /// delivery path proven to reach web and app subscribers; the socket send
+  /// remains only as an offline-edge fallback. Receiving stays on the socket.
   Future<void> _signal(String event, Map<String, dynamic> payload) async {
+    final id = _callId;
+    if (id != null) {
+      try {
+        await api.callSignal(id, event, payload);
+        return;
+      } catch (_) {
+        // Server unreachable — fall back to the raw channel broadcast.
+      }
+    }
     await _awaitCallChannel();
     _callChannel?.sendBroadcastMessage(event: event, payload: payload);
   }
