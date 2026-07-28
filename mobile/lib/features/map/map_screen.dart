@@ -67,6 +67,9 @@ class _MapScreenState extends State<MapScreen> {
   bool _geology = false; // Macrostrat global geologic map overlay
   bool _hillshade = false; // Esri world hillshade (terrain relief) overlay
   bool _minerals = false; // USGS MRDS — known gold/mineral occurrences (WMS)
+  bool _goldHeat = false; // density heatmap built from MRDS points
+  List<LatLng> _heatPoints = [];
+  Timer? _heatDebounce;
   double _geologyOpacity = 0.55;
   // AlpineQuest-style "add online map": any XYZ tile URL stacks as an overlay.
   String? _customUrl; // e.g. a gold/geology favourability {z}/{x}/{y} tileset
@@ -417,6 +420,52 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  /// Debounced reload of the gold heatmap points for the current viewport.
+  void _scheduleHeatFetch() {
+    _heatDebounce?.cancel();
+    _heatDebounce =
+        Timer(const Duration(milliseconds: 600), _fetchHeatPoints);
+  }
+
+  /// Pull every known MRDS deposit inside the current map bounds and keep them
+  /// as heatmap points. Free USGS WFS (GeoJSON). Best-effort: on any failure
+  /// the heatmap just stays as-is (or empty) — never disrupts the map.
+  Future<void> _fetchHeatPoints() async {
+    try {
+      final b = _map.camera.visibleBounds;
+      // Guard against a whole-world request (too many features): only fetch
+      // once zoomed in a bit.
+      if (_map.camera.zoom < 5) {
+        if (mounted) setState(() => _heatPoints = []);
+        return;
+      }
+      final bbox =
+          "${b.west},${b.south},${b.east},${b.north}";
+      final url = Uri.parse(
+          "https://mrdata.usgs.gov/wfs/mrds?service=WFS&version=1.1.0&request=GetFeature"
+          "&typeName=mrds&outputFormat=application/json&srsName=EPSG:4326"
+          "&maxFeatures=1500&bbox=$bbox,EPSG:4326");
+      final res = await http.get(url).timeout(const Duration(seconds: 15));
+      if (res.statusCode != 200) return;
+      final j = jsonDecode(res.body);
+      final feats = j?["features"];
+      if (feats is! List) return;
+      final pts = <LatLng>[];
+      for (final f in feats) {
+        final g = f?["geometry"];
+        final c = g?["coordinates"];
+        if (c is List && c.length >= 2) {
+          final lng = (c[0] as num).toDouble();
+          final lat = (c[1] as num).toDouble();
+          pts.add(LatLng(lat, lng));
+        }
+      }
+      if (mounted) setState(() => _heatPoints = pts);
+    } catch (_) {
+      // Offline / endpoint hiccup — leave the current points.
+    }
+  }
+
   /// Tap-to-identify geology: ask Macrostrat what rock unit sits at [p] and
   /// show the details (unit name, age, lithology, description) in a sheet.
   /// This is the "more detail than the tiles" path — the point query returns
@@ -603,6 +652,25 @@ class _MapScreenState extends State<MapScreen> {
                     value: _minerals,
                     onChanged: (v) => apply(() => _minerals = v),
                   ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(tr(ctx, "Gold heatmap",
+                        "ရွှေ heatmap")),
+                    subtitle: Text(tr(
+                        ctx,
+                        "Deposit density glow — hotter where more gold is recorded",
+                        "တွင်း သိပ်သည်းရာ တောက်ပ — ရွှေ များရာ ပိုနီ")),
+                    value: _goldHeat,
+                    onChanged: (v) => apply(() {
+                      _goldHeat = v;
+                      if (v) {
+                        _fetchHeatPoints();
+                      } else {
+                        _heatPoints = [];
+                      }
+                    }),
+                  ),
                   const Divider(height: 22),
                   // AlpineQuest-style "add online map": paste any XYZ tile URL
                   // (e.g. a gold / mineral favourability heatmap tileset) and
@@ -735,6 +803,10 @@ class _MapScreenState extends State<MapScreen> {
               onLongPress: (_, latlng) {
                 if (_geology) _identifyGeology(latlng);
               },
+              // Reload the gold heatmap for the new viewport as the user pans.
+              onPositionChanged: (_, __) {
+                if (_goldHeat) _scheduleHeatFetch();
+              },
             ),
             children: [
               TileLayer(
@@ -781,6 +853,31 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                   ),
                 ),
+              // Gold density heatmap — overlapping translucent orange/red
+              // discs at every known MRDS deposit; clusters glow hotter,
+              // giving the AlpineQuest-style favourability look from real data.
+              if (_goldHeat && _heatPoints.isNotEmpty) ...[
+                CircleLayer(
+                  circles: [
+                    for (final p in _heatPoints)
+                      CircleMarker(
+                        point: p,
+                        radius: 22,
+                        color: const Color(0x33FFB300), // amber glow
+                      ),
+                  ],
+                ),
+                CircleLayer(
+                  circles: [
+                    for (final p in _heatPoints)
+                      CircleMarker(
+                        point: p,
+                        radius: 9,
+                        color: const Color(0x55FF3D00), // hot red core
+                      ),
+                  ],
+                ),
+              ],
               // USGS MRDS — every KNOWN gold & mineral occurrence worldwide
               // (free WMS). Point data, not a predictive favourability
               // heatmap, but it shows where deposits are actually recorded.
@@ -1400,6 +1497,7 @@ class _SosSheetState extends State<_SosSheet> {
     _phone.dispose();
     _note.dispose();
     _customCtrl.dispose();
+    _heatDebounce?.cancel();
     _recorder.dispose();
     super.dispose();
   }
