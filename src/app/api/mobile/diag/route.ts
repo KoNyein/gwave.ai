@@ -27,6 +27,13 @@ export async function POST(request: NextRequest) {
   if (!claims?.sub) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
+  // Reject oversized (or length-less streamed) bodies BEFORE parsing — the
+  // 600-char log slice below caps output, not the allocation request.json()
+  // would do on a huge payload, and the proxy sets no body limit of its own.
+  const length = Number(request.headers.get("content-length") ?? NaN);
+  if (!Number.isFinite(length) || length > 10_000) {
+    return NextResponse.json({ error: "Body too large." }, { status: 413 });
+  }
   let body: unknown = null;
   try {
     body = await request.json();

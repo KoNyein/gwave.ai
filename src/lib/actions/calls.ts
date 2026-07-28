@@ -81,6 +81,9 @@ export async function notifyIncomingCall(
         tag: "gw-incoming-call",
       }),
       sendFcmToUser(row.user_id, {
+        // A ring is only meaningful during the 45s ring window — TTL it so a
+        // delayed delivery can't pop a stale incoming-call alert later.
+        ttl: "45s",
         data: {
           type: "call",
           video: video ? "1" : "0",
