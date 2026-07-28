@@ -66,6 +66,7 @@ class _MapScreenState extends State<MapScreen> {
   _MapBase _base = _MapBase.streets;
   bool _geology = false; // Macrostrat global geologic map overlay
   bool _hillshade = false; // Esri world hillshade (terrain relief) overlay
+  bool _minerals = false; // USGS MRDS — known gold/mineral occurrences (WMS)
   double _geologyOpacity = 0.55;
   // AlpineQuest-style "add online map": any XYZ tile URL stacks as an overlay.
   String? _customUrl; // e.g. a gold/geology favourability {z}/{x}/{y} tileset
@@ -590,6 +591,18 @@ class _MapScreenState extends State<MapScreen> {
                     value: _hillshade,
                     onChanged: (v) => apply(() => _hillshade = v),
                   ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(tr(ctx, "Gold & minerals (USGS)",
+                        "ရွှေ & သတ္တုတွင်း (USGS)")),
+                    subtitle: Text(tr(
+                        ctx,
+                        "Known deposits & occurrences worldwide",
+                        "ကမ္ဘာတစ်ဝန်း သိထားပြီး တွင်း/တည်နေရာများ")),
+                    value: _minerals,
+                    onChanged: (v) => apply(() => _minerals = v),
+                  ),
                   const Divider(height: 22),
                   // AlpineQuest-style "add online map": paste any XYZ tile URL
                   // (e.g. a gold / mineral favourability heatmap tileset) and
@@ -654,7 +667,7 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    "© OpenStreetMap · © OpenTopoMap (CC-BY-SA) · Esri · Macrostrat",
+                    "© OpenStreetMap · OpenTopoMap (CC-BY-SA) · Esri · Macrostrat · USGS MRDS",
                     style: TextStyle(
                         fontSize: 10.5,
                         color: GwColors.inkSoftOf(ctx)),
@@ -768,6 +781,24 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                   ),
                 ),
+              // USGS MRDS — every KNOWN gold & mineral occurrence worldwide
+              // (free WMS). Point data, not a predictive favourability
+              // heatmap, but it shows where deposits are actually recorded.
+              if (_minerals)
+                Opacity(
+                  opacity: 0.9,
+                  child: TileLayer(
+                    wmsOptions: WMSTileLayerOptions(
+                      baseUrl: "https://mrdata.usgs.gov/services/mrds?",
+                      layers: const ["mrds"],
+                      format: "image/png",
+                      transparent: true,
+                    ),
+                    userAgentPackageName: "ai.gwave.app",
+                    tileProvider: NetworkTileProvider(),
+                    errorTileCallback: (_, __, ___) {},
+                  ),
+                ),
               // Custom user overlay (AlpineQuest "online map" URL) — any XYZ
               // raster, e.g. a gold/mineral favourability heatmap, stacked
               // over the base with its own opacity.
@@ -813,7 +844,10 @@ class _MapScreenState extends State<MapScreen> {
             child: FloatingActionButton.small(
               heroTag: "layers",
               backgroundColor: Colors.white,
-              foregroundColor: (_geology || _hillshade ||
+              foregroundColor: (_geology ||
+                      _hillshade ||
+                      _minerals ||
+                      _customUrl != null ||
                       _base != _MapBase.streets)
                   ? GwColors.primary
                   : GwColors.inkSoftOf(context),
