@@ -67,6 +67,10 @@ class _MapScreenState extends State<MapScreen> {
   bool _geology = false; // Macrostrat global geologic map overlay
   bool _hillshade = false; // Esri world hillshade (terrain relief) overlay
   double _geologyOpacity = 0.55;
+  // AlpineQuest-style "add online map": any XYZ tile URL stacks as an overlay.
+  String? _customUrl; // e.g. a gold/geology favourability {z}/{x}/{y} tileset
+  double _customOpacity = 0.7;
+  final _customCtrl = TextEditingController();
   String? _locError;
 
   String get _baseUrl => switch (_base) {
@@ -586,6 +590,68 @@ class _MapScreenState extends State<MapScreen> {
                     value: _hillshade,
                     onChanged: (v) => apply(() => _hillshade = v),
                   ),
+                  const Divider(height: 22),
+                  // AlpineQuest-style "add online map": paste any XYZ tile URL
+                  // (e.g. a gold / mineral favourability heatmap tileset) and
+                  // it stacks over the base map with adjustable opacity.
+                  Text(tr(ctx, "Custom overlay (online map URL)",
+                      "Custom overlay (online map URL)"),
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _customCtrl,
+                    style: const TextStyle(fontSize: 12.5),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      border: const OutlineInputBorder(),
+                      hintText: "https://…/{z}/{x}/{y}.png",
+                      hintStyle: const TextStyle(fontSize: 12),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: tr(ctx, "Apply", "သုံးမည်"),
+                            icon: const Icon(Icons.check, size: 20),
+                            onPressed: () => apply(() =>
+                                _customUrl = _customCtrl.text.trim().isEmpty
+                                    ? null
+                                    : _customCtrl.text.trim()),
+                          ),
+                          IconButton(
+                            tooltip: tr(ctx, "Clear", "ဖျက်မည်"),
+                            icon: const Icon(Icons.close, size: 20),
+                            onPressed: () => apply(() {
+                              _customCtrl.clear();
+                              _customUrl = null;
+                            }),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_customUrl != null && _customUrl!.isNotEmpty)
+                    Row(
+                      children: [
+                        Text(tr(ctx, "Opacity", "အလင်းပိတ်နှုန်း"),
+                            style: const TextStyle(fontSize: 12.5)),
+                        Expanded(
+                          child: Slider(
+                            value: _customOpacity,
+                            min: 0.2,
+                            max: 1.0,
+                            onChanged: (v) => apply(() => _customOpacity = v),
+                          ),
+                        ),
+                      ],
+                    ),
+                  Text(
+                    tr(
+                        ctx,
+                        "Paste any {z}/{x}/{y} tile link — a geology / gold-favourability heatmap, a country topo map, etc. — to overlay it like AlpineQuest.",
+                        "{z}/{x}/{y} tile link တစ်ခုခု (ဘူမိဗေဒ/ရွှေ heatmap၊ topo မြေပုံ စသဖြင့်) ကူးထည့်ရင် AlpineQuest လိုမျိုး ထပ်တင်လို့ရသည်။"),
+                    style: TextStyle(
+                        fontSize: 11, color: GwColors.inkSoftOf(ctx)),
+                  ),
                   const SizedBox(height: 6),
                   Text(
                     "© OpenStreetMap · © OpenTopoMap (CC-BY-SA) · Esri · Macrostrat",
@@ -700,6 +766,24 @@ class _MapScreenState extends State<MapScreen> {
                       layerKey: "geo",
                       userAgent: "ai.gwave.app",
                     ),
+                  ),
+                ),
+              // Custom user overlay (AlpineQuest "online map" URL) — any XYZ
+              // raster, e.g. a gold/mineral favourability heatmap, stacked
+              // over the base with its own opacity.
+              if (_customUrl != null && _customUrl!.isNotEmpty)
+                Opacity(
+                  opacity: _customOpacity,
+                  child: TileLayer(
+                    urlTemplate: _customUrl,
+                    userAgentPackageName: "ai.gwave.app",
+                    maxNativeZoom: 17,
+                    maxZoom: 19,
+                    tileProvider: CachingTileProvider(
+                      layerKey: "custom",
+                      userAgent: "ai.gwave.app",
+                    ),
+                    errorTileCallback: (_, __, ___) {},
                   ),
                 ),
               MarkerLayer(markers: _markers()),
@@ -1281,6 +1365,7 @@ class _SosSheetState extends State<_SosSheet> {
   void dispose() {
     _phone.dispose();
     _note.dispose();
+    _customCtrl.dispose();
     _recorder.dispose();
     super.dispose();
   }
