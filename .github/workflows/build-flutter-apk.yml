@@ -52,11 +52,15 @@ jobs:
       # network (every request fails "Failed host lookup ... errno = 7") without it.
       - name: Scaffold Android platform
         run: |
-          flutter create --org ai.gwave --project-name gwave --platforms=android .
+          # applicationId + namespace both resolve to com.green.gwave (from
+          # --org com.green + project-name gwave). This MUST match the registered
+          # Android app in mobile/google-services.json, or on-device FCM
+          # (Firebase.initializeApp / getToken) fails and calls can't ring a
+          # closed app. Keeping namespace == applicationId also avoids the
+          # google-services Gradle plugin's "no matching client" build error.
+          flutter create --org com.green --project-name gwave --platforms=android .
           for G in android/app/build.gradle android/app/build.gradle.kts; do
             [ -f "$G" ] || continue
-            sed -i 's/applicationId "ai.gwave.gwave"/applicationId "ai.gwave.app"/' "$G"
-            sed -i 's/applicationId = "ai.gwave.gwave"/applicationId = "ai.gwave.app"/' "$G"
             # firebase_messaging requires minSdk >= 23; the template defaults to
             # flutter.minSdkVersion (21), which would fail the manifest merger.
             sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' "$G"
