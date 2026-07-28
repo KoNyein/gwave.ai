@@ -510,10 +510,29 @@ class CallService extends ChangeNotifier {
     final ready = Completer<void>();
     _callChannelReady = ready;
     ch
-      ..onBroadcast(event: "accept", callback: (_) => _onAccept())
-      ..onBroadcast(event: "offer", callback: _onOffer)
-      ..onBroadcast(event: "answer", callback: _onAnswer)
-      ..onBroadcast(event: "ice", callback: _onIce)
+      // Server-relayed signals (unlike socket broadcasts with self:false)
+      // echo back to their sender too — dropping our own `_from` tag here
+      // stops the callee from applying its own answer/ICE to itself.
+      ..onBroadcast(
+          event: "accept",
+          callback: (p) {
+            if (!_ownSignal(p)) _onAccept();
+          })
+      ..onBroadcast(
+          event: "offer",
+          callback: (p) {
+            if (!_ownSignal(p)) _onOffer(p);
+          })
+      ..onBroadcast(
+          event: "answer",
+          callback: (p) {
+            if (!_ownSignal(p)) _onAnswer(p);
+          })
+      ..onBroadcast(
+          event: "ice",
+          callback: (p) {
+            if (!_ownSignal(p)) _onIce(p);
+          })
       ..onBroadcast(event: "decline", callback: (_) => _teardown(log: true))
       ..onBroadcast(event: "hangup", callback: (_) => _teardown(log: true));
     ch.subscribe((status, [error]) {
@@ -543,18 +562,25 @@ class CallService extends ChangeNotifier {
   /// arrived but our offer/hangup never reached them. The relay is the
   /// delivery path proven to reach web and app subscribers; the socket send
   /// remains only as an offline-edge fallback. Receiving stays on the socket.
+  /// True when a relayed signal originated from THIS device (see `_from`).
+  bool _ownSignal(Map<String, dynamic> p) =>
+      p["_from"]?.toString() == _myId;
+
   Future<void> _signal(String event, Map<String, dynamic> payload) async {
     final id = _callId;
+    // `_from` lets receivers (including ourselves — server relays echo back
+    // to every subscriber) identify and drop the sender's own messages.
+    final tagged = {...payload, "_from": _myId};
     if (id != null) {
       try {
-        await api.callSignal(id, event, payload);
+        await api.callSignal(id, event, tagged);
         return;
       } catch (_) {
         // Server unreachable — fall back to the raw channel broadcast.
       }
     }
     await _awaitCallChannel();
-    _callChannel?.sendBroadcastMessage(event: event, payload: payload);
+    _callChannel?.sendBroadcastMessage(event: event, payload: tagged);
   }
 
   Future<void> _onAccept() async {
