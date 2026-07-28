@@ -64,14 +64,14 @@ class _ToolsScreenState extends State<ToolsScreen> {
                           color: _calc == c ? Colors.white : GwColors.primary),
                       label: Text(_labels[c]!),
                       labelStyle: TextStyle(
-                        color: _calc == c ? Colors.white : GwColors.ink,
+                        color: _calc == c ? Colors.white : GwColors.inkOf(context),
                         fontWeight: FontWeight.w600,
                       ),
                       selectedColor: GwColors.primary,
-                      backgroundColor: GwColors.surface,
+                      backgroundColor: GwColors.surfaceOf(context),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
-                        side: const BorderSide(color: GwColors.line),
+                        side: BorderSide(color: GwColors.lineOf(context)),
                       ),
                     ),
                   ),
@@ -127,11 +127,31 @@ class _Field extends StatelessWidget {
           FilteringTextInputFormatter.allow(RegExp(r"[0-9.]")),
         ],
         onChanged: onChanged,
+        style: TextStyle(
+            color: GwColors.inkOf(context),
+            fontSize: 18,
+            fontWeight: FontWeight.w700),
         decoration: InputDecoration(
           labelText: label,
+          labelStyle: const TextStyle(
+              color: GwColors.primary, fontWeight: FontWeight.w700),
           suffixText: suffix,
+          suffixStyle: TextStyle(
+              color: GwColors.inkSoftOf(context),
+              fontWeight: FontWeight.w600),
           filled: true,
-          fillColor: GwColors.surface,
+          // Theme-aware: a stark white box used to clash hard in dark mode.
+          fillColor: GwColors.surfaceMutedOf(context),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: GwColors.lineOf(context)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: GwColors.primary, width: 1.6),
+          ),
         ),
       ),
     );
@@ -422,6 +442,7 @@ class _Hint extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(top: 6, bottom: 14),
         child: Text(text,
-            style: const TextStyle(color: GwColors.inkSoft, fontSize: 13)),
+            style:
+                TextStyle(color: GwColors.inkSoftOf(context), fontSize: 13)),
       );
 }
