@@ -2,16 +2,18 @@
 
 import * as React from "react";
 import MuxPlayer from "@mux/mux-player-react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Play } from "lucide-react";
 
 /**
  * TikTok-style replay pager: plays the current replay and, when it ends (or
- * the viewer swipes up / taps next), swaps in the next saved replay in place —
- * no page navigation, so the "user already tapped play" gesture carries over
- * and the next video autoplays with sound. The URL is updated with
- * history.replaceState so refresh/share still lands on what's on screen, but
- * the surrounding page (chat history, gifts, header) intentionally stays on
- * the stream the viewer opened.
+ * the viewer swipes up / taps next), swaps the next saved replay into the SAME
+ * media element — no remount, so the element keeps its playback authorization
+ * and the next video can continue with sound. If the browser still blocks the
+ * end-driven play() (no recent gesture), a tap-to-continue overlay appears
+ * instead of failing silently. The URL is updated with history.replaceState so
+ * refresh/share still lands on what's on screen, but the surrounding page
+ * (chat history, gifts, header) intentionally stays on the stream the viewer
+ * opened.
  */
 export interface ReplayDeckItem {
   id: string;
@@ -32,25 +34,42 @@ export function ReplayDeck({
     items.findIndex((x) => x.id === startId),
   );
   const [index, setIndex] = React.useState(start);
-  // Only autoplay after the viewer has interacted (ended/swipe/next) — the
-  // first video keeps the normal big-play-button behavior.
-  const [autoPlay, setAutoPlay] = React.useState(false);
+  // Autoplay blocked on an advance → show a tap-to-continue overlay.
+  const [blocked, setBlocked] = React.useState(false);
+  const playerRef = React.useRef<React.ComponentRef<typeof MuxPlayer> | null>(
+    null,
+  );
+  // Set when go() advances the deck; consumed once the new source's metadata
+  // is ready, so play() isn't fired mid-load (an AbortError would read as
+  // "blocked").
+  const pendingPlay = React.useRef(false);
   const touchY = React.useRef<number | null>(null);
 
   const cur = items[index];
-  if (!cur) return null;
   const hasNext = index + 1 < items.length;
   const hasPrev = index > 0;
 
   const go = (next: number) => {
     if (next < 0 || next >= items.length) return;
-    setAutoPlay(true);
+    pendingPlay.current = true;
+    setBlocked(false);
     setIndex(next);
     const target = items[next];
     if (target && typeof window !== "undefined") {
       window.history.replaceState(null, "", `/live/${target.id}`);
     }
   };
+
+  const tryResume = () => {
+    const p = playerRef.current;
+    if (!p) return;
+    const attempt = p.play?.();
+    if (attempt && typeof attempt.catch === "function") {
+      attempt.catch(() => setBlocked(true));
+    }
+  };
+
+  if (!cur) return null;
 
   return (
     <div
@@ -72,10 +91,14 @@ export function ReplayDeck({
         Replay
       </span>
       <MuxPlayer
-        key={cur.id}
+        ref={playerRef}
         src={cur.src}
         streamType="on-demand"
-        autoPlay={autoPlay}
+        onLoadedMetadata={() => {
+          if (!pendingPlay.current) return;
+          pendingPlay.current = false;
+          tryResume();
+        }}
         onEnded={() => {
           if (hasNext) go(index + 1);
         }}
@@ -90,6 +113,22 @@ export function ReplayDeck({
           {cur.hostName} — {cur.title}
         </p>
       </div>
+
+      {/* Autoplay was blocked on an auto-advance — one tap continues. */}
+      {blocked ? (
+        <button
+          type="button"
+          onClick={() => {
+            setBlocked(false);
+            tryResume();
+          }}
+          className="absolute inset-0 z-30 flex items-center justify-center bg-black/40"
+        >
+          <span className="flex items-center gap-2 rounded-full bg-black/75 px-5 py-3 text-sm font-bold text-white shadow-lg">
+            <Play className="h-4 w-4" /> ဆက်ကြည့်ရန် နှိပ်ပါ
+          </span>
+        </button>
+      ) : null}
 
       {/* Next / previous — desktop gets buttons, phones can also swipe. */}
       <div className="absolute right-3 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-2">

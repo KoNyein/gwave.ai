@@ -70,10 +70,13 @@ function resolveReplayUrl(s: LiveStreamWithHost): string | null {
   const canReplay =
     ivs || Boolean(s.agora_channel) || Boolean(s.livekit_room);
   if (!canReplay) return null;
+  // Each provider resolves against ITS OWN base only — with several bases
+  // configured, a first-match chain would send e.g. an Agora recording to the
+  // LiveKit egress bucket. The media CDN stays the shared last resort.
   return (
     (ivs ? ivsRecordingUrl(s.recording_path) : null) ??
-    recordingPlaybackUrl(s.recording_path) ??
-    agoraRecordingUrl(s.recording_path) ??
+    (s.livekit_room ? recordingPlaybackUrl(s.recording_path) : null) ??
+    (s.agora_channel ? agoraRecordingUrl(s.recording_path) : null) ??
     mediaUrl(s.recording_path)
   );
 }
