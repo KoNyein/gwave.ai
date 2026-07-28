@@ -76,6 +76,25 @@ section and move the outcome to the changelog.
 
 ## Changelog
 
+- 2026-07-28 (night): **Calls no longer depend on the phone's realtime socket,
+  plus a feature batch.** Server (PRs #381/#382/#383, all deployed): both call
+  paths (app + web caller) FCM-push the full ring payload AND relay the
+  realtime ring server-side via the Realtime HTTP broadcast API (Caddy on EC2
+  gained the /sb/realtime/v1/api/* route; tenant=realtime-dev, Host-based);
+  45s TTL on ring pushes; one shared in-flight FCM OAuth mint; go-live now
+  FCM-pushes followers' phones; new log-only /api/mobile/diag. App (builds
+  ≤181 on mobile-latest): rings the incoming-call UI straight from the FCM
+  push + force-rebuilds the socket for signaling; call-notify waits for the
+  signaling channel join (accept race); runtime-config retry (fallback URL
+  can no longer strand the data plane — footer shows 'ready·cfg!' if it
+  does); diag beacon (~100s) posts build/ring/config/heartbeat-error to the
+  server logs; drone radar survives Bluetooth-off (Wi-Fi leg independent,
+  amber banner + system turn-on dialog, BLE self-heals); NFC read/write/
+  erase/lock tool in the Tools hub; feed's story+live rails merged into one
+  compact strip; TikTok pager auto-advances when a replay ends. Debugging
+  note: `docker logs gwave-web | grep -E 'diag|call/notify|realtime|fcm'`
+  now shows the phone's internals — no more screenshot round-trips.
+
 - 2026-07-28: **FCM push is LIVE end-to-end (closed-app call ring).** Native
   app package switched to `com.green.gwave` (the app actually registered in
   Firebase project `gen-lang-client-0745825519`; pre-launch so no user
