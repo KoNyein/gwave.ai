@@ -78,7 +78,7 @@ class _LiveNowRailState extends State<LiveNowRail> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               itemCount: _live.length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (_, i) => _LiveRailCard(stream: _live[i]),
+              itemBuilder: (_, i) => LiveRailCard(stream: _live[i]),
             ),
           ),
         ],
@@ -87,15 +87,19 @@ class _LiveNowRailState extends State<LiveNowRail> {
   }
 }
 
-class _LiveRailCard extends StatefulWidget {
-  const _LiveRailCard({required this.stream});
+/// A single live-broadcast card (muted autoplay preview, LIVE badge, viewer
+/// count, tap → watch). Public so the combined story+live rail on the feed
+/// can render live cards inside ONE compact strip.
+class LiveRailCard extends StatefulWidget {
+  const LiveRailCard({super.key, required this.stream, this.width = 118});
   final LiveStream stream;
+  final double width;
 
   @override
-  State<_LiveRailCard> createState() => _LiveRailCardState();
+  State<LiveRailCard> createState() => _LiveRailCardState();
 }
 
-class _LiveRailCardState extends State<_LiveRailCard> {
+class _LiveRailCardState extends State<LiveRailCard> {
   VideoPlayerController? _vc;
 
   @override
@@ -132,7 +136,7 @@ class _LiveRailCardState extends State<_LiveRailCard> {
         MaterialPageRoute(builder: (_) => LiveWatchScreen(stream: s)),
       ),
       child: SizedBox(
-        width: 118,
+        width: widget.width,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(GwRadius.md),
           child: Stack(

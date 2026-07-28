@@ -26,8 +26,13 @@ import '../web/web_screen.dart';
 ///   • emoji reactions — tap to send, and everyone's reactions float up
 ///   • live viewer count that refreshes while you watch
 class LiveWatchScreen extends StatefulWidget {
-  const LiveWatchScreen({super.key, required this.stream});
+  const LiveWatchScreen({super.key, required this.stream, this.onEnded});
   final LiveStream stream;
+
+  /// Fired once when a REPLAY finishes playing (never for live broadcasts).
+  /// The vertical swipe pager passes this to auto-advance to the next video;
+  /// without it (standalone open) the replay loops like before.
+  final VoidCallback? onEnded;
 
   @override
   State<LiveWatchScreen> createState() => _LiveWatchScreenState();
@@ -58,6 +63,21 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
   Timer? _poll;
   Timer? _heartbeat;
   String? _lastChatAt;
+  bool _endedFired = false;
+
+  /// Auto-advance hook: a replay that reached its end fires [LiveWatchScreen.
+  /// onEnded] exactly once, so the swipe pager can move to the next video.
+  void _maybeFireEnded() {
+    if (_endedFired) return;
+    final v = _controller?.value;
+    if (v == null || !v.isInitialized) return;
+    if (v.duration > Duration.zero &&
+        !v.isPlaying &&
+        v.position >= v.duration) {
+      _endedFired = true;
+      widget.onEnded?.call();
+    }
+  }
   String? _lastReactAt;
   int _viewers = 0;
   bool _sending = false;
@@ -186,7 +206,11 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
       final c = VideoPlayerController.networkUrl(Uri.parse(url));
       _controller = c;
       await c.initialize();
-      await c.setLooping(!widget.stream.isLive);
+      // Inside the swipe pager a finished replay advances instead of looping.
+      await c.setLooping(!widget.stream.isLive && widget.onEnded == null);
+      if (widget.onEnded != null && !widget.stream.isLive) {
+        c.addListener(_maybeFireEnded);
+      }
       // Watching a Live is a listening experience — force full media volume so
       // muted feed/rail previews or leftover call-audio state can't silence it.
       await c.setVolume(1.0);
