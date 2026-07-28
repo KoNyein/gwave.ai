@@ -25,6 +25,9 @@ import '../live/go_live_screen.dart';
 import '../messenger/chat_screen.dart';
 import 'wifi_map_screen.dart';
 
+/// Base-map choices for the AlpineQuest-style layer picker.
+enum _MapBase { streets, topo, satellite }
+
 /// Native GPS Map — one screen. A real map (OpenStreetMap tiles, so it works on
 /// phones without Google Play Services), the user's own location, the live SOS
 /// board and family markers, plus the emergency SOS action — all native, no
@@ -56,8 +59,32 @@ class _MapScreenState extends State<MapScreen> {
   bool _loading = true;
   bool _busySos = false;
   bool _myAlertOpen = false;
-  bool _satellite = false; // OSM streets vs Esri world imagery
+  // AlpineQuest-style layering: a base map + optional overlays. All tiles go
+  // through CachingTileProvider, so every layer is offline-capable once seen.
+  _MapBase _base = _MapBase.streets;
+  bool _geology = false; // Macrostrat global geologic map overlay
+  bool _hillshade = false; // Esri world hillshade (terrain relief) overlay
+  double _geologyOpacity = 0.55;
   String? _locError;
+
+  String get _baseUrl => switch (_base) {
+        _MapBase.streets => "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        _MapBase.topo => "https://tile.opentopomap.org/{z}/{x}/{y}.png",
+        _MapBase.satellite =>
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      };
+  String get _baseKey => switch (_base) {
+        _MapBase.streets => "osm",
+        _MapBase.topo => "topo",
+        _MapBase.satellite => "sat",
+      };
+  // OpenTopoMap tops out lower than the others.
+  double get _baseMaxZoom => _base == _MapBase.topo ? 17 : 19;
+
+  static const _geologyUrl =
+      "https://tiles.macrostrat.org/carto/{z}/{x}/{y}.png";
+  static const _hillshadeUrl =
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}";
 
   // A sensible default view (mainland SE Asia) until we have a fix.
   static const LatLng _fallback = LatLng(16.8, 96.15);
@@ -376,11 +403,108 @@ class _MapScreenState extends State<MapScreen> {
       builder: (_) => OfflineAreaSheet(
         bounds: cam.visibleBounds,
         centerZoom: cam.zoom,
-        layerKey: _satellite ? "sat" : "osm",
-        urlTemplate: _satellite
-            ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            : "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        layerKey: _baseKey,
+        urlTemplate: _baseUrl,
         userAgent: "ai.gwave.app",
+      ),
+    );
+  }
+
+  /// AlpineQuest-style layer picker: choose the base map and stack the
+  /// geology / hillshade overlays with adjustable geology opacity.
+  void _openLayersSheet() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          void apply(VoidCallback fn) {
+            setSheet(fn);
+            setState(() {});
+          }
+
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(tr(ctx, "Base map", "အခြေခံ မြေပုံ"),
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final (b, en, my) in [
+                        (_MapBase.streets, "Streets", "လမ်းမြေပုံ"),
+                        (_MapBase.topo, "Topo", "တောင်ကုန်း/contour"),
+                        (_MapBase.satellite, "Satellite", "ဂြိုဟ်တုပုံ"),
+                      ])
+                        ChoiceChip(
+                          selected: _base == b,
+                          onSelected: (_) => apply(() => _base = b),
+                          label: Text(tr(ctx, en, my)),
+                        ),
+                    ],
+                  ),
+                  const Divider(height: 22),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(tr(ctx, "Geology overlay (Macrostrat)",
+                        "ဘူမိဗေဒ မြေပုံလွှာ (Macrostrat)")),
+                    subtitle: Text(tr(
+                        ctx,
+                        "Rock units & ages as coloured areas",
+                        "ကျောက်လွှာ/သက်တမ်းအလိုက် အရောင်ပြ")),
+                    value: _geology,
+                    onChanged: (v) => apply(() => _geology = v),
+                  ),
+                  if (_geology)
+                    Row(
+                      children: [
+                        Text(tr(ctx, "Opacity", "အလင်းပိတ်နှုန်း"),
+                            style: const TextStyle(fontSize: 12.5)),
+                        Expanded(
+                          child: Slider(
+                            value: _geologyOpacity,
+                            min: 0.2,
+                            max: 0.9,
+                            onChanged: (v) =>
+                                apply(() => _geologyOpacity = v),
+                          ),
+                        ),
+                      ],
+                    ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(tr(ctx, "Hillshade (terrain relief)",
+                        "တောင်ရိပ် (မြေမျက်နှာသွင်ပြင်)")),
+                    value: _hillshade,
+                    onChanged: (v) => apply(() => _hillshade = v),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "© OpenStreetMap · © OpenTopoMap (CC-BY-SA) · Esri · Macrostrat",
+                    style: TextStyle(
+                        fontSize: 10.5,
+                        color: GwColors.inkSoftOf(ctx)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    tr(
+                        ctx,
+                        "Tiles you view are cached on-device and keep working offline.",
+                        "ကြည့်ပြီးသား မြေပုံကွက်တွေ ဖုန်းထဲ သိမ်းထားပြီး offline မှာလည်း ဆက်သုံးလို့ရသည်။"),
+                    style: TextStyle(
+                        fontSize: 11, color: GwColors.inkSoftOf(ctx)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -427,18 +551,45 @@ class _MapScreenState extends State<MapScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: _satellite
-                    ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                    : "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                urlTemplate: _baseUrl,
                 userAgentPackageName: "ai.gwave.app",
-                maxZoom: 19,
+                maxZoom: _baseMaxZoom,
                 // Offline-first: every tile is cached to disk, then served from
                 // disk (works with no connection). Namespaced per layer.
                 tileProvider: CachingTileProvider(
-                  layerKey: _satellite ? "sat" : "osm",
+                  layerKey: _baseKey,
                   userAgent: "ai.gwave.app",
                 ),
               ),
+              // Terrain relief under the geology colours, AlpineQuest-style.
+              if (_hillshade)
+                Opacity(
+                  opacity: 0.45,
+                  child: TileLayer(
+                    urlTemplate: _hillshadeUrl,
+                    userAgentPackageName: "ai.gwave.app",
+                    maxZoom: 16,
+                    tileProvider: CachingTileProvider(
+                      layerKey: "hill",
+                      userAgent: "ai.gwave.app",
+                    ),
+                  ),
+                ),
+              // Macrostrat global geologic map — rock units as coloured
+              // polygons; opacity is user-adjustable so the base shows through.
+              if (_geology)
+                Opacity(
+                  opacity: _geologyOpacity,
+                  child: TileLayer(
+                    urlTemplate: _geologyUrl,
+                    userAgentPackageName: "ai.gwave.app",
+                    maxZoom: 14,
+                    tileProvider: CachingTileProvider(
+                      layerKey: "geo",
+                      userAgent: "ai.gwave.app",
+                    ),
+                  ),
+                ),
               MarkerLayer(markers: _markers()),
             ],
           ),
@@ -459,18 +610,19 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
 
-          // Map / Satellite layer toggle.
+          // Layer picker: base map + geology/hillshade overlays.
           Positioned(
             right: 16,
             bottom: 316,
             child: FloatingActionButton.small(
               heroTag: "layers",
               backgroundColor: Colors.white,
-              foregroundColor:
-                  _satellite ? GwColors.primary : GwColors.inkSoftOf(context),
-              onPressed: () => setState(() => _satellite = !_satellite),
-              child: Icon(
-                  _satellite ? Icons.satellite_alt : Icons.layers_outlined),
+              foregroundColor: (_geology || _hillshade ||
+                      _base != _MapBase.streets)
+                  ? GwColors.primary
+                  : GwColors.inkSoftOf(context),
+              onPressed: _openLayersSheet,
+              child: const Icon(Icons.layers_outlined),
             ),
           ),
 
