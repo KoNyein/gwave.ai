@@ -47,6 +47,28 @@
 - Native iOS app (Apple Developer Program, $99/yr, user-side).
 - Old Vercel project deletion (user-side).
 
+## In-flight (2026-07-28) — FCM closed-app ring debug, owned by the EC2 CLI session
+
+Symptom: caller (com.green.gwave build, "Ringing…") → closed-app callee gets
+only a missed-call chat message, no ringing notification. Already VERIFIED —
+do NOT redo:
+- `FCM_SERVICE_ACCOUNT_JSON` in `/etc/gwave-web.env` is a single line, valid
+  JSON (2372 chars), right project — checked INSIDE the gwave-web container
+  (`FCM OK ✅ gen-lang-client-0745825519 firebase-adminsdk-fbsvc@...`). Do not
+  append it again (a duplicate empty line was already cleaned once) and no
+  redeploy is needed for it.
+- APK builds 173+ are `com.green.gwave` with the committed
+  `mobile/google-services.json` baked in.
+Next steps (in order): 1) `device_tokens` row exists for the callee?
+(no row ⇒ callee phone: old APK / notification permission / MIUI autostart+
+battery). 2) If a row exists, direct FCM v1 test send from inside gwave-web
+with that token and read the HTTP status (200-but-silent ⇒ OEM battery kill;
+403 SENDER_ID_MISMATCH / 404 UNREGISTERED ⇒ stale token from the old app —
+delete row, re-login on the new APK). Note `src/lib/fcm.ts` never logs; a
+closed-app push shows a tray notification (tap → app opens → catches the 45s
+re-ring) — there is no full-screen ring from terminated state yet. When fixed:
+delete this section and move the outcome to the changelog.
+
 ## Changelog
 
 - 2026-07-28: **FCM push is LIVE end-to-end (closed-app call ring).** Native
