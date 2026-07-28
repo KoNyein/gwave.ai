@@ -303,7 +303,15 @@ class CallService extends ChangeNotifier {
 
     // Our own per-call channel: listen for the callee's accept/answer/ice.
     _joinCallChannel(_callId!);
-    await _openMedia();
+    try {
+      await _openMedia();
+    } catch (e) {
+      // Couldn't open the camera/mic — abort cleanly so the caller sees the
+      // permission snackbar instead of an uncaught error and a dead call.
+      debugPrint("call: openMedia failed on start: $e");
+      await _teardown(log: false);
+      return false;
+    }
 
     // Web-push the callee too — reaches a web callee whose tab can't get the
     // realtime broadcast (closed, backgrounded, stale JS). Best-effort.
@@ -371,7 +379,17 @@ class CallService extends ChangeNotifier {
 
     await _refreshAuth();
     _joinCallChannel(_callId!);
-    await _openMedia();
+    try {
+      await _openMedia();
+    } catch (e) {
+      // Camera/mic acquisition failed (denied camera, or the device rejected
+      // the video track). Without this the "accept" below was never sent, so
+      // the caller rang out to a silent missed call — the exact video-call
+      // symptom. Decline cleanly so the caller stops ringing immediately.
+      debugPrint("call: openMedia failed on accept: $e");
+      decline();
+      return;
+    }
     // Tell the caller we picked up — they create and send the offer. Wait for
     // the channel to actually join first, or the accept is dropped and the
     // caller hangs on "Connecting…".
