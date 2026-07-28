@@ -105,6 +105,13 @@ class _MapScreenState extends State<MapScreen> {
     _init();
   }
 
+  @override
+  void dispose() {
+    _heatDebounce?.cancel();
+    _customCtrl.dispose();
+    super.dispose();
+  }
+
   LatLng? get _focus => widget.focusLat != null && widget.focusLng != null
       ? LatLng(widget.focusLat!, widget.focusLng!)
       : null;
@@ -1496,8 +1503,6 @@ class _SosSheetState extends State<_SosSheet> {
   void dispose() {
     _phone.dispose();
     _note.dispose();
-    _customCtrl.dispose();
-    _heatDebounce?.cancel();
     _recorder.dispose();
     super.dispose();
   }
