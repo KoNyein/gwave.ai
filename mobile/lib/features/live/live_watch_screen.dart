@@ -13,6 +13,7 @@ import '../../core/config.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
+import '../../widgets/share_sheet.dart';
 import '../../widgets/common.dart';
 import '../web/web_screen.dart';
 
@@ -717,7 +718,13 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
         _railButton(Icons.card_giftcard, "Gift", GwColors.gold,
             onTap: () => _react("🔥")),
         const SizedBox(height: 16),
-        _railButton(Icons.share, "Share", Colors.white, onTap: () {}),
+        _railButton(Icons.share, "Share", Colors.white, onTap: () {
+          showShareSheet(
+            context,
+            url: "https://gwave.cc/live/${widget.stream.id}",
+            title: widget.stream.title,
+          );
+        }),
       ],
     );
   }

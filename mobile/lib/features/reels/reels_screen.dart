@@ -9,6 +9,7 @@ import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
+import '../../widgets/share_sheet.dart';
 import '../../widgets/common.dart';
 import '../create/upload_flow.dart';
 
@@ -399,7 +400,13 @@ class _ReelPageState extends State<_ReelPage> {
                 const SizedBox(height: 18),
                 _rail(Icons.remove_red_eye, "${r.viewCount}", Colors.white, null),
                 const SizedBox(height: 18),
-                _rail(Icons.share, "Share", Colors.white, null),
+                _rail(Icons.share, "Share", Colors.white, () {
+                  showShareSheet(
+                    context,
+                    url: "https://gwave.cc/reels/${widget.reel.id}",
+                    title: "Gwave reel",
+                  );
+                }),
               ],
             ),
           ),

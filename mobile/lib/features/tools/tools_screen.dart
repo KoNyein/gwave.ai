@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/theme.dart';
 import 'nfc_tool_screen.dart';
+import 'qr_tool.dart';
 
 /// Native agriculture calculators — pure on-device math, so they work offline.
 /// A chip selector switches between calculators; each renders its own inputs
@@ -16,7 +17,7 @@ class ToolsScreen extends StatefulWidget {
   State<ToolsScreen> createState() => _ToolsScreenState();
 }
 
-enum _Calc { ecPpm, vpd, units, currency, profit, nfc }
+enum _Calc { ecPpm, vpd, units, currency, profit, qr, nfc }
 
 class _ToolsScreenState extends State<ToolsScreen> {
   _Calc _calc = _Calc.ecPpm;
@@ -27,6 +28,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
     _Calc.units: "Units",
     _Calc.currency: "Currency",
     _Calc.profit: "Profit",
+    _Calc.qr: "QR",
     _Calc.nfc: "NFC",
   };
   static const _icons = {
@@ -35,6 +37,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
     _Calc.units: Icons.straighten_outlined,
     _Calc.currency: Icons.payments_outlined,
     _Calc.profit: Icons.trending_up,
+    _Calc.qr: Icons.qr_code_2,
     _Calc.nfc: Icons.nfc,
   };
 
@@ -88,6 +91,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
                       _Calc.units => const _UnitCalc(),
                       _Calc.currency => const _CurrencyCalc(),
                       _Calc.profit => const _ProfitCalc(),
+                      _Calc.qr => const QrTool(),
                       _Calc.nfc => const SizedBox.shrink(),
                     },
                   ),

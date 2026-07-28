@@ -1,4 +1,4 @@
-import 'package:share_plus/share_plus.dart';
+import '../../widgets/share_sheet.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -275,8 +275,12 @@ class _PostCardState extends State<PostCard> {
                 _action(Icons.share_outlined, "Share", GwColors.inkSoft, () {
                   final p = widget.post;
                   final text = p.content.trim();
-                  Share.share(
-                      "${text.isEmpty ? "Gwave post" : text}\n\nhttps://gwave.cc/p/${p.id}");
+                  showShareSheet(
+                    context,
+                    url: "https://gwave.cc/p/${p.id}",
+                    title: text.isEmpty ? "Gwave post" : text,
+                    message: text.isEmpty ? null : text,
+                  );
                 }),
               ],
             ),
