@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/theme.dart';
+import 'nfc_tool_screen.dart';
 
 /// Native agriculture calculators — pure on-device math, so they work offline.
 /// A chip selector switches between calculators; each renders its own inputs
@@ -15,7 +16,7 @@ class ToolsScreen extends StatefulWidget {
   State<ToolsScreen> createState() => _ToolsScreenState();
 }
 
-enum _Calc { ecPpm, vpd, units, currency, profit }
+enum _Calc { ecPpm, vpd, units, currency, profit, nfc }
 
 class _ToolsScreenState extends State<ToolsScreen> {
   _Calc _calc = _Calc.ecPpm;
@@ -26,6 +27,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
     _Calc.units: "Units",
     _Calc.currency: "Currency",
     _Calc.profit: "Profit",
+    _Calc.nfc: "NFC",
   };
   static const _icons = {
     _Calc.ecPpm: Icons.bolt_outlined,
@@ -33,6 +35,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
     _Calc.units: Icons.straighten_outlined,
     _Calc.currency: Icons.payments_outlined,
     _Calc.profit: Icons.trending_up,
+    _Calc.nfc: Icons.nfc,
   };
 
   @override
@@ -73,16 +76,21 @@ class _ToolsScreenState extends State<ToolsScreen> {
             ),
           ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 30),
-              child: switch (_calc) {
-                _Calc.ecPpm => const _EcPpmCalc(),
-                _Calc.vpd => const _VpdCalc(),
-                _Calc.units => const _UnitCalc(),
-                _Calc.currency => const _CurrencyCalc(),
-                _Calc.profit => const _ProfitCalc(),
-              },
-            ),
+            // The NFC tool scrolls itself (ListView + live tag sessions), so it
+            // skips the shared SingleChildScrollView wrapper the calculators use.
+            child: _calc == _Calc.nfc
+                ? const NfcToolBody()
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 30),
+                    child: switch (_calc) {
+                      _Calc.ecPpm => const _EcPpmCalc(),
+                      _Calc.vpd => const _VpdCalc(),
+                      _Calc.units => const _UnitCalc(),
+                      _Calc.currency => const _CurrencyCalc(),
+                      _Calc.profit => const _ProfitCalc(),
+                      _Calc.nfc => const SizedBox.shrink(),
+                    },
+                  ),
           ),
         ],
       ),

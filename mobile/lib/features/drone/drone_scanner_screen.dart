@@ -129,7 +129,10 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
   Timer? _wifiScanTimer;
   Timer? _alarmTimer;
   Timer? _pruneTimer;
+  StreamSubscription<BluetoothAdapterState>? _adapterSub;
   bool _scanning = false;
+  bool _btOff = false; // Bluetooth unavailable — Wi-Fi keeps scanning
+  bool _bleRunning = false;
   String? _error;
   String _filter = "priority"; // priority | all | drones | unusual
   late final AnimationController _sweep = AnimationController(
@@ -149,6 +152,7 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
   void dispose() {
     _sweep.dispose();
     _bleSub?.cancel();
+    _adapterSub?.cancel();
     _wifiTimer?.cancel();
     _wifiScanTimer?.cancel();
     _alarmTimer?.cancel();
@@ -166,23 +170,62 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
         Permission.nearbyWifiDevices,
       ].request();
 
-      _bleSub = FlutterBluePlus.scanResults.listen(_onBle);
-      await FlutterBluePlus.startScan(
-        continuousUpdates: true,
-        removeIfGone: const Duration(seconds: 15),
-      );
-      if (mounted) setState(() => _scanning = true);
-
+      // Wi-Fi leg FIRST and independent of Bluetooth: a phone with BT off
+      // used to take the whole radar down with a raw PlatformException while
+      // the Wi-Fi scanner would have worked fine the entire time.
       _triggerWifiScan();
       _wifiScanTimer = Timer.periodic(
           const Duration(seconds: 25), (_) => _triggerWifiScan());
       _readWifi();
       _wifiTimer =
           Timer.periodic(const Duration(seconds: 5), (_) => _readWifi());
-
       _pruneTimer = Timer.periodic(const Duration(seconds: 2), (_) => _prune());
+      if (mounted) setState(() => _scanning = true);
+
+      // BLE leg — self-healing: when the user flips Bluetooth on (from our
+      // banner or the system tray), scanning starts by itself.
+      _adapterSub = FlutterBluePlus.adapterState.listen((s) {
+        final off = s != BluetoothAdapterState.on;
+        if (off) _bleRunning = false;
+        if (mounted) setState(() => _btOff = off);
+        if (!off) _startBle();
+      });
+      await _startBle(requestEnable: true);
     } catch (e) {
+      // Only a total setup failure lands here; BLE/Wi-Fi issues degrade softly.
       if (mounted) setState(() => _error = "$e");
+    }
+  }
+
+  /// Start (or restart) BLE scanning. With [requestEnable] the system
+  /// "turn on Bluetooth" dialog is shown first when the adapter is off.
+  /// Never throws — a phone without/with disabled Bluetooth just stays on
+  /// Wi-Fi-only scanning with the banner offering the switch.
+  Future<void> _startBle({bool requestEnable = false}) async {
+    if (_bleRunning) return;
+    try {
+      var state = await FlutterBluePlus.adapterState.first;
+      if (state != BluetoothAdapterState.on && requestEnable) {
+        try {
+          await FlutterBluePlus.turnOn();
+          state = await FlutterBluePlus.adapterState.first;
+        } catch (_) {
+          // User declined or the device can't switch it programmatically.
+        }
+      }
+      if (state != BluetoothAdapterState.on) {
+        if (mounted) setState(() => _btOff = true);
+        return;
+      }
+      _bleSub ??= FlutterBluePlus.scanResults.listen(_onBle);
+      await FlutterBluePlus.startScan(
+        continuousUpdates: true,
+        removeIfGone: const Duration(seconds: 15),
+      );
+      _bleRunning = true;
+      if (mounted) setState(() => _btOff = false);
+    } catch (_) {
+      if (mounted) setState(() => _btOff = true);
     }
   }
 
@@ -480,6 +523,7 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
           : Column(
               children: [
                 if (threat) _threatBanner(context),
+                if (_btOff) _btOffBanner(context),
                 _radar(_hits.values.toList()),
                 _summaryBar(),
                 _filterRow(),
@@ -487,6 +531,38 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
                 _disclaimer(context),
               ],
             ),
+    );
+  }
+
+  /// Amber strip shown while Bluetooth is off: the radar still works on
+  /// Wi-Fi, but drone Remote ID beacons are BLE — offer the switch inline.
+  Widget _btOffBanner(BuildContext context) {
+    return Material(
+      color: const Color(0xFF3A2F00),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Row(
+          children: [
+            const Icon(Icons.bluetooth_disabled,
+                color: Colors.amber, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                tr(
+                  context,
+                  "Bluetooth is off — scanning Wi-Fi only. Turn it on to also catch drone Remote ID beacons.",
+                  "Bluetooth ပိတ်ထားလို့ Wi-Fi နဲ့ပဲ ရှာနေသည် — ဒရုန်း Remote ID တွေပါ ဖမ်းမိအောင် Bluetooth ဖွင့်ပါ",
+                ),
+                style: const TextStyle(color: Colors.amber, fontSize: 12.5),
+              ),
+            ),
+            TextButton(
+              onPressed: () => _startBle(requestEnable: true),
+              child: Text(tr(context, "Turn on", "ဖွင့်မည်")),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
