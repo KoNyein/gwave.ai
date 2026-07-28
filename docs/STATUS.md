@@ -47,44 +47,22 @@
 - Native iOS app (Apple Developer Program, $99/yr, user-side).
 - Old Vercel project deletion (user-side).
 
-## In-flight (2026-07-28, update 2) — call-ring debug status
+## In-flight (2026-07-28, final) — call-ring: relay live, awaiting user test
 
-VERIFIED today: server FCM send works (direct v1 send to konyein's live token
-→ HTTP 200); APK builds 173+ bake the com.green.gwave google-services config
-(build log: "Placed android/app/google-services.json" + gms plugin patched);
-POST_NOTIFICATIONS is in the manifest; konyein's phone registered a fresh
-token. The failing case is APK caller → BROWSER callee (ZinMarNwe uses the
-web, hence no device token — that part is expected). Realtime + postgrest
-containers are Up; libcluster DNS warnings in realtime logs are benign noise.
-Fix shipped: PR #381 (server-side ring relay through the Realtime HTTP
-broadcast API + FCM/notify logging) → merge when green, then `main`
-auto-deploys; the app passes callId from mobile-branch builds ≥175. After
-deploy, `sudo docker logs gwave-web | grep -E 'call/notify|realtime|fcm'`
-shows exactly which leg fails on the next test call. Still unknown: whether a
-web→web call rings today (asked the user to try); if it doesn't, look at the
-web ring-inbox subscribe (gw_at token at join time) next.
-
-## Previous in-flight note (kept for context) — FCM closed-app ring debug, owned by the EC2 CLI session
-
-Symptom: caller (com.green.gwave build, "Ringing…") → closed-app callee gets
-only a missed-call chat message, no ringing notification. Already VERIFIED —
-do NOT redo:
-- `FCM_SERVICE_ACCOUNT_JSON` in `/etc/gwave-web.env` is a single line, valid
-  JSON (2372 chars), right project — checked INSIDE the gwave-web container
-  (`FCM OK ✅ gen-lang-client-0745825519 firebase-adminsdk-fbsvc@...`). Do not
-  append it again (a duplicate empty line was already cleaned once) and no
-  redeploy is needed for it.
-- APK builds 173+ are `com.green.gwave` with the committed
-  `mobile/google-services.json` baked in.
-Next steps (in order): 1) `device_tokens` row exists for the callee?
-(no row ⇒ callee phone: old APK / notification permission / MIUI autostart+
-battery). 2) If a row exists, direct FCM v1 test send from inside gwave-web
-with that token and read the HTTP status (200-but-silent ⇒ OEM battery kill;
-403 SENDER_ID_MISMATCH / 404 UNREGISTERED ⇒ stale token from the old app —
-delete row, re-login on the new APK). Note `src/lib/fcm.ts` never logs; a
-closed-app push shows a tray notification (tap → app opens → catches the 45s
-re-ring) — there is no full-screen ring from terminated state yet. When fixed:
-delete this section and move the outcome to the changelog.
+PR #381 MERGED (server-side ring relay via the Realtime HTTP broadcast API +
+FCM/notify logging) — main auto-deploy runs it; APK build 176 on mobile-latest
+carries the app-side callId. VERIFIED earlier today: server FCM send → live
+token = HTTP 200; APK 173+ bakes the com.green.gwave google-services config
+(build log confirmed) with POST_NOTIFICATIONS in the manifest; realtime +
+postgrest containers healthy. Remaining test (user): browser tab signed in as
+the callee, call from APK v1.0.176 — the tab should ring. If anything still
+fails, `sudo docker logs gwave-web | grep -E 'call/notify|realtime|fcm'` now
+shows exactly which leg broke (notify hit, relay HTTP status, FCM sends —
+watch for `[realtime] server broadcast ... -> 404`, which means the
+`/realtime/v1/api/broadcast` proxy path needs a Caddy mapping on the box).
+Also still unverified: does web→web ring today? If not, inspect the web
+ring-inbox subscribe (gw_at at join time). When the test passes: delete this
+section and move the outcome to the changelog.
 
 ## Changelog
 
