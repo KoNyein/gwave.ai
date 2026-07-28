@@ -49,6 +49,16 @@
 
 ## In-flight (2026-07-28, final) — call-ring: relay live, awaiting user test
 
+INFRA (on the EC2 box, 2026-07-28): /etc/caddy/Caddyfile gained a
+`handle /sb/realtime/v1/api/*` block (strip_prefix + proxy to 127.0.0.1:4000
+with Host realtime-dev.gwave.cc) BEFORE the websocket handler — the websocket
+handler rewrites /sb/realtime/v1 -> /socket, which had been swallowing the
+relay's POST /api/broadcast. Verified: POST gwave.cc/sb/realtime/v1/api/broadcast
+now returns 202 from Realtime (tenant realtime-dev; resolution is Host-based,
+so direct 127.0.0.1:4000 calls need that Host header). Backup:
+Caddyfile.bak-before-broadcast-api.
+
+
 PR #381 MERGED (server-side ring relay via the Realtime HTTP broadcast API +
 FCM/notify logging) — main auto-deploy runs it; APK build 176 on mobile-latest
 carries the app-side callId. VERIFIED earlier today: server FCM send → live
