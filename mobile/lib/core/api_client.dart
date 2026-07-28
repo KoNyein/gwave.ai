@@ -513,12 +513,17 @@ class ApiClient {
     return (j["comment"] as Map).cast<String, dynamic>();
   }
 
-  /// Web-push the callee about an incoming call (works even when their tab
-  /// can't receive the realtime ring). Fire-and-forget beside the broadcast.
-  Future<void> callNotify(String conversationId, bool video) async {
+  /// Web-push + FCM the callee about an incoming call (works even when their
+  /// tab/app can't receive the realtime ring). Passing [callId] additionally
+  /// makes the server relay the realtime "ring" broadcast itself, so the
+  /// callee still rings when our own socket's broadcast is lost.
+  /// Fire-and-forget beside the client-side broadcast.
+  Future<void> callNotify(String conversationId, bool video,
+      {String? callId}) async {
     await _mobilePost("/api/mobile/call/notify", {
       "conversationId": conversationId,
       "video": video,
+      if (callId != null) "callId": callId,
     });
   }
 

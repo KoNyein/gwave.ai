@@ -313,9 +313,13 @@ class CallService extends ChangeNotifier {
       return false;
     }
 
-    // Web-push the callee too — reaches a web callee whose tab can't get the
-    // realtime broadcast (closed, backgrounded, stale JS). Best-effort.
-    api.callNotify(conversationId, withVideo).catchError((_) {});
+    // Web-push/FCM the callee too, and hand the server our callId so it can
+    // relay the realtime ring itself — reaches a callee whose tab/app can't
+    // get OUR broadcast (closed, backgrounded, stale JS, or our own socket
+    // failing to join their inbox). Best-effort.
+    api
+        .callNotify(conversationId, withVideo, callId: _callId)
+        .catchError((_) {});
 
     // The ring payload — carries our identity so the callee sees who's calling.
     Map<String, dynamic> ringPayload() => {

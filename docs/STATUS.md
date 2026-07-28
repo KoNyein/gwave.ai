@@ -47,7 +47,24 @@
 - Native iOS app (Apple Developer Program, $99/yr, user-side).
 - Old Vercel project deletion (user-side).
 
-## In-flight (2026-07-28) — FCM closed-app ring debug, owned by the EC2 CLI session
+## In-flight (2026-07-28, update 2) — call-ring debug status
+
+VERIFIED today: server FCM send works (direct v1 send to konyein's live token
+→ HTTP 200); APK builds 173+ bake the com.green.gwave google-services config
+(build log: "Placed android/app/google-services.json" + gms plugin patched);
+POST_NOTIFICATIONS is in the manifest; konyein's phone registered a fresh
+token. The failing case is APK caller → BROWSER callee (ZinMarNwe uses the
+web, hence no device token — that part is expected). Realtime + postgrest
+containers are Up; libcluster DNS warnings in realtime logs are benign noise.
+Fix shipped: PR #381 (server-side ring relay through the Realtime HTTP
+broadcast API + FCM/notify logging) → merge when green, then `main`
+auto-deploys; the app passes callId from mobile-branch builds ≥175. After
+deploy, `sudo docker logs gwave-web | grep -E 'call/notify|realtime|fcm'`
+shows exactly which leg fails on the next test call. Still unknown: whether a
+web→web call rings today (asked the user to try); if it doesn't, look at the
+web ring-inbox subscribe (gw_at token at join time) next.
+
+## Previous in-flight note (kept for context) — FCM closed-app ring debug, owned by the EC2 CLI session
 
 Symptom: caller (com.green.gwave build, "Ringing…") → closed-app callee gets
 only a missed-call chat message, no ringing notification. Already VERIFIED —
