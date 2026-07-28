@@ -1,7 +1,8 @@
 "use client";
 
+import * as React from "react";
 import MuxPlayer from "@mux/mux-player-react";
-import { Radio } from "lucide-react";
+import { Radio, Volume2 } from "lucide-react";
 
 import type { LiveStreamStatus } from "@/types/database";
 
@@ -29,6 +30,15 @@ export function LivePlayer({
    * m3u8 on Chrome). Takes precedence over vodPlaybackId when ended. */
   vodSrc?: string | null;
 }) {
+  // Live playback must autoplay muted (browser policy), which viewers read as
+  // "live has no sound". Surface an explicit unmute button until tapped.
+  // (ComponentRef: @mux/mux-player itself isn't a direct dependency, only the
+  // React wrapper is, so the element type can't be imported by name.)
+  const liveRef = React.useRef<React.ComponentRef<typeof MuxPlayer> | null>(
+    null,
+  );
+  const [needsUnmute, setNeedsUnmute] = React.useState(true);
+
   if (status === "ended") {
     if (vodSrc) {
       return (
@@ -81,13 +91,37 @@ export function LivePlayer({
   }
 
   return (
-    <MuxPlayer
-      {...(src ? { src } : { playbackId: playbackId ?? undefined })}
-      streamType="live"
-      autoPlay="muted"
-      metadata={{ video_title: title }}
-      className="aspect-video w-full overflow-hidden rounded-xl"
-      accentColor="#3B6D11"
-    />
+    <div className="relative">
+      <MuxPlayer
+        ref={liveRef}
+        {...(src ? { src } : { playbackId: playbackId ?? undefined })}
+        streamType="live"
+        autoPlay="muted"
+        onVolumeChange={() => {
+          // Viewer unmuted via the player's own controls — drop the overlay.
+          if (liveRef.current && !liveRef.current.muted) setNeedsUnmute(false);
+        }}
+        metadata={{ video_title: title }}
+        className="aspect-video w-full overflow-hidden rounded-xl"
+        accentColor="#3B6D11"
+      />
+      {needsUnmute ? (
+        <button
+          type="button"
+          onClick={() => {
+            const p = liveRef.current;
+            if (p) {
+              p.muted = false;
+              p.volume = 1;
+              void p.play()?.catch(() => undefined);
+            }
+            setNeedsUnmute(false);
+          }}
+          className="absolute bottom-14 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm font-bold text-white shadow-lg backdrop-blur transition-colors hover:bg-black/85"
+        >
+          <Volume2 className="h-4 w-4" /> အသံဖွင့်ရန် နှိပ်ပါ
+        </button>
+      ) : null}
+    </div>
   );
 }
