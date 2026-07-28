@@ -19,7 +19,13 @@ import '../../widgets/common.dart';
 /// photo, a voice note or a video, so farmers can share experience on a variety
 /// or a fertiliser right on its detail page. Reads/writes go through the mobile
 /// API (service role) via [ApiClient.subjectComments] / subjectCommentCreate.
-class SubjectCommentsSheet extends StatefulWidget {
+///
+/// Two presentations share one implementation ([SubjectCommentsPanel]):
+///  - embedded on the detail page itself, so comments and their photos are
+///    visible immediately without opening anything, and
+///  - the original bottom sheet ([SubjectCommentsSheet.show]) for callers that
+///    still want the overlay.
+class SubjectCommentsSheet extends StatelessWidget {
   const SubjectCommentsSheet({
     super.key,
     required this.subjectType,
@@ -53,10 +59,49 @@ class SubjectCommentsSheet extends StatefulWidget {
   }
 
   @override
-  State<SubjectCommentsSheet> createState() => _SubjectCommentsSheetState();
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottom),
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => SubjectCommentsPanel(
+          subjectType: subjectType,
+          subjectId: subjectId,
+          title: title,
+          scrollController: scrollController,
+        ),
+      ),
+    );
+  }
 }
 
-class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
+/// The comments list + composer. With [embedded] true it renders inline inside
+/// a parent scroll view (no inner scrolling, sheet chrome hidden).
+class SubjectCommentsPanel extends StatefulWidget {
+  const SubjectCommentsPanel({
+    super.key,
+    required this.subjectType,
+    required this.subjectId,
+    required this.title,
+    this.embedded = false,
+    this.scrollController,
+  });
+
+  final String subjectType; // 'strain' | 'mineral'
+  final String subjectId;
+  final String title;
+  final bool embedded;
+  final ScrollController? scrollController;
+
+  @override
+  State<SubjectCommentsPanel> createState() => _SubjectCommentsPanelState();
+}
+
+class _SubjectCommentsPanelState extends State<SubjectCommentsPanel> {
   final _input = TextEditingController();
   final _recorder = AudioRecorder();
 
@@ -296,56 +341,119 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottom),
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.75,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (context, scrollController) {
-          return Column(
-            children: [
-              const SizedBox(height: 10),
-              Container(
-                width: 42,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: GwColors.line,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-                child: Row(
-                  children: [
-                    const Icon(Icons.forum_outlined,
-                        color: GwColors.primary, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        "${tr(context, "Comments", "မှတ်ချက်များ")} · ${widget.title}",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 15),
-                      ),
+    if (widget.embedded) {
+      // Inline on the detail page: header, every comment (photos and all)
+      // rendered immediately, composer at the bottom. The page's own ListView
+      // does the scrolling.
+      return Container(
+        decoration: BoxDecoration(
+          color: GwColors.surfaceOf(context),
+          borderRadius: BorderRadius.circular(GwRadius.lg),
+          boxShadow: GwShadow.card,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+              child: Row(
+                children: [
+                  const Icon(Icons.forum_outlined,
+                      color: GwColors.primary, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      tr(context, "Comments & experience",
+                          "မှတ်ချက်နှင့် အတွေ့အကြုံများ"),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: GwColors.inkOf(context)),
                     ),
+                  ),
+                  if (_comments.isNotEmpty)
+                    Text("${_comments.length}",
+                        style: const TextStyle(
+                            color: GwColors.primary,
+                            fontWeight: FontWeight.w800)),
+                ],
+              ),
+            ),
+            if (_loading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                    child:
+                        CircularProgressIndicator(color: GwColors.primary)),
+              )
+            else if (_comments.isEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                child: Text(
+                  _error != null
+                      ? tr(context, "Couldn't load comments",
+                          "မှတ်ချက်များ မဖွင့်နိုင်ပါ")
+                      : tr(
+                          context,
+                          "No comments yet — be the first to share your experience.",
+                          "မှတ်ချက် မရှိသေးပါ — သင့်အတွေ့အကြုံကို ပထမဆုံး မျှဝေလိုက်ပါ။"),
+                  style: TextStyle(
+                      color: GwColors.inkSoftOf(context), fontSize: 13),
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 6, 14, 4),
+                child: Column(
+                  children: [
+                    for (final c in _comments) _commentTile(c),
                   ],
                 ),
               ),
-              const Divider(height: 1),
-              Expanded(child: _list(scrollController)),
-              _composer(),
+            _composer(),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        const SizedBox(height: 10),
+        Container(
+          width: 42,
+          height: 5,
+          decoration: BoxDecoration(
+            color: GwColors.line,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+          child: Row(
+            children: [
+              const Icon(Icons.forum_outlined,
+                  color: GwColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "${tr(context, "Comments", "မှတ်ချက်များ")} · ${widget.title}",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 15),
+                ),
+              ),
             ],
-          );
-        },
-      ),
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(child: _list(widget.scrollController)),
+        _composer(),
+      ],
     );
   }
 
-  Widget _list(ScrollController controller) {
+  Widget _list(ScrollController? controller) {
     if (_loading) {
       return const Center(
           child: CircularProgressIndicator(color: GwColors.primary));
@@ -402,20 +510,27 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 9),
                   decoration: BoxDecoration(
-                    color: GwColors.surface,
+                    color: widget.embedded
+                        ? GwColors.surfaceMutedOf(context)
+                        : GwColors.surface,
                     borderRadius: BorderRadius.circular(GwRadius.md),
-                    boxShadow: GwShadow.card,
+                    boxShadow: widget.embedded ? null : GwShadow.card,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(name,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 13)),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                              color: GwColors.inkOf(context))),
                       if (content.isNotEmpty) ...[
                         const SizedBox(height: 3),
                         Text(content,
-                            style: const TextStyle(fontSize: 14, height: 1.35)),
+                            style: TextStyle(
+                                fontSize: 14,
+                                height: 1.35,
+                                color: GwColors.inkOf(context))),
                       ],
                       if (mediaPath != null && mediaType != null) ...[
                         const SizedBox(height: 8),
@@ -470,10 +585,15 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-        decoration: const BoxDecoration(
-          color: GwColors.surface,
-          border: Border(top: BorderSide(color: GwColors.line)),
-        ),
+        decoration: widget.embedded
+            ? BoxDecoration(
+                border: Border(
+                    top: BorderSide(color: GwColors.lineOf(context))),
+              )
+            : const BoxDecoration(
+                color: GwColors.surface,
+                border: Border(top: BorderSide(color: GwColors.line)),
+              ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -505,7 +625,7 @@ class _SubjectCommentsSheetState extends State<SubjectCommentsSheet> {
                       hintText:
                           tr(context, "Write a comment…", "မှတ်ချက် ရေးရန်…"),
                       filled: true,
-                      fillColor: GwColors.surfaceMuted,
+                      fillColor: GwColors.surfaceMutedOf(context),
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 10),
                       border: OutlineInputBorder(
