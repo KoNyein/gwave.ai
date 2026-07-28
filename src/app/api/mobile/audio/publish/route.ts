@@ -25,7 +25,9 @@ const schema = z.object({
   artist: z.string().max(200).optional(),
   album: z.string().max(200).optional(),
   genre: z.string().max(100).optional(),
-  // podcast
+  // podcast — episodes must belong to a show (audio_podcast.show_id is NOT
+  // NULL); the named show is created on first use.
+  show: z.string().max(200).optional(),
   episode_no: z.number().int().positive().optional(),
   show_notes: z.string().max(4000).optional(),
   // audiobook
@@ -84,25 +86,59 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // The facet row is what makes the track loadable as its kind — if it can't
+  // be written, roll the base row back and fail loudly instead of leaving an
+  // orphan that reports success.
+  let facetError: string | null = null;
   if (b.kind === "music") {
-    await admin.from("audio_music").insert({
+    const { error: e } = await admin.from("audio_music").insert({
       track_id: track.id,
       artist: b.artist?.trim() || "Unknown",
       album: b.album ?? null,
       genre: b.genre ?? null,
     });
+    facetError = e?.message ?? null;
   } else if (b.kind === "podcast") {
-    await admin.from("audio_podcast").insert({
-      track_id: track.id,
-      episode_no: b.episode_no ?? null,
-      show_notes: b.show_notes ?? null,
-    });
+    // audio_podcast.show_id is NOT NULL — get-or-create the named show.
+    const showName = b.show?.trim() || "Gwave Podcast";
+    const { data: existingShow } = await admin
+      .from("podcast_shows")
+      .select("id")
+      .eq("name", showName)
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+    let showId = existingShow?.id ?? null;
+    if (!showId) {
+      const { data: created } = await admin
+        .from("podcast_shows")
+        .insert({ name: showName, cover_url: b.cover_url ?? null })
+        .select("id")
+        .single<{ id: string }>();
+      showId = created?.id ?? null;
+    }
+    if (!showId) {
+      facetError = "couldn't create the podcast show";
+    } else {
+      const { error: e } = await admin.from("audio_podcast").insert({
+        track_id: track.id,
+        show_id: showId,
+        episode_no: b.episode_no ?? null,
+        show_notes: b.show_notes ?? null,
+      });
+      facetError = e?.message ?? null;
+    }
   } else {
-    await admin.from("audio_audiobook").insert({
+    const { error: e } = await admin.from("audio_audiobook").insert({
       track_id: track.id,
       author: b.author?.trim() || "Unknown",
       narrator: b.narrator ?? null,
     });
+    facetError = e?.message ?? null;
+  }
+
+  if (facetError) {
+    await admin.from("audio_tracks").delete().eq("id", track.id);
+    return NextResponse.json({ error: facetError }, { status: 500 });
   }
 
   console.log(`[audio/publish] by=${claims.sub} kind=${b.kind} id=${track.id}`);

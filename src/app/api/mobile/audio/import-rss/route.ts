@@ -39,17 +39,23 @@ function attr(block: string, tagName: string, attrName: string): string | null {
   const m = block.match(
     new RegExp(`<${tagName}[^>]*\\b${attrName}="([^"]+)"[^>]*/?>`, "i"),
   );
-  return m?.[1] ?? null;
+  return m?.[1] != null ? decodeEntities(m[1]) : null;
 }
 
-function stripHtml(s: string): string {
+/** Undo XML attribute/text entity escaping (feeds escape `&` in URLs as
+ * `&amp;`; storing that verbatim breaks multi-parameter enclosure URLs AND
+ * dedupe, which would then compare the corrupted value). */
+function decodeEntities(s: string): string {
   return s
-    .replace(/<[^>]+>/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&#39;|&apos;/g, "'");
+}
+
+function stripHtml(s: string): string {
+  return decodeEntities(s.replace(/<[^>]+>/g, " "))
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -87,22 +93,28 @@ export async function POST(request: NextRequest) {
   const { url, limit } = parsed.data;
 
   let xml: string;
+  const controller = new AbortController();
+  // The timer must cover BODY consumption too — a server that returns headers
+  // fast and then stalls (or streams forever) would otherwise hang res.text()
+  // with no timeout at all.
+  const timer = setTimeout(() => controller.abort(), 15_000);
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15_000);
     const res = await fetch(url, {
       signal: controller.signal,
       headers: { "user-agent": "GwaveAudio/1.0 (+https://gwave.cc)" },
     });
-    clearTimeout(timer);
     if (!res.ok) throw new Error(`feed responded ${res.status}`);
+    const len = Number(res.headers.get("content-length") || 0);
     // Cap at ~3 MB — a feed is text; anything bigger is not a podcast RSS.
+    if (len > 3_000_000) throw new Error("feed too large");
     xml = (await res.text()).slice(0, 3_000_000);
   } catch (e) {
     return NextResponse.json(
       { error: `Couldn't fetch the feed — ${e instanceof Error ? e.message : e}` },
       { status: 502 },
     );
+  } finally {
+    clearTimeout(timer);
   }
 
   const showTitle = tag(xml.split(/<item[\s>]/i)[0] ?? "", "title") ?? "Podcast";
@@ -144,6 +156,30 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // audio_podcast.show_id is NOT NULL — get-or-create the show for this feed
+  // (matched on rss_url, which is unique) BEFORE importing episodes.
+  const showName = stripHtml(showTitle).slice(0, 200) || "Podcast";
+  const { data: existingShow } = await admin
+    .from("podcast_shows")
+    .select("id")
+    .eq("rss_url", url)
+    .maybeSingle<{ id: string }>();
+  let showId = existingShow?.id ?? null;
+  if (!showId) {
+    const { data: createdShow } = await admin
+      .from("podcast_shows")
+      .insert({ name: showName, rss_url: url, cover_url: channelImage })
+      .select("id")
+      .single<{ id: string }>();
+    showId = createdShow?.id ?? null;
+  }
+  if (!showId) {
+    return NextResponse.json(
+      { error: "Couldn't create the podcast show." },
+      { status: 500 },
+    );
+  }
+
   // Skip episodes already imported (matched on the enclosure URL).
   const urls = episodes.map((e) => e.audio_url);
   const { data: existing } = await admin
@@ -173,11 +209,18 @@ export async function POST(request: NextRequest) {
       .select("id")
       .single<{ id: string }>();
     if (error || !track) continue;
-    await admin.from("audio_podcast").insert({
+    const { error: facetErr } = await admin.from("audio_podcast").insert({
       track_id: track.id,
+      show_id: showId,
       episode_no: ep.episode_no,
       show_notes: ep.description,
     });
+    if (facetErr) {
+      // Roll the orphan back — otherwise it "exists" (blocking future dedupe)
+      // but can never load as a podcast.
+      await admin.from("audio_tracks").delete().eq("id", track.id);
+      continue;
+    }
     imported++;
   }
 
