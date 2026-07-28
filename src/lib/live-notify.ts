@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/data/admin";
+import { sendFcmToUser } from "@/lib/fcm";
 import { sendPushToUser } from "@/lib/push";
 
 /**
@@ -78,7 +79,23 @@ export async function notifyFollowersOfLive(opts: {
       url: `${site}/live/${opts.streamId}`,
       tag: `live:${opts.streamId}`,
     };
-    await Promise.all(ids.map((id) => sendPushToUser(id, payload)));
+    await Promise.all(
+      ids.flatMap((id) => [
+        sendPushToUser(id, payload),
+        // Native phones: FCM so the app pops "X is live" even when closed.
+        // TTL'd to an hour — a push delivered long after the broadcast ended
+        // would just be a dead link.
+        sendFcmToUser(id, {
+          ttl: "3600s",
+          data: {
+            type: "live",
+            streamId: opts.streamId,
+            url: payload.url,
+          },
+          notification: { title: payload.title, body: payload.body },
+        }),
+      ]),
+    );
   } catch {
     /* best-effort: a notification failure must never block going live. */
   }
