@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -410,6 +412,106 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  /// Tap-to-identify geology: ask Macrostrat what rock unit sits at [p] and
+  /// show the details (unit name, age, lithology, description) in a sheet.
+  /// This is the "more detail than the tiles" path — the point query returns
+  /// the full unit record at any zoom level.
+  Future<void> _identifyGeology(LatLng p) async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => FutureBuilder<List<Map<String, dynamic>>>(
+        future: _fetchGeology(p),
+        builder: (ctx, snap) {
+          Widget body;
+          if (snap.connectionState != ConnectionState.done) {
+            body = const Padding(
+              padding: EdgeInsets.all(30),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          } else if (snap.hasError ||
+              snap.data == null ||
+              snap.data!.isEmpty) {
+            body = Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(tr(
+                  ctx,
+                  "No geologic data here (or offline).",
+                  "ဒီနေရာအတွက် ဘူမိဗေဒ အချက်အလက် မရှိပါ (သို့) လိုင်းမရှိပါ။")),
+            );
+          } else {
+            body = ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
+              children: [
+                Text(
+                  "🪨 ${tr(ctx, "Geology here", "ဒီနေရာက ဘူမိဗေဒ")}"
+                  "  (${p.latitude.toStringAsFixed(4)}, ${p.longitude.toStringAsFixed(4)})",
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                for (final u in snap.data!) ...[
+                  const Divider(height: 18),
+                  if ((u["name"] ?? "").toString().isNotEmpty)
+                    Text(u["name"].toString(),
+                        style:
+                            const TextStyle(fontWeight: FontWeight.w700)),
+                  if ((u["age"] ?? "").toString().isNotEmpty)
+                    _geoRow(ctx, tr(ctx, "Age", "သက်တမ်း"),
+                        "${u["age"]}  (${u["b_age"]}–${u["t_age"]} Ma)"),
+                  if ((u["lith"] ?? "").toString().isNotEmpty)
+                    _geoRow(ctx, tr(ctx, "Rock types", "ကျောက်အမျိုးအစား"),
+                        u["lith"].toString()),
+                  if ((u["descrip"] ?? "").toString().isNotEmpty)
+                    _geoRow(ctx, tr(ctx, "Description", "ဖော်ပြချက်"),
+                        u["descrip"].toString()),
+                  if ((u["comments"] ?? "").toString().isNotEmpty)
+                    _geoRow(ctx, tr(ctx, "Notes", "မှတ်ချက်"),
+                        u["comments"].toString()),
+                ],
+                const SizedBox(height: 8),
+                Text("Source: Macrostrat",
+                    style: TextStyle(
+                        fontSize: 10.5, color: GwColors.inkSoftOf(ctx))),
+              ],
+            );
+          }
+          return SafeArea(child: body);
+        },
+      ),
+    );
+  }
+
+  Widget _geoRow(BuildContext ctx, String k, String v) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+                width: 110,
+                child: Text(k,
+                    style: TextStyle(
+                        fontSize: 12.5, color: GwColors.inkSoftOf(ctx)))),
+            Expanded(child: Text(v, style: const TextStyle(fontSize: 13))),
+          ],
+        ),
+      );
+
+  Future<List<Map<String, dynamic>>> _fetchGeology(LatLng p) async {
+    final res = await http
+        .get(Uri.parse(
+            "https://macrostrat.org/api/v2/geologic_units/map?lat=${p.latitude}&lng=${p.longitude}"))
+        .timeout(const Duration(seconds: 12));
+    if (res.statusCode != 200) return [];
+    final j = jsonDecode(res.body);
+    final data = j?["success"]?["data"];
+    if (data is! List) return [];
+    return data
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
   /// AlpineQuest-style layer picker: choose the base map and stack the
   /// geology / hillshade overlays with adjustable geology opacity.
   void _openLayersSheet() {
@@ -548,6 +650,12 @@ class _MapScreenState extends State<MapScreen> {
               initialZoom: _focus != null || _me != null ? 15 : 6,
               minZoom: 2,
               maxZoom: 18,
+              // Geology detail on demand: with the overlay on, a long-press
+              // asks Macrostrat what rock unit is under the finger — far more
+              // detail than the z≤14 tiles can draw.
+              onLongPress: (_, latlng) {
+                if (_geology) _identifyGeology(latlng);
+              },
             ),
             children: [
               TileLayer(
@@ -583,7 +691,11 @@ class _MapScreenState extends State<MapScreen> {
                   child: TileLayer(
                     urlTemplate: _geologyUrl,
                     userAgentPackageName: "ai.gwave.app",
-                    maxZoom: 14,
+                    // Macrostrat serves up to z14; overzoom (upscale) those
+                    // tiles beyond it so the overlay never vanishes while
+                    // zooming in close — AlpineQuest behaves the same way.
+                    maxNativeZoom: 14,
+                    maxZoom: 18,
                     tileProvider: CachingTileProvider(
                       layerKey: "geo",
                       userAgent: "ai.gwave.app",
