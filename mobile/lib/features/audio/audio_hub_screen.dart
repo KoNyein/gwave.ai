@@ -11,6 +11,7 @@ import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import 'audio_api.dart';
 import 'audio_models.dart';
+import 'audio_publish_screen.dart';
 import 'audio_track_screen.dart';
 
 /// Native Gwave Audio store — Music / Podcasts / Audiobooks, played and bought
@@ -41,6 +42,15 @@ class _AudioHubScreenState extends State<AudioHubScreen>
       appBar: AppBar(
         title: Text(tr(context, "Audio", "အသံ")),
         actions: [
+          // Catalogue management (server enforces admin; hidden otherwise).
+          if (context.watch<AppState>().me?.role == "admin")
+            IconButton(
+              tooltip: tr(context, "Add audio", "အသံ ထည့်ရန်"),
+              icon: const Icon(Icons.add_circle_outline),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AudioPublishScreen()),
+              ),
+            ),
           IconButton(
             tooltip: tr(context, "All-access", "အားလုံးဝင်ရောက်ခွင့်"),
             icon: const Icon(Icons.workspace_premium_outlined),

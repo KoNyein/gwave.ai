@@ -558,6 +558,16 @@ class ApiClient {
     } catch (_) {/* diagnostics must never hurt the app */}
   }
 
+  /// Publish an audio catalogue track (server enforces admin). The MP3/cover
+  /// are uploaded via [uploadBytes] first; this sends metadata + their paths.
+  Future<Map<String, dynamic>> audioPublish(Map<String, dynamic> body) =>
+      _mobilePost("/api/mobile/audio/publish", body);
+
+  /// Import a podcast's public RSS feed into the catalogue (server enforces
+  /// admin). Returns {show, found, imported, skipped}.
+  Future<Map<String, dynamic>> audioImportRss(String url, {int limit = 20}) =>
+      _mobilePost("/api/mobile/audio/import-rss", {"url": url, "limit": limit});
+
   /// Register this device's FCM token so the server can ring/notify it even when
   /// the app is closed. Best-effort — swallows errors so a push hiccup never
   /// blocks sign-in. Idempotent server-side (re-binds the token to this owner).
