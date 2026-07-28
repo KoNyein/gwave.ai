@@ -675,7 +675,11 @@ class CallService extends ChangeNotifier {
     }
 
     _pc!.onIceCandidate = (cand) {
-      _callChannel?.sendBroadcastMessage(event: "ice", payload: {
+      // Route ICE through the SAME server relay as offer/answer. This used to
+      // send on the raw socket, whose sends silently vanish on some phones —
+      // so offer/answer arrived (call reached "Connecting") but no ICE ever
+      // did, no candidate pair formed, and the call hung on Connecting forever.
+      _signal("ice", {
         "candidate": {
           "candidate": cand.candidate,
           "sdpMid": cand.sdpMid,
