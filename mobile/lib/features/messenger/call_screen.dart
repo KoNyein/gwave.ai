@@ -338,6 +338,7 @@ class _CallOverlayState extends State<CallOverlay>
     with WidgetsBindingObserver {
   CallPhase _last = CallPhase.idle;
   bool _routeOpen = false;
+  String? _shownError;
 
   @override
   void initState() {
@@ -403,6 +404,22 @@ class _CallOverlayState extends State<CallOverlay>
       if (!_inCall(phase)) _minimized = false;
       _updateRing(phase);
       WidgetsBinding.instance.addPostFrameCallback((_) => _sync(phase));
+    }
+    // Surface a call-setup failure (denied camera, camera open error) so a
+    // broken video call shows *why* instead of a silent missed call.
+    final err = call.lastError;
+    if (err != null && err != _shownError) {
+      _shownError = err;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(
+          content: Text(err),
+          duration: const Duration(seconds: 8),
+          backgroundColor: GwColors.live,
+        ));
+      });
+    } else if (err == null) {
+      _shownError = null;
     }
     return Stack(
       children: [

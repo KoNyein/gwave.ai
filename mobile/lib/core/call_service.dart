@@ -56,6 +56,11 @@ class CallService extends ChangeNotifier {
   bool cameraOff = false;
   bool remoteReady = false;
 
+  /// Last call-setup failure, surfaced to the UI so a broken video call shows
+  /// *why* instead of a silent missed call. Consumed (shown then cleared) by
+  /// the call overlay.
+  String? lastError;
+
   DateTime? _connectedAt;
   Timer? _durationTimer;
   Timer? _ringTimer;
@@ -289,7 +294,14 @@ class CallService extends ChangeNotifier {
     required bool withVideo,
   }) async {
     if (inCall) return false;
-    if (!await _grantPermissions(withVideo)) return false;
+    lastError = null;
+    if (!await _grantPermissions(withVideo)) {
+      lastError = withVideo
+          ? "Video call needs Camera + Microphone permission (enable them in Settings › Apps › Gwave › Permissions)."
+          : "Microphone permission is needed to call.";
+      notifyListeners();
+      return false;
+    }
 
     await connect();
     await _ensureRenderers();
@@ -309,6 +321,8 @@ class CallService extends ChangeNotifier {
       // Couldn't open the camera/mic — abort cleanly so the caller sees the
       // permission snackbar instead of an uncaught error and a dead call.
       debugPrint("call: openMedia failed on start: $e");
+      lastError = "Couldn't open the camera/mic: $e";
+      notifyListeners();
       await _teardown(log: false);
       return false;
     }
@@ -368,7 +382,12 @@ class CallService extends ChangeNotifier {
 
   Future<void> accept() async {
     if (phase != CallPhase.incoming) return;
+    lastError = null;
     if (!await _grantPermissions(video)) {
+      lastError = video
+          ? "Video call needs Camera + Microphone permission (enable them in Settings › Apps › Gwave › Permissions)."
+          : "Microphone permission is needed to answer.";
+      notifyListeners();
       decline();
       return;
     }
@@ -387,6 +406,8 @@ class CallService extends ChangeNotifier {
       // the caller rang out to a silent missed call — the exact video-call
       // symptom. Decline cleanly so the caller stops ringing immediately.
       debugPrint("call: openMedia failed on accept: $e");
+      lastError = "Couldn't open the camera/mic: $e";
+      notifyListeners();
       decline();
       return;
     }
