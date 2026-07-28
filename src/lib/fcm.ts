@@ -135,10 +135,16 @@ export async function sendFcmToUser(
     .select("token")
     .eq("user_id", userId);
   const tokens = (rows ?? []).map((r) => (r as { token: string }).token);
-  if (tokens.length === 0) return;
+  if (tokens.length === 0) {
+    console.log(`[fcm] no device tokens for user ${userId} — nothing to send`);
+    return;
+  }
 
   const accessToken = await getAccessToken(sa);
-  if (!accessToken) return;
+  if (!accessToken) {
+    console.warn("[fcm] could not obtain an OAuth access token — send skipped");
+    return;
+  }
 
   const endpoint = `https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`;
   const stale: string[] = [];
@@ -173,9 +179,18 @@ export async function sendFcmToUser(
         if (res.status === 404 || res.status === 403) {
           // 404 UNREGISTERED (token dead) / 403 SenderId mismatch → drop it.
           stale.push(token);
+          console.warn(
+            `[fcm] pruning stale token …${token.slice(-8)} (HTTP ${res.status})`,
+          );
+        } else if (!res.ok) {
+          console.warn(
+            `[fcm] send failed for token …${token.slice(-8)} (HTTP ${res.status})`,
+            (await res.text()).slice(0, 300),
+          );
         }
-      } catch {
+      } catch (error) {
         /* transient network error — keep the token, retry next call */
+        console.warn("[fcm] send network error (token kept)", error);
       }
     }),
   );
