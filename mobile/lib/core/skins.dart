@@ -54,7 +54,7 @@ class GwSkin {
   // Accent family.
   final Color primary; // main accent (buttons, links, focus)
   final Color primaryBright; // lighter companion (gradients, highlights)
-  final Color primaryDark; // pressed/深 accents
+  final Color primaryDark; // pressed/deep accents
   final Color primaryOnDark; // accent tuned for dark surfaces
 
   // Light tokens.

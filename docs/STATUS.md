@@ -95,6 +95,27 @@ section and move the outcome to the changelog.
   note: `docker logs gwave-web | grep -E 'diag|call/notify|realtime|fcm'`
   now shows the phone's internals — no more screenshot round-trips.
 
+- 2026-07-28 (later): **App batch — knowledge Burmese + inline comments, Menu/
+  Profile split, 4-skin theme system.** Strains/Minerals render fully in
+  Burmese when selected (term dictionary + generated summaries in
+  `mobile/lib/features/knowledge/knowledge_i18n.dart`), detail pages gained
+  richer facts (type meaning, potency class, Mohs real-world comparisons,
+  terpene explainers) and comments+photos now show INLINE on the page
+  (`SubjectCommentsPanel`, sheet still available). Me tab split: ProfileScreen
+  = Main Menu launcher (identity card → new `MyProfileScreen` with the FB
+  cover/posts profile). New skin-based theme system (`core/skins.dart`,
+  docs/THEMES.md): Gwave Green / Sky (Twitter/X, stadium buttons, Dim dark) /
+  Liberty (Truth-style violet) / Tactical (military olive, angular, night-ops
+  dark) — picked in Settings → Design theme, persisted, light+dark each. Also
+  fixed an APK compile break: gold-heatmap cleanup had landed in
+  `_SosSheetState.dispose` (wrong class) in map_screen. (mobile branch.)
+- 2026-07-28 (later): **Web live fixes (PR #385).** Replay "Source Not
+  Supported" root-caused: Docker bakes `NEXT_PUBLIC_IVS_RECORDING_BASE=""`
+  when the ARG is unset and `ivsRecordingUrl` used `??`, losing the
+  `/recordings` prefix → 404 → dead player; now `||`. Live viewers get a
+  tap-to-unmute overlay (muted autoplay read as "no sound"). New `ReplayDeck`
+  on the watch page auto-plays the next saved replay in place on end / swipe /
+  next, provider-scoped replay bases (LiveKit/Agora each to their own).
 - 2026-07-28: **FCM push is LIVE end-to-end (closed-app call ring).** Native
   app package switched to `com.green.gwave` (the app actually registered in
   Firebase project `gen-lang-client-0745825519`; pre-launch so no user
