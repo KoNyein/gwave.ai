@@ -52,12 +52,28 @@ function base64url(input: Buffer | string): string {
 }
 
 // Cache the OAuth access token until shortly before it expires (default 1h).
+// The in-flight promise is cached too: a big concurrent fan-out (a go-live
+// alert to thousands of followers) on a cold/expired cache must share ONE
+// token exchange instead of stampeding Google's token endpoint, which would
+// get throttled and silently drop many sends.
 let tokenCache: { token: string; exp: number } | null = null;
+let tokenInFlight: Promise<string | null> | null = null;
 
-async function getAccessToken(sa: ServiceAccount): Promise<string | null> {
+function getAccessToken(sa: ServiceAccount): Promise<string | null> {
   const now = Math.floor(Date.now() / 1000);
-  if (tokenCache && tokenCache.exp - 60 > now) return tokenCache.token;
+  if (tokenCache && tokenCache.exp - 60 > now) {
+    return Promise.resolve(tokenCache.token);
+  }
+  tokenInFlight ??= mintAccessToken(sa, now).finally(() => {
+    tokenInFlight = null;
+  });
+  return tokenInFlight;
+}
 
+async function mintAccessToken(
+  sa: ServiceAccount,
+  now: number,
+): Promise<string | null> {
   const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const claim = base64url(
     JSON.stringify({
