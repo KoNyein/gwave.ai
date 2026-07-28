@@ -10,6 +10,7 @@ import { LiveChat, type ChatEntry } from "@/components/live/live-chat";
 import { LiveOverlay } from "@/components/live/live-overlay";
 import { LiveGifts } from "@/components/live/live-gifts";
 import { LivePlayer } from "@/components/live/live-player";
+import { ReplayDeck, type ReplayDeckItem } from "@/components/live/replay-deck";
 import { AgoraStage } from "@/components/live/agora-stage";
 import { IvsStage } from "@/components/live/ivs-stage";
 import { LiveStage } from "@/components/live/live-stage";
@@ -25,7 +26,13 @@ import { getCurrentProfile } from "@/lib/auth";
 import { currencyToGpay, toRateMap } from "@/lib/currency";
 import { getActiveCurrencies } from "@/lib/db/currency";
 import { getMyGpayAccount } from "@/lib/db/gpay";
-import { getRecentChat, getStream, getStreamKey } from "@/lib/db/live";
+import {
+  getRecentChat,
+  getStream,
+  getStreamKey,
+  listStreams,
+  type LiveStreamWithHost,
+} from "@/lib/db/live";
 import {
   getLiveGifts,
   getStreamGiftTotal,
@@ -49,6 +56,27 @@ import { MUX_RTMP_URL } from "@/lib/mux";
 export const dynamic = "force-dynamic";
 
 const uuid = z.string().uuid();
+
+/**
+ * Resolve a stream's saved replay to a playable URL, or null when it has none.
+ * Both IVS paths (Real-Time stage composite AND Low-Latency channel recording —
+ * the shipping mobile app's path) resolve through the IVS replay base (default:
+ * the app's own /recordings proxy); LiveKit/Agora resolve via their own bases;
+ * all fall back to the media CDN when a dedicated base isn't configured.
+ */
+function resolveReplayUrl(s: LiveStreamWithHost): string | null {
+  if (s.status !== "ended" || !s.recording_path) return null;
+  const ivs = Boolean(s.ivs_channel_arn) || Boolean(s.ivs_stage_arn);
+  const canReplay =
+    ivs || Boolean(s.agora_channel) || Boolean(s.livekit_room);
+  if (!canReplay) return null;
+  return (
+    (ivs ? ivsRecordingUrl(s.recording_path) : null) ??
+    recordingPlaybackUrl(s.recording_path) ??
+    agoraRecordingUrl(s.recording_path) ??
+    mediaUrl(s.recording_path)
+  );
+}
 
 export default async function LiveStreamPage(
   props: {
@@ -117,19 +145,34 @@ export default async function LiveStreamPage(
     if (recordingPath) stream.recording_path = recordingPath;
   }
   // Auto-saved replay: an ended broadcast plays back its recording instead of
-  // the "broadcast ended" placeholder. Both IVS paths (Real-Time stage composite
-  // AND Low-Latency channel recording — the shipping mobile app's path) resolve
-  // through the IVS replay CDN; LiveKit/Agora resolve via their own bases; all
-  // fall back to the media CDN when a dedicated base isn't configured.
-  const isIvsReplay = isIvs || isIvsStage;
+  // the "broadcast ended" placeholder.
   const canReplay = isBrowserLive || isIvs;
-  const replayUrl =
-    canReplay && stream.status === "ended" && stream.recording_path
-      ? (isIvsReplay ? ivsRecordingUrl(stream.recording_path) : null) ??
-        recordingPlaybackUrl(stream.recording_path) ??
-        agoraRecordingUrl(stream.recording_path) ??
-        mediaUrl(stream.recording_path)
-      : null;
+  const replayUrl = resolveReplayUrl(stream);
+  // TikTok-style deck: every saved replay, newest first, so ended/swipe/next
+  // auto-plays the next one in place. The opened stream is always in the deck.
+  let replayDeck: ReplayDeckItem[] = [];
+  if (replayUrl) {
+    const recent = await listStreams(40);
+    replayDeck = recent
+      .map((s) => ({ s, url: resolveReplayUrl(s) }))
+      .filter((x): x is { s: LiveStreamWithHost; url: string } =>
+        Boolean(x.url),
+      )
+      .map(({ s, url }) => ({
+        id: s.id,
+        title: liveStreamTitle(s.title, s.host),
+        hostName: displayName(s.host),
+        src: url,
+      }));
+    if (!replayDeck.some((x) => x.id === stream.id)) {
+      replayDeck.unshift({
+        id: stream.id,
+        title: liveStreamTitle(stream.title, stream.host),
+        hostName: displayName(stream.host),
+        src: replayUrl,
+      });
+    }
+  }
   // RLS returns the key only to the host; null for everyone else. Only Mux
   // (RTMP) streams have a stream key.
   const streamKey = isHost && !isBrowserLive ? await getStreamKey(stream.id) : null;
@@ -217,22 +260,7 @@ export default async function LiveStreamPage(
             }`}
           >
             {replayUrl ? (
-              replayUrl.includes(".m3u8") ? (
-                <LivePlayer
-                  playbackId={null}
-                  status={stream.status}
-                  title={stream.title}
-                  vodSrc={replayUrl}
-                />
-              ) : (
-                <video
-                  controls
-                  playsInline
-                  preload="metadata"
-                  src={replayUrl}
-                  className="mx-auto max-h-[80vh] w-full rounded-xl border bg-black"
-                />
-              )
+              <ReplayDeck items={replayDeck} startId={stream.id} />
             ) : canReplay && stream.status === "ended" ? (
               // Ended broadcast with no saved replay: say so plainly
               // instead of a bare "ended" placeholder that reads as a blank

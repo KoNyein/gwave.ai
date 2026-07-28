@@ -156,7 +156,11 @@ export async function stopIvsComposition(
  * /recordings proxy (which streams from the private bucket via the instance
  * role), so replays work without a CloudFront distribution or env config. */
 export function ivsRecordingUrl(path: string | null): string | null {
-  const base = process.env.NEXT_PUBLIC_IVS_RECORDING_BASE ?? "/recordings";
+  // `||`, not `??`: the Docker image bakes NEXT_PUBLIC_* via `ENV X=$X`, so an
+  // unset build ARG arrives as a *defined empty string*. `?? "/recordings"`
+  // kept the "", every replay URL lost its /recordings prefix, and the player
+  // showed "Source Not Supported" on a 404 HTML page.
+  const base = process.env.NEXT_PUBLIC_IVS_RECORDING_BASE || "/recordings";
   if (!path) return null;
   return `${base.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
 }
