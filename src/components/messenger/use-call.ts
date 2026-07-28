@@ -566,6 +566,12 @@ export function useCall(
       s.channel.subscribe((callStatus) => {
         if (callStatus !== "SUBSCRIBED" || session.current !== s) return;
         if (s.ringChannel) return; // already ringing (subscribe callbacks repeat)
+        // Server-side reach-out (web push / FCM / ring relay) must NOT fire
+        // before this point: we are only now subscribed to call:{callId}, and
+        // a relayed ring that lands earlier lets the callee send its one-shot
+        // "accept" into a channel nobody is listening on yet — both sides
+        // would hang until timeout. Same guard the client-side ring uses.
+        void notifyIncomingCall(conversationId, video, callId).catch(() => {});
         const ringChannel = db.channel(`calls:${peer.id}`);
         s.ringChannel = ringChannel;
         const ringPayload = {
@@ -601,10 +607,8 @@ export function useCall(
         });
       });
 
-      // Reach the callee even when they have no Gwave tab open: web push to
-      // their subscribed devices. Best-effort — the realtime ring above is
-      // the primary channel.
-      void notifyIncomingCall(conversationId, video).catch(() => {});
+      // (The web-push/FCM/relay reach-out fires inside the SUBSCRIBED callback
+      // above, so a relayed accept can never arrive before we can hear it.)
 
       s.ringTimer = setTimeout(() => {
         if (session.current === s && !s.connectedAt) {

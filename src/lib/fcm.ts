@@ -110,6 +110,11 @@ export interface FcmMessage {
   data?: Record<string, string>;
   /** Optional visible notification (title/body) for non-call pushes. */
   notification?: { title: string; body: string };
+  /** Android TTL (e.g. "45s"). Set it for time-boxed pushes like call rings so
+   *  a delayed delivery can't surface a stale incoming-call alert long after
+   *  the call ended. Defaults: data-only messages get "45s", notification
+   *  messages get FCM's default retention. */
+  ttl?: string;
 }
 
 /** True when FCM is configured — lets callers skip work when it's a no-op. */
@@ -169,9 +174,11 @@ export async function sendFcmToUser(
               // it can ring immediately; a normal notification would be batched.
               android: {
                 priority: "high",
-                ...(message.notification
-                  ? {}
-                  : { ttl: "45s" }),
+                ...(message.ttl
+                  ? { ttl: message.ttl }
+                  : message.notification
+                    ? {}
+                    : { ttl: "45s" }),
               },
             },
           }),
