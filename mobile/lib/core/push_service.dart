@@ -32,7 +32,7 @@ class PushService {
   String? _token;
 
   Future<void> Function(String token)? _onToken;
-  void Function()? _onCallPush;
+  void Function(Map<String, dynamic> data)? _onCallPush;
 
   String? get token => _token;
 
@@ -40,7 +40,7 @@ class PushService {
   /// calls just re-register the current token for the signed-in user).
   Future<void> init({
     required Future<void> Function(String token) onToken,
-    void Function()? onCallPush,
+    void Function(Map<String, dynamic> data)? onCallPush,
   }) async {
     _onToken = onToken;
     _onCallPush = onCallPush;
@@ -89,7 +89,10 @@ class PushService {
 
   void _handle(RemoteMessage message) {
     if (message.data["type"] == "call") {
-      _onCallPush?.call();
+      // Pass the whole data payload through — it carries the full ring
+      // (callId + caller identity), so the call UI can ring directly from
+      // the push instead of hoping the realtime socket is alive.
+      _onCallPush?.call(Map<String, dynamic>.from(message.data));
     }
   }
 }

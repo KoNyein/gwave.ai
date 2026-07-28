@@ -453,6 +453,11 @@ class Repository {
 
   // ---- Presence -------------------------------------------------------------
 
+  /// Last presence-heartbeat failure ("" = last attempt succeeded). Reported
+  /// by the diag beacon so a silently-failing heartbeat — which also means the
+  /// data plane this phone talks to is broken — is visible in server logs.
+  static String lastHeartbeatError = "never-ran";
+
   /// Heartbeat: stamp my profiles.last_seen_at so others see me online.
   /// Best-effort — silently a no-op until the column exists in the database.
   Future<void> heartbeat() async {
@@ -462,7 +467,13 @@ class Repository {
       }, filter: {
         "id": "eq.${api.session!.profileId}",
       });
-    } catch (_) {}
+      lastHeartbeatError = "";
+    } catch (e) {
+      lastHeartbeatError = "$e".replaceAll("\n", " ");
+      if (lastHeartbeatError.length > 200) {
+        lastHeartbeatError = lastHeartbeatError.substring(0, 200);
+      }
+    }
     // Report which build this phone runs — separate call so a missing
     // app_build column can never break presence.
     if (AppConfig.appBuild > 0) {

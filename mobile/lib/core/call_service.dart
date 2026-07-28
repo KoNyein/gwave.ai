@@ -158,6 +158,17 @@ class CallService extends ChangeNotifier {
       if (ringStatus != "ready" || _watchdogTicks % 4 == 0) {
         ensureConnected(force: true);
       }
+      // Diagnostics beacon (~every 100s): make this phone's call-stack state
+      // visible in the server logs (`docker logs gwave-web | grep diag`), so
+      // "calls don't ring" is debuggable without screenshots of the footer.
+      if (_watchdogTicks % 4 == 1) {
+        api.sendDiag({
+          "build": AppConfig.appBuild,
+          "ring": ringStatus,
+          "cfgLoaded": AppConfig.runtimeLoaded,
+          "hbError": Repository.lastHeartbeatError,
+        });
+      }
     });
   }
 
@@ -290,6 +301,36 @@ class CallService extends ChangeNotifier {
         payload["callId"]?.toString() == _callId) {
       _teardown(log: false);
     }
+  }
+
+  /// An incoming-call FCM data push. Field debugging (build 177) showed the
+  /// realtime inbox can go deaf while still reporting "ready" — a server-side
+  /// broadcast straight to this phone's inbox topic never surfaced. So the
+  /// push is a ring-delivery path of its own, not just a socket wake-up: when
+  /// it carries the full payload (callId — new servers), ring the UI directly.
+  /// The socket is force-rebuilt first because accept/offer/answer/ice still
+  /// travel over it.
+  Future<void> handleCallPush(Map<String, dynamic> data) async {
+    try {
+      await ensureConnected(force: true);
+    } catch (_) {
+      // Still ring — the rebuild retries in the background.
+    }
+    if (inCall) return; // already ringing (realtime beat the push) or busy
+    final callId = data["callId"]?.toString() ?? "";
+    final convo = data["conversationId"]?.toString() ?? "";
+    if (callId.isEmpty || convo.isEmpty) return; // old server: wake-up only
+    _onRing({
+      "callId": callId,
+      "conversationId": convo,
+      "video": data["video"]?.toString() == "1",
+      "from": {
+        "id": data["callerId"]?.toString() ?? "",
+        "username": data["caller"]?.toString() ?? "",
+        "full_name": data["caller"]?.toString(),
+        "avatar_url": data["callerAvatar"]?.toString(),
+      },
+    });
   }
 
   // ---- Outgoing -------------------------------------------------------------

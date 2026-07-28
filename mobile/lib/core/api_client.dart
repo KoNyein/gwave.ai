@@ -530,6 +530,16 @@ class ApiClient {
     });
   }
 
+  /// Post a small client-state diagnostics blob; the server just logs it
+  /// (`/api/mobile/diag`), making the phone's call-stack state visible in
+  /// `docker logs gwave-web` without asking the user for screenshots.
+  /// Best-effort — never throws.
+  Future<void> sendDiag(Map<String, dynamic> data) async {
+    try {
+      await _mobilePost("/api/mobile/diag", data);
+    } catch (_) {/* diagnostics must never hurt the app */}
+  }
+
   /// Register this device's FCM token so the server can ring/notify it even when
   /// the app is closed. Best-effort — swallows errors so a push hiccup never
   /// blocks sign-in. Idempotent server-side (re-binds the token to this owner).

@@ -78,7 +78,7 @@ class _Root extends StatelessWidget {
         final api = context.read<AppState>().api;
         PushService.instance.init(
           onToken: (t) => api.registerPushToken(t),
-          onCallPush: () => call.ensureConnected(force: true),
+          onCallPush: (data) => call.handleCallPush(data),
         );
         return const CallOverlay(child: HomeShell());
     }
