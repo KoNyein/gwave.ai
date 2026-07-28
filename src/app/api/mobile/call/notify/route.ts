@@ -109,6 +109,9 @@ export async function POST(request: NextRequest) {
       // killed — tapping it opens the app, which reconnects the ring inbox and
       // catches the caller's re-broadcast ring. No-op until FCM is configured.
       sendFcmToUser(row.user_id, {
+        // A ring is only meaningful during the 45s ring window — TTL it so a
+        // delayed delivery can't pop a stale incoming-call alert later.
+        ttl: "45s",
         // Full ring payload in the data block: the app presents the
         // incoming-call screen straight from the push, so it rings even when
         // its realtime socket is deaf (all values must be strings for FCM).
