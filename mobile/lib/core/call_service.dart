@@ -379,10 +379,12 @@ class CallService extends ChangeNotifier {
     // Web-push/FCM the callee too, and hand the server our callId so it can
     // relay the realtime ring itself — reaches a callee whose tab/app can't
     // get OUR broadcast (closed, backgrounded, stale JS, or our own socket
-    // failing to join their inbox). Best-effort.
-    api
+    // failing to join their inbox). Best-effort. Deliberately AFTER our
+    // call:{callId} channel is subscribed: a relayed ring that lands before
+    // we can hear the callee's one-shot "accept" strands both sides.
+    unawaited(_awaitCallChannel().then((_) => api
         .callNotify(conversationId, withVideo, callId: _callId)
-        .catchError((_) {});
+        .catchError((_) {})));
 
     // The ring payload — carries our identity so the callee sees who's calling.
     Map<String, dynamic> ringPayload() => {
