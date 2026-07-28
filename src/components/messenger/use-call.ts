@@ -604,7 +604,7 @@ export function useCall(
       // Reach the callee even when they have no Gwave tab open: web push to
       // their subscribed devices. Best-effort — the realtime ring above is
       // the primary channel.
-      void notifyIncomingCall(conversationId, video).catch(() => {});
+      void notifyIncomingCall(conversationId, video, callId).catch(() => {});
 
       s.ringTimer = setTimeout(() => {
         if (session.current === s && !s.connectedAt) {
