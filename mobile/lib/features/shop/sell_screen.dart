@@ -53,7 +53,8 @@ class _SellScreenState extends State<SellScreen> {
           imageQuality: 82,
         );
         if (shot == null) return;
-        setState(() => _photos.add(_Photo(await shot.readAsBytes(), shot.name)));
+        final bytes = await shot.readAsBytes();
+        if (mounted) setState(() => _photos.add(_Photo(bytes, shot.name)));
         return;
       }
       // Gallery: take several at once — the whole point is a real gallery.
