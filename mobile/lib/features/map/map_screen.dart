@@ -22,10 +22,12 @@ import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../drone/drone_scanner_screen.dart';
 import 'offline_tiles.dart';
+import 'quake.dart';
 import 'offline_area_sheet.dart';
 import '../live/go_live_screen.dart';
 import '../messenger/chat_screen.dart';
 import 'wifi_map_screen.dart';
+import '../web/web_screen.dart';
 
 /// Base-map choices for the AlpineQuest-style layer picker.
 enum _MapBase { streets, topo, satellite }
@@ -69,6 +71,12 @@ class _MapScreenState extends State<MapScreen> {
   bool _minerals = false; // USGS MRDS — known gold/mineral occurrences (WMS)
   bool _goldHeat = false; // density heatmap built from MRDS points
   List<LatLng> _heatPoints = [];
+  // Earthquake layer (USGS via gwave.cc): on by default — this map's job is
+  // safety, and hiding the ground moving behind a toggle defeats that.
+  bool _quakesOn = true;
+  List<Quake> _quakes = [];
+  Quake? _quakeAlert;
+  bool _quakeAlertDismissed = false;
   Timer? _heatDebounce;
   double _geologyOpacity = 0.55;
   // AlpineQuest-style "add online map": any XYZ tile URL stacks as an overlay.
@@ -155,6 +163,9 @@ class _MapScreenState extends State<MapScreen> {
       setState(() {
         _me = me;
         _locError = null;
+        // Distance is half of "does this quake matter to ME" — re-judge the
+        // alert now that we finally know where the user is standing.
+        _quakeAlert = significantQuake(_quakes, me);
       });
       if (recenter) _map.move(me, 15);
       // Share my live location for family circles (best-effort).
@@ -187,6 +198,17 @@ class _MapScreenState extends State<MapScreen> {
     } catch (_) {
       // Non-fatal — the map still shows.
     }
+    unawaited(_loadQuakes());
+  }
+
+  /// Best-effort — a failed feed leaves the layer empty, never the map broken.
+  Future<void> _loadQuakes() async {
+    final rows = await fetchQuakes();
+    if (!mounted) return;
+    setState(() {
+      _quakes = rows;
+      _quakeAlert = significantQuake(rows, _me);
+    });
   }
 
   Future<void> _sendSos() async {
@@ -642,6 +664,19 @@ class _MapScreenState extends State<MapScreen> {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     dense: true,
+                    title: Text(tr(ctx, "Earthquakes (USGS, 3 days)",
+                        "ငလျင်များ (USGS၊ ၃ ရက်)")),
+                    subtitle: Text(tr(ctx, "Magnitude circles; tap one for details",
+                        "ပြင်းအားအလိုက် စက်ဝိုင်း — နှိပ်၍ အသေးစိတ်ကြည့်ပါ")),
+                    value: _quakesOn,
+                    onChanged: (v) => apply(() {
+                      _quakesOn = v;
+                      if (v && _quakes.isEmpty) unawaited(_loadQuakes());
+                    }),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
                     title: Text(tr(ctx, "Hillshade (terrain relief)",
                         "တောင်ရိပ် (မြေမျက်နှာသွင်ပြင်)")),
                     value: _hillshade,
@@ -783,6 +818,14 @@ class _MapScreenState extends State<MapScreen> {
             icon: const Icon(Icons.wifi_find),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const WifiMapScreen()),
+            ),
+          ),
+          IconButton(
+            tooltip:
+                tr(context, "Earthquake safety", "ငလျင် ဘေးကင်းရေး"),
+            icon: const Icon(Icons.health_and_safety_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const QuakeSafetyScreen()),
             ),
           ),
           IconButton(
@@ -992,6 +1035,36 @@ class _MapScreenState extends State<MapScreen> {
 
   List<Marker> _markers() {
     final markers = <Marker>[];
+    // Earthquakes first so SOS and people pins draw on top of them.
+    if (_quakesOn) {
+      for (final q in _quakes) {
+        final r = q.radius;
+        markers.add(Marker(
+          point: q.point,
+          width: r * 2,
+          height: r * 2,
+          child: GestureDetector(
+            onTap: () => _openQuake(q),
+            child: Container(
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: q.color.withValues(alpha: 0.35),
+                shape: BoxShape.circle,
+                border: Border.all(color: q.color, width: 2),
+              ),
+              child: Text(
+                q.mag.toStringAsFixed(1),
+                style: TextStyle(
+                  color: q.mag >= 5 ? Colors.white : Colors.black87,
+                  fontSize: (r * 0.55).clamp(9, 13).toDouble(),
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+        ));
+      }
+    }
     // The tagged place this map was opened for (post/reel/live check-in).
     if (_focus != null) {
       markers.add(Marker(
@@ -1113,6 +1186,7 @@ class _MapScreenState extends State<MapScreen> {
               ],
             ),
           ),
+        _quakeBanner(),
         _dangerBanner(),
         Row(
           children: [
@@ -1176,6 +1250,190 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   /// Red warning strip whenever someone nearby has an active SOS.
+  /// One quake: what, where, how far, and the actions that matter — the
+  /// safety guide, sharing it to the feed, and USGS for the science.
+  void _openQuake(Quake q) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: GwColors.surfaceOf(context),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheet) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: q.color,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text("M ${q.mag.toStringAsFixed(1)}",
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16)),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      q.place.isEmpty
+                          ? tr(context, "Earthquake", "ငလျင်")
+                          : q.place,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 14.5),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                [
+                  quakeTimeAgo(context, q.time),
+                  if (q.depthKm != null)
+                    tr(context, "depth ${q.depthKm!.round()} km",
+                        "အနက် ${q.depthKm!.round()} ကီလိုမီတာ"),
+                  if (_me != null) quakeDistanceLabel(context, q, _me),
+                ].join(" · "),
+                style: TextStyle(
+                    color: GwColors.inkSoftOf(context), fontSize: 13),
+              ),
+              if (q.tsunami) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD32F2F).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    tr(context,
+                        "🌊 Tsunami advisory issued — coastal areas move to high ground.",
+                        "🌊 ဆူနာမီ သတိပေးချက် ထုတ်ထားသည် — ကမ်းရိုးတန်းများ ကုန်းမြင့်သို့ တက်ပါ။"),
+                    style: const TextStyle(
+                        color: Color(0xFFD32F2F),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(sheet).pop();
+                        Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => const QuakeSafetyScreen()));
+                      },
+                      icon: const Icon(Icons.health_and_safety, size: 18),
+                      label: Text(
+                          tr(context, "Safety guide", "ဘေးကင်းရေး လမ်းညွှန်")),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final text =
+                          "🫨 M ${q.mag.toStringAsFixed(1)} ${q.place} · "
+                          "${quakeTimeAgo(context, q.time)}"
+                          "${q.url != null ? "\n${q.url}" : ""}";
+                      try {
+                        await context.read<AppState>().repo.createPost(text);
+                        if (context.mounted) {
+                          Navigator.of(sheet).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(tr(context, "Shared to feed.",
+                                  "Feed တွင် မျှဝေပြီးပါပြီ။"))));
+                        }
+                      } catch (_) {}
+                    },
+                    icon: const Icon(Icons.ios_share, size: 18),
+                    label: Text(tr(context, "Share", "မျှဝေ")),
+                  ),
+                ],
+              ),
+              if (q.url != null)
+                TextButton(
+                  onPressed: () => openWeb(context, q.url!, title: "USGS"),
+                  child: const Text("USGS →",
+                      style: TextStyle(fontSize: 12.5)),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The interrupt: a strong recent quake near the user (or a major one in
+  /// the region). Tap centres the epicentre; the X dismisses for this visit.
+  Widget _quakeBanner() {
+    final q = _quakeAlert;
+    if (q == null || _quakeAlertDismissed) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: q.color,
+        borderRadius: BorderRadius.circular(GwRadius.md),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(GwRadius.md),
+          onTap: () {
+            _map.move(q.point, 7);
+            _openQuake(q);
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+            child: Row(
+              children: [
+                const Text("🫨", style: TextStyle(fontSize: 22)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tr(context,
+                            "M ${q.mag.toStringAsFixed(1)} earthquake",
+                            "ငလျင် M ${q.mag.toStringAsFixed(1)} လှုပ်ခဲ့သည်"),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14),
+                      ),
+                      Text(
+                        "${q.place} · ${quakeTimeAgo(context, q.time)}",
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close,
+                      color: Colors.white70, size: 18),
+                  onPressed: () =>
+                      setState(() => _quakeAlertDismissed = true),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _dangerBanner() {
     final me = context.read<AppState>().api.session?.profileId;
     final active = _sos
@@ -1309,6 +1567,7 @@ class _MapScreenState extends State<MapScreen> {
     "accident": "🚗 မတော်တဆမှု",
     "danger": "⚠️ အန္တရာယ်",
     "flood": "🌊 ရေဘေး",
+    "quake": "🫨 ငလျင်",
     "other": "🆘 အခြား",
   };
 
@@ -1486,6 +1745,7 @@ class _SosSheetState extends State<_SosSheet> {
     ("accident", "🚗", "မတော်တဆ"),
     ("danger", "⚠️", "အန္တရာယ်"),
     ("flood", "🌊", "ရေဘေး"),
+    ("quake", "🫨", "ငလျင်"),
     ("other", "🆘", "အခြား"),
   ];
 
