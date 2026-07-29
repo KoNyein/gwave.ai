@@ -423,7 +423,10 @@
     "liveLocationEnded": "لائیو مقام ختم ہو گیا",
     "stopSharing": "روکیں",
     "sentLiveLocation": "لائیو مقام شیئر کیا",
-    "live": "لائیو"
+    "live": "لائیو",
+    "newGroup": "نیا گروپ",
+    "groupName": "گروپ کا نام",
+    "createGroup": "گروپ بنائیں"
   },
   "stories": {
     "createStory": "اسٹوری بنائیں",

@@ -27,6 +27,72 @@ export async function openDirectConversation(
   return { ok: true, data: { conversationId: data } };
 }
 
+/**
+ * Start a group chat. Goes through the `create_group_conversation` RPC because
+ * the conversation row and its membership rows are two inserts, and RLS only
+ * admits an existing participant — doing it client-side locks the creator out
+ * between the two statements.
+ */
+export async function createGroupConversation(
+  title: string,
+  memberIds: string[],
+): Promise<ActionResult<{ conversationId: string }>> {
+  const clean = title.trim();
+  if (!clean) return { ok: false, error: "Name the group first." };
+  if (clean.length > 80) return { ok: false, error: "That name is too long." };
+  const ids = Array.from(new Set(memberIds)).filter(
+    (id) => uuid.safeParse(id).success,
+  );
+  if (ids.length === 0) return { ok: false, error: "Pick at least one friend." };
+
+  const db = await createClient();
+  const { data, error } = await db.rpc("create_group_conversation", {
+    group_title: clean,
+    members: ids,
+  });
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? "Failed to create the group." };
+  }
+  return { ok: true, data: { conversationId: data as string } };
+}
+
+/** Invite more people into a group. Returns how many were actually added. */
+export async function addGroupMembers(
+  conversationId: string,
+  memberIds: string[],
+): Promise<ActionResult<{ added: number }>> {
+  if (!uuid.safeParse(conversationId).success) {
+    return { ok: false, error: "Invalid conversation." };
+  }
+  const ids = Array.from(new Set(memberIds)).filter(
+    (id) => uuid.safeParse(id).success,
+  );
+  if (ids.length === 0) return { ok: false, error: "Pick someone to add." };
+
+  const db = await createClient();
+  const { data, error } = await db.rpc("add_group_members", {
+    conversation: conversationId,
+    members: ids,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: { added: Number(data ?? 0) } };
+}
+
+/** Leave a group; the server deletes it once the last member is gone. */
+export async function leaveGroupConversation(
+  conversationId: string,
+): Promise<ActionResult> {
+  if (!uuid.safeParse(conversationId).success) {
+    return { ok: false, error: "Invalid conversation." };
+  }
+  const db = await createClient();
+  const { error } = await db.rpc("leave_group_conversation", {
+    conversation: conversationId,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: undefined };
+}
+
 const sendMessageSchema = z
   .object({
     conversationId: z.string().uuid(),

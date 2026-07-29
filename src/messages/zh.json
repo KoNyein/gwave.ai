@@ -423,7 +423,10 @@
     "liveLocationEnded": "实时位置共享已结束",
     "stopSharing": "停止",
     "sentLiveLocation": "共享了实时位置",
-    "live": "实时"
+    "live": "实时",
+    "newGroup": "新群组",
+    "groupName": "群组名称",
+    "createGroup": "创建群组"
   },
   "stories": {
     "createStory": "创建快拍",

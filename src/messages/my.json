@@ -436,7 +436,10 @@
     "liveLocationEnded": "တည်နေရာ တိုက်ရိုက် မျှဝေမှု ပြီးဆုံးပြီ",
     "stopSharing": "ရပ်ရန်",
     "sentLiveLocation": "တည်နေရာ တိုက်ရိုက် မျှဝေခဲ့သည်",
-    "live": "တိုက်ရိုက်"
+    "live": "တိုက်ရိုက်",
+    "newGroup": "အုပ်စုအသစ်",
+    "groupName": "အုပ်စုအမည်",
+    "createGroup": "အုပ်စု ဖွဲ့မည်"
   },
   "stories": {
     "createStory": "စတိုရီဖန်တီးရန်",
