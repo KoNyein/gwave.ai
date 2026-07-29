@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
 
 import { verifyDataToken } from "@/lib/auth/tokens";
 import { createAdminClient } from "@/lib/data/admin";
 import { isIvsChannelLive, latestIvsRecordingPath } from "@/lib/ivs";
+import { ensureLiveAnnouncement } from "@/lib/live-announce";
 import { hostPresentInRoom } from "@/lib/livekit";
 
 export const runtime = "nodejs";
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
   const { data: stream } = await admin
     .from("live_streams")
     .select(
-      "id, host_id, status, livekit_room, ivs_channel_arn, created_at, record_enabled",
+      "id, host_id, title, status, livekit_room, ivs_channel_arn, created_at, record_enabled",
     )
     .eq("id", parsed.data.id)
     .maybeSingle();
@@ -74,5 +75,17 @@ export async function POST(request: NextRequest) {
       .eq("status", "live");
     return NextResponse.json({ status: "ended" });
   }
+  // Genuinely live — self-heal the feed too: if the go-live announcement post
+  // never made it (any client, any transient failure), recreate it now so the
+  // broadcast is visible in everyone's news feed, not just the live rails.
+  // ensureLiveAnnouncement dedupes, so verified-alive streams that already
+  // have their post cost one indexed select.
+  after(() =>
+    ensureLiveAnnouncement({
+      hostId: stream.host_id,
+      streamId: stream.id,
+      title: (stream.title as string | null) ?? null,
+    }).then(() => {}),
+  );
   return NextResponse.json({ status: "live" });
 }
