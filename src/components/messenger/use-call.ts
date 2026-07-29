@@ -86,6 +86,25 @@ function formatDuration(totalSeconds: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
+/**
+ * Copy an SDP into a plain `{ type, sdp }` object before it leaves this file.
+ *
+ * `createOffer()`/`createAnswer()` do not always hand back a plain dictionary —
+ * WebKit returns an `RTCSessionDescription` instance. Passing that straight to
+ * the `relayCallSignal` server action means React has to serialize a class
+ * instance, and the SDP string does not survive: the relay logged
+ * `event=answer ok=true` while the app received an empty `sdp` object, could
+ * not apply a remote description, and never started ICE — a call that gathered
+ * every candidate (host, srflx AND relay) yet sat on "Connecting" forever.
+ * The app has always sent explicit `{type, sdp}` maps, which is why the
+ * app→browser offer worked and the browser→app answer did not.
+ */
+function plainSdp(
+  description: RTCSessionDescriptionInit,
+): { type: RTCSdpType; sdp: string } {
+  return { type: description.type, sdp: description.sdp ?? "" };
+}
+
 interface Session {
   callId: string;
   conversationId: string;
@@ -412,7 +431,7 @@ export function useCall(
             const pc = await setupMedia(s);
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            signal(s, "offer", { sdp: offer });
+            signal(s, "offer", { sdp: plainSdp(offer) });
           } catch {
             handleFatal();
           }
@@ -429,7 +448,7 @@ export function useCall(
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             await drainIce(s);
-            signal(s, "answer", { sdp: answer });
+            signal(s, "answer", { sdp: plainSdp(answer) });
           } catch {
             handleFatal();
           }
