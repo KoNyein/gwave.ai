@@ -51,13 +51,35 @@
 - **Repo hygiene**: 100 merged branches + old TWA releases deleted
   (`.github/workflows/cleanup-branches.yml` is a reusable manual cleanup).
 
-- **Shop**: dropship checkout, affiliate click tracking and buyer order
-  history are wired end to end (app + web). AliExpress best sellers import
-  through `POST /api/shop/aliexpress` (admin only), deduped on `source_url`,
-  priced live from the API and converted via `currency_rates`; an admin panel
-  on `/shop` drives both import and re-price. **Needs `ALIEXPRESS_APP_KEY`,
+- **Shop**: a full sale system on both surfaces. App: Sell screen (up to 10
+  photos, camera or gallery multi-select), My listings (hide/relist/delete),
+  My sales (the seller's order queue — buyer name, tap-to-dial phone,
+  address, one-tap status advance), buyer order history, checkout prefilled
+  from the last order. Product pages swipe a gallery; `shop_products.images
+  text[]` is APPLIED on RDS (constraint fixed in #398 — a CHECK cannot
+  contain a subquery; rewritten with array operators, validated on scratch
+  pg16). A photo uploaded from the app is a storage KEY, not a URL —
+  anything rendering `image_url` must resolve via `mediaRef()` (web) /
+  `resolveMedia()` (app). AliExpress import (admin panel on `/shop`) does
+  dropship-by-default with a markup %, or affiliate; an affiliate purchase
+  can never finish in-app (we never take the money), which is why "buy"
+  used to bounce users to AliExpress. **Needs `ALIEXPRESS_APP_KEY`,
   `ALIEXPRESS_APP_SECRET`, `ALIEXPRESS_TRACKING_ID` in `/etc/gwave-web.env`**
-  (from portals.aliexpress.com) — until then the endpoint answers 503.
+  — until then the import endpoint answers 503.
+- **Live sale (Shopee-style)**: host pins own listings to a broadcast
+  (`live_products`, RLS enforced) from Go Live's 🏷️ button or the watch
+  screen; viewers get a buy card over the video (above chat) and checkout
+  opens ON TOP of the stream. Pins refresh on the 3s chat poll. Reads are
+  flat queries, never embeds.
+- **Feed**: a shared `gwave.cc/shop/<uuid>` link renders as the product card
+  (photo, title, price, Buy) with the raw URL stripped — same pattern as
+  live links — on web (`FeedProductCard` via `LinkPreview`) and app
+  (`_ProductBanner` in post_card). Product-screen share posts the link
+  alone; the card is the whole render.
+- **Right sidebar (web)**: REAL users now — suggestions from
+  `getSuggestions()` with add-friend, contacts = accepted friends sorted
+  online-first, green dot = `last_seen_at` within 2 min. The old hardcoded
+  "Hydro Growers MM / Aung / Su Su" arrays are gone.
 - **Messenger**: group chats (create, add members, leave) via security-definer
   RPCs — `create_group_conversation`, `add_group_members`,
   `leave_group_conversation`.
@@ -67,6 +89,8 @@
 - ALIEXPRESS_* keys (see Shop above) — the import button is live but 503s.
 - Scheduled `{"action":"refresh"}` against `/api/shop/aliexpress` so affiliate
   prices don't drift (a listing once advertised 13 THB for an 89 THB item).
+- Re-run db/sql/shop-media.sql on RDS once (constraint only; column +
+  backfill already applied — the first run errored on the subquery CHECK).
 - LiveKit egress recording envs + IAM access key (see above) so browser
   Go Live sessions get replays like app broadcasts do.
 - No FCM device token registered for user `75f0e8b3-…`, so a closed app on
@@ -92,6 +116,22 @@
   afterwards as stdin. Don't use `-f`; use `--since`.
 
 ## Changelog
+
+- 2026-07-30 (night): **Sell-from-phone, live sale, honest feed cards, real
+  sidebar.** App (builds 219-220 on mobile-latest): Sell screen with a
+  10-photo gallery, My listings, My sales queue with tap-to-dial and
+  one-tap status advance, checkout address prefill, product-page gallery
+  pager, in-Gwave share (to feed / to chat) added to the share sheet, and a
+  Shopee-style live sale (host pins listings, viewers buy over the video).
+  Web (PRs #396-#399, all merged + deployed): AliExpress import now
+  dropship-by-default with markup % (affiliate stays possible but hands
+  off — it must), `images text[]` gallery + `mediaRef()` for storage-key
+  covers, shared shop links render as product cards in the feed, and the
+  right sidebar shows real suggestions/friends with real presence instead
+  of the hardcoded fake names. DB: shop-media.sql applied (column+backfill;
+  re-run once for the fixed constraint — first version used a subquery
+  CHECK, which Postgres rejects). Build 217 failed on an `await` inside a
+  setState closure; 219 fixed it.
 
 - 2026-07-29 (evening): **Calls FIXED, group chat, shop wired end to end.**
   Root cause of calls hanging at "Connecting": the app read the Realtime
