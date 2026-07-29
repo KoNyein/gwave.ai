@@ -25,6 +25,7 @@ import {
 } from "@/lib/livekit";
 import { createClient } from "@/lib/data/server";
 import { createAdminClient } from "@/lib/data/admin";
+import { ensureLiveAnnouncement } from "@/lib/live-announce";
 import { notifyFollowersOfLive } from "@/lib/live-notify";
 import { after } from "next/server";
 
@@ -259,25 +260,15 @@ export async function goLive(streamId: string): Promise<ActionResult> {
   if (error) return { ok: false, error: error.message };
 
   // Announce the broadcast in the news feed: a public post with the live link
-  // (clickable + preview card), so followers see the Live without opening the
-  // Live tab. Runs once per stream (the status guard above) and best-effort —
-  // a feed hiccup must not block going live.
-  const site = process.env.NEXT_PUBLIC_SITE_URL || "https://gwave.cc";
-  let announcementPostId: string | null = null;
-  try {
-    const { data: post } = await db
-      .from("posts")
-      .insert({
-        author_id: user.id,
-        content: `🔴 Live လွှင့်နေပါပြီ — ${stream.title ?? "Live"}\n${site}/live/${streamId}`,
-        visibility: "public",
-      })
-      .select("id")
-      .maybeSingle();
-    announcementPostId = (post?.id as string | null) ?? null;
-  } catch {
-    /* best-effort: a feed hiccup must not block going live. */
-  }
+  // (clickable + auto-playing live card), so everyone sees the Live without
+  // opening the Live tab. Idempotent + service-role + logged — this used to
+  // insert through the RLS client and swallow the error object, which left
+  // streams live with no feed post and no trace of why.
+  const announcementPostId = await ensureLiveAnnouncement({
+    hostId: user.id,
+    streamId,
+    title: stream.title,
+  });
 
   // Notify the host's followers — once per stream. followers_notified_at is a
   // server-owned column locked to the authenticated role (column-lockdown

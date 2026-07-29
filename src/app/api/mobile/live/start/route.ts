@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { verifyDataToken } from "@/lib/auth/tokens";
 import { createAdminClient } from "@/lib/data/admin";
+import { ensureLiveAnnouncement } from "@/lib/live-announce";
 import { notifyFollowersOfLive } from "@/lib/live-notify";
 
 export const runtime = "nodejs";
@@ -56,23 +57,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Feed announcement, once and best-effort — a hiccup must not block going live.
-  const site = process.env.NEXT_PUBLIC_SITE_URL || "https://gwave.cc";
-  let announcementPostId: string | null = null;
-  try {
-    const { data: post } = await admin
-      .from("posts")
-      .insert({
-        author_id: claims.sub,
-        content: `🔴 Live — ${stream.title ?? "Live"}\n${site}/live/${stream.id}`,
-        visibility: "public",
-      })
-      .select("id")
-      .maybeSingle();
-    announcementPostId = (post?.id as string | null) ?? null;
-  } catch {
-    /* best-effort: a feed hiccup must not block going live. */
-  }
+  // Feed announcement — best-effort (a hiccup must not block going live),
+  // idempotent, and logged so a missing feed post is diagnosable.
+  const announcementPostId = await ensureLiveAnnouncement({
+    hostId: claims.sub,
+    streamId: stream.id,
+    title: stream.title,
+  });
 
   // Notify the host's followers — exactly once per stream. Claim the marker
   // atomically (only the first idle->live transition flips it from null), so a
