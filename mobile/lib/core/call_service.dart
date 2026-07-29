@@ -83,20 +83,52 @@ class CallService extends ChangeNotifier {
 
   /// Runtime ICE config from the server — carries the TURN relay both peers
   /// need behind carrier NAT (STUN-only calls connect but stay silent).
-  Map<String, dynamic>? _fetchedIce;
+  /// Kept only as a fallback for a fetch that fails; it is NOT a cache. It
+  /// used to be one, for the whole process lifetime, so a TURN fix deployed
+  /// on the server never reached a running app — the user had to force-close
+  /// it to pick up new relay credentials, which is not something anyone can
+  /// be expected to know.
+  Map<String, dynamic>? _lastGoodIce;
+
+  /// Candidate types this call has produced (host / srflx / relay) and the
+  /// ICE states it went through — reported to /api/mobile/diag when a call
+  /// ends without connecting, so "stuck on Connecting" says WHY in the server
+  /// log instead of needing another round of manual testing.
+  final Set<String> _candTypes = {};
+  final List<String> _iceStates = [];
+  int _iceServerCount = 0;
+  bool _iceHadTurn = false;
 
   Future<Map<String, dynamic>> _iceConfig() async {
-    if (_fetchedIce != null) return _fetchedIce!;
     try {
       final servers = await api.iceServers();
       if (servers.isNotEmpty) {
-        _fetchedIce = {"iceServers": servers};
-        return _fetchedIce!;
+        _iceServerCount = servers.length;
+        _iceHadTurn = servers.any((s) {
+          final u = s["urls"];
+          final text = u is List ? u.join(",") : "${u ?? ""}";
+          return text.contains("turn:") && "${s["credential"] ?? ""}".isNotEmpty;
+        });
+        _lastGoodIce = {"iceServers": servers};
+        return _lastGoodIce!;
       }
     } catch (_) {
-      // offline or old server — fall back to STUN only
+      // offline or unreachable — reuse the last good config, else STUN only
     }
-    return _fallbackIce;
+    return _lastGoodIce ?? _fallbackIce;
+  }
+
+  /// One line describing why the media plane did or didn't come up.
+  void _reportIceDiag(String reason) {
+    api.sendDiag({
+      "kind": "call-ice",
+      "reason": reason,
+      "iceServers": _iceServerCount,
+      "turnWithCreds": _iceHadTurn,
+      "candTypes": _candTypes.toList()..sort(),
+      "iceStates": _iceStates.join(">"),
+      "video": video,
+    });
   }
 
   // ---- Realtime connection --------------------------------------------------
@@ -675,6 +707,12 @@ class CallService extends ChangeNotifier {
     }
 
     _pc!.onIceCandidate = (cand) {
+      // Remember which kinds of candidate this phone can actually produce.
+      // "relay" missing here means the TURN allocation failed (bad/absent
+      // credentials, unreachable relay) — the single most useful fact when a
+      // call sticks on Connecting, and previously invisible without a rebuild.
+      final m = RegExp(r" typ (\w+)").firstMatch(cand.candidate ?? "");
+      if (m != null) _candTypes.add(m.group(1)!);
       // Route ICE through the SAME server relay as offer/answer. This used to
       // send on the raw socket, whose sends silently vanish on some phones —
       // so offer/answer arrived (call reached "Connecting") but no ICE ever
@@ -692,6 +730,14 @@ class CallService extends ChangeNotifier {
         _remoteRenderer.srcObject = event.streams.first;
         remoteReady = true;
         notifyListeners();
+      }
+    };
+    _pc!.onIceConnectionState = (s) {
+      _iceStates.add(s.name.replaceFirst("RTCIceConnectionState", ""));
+      // A failed ICE negotiation is the moment we know the media plane lost —
+      // report it while the candidate/state history is still in hand.
+      if (s == RTCIceConnectionState.RTCIceConnectionStateFailed) {
+        _reportIceDiag("ice-failed");
       }
     };
     _pc!.onConnectionState = (s) {
@@ -753,6 +799,13 @@ class CallService extends ChangeNotifier {
     final wasVideo = video;
     final connected = _connectedAt;
 
+    // A call that had a peer connection but never reached "connected" is the
+    // failure we keep chasing — say why in the server log before the evidence
+    // is cleared below.
+    if (_pc != null && connected == null) {
+      _reportIceDiag("ended-before-connect");
+    }
+
     _ringTimer?.cancel();
     _reRing?.cancel();
     _durationTimer?.cancel();
@@ -778,6 +831,8 @@ class CallService extends ChangeNotifier {
     _pendingIce.clear();
     _remoteDescSet = false;
     remoteReady = false;
+    _candTypes.clear();
+    _iceStates.clear();
 
     // One call-log message per call, written by the caller (mirrors the web).
     if (log && wasCaller && convo != null) {
