@@ -292,6 +292,7 @@ class ShopProduct {
     required this.id,
     required this.title,
     required this.currency,
+    required this.kind,
     this.description,
     this.imageUrl,
     this.price,
@@ -303,6 +304,11 @@ class ShopProduct {
   final String id;
   final String title;
   final String currency;
+
+  /// "dropship" — we take the order and ship it, so the price is ours and
+  /// checkout happens in-app. "affiliate" — the listing points at a merchant
+  /// who owns the price, the stock and the checkout.
+  final String kind;
   final String? description;
   final String? imageUrl;
   final double? price;
@@ -310,16 +316,62 @@ class ShopProduct {
   final String? externalUrl;
   final String? merchant;
 
+  bool get isAffiliate => kind == "affiliate";
+
+  /// An affiliate price was copied from the merchant when the listing was
+  /// imported and drifts from that day on — showing it as though it were the
+  /// price to pay is how a listing ends up advertising 13 THB for an 89 THB
+  /// item. Only a dropship price is one we actually honour.
+  bool get hasOwnPrice => !isAffiliate && price != null;
+
   factory ShopProduct.fromJson(Map<String, dynamic> j) => ShopProduct(
         id: j["id"].toString(),
         title: (j["title"] ?? "").toString(),
         currency: (j["currency"] ?? "Ks").toString(),
+        kind: (j["kind"] ?? "dropship").toString(),
         description: _s(j["description"]),
         imageUrl: _s(j["image_url"]),
         price: _d(j["price"]),
         category: _s(j["category"]),
         externalUrl: _s(j["external_url"]),
         merchant: _s(j["merchant"]),
+      );
+}
+
+/// A buyer's own order row (Shop → My orders).
+class ShopOrder {
+  ShopOrder({
+    required this.id,
+    required this.quantity,
+    required this.unitPrice,
+    required this.currency,
+    required this.status,
+    required this.createdAt,
+    this.productTitle,
+    this.productImage,
+  });
+
+  final String id;
+  final int quantity;
+  final double unitPrice;
+  final String currency;
+  final String status;
+  final DateTime createdAt;
+  final String? productTitle;
+  final String? productImage;
+
+  double get total => unitPrice * quantity;
+
+  factory ShopOrder.fromJson(Map<String, dynamic> j) => ShopOrder(
+        id: j["id"].toString(),
+        quantity: (j["quantity"] as num?)?.toInt() ?? 1,
+        unitPrice: _d(j["unit_price"]) ?? 0,
+        currency: (j["currency"] ?? "THB").toString(),
+        status: (j["status"] ?? "pending").toString(),
+        createdAt:
+            DateTime.tryParse("${j["created_at"]}")?.toLocal() ?? DateTime.now(),
+        productTitle: _s(j["product_title"]),
+        productImage: _s(j["product_image"]),
       );
 }
 

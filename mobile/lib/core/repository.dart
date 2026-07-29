@@ -440,15 +440,87 @@ class Repository {
 
   // ---- Shop -----------------------------------------------------------------
 
-  Future<List<ShopProduct>> products({String? category}) async {
+  Future<List<ShopProduct>> products({String? category, String? query}) async {
     final rows = await api.select("shop_products", query: {
       "select": "*",
       "status": "eq.active",
       if (category != null && category.isNotEmpty) "category": "eq.$category",
+      if (query != null && query.trim().isNotEmpty)
+        "title": "ilike.*${query.trim()}*",
+      "order": "created_at.desc",
+      "limit": "60",
+    });
+    return rows.map(ShopProduct.fromJson).toList();
+  }
+
+  /// Place a dropship order. Server-side RPC so the price and the seller come
+  /// from the listing rather than the client — there is deliberately no insert
+  /// policy on shop_orders.
+  Future<String> placeDropshipOrder({
+    required String productId,
+    required int quantity,
+    required String name,
+    required String phone,
+    required String address,
+    String? note,
+  }) async {
+    final res = await api.rpc("place_dropship_order", {
+      "p_product_id": productId,
+      "p_quantity": quantity,
+      "p_ship_name": name,
+      "p_ship_phone": phone,
+      "p_ship_address": address,
+      if (note != null && note.trim().isNotEmpty) "p_note": note.trim(),
+    });
+    return res is String ? res : "$res";
+  }
+
+  /// Log an outbound affiliate tap so sellers can see what their listings earn.
+  /// Best-effort — a failed count must never block the user leaving for the
+  /// merchant.
+  Future<void> recordAffiliateClick(String productId) async {
+    try {
+      await api.rpc("record_affiliate_click", {"p_product_id": productId});
+    } catch (_) {}
+  }
+
+  /// The signed-in buyer's orders, newest first, with the product's title and
+  /// photo resolved separately (flat queries only — a PostgREST embed here
+  /// 500s whenever the schema cache goes stale).
+  Future<List<ShopOrder>> myOrders() async {
+    final rows = await api.select("shop_orders", query: {
+      "select": "*",
+      "buyer_id": "eq.${api.session!.profileId}",
       "order": "created_at.desc",
       "limit": "40",
     });
-    return rows.map(ShopProduct.fromJson).toList();
+    if (rows.isEmpty) return [];
+    final ids = rows
+        .map((r) => r["product_id"]?.toString())
+        .whereType<String>()
+        .toSet()
+        .toList();
+    final byId = <String, Map<String, dynamic>>{};
+    if (ids.isNotEmpty) {
+      try {
+        final products = await api.select("shop_products", query: {
+          "select": "id,title,image_url",
+          "id": "in.(${ids.join(",")})",
+          "limit": "60",
+        });
+        for (final p in products) {
+          byId[p["id"].toString()] = p;
+        }
+      } catch (_) {
+        // Titles are cosmetic — the order still renders without them.
+      }
+    }
+    return rows.map((r) {
+      final p = byId[r["product_id"]?.toString() ?? ""];
+      r["product_title"] = p?["title"];
+      r["product_image"] = p?["image_url"];
+      return ShopOrder.fromJson(r);
+    }).toList();
   }
 
   // ---- Presence -------------------------------------------------------------
