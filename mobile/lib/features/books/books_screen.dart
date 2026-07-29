@@ -6,13 +6,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_state.dart';
 import '../../core/i18n.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import 'book_reader_screen.dart';
 
 /// Gwave Books — the online book store. Browse/search the catalogue (PDF /
 /// EPUB), free books read instantly, premium books buy once with G-Pay (the
@@ -374,31 +374,16 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
           "ဒီစာအုပ်မှာ ဖိုင် မရှိသေးပါ။"));
       return;
     }
-    // Save a "started reading" marker so it counts toward progress.
-    final api = context.read<AppState>().api;
-    final uid = api.session?.profileId;
-    if (uid != null) {
-      try {
-        await api.upsert(
-          "book_progress",
-          {
-            "user_id": uid,
-            "book_id": b.id,
-            "percent": 1,
-            "updated_at": DateTime.now().toUtc().toIso8601String(),
-          },
-          onConflict: "user_id,book_id",
-        );
-      } catch (_) {
-        // Progress is best-effort; reading continues regardless.
-      }
-    }
-    try {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    } catch (e) {
-      _snack(tr(context, "Couldn't open the file — $e",
-          "ဖိုင်ဖွင့်၍မရပါ — $e"));
-    }
+    // In-app reader: paged PDF with resume, night mode and progress saving
+    // (EPUB hands off to the device reader from inside the same screen).
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => BookReaderScreen(
+        bookId: b.id,
+        title: b.title,
+        fileUrl: url,
+        format: b.format,
+      ),
+    ));
   }
 
   void _snack(String m) {

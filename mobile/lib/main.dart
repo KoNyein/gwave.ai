@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:provider/provider.dart';
 
 import 'core/app_state.dart';
@@ -13,8 +14,19 @@ import 'features/messenger/call_screen.dart';
 import 'features/shell/home_shell.dart';
 import 'widgets/splash.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Audio keeps playing when the app is minimised / the screen is off, and
+  // shows a media notification + lock-screen controls. Never fatal: if the
+  // media session can't start, playback just becomes foreground-only.
+  try {
+    await JustAudioBackground.init(
+      androidNotificationChannelId: "cc.gwave.audio",
+      androidNotificationChannelName: "Gwave Audio",
+      androidNotificationOngoing: true,
+      androidStopForegroundOnPause: true,
+    );
+  } catch (_) {}
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,

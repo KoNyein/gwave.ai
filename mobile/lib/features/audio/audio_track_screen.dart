@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:audioplayers/audioplayers.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -44,6 +45,8 @@ class AudioTrackScreen extends StatefulWidget {
 }
 
 class _AudioTrackScreenState extends State<AudioTrackScreen> {
+  // just_audio + just_audio_background: playback survives minimise / screen
+  // off / app switch and drives the media notification and lock screen.
   final _player = AudioPlayer();
   late final AudioApi _api = AudioApi(context.read<AppState>().api);
 
@@ -68,8 +71,7 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
   int _lastSavedS = -1;
 
   StreamSubscription<Duration>? _posSub;
-  StreamSubscription<Duration>? _durSub;
-  StreamSubscription<void>? _completeSub;
+  StreamSubscription<Duration?>? _durSub;
   StreamSubscription<PlayerState>? _stateSub;
 
   // Queue + modes.
@@ -96,23 +98,28 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
   }
 
   void _wirePlayer() {
-    _posSub = _player.onPositionChanged.listen((d) {
+    _posSub = _player.positionStream.listen((d) {
       if (mounted && !_dragging) setState(() => _pos = d);
       _maybeSave(d);
     });
-    _durSub = _player.onDurationChanged.listen((d) {
-      if (mounted && d > Duration.zero) setState(() => _dur = d);
+    _durSub = _player.durationStream.listen((d) {
+      if (mounted && d != null && d > Duration.zero) setState(() => _dur = d);
     });
-    _stateSub = _player.onPlayerStateChanged.listen((s) {
-      if (mounted) setState(() => _playing = s == PlayerState.playing);
+    _stateSub = _player.playerStateStream.listen((s) async {
+      if (mounted) setState(() => _playing = s.playing);
+      if (s.processingState != ProcessingState.completed) return;
+      await _onComplete();
     });
-    _completeSub = _player.onPlayerComplete.listen((_) async {
+  }
+
+  /// End of track: save progress, then repeat-one / advance / stop.
+  Future<void> _onComplete() async {
       _saveProgress(completed: true);
       if (!mounted) return;
       if (_repeat == 2) {
         // Repeat one: start over.
         await _player.seek(Duration.zero);
-        await _player.resume();
+        await _player.play();
         return;
       }
       final hasNext =
@@ -120,9 +127,9 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
       if (hasNext) {
         await _advance(1, auto: true);
       } else {
-        setState(() => _playing = false);
+        await _player.pause();
+        await _player.seek(Duration.zero);
       }
-    });
   }
 
   /// Move through the queue (dir ±1). Shuffle picks a random other track;
@@ -200,7 +207,7 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
       // Preload so the seek bar has a duration, and jump to the saved point.
       if (entitled && track.audioUrl != null) {
         await _prepare(seekTo: autoplay ? 0 : (resume?.positionS ?? 0));
-        if (autoplay) await _player.resume();
+        if (autoplay) await _player.play();
       }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
@@ -212,19 +219,45 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
     final url = resolveMedia(track.audioUrl, bucket: "media");
     if (local == null && url == null) return;
     try {
-      // Offline copy wins — playback works with no network at all.
-      if (local != null) {
-        await _player.setSource(DeviceFileSource(local.path));
-      } else {
-        await _player.setSourceUrl(url!);
-      }
-      await _player.setPlaybackRate(_speeds[_speedIdx]);
-      if (seekTo > 0) {
-        await _player.seek(Duration(seconds: seekTo));
-        if (mounted) setState(() => _pos = Duration(seconds: seekTo));
+      // Offline copy wins — playback works with no network at all. The
+      // MediaItem tag is what the notification / lock screen displays.
+      final uri = local != null ? Uri.file(local.path) : Uri.parse(url!);
+      final cover = resolveMedia(track.coverUrl, bucket: "media");
+      await _player.setAudioSource(
+        AudioSource.uri(
+          uri,
+          tag: MediaItem(
+            id: track.id,
+            title: track.title,
+            artist: _bylinePlain(),
+            album: track.album,
+            duration: track.durationS != null
+                ? Duration(seconds: track.durationS!)
+                : null,
+            artUri: cover != null ? Uri.tryParse(cover) : null,
+          ),
+        ),
+        initialPosition: seekTo > 0 ? Duration(seconds: seekTo) : null,
+      );
+      await _player.setSpeed(_speeds[_speedIdx]);
+      if (seekTo > 0 && mounted) {
+        setState(() => _pos = Duration(seconds: seekTo));
       }
     } catch (_) {
       // Source may load lazily on first play instead.
+    }
+  }
+
+  /// Artist / author line for the media notification (no BuildContext use —
+  /// this can run while the app is backgrounded).
+  String _bylinePlain() {
+    switch (track.kind) {
+      case AudioKind.music:
+        return track.artist ?? "Gwave";
+      case AudioKind.audiobook:
+        return track.author ?? "Gwave";
+      case AudioKind.podcast:
+        return track.episodeNo != null ? "Episode ${track.episodeNo}" : "Podcast";
     }
   }
 
@@ -314,7 +347,6 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
     _saveTimer?.cancel();
     _posSub?.cancel();
     _durSub?.cancel();
-    _completeSub?.cancel();
     _stateSub?.cancel();
     // Best-effort final save before we tear the player down.
     if (_entitled && _pos > Duration.zero) {
@@ -342,14 +374,10 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
         await _player.pause();
         _saveProgress();
       } else {
-        // If we've never started, play from the (possibly preloaded) source.
-        if (_pos == Duration.zero && _dur == Duration.zero) {
-          await _player.play(
-              local != null ? DeviceFileSource(local.path) : UrlSource(url!));
-          await _player.setPlaybackRate(_speeds[_speedIdx]);
-        } else {
-          await _player.resume();
-        }
+        // The source is set in _prepare(); if it never loaded (e.g. the buy
+        // just completed) set it now, then play.
+        if (_player.audioSource == null) await _prepare();
+        await _player.play();
       }
     } catch (e) {
       _snack(tr(context, "Playback failed — $e", "ဖွင့်၍မရပါ — $e"));
@@ -367,13 +395,13 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
 
   Future<void> _cycleSpeed() async {
     setState(() => _speedIdx = (_speedIdx + 1) % _speeds.length);
-    await _player.setPlaybackRate(_speeds[_speedIdx]);
+    await _player.setSpeed(_speeds[_speedIdx]);
   }
 
   Future<void> _seekTo(int seconds) async {
     await _player.seek(Duration(seconds: seconds));
     if (mounted) setState(() => _pos = Duration(seconds: seconds));
-    if (!_playing) await _player.resume();
+    if (!_playing) await _player.play();
   }
 
   Future<void> _buy() async {

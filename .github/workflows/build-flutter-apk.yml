@@ -144,6 +144,38 @@ jobs:
                   '    <application',
                   1,
               )
+          # Background audio (just_audio_background / audio_service): the media
+          # session runs as a foreground service so music keeps playing when
+          # the app is minimised or the screen is off, and the notification /
+          # lock screen show play-pause-next-prev. Without the service +
+          # MEDIA_BUTTON receiver declarations playback dies on background.
+          if 'com.ryanheise.audioservice.AudioService' not in s:
+              s = s.replace(
+                  '<application',
+                  '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n'
+                  '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />\n'
+                  '    <uses-permission android:name="android.permission.WAKE_LOCK" />\n'
+                  '    <application',
+                  1,
+              )
+              s = s.replace(
+                  '</application>',
+                  '    <service android:name="com.ryanheise.audioservice.AudioService"\n'
+                  '            android:foregroundServiceType="mediaPlayback"\n'
+                  '            android:exported="true">\n'
+                  '            <intent-filter>\n'
+                  '                <action android:name="android.media.browse.MediaBrowserService" />\n'
+                  '            </intent-filter>\n'
+                  '        </service>\n'
+                  '        <receiver android:name="com.ryanheise.audioservice.MediaButtonReceiver"\n'
+                  '            android:exported="true">\n'
+                  '            <intent-filter>\n'
+                  '                <action android:name="android.intent.action.MEDIA_BUTTON" />\n'
+                  '            </intent-filter>\n'
+                  '        </receiver>\n'
+                  '    </application>',
+                  1,
+              )
           # Android 11+ package visibility: without declaring the TTS_SERVICE
           # intent, flutter_tts cannot bind the device speech engine and the
           # language courses play no audio (speak() silently no-ops).
@@ -195,6 +227,24 @@ jobs:
           PY
           grep -q 'android.permission.INTERNET' "$MANIFEST" || (echo "INTERNET permission injection failed" && exit 1)
           grep -q 'android:scheme="gwave"' "$MANIFEST" || (echo "deep link injection failed" && exit 1)
+          grep -q 'com.ryanheise.audioservice.AudioService' "$MANIFEST" || (echo "audio service injection failed" && exit 1)
+
+          # The media session needs the host Activity to be an
+          # AudioServiceActivity, otherwise tapping the media notification
+          # can't bring the app back and Android 13 media resumption misses it.
+          python3 - <<'PY'
+          import glob, re
+          for p in glob.glob('android/app/src/main/kotlin/**/MainActivity.kt', recursive=True):
+              s = open(p).read()
+              if 'AudioServiceActivity' in s:
+                  continue
+              s = s.replace('import io.flutter.embedding.android.FlutterActivity',
+                            'import com.ryanheise.audioservice.AudioServiceActivity')
+              s = re.sub(r'class\s+MainActivity\s*:\s*FlutterActivity\(\)',
+                         'class MainActivity : AudioServiceActivity()', s)
+              open(p, 'w').write(s)
+              print(f"Patched {p} -> AudioServiceActivity")
+          PY
 
           # Some pub plugins (native_device_orientation, pulled in by
           # apivideo_live_stream) still pin compileSdk 31, which AGP hard-fails

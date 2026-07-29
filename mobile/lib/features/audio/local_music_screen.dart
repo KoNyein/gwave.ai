@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:audioplayers/audioplayers.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -36,27 +37,26 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
   Duration _dur = Duration.zero;
 
   StreamSubscription<Duration>? _posSub;
-  StreamSubscription<Duration>? _durSub;
-  StreamSubscription<void>? _doneSub;
+  StreamSubscription<Duration?>? _durSub;
   StreamSubscription<PlayerState>? _stateSub;
 
   @override
   void initState() {
     super.initState();
-    _posSub = _player.onPositionChanged
+    _posSub = _player.positionStream
         .listen((d) => mounted ? setState(() => _pos = d) : null);
-    _durSub = _player.onDurationChanged
-        .listen((d) => mounted ? setState(() => _dur = d) : null);
-    _stateSub = _player.onPlayerStateChanged.listen((s) =>
-        mounted ? setState(() => _playing = s == PlayerState.playing) : null);
-    _doneSub = _player.onPlayerComplete.listen((_) => _onDone());
+    _durSub = _player.durationStream
+        .listen((d) => mounted && d != null ? setState(() => _dur = d) : null);
+    _stateSub = _player.playerStateStream.listen((s) {
+      if (mounted) setState(() => _playing = s.playing);
+      if (s.processingState == ProcessingState.completed) _onDone();
+    });
   }
 
   @override
   void dispose() {
     _posSub?.cancel();
     _durSub?.cancel();
-    _doneSub?.cancel();
     _stateSub?.cancel();
     _player.dispose();
     super.dispose();
@@ -91,8 +91,18 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
     });
     try {
       await _player.stop();
-      await _player.play(DeviceFileSource(path));
-      await _player.setPlaybackRate(_speeds[_speedIdx]);
+      // The MediaItem tag drives the notification / lock-screen controls, so
+      // device songs keep playing (and stay controllable) in the background.
+      await _player.setAudioSource(AudioSource.uri(
+        Uri.file(path),
+        tag: MediaItem(
+          id: path,
+          title: _files[i].name,
+          artist: "Gwave",
+        ),
+      ));
+      await _player.setSpeed(_speeds[_speedIdx]);
+      await _player.play();
     } catch (e) {
       _snack(tr(context, "Can't play this file — $e",
           "ဒီဖိုင်ကို ဖွင့်၍မရပါ — $e"));
@@ -127,7 +137,7 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
       if (_files.isNotEmpty) _play(0);
       return;
     }
-    _playing ? await _player.pause() : await _player.resume();
+    _playing ? await _player.pause() : await _player.play();
   }
 
   void _snack(String m) {
@@ -328,7 +338,7 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
                           setState(() =>
                               _speedIdx = (_speedIdx + 1) % _speeds.length);
                           await _player
-                              .setPlaybackRate(_speeds[_speedIdx]);
+                              .setSpeed(_speeds[_speedIdx]);
                         },
                         child: Text("${_speeds[_speedIdx]}×",
                             style: TextStyle(
