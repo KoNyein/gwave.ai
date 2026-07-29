@@ -95,6 +95,24 @@ section and move the outcome to the changelog.
   note: `docker logs gwave-web | grep -E 'diag|call/notify|realtime|fcm'`
   now shows the phone's internals — no more screenshot round-trips.
 
+- 2026-07-28 (later): **Audio 2.0 + Books store + background playback.**
+  `/api/mobile/audio/publish` (artists publish their own tracks with
+  publisher_id so premium sales settle to their wallet; admin publishes
+  platform tracks) and `/api/mobile/audio/import-rss` (podcast RSS →
+  catalogue, get-or-creates `podcast_shows`, dedupes on audio_url) —
+  merged in PR #386 along with `/api/mobile/books/publish` and
+  `supabase/sql-editor-bundles/books-store.sql` (books, book_purchases,
+  book_progress, atomic `buy_book` G-Pay RPC). **Both books-store.sql and
+  profiles-gender.sql still need running on RDS.** App: pro player
+  (queue, shuffle, repeat one/all, auto-advance, offline downloads),
+  "My device music" local player (mp3/m4a/aac/wav/ogg/flac/opus), Books
+  store with G-Pay purchase and an in-app PDF reader (resume, night mode,
+  jump-to-page, progress saved to book_progress), and background playback
+  via just_audio_background — media notification + lock-screen controls,
+  with the APK workflow injecting the foreground-service/MediaButton
+  manifest entries and AudioServiceActivity. Cycle tracking is now
+  female-only (profiles.gender, collected at sign-up; Settings can set it
+  on legacy accounts).
 - 2026-07-28 (later): **App batch — knowledge Burmese + inline comments, Menu/
   Profile split, 4-skin theme system.** Strains/Minerals render fully in
   Burmese when selected (term dictionary + generated summaries in
