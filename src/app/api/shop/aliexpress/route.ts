@@ -19,26 +19,51 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/shop/aliexpress — admin only.
  *
- *   { "action": "import", "limit": 20, "keywords": "earbuds" }
+ *   { "action": "import", "kind": "dropship", "markupPercent": 25,
+ *     "limit": 20, "keywords": "earbuds" }
  *     Pull AliExpress best sellers (highest recent sales volume) into
- *     shop_products as affiliate listings, priced in the store currency.
+ *     shop_products, priced in the store currency.
  *
- *   { "action": "refresh" }
+ *   { "action": "refresh", "markupPercent": 25 }
  *     Re-price the AliExpress listings we already carry.
  *
- * The refresh is the important half. An affiliate price is the merchant's, not
- * ours: copied once at import time it drifts, which is how a listing came to
- * advertise 13 THB for an item selling at 89 THB. Nothing here invents a
- * price — every figure comes from the API on the request that writes it.
+ * `kind` decides where the buyer ends up, and it is the whole difference:
+ *
+ *   dropship (default) — the order is placed IN Gwave (`place_dropship_order`,
+ *     cash on delivery) and we fulfil it from AliExpress. The merchant link is
+ *     kept in `source_url` for whoever fulfils, and `external_url` is left
+ *     null so no surface offers a handoff. `markupPercent` is our margin on
+ *     top of the merchant's price, since we are the ones selling.
+ *
+ *   affiliate — the buyer leaves for AliExpress and pays there; we earn the
+ *     commission. Nothing else is possible for this model: we never take the
+ *     money, so we cannot take the order. Markup is ignored — quoting a price
+ *     we don't control, marked up, would just be wrong at the checkout page.
+ *
+ * The refresh is the important half either way. A copied price drifts from the
+ * day it is written, which is how a listing came to advertise 13 THB for an
+ * item selling at 89 THB. Nothing here invents a price — every figure comes
+ * from the API on the request that writes it.
  */
 const schema = z.object({
   action: z.enum(["import", "refresh"]).default("import"),
+  kind: z.enum(["dropship", "affiliate"]).default("dropship"),
+  markupPercent: z.number().min(0).max(500).default(0),
   limit: z.number().int().min(1).max(50).optional(),
   keywords: z.string().max(120).optional(),
   categoryId: z.string().max(40).optional(),
   minPrice: z.number().min(0).optional(),
   maxPrice: z.number().min(0).optional(),
 });
+
+/**
+ * Our selling price for a dropship listing. Affiliate listings are quoted at
+ * the merchant's own price — see above.
+ */
+function withMarkup(price: number, kind: string, markupPercent: number): number {
+  if (kind !== "dropship" || markupPercent <= 0) return price;
+  return Math.round(price * (1 + markupPercent / 100) * 100) / 100;
+}
 
 function bearer(request: NextRequest): string | undefined {
   const header = request.headers.get("authorization") ?? "";
@@ -118,16 +143,15 @@ export async function POST(request: NextRequest) {
   if (parsed.data.action === "refresh") {
     const { data: rows } = await admin
       .from("shop_products")
-      .select("id, source_url")
+      .select("id, source_url, kind")
       .eq("merchant", "AliExpress")
-      .eq("kind", "affiliate")
       .limit(200)
-      .returns<{ id: string; source_url: string | null }[]>();
+      .returns<{ id: string; source_url: string | null; kind: string }[]>();
 
-    const byProductId = new Map<string, string>();
+    const byProductId = new Map<string, { id: string; kind: string }>();
     for (const row of rows ?? []) {
       const productId = productIdFromUrl(row.source_url);
-      if (productId) byProductId.set(productId, row.id);
+      if (productId) byProductId.set(productId, { id: row.id, kind: row.kind });
     }
     if (byProductId.size === 0) {
       return NextResponse.json({ ok: true, refreshed: 0 });
@@ -145,25 +169,31 @@ export async function POST(request: NextRequest) {
 
     let refreshed = 0;
     for (const product of live) {
-      const rowId = byProductId.get(product.productId);
-      if (!rowId || product.price == null) continue;
-      const price = await convert(
+      const row = byProductId.get(product.productId);
+      if (!row || product.price == null) continue;
+      const merchantPrice = await convert(
         admin,
         product.price,
         product.currency,
         storeCurrency,
       );
-      if (price == null) continue;
+      if (merchantPrice == null) continue;
       const { error } = await admin
         .from("shop_products")
         .update({
-          price,
+          price: withMarkup(
+            merchantPrice,
+            row.kind,
+            parsed.data.markupPercent,
+          ),
           currency: storeCurrency,
-          external_url: product.url,
+          // A dropship listing has no handoff to offer — leave its
+          // external_url alone rather than re-arming one on every refresh.
+          ...(row.kind === "affiliate" ? { external_url: product.url } : {}),
           image_url: product.imageUrl,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", rowId);
+        .eq("id", row.id);
       if (!error) refreshed += 1;
     }
     console.log(
@@ -192,29 +222,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, imported: 0, updated: 0 });
   }
 
+  const kind = parsed.data.kind;
   let imported = 0;
   let updated = 0;
   let skipped = 0;
   for (const product of products) {
-    const price =
+    const merchantPrice =
       product.price == null
         ? null
         : await convert(admin, product.price, product.currency, storeCurrency);
     // No trustworthy price means no listing — the whole point of this import
     // is that the figure on the card is the merchant's live one.
-    if (price == null) {
+    if (merchantPrice == null) {
       skipped += 1;
       continue;
     }
 
     const row = {
       seller_id: me,
-      kind: "affiliate" as const,
+      kind,
       title: product.title.slice(0, 160),
       image_url: product.imageUrl,
-      price,
+      price: withMarkup(merchantPrice, kind, parsed.data.markupPercent),
       currency: storeCurrency,
-      external_url: product.url,
+      // Only an affiliate listing hands the buyer over. A dropship one is
+      // ours to fulfil, so the merchant link lives in source_url alone.
+      external_url: kind === "affiliate" ? product.url : null,
       source_url: product.detailUrl,
       merchant: "AliExpress",
       category: product.category?.slice(0, 40) ?? null,
@@ -244,7 +277,8 @@ export async function POST(request: NextRequest) {
   }
 
   console.log(
-    `[shop/aliexpress] import by=${me} found=${products.length} ` +
+    `[shop/aliexpress] import by=${me} kind=${kind} ` +
+      `markup=${parsed.data.markupPercent}% found=${products.length} ` +
       `new=${imported} updated=${updated} skipped=${skipped}`,
   );
   return NextResponse.json({
@@ -252,6 +286,7 @@ export async function POST(request: NextRequest) {
     imported,
     updated,
     skipped,
+    kind,
     currency: storeCurrency,
   });
 }
