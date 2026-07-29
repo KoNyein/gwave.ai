@@ -244,8 +244,10 @@ class CallService extends ChangeNotifier {
 
       final inbox = _rt!.channel("calls:$_myId");
       inbox
-        ..onBroadcast(event: "ring", callback: _onRing)
-        ..onBroadcast(event: "cancel", callback: _onCancel);
+        // Same envelope caveat as the per-call channel: the server relays the
+        // ring too, so unwrap before reading the caller's fields.
+        ..onBroadcast(event: "ring", callback: (p) => _onRing(_sigBody(p)))
+        ..onBroadcast(event: "cancel", callback: (p) => _onCancel(_sigBody(p)));
       inbox.subscribe((status, [error]) {
         if (status == RealtimeSubscribeStatus.subscribed) {
           // "cfg!" = still on the baked fallback data-plane URL — the socket
@@ -559,31 +561,35 @@ class CallService extends ChangeNotifier {
       ..onBroadcast(
           event: "accept",
           callback: (p) {
-            if (_ownSignal(p)) return;
+            final b = _sigBody(p);
+            if (_ownSignal(b)) return;
             _sigRx.add("accept");
             _onAccept();
           })
       ..onBroadcast(
           event: "offer",
           callback: (p) {
-            if (_ownSignal(p)) return;
+            final b = _sigBody(p);
+            if (_ownSignal(b)) return;
             _sigRx.add("offer");
-            _onOffer(p);
+            _onOffer(b);
           })
       ..onBroadcast(
           event: "answer",
           callback: (p) {
-            if (_ownSignal(p)) return;
+            final b = _sigBody(p);
+            if (_ownSignal(b)) return;
             _sigRx.add("answer");
-            _onAnswer(p);
+            _onAnswer(b);
           })
       ..onBroadcast(
           event: "ice",
           callback: (p) {
-            if (_ownSignal(p)) return;
+            final b = _sigBody(p);
+            if (_ownSignal(b)) return;
             // Only the first few, so one line stays readable in the log.
             if (_sigRx.where((e) => e == "ice").length < 3) _sigRx.add("ice");
-            _onIce(p);
+            _onIce(b);
           })
       ..onBroadcast(event: "decline", callback: (_) => _teardown(log: true))
       ..onBroadcast(event: "hangup", callback: (_) => _teardown(log: true));
@@ -614,6 +620,26 @@ class CallService extends ChangeNotifier {
   /// arrived but our offer/hangup never reached them. The relay is the
   /// delivery path proven to reach web and app subscribers; the socket send
   /// remains only as an offline-edge fallback. Receiving stays on the socket.
+  /// Unwrap a broadcast callback argument to the sender's own payload.
+  ///
+  /// The two delivery paths do NOT hand us the same shape. A broadcast sent
+  /// over a client websocket arrives unwrapped, but one published through the
+  /// server relay (Realtime's HTTP /api/broadcast, which is how every web
+  /// signal travels since the socket-send fix) arrives inside an envelope:
+  /// `{event: "offer", payload: {...}, type: "broadcast"}`.
+  ///
+  /// Reading the envelope as if it were the payload made every data-carrying
+  /// signal silently useless: `sdp` and `candidate` came back null, so no
+  /// remote description was ever applied and ICE never started — a call that
+  /// gathered host/srflx/relay candidates and then sat on "Connecting"
+  /// forever. It also defeated the echo guard (`_from` was unreadable), so a
+  /// callee processed its own accept. `accept` was the one signal that
+  /// carries no data, which is why that leg alone appeared to work.
+  Map<String, dynamic> _sigBody(Map<String, dynamic> p) {
+    final inner = p["payload"];
+    return inner is Map ? Map<String, dynamic>.from(inner) : p;
+  }
+
   /// True when a relayed signal originated from THIS device (see `_from`).
   bool _ownSignal(Map<String, dynamic> p) =>
       p["_from"]?.toString() == _myId;
