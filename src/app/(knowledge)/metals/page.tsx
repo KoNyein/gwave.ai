@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 import { MetalBoard } from "@/components/knowledge/metal-board";
+import { getCurrentProfile } from "@/lib/auth";
 import { getActiveCurrencies } from "@/lib/db/currency";
 
 export const metadata = { title: "Metal prices — သတ္တုဈေးနှုန်း" };
@@ -13,7 +14,12 @@ export const dynamic = "force-dynamic";
  * The board itself is a client component so prices refresh in place.
  */
 export default async function MetalPricesPage() {
-  const currencies = await getActiveCurrencies();
+  // The board is public; only the market-log entry form is gated. The check
+  // here is presentation — the quotes API re-checks the role server-side.
+  const [profile, currencies] = await Promise.all([
+    getCurrentProfile(),
+    getActiveCurrencies(),
+  ]);
   // Only fiat conversion makes sense on a price board.
   const rates: Record<string, number> = {};
   for (const c of currencies) {
@@ -38,7 +44,7 @@ export default async function MetalPricesPage() {
           COMEX · LME (ရော်တာဒမ်) · ကမ္ဘာ့စံဈေးများ
         </p>
       </div>
-      <MetalBoard rates={rates} />
+      <MetalBoard rates={rates} isAdmin={profile?.role === "admin"} />
     </div>
   );
 }

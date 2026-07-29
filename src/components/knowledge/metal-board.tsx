@@ -47,17 +47,33 @@ const UNIT_LABEL: Record<Metal["unit"], string> = {
  * The live metal price board. Everything on it is a real quote from a named
  * market — the exchange column is not decoration, it is the provenance.
  */
+interface MetalQuote {
+  id: string;
+  metal_key: string;
+  name_my: string;
+  grade: string | null;
+  price: number;
+  currency: string;
+  unit: string;
+  market: string;
+  note: string | null;
+  quoted_at: string;
+}
+
 export function MetalBoard({
   rates,
+  isAdmin = false,
 }: {
   /** currency code → units per USD, from currency_rates. */
   rates: Record<string, number>;
+  isAdmin?: boolean;
 }) {
   const [data, setData] = React.useState<MetalsResponse | null>(null);
   const [error, setError] = React.useState(false);
   const [unit, setUnit] = React.useState<(typeof DISPLAY_UNITS)[number]["key"]>("quoted");
   const [currency, setCurrency] = React.useState("USD");
   const [refreshing, setRefreshing] = React.useState(false);
+  const [quotes, setQuotes] = React.useState<MetalQuote[]>([]);
 
   const load = React.useCallback(async () => {
     setRefreshing(true);
@@ -66,6 +82,14 @@ export function MetalBoard({
       if (!res.ok) throw new Error();
       setData((await res.json()) as MetalsResponse);
       setError(false);
+      // The market log rides the same refresh; its absence is never an error.
+      try {
+        const qr = await fetch("/api/metals/quotes");
+        if (qr.ok) {
+          const body = (await qr.json()) as { quotes?: MetalQuote[] };
+          setQuotes(body.quotes ?? []);
+        }
+      } catch {}
     } catch {
       setError(true);
     } finally {
@@ -228,6 +252,12 @@ export function MetalBoard({
           })
         : null}
 
+      <MarketLog
+        quotes={quotes}
+        isAdmin={isAdmin}
+        onChanged={() => void load()}
+      />
+
       {data && !data.sources.lmeConfigured ? (
         <p className="rounded-xl border border-dashed p-3 text-xs leading-relaxed text-muted-foreground">
           LME (ရော်တာဒမ်) — နီကယ်၊ သွပ်၊ ခဲမဖြူ၊ ခဲ နှင့် ရိုဒီယမ် ဈေးများ
@@ -246,6 +276,230 @@ export function MetalBoard({
         ရည်ညွှန်းချက်သာဖြစ်ပြီး အရောင်းအဝယ် စာချုပ်ဈေး မဟုတ်ပါ။
       </p>
     </div>
+  );
+}
+
+/**
+ * The market log (ဈေးမှတ်တမ်း): hand-recorded quotes for the metals and
+ * markets no feed can price — antimony, ore grades, the Muse border. Shown
+ * apart from the live rows and labelled with market and date, so a reader
+ * always knows which numbers are a wire and which are a person.
+ */
+function MarketLog({
+  quotes,
+  isAdmin,
+  onChanged,
+}: {
+  quotes: MetalQuote[];
+  isAdmin: boolean;
+  onChanged: () => void;
+}) {
+  const [formOpen, setFormOpen] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
+  const [form, setForm] = React.useState({
+    nameMy: "ခနောက်စိမ်း",
+    grade: "",
+    price: "",
+    currency: "CNY",
+    unit: "တန်",
+    market: "မူဆယ်နယ်စပ်",
+    note: "",
+  });
+
+  // Latest quote per (metal, market) — the log serves history, the board
+  // shows now.
+  const latest: MetalQuote[] = [];
+  const seen = new Set<string>();
+  for (const q of quotes) {
+    const k = `${q.metal_key}|${q.market}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    latest.push(q);
+  }
+
+  if (latest.length === 0 && !isAdmin) return null;
+
+  async function submit() {
+    const price = Number(form.price.replace(/,/g, ""));
+    if (!form.nameMy.trim() || !price || price <= 0 || !form.market.trim()) {
+      setFormError("အမည်၊ ဈေးနှုန်းနှင့် ဈေးကွက် ဖြည့်ပါ။");
+      return;
+    }
+    setBusy(true);
+    setFormError(null);
+    try {
+      const res = await fetch("/api/metals/quotes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          // A stable key groups revisions of the same quote; the Burmese
+          // name is the identity the admin actually typed.
+          metalKey: form.nameMy.trim().toLowerCase(),
+          nameMy: form.nameMy.trim(),
+          grade: form.grade.trim() || undefined,
+          price,
+          currency: form.currency,
+          unit: form.unit,
+          market: form.market.trim(),
+          note: form.note.trim() || undefined,
+        }),
+      });
+      const body = (await res.json()) as { error?: string };
+      if (!res.ok || body.error) throw new Error(body.error ?? "မအောင်မြင်ပါ");
+      setForm((f) => ({ ...f, price: "", note: "" }));
+      setFormOpen(false);
+      onChanged();
+    } catch (e) {
+      setFormError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(id: string) {
+    await fetch(`/api/metals/quotes?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }).catch(() => {});
+    onChanged();
+  }
+
+  return (
+    <section className="overflow-hidden rounded-xl border">
+      <h2 className="flex items-center justify-between border-b bg-muted/50 px-4 py-2 text-sm font-semibold">
+        <span>ဈေးမှတ်တမ်း (ခနောက်စိမ်း / သတ္တုရိုင်း / နယ်စပ်ဈေး)</span>
+        {isAdmin ? (
+          <button
+            type="button"
+            onClick={() => setFormOpen((o) => !o)}
+            className="rounded-full bg-primary px-3 py-0.5 text-xs font-semibold text-primary-foreground"
+          >
+            {formOpen ? "ပိတ်မည်" : "+ ဈေးထည့်"}
+          </button>
+        ) : null}
+      </h2>
+
+      {isAdmin && formOpen ? (
+        <div className="grid gap-2 border-b p-3 sm:grid-cols-2">
+          <input
+            className="rounded-md border bg-background px-2 py-1.5 text-sm"
+            placeholder="သတ္တုအမည် (ဥပမာ — ခနောက်စိမ်း)"
+            value={form.nameMy}
+            onChange={(e) => setForm({ ...form, nameMy: e.target.value })}
+            maxLength={80}
+          />
+          <input
+            className="rounded-md border bg-background px-2 py-1.5 text-sm"
+            placeholder="Grade (ဥပမာ — သတ္တုရိုင်း 45%)"
+            value={form.grade}
+            onChange={(e) => setForm({ ...form, grade: e.target.value })}
+            maxLength={80}
+          />
+          <div className="flex gap-2">
+            <input
+              className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+              placeholder="ဈေးနှုန်း"
+              inputMode="decimal"
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: e.target.value })}
+            />
+            <select
+              className="rounded-md border bg-background px-2 py-1.5 text-sm"
+              value={form.currency}
+              onChange={(e) => setForm({ ...form, currency: e.target.value })}
+            >
+              {["CNY", "USD", "MMK", "THB"].map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+            <select
+              className="rounded-md border bg-background px-2 py-1.5 text-sm"
+              value={form.unit}
+              onChange={(e) => setForm({ ...form, unit: e.target.value })}
+            >
+              {["တန်", "ကီလို", "ပိဿာ"].map((u) => (
+                <option key={u}>{u}</option>
+              ))}
+            </select>
+          </div>
+          <input
+            className="rounded-md border bg-background px-2 py-1.5 text-sm"
+            placeholder="ဈေးကွက် (ဥပမာ — မူဆယ်နယ်စပ်)"
+            value={form.market}
+            onChange={(e) => setForm({ ...form, market: e.target.value })}
+            maxLength={80}
+          />
+          <input
+            className="rounded-md border bg-background px-2 py-1.5 text-sm sm:col-span-2"
+            placeholder="မှတ်ချက် (ရွေးချယ်)"
+            value={form.note}
+            onChange={(e) => setForm({ ...form, note: e.target.value })}
+            maxLength={300}
+          />
+          {formError ? (
+            <p className="text-xs text-red-600 sm:col-span-2">{formError}</p>
+          ) : null}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void submit()}
+            className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground disabled:opacity-60 sm:col-span-2"
+          >
+            {busy ? "သိမ်းနေသည်…" : "မှတ်တမ်းတင်မည်"}
+          </button>
+        </div>
+      ) : null}
+
+      {latest.length === 0 ? (
+        <p className="p-4 text-sm text-muted-foreground">
+          မှတ်တမ်း မရှိသေးပါ — ခနောက်စိမ်းကဲ့သို့ feed မရှိသော သတ္တုဈေးများကို
+          admin က ဤနေရာတွင် မှတ်တမ်းတင်ပါသည်။
+        </p>
+      ) : (
+        <table className="w-full text-sm">
+          <tbody>
+            {latest.map((q) => (
+              <tr key={q.id} className="border-b last:border-b-0">
+                <td className="px-4 py-2.5">
+                  <p className="font-semibold leading-tight">{q.name_my}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {[q.grade, q.market].filter(Boolean).join(" · ")}
+                  </p>
+                </td>
+                <td className="px-4 py-2.5 text-right">
+                  <p className="font-bold tabular-nums">
+                    {q.price.toLocaleString("en-US")} {q.currency}
+                    <span className="ml-1 text-xs font-normal text-muted-foreground">
+                      /{q.unit}
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {q.quoted_at}
+                    {q.note ? ` · ${q.note}` : ""}
+                  </p>
+                </td>
+                {isAdmin ? (
+                  <td className="pr-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => void remove(q.id)}
+                      className="text-xs text-muted-foreground hover:text-red-600"
+                      aria-label="Delete"
+                    >
+                      ✕
+                    </button>
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <p className="border-t px-4 py-2 text-[11px] leading-relaxed text-muted-foreground">
+        ဤအပိုင်းသည် လူကိုယ်တိုင် မှတ်တမ်းတင်ထားသော ဈေးများဖြစ်သည် — အပေါ်က
+        exchange ဈေးများနှင့် ရင်းမြစ်မတူပါ။ ရက်စွဲကို ကြည့်ပါ။
+      </p>
+    </section>
   );
 }
 
