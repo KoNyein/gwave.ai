@@ -19,7 +19,7 @@ import 'book_reader_screen.dart';
 /// sale settles to the publishing author's wallet), reading progress saves,
 /// and anyone can publish their own book from the ✚ button. Data flows
 /// straight through PostgREST (`books`, `book_purchases`, `book_progress`,
-/// `buy_book` RPC — see supabase/sql-editor-bundles/books-store.sql).
+/// `buy_book` RPC — see db/sql/books-store.sql).
 class BooksScreen extends StatefulWidget {
   const BooksScreen({super.key});
 

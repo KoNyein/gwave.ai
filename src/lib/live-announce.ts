@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/data/admin";
  * live/replay card.
  *
  * Idempotent AND race-safe: `posts.live_stream_id` carries a partial unique
- * index (supabase/sql-editor-bundles/live-announce-post.sql), so concurrent
+ * index (db/sql/live-announce-post.sql), so concurrent
  * callers (go-live + several verify healers) collapse into one row at the
  * database. The previous app-level scheme deleted the duplicate rows after
  * the fact — and could delete the very post a follower notification had

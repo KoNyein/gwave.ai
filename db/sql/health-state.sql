@@ -5,7 +5,7 @@
 -- write their own row.
 --
 -- Apply on EC2:
---   curl -s https://raw.githubusercontent.com/KoNyein/gwave.ai/claude/phase-1-implementation-7ysxtj/supabase/sql-editor-bundles/health-state.sql | psql "$HOSTDB"
+--   curl -s https://raw.githubusercontent.com/KoNyein/gwave.ai/claude/phase-1-implementation-7ysxtj/db/sql/health-state.sql | psql "$HOSTDB"
 --   sudo docker restart postgrest
 
 create table if not exists public.health_state (

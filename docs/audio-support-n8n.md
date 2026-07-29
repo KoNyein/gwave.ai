@@ -6,7 +6,7 @@ setup and the two workflows.
 
 ## Setup
 
-1. Apply `supabase/sql-editor-bundles/audio-support.sql` on RDS, then
+1. Apply `db/sql/audio-support.sql` on RDS, then
    `sudo docker restart postgrest`.
 2. Add to `/etc/gwave-web.env` and `sudo gwave-redeploy`:
    ```

@@ -1651,7 +1651,7 @@ class Repository {
     final p = await profile(api.session!.profileId);
     if (p == null) return null;
     // Gender is fetched separately and leniently: the column ships in
-    // supabase/sql-editor-bundles/profiles-gender.sql, and a DB without it
+    // db/sql/profiles-gender.sql, and a DB without it
     // must not 400 every profile query in the app (authors, friends…).
     try {
       final rows = await api.select("profiles", query: {
