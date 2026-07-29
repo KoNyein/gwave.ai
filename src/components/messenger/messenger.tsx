@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   ArrowLeft,
+  Check,
   FileImage,
   FileText,
   Gamepad2,
@@ -22,6 +23,7 @@ import {
   SendHorizonal,
   Smile,
   SquarePen,
+  Users,
   Video,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -39,6 +41,7 @@ import { VoiceRecorder } from "@/components/messenger/voice-recorder";
 import { LocationMap } from "@/components/social/location-map";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +57,7 @@ import {
 import { startLiveLocation } from "@/lib/actions/live-location";
 import { LIVE_LOCATION_MINUTES } from "@/lib/live-location-options";
 import {
+  createGroupConversation,
   markConversationRead,
   openDirectConversation,
   sendMessage,
@@ -190,6 +194,11 @@ export function Messenger({
     null,
   );
   const [starting, startTransition] = React.useTransition();
+  // "New group" dialog: a name and the friends to seed it with.
+  const [groupOpen, setGroupOpen] = React.useState(false);
+  const [groupName, setGroupName] = React.useState("");
+  const [groupPicks, setGroupPicks] = React.useState<string[]>([]);
+  const [groupError, setGroupError] = React.useState<string | null>(null);
 
   const bottomRef = React.useRef<HTMLDivElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
@@ -934,6 +943,23 @@ export function Messenger({
     });
   }
 
+  function createGroup() {
+    const title = groupName.trim();
+    if (!title || groupPicks.length === 0) return;
+    startTransition(async () => {
+      const result = await createGroupConversation(title, groupPicks);
+      if (result.ok) {
+        setGroupOpen(false);
+        setGroupName("");
+        setGroupPicks([]);
+        await refreshConversations();
+        setActiveId(result.data.conversationId);
+      } else {
+        setGroupError(result.error);
+      }
+    });
+  }
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
       {/* Conversation list */}
@@ -981,9 +1007,81 @@ export function Messenger({
                   </DropdownMenuItem>
                 ))
               )}
+              {friends.length > 0 && (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setGroupError(null);
+                    setGroupOpen(true);
+                  }}
+                >
+                  <Users className="mr-2 h-4 w-4 text-accent" />
+                  {t("newGroup")}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        {/* New group */}
+        <Dialog open={groupOpen} onOpenChange={setGroupOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t("newGroup")}</DialogTitle>
+            </DialogHeader>
+            <Input
+              value={groupName}
+              onChange={(event) => setGroupName(event.target.value)}
+              placeholder={t("groupName")}
+              maxLength={80}
+            />
+            <div className="max-h-64 space-y-1 overflow-y-auto">
+              {friends.map((friend) => {
+                const picked = groupPicks.includes(friend.id);
+                return (
+                  <button
+                    key={friend.id}
+                    type="button"
+                    onClick={() =>
+                      setGroupPicks((previous) =>
+                        picked
+                          ? previous.filter((id) => id !== friend.id)
+                          : [...previous, friend.id],
+                      )
+                    }
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors",
+                      picked ? "bg-secondary" : "hover:bg-muted",
+                    )}
+                  >
+                    <UserAvatar
+                      profile={friend}
+                      linked={false}
+                      className="h-7 w-7"
+                    />
+                    <span className="flex-1 truncate">
+                      {displayName(friend)}
+                    </span>
+                    {picked && <Check className="h-4 w-4 text-accent" />}
+                  </button>
+                );
+              })}
+            </div>
+            {groupError && (
+              <p className="text-sm text-destructive">{groupError}</p>
+            )}
+            <Button
+              onClick={createGroup}
+              disabled={
+                starting || !groupName.trim() || groupPicks.length === 0
+              }
+            >
+              {starting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              {t("createGroup")}
+            </Button>
+          </DialogContent>
+        </Dialog>
         <div className="overflow-y-auto px-2 pb-4">
           {conversations.length === 0 ? (
             <p className="px-3 py-8 text-center text-sm text-muted-foreground">

@@ -436,7 +436,10 @@
     "liveLocationEnded": "Live location ended",
     "stopSharing": "Stop",
     "sentLiveLocation": "Shared live location",
-    "live": "Live"
+    "live": "Live",
+    "newGroup": "New group",
+    "groupName": "Group name",
+    "createGroup": "Create group"
   },
   "stories": {
     "createStory": "Create story",
