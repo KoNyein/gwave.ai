@@ -13,11 +13,22 @@
   and call-socket status ("Gwave v1.0.N · calls: ready"). In-app update
   banner works from v1.0.99 onward. `profiles.app_build` heartbeat column
   reports each user's installed build.
-- **Calls**: TURN relay (coturn on the EC2 host, 18.139.214.180:3478) is live;
-  `/api/webrtc/ice` serves it; SG ports open. App: ringtone/ringback +
-  vibration, speaker toggle, 20-min Realtime auth refresh, ring-socket
-  auto-reconnect + resume rejoin, web-push callee notify
-  (`/api/mobile/call/notify`). Web ring verification is embed-free.
+- **Calls**: WORKING app↔app and app↔browser (user-confirmed 2026-07-29).
+  TURN relay (coturn on the EC2 host, 18.139.214.180:3478) is live;
+  `/api/webrtc/ice` serves it; SG ports open (3478 udp+tcp, relay
+  49160-49200 udp). ALL signaling is relayed server-side — the app posts to
+  `/api/mobile/call/signal`, the web posts through the `relayCallSignal`
+  server action — because the self-hosted Realtime silently drops client
+  websocket sends. **A relayed broadcast arrives WRAPPED** as
+  `{event, payload, type}` while a client-socket one arrives bare; the app's
+  `_sigBody()` unwraps it. Reading the envelope as the payload was what left
+  every call at "Connecting" for days — `sdp`/`candidate` came back null and
+  only `accept` (the one data-free signal) appeared to work. App:
+  ringtone/ringback + vibration, speaker toggle with a volume slider
+  (speaker 0.65 / earpiece 1.0 — raw speakerphone was painfully loud),
+  20-min Realtime auth refresh, ring-socket auto-reconnect + resume rejoin,
+  web-push callee notify (`/api/mobile/call/notify`), ICE diagnostics posted
+  to `/api/mobile/diag`.
 - **Live**: browser→LiveKit, app-broadcast→IVS. IVS auto-records to S3;
   `latestIvsRecordingPath()` links `recording_path` on end/verify, and
   `/recordings/[...path]` streams replays through the domain (app + web).
@@ -40,37 +51,68 @@
 - **Repo hygiene**: 100 merged branches + old TWA releases deleted
   (`.github/workflows/cleanup-branches.yml` is a reusable manual cleanup).
 
+- **Shop**: dropship checkout, affiliate click tracking and buyer order
+  history are wired end to end (app + web). AliExpress best sellers import
+  through `POST /api/shop/aliexpress` (admin only), deduped on `source_url`,
+  priced live from the API and converted via `currency_rates`; an admin panel
+  on `/shop` drives both import and re-price. **Needs `ALIEXPRESS_APP_KEY`,
+  `ALIEXPRESS_APP_SECRET`, `ALIEXPRESS_TRACKING_ID` in `/etc/gwave-web.env`**
+  (from portals.aliexpress.com) — until then the endpoint answers 503.
+- **Messenger**: group chats (create, add members, leave) via security-definer
+  RPCs — `create_group_conversation`, `add_group_members`,
+  `leave_group_conversation`.
+
 ## Known gaps / next candidates
 
+- ALIEXPRESS_* keys (see Shop above) — the import button is live but 503s.
+- Scheduled `{"action":"refresh"}` against `/api/shop/aliexpress` so affiliate
+  prices don't drift (a listing once advertised 13 THB for an 89 THB item).
 - LiveKit egress recording envs + IAM access key (see above) so browser
   Go Live sessions get replays like app broadcasts do.
+- No FCM device token registered for user `75f0e8b3-…`, so a closed app on
+  that account can't be woken by push.
 - Native iOS app (Apple Developer Program, $99/yr, user-side).
 - Old Vercel project deletion (user-side).
 
-## In-flight (2026-07-29) — calls: ring works, answer hung; web signaling now relayed
+## Debugging notes worth keeping
 
-Ring delivery is CONFIRMED working (user: "ဖုန်းတော့ဝင်လာပြီ") after the
-#381-#383 relay work, but answering still hung at "Connecting" — the browser
-side was still SENDING accept/offer/answer/ICE over its client websocket, the
-exact send path the self-hosted Realtime silently drops (the app's sends were
-moved to `/api/mobile/call/signal` for the same reason). PR #388 (awaiting
-merge, auto-deploys) relays ALL web per-call sends through the
-`relayCallSignal` server action → Realtime HTTP broadcast API, tags payloads
-`_from` so each side drops its own echo, and keeps the socket send only as a
-fallback (via a throwaway channel when the session is already torn down —
-Codex P2). After deploy: user refreshes the browser tab, installs the latest
-APK, retests app↔browser both directions. If it still hangs, the WHOLE
-handshake is now in one log stream:
-`sudo docker logs --since 30m gwave-web 2>&1 | grep -E "call/signal"`
-(`[call/signal-web]` = browser leg, `[call/signal]` = app leg — the first
-missing event names the broken leg; if all events flow and audio is still
-dead, suspect the media plane / TURN next). Infra note kept for reference:
-Caddy routes `/sb/realtime/v1/api/*` to Realtime's HTTP broadcast API
-(tenant realtime-dev, Host-based; backup Caddyfile.bak-before-broadcast-api).
-When the test passes: delete this section and move the outcome to the
-changelog.
+- Realtime broadcast **envelope asymmetry**: a broadcast sent over a client
+  websocket arrives bare; one published through the server relay (Realtime
+  HTTP broadcast API) arrives as `{event, payload, type}`. Any new subscriber
+  must unwrap. This cost days on calls.
+- Whole call handshake in one stream:
+  `sudo docker logs --since 30m gwave-web 2>&1 | grep -E "call/signal"`
+  (`[call/signal-web]` = browser leg, `[call/signal]` = app leg — the first
+  missing event names the broken leg).
+- coturn does NOT log allocations at default verbosity, so empty coturn logs
+  are NOT evidence that no packets arrived. Trickle-ICE is the real test.
+- Caddy routes `/sb/realtime/v1/api/*` to Realtime's HTTP broadcast API
+  (tenant realtime-dev, Host-based; backup Caddyfile.bak-before-broadcast-api).
+- `docker logs -f` on the shared EC2 SSH session swallows everything typed
+  afterwards as stdin. Don't use `-f`; use `--since`.
 
 ## Changelog
+
+- 2026-07-29 (evening): **Calls FIXED, group chat, shop wired end to end.**
+  Root cause of calls hanging at "Connecting": the app read the Realtime
+  broadcast ENVELOPE as the payload, so `sdp`/`candidate` were null and
+  `_from` unreadable — `accept`, the only data-free signal, was the sole leg
+  that appeared to work. `_sigBody()` in `mobile/lib/core/call_service.dart`
+  unwraps it on both the call channel and the ring inbox. User-confirmed:
+  "messenger video call ရပါပြီ". Every earlier suspect (TURN, security
+  group, ICE server shape, SDP serialization) was ruled out by evidence;
+  the SG UDP ports and ICE flattening shipped anyway as correct hardening.
+  Also: call volume slider (speaker 0.65 / earpiece 1.0); messenger GROUP
+  chats on app + web (`create_group_conversation` / `add_group_members` /
+  `leave_group_conversation`, security definer — applied on RDS); Shop no
+  longer a dead link catalogue — dropship checkout, affiliate click
+  recording and buyer order history now use the order backend that was
+  already built but unused, and affiliate prices render `~ X` with an
+  "indicative only" note rather than pretending to be ours. PRs #394/#395:
+  AliExpress best-seller import + admin panel on `/shop` (dedupe on
+  `source_url` behind a partial unique index, live prices converted via
+  `currency_rates`, `refresh` action to re-price). Blocked on the three
+  ALIEXPRESS_* env keys.
 
 - 2026-07-29 (later): **Go-live feed post guaranteed + call relay deployed +
   APK 203.** PR #389 (merged, deployed): new `ensureLiveAnnouncement()` —
