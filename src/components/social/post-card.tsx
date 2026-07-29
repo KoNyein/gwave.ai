@@ -122,6 +122,21 @@ export function PostCard({
   const [editOpen, setEditOpen] = React.useState(false);
   // Editable fields keep local state so an edit shows instantly.
   const [content, setContent] = React.useState(post.content);
+  // Hide the live URL + generated marker line from live-announcement posts —
+  // the live card (LinkPreview -> FeedLiveCard) shows the real video and the
+  // title. Matches ONLY canonical gwave.cc live links (same constraints as
+  // LinkPreview's matcher) so an external site's /live/<uuid> URL is never
+  // mistaken for an announcement, and drops the WHOLE generated line
+  // ("🔴 Live လွှင့်နေပါပြီ — <title>" / "🔴 Live — <title>") so no
+  // boilerplate duplicates the card's title. User-written lines survive.
+  const liveUrlRe =
+    /https?:\/\/(?:www\.)?gwave\.cc\/live\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\S*/i;
+  const displayContent = liveUrlRe.test(content ?? "")
+    ? (content ?? "")
+        .replace(liveUrlRe, "")
+        .replace(/^\s*🔴\s*Live[^\n]*$/gim, "")
+        .trim()
+    : content;
   const [visibility, setVisibility] = React.useState(post.visibility);
   const [canNativeShare, setCanNativeShare] = React.useState(false);
 
@@ -318,10 +333,13 @@ export function PostCard({
         </button>
       ) : null}
 
-      {/* Content */}
-      {content ? (
+      {/* Content — live-announcement posts carry a raw gwave.cc/live/<id>
+          link plus a "🔴 Live — …" marker. That's plumbing, not content:
+          FeedLiveCard below renders the actual live video (title included),
+          so the URL and marker line are stripped from the visible text. */}
+      {displayContent ? (
         <p className="whitespace-pre-wrap break-words px-4 py-2 text-sm">
-          <LinkifiedText text={content} />
+          <LinkifiedText text={displayContent} />
         </p>
       ) : (
         <div className="pt-2" />
