@@ -99,6 +99,13 @@ class CallService extends ChangeNotifier {
   int _iceServerCount = 0;
   bool _iceHadTurn = false;
 
+  /// Signalling events actually RECEIVED on the call channel, and the last
+  /// SDP error. Together these separate "the peer's answer never arrived"
+  /// from "it arrived but we couldn't apply it" — indistinguishable from the
+  /// server log, which only proves the relay accepted the broadcast.
+  final List<String> _sigRx = [];
+  String _sdpError = "";
+
   Future<Map<String, dynamic>> _iceConfig() async {
     try {
       final servers = await api.iceServers();
@@ -127,6 +134,10 @@ class CallService extends ChangeNotifier {
       "turnWithCreds": _iceHadTurn,
       "candTypes": _candTypes.toList()..sort(),
       "iceStates": _iceStates.join(">"),
+      "sigRx": _sigRx.join(","),
+      "remoteDescSet": _remoteDescSet,
+      "sdpError": _sdpError,
+      "isCaller": _isCaller,
       "video": video,
     });
   }
@@ -548,22 +559,31 @@ class CallService extends ChangeNotifier {
       ..onBroadcast(
           event: "accept",
           callback: (p) {
-            if (!_ownSignal(p)) _onAccept();
+            if (_ownSignal(p)) return;
+            _sigRx.add("accept");
+            _onAccept();
           })
       ..onBroadcast(
           event: "offer",
           callback: (p) {
-            if (!_ownSignal(p)) _onOffer(p);
+            if (_ownSignal(p)) return;
+            _sigRx.add("offer");
+            _onOffer(p);
           })
       ..onBroadcast(
           event: "answer",
           callback: (p) {
-            if (!_ownSignal(p)) _onAnswer(p);
+            if (_ownSignal(p)) return;
+            _sigRx.add("answer");
+            _onAnswer(p);
           })
       ..onBroadcast(
           event: "ice",
           callback: (p) {
-            if (!_ownSignal(p)) _onIce(p);
+            if (_ownSignal(p)) return;
+            // Only the first few, so one line stays readable in the log.
+            if (_sigRx.where((e) => e == "ice").length < 3) _sigRx.add("ice");
+            _onIce(p);
           })
       ..onBroadcast(event: "decline", callback: (_) => _teardown(log: true))
       ..onBroadcast(event: "hangup", callback: (_) => _teardown(log: true));
@@ -632,26 +652,56 @@ class CallService extends ChangeNotifier {
   Future<void> _onOffer(Map<String, dynamic> payload) async {
     if (_isCaller || _pc == null) return;
     final sdp = payload["sdp"];
-    if (sdp is! Map) return;
-    await _pc!.setRemoteDescription(
-        RTCSessionDescription(sdp["sdp"]?.toString(), sdp["type"]?.toString()));
-    _remoteDescSet = true;
-    await _drainIce();
-    final answer = await _pc!.createAnswer();
-    await _pc!.setLocalDescription(answer);
-    await _signal("answer", {
-      "sdp": {"type": answer.type, "sdp": answer.sdp},
-    });
+    if (sdp is! Map) {
+      _sdpError = "offer payload not a map: ${payload["sdp"].runtimeType}";
+      return;
+    }
+    final body = sdp["sdp"]?.toString();
+    if (body == null || body.isEmpty) {
+      _sdpError = "offer sdp empty (keys: ${sdp.keys.join('|')})";
+      _reportIceDiag("bad-offer");
+      return;
+    }
+    try {
+      await _pc!.setRemoteDescription(
+          RTCSessionDescription(body, sdp["type"]?.toString()));
+      _remoteDescSet = true;
+      await _drainIce();
+      final answer = await _pc!.createAnswer();
+      await _pc!.setLocalDescription(answer);
+      await _signal("answer", {
+        "sdp": {"type": answer.type, "sdp": answer.sdp},
+      });
+    } catch (e) {
+      _sdpError = "answering offer: $e";
+      _reportIceDiag("offer-apply-failed");
+    }
   }
 
   Future<void> _onAnswer(Map<String, dynamic> payload) async {
     if (_pc == null) return;
     final sdp = payload["sdp"];
-    if (sdp is! Map) return;
-    await _pc!.setRemoteDescription(
-        RTCSessionDescription(sdp["sdp"]?.toString(), sdp["type"]?.toString()));
-    _remoteDescSet = true;
-    await _drainIce();
+    if (sdp is! Map) {
+      _sdpError = "answer payload not a map: ${payload["sdp"].runtimeType}";
+      return;
+    }
+    final body = sdp["sdp"]?.toString();
+    if (body == null || body.isEmpty) {
+      // An answer that arrived with an empty SDP is the silent killer: ICE
+      // never starts and the call sits on "Connecting" with no error anywhere.
+      _sdpError = "answer sdp empty (keys: ${sdp.keys.join('|')})";
+      _reportIceDiag("bad-answer");
+      return;
+    }
+    try {
+      await _pc!.setRemoteDescription(
+          RTCSessionDescription(body, sdp["type"]?.toString()));
+      _remoteDescSet = true;
+      await _drainIce();
+    } catch (e) {
+      _sdpError = "setRemoteDescription(answer): $e";
+      _reportIceDiag("answer-apply-failed");
+    }
   }
 
   Future<void> _onIce(Map<String, dynamic> payload) async {
@@ -833,6 +883,8 @@ class CallService extends ChangeNotifier {
     remoteReady = false;
     _candTypes.clear();
     _iceStates.clear();
+    _sigRx.clear();
+    _sdpError = "";
 
     // One call-log message per call, written by the caller (mirrors the web).
     if (log && wasCaller && convo != null) {
