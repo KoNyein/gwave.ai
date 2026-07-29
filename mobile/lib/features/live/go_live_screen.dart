@@ -12,6 +12,7 @@ import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
+import 'live_sale.dart';
 import '../../widgets/common.dart';
 
 /// Fully native Go Live — the phone camera streams RTMPS straight to the
@@ -659,6 +660,24 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                           active: true,
                           onTap: () =>
                               setState(() => _chatOpen = !_chatOpen),
+                        ),
+                        // Live sale: pin listings to this broadcast so viewers
+                        // buy from a card over the video. Reachable mid-stream
+                        // because that's when a seller decides what to show.
+                        const SizedBox(width: 40),
+                        _roundBtn(
+                          icon: Icons.sell_outlined,
+                          active: true,
+                          onTap: () {
+                            final id = _streamId;
+                            if (id == null) return;
+                            Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => LiveProductPicker(
+                                streamId: id,
+                                pinned: const [],
+                              ),
+                            ));
+                          },
                         ),
                       ],
                       const SizedBox(width: 40),

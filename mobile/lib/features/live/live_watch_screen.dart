@@ -10,12 +10,14 @@ import 'package:video_player/video_player.dart';
 import '../../core/api_client.dart';
 import '../../core/app_state.dart';
 import '../../core/config.dart';
+import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/share_sheet.dart';
 import '../../widgets/common.dart';
 import '../web/web_screen.dart';
+import 'live_sale.dart';
 
 /// Full-screen, one-screen TikTok-style Live watch. The video fills the screen;
 /// host/title, LIVE + viewer badge, the right action rail, and the overlay chat
@@ -26,6 +28,8 @@ import '../web/web_screen.dart';
 ///   • real chat — send + poll every few seconds so viewers see each other
 ///   • emoji reactions — tap to send, and everyone's reactions float up
 ///   • live viewer count that refreshes while you watch
+///   • live sale — the host pins shop products, viewers buy from a card over
+///     the video without leaving the broadcast
 class LiveWatchScreen extends StatefulWidget {
   const LiveWatchScreen({super.key, required this.stream, this.onEnded});
   final LiveStream stream;
@@ -83,12 +87,21 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
   int _viewers = 0;
   bool _sending = false;
 
+  /// Products the host has pinned to this stream. Refreshed on the same poll
+  /// as chat so a product pinned mid-broadcast appears without a reload.
+  List<ShopProduct> _forSale = [];
+
+  /// Resolved once: the rail is rebuilt on every poll tick and provider's
+  /// read() doesn't belong in build.
+  late final bool _isHost;
+
   static const _emojis = ["❤️", "👍", "😂", "😮", "👏", "🔥"];
 
   @override
   void initState() {
     super.initState();
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+    _isHost = context.read<AppState>().me?.id == widget.stream.hostId;
     _viewers = widget.stream.viewerCount;
     if (_useLivekit) {
       _initLivekit();
@@ -96,6 +109,7 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
       _initVideo();
     }
     _loadChat();
+    _loadProducts();
     // Poll chat, reactions and viewer count while the stream is live.
     if (widget.stream.isLive) {
       _poll = Timer.periodic(const Duration(seconds: 3), (_) => _tick());
@@ -257,8 +271,34 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
   }
 
   /// One polling cycle: pull new chat, count fresh reactions, refresh viewers.
+  /// Best-effort — a stream with no products, or a failed lookup, simply
+  /// shows no buy card rather than an error over the video.
+  Future<void> _loadProducts() async {
+    try {
+      final rows =
+          await context.read<AppState>().repo.liveProducts(widget.stream.id);
+      if (mounted) setState(() => _forSale = rows);
+    } catch (_) {}
+  }
+
+  /// Host-only: pick which listings are on sale in this broadcast.
+  Future<void> _manageProducts() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LiveProductPicker(
+          streamId: widget.stream.id,
+          pinned: _forSale,
+        ),
+      ),
+    );
+    await _loadProducts();
+  }
+
   Future<void> _tick() async {
     final repo = context.read<AppState>().repo;
+    // A product pinned mid-broadcast should appear without a reload; this
+    // rides the existing poll rather than adding a timer of its own.
+    unawaited(_loadProducts());
     try {
       final msgs = await repo.liveChat(widget.stream.id, sinceIso: _lastChatAt);
       if (mounted && msgs.isNotEmpty) {
@@ -567,6 +607,9 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // The buy card sits directly above the chat, where Shopee and TikTok
+          // put it: closest to the thumb, furthest from the host's face.
+          LiveSaleCard(products: _forSale, onChanged: _loadProducts),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -725,6 +768,18 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
             title: widget.stream.title,
           );
         }),
+        // The host manages what's on sale; viewers get the same button only
+        // when there's more than one product, to reach the full list.
+        if (_isHost) ...[
+          const SizedBox(height: 16),
+          _railButton(Icons.sell, tr(context, "Sell", "ရောင်း"), GwColors.gold,
+              onTap: _manageProducts),
+        ] else if (_forSale.length > 1) ...[
+          const SizedBox(height: 16),
+          _railButton(Icons.shopping_bag, tr(context, "Shop", "ဈေးဝယ်"),
+              Colors.white,
+              onTap: () => showLiveSaleSheet(context, _forSale, _loadProducts)),
+        ],
       ],
     );
   }

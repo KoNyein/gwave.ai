@@ -12,6 +12,22 @@ import '../web/web_screen.dart';
 import '../../widgets/common.dart';
 import '../../widgets/share_sheet.dart';
 
+/// Buy a dropship product from anywhere — the shop, or the buy card pinned to
+/// a live stream. Returns true when an order was placed.
+///
+/// Live selling is the reason this is a function and not just a route: a
+/// viewer who leaves the broadcast to buy usually doesn't come back, so the
+/// checkout has to be reachable without unwinding the screen behind it.
+Future<bool> showProductCheckout(
+  BuildContext context,
+  ShopProduct product,
+) async {
+  final ordered = await Navigator.of(context).push<bool>(
+    MaterialPageRoute(builder: (_) => _CheckoutScreen(product: product)),
+  );
+  return ordered == true;
+}
+
 /// One product, with the action that actually matches its kind:
 /// a dropship listing checks out in-app, an affiliate listing hands off to the
 /// merchant (and says so, instead of pretending our copied price is binding).
@@ -45,10 +61,8 @@ class _ProductScreenState extends State<ProductScreen> {
   }
 
   Future<void> _buy() async {
-    final ordered = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => _CheckoutScreen(product: product)),
-    );
-    if (ordered == true && mounted) {
+    final ordered = await showProductCheckout(context, product);
+    if (ordered && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(tr(context, "Order placed.", "အော်ဒါ တင်ပြီးပါပြီ။")),
       ));

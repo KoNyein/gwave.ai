@@ -660,6 +660,57 @@ class Repository {
     });
   }
 
+  // ---- Live sale ------------------------------------------------------------
+
+  /// Products the host has pinned to a stream, in pin order.
+  ///
+  /// Two flat queries rather than the embed the web uses: this runs on the
+  /// viewer's phone while a stream plays, and a stale schema cache turns an
+  /// embed into a 500 that would silently empty the buy card mid-broadcast.
+  Future<List<ShopProduct>> liveProducts(String streamId) async {
+    final pins = await api.select("live_products", query: {
+      "select": "product_id,created_at",
+      "stream_id": "eq.$streamId",
+      "order": "created_at.asc",
+      "limit": "30",
+    });
+    final ids = pins
+        .map((p) => p["product_id"]?.toString())
+        .whereType<String>()
+        .toList();
+    if (ids.isEmpty) return [];
+    final rows = await api.select("shop_products", query: {
+      "select": "*",
+      "id": "in.(${ids.join(",")})",
+      "limit": "30",
+    });
+    final byId = {for (final r in rows) r["id"].toString(): r};
+    // Keep the host's pin order, and drop anything that has since been
+    // deleted or hidden rather than showing a card that can't be bought.
+    return ids
+        .map((id) => byId[id])
+        .whereType<Map<String, dynamic>>()
+        .map(ShopProduct.fromJson)
+        .where((p) => p.status == "active")
+        .toList();
+  }
+
+  /// Pin one of my products to my stream. RLS enforces both halves of that
+  /// sentence — my stream, my product.
+  Future<void> pinLiveProduct(String streamId, String productId) async {
+    await api.insert("live_products", {
+      "stream_id": streamId,
+      "product_id": productId,
+    });
+  }
+
+  Future<void> unpinLiveProduct(String streamId, String productId) async {
+    await api.deleteRows("live_products", filter: {
+      "stream_id": "eq.$streamId",
+      "product_id": "eq.$productId",
+    });
+  }
+
   // ---- Presence -------------------------------------------------------------
 
   /// Last presence-heartbeat failure ("" = last attempt succeeded). Reported
