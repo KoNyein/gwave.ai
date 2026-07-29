@@ -68,8 +68,17 @@ export async function ensureLiveAnnouncement(opts: {
         .maybeSingle();
       post = winner ?? null;
     }
-    if (error && /live_stream_id/i.test(error.message)) {
-      // Migration not applied yet — announce anyway, without the unique key.
+    if (error) {
+      // Any structural failure (migration not applied yet, so the column or
+      // the unique index is missing) — announce anyway, without the key. A
+      // real conflict never lands here: ignoreDuplicates returns zero rows
+      // and no error. Don't try to match on the message; PostgreSQL's
+      // "no unique or exclusion constraint matching" text doesn't name the
+      // column, so a narrower test would silently skip the fallback and the
+      // stream would get no post at all.
+      console.log(
+        `[live/announce] stream=${opts.streamId} upsert failed (${error.message}) — plain insert`,
+      );
       ({ data: post, error } = await admin
         .from("posts")
         .insert(row)
