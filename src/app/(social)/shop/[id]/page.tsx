@@ -144,7 +144,10 @@ export default async function ProductPage(
           </CardContent>
         </Card>
       ) : null}
-      {product.source_url ? (
+      {/* Only an affiliate listing points at the merchant. On a dropship one
+          we are the seller, so this link would walk the buyer straight out of
+          the checkout they were about to complete. */}
+      {product.kind === "affiliate" && product.source_url ? (
         <a
           href={product.source_url}
           target="_blank"
