@@ -18,6 +18,7 @@ import '../web/web_screen.dart';
 import '../../widgets/common.dart';
 import '../../widgets/photo_view_screen.dart';
 import '../live/live_watch_screen.dart';
+import '../map/quake.dart';
 import '../shop/product_screen.dart';
 import 'comments_sheet.dart';
 import 'reactions.dart';
@@ -219,6 +220,16 @@ class _PostCardState extends State<PostCard> {
               ],
               const SizedBox(height: 12),
               _ProductBanner(productId: _shopProductId(p.content)!),
+            ]
+            // A shared quake renders as an alert card — magnitude, place and
+            // the safety guide — never as a URL.
+            else if (_quakeInfo(p.content) != null) ...[
+              if (_quakeExtraText(p.content).isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _RichPostBody(content: _quakeExtraText(p.content)),
+              ],
+              const SizedBox(height: 12),
+              _QuakePostCard(info: _quakeInfo(p.content)!),
             ] else if (p.content.trim().isNotEmpty) ...[
               const SizedBox(height: 12),
               _RichPostBody(content: p.content),
@@ -491,12 +502,158 @@ String _shopExtraText(String content) {
       .trim();
 }
 
+/// A shared earthquake: the generated "🫨 M x.x place" line plus the USGS
+/// eventpage link. Both are plumbing — the card renders the quake itself.
+({double mag, String place, String url})? _quakeInfo(String content) {
+  final url = RegExp(
+          r"https?://earthquake\.usgs\.gov/earthquakes/eventpage/\S+")
+      .firstMatch(content)
+      ?.group(0);
+  if (url == null) return null;
+  final line = RegExp(r"🫨\s*M\s*([\d.]+)\s*([^\n·]*)").firstMatch(content);
+  return (
+    mag: double.tryParse(line?.group(1) ?? "") ?? 0,
+    place: (line?.group(2) ?? "").trim(),
+    url: url,
+  );
+}
+
+/// Quake-share content minus the plumbing: the USGS URL and the generated
+/// 🫨 line. Whatever the sharer typed themselves survives.
+String _quakeExtraText(String content) {
+  return content
+      .replaceAll(
+          RegExp(r"https?://earthquake\.usgs\.gov/earthquakes/eventpage/\S+"),
+          "")
+      .replaceAll(RegExp(r"^\s*🫨[^\n]*$", multiLine: true), "")
+      .trim();
+}
+
 /// The live stream id when [content] contains a gwave.cc/live/<uuid> link.
 String? _liveStreamId(String content) {
   final m = RegExp(
           r"gwave\.cc/live/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})")
       .firstMatch(content);
   return m?.group(1);
+}
+
+/// A shared earthquake as an alert card: severity-coloured magnitude badge,
+/// place, and the two taps that matter — details (USGS, in-app) and the
+/// safety guide. Everything on it is parsed from the post text, so it renders
+/// instantly and offline.
+class _QuakePostCard extends StatelessWidget {
+  const _QuakePostCard({required this.info});
+  final ({double mag, String place, String url}) info;
+
+  Color get _color => info.mag >= 7
+      ? const Color(0xFF8B0000)
+      : info.mag >= 6
+          ? const Color(0xFFD32F2F)
+          : info.mag >= 5
+              ? const Color(0xFFF57C00)
+              : info.mag >= 4
+                  ? const Color(0xFFF9A825)
+                  : const Color(0xFF7CB342);
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(GwRadius.md),
+      onTap: () => openWeb(context, info.url, title: "USGS"),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(GwRadius.md),
+          border: Border.all(color: _color.withValues(alpha: 0.5)),
+          color: _color.withValues(alpha: 0.08),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _color,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    "M ${info.mag.toStringAsFixed(1)}",
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 17),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tr(context, "Earthquake", "ငလျင် သတင်း"),
+                        style: TextStyle(
+                            color: _color,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12),
+                      ),
+                      Text(
+                        info.place.isEmpty
+                            ? tr(context, "See details", "အသေးစိတ် ကြည့်ရန်")
+                            : info.place,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            height: 1.25),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () =>
+                        openWeb(context, info.url, title: "USGS"),
+                    icon: const Icon(Icons.public, size: 16),
+                    label: Text(tr(context, "Details", "အသေးစိတ်"),
+                        style: const TextStyle(fontSize: 12.5)),
+                    style: OutlinedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        foregroundColor: _color,
+                        side: BorderSide(color: _color)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const QuakeSafetyScreen())),
+                    icon: const Icon(Icons.health_and_safety, size: 16),
+                    label: Text(
+                        tr(context, "Safety guide", "ဘေးကင်းရေး"),
+                        style: const TextStyle(fontSize: 12.5)),
+                    style: ElevatedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        backgroundColor: _color,
+                        foregroundColor: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// A shared listing rendered as the product itself: cover photo, title, price

@@ -1343,9 +1343,11 @@ class _MapScreenState extends State<MapScreen> {
                   const SizedBox(width: 8),
                   OutlinedButton.icon(
                     onPressed: () async {
+                      // No time-ago in the text: it freezes wrong the moment
+                      // it's posted, and the post's own timestamp does that
+                      // job. The feed parses this line into an alert card.
                       final text =
-                          "🫨 M ${q.mag.toStringAsFixed(1)} ${q.place} · "
-                          "${quakeTimeAgo(context, q.time)}"
+                          "🫨 M ${q.mag.toStringAsFixed(1)} ${q.place}"
                           "${q.url != null ? "\n${q.url}" : ""}";
                       try {
                         await context.read<AppState>().repo.createPost(text);
