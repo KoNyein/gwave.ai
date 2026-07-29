@@ -63,7 +63,7 @@ const METALS_DEV_METALS: Omit<MetalRow, "usd" | "changePct" | "spark" | "ts">[] 
   { key: "rhodium", name: "Rhodium", nameMy: "ရိုဒီယမ်", group: "precious", unit: "toz", exchange: "Spot" },
   { key: "lme_nickel", name: "Nickel", nameMy: "နီကယ်", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
   { key: "lme_zinc", name: "Zinc", nameMy: "သွပ် (ခဲမ)", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
-  { key: "lme_tin", name: "Tin", nameMy: "ခဲဖြူ (ရော်တာဒမ်ဈေး)", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
+  { key: "lme_tin", name: "Tin", nameMy: "ခဲမဖြူ (ရော်တာဒမ်ဈေး)", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
   { key: "lme_lead", name: "Lead", nameMy: "ခဲ", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
   // No exchange trades antimony — its benchmarks (Fastmarkets Rotterdam,
   // SMM China) are licensed. Asked for defensively: if the provider ever

@@ -230,7 +230,7 @@ export function MetalBoard({
 
       {data && !data.sources.lmeConfigured ? (
         <p className="rounded-xl border border-dashed p-3 text-xs leading-relaxed text-muted-foreground">
-          LME (ရော်တာဒမ်) — နီကယ်၊ သွပ်၊ ခဲဖြူ၊ ခဲ နှင့် ရိုဒီယမ် ဈေးများ
+          LME (ရော်တာဒမ်) — နီကယ်၊ သွပ်၊ ခဲမဖြူ၊ ခဲ နှင့် ရိုဒီယမ် ဈေးများ
           ပြရန် metals.dev မှ အခမဲ့ API key တစ်ခု လိုပါသည်။
           <code className="mx-1 rounded bg-muted px-1">METALS_DEV_API_KEY</code>
           ကို /etc/gwave-web.env တွင် ထည့်ပြီး redeploy လုပ်ပါ။
