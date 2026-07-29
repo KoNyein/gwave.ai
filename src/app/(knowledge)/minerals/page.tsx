@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Gem } from "lucide-react";
+import { Gem, LineChart } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -92,6 +92,13 @@ export default async function MineralsPage(
           </h1>
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
+        <Link
+          href="/metals"
+          className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+        >
+          <LineChart className="h-4 w-4" />
+          သတ္တုဈေးနှုန်း Live
+        </Link>
         <form action="/minerals" className="flex gap-2">
           <input
             type="search"
