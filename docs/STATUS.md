@@ -117,6 +117,24 @@
 
 ## Changelog
 
+- 2026-07-30 (pre-dawn): **Earthquake safety system + metal price board.**
+  App (builds 221-222): USGS quake layer on the GPS map (on by default,
+  severity circles, tap for detail + tsunami advisory), auto alert banner
+  (M≥4.5/300km, M≥5.5/700km, M≥6.5 regional, 24h), Drop-Cover-Hold safety
+  guide with MM/TH dial-through emergency numbers (static — must work with
+  no signal), 🫨 quake SOS reason, and quake share posts render as alert
+  cards (URL stripped, old posts re-render too). Server: /api/quakes (USGS
+  proxy, 2-min cache, stale-before-error; PR #400). Web: /metals (PR #401)
+  — COMEX gold/silver/platinum/palladium/copper/aluminium live via Yahoo
+  (10-min cache, sparklines), LME "Rotterdam" tin(ခဲမဖြူ)/zinc/nickel/lead +
+  rhodium behind METALS_DEV_API_KEY (8h cache fits free tier), unit toggle
+  incl. ကျပ်သား (16.606g), currency via currency_rates, and a market log
+  (metal_quotes, RLS-sealed, /api/metals/quotes single gate) where admin
+  records antimony (ခနောက်စိမ်း) / ore / Muse-border quotes with date+market
+  labels — no invented numbers for licensed feeds (SHFE, tungsten).
+  db/sql/metal-quotes.sql user-run on RDS. Yahoo unreachable from the dev
+  container (proxy 403) — verify on prod.
+
 - 2026-07-30 (night): **Sell-from-phone, live sale, honest feed cards, real
   sidebar.** App (builds 219-220 on mobile-latest): Sell screen with a
   10-photo gallery, My listings, My sales queue with tap-to-dial and
