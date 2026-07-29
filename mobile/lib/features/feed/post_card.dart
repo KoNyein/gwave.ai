@@ -492,7 +492,25 @@ class _LiveBannerState extends State<_LiveBanner> {
 
   Future<void> _load() async {
     try {
-      final s = await context.read<AppState>().repo.stream(widget.streamId);
+      final state = context.read<AppState>();
+      var s = await state.repo.stream(widget.streamId);
+      // Self-heal a stale "live" row (broadcast died without ending): the
+      // server verifies the real media plane and, when dead, marks it ended
+      // AND links the saved replay — so this banner flips from a ghost LIVE
+      // badge to the muted auto-playing REPLAY card.
+      if (s != null &&
+          s.isLive &&
+          s.createdAt != null &&
+          DateTime.now().difference(s.createdAt!).inMinutes >= 4) {
+        try {
+          final status = await state.api.liveVerify(s.id);
+          if (status != "live") {
+            s = await state.repo.stream(widget.streamId);
+          }
+        } catch (_) {
+          // Verify is best-effort; the banner still renders.
+        }
+      }
       if (mounted) setState(() => _stream = s);
       if (s != null) await _initPreview(s);
     } catch (_) {}

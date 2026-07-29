@@ -28,6 +28,10 @@ class _StoriesBarState extends State<StoriesBar> {
   List<LiveStream> _live = [];
   Timer? _refresh;
 
+  // Per-stream throttle for the media-plane verify below, so a genuinely
+  // live broadcast isn't re-checked on every 25s refresh.
+  final Map<String, DateTime> _verifiedAt = {};
+
   @override
   void initState() {
     super.initState();
@@ -53,8 +57,33 @@ class _StoriesBarState extends State<StoriesBar> {
 
   Future<void> _loadLive() async {
     try {
-      final s =
-          await context.read<AppState>().repo.liveStreams(onlyLive: true);
+      final state = context.read<AppState>();
+      var s = await state.repo.liveStreams(onlyLive: true);
+      // Self-heal: a broadcast that died without calling the end API stays
+      // "live" forever and its card never leaves this rail. Ask the server to
+      // check the real media plane (LiveKit room / IVS channel) for
+      // stale-looking lives — that also links the saved replay — then
+      // re-fetch so dead cards drop off. Throttled per stream.
+      final now = DateTime.now();
+      final stale = s
+          .where((x) =>
+              x.isLive &&
+              x.createdAt != null &&
+              now.difference(x.createdAt!).inMinutes >= 4 &&
+              now
+                      .difference(
+                          _verifiedAt[x.id] ?? DateTime.fromMillisecondsSinceEpoch(0))
+                      .inMinutes >=
+                  3)
+          .toList();
+      if (stale.isNotEmpty) {
+        for (final x in stale) {
+          _verifiedAt[x.id] = now;
+        }
+        await Future.wait(stale.map(
+            (x) => state.api.liveVerify(x.id).then((_) {}).catchError((_) {})));
+        s = await state.repo.liveStreams(onlyLive: true);
+      }
       if (mounted) setState(() => _live = s.where((e) => e.isLive).toList());
     } catch (_) {
       // Non-fatal — live cards just stay unchanged.

@@ -25,6 +25,9 @@ class _LiveNowRailState extends State<LiveNowRail> {
   List<LiveStream> _live = [];
   Timer? _refresh;
 
+  // Per-stream throttle for the media-plane verify below.
+  final Map<String, DateTime> _verifiedAt = {};
+
   @override
   void initState() {
     super.initState();
@@ -41,8 +44,31 @@ class _LiveNowRailState extends State<LiveNowRail> {
 
   Future<void> _load() async {
     try {
-      final s =
-          await context.read<AppState>().repo.liveStreams(onlyLive: true);
+      final state = context.read<AppState>();
+      var s = await state.repo.liveStreams(onlyLive: true);
+      // Self-heal stale "live" rows (broadcast died without ending): the
+      // server checks the real media plane and marks dead ones ended — which
+      // also links their saved replay — so this rail stops showing ghosts.
+      final now = DateTime.now();
+      final stale = s
+          .where((x) =>
+              x.isLive &&
+              x.createdAt != null &&
+              now.difference(x.createdAt!).inMinutes >= 4 &&
+              now
+                      .difference(
+                          _verifiedAt[x.id] ?? DateTime.fromMillisecondsSinceEpoch(0))
+                      .inMinutes >=
+                  3)
+          .toList();
+      if (stale.isNotEmpty) {
+        for (final x in stale) {
+          _verifiedAt[x.id] = now;
+        }
+        await Future.wait(stale.map(
+            (x) => state.api.liveVerify(x.id).then((_) {}).catchError((_) {})));
+        s = await state.repo.liveStreams(onlyLive: true);
+      }
       if (mounted) setState(() => _live = s.where((e) => e.isLive).toList());
     } catch (_) {
       // Non-fatal — the rail just stays hidden/unchanged.
