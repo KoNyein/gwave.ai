@@ -7,13 +7,18 @@ import { createAdminClient } from "@/lib/data/admin";
  * the post whose /live/<id> link the post cards turn into an auto-playing
  * live/replay card.
  *
- * Idempotent: looks for an existing post by the host that carries the stream
- * link before inserting, so go-live retries, reconnects and the verify
- * self-heal can all call it safely. Service-role insert — the go-live paths
- * used to insert through mixed clients and silently dropped the PostgREST
- * error object (supabase-js does not throw), which left streams live with no
- * feed post and nothing ever noticing. Now the result is logged either way:
- * grep the server logs for [live/announce].
+ * Idempotent AND race-safe: `posts.live_stream_id` carries a partial unique
+ * index (supabase/sql-editor-bundles/live-announce-post.sql), so concurrent
+ * callers (go-live + several verify healers) collapse into one row at the
+ * database. The previous app-level scheme deleted the duplicate rows after
+ * the fact — and could delete the very post a follower notification had
+ * already linked, 404ing the notification. Announcement posts are never
+ * deleted now.
+ *
+ * Service-role insert, with the result logged either way — grep the server
+ * logs for [live/announce]. If the migration hasn't been applied yet the
+ * insert falls back to the schema-less path (lookup + plain insert, no
+ * cleanup), so a deploy that outruns the SQL still announces.
  */
 export async function ensureLiveAnnouncement(opts: {
   hostId: string;
@@ -36,45 +41,55 @@ export async function ensureLiveAnnouncement(opts: {
       .maybeSingle();
     if (existing?.id) return existing.id as string;
 
-    const { data: post, error } = await admin
+    const row = {
+      author_id: opts.hostId,
+      content: `🔴 Live — ${opts.title ?? "Live"}\n${site}/live/${opts.streamId}`,
+      visibility: "public",
+    };
+
+    // Atomic path: the unique index turns a concurrent double-insert into a
+    // no-op for the loser (ignoreDuplicates -> ON CONFLICT DO NOTHING), and
+    // the follow-up select returns the winner's row for everyone.
+    let { data: post, error } = await admin
       .from("posts")
-      .insert({
-        author_id: opts.hostId,
-        content: `🔴 Live — ${opts.title ?? "Live"}\n${site}/live/${opts.streamId}`,
-        visibility: "public",
-      })
+      .upsert(
+        { ...row, live_stream_id: opts.streamId },
+        { onConflict: "live_stream_id", ignoreDuplicates: true },
+      )
       .select("id")
       .maybeSingle();
+    if (!post?.id && !error) {
+      // Conflict — another caller won the insert. Fetch their row.
+      const { data: winner } = await admin
+        .from("posts")
+        .select("id")
+        .eq("live_stream_id", opts.streamId)
+        .limit(1)
+        .maybeSingle();
+      post = winner ?? null;
+    }
+    if (error) {
+      // Any structural failure (migration not applied yet, so the column or
+      // the unique index is missing) — announce anyway, without the key. A
+      // real conflict never lands here: ignoreDuplicates returns zero rows
+      // and no error. Don't try to match on the message; PostgreSQL's
+      // "no unique or exclusion constraint matching" text doesn't name the
+      // column, so a narrower test would silently skip the fallback and the
+      // stream would get no post at all.
+      console.log(
+        `[live/announce] stream=${opts.streamId} upsert failed (${error.message}) — plain insert`,
+      );
+      ({ data: post, error } = await admin
+        .from("posts")
+        .insert(row)
+        .select("id")
+        .maybeSingle());
+    }
     console.log(
       `[live/announce] stream=${opts.streamId} host=${opts.hostId} ` +
         `post=${(post?.id as string | undefined) ?? "-"} err=${error?.message ?? "-"}`,
     );
-    if (!post?.id) return null;
-
-    // Concurrent healers (several viewers' rails can verify the same stream
-    // at once) may each pass the check above before any insert lands — posts
-    // has no unique stream key to upsert on. Converge instead: after
-    // inserting, keep only the oldest announcement and delete the rest.
-    // Every racer runs the same deterministic cleanup, and whichever one
-    // sees the full set last leaves exactly one post standing.
-    const { data: dupes } = await admin
-      .from("posts")
-      .select("id")
-      .eq("author_id", opts.hostId)
-      .eq("visibility", "public")
-      .ilike("content", `%/live/${opts.streamId}%`)
-      .order("created_at", { ascending: true })
-      .order("id", { ascending: true })
-      .returns<{ id: string }[]>();
-    const keep = dupes?.[0]?.id;
-    const extras = (dupes ?? []).slice(1).map((row) => row.id);
-    if (keep && extras.length > 0) {
-      await admin.from("posts").delete().in("id", extras);
-      console.log(
-        `[live/announce] stream=${opts.streamId} deduped ${extras.length} -> ${keep}`,
-      );
-    }
-    return keep ?? (post.id as string);
+    return (post?.id as string | null) ?? null;
   } catch (err) {
     console.log(
       `[live/announce] stream=${opts.streamId} threw ${(err as Error).message}`,
