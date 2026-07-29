@@ -23,10 +23,14 @@ export async function ensureLiveAnnouncement(opts: {
   const site = process.env.NEXT_PUBLIC_SITE_URL || "https://gwave.cc";
   try {
     const admin = createAdminClient();
+    // Public posts only — a friends/only_me post that happens to carry the
+    // link is not an announcement, and treating it as one would keep the
+    // stream invisible to everyone outside that audience.
     const { data: existing } = await admin
       .from("posts")
       .select("id")
       .eq("author_id", opts.hostId)
+      .eq("visibility", "public")
       .ilike("content", `%/live/${opts.streamId}%`)
       .limit(1)
       .maybeSingle();
@@ -45,7 +49,32 @@ export async function ensureLiveAnnouncement(opts: {
       `[live/announce] stream=${opts.streamId} host=${opts.hostId} ` +
         `post=${(post?.id as string | undefined) ?? "-"} err=${error?.message ?? "-"}`,
     );
-    return (post?.id as string | null) ?? null;
+    if (!post?.id) return null;
+
+    // Concurrent healers (several viewers' rails can verify the same stream
+    // at once) may each pass the check above before any insert lands — posts
+    // has no unique stream key to upsert on. Converge instead: after
+    // inserting, keep only the oldest announcement and delete the rest.
+    // Every racer runs the same deterministic cleanup, and whichever one
+    // sees the full set last leaves exactly one post standing.
+    const { data: dupes } = await admin
+      .from("posts")
+      .select("id")
+      .eq("author_id", opts.hostId)
+      .eq("visibility", "public")
+      .ilike("content", `%/live/${opts.streamId}%`)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .returns<{ id: string }[]>();
+    const keep = dupes?.[0]?.id;
+    const extras = (dupes ?? []).slice(1).map((row) => row.id);
+    if (keep && extras.length > 0) {
+      await admin.from("posts").delete().in("id", extras);
+      console.log(
+        `[live/announce] stream=${opts.streamId} deduped ${extras.length} -> ${keep}`,
+      );
+    }
+    return keep ?? (post.id as string);
   } catch (err) {
     console.log(
       `[live/announce] stream=${opts.streamId} threw ${(err as Error).message}`,
