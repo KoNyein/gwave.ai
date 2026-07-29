@@ -251,6 +251,8 @@ export interface ShopProduct {
   title: string;
   description: string | null;
   image_url: string | null;
+  /** Ordered gallery; image_url stays the cover. Null on older rows. */
+  images: string[] | null;
   price: number | null;
   currency: string;
   external_url: string | null;

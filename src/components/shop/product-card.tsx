@@ -3,6 +3,7 @@ import { ExternalLink, ImageOff, Truck } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { formatPrice } from "@/lib/format";
+import { mediaRef } from "@/lib/media-url";
 import type { ShopProductWithSeller } from "@/lib/db/shop";
 
 /** Badge distinguishing affiliate vs dropship listings. */
@@ -39,16 +40,19 @@ export function ProductCard({
   product: ShopProductWithSeller;
   kindLabels: { affiliate: string; dropship: string };
 }) {
+  // Imported listings carry an absolute merchant URL; ones photographed in the
+  // app carry a storage key. Both arrive in the same column.
+  const image = mediaRef(product.image_url);
   return (
     <Link href={`/shop/${product.id}`} className="block">
       <Card className="h-full overflow-hidden transition-colors hover:bg-muted/50">
         <div className="relative aspect-square w-full bg-muted">
-          {product.image_url ? (
+          {image ? (
             // Product images come from arbitrary external merchants, so a
             // plain img (not next/image) avoids the remote-loader allowlist.
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={product.image_url}
+              src={image}
               alt={product.title}
               loading="lazy"
               referrerPolicy="no-referrer"
