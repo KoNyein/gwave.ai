@@ -47,34 +47,46 @@
 - Native iOS app (Apple Developer Program, $99/yr, user-side).
 - Old Vercel project deletion (user-side).
 
-## In-flight (2026-07-28, final) — call-ring: relay live, awaiting user test
+## In-flight (2026-07-29) — calls: ring works, answer hung; web signaling now relayed
 
-INFRA (on the EC2 box, 2026-07-28): /etc/caddy/Caddyfile gained a
-`handle /sb/realtime/v1/api/*` block (strip_prefix + proxy to 127.0.0.1:4000
-with Host realtime-dev.gwave.cc) BEFORE the websocket handler — the websocket
-handler rewrites /sb/realtime/v1 -> /socket, which had been swallowing the
-relay's POST /api/broadcast. Verified: POST gwave.cc/sb/realtime/v1/api/broadcast
-now returns 202 from Realtime (tenant realtime-dev; resolution is Host-based,
-so direct 127.0.0.1:4000 calls need that Host header). Backup:
-Caddyfile.bak-before-broadcast-api.
-
-
-PR #381 MERGED (server-side ring relay via the Realtime HTTP broadcast API +
-FCM/notify logging) — main auto-deploy runs it; APK build 176 on mobile-latest
-carries the app-side callId. VERIFIED earlier today: server FCM send → live
-token = HTTP 200; APK 173+ bakes the com.green.gwave google-services config
-(build log confirmed) with POST_NOTIFICATIONS in the manifest; realtime +
-postgrest containers healthy. Remaining test (user): browser tab signed in as
-the callee, call from APK v1.0.176 — the tab should ring. If anything still
-fails, `sudo docker logs gwave-web | grep -E 'call/notify|realtime|fcm'` now
-shows exactly which leg broke (notify hit, relay HTTP status, FCM sends —
-watch for `[realtime] server broadcast ... -> 404`, which means the
-`/realtime/v1/api/broadcast` proxy path needs a Caddy mapping on the box).
-Also still unverified: does web→web ring today? If not, inspect the web
-ring-inbox subscribe (gw_at at join time). When the test passes: delete this
-section and move the outcome to the changelog.
+Ring delivery is CONFIRMED working (user: "ဖုန်းတော့ဝင်လာပြီ") after the
+#381-#383 relay work, but answering still hung at "Connecting" — the browser
+side was still SENDING accept/offer/answer/ICE over its client websocket, the
+exact send path the self-hosted Realtime silently drops (the app's sends were
+moved to `/api/mobile/call/signal` for the same reason). PR #388 (awaiting
+merge, auto-deploys) relays ALL web per-call sends through the
+`relayCallSignal` server action → Realtime HTTP broadcast API, tags payloads
+`_from` so each side drops its own echo, and keeps the socket send only as a
+fallback (via a throwaway channel when the session is already torn down —
+Codex P2). After deploy: user refreshes the browser tab, installs the latest
+APK, retests app↔browser both directions. If it still hangs, the WHOLE
+handshake is now in one log stream:
+`sudo docker logs --since 30m gwave-web 2>&1 | grep -E "call/signal"`
+(`[call/signal-web]` = browser leg, `[call/signal]` = app leg — the first
+missing event names the broken leg; if all events flow and audio is still
+dead, suspect the media plane / TURN next). Infra note kept for reference:
+Caddy routes `/sb/realtime/v1/api/*` to Realtime's HTTP broadcast API
+(tenant realtime-dev, Host-based; backup Caddyfile.bak-before-broadcast-api).
+When the test passes: delete this section and move the outcome to the
+changelog.
 
 ## Changelog
+
+- 2026-07-29: **Ghost-live cleanup, URL-free live posts, web call signaling
+  relayed.** App (builds ≤202 on mobile-latest): every live surface (stories
+  bar, live-now rail, feed live banner) now sweeps stale rows — anything
+  "live" ≥4 min gets `/api/mobile/live/verify` (throttled per-stream), which
+  ends dead broadcasts AND links their IVS replay, so LIVE cards stop
+  lingering after a host drops; feed live posts render only the auto-playing
+  video card (raw gwave.cc/live URL + generated "🔴 Live …" line stripped,
+  user-written text kept) with pulsing LIVE badge, viewer chip and in-feed
+  unmute. Web: same URL/marker strip in post-card (PR #387, merged).
+  Calls: PR #388 relays the browser's accept/offer/answer/ICE/hangup through
+  the server (`relayCallSignal` → Realtime HTTP broadcast; `_from` echo
+  guard; throwaway-channel fallback after teardown) — see In-flight. DB note:
+  books-store.sql and the profiles.gender column are now APPLIED on RDS
+  (PostgREST restarted). Still open: LIVEKIT_EGRESS_S3_* keys, so browser
+  (LiveKit) lives still have no replay.
 
 - 2026-07-28 (night): **Calls no longer depend on the phone's realtime socket,
   plus a feature batch.** Server (PRs #381/#382/#383, all deployed): both call
@@ -102,8 +114,9 @@ section and move the outcome to the changelog.
   catalogue, get-or-creates `podcast_shows`, dedupes on audio_url) —
   merged in PR #386 along with `/api/mobile/books/publish` and
   `supabase/sql-editor-bundles/books-store.sql` (books, book_purchases,
-  book_progress, atomic `buy_book` G-Pay RPC). **Both books-store.sql and
-  profiles-gender.sql still need running on RDS.** App: pro player
+  book_progress, atomic `buy_book` G-Pay RPC). Both books-store.sql and
+  profiles-gender.sql have since been APPLIED on RDS (2026-07-29). App: pro
+  player
   (queue, shuffle, repeat one/all, auto-advance, offline downloads),
   "My device music" local player (mp3/m4a/aac/wav/ogg/flac/opus), Books
   store with G-Pay purchase and an in-app PDF reader (resume, night mode,
