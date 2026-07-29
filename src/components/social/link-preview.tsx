@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { FeedLiveCard } from "@/components/social/feed-live-card";
+import { FeedProductCard } from "@/components/social/feed-product-card";
 
 const URL_RE = /https?:\/\/[^\s<>"')\]]+/;
 
@@ -21,6 +22,9 @@ interface Preview {
  */
 const LIVE_LINK_RE =
   /(?:https?:\/\/(?:www\.)?gwave\.cc)?\/live\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
+// Same treatment for a shared listing: the product card, never a raw URL.
+const SHOP_LINK_RE =
+  /(?:https?:\/\/(?:www\.)?gwave\.cc)?\/shop\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 
 export function LinkPreview({ text }: { text: string }) {
   const url = React.useMemo(() => {
@@ -30,10 +34,11 @@ export function LinkPreview({ text }: { text: string }) {
   // Live-announcement links get a real live card (with inline video when the
   // broadcast has HLS) instead of a generic OG preview box.
   const liveId = React.useMemo(() => text.match(LIVE_LINK_RE)?.[1], [text]);
+  const productId = React.useMemo(() => text.match(SHOP_LINK_RE)?.[1], [text]);
   const [preview, setPreview] = React.useState<Preview | null>(null);
 
   React.useEffect(() => {
-    if (!url || LIVE_LINK_RE.test(text)) return;
+    if (!url || LIVE_LINK_RE.test(text) || SHOP_LINK_RE.test(text)) return;
     let cancelled = false;
     void fetch(`/api/link-preview?url=${encodeURIComponent(url)}`)
       .then((res) => (res.ok ? (res.json() as Promise<Preview>) : null))
@@ -44,9 +49,10 @@ export function LinkPreview({ text }: { text: string }) {
     return () => {
       cancelled = true;
     };
-  }, [url]);
+  }, [url, text]);
 
   if (liveId) return <FeedLiveCard streamId={liveId} />;
+  if (productId) return <FeedProductCard productId={productId} />;
   if (!url || !preview) return null;
 
   let host = "";
