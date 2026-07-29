@@ -4,7 +4,7 @@ import * as React from "react";
 
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
-import { notifyIncomingCall } from "@/lib/actions/calls";
+import { notifyIncomingCall, relayCallSignal } from "@/lib/actions/calls";
 import { sendMessage } from "@/lib/actions/messages";
 import { createClient } from "@/lib/data/client";
 import { fetchIceServers } from "@/lib/webrtc-ice";
@@ -224,6 +224,51 @@ export function useCall(
   );
 
   /**
+   * Send a per-call signaling event through the SERVER relay first, falling
+   * back to the client websocket only if the relay call itself fails. The
+   * self-hosted Realtime silently dropped broadcasts sent over client
+   * sockets (the app hit this first) — offers/ICE sent from the browser
+   * vanished and both sides hung at "Connecting". Server-relayed broadcasts
+   * are delivered to every subscriber including us; `_from` (added by the
+   * relay) lets each side drop its own echo.
+   */
+  const signal = React.useCallback(
+    (
+      s: Session,
+      event:
+        | "accept"
+        | "offer"
+        | "answer"
+        | "ice"
+        | "decline"
+        | "hangup"
+        | "cancel",
+      payload: Record<string, unknown> = {},
+      ringUserId?: string,
+    ) => {
+      void relayCallSignal(s.callId, event, payload, ringUserId)
+        .then((result) => {
+          if (!result?.ok) throw new Error("relay refused");
+        })
+        .catch(() => {
+          void s.channel.send({ type: "broadcast", event, payload });
+        });
+    },
+    [],
+  );
+
+  /** True when a call-channel broadcast is the echo of our own relayed send. */
+  const isOwnSignal = React.useCallback(
+    (payload: unknown) =>
+      Boolean(
+        payload &&
+          typeof payload === "object" &&
+          (payload as { _from?: string })._from === currentUser.id,
+      ),
+    [currentUser.id],
+  );
+
+  /**
    * Create the RTCPeerConnection and local media for an accepted call.
    *
    * Exactly once per session. This used to blindly overwrite `s.pc`/`s.localStream`,
@@ -268,11 +313,7 @@ export function useCall(
         };
         pc.onicecandidate = (event) => {
           if (event.candidate) {
-            void s.channel.send({
-              type: "broadcast",
-              event: "ice",
-              payload: { candidate: event.candidate.toJSON() },
-            });
+            signal(s, "ice", { candidate: event.candidate.toJSON() });
           }
         };
         pc.onconnectionstatechange = () => {
@@ -307,7 +348,7 @@ export function useCall(
 
       return s.mediaPromise;
     },
-    [cleanup, patch],
+    [cleanup, patch, signal],
   );
 
   /** Apply any ICE candidates queued while the remote SDP was pending. */
@@ -333,17 +374,14 @@ export function useCall(
       // peer before tearing down, so they don't hang in "connecting".
       const handleFatal = () => {
         if (session.current !== s) return;
-        void s.channel.send({
-          type: "broadcast",
-          event: "hangup",
-          payload: {},
-        });
+        signal(s, "hangup");
         cleanup(true);
       };
 
       s.channel
-        .on("broadcast", { event: "accept" }, async () => {
+        .on("broadcast", { event: "accept" }, async (message) => {
           // Caller side: peer accepted → offer.
+          if (isOwnSignal(message.payload)) return;
           if (!s.isCaller || session.current !== s) return;
           // Take the first accept only. If the callee had two tabs open, both
           // could answer, and this handler would run setupMedia a second time —
@@ -357,17 +395,14 @@ export function useCall(
             const pc = await setupMedia(s);
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            void s.channel.send({
-              type: "broadcast",
-              event: "offer",
-              payload: { sdp: offer },
-            });
+            signal(s, "offer", { sdp: offer });
           } catch {
             handleFatal();
           }
         })
         .on("broadcast", { event: "offer" }, async (message) => {
           // Callee side: answer the offer.
+          if (isOwnSignal(message.payload)) return;
           if (s.isCaller || session.current !== s) return;
           try {
             const pc = s.pc ?? (await setupMedia(s));
@@ -377,16 +412,13 @@ export function useCall(
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             await drainIce(s);
-            void s.channel.send({
-              type: "broadcast",
-              event: "answer",
-              payload: { sdp: answer },
-            });
+            signal(s, "answer", { sdp: answer });
           } catch {
             handleFatal();
           }
         })
         .on("broadcast", { event: "answer" }, async (message) => {
+          if (isOwnSignal(message.payload)) return;
           if (!s.isCaller || session.current !== s || !s.pc) return;
           try {
             await s.pc.setRemoteDescription(
@@ -398,6 +430,7 @@ export function useCall(
           }
         })
         .on("broadcast", { event: "ice" }, async (message) => {
+          if (isOwnSignal(message.payload)) return;
           if (session.current !== s) return;
           const candidate = message.payload.candidate as RTCIceCandidateInit;
           if (!s.pc?.remoteDescription) {
@@ -410,7 +443,8 @@ export function useCall(
             // Late/duplicate candidates are harmless.
           }
         })
-        .on("broadcast", { event: "decline" }, () => {
+        .on("broadcast", { event: "decline" }, (message) => {
+          if (isOwnSignal(message.payload)) return;
           // Only the caller acts on a decline — and only before the call is up.
           // Both were bugs: the callee's own session also listened here, so a
           // second (still-ringing) tab hitting Decline tore down the live call
@@ -420,11 +454,12 @@ export function useCall(
           s.declined = true;
           cleanup(true);
         })
-        .on("broadcast", { event: "hangup" }, () => {
+        .on("broadcast", { event: "hangup" }, (message) => {
+          if (isOwnSignal(message.payload)) return;
           if (session.current === s) cleanup(s.isCaller);
         });
     },
-    [cleanup, drainIce, patch, setupMedia],
+    [cleanup, drainIce, isOwnSignal, patch, setupMedia, signal],
   );
 
   // Personal ring channel — listens for incoming calls while the messenger
@@ -612,6 +647,7 @@ export function useCall(
 
       s.ringTimer = setTimeout(() => {
         if (session.current === s && !s.connectedAt) {
+          signal(s, "cancel", { callId }, peer.id);
           void s.ringChannel?.send({
             type: "broadcast",
             event: "cancel",
@@ -623,7 +659,7 @@ export function useCall(
 
       patch({ status: "outgoing", peer, video });
     },
-    [cleanup, currentUser, joinCallChannel, patch],
+    [cleanup, currentUser, joinCallChannel, patch, signal],
   );
 
   const accept = React.useCallback(() => {
@@ -660,26 +696,34 @@ export function useCall(
     joinCallChannel(s);
     s.channel.subscribe((status) => {
       if (status === "SUBSCRIBED") {
-        void s.channel.send({ type: "broadcast", event: "accept", payload: {} });
+        signal(s, "accept");
       }
     });
     patch({ status: "connecting" });
-  }, [clearIncomingTimer, joinCallChannel, patch]);
+  }, [clearIncomingTimer, joinCallChannel, patch, signal]);
 
   const decline = React.useCallback(() => {
     const ring = incoming.current;
     incoming.current = null;
     clearIncomingTimer();
     if (ring) {
-      const db = createClient();
-      const channel = db.channel(`call:${ring.callId}`);
-      channel.subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          void channel
-            .send({ type: "broadcast", event: "decline", payload: {} })
-            .finally(() => void db.removeChannel(channel));
-        }
-      });
+      // Server relay — no need to join the call channel just to say no; the
+      // throwaway-channel send is kept only as a fallback if the relay fails.
+      void relayCallSignal(ring.callId, "decline")
+        .then((result) => {
+          if (!result?.ok) throw new Error("relay refused");
+        })
+        .catch(() => {
+          const db = createClient();
+          const channel = db.channel(`call:${ring.callId}`);
+          channel.subscribe((status) => {
+            if (status === "SUBSCRIBED") {
+              void channel
+                .send({ type: "broadcast", event: "decline", payload: {} })
+                .finally(() => void db.removeChannel(channel));
+            }
+          });
+        });
     }
     patch({ status: "idle", peer: null, video: false });
   }, [clearIncomingTimer, patch]);
@@ -687,16 +731,17 @@ export function useCall(
   const hangUp = React.useCallback(() => {
     const s = session.current;
     if (!s) return;
-    void s.channel.send({ type: "broadcast", event: "hangup", payload: {} });
-    if (s.isCaller && !s.connectedAt && s.ringChannel) {
-      void s.ringChannel.send({
+    signal(s, "hangup");
+    if (s.isCaller && !s.connectedAt) {
+      signal(s, "cancel", { callId: s.callId }, s.peer.id);
+      void s.ringChannel?.send({
         type: "broadcast",
         event: "cancel",
         payload: { callId: s.callId },
       });
     }
     cleanup(true);
-  }, [cleanup]);
+  }, [cleanup, signal]);
 
   const toggleMute = React.useCallback(() => {
     const s = session.current;
