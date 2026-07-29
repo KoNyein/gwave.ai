@@ -16,6 +16,7 @@ import { getMyReview, getReviews, getReviewStats } from "@/lib/db/reviews";
 import { getShopProduct } from "@/lib/db/shop";
 import { currencyToGpay, toRateMap } from "@/lib/currency";
 import { displayName, formatPrice } from "@/lib/format";
+import { mediaRef } from "@/lib/media-url";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +72,17 @@ export default async function ProductPage(
   const t = await getTranslations("shop");
   const kindLabels = { affiliate: t("affiliate"), dropship: t("dropship") };
 
+  // The gallery, cover first and de-duplicated. An imported listing has one
+  // absolute merchant URL; one photographed in the app has several storage
+  // keys — mediaRef resolves whichever this is.
+  const gallery = [
+    ...new Set(
+      [product.image_url, ...(product.images ?? [])]
+        .map(mediaRef)
+        .filter((src): src is string => Boolean(src)),
+    ),
+  ];
+
   return (
     <div className="space-y-4">
       <Link
@@ -80,20 +92,47 @@ export default async function ProductPage(
         <ArrowLeft className="h-4 w-4" /> {t("backToShop")}
       </Link>
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="relative aspect-square w-full overflow-hidden rounded-xl border bg-muted">
-          {product.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            (<img
-              src={product.image_url}
-              alt={product.title}
-              referrerPolicy="no-referrer"
-              className="h-full w-full object-cover"
-            />)
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-              <ImageOff className="h-10 w-10" />
+        <div className="space-y-2">
+          <div className="relative aspect-square w-full overflow-hidden rounded-xl border bg-muted">
+            {gallery.length > 0 ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              (<img
+                src={gallery[0]}
+                alt={product.title}
+                referrerPolicy="no-referrer"
+                className="h-full w-full object-cover"
+              />)
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                <ImageOff className="h-10 w-10" />
+              </div>
+            )}
+          </div>
+          {/* A server component can't run a lightbox, so the rest of the
+              gallery is a scrolling strip of full-size links rather than a
+              row of thumbnails that do nothing. */}
+          {gallery.length > 1 ? (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {gallery.slice(1).map((src, i) => (
+                <a
+                  key={src}
+                  href={src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 overflow-hidden rounded-lg border bg-muted"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={src}
+                    alt={`${product.title} — ${i + 2}`}
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    className="h-20 w-20 object-cover"
+                  />
+                </a>
+              ))}
             </div>
-          )}
+          ) : null}
         </div>
 
         <div className="space-y-3">
