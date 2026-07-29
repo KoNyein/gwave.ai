@@ -21,18 +21,26 @@ alter table public.shop_products
 
 -- Same shape of guard the other media columns use: a sane number of entries,
 -- each a plausible URL or storage key rather than an essay.
+--
+-- Deliberately free of subqueries: a CHECK constraint cannot contain one
+-- ("ERROR: cannot use subquery in check constraint"), so the obvious
+-- `not exists (select … from unnest(images))` is rejected outright. The array
+-- operators below express the same rules and are allowed — `<> all` tests
+-- every element, array_position locates a NULL if one slipped in. Per-element
+-- length becomes a cap on the joined string, which bounds it just as well.
 alter table public.shop_products
   drop constraint if exists shop_products_images_sane;
 alter table public.shop_products
   add constraint shop_products_images_sane check (
     images is null
     or (
-      array_length(images, 1) between 1 and 10
-      and array_length(images, 1) = cardinality(images)
-      and not exists (
-        select 1 from unnest(images) as i
-        where i is null or char_length(i) = 0 or char_length(i) > 1000
-      )
+      array_ndims(images) = 1
+      -- coalesce because array_length('{}', 1) is NULL, and a NULL CHECK
+      -- passes — an empty array would otherwise slip through the range.
+      and coalesce(array_length(images, 1), 0) between 1 and 10
+      and array_position(images, null) is null
+      and '' <> all (images)
+      and length(array_to_string(images, ',')) <= 10000
     )
   );
 
