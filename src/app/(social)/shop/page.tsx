@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { BarChart3, BookOpen, ClipboardList, Package, Plus, Store } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
+import { AliexpressImport } from "@/components/shop/aliexpress-import";
 import { ProductCard } from "@/components/shop/product-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -72,6 +73,8 @@ export default async function ShopPage(
           </Button>
         </div>
       </div>
+
+      {profile.role === "admin" && <AliexpressImport />}
 
       <div className="flex gap-2">
         {filters.map((f) => {
