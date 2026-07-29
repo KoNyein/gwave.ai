@@ -195,16 +195,16 @@ class _PostCardState extends State<PostCard> {
                 const Icon(Icons.more_horiz, color: GwColors.inkSoft),
               ],
             ),
-            if (p.content.trim().isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _RichPostBody(content: p.content),
-            ],
-            // A live announcement post carries a gwave.cc/live/<id> link —
-            // render a proper Watch-Live banner that opens the native player
-            // instead of leaving viewers with a bare URL.
+            // A live announcement post carries a gwave.cc/live/<id> link.
+            // That raw "🔴 Live — … https://…" text is plumbing, not content:
+            // show ONLY the live video card (auto-playing preview, LIVE/REPLAY
+            // badge, title, watch row) — no URL, like the big platforms.
             if (_liveStreamId(p.content) != null) ...[
               const SizedBox(height: 12),
               _LiveBanner(streamId: _liveStreamId(p.content)!),
+            ] else if (p.content.trim().isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _RichPostBody(content: p.content),
             ],
             // Video posts play inline (muted autoplay, tap for sound); an image
             // widget can't render a video, so this must come before firstImage.
@@ -470,6 +470,8 @@ class _LiveBannerState extends State<_LiveBanner> {
 
   // Inline video preview: HLS (app broadcasts) plays muted; browser (LiveKit)
   // lives join the room as a muted subscriber — real video in the feed.
+  // A speaker toggle lets the viewer unmute right in the feed.
+  bool _muted = true;
   VideoPlayerController? _vc;
   lk.Room? _lkRoom;
   lk.EventsListener<lk.RoomEvent>? _lkListener;
@@ -634,15 +636,80 @@ class _LiveBannerState extends State<_LiveBanner> {
                             : Colors.black.withValues(alpha: 0.55),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text(
-                          (_stream?.isLive ?? false) ? "LIVE" : "REPLAY",
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.6)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_stream?.isLive ?? false) ...[
+                            const Icon(Icons.circle,
+                                color: Colors.white, size: 8),
+                            const SizedBox(width: 5),
+                          ],
+                          Text(
+                              (_stream?.isLive ?? false) ? "LIVE" : "REPLAY",
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.6)),
+                        ],
+                      ),
                     ),
                   ),
+                  // Viewer count while live — standard live-card furniture.
+                  if ((_stream?.isLive ?? false) &&
+                      (_stream?.viewerCount ?? 0) > 0)
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.visibility,
+                                color: Colors.white, size: 13),
+                            const SizedBox(width: 4),
+                            Text("${_stream?.viewerCount}",
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  // Sound toggle for the inline preview (HLS live + replays).
+                  if (_vc != null)
+                    Positioned(
+                      bottom: 10,
+                      right: 10,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () {
+                          final v = _vc;
+                          if (v == null) return;
+                          setState(() => _muted = !_muted);
+                          v.setVolume(_muted ? 0 : 1);
+                        },
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                              _muted ? Icons.volume_off : Icons.volume_up,
+                              color: Colors.white,
+                              size: 18),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             _bannerRow(context, live),
