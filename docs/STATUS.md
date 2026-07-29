@@ -72,8 +72,19 @@ changelog.
 
 ## Changelog
 
-- 2026-07-29: **Ghost-live cleanup, URL-free live posts, web call signaling
-  relayed.** App (builds ≤202 on mobile-latest): every live surface (stories
+- 2026-07-29 (later): **Go-live feed post guaranteed + call relay deployed +
+  APK 203.** PR #389 (merged, deployed): new `ensureLiveAnnouncement()` —
+  service-role, idempotent (public-post dedupe on /live/<id> + converging
+  duplicate cleanup for concurrent healers), logs `[live/announce]`; used by
+  web goLive, /api/mobile/live/start, AND /api/mobile/live/verify, so a
+  live stream whose announcement post never landed self-heals when any app
+  (build ≥200) sweeps the live rails. Root cause: both go-live paths
+  discarded the PostgREST error object (supabase-js doesn't throw), so
+  failed inserts were invisible. PR #388 (merged, deployed): web per-call
+  signaling relayed server-side, incl. Codex fix (throwaway-channel
+  fallback after teardown). APK build 203 on mobile-latest = full batch
+  (main b32015c merged in). Awaiting user retest: app↔browser calls, and
+  go-live → feed post visible to other accounts. App (builds ≤202 on mobile-latest): every live surface (stories
   bar, live-now rail, feed live banner) now sweeps stale rows — anything
   "live" ≥4 min gets `/api/mobile/live/verify` (throttled per-stream), which
   ends dead broadcasts AND links their IVS replay, so LIVE cards stop
