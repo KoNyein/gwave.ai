@@ -585,6 +585,60 @@ class Repository {
     );
   }
 
+  /// Start a group chat with [members] (the caller is added automatically).
+  /// Goes through the `create_group_conversation` RPC because the conversation
+  /// and its membership rows are two inserts, and RLS only admits an existing
+  /// participant — a client doing it directly locks itself out halfway.
+  Future<Conversation> createGroupConversation(
+      String title, List<Profile> members) async {
+    final res = await api.rpc("create_group_conversation", {
+      "group_title": title,
+      "members": members.map((m) => m.id).toList(),
+    });
+    final id = res is String
+        ? res
+        : (res is Map ? (res["id"] ?? res.values.first).toString() : "$res");
+    if (id.isEmpty) throw Exception("Couldn't create the group.");
+    return Conversation(
+      id: id,
+      isGroup: true,
+      title: title,
+      lastMessageAt: DateTime.now(),
+      memberCount: members.length + 1,
+    );
+  }
+
+  /// Invite more people into an existing group. Returns how many were added.
+  Future<int> addGroupMembers(
+      String conversationId, List<Profile> members) async {
+    final res = await api.rpc("add_group_members", {
+      "conversation": conversationId,
+      "members": members.map((m) => m.id).toList(),
+    });
+    return res is int ? res : int.tryParse("$res") ?? 0;
+  }
+
+  /// Leave a group; the server deletes it once the last member is gone.
+  Future<void> leaveGroupConversation(String conversationId) =>
+      api.rpc("leave_group_conversation", {"conversation": conversationId});
+
+  /// Everyone in a conversation, for the group header and member sheet.
+  Future<List<Profile>> conversationMembers(String conversationId) async {
+    final parts = await api.select("conversation_participants", query: {
+      "select": "user_id",
+      "conversation_id": "eq.$conversationId",
+      "limit": "200",
+    });
+    final ids = parts.map((p) => p["user_id"].toString()).toSet().toList();
+    if (ids.isEmpty) return [];
+    final rows = await api.select("profiles", query: {
+      "select": _profileCols,
+      "id": "in.(${ids.join(",")})",
+      "limit": "200",
+    });
+    return rows.map(Profile.fromJson).toList();
+  }
+
   Future<List<Message>> messages(String conversationId, {int limit = 50}) async {
     final rows = await api.select("messages", query: {
       "select": "*",

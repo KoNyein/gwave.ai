@@ -396,6 +396,224 @@ class _ChatScreenState extends State<ChatScreen> {
     if (mounted) await openWeb(context, "/messages", title: "Messenger");
   }
 
+  /// Who's in this group, plus the two things a member can do about it:
+  /// invite more friends, or leave.
+  Future<void> _showMembers() async {
+    final repo = context.read<AppState>().repo;
+    List<Profile> members;
+    try {
+      members = await repo.conversationMembers(widget.conversation.id);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("$e")));
+      }
+      return;
+    }
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: GwColors.surfaceOf(context),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 14),
+            Text(
+              "${widget.conversation.displayTitle} · ${members.length} "
+              "${tr(ctx, "members", "ဦး")}",
+              style:
+                  const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: members.length,
+                itemBuilder: (_, i) {
+                  final m = members[i];
+                  return ListTile(
+                    leading: GwAvatar(
+                        url: resolveMedia(m.avatarUrl),
+                        name: m.displayName,
+                        size: 40),
+                    title: Text(m.displayName,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: m.username != null
+                        ? Text("@${m.username}",
+                            style: const TextStyle(
+                                color: GwColors.inkSoft, fontSize: 12))
+                        : null,
+                  );
+                },
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.person_add_alt, color: GwColors.primary),
+              title: Text(tr(ctx, "Add members", "အဖွဲ့ဝင် ထပ်ထည့်ရန်")),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _addMembers(members.map((m) => m.id).toSet());
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout, color: GwColors.live),
+              title: Text(tr(ctx, "Leave group", "အုပ်စုမှ ထွက်ရန်"),
+                  style: const TextStyle(color: GwColors.live)),
+              onTap: () async {
+                Navigator.of(ctx).pop();
+                await _leaveGroup();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Pick friends who aren't in the group yet and invite them.
+  Future<void> _addMembers(Set<String> existing) async {
+    final repo = context.read<AppState>().repo;
+    List<Profile> candidates;
+    try {
+      candidates = (await repo.friends())
+          .map((f) => f.other)
+          .where((f) => !existing.contains(f.id))
+          .toList();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("$e")));
+      }
+      return;
+    }
+    if (!mounted) return;
+    if (candidates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(tr(context, "Everyone's already in.",
+              "သူငယ်ချင်းအားလုံး ပါပြီးသားပါ။"))));
+      return;
+    }
+    final picked = <String, Profile>{};
+    final go = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: GwColors.surfaceOf(context),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 14),
+              Text(tr(ctx, "Add members", "အဖွဲ့ဝင် ထပ်ထည့်ရန်"),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 16)),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: candidates.length,
+                  itemBuilder: (_, i) {
+                    final f = candidates[i];
+                    final on = picked.containsKey(f.id);
+                    return CheckboxListTile(
+                      value: on,
+                      activeColor: GwColors.primary,
+                      controlAffinity: ListTileControlAffinity.trailing,
+                      onChanged: (_) => setSheet(() {
+                        if (on) {
+                          picked.remove(f.id);
+                        } else {
+                          picked[f.id] = f;
+                        }
+                      }),
+                      secondary: GwAvatar(
+                          url: resolveMedia(f.avatarUrl),
+                          name: f.displayName,
+                          size: 40),
+                      title: Text(f.displayName,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: picked.isEmpty
+                        ? null
+                        : () => Navigator.of(ctx).pop(true),
+                    child: Text(tr(ctx, "Add", "ထည့်မည်")),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (go != true || picked.isEmpty || !mounted) return;
+    try {
+      final added = await repo.addGroupMembers(
+          widget.conversation.id, picked.values.toList());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(tr(context, "Added $added.", "$added ဦး ထည့်ပြီးပါပြီ။"))));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("$e")));
+      }
+    }
+  }
+
+  Future<void> _leaveGroup() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr(ctx, "Leave group?", "အုပ်စုမှ ထွက်မလား?")),
+        content: Text(tr(
+            ctx,
+            "You'll stop receiving its messages.",
+            "ဒီအုပ်စုရဲ့ စာများ ရရှိတော့မည် မဟုတ်ပါ။")),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(tr(ctx, "Cancel", "မလုပ်တော့"))),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(tr(ctx, "Leave", "ထွက်မည်"),
+                style: const TextStyle(color: GwColors.live)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await context
+          .read<AppState>()
+          .repo
+          .leaveGroupConversation(widget.conversation.id);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("$e")));
+      }
+    }
+  }
+
   /// Native 1:1 audio/video call. Group calls still fall back to the web room.
   Future<void> _startCall({required bool withVideo}) async {
     final other = widget.conversation.other;
@@ -460,6 +678,12 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(
               icon: const Icon(Icons.videocam),
               onPressed: () => _startCall(withVideo: true)),
+          if (widget.conversation.isGroup)
+            IconButton(
+              icon: const Icon(Icons.groups),
+              tooltip: tr(context, "Members", "အဖွဲ့ဝင်များ"),
+              onPressed: _showMembers,
+            ),
         ],
       ),
       body: Column(

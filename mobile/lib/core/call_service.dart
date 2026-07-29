@@ -758,6 +758,7 @@ class CallService extends ChangeNotifier {
     _pc = await createPeerConnection(await _iceConfig());
     speakerOn = video; // video → loudspeaker, voice → earpiece
     Helper.setSpeakerphoneOn(speakerOn);
+    volume = speakerOn ? _speakerVolume : _earpieceVolume;
     // International-standard adaptive video: ask for a 16:9 720p/30fps ideal so
     // the encoder negotiates a sane resolution and WebRTC scales it down
     // automatically on weak networks (instead of the unconstrained default that
@@ -805,6 +806,7 @@ class CallService extends ChangeNotifier {
       if (event.streams.isNotEmpty) {
         _remoteRenderer.srcObject = event.streams.first;
         remoteReady = true;
+        _applyVolume();
         notifyListeners();
       }
     };
@@ -861,9 +863,40 @@ class CallService extends ChangeNotifier {
   /// mistake for silence); video calls default to the loudspeaker.
   bool speakerOn = false;
 
+  /// In-call earpiece/speaker level, 0..1. The loudspeaker plus the mic's
+  /// automatic gain made video calls come through painfully loud even at a low
+  /// system volume, and Android's hardware keys move the whole voice-call
+  /// stream rather than this stream alone — so the call gets its own control,
+  /// starting lower on speakerphone than on the earpiece.
+  double volume = _speakerVolume;
+  static const double _speakerVolume = 0.65;
+  static const double _earpieceVolume = 1.0;
+
+  void _applyVolume() {
+    final tracks = _remoteRenderer.srcObject?.getAudioTracks() ??
+        const <MediaStreamTrack>[];
+    if (tracks.isEmpty) return;
+    try {
+      Helper.setVolume(volume.clamp(0.0, 1.0), tracks.first);
+    } catch (_) {
+      // Older engines don't expose per-track volume — routing still applies.
+    }
+  }
+
+  /// Set the in-call volume (0..1) from the call screen's slider.
+  void setVolume(double value) {
+    volume = value.clamp(0.0, 1.0);
+    _applyVolume();
+    notifyListeners();
+  }
+
   void toggleSpeaker() {
     speakerOn = !speakerOn;
     Helper.setSpeakerphoneOn(speakerOn);
+    // Follow the route: the loudspeaker is far closer to the ear's limit than
+    // the earpiece, so keep its default lower instead of blasting the user.
+    volume = speakerOn ? _speakerVolume : _earpieceVolume;
+    _applyVolume();
     notifyListeners();
   }
 

@@ -510,6 +510,8 @@ class Conversation {
     this.title,
     this.other,
     this.lastMessage,
+    this.memberCount = 0,
+    this.members = const [],
   });
 
   final String id;
@@ -519,24 +521,41 @@ class Conversation {
   final Profile? other;
   final String? lastMessage;
 
+  /// Group size including us, and the other members' profiles (for the stacked
+  /// avatars on the list row). Empty for a 1-1 thread, which shows [other].
+  final int memberCount;
+  final List<Profile> members;
+
   String get displayTitle => title?.trim().isNotEmpty == true
       ? title!
-      : (other?.displayName ?? (isGroup ? "Group chat" : "Chat"));
+      : (other?.displayName ??
+          (isGroup
+              ? (members.isEmpty
+                  ? "Group chat"
+                  : members.map((m) => m.displayName).take(3).join(", "))
+              : "Chat"));
+
+  /// "4 members" under a group's name; empty for a 1-1 thread.
+  String get subtitle => isGroup && memberCount > 0 ? "$memberCount members" : "";
 
   /// [myId] identifies the current user so a 1-1 chat resolves to the *other*
   /// participant's profile (name + avatar), which PostgREST returns embedded as
   /// `participants:conversation_participants(user_id, profile:profiles(...))`.
   factory Conversation.fromJson(Map<String, dynamic> j, {String? myId}) {
     Profile? other;
+    final others = <Profile>[];
+    var count = 0;
     final parts = j["participants"];
     if (parts is List) {
       for (final p in parts) {
         if (p is! Map<String, dynamic>) continue;
+        count++;
         final uid = p["user_id"]?.toString();
         final prof = p["profile"] ?? p["profiles"];
         if (uid != null && uid != myId && prof is Map<String, dynamic>) {
-          other = Profile.fromJson(prof);
-          break;
+          final profile = Profile.fromJson(prof);
+          others.add(profile);
+          other ??= profile;
         }
       }
     }
@@ -547,6 +566,8 @@ class Conversation {
           DateTime.tryParse("${j["last_message_at"]}")?.toLocal() ?? DateTime.now(),
       title: _s(j["title"]),
       other: other,
+      memberCount: count,
+      members: others,
     );
   }
 }

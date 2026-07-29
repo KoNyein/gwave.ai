@@ -10,6 +10,7 @@ import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import 'chat_screen.dart';
+import 'new_group_screen.dart';
 
 class ConversationsScreen extends StatefulWidget {
   const ConversationsScreen({super.key});
@@ -157,12 +158,29 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     }
   }
 
+  /// Name a group + pick members, then drop straight into the new thread.
+  Future<void> _startGroup() async {
+    final convo = await Navigator.of(context).push<Conversation>(
+      MaterialPageRoute(builder: (_) => const NewGroupScreen()),
+    );
+    if (convo == null || !mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ChatScreen(conversation: convo)),
+    );
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Chat"),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.group_add),
+            tooltip: tr(context, "New group", "အုပ်စုအသစ်"),
+            onPressed: _startGroup,
+          ),
           IconButton(
             icon: const Icon(Icons.edit_square),
             tooltip: tr(context, "New message", "စာအသစ်"),
@@ -246,7 +264,8 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       subtitle: Text(
         online
             ? tr(context, "Active now", "အွန်လိုင်းရှိသည်")
-            : (c.lastMessage ?? "Tap to open"),
+            : (c.lastMessage ??
+                (c.subtitle.isNotEmpty ? c.subtitle : "Tap to open")),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(

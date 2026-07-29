@@ -423,7 +423,10 @@
     "liveLocationEnded": "สิ้นสุดการแชร์ตำแหน่งแล้ว",
     "stopSharing": "หยุด",
     "sentLiveLocation": "แชร์ตำแหน่งแบบเรียลไทม์",
-    "live": "สด"
+    "live": "สด",
+    "newGroup": "กลุ่มใหม่",
+    "groupName": "ชื่อกลุ่ม",
+    "createGroup": "สร้างกลุ่ม"
   },
   "stories": {
     "createStory": "สร้างสตอรี่",

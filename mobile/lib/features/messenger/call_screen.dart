@@ -145,6 +145,40 @@ class CallScreen extends StatelessWidget {
               ),
             ),
 
+            // Volume — the loudspeaker plus the mic's automatic gain makes a
+            // video call painfully loud, and Android's hardware keys move the
+            // whole voice-call stream rather than this call alone.
+            Positioned(
+              left: 32,
+              right: 32,
+              bottom: 108,
+              child: Row(
+                children: [
+                  const Icon(Icons.volume_down,
+                      color: Colors.white70, size: 20),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 3,
+                        activeTrackColor: Colors.white,
+                        inactiveTrackColor: Colors.white24,
+                        thumbColor: Colors.white,
+                        overlayShape:
+                            const RoundSliderOverlayShape(overlayRadius: 14),
+                        thumbShape:
+                            const RoundSliderThumbShape(enabledThumbRadius: 7),
+                      ),
+                      child: Slider(
+                        value: call.volume,
+                        onChanged: call.setVolume,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.volume_up, color: Colors.white70, size: 20),
+                ],
+              ),
+            ),
+
             // Controls
             Positioned(
               left: 0,
