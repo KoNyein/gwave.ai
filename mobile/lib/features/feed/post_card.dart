@@ -18,6 +18,7 @@ import '../web/web_screen.dart';
 import '../../widgets/common.dart';
 import '../../widgets/photo_view_screen.dart';
 import '../live/live_watch_screen.dart';
+import '../shop/product_screen.dart';
 import 'comments_sheet.dart';
 import 'reactions.dart';
 
@@ -207,6 +208,17 @@ class _PostCardState extends State<PostCard> {
               ],
               const SizedBox(height: 12),
               _LiveBanner(streamId: _liveStreamId(p.content)!),
+            ]
+            // A shared listing carries a gwave.cc/shop/<id> link. Same rule as
+            // live: the URL is plumbing, so show the product itself — photo,
+            // title, price, Buy — and never the raw link.
+            else if (_shopProductId(p.content) != null) ...[
+              if (_shopExtraText(p.content).isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _RichPostBody(content: _shopExtraText(p.content)),
+              ],
+              const SizedBox(height: 12),
+              _ProductBanner(productId: _shopProductId(p.content)!),
             ] else if (p.content.trim().isNotEmpty) ...[
               const SizedBox(height: 12),
               _RichPostBody(content: p.content),
@@ -462,12 +474,206 @@ String _liveExtraText(String content) {
       .trim();
 }
 
+/// The product id when [content] contains a gwave.cc/shop/<uuid> link.
+String? _shopProductId(String content) {
+  final m = RegExp(
+          r"gwave\.cc/shop/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})")
+      .firstMatch(content);
+  return m?.group(1);
+}
+
+/// Shared-listing content minus the plumbing: the gwave.cc/shop URL. The card
+/// carries the title, price and photo, so the link has nothing left to say.
+/// Whatever the sharer typed themselves survives.
+String _shopExtraText(String content) {
+  return content
+      .replaceAll(RegExp(r"https?://\S*gwave\.cc/shop/\S+"), "")
+      .trim();
+}
+
 /// The live stream id when [content] contains a gwave.cc/live/<uuid> link.
 String? _liveStreamId(String content) {
   final m = RegExp(
           r"gwave\.cc/live/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})")
       .firstMatch(content);
   return m?.group(1);
+}
+
+/// A shared listing rendered as the product itself: cover photo, title, price
+/// and a Buy button that goes straight to checkout — the same card the shop
+/// shows, so a post about something for sale looks like a shop card and not a
+/// pasted URL.
+class _ProductBanner extends StatefulWidget {
+  const _ProductBanner({required this.productId});
+  final String productId;
+
+  @override
+  State<_ProductBanner> createState() => _ProductBannerState();
+}
+
+class _ProductBannerState extends State<_ProductBanner> {
+  ShopProduct? _product;
+  bool _gone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final p = await context.read<AppState>().repo.product(widget.productId);
+      if (!mounted) return;
+      // Deleted or hidden since it was shared: say so plainly rather than
+      // leaving an empty frame where a product used to be.
+      setState(() {
+        _product = p;
+        _gone = p == null || p.status != "active";
+      });
+    } catch (_) {
+      if (mounted) setState(() => _gone = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_gone) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: GwColors.surfaceMutedOf(context),
+          borderRadius: BorderRadius.circular(GwRadius.md),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.remove_shopping_cart_outlined,
+                size: 18, color: GwColors.inkSoftOf(context)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                tr(context, "This listing is no longer available.",
+                    "ဤပစ္စည်း မရှိတော့ပါ။"),
+                style: TextStyle(
+                    color: GwColors.inkSoftOf(context), fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    final p = _product;
+    if (p == null) {
+      return Container(
+        height: 96,
+        decoration: BoxDecoration(
+          color: GwColors.surfaceMutedOf(context),
+          borderRadius: BorderRadius.circular(GwRadius.md),
+        ),
+      );
+    }
+    final cover = p.gallery.isEmpty ? null : p.gallery.first;
+    return InkWell(
+      borderRadius: BorderRadius.circular(GwRadius.md),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ProductScreen(product: p)),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(GwRadius.md),
+          border: Border.all(color: GwColors.lineOf(context)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (cover != null)
+              AspectRatio(
+                aspectRatio: 1.4,
+                child: CachedNetworkImage(
+                  imageUrl: resolveMedia(cover, bucket: "media") ?? cover,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  errorWidget: (_, __, ___) => ColoredBox(
+                      color: GwColors.surfaceMutedOf(context)),
+                  placeholder: (_, __) => ColoredBox(
+                      color: GwColors.surfaceMutedOf(context)),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(p.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                height: 1.25)),
+                        const SizedBox(height: 4),
+                        Text(
+                          p.hasOwnPrice
+                              ? money(p.price, p.currency)
+                              : "~ ${money(p.price, p.currency)}",
+                          style: const TextStyle(
+                              color: GwColors.primary,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15),
+                        ),
+                        if (p.description != null &&
+                            p.description!.trim().isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            p.description!.trim(),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                color: GwColors.inkSoftOf(context),
+                                fontSize: 12.5,
+                                height: 1.35),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () async {
+                      if (p.isAffiliate) {
+                        // An affiliate listing is a hand-off; the product
+                        // screen is where that is explained honestly.
+                        Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => ProductScreen(product: p)));
+                        return;
+                      }
+                      final ordered = await showProductCheckout(context, p);
+                      if (ordered && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(tr(context, "Order placed.",
+                              "အော်ဒါ တင်ပြီးပါပြီ။")),
+                        ));
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                        visualDensity: VisualDensity.compact),
+                    child: Text(p.isAffiliate
+                        ? tr(context, "View", "ကြည့်ရန်")
+                        : tr(context, "Buy", "ဝယ်မည်")),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// A tappable Watch-Live banner for live-announcement posts: loads the stream

@@ -112,7 +112,10 @@ class _ProductScreenState extends State<ProductScreen> {
     );
     if (go != true || !mounted) return;
     try {
-      await context.read<AppState>().repo.createPost("$_pitch\n$_link");
+      // The link alone: the feed renders the listing as a card — photo, title,
+      // price, Buy — and strips the URL. Posting the title and price as text
+      // too would just print them twice above their own card.
+      await context.read<AppState>().repo.createPost(_link);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(tr(context, "Shared to your feed.",

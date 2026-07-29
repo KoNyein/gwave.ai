@@ -453,6 +453,18 @@ class Repository {
     return rows.map(ShopProduct.fromJson).toList();
   }
 
+  /// One listing by id — used by the feed card that renders a shared product
+  /// in place of its raw link. Null when it's gone or hidden, which is why
+  /// that card falls back to plain text rather than an empty box.
+  Future<ShopProduct?> product(String id) async {
+    final rows = await api.select("shop_products", query: {
+      "select": "*",
+      "id": "eq.$id",
+      "limit": "1",
+    });
+    return rows.isEmpty ? null : ShopProduct.fromJson(rows.first);
+  }
+
   /// Place a dropship order. Server-side RPC so the price and the seller come
   /// from the listing rather than the client — there is deliberately no insert
   /// policy on shop_orders.
