@@ -122,13 +122,19 @@ export function PostCard({
   const [editOpen, setEditOpen] = React.useState(false);
   // Editable fields keep local state so an edit shows instantly.
   const [content, setContent] = React.useState(post.content);
-  // Hide the live URL + marker from live-announcement posts — the live card
-  // (LinkPreview -> FeedLiveCard) shows the real video instead.
-  const liveUrlRe = /https?:\/\/[^\s]*\/live\/[0-9a-f-]{36}\S*/i;
+  // Hide the live URL + generated marker line from live-announcement posts —
+  // the live card (LinkPreview -> FeedLiveCard) shows the real video and the
+  // title. Matches ONLY canonical gwave.cc live links (same constraints as
+  // LinkPreview's matcher) so an external site's /live/<uuid> URL is never
+  // mistaken for an announcement, and drops the WHOLE generated line
+  // ("🔴 Live လွှင့်နေပါပြီ — <title>" / "🔴 Live — <title>") so no
+  // boilerplate duplicates the card's title. User-written lines survive.
+  const liveUrlRe =
+    /https?:\/\/(?:www\.)?gwave\.cc\/live\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\S*/i;
   const displayContent = liveUrlRe.test(content ?? "")
     ? (content ?? "")
         .replace(liveUrlRe, "")
-        .replace(/^\s*🔴?\s*Live\s*[—-]?\s*/iu, "")
+        .replace(/^\s*🔴\s*Live[^\n]*$/gim, "")
         .trim()
     : content;
   const [visibility, setVisibility] = React.useState(post.visibility);
