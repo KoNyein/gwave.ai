@@ -58,8 +58,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   String _statusLabel(BuildContext context, String status) {
     switch (status) {
-      case "confirmed":
-        return tr(context, "Confirmed", "အတည်ပြုပြီး");
+      case "forwarded":
+        return tr(context, "Sent to seller", "ရောင်းသူထံ ပို့ပြီး");
       case "shipped":
         return tr(context, "Shipped", "ပို့ဆောင်နေသည်");
       case "delivered":
