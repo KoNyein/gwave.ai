@@ -62,9 +62,15 @@ const YAHOO_METALS: {
 const METALS_DEV_METALS: Omit<MetalRow, "usd" | "changePct" | "spark" | "ts">[] = [
   { key: "rhodium", name: "Rhodium", nameMy: "ရိုဒီယမ်", group: "precious", unit: "toz", exchange: "Spot" },
   { key: "lme_nickel", name: "Nickel", nameMy: "နီကယ်", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
-  { key: "lme_zinc", name: "Zinc", nameMy: "သွပ်", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
+  { key: "lme_zinc", name: "Zinc", nameMy: "သွပ် (ခဲမ)", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
   { key: "lme_tin", name: "Tin", nameMy: "ခဲဖြူ (ရော်တာဒမ်ဈေး)", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
   { key: "lme_lead", name: "Lead", nameMy: "ခဲ", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
+  // No exchange trades antimony — its benchmarks (Fastmarkets Rotterdam,
+  // SMM China) are licensed. Asked for defensively: if the provider ever
+  // serves these keys the row appears by itself; until then it costs
+  // nothing and shows nothing, which beats a made-up number.
+  { key: "antimony", name: "Antimony", nameMy: "ခနောက်စိမ်း", group: "base", unit: "t", exchange: "Spot" },
+  { key: "cobalt", name: "Cobalt", nameMy: "ကိုဘော့", group: "base", unit: "t", exchange: "Spot" },
 ];
 
 let yahooCache: { at: number; rows: MetalRow[] } | null = null;
