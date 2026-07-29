@@ -103,3 +103,53 @@ export async function notifyIncomingCall(
     ]),
   );
 }
+
+/**
+ * Server-side relay for the web client's per-call signaling sends (accept /
+ * offer / answer / ice / decline / hangup / cancel).
+ *
+ * Field debugging showed the self-hosted Realtime can silently drop
+ * broadcasts SENT over a client websocket while receives keep working — the
+ * app's sends were moved to /api/mobile/call/signal for exactly this reason,
+ * which is why app-side hangup/accept became reliable while browser-sent
+ * offers/ICE still vanished and calls hung at "Connecting". Relaying the web
+ * sends through the server closes that last flaky leg AND puts the whole
+ * handshake into one server log stream ([call/signal-web] + [call/signal]).
+ *
+ * The payload is tagged `_from` so both clients can drop the echo of their
+ * own relayed messages (broadcasts are delivered to every subscriber,
+ * including the sender). Same trust model as the app endpoint: any authed
+ * user can broadcast to an unguessable call UUID — accepted pre-launch.
+ */
+export async function relayCallSignal(
+  callId: string,
+  event:
+    | "accept"
+    | "offer"
+    | "answer"
+    | "ice"
+    | "decline"
+    | "hangup"
+    | "cancel",
+  payload: Record<string, unknown> = {},
+  ringUserId?: string,
+): Promise<{ ok: boolean }> {
+  const me = await getCurrentUser();
+  if (!me || typeof callId !== "string" || callId.length < 6) {
+    return { ok: false };
+  }
+  const tagged = { ...payload, _from: me.id };
+  const ok = await serverBroadcast(`call:${callId}`, event, tagged);
+  // A cancel must also reach the callee's personal ring inbox, where the
+  // pre-answer ring UI lives.
+  if (event === "cancel" && ringUserId) {
+    await serverBroadcast(`calls:${ringUserId}`, "cancel", {
+      ...tagged,
+      callId,
+    });
+  }
+  console.log(
+    `[call/signal-web] from=${me.id} call=${callId} event=${event} ok=${ok}`,
+  );
+  return { ok };
+}
