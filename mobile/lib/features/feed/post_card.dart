@@ -196,10 +196,15 @@ class _PostCardState extends State<PostCard> {
               ],
             ),
             // A live announcement post carries a gwave.cc/live/<id> link.
-            // That raw "🔴 Live — … https://…" text is plumbing, not content:
-            // show ONLY the live video card (auto-playing preview, LIVE/REPLAY
-            // badge, title, watch row) — no URL, like the big platforms.
+            // The raw URL and the generated "🔴 Live …" line are plumbing,
+            // not content: show the live video card (auto-playing preview,
+            // LIVE/REPLAY badge, title, watch row) — no URL, like the big
+            // platforms. Anything the user typed themselves still shows.
             if (_liveStreamId(p.content) != null) ...[
+              if (_liveExtraText(p.content).isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _RichPostBody(content: _liveExtraText(p.content)),
+              ],
               const SizedBox(height: 12),
               _LiveBanner(streamId: _liveStreamId(p.content)!),
             ] else if (p.content.trim().isNotEmpty) ...[
@@ -445,6 +450,16 @@ class _RichPostBodyState extends State<_RichPostBody> {
       ),
     );
   }
+}
+
+/// Live-announcement content minus the plumbing: the gwave.cc/live URL and
+/// the generated "🔴 Live …" line (the card already shows the title).
+/// Whatever the user typed themselves survives.
+String _liveExtraText(String content) {
+  return content
+      .replaceAll(RegExp(r"https?://\S*gwave\.cc/live/\S+"), "")
+      .replaceAll(RegExp(r"^\s*🔴\s*Live[^\n]*$", multiLine: true), "")
+      .trim();
 }
 
 /// The live stream id when [content] contains a gwave.cc/live/<uuid> link.
