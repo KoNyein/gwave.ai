@@ -299,6 +299,9 @@ class ShopProduct {
     this.category,
     this.externalUrl,
     this.merchant,
+    this.sellerId,
+    this.images = const [],
+    this.status = "active",
   });
 
   final String id;
@@ -315,6 +318,23 @@ class ShopProduct {
   final String? category;
   final String? externalUrl;
   final String? merchant;
+  final String? sellerId;
+
+  /// The listing's gallery, in the seller's order. [imageUrl] stays the cover
+  /// so every card and order row keeps working; this is what the product page
+  /// swipes through.
+  final List<String> images;
+  final String status;
+
+  /// Cover first, then the rest — and never an empty gallery when the row has
+  /// a cover, so the detail page can always page through *something*.
+  List<String> get gallery {
+    final all = <String>[
+      if (imageUrl != null && imageUrl!.isNotEmpty) imageUrl!,
+      ...images.where((i) => i.isNotEmpty && i != imageUrl),
+    ];
+    return all;
+  }
 
   bool get isAffiliate => kind == "affiliate";
 
@@ -335,6 +355,13 @@ class ShopProduct {
         category: _s(j["category"]),
         externalUrl: _s(j["external_url"]),
         merchant: _s(j["merchant"]),
+        sellerId: _s(j["seller_id"]),
+        images: (j["images"] as List?)
+                ?.map((i) => "$i")
+                .where((i) => i.isNotEmpty)
+                .toList() ??
+            const [],
+        status: (j["status"] ?? "active").toString(),
       );
 }
 
@@ -349,6 +376,11 @@ class ShopOrder {
     required this.createdAt,
     this.productTitle,
     this.productImage,
+    this.productId,
+    this.shipName,
+    this.shipPhone,
+    this.shipAddress,
+    this.note,
   });
 
   final String id;
@@ -359,6 +391,15 @@ class ShopOrder {
   final DateTime createdAt;
   final String? productTitle;
   final String? productImage;
+  final String? productId;
+
+  /// Where it goes and who to ring. Read by the seller's order screen; the
+  /// buyer's own screen reuses them to prefill the next checkout, which is the
+  /// difference between a two-tap re-order and typing an address again.
+  final String? shipName;
+  final String? shipPhone;
+  final String? shipAddress;
+  final String? note;
 
   double get total => unitPrice * quantity;
 
@@ -372,6 +413,11 @@ class ShopOrder {
             DateTime.tryParse("${j["created_at"]}")?.toLocal() ?? DateTime.now(),
         productTitle: _s(j["product_title"]),
         productImage: _s(j["product_image"]),
+        productId: _s(j["product_id"]),
+        shipName: _s(j["ship_name"]),
+        shipPhone: _s(j["ship_phone"]),
+        shipAddress: _s(j["ship_address"]),
+        note: _s(j["note"]),
       );
 }
 

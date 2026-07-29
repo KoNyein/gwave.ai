@@ -2,21 +2,41 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/config.dart';
 import '../../core/app_state.dart';
 import '../../core/i18n.dart';
 import '../../core/models.dart';
+import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../web/web_screen.dart';
 import '../../widgets/common.dart';
+import '../../widgets/share_sheet.dart';
 
 /// One product, with the action that actually matches its kind:
 /// a dropship listing checks out in-app, an affiliate listing hands off to the
 /// merchant (and says so, instead of pretending our copied price is binding).
-class ProductScreen extends StatelessWidget {
+class ProductScreen extends StatefulWidget {
   const ProductScreen({super.key, required this.product});
   final ShopProduct product;
 
-  Future<void> _openMerchant(BuildContext context) async {
+  @override
+  State<ProductScreen> createState() => _ProductScreenState();
+}
+
+class _ProductScreenState extends State<ProductScreen> {
+  final _page = PageController();
+  int _index = 0;
+
+  ShopProduct get product => widget.product;
+  String get _link => "${AppConfig.apiBase}/shop/${product.id}";
+
+  @override
+  void dispose() {
+    _page.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openMerchant() async {
     final url = product.externalUrl;
     if (url == null || url.isEmpty) return;
     // Fire-and-forget: the click stat must never delay the handoff.
@@ -24,35 +44,164 @@ class ProductScreen extends StatelessWidget {
     await openWeb(context, url, title: product.title);
   }
 
-  Future<void> _buy(BuildContext context) async {
+  Future<void> _buy() async {
     final ordered = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => _CheckoutScreen(product: product)),
     );
-    if (ordered == true && context.mounted) {
+    if (ordered == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(tr(context, "Order placed.", "အော်ဒါ တင်ပြီးပါပြီ။")),
       ));
     }
   }
 
+  /// The line that goes out with the link, whichever way it's shared.
+  String get _pitch {
+    final price = product.hasOwnPrice
+        ? "\n${money(product.price, product.currency)}"
+        : "";
+    return "${product.title}$price";
+  }
+
+  void _share() {
+    showShareSheet(
+      context,
+      url: _link,
+      title: product.title,
+      message: _pitch,
+      onShareToFeed: _shareToFeed,
+      onSendInChat: _sendInChat,
+    );
+  }
+
+  /// Post it to my feed. The composer isn't reused here on purpose: there is
+  /// nothing left to compose — the seller wants the listing in front of people,
+  /// and one confirm is the whole interaction.
+  Future<void> _shareToFeed() async {
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(tr(context, "Share to your feed?", "Feed တွင် မျှဝေမလား")),
+        content: Text("$_pitch\n$_link",
+            style: const TextStyle(fontSize: 13, height: 1.4)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(d).pop(false),
+            child: Text(tr(context, "Cancel", "မလုပ်တော့ပါ")),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(d).pop(true),
+            child: Text(tr(context, "Share", "မျှဝေမည်")),
+          ),
+        ],
+      ),
+    );
+    if (go != true || !mounted) return;
+    try {
+      await context.read<AppState>().repo.createPost("$_pitch\n$_link");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(tr(context, "Shared to your feed.",
+              "Feed တွင် မျှဝေပြီးပါပြီ။")),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("$e")));
+      }
+    }
+  }
+
+  /// Send it to a chat. The picker loads the conversations we already have
+  /// rather than starting a new thread — sharing a product is something you do
+  /// with someone you're already talking to.
+  Future<void> _sendInChat() async {
+    final repo = context.read<AppState>().repo;
+    List<Conversation> threads;
+    try {
+      threads = await repo.conversations();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("$e")));
+      }
+      return;
+    }
+    if (!mounted) return;
+    if (threads.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(tr(context, "No chats yet.", "စကားပြောခန်း မရှိသေးပါ။")),
+      ));
+      return;
+    }
+    final picked = await showModalBottomSheet<Conversation>(
+      context: context,
+      backgroundColor: GwColors.surfaceOf(context),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              child: Text(tr(context, "Send to", "ဘယ်သူ့ဆီ ပို့မလဲ"),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 16)),
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: threads.length,
+                itemBuilder: (_, i) => ListTile(
+                  leading: const Icon(Icons.chat_bubble_outline),
+                  title: Text(threads[i].displayTitle, maxLines: 1),
+                  onTap: () => Navigator.of(sheet).pop(threads[i]),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    try {
+      await repo.sendMessage(picked.id, "$_pitch\n$_link");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(tr(context, "Sent to ${picked.displayTitle}.",
+              "${picked.displayTitle} ဆီ ပို့ပြီးပါပြီ။")),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("$e")));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final merchant = product.merchant?.trim();
+    final gallery = product.gallery;
     return Scaffold(
-      appBar: AppBar(title: Text(product.title, maxLines: 1)),
+      appBar: AppBar(
+        title: Text(product.title, maxLines: 1),
+        actions: [
+          IconButton(
+            tooltip: tr(context, "Share", "မျှဝေရန်"),
+            icon: const Icon(Icons.ios_share),
+            onPressed: _share,
+          ),
+        ],
+      ),
       body: ListView(
         children: [
-          AspectRatio(
-            aspectRatio: 1,
-            child: product.imageUrl != null && product.imageUrl!.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: product.imageUrl!,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => _ph(),
-                    placeholder: (_, __) => _ph(),
-                  )
-                : _ph(),
-          ),
+          _gallery(gallery),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -88,29 +237,46 @@ class ProductScreen extends StatelessWidget {
                       "ခန့်မှန်းသာ — အတိအကျစျေးနှုန်းနှင့် ပစ္စည်းရှိမရှိကို "
                           "${merchant ?? "ရောင်းသူ"} ဘက်တွင် စစ်ပါ။",
                     ),
-                    style: const TextStyle(
-                        color: GwColors.inkSoft, fontSize: 12.5, height: 1.35),
+                    style: TextStyle(
+                        color: GwColors.inkSoftOf(context),
+                        fontSize: 12.5,
+                        height: 1.35),
                   ),
                 ],
                 if (merchant != null && merchant.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      const Icon(Icons.storefront_outlined,
-                          size: 16, color: GwColors.inkSoft),
+                      Icon(Icons.storefront_outlined,
+                          size: 16, color: GwColors.inkSoftOf(context)),
                       const SizedBox(width: 6),
                       Text(merchant,
-                          style: const TextStyle(
-                              color: GwColors.inkSoft,
+                          style: TextStyle(
+                              color: GwColors.inkSoftOf(context),
                               fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ],
+                if (product.category != null &&
+                    product.category!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Chip(
+                    label: Text(product.category!.trim(),
+                        style: const TextStyle(fontSize: 12)),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
                 if (product.description != null &&
                     product.description!.trim().isNotEmpty) ...[
-                  const SizedBox(height: 18),
-                  Text(product.description!.trim(),
-                      style: const TextStyle(fontSize: 14, height: 1.45)),
+                  const SizedBox(height: 20),
+                  Text(tr(context, "Details", "အသေးစိတ်"),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 15)),
+                  const SizedBox(height: 8),
+                  // SelectableText so a buyer can copy a size, a model number
+                  // or a phone number straight out of the description.
+                  SelectableText(product.description!.trim(),
+                      style: const TextStyle(fontSize: 14, height: 1.5)),
                 ],
                 const SizedBox(height: 90),
               ],
@@ -122,7 +288,7 @@ class ProductScreen extends StatelessWidget {
         minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         child: product.isAffiliate
             ? OutlinedButton.icon(
-                onPressed: () => _openMerchant(context),
+                onPressed: _openMerchant,
                 icon: const Icon(Icons.open_in_new),
                 label: Text(merchant != null && merchant.isNotEmpty
                     ? tr(context, "View on $merchant", "$merchant တွင် ကြည့်ရန်")
@@ -131,12 +297,57 @@ class ProductScreen extends StatelessWidget {
                     minimumSize: const Size.fromHeight(50)),
               )
             : ElevatedButton.icon(
-                onPressed: () => _buy(context),
+                onPressed: _buy,
                 icon: const Icon(Icons.shopping_bag_outlined),
                 label: Text(tr(context, "Buy now", "ဝယ်မည်")),
                 style: ElevatedButton.styleFrom(
                     minimumSize: const Size.fromHeight(50)),
               ),
+      ),
+    );
+  }
+
+  /// Swipeable photos with a counter. One photo behaves exactly as before —
+  /// the pager and the counter only show up when there's something to page to.
+  Widget _gallery(List<String> gallery) {
+    if (gallery.isEmpty) {
+      return AspectRatio(aspectRatio: 1, child: _ph());
+    }
+    return AspectRatio(
+      aspectRatio: 1,
+      child: Stack(
+        children: [
+          PageView.builder(
+            controller: _page,
+            itemCount: gallery.length,
+            onPageChanged: (i) => setState(() => _index = i),
+            itemBuilder: (_, i) => CachedNetworkImage(
+              imageUrl: resolveMedia(gallery[i], bucket: "media") ?? gallery[i],
+              fit: BoxFit.cover,
+              width: double.infinity,
+              errorWidget: (_, __, ___) => _ph(),
+              placeholder: (_, __) => _ph(),
+            ),
+          ),
+          if (gallery.length > 1)
+            Positioned(
+              right: 12,
+              bottom: 12,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text("${_index + 1}/${gallery.length}",
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -166,12 +377,29 @@ class _CheckoutScreenState extends State<_CheckoutScreen> {
   final _note = TextEditingController();
   int _qty = 1;
   bool _saving = false;
+  bool _reused = false;
 
   @override
   void initState() {
     super.initState();
     final me = context.read<AppState>().me;
     if (me != null) _name.text = me.displayName;
+    _prefill();
+  }
+
+  /// Reuse the last delivery details. Typing an address on a phone is the
+  /// slowest part of buying anything, and the second order should not cost
+  /// what the first one did.
+  Future<void> _prefill() async {
+    final last = await context.read<AppState>().repo.lastOrder();
+    if (last == null || !mounted) return;
+    if ((last.shipAddress ?? "").trim().isEmpty) return;
+    setState(() {
+      _name.text = last.shipName ?? _name.text;
+      _phone.text = last.shipPhone ?? "";
+      _address.text = last.shipAddress ?? "";
+      _reused = true;
+    });
   }
 
   @override
@@ -257,6 +485,26 @@ class _CheckoutScreenState extends State<_CheckoutScreen> {
             ],
           ),
           const SizedBox(height: 18),
+          if (_reused)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.bolt, size: 16, color: GwColors.primary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      tr(context, "Filled in from your last order — edit if it changed.",
+                          "ယခင်အော်ဒါမှ အလိုအလျောက် ဖြည့်ထားသည် — ပြောင်းလဲပါက ပြင်ပါ။"),
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          color: GwColors.inkSoftOf(context),
+                          height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           TextField(
             controller: _name,
             decoration: InputDecoration(
@@ -308,8 +556,10 @@ class _CheckoutScreenState extends State<_CheckoutScreen> {
               "ပစ္စည်းရောက်မှ ငွေချေရပါမည်။ ပစ္စည်းရှိမရှိနှင့် ပို့ဆောင်မှုကို "
                   "ရောင်းသူက အတည်ပြုပါမည်။",
             ),
-            style: const TextStyle(
-                color: GwColors.inkSoft, fontSize: 12.5, height: 1.35),
+            style: TextStyle(
+                color: GwColors.inkSoftOf(context),
+                fontSize: 12.5,
+                height: 1.35),
           ),
         ],
       ),

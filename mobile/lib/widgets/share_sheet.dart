@@ -11,11 +11,18 @@ import '../core/theme.dart';
 /// Offers: system share, copy link, a scannable QR code of the link, and
 /// writing the link to an NFC tag (tap-to-open). Any surface with a shareable
 /// gwave.cc URL can call [showShareSheet].
+///
+/// [onShareToFeed] and [onSendInChat] add the two ways of sharing that stay
+/// inside Gwave. They're optional: pass them and the tiles appear, leave them
+/// off and the sheet is exactly what it was. The sheet closes before running
+/// either, so the caller owns the screen it navigates to.
 Future<void> showShareSheet(
   BuildContext context, {
   required String url,
   String? title,
   String? message,
+  VoidCallback? onShareToFeed,
+  VoidCallback? onSendInChat,
 }) {
   return showModalBottomSheet(
     context: context,
@@ -24,15 +31,29 @@ Future<void> showShareSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
     ),
-    builder: (_) => _ShareSheet(url: url, title: title, message: message),
+    builder: (_) => _ShareSheet(
+      url: url,
+      title: title,
+      message: message,
+      onShareToFeed: onShareToFeed,
+      onSendInChat: onSendInChat,
+    ),
   );
 }
 
 class _ShareSheet extends StatefulWidget {
-  const _ShareSheet({required this.url, this.title, this.message});
+  const _ShareSheet({
+    required this.url,
+    this.title,
+    this.message,
+    this.onShareToFeed,
+    this.onSendInChat,
+  });
   final String url;
   final String? title;
   final String? message;
+  final VoidCallback? onShareToFeed;
+  final VoidCallback? onSendInChat;
 
   @override
   State<_ShareSheet> createState() => _ShareSheetState();
@@ -142,6 +163,36 @@ class _ShareSheetState extends State<_ShareSheet> {
               ),
               const SizedBox(height: 10),
             ],
+            // Sharing inside Gwave first: it's the reason someone opened this
+            // sheet from a Gwave screen, and it's what keeps the link in the
+            // app rather than in another one.
+            if (widget.onShareToFeed != null || widget.onSendInChat != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    if (widget.onShareToFeed != null)
+                      _tile(
+                        Icons.dynamic_feed_outlined,
+                        tr(context, "To feed", "Feed သို့"),
+                        () {
+                          Navigator.of(context).pop();
+                          widget.onShareToFeed!();
+                        },
+                      ),
+                    if (widget.onSendInChat != null)
+                      _tile(
+                        Icons.forum_outlined,
+                        tr(context, "Send in chat", "Chat သို့"),
+                        () {
+                          Navigator.of(context).pop();
+                          widget.onSendInChat!();
+                        },
+                      ),
+                  ],
+                ),
+              ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [

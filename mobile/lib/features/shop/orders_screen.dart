@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/app_state.dart';
 import '../../core/i18n.dart';
 import '../../core/models.dart';
+import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 
@@ -108,7 +109,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             child: o.productImage != null &&
                                     o.productImage!.isNotEmpty
                                 ? CachedNetworkImage(
-                                    imageUrl: o.productImage!,
+                                    imageUrl: resolveMedia(
+                                            o.productImage,
+                                            bucket: "media") ??
+                                        o.productImage!,
                                     fit: BoxFit.cover,
                                     errorWidget: (_, __, ___) => _ph(),
                                     placeholder: (_, __) => _ph(),

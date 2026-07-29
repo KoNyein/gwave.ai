@@ -7,8 +7,10 @@ import 'package:provider/provider.dart';
 import '../../core/app_state.dart';
 import '../../core/i18n.dart';
 import '../../core/models.dart';
+import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import 'my_listings_screen.dart';
 import 'orders_screen.dart';
 import 'product_screen.dart';
 
@@ -101,6 +103,17 @@ class _ShopScreenState extends State<ShopScreen> {
               MaterialPageRoute(builder: (_) => const OrdersScreen()),
             ),
           ),
+          IconButton(
+            icon: const Icon(Icons.storefront_outlined),
+            tooltip: tr(context, "Sell", "ရောင်းရန်"),
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const MyListingsScreen()),
+              );
+              // A new listing belongs in the grid the seller just came back to.
+              await _load();
+            },
+          ),
         ],
       ),
       body: RefreshIndicator(
@@ -169,7 +182,9 @@ class _ProductCard extends StatelessWidget {
                 children: [
                   product.imageUrl != null && product.imageUrl!.isNotEmpty
                       ? CachedNetworkImage(
-                          imageUrl: product.imageUrl!,
+                          imageUrl:
+                              resolveMedia(product.imageUrl, bucket: "media") ??
+                                  product.imageUrl!,
                           fit: BoxFit.cover,
                           errorWidget: (_, __, ___) => _ph(),
                           placeholder: (_, __) => _ph(),

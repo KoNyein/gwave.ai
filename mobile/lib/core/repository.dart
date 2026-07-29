@@ -523,6 +523,143 @@ class Repository {
     }).toList();
   }
 
+  /// Where the buyer's last order went, so checkout can offer it instead of
+  /// asking for the same address a second time. Null on the first order or if
+  /// the lookup fails — the form simply starts empty, never wrong.
+  Future<ShopOrder?> lastOrder() async {
+    try {
+      final rows = await api.select("shop_orders", query: {
+        "select": "ship_name,ship_phone,ship_address,created_at",
+        "buyer_id": "eq.${api.session!.profileId}",
+        "order": "created_at.desc",
+        "limit": "1",
+      });
+      if (rows.isEmpty) return null;
+      return ShopOrder.fromJson({
+        ...rows.first,
+        "id": "",
+        "quantity": 1,
+        "unit_price": 0,
+        "currency": "THB",
+        "status": "pending",
+      });
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Publish a listing of my own. Dropship only: an affiliate listing needs a
+  /// merchant link and earns a commission we don't administer from the app.
+  /// [images] are storage paths already uploaded via [ApiClient.uploadBytes];
+  /// the first doubles as the cover so every existing card keeps working.
+  Future<ShopProduct?> createProduct({
+    required String title,
+    required double price,
+    required String currency,
+    String? description,
+    String? category,
+    List<String> images = const [],
+  }) async {
+    final row = await api.insert("shop_products", {
+      "seller_id": api.session!.profileId,
+      "kind": "dropship",
+      "title": title.trim(),
+      "price": price,
+      "currency": currency,
+      if (description != null && description.trim().isNotEmpty)
+        "description": description.trim(),
+      if (category != null && category.trim().isNotEmpty)
+        "category": category.trim(),
+      if (images.isNotEmpty) ...{
+        "image_url": images.first,
+        "images": images,
+      },
+      "status": "active",
+    });
+    return row == null ? null : ShopProduct.fromJson(row);
+  }
+
+  /// My own listings, hidden ones included — this is the seller's view.
+  Future<List<ShopProduct>> myListings() async {
+    final rows = await api.select("shop_products", query: {
+      "select": "*",
+      "seller_id": "eq.${api.session!.profileId}",
+      "order": "created_at.desc",
+      "limit": "100",
+    });
+    return rows.map(ShopProduct.fromJson).toList();
+  }
+
+  /// Take a listing off the shop, or put it back. 'hidden' rather than delete
+  /// so orders that reference it keep their product.
+  Future<void> setProductStatus(String productId, String status) async {
+    await api.update("shop_products", {
+      "status": status,
+      "updated_at": DateTime.now().toUtc().toIso8601String(),
+    }, filter: {
+      "id": "eq.$productId",
+      "seller_id": "eq.${api.session!.profileId}",
+    });
+  }
+
+  Future<void> deleteProduct(String productId) async {
+    await api.deleteRows("shop_products", filter: {
+      "id": "eq.$productId",
+      "seller_id": "eq.${api.session!.profileId}",
+    });
+  }
+
+  /// Orders placed on MY listings, newest first — the seller's work queue.
+  /// Flat queries and a second lookup, never an embed (a stale schema cache
+  /// 500s embeds and the screen would just die).
+  Future<List<ShopOrder>> sellerOrders() async {
+    final rows = await api.select("shop_orders", query: {
+      "select": "*",
+      "seller_id": "eq.${api.session!.profileId}",
+      "order": "created_at.desc",
+      "limit": "60",
+    });
+    if (rows.isEmpty) return [];
+    final ids = rows
+        .map((r) => r["product_id"]?.toString())
+        .whereType<String>()
+        .toSet()
+        .toList();
+    final byId = <String, Map<String, dynamic>>{};
+    if (ids.isNotEmpty) {
+      try {
+        final products = await api.select("shop_products", query: {
+          "select": "id,title,image_url",
+          "id": "in.(${ids.join(",")})",
+          "limit": "100",
+        });
+        for (final p in products) {
+          byId[p["id"].toString()] = p;
+        }
+      } catch (_) {
+        // Titles are cosmetic; the order still has to be workable without them.
+      }
+    }
+    return rows.map((r) {
+      final p = byId[r["product_id"]?.toString() ?? ""];
+      r["product_title"] = p?["title"];
+      r["product_image"] = p?["image_url"];
+      return ShopOrder.fromJson(r);
+    }).toList();
+  }
+
+  /// Move an order along its workflow. RLS already restricts this to the
+  /// order's seller; the filter makes that explicit rather than relying on it.
+  Future<void> setOrderStatus(String orderId, String status) async {
+    await api.update("shop_orders", {
+      "status": status,
+      "updated_at": DateTime.now().toUtc().toIso8601String(),
+    }, filter: {
+      "id": "eq.$orderId",
+      "seller_id": "eq.${api.session!.profileId}",
+    });
+  }
+
   // ---- Presence -------------------------------------------------------------
 
   /// Last presence-heartbeat failure ("" = last attempt succeeded). Reported
