@@ -122,6 +122,15 @@ export function PostCard({
   const [editOpen, setEditOpen] = React.useState(false);
   // Editable fields keep local state so an edit shows instantly.
   const [content, setContent] = React.useState(post.content);
+  // Hide the live URL + marker from live-announcement posts — the live card
+  // (LinkPreview -> FeedLiveCard) shows the real video instead.
+  const liveUrlRe = /https?:\/\/[^\s]*\/live\/[0-9a-f-]{36}\S*/i;
+  const displayContent = liveUrlRe.test(content ?? "")
+    ? (content ?? "")
+        .replace(liveUrlRe, "")
+        .replace(/^\s*🔴?\s*Live\s*[—-]?\s*/iu, "")
+        .trim()
+    : content;
   const [visibility, setVisibility] = React.useState(post.visibility);
   const [canNativeShare, setCanNativeShare] = React.useState(false);
 
@@ -318,10 +327,13 @@ export function PostCard({
         </button>
       ) : null}
 
-      {/* Content */}
-      {content ? (
+      {/* Content — live-announcement posts carry a raw gwave.cc/live/<id>
+          link plus a "🔴 Live — …" marker. That's plumbing, not content:
+          FeedLiveCard below renders the actual live video (title included),
+          so the URL and marker line are stripped from the visible text. */}
+      {displayContent ? (
         <p className="whitespace-pre-wrap break-words px-4 py-2 text-sm">
-          <LinkifiedText text={content} />
+          <LinkifiedText text={displayContent} />
         </p>
       ) : (
         <div className="pt-2" />
