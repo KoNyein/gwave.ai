@@ -251,7 +251,24 @@ export function useCall(
           if (!result?.ok) throw new Error("relay refused");
         })
         .catch(() => {
-          void s.channel.send({ type: "broadcast", event, payload });
+          if (session.current === s) {
+            void s.channel.send({ type: "broadcast", event, payload });
+            return;
+          }
+          // The teardown paths (hangup / cancel / fatal-media) call cleanup()
+          // right after signal(), so by the time the relay settles s.channel
+          // is already unsubscribed and a send on it would go nowhere — the
+          // peer would hang in the call. Use a throwaway channel instead,
+          // same as the decline fallback.
+          const db = createClient();
+          const channel = db.channel(`call:${s.callId}`);
+          channel.subscribe((status) => {
+            if (status === "SUBSCRIBED") {
+              void channel
+                .send({ type: "broadcast", event, payload })
+                .finally(() => void db.removeChannel(channel));
+            }
+          });
         });
     },
     [],
