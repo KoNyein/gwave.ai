@@ -51,6 +51,26 @@
 
 ## Changelog
 
+- 2026-07-30 (midday): **Admin data dashboards + Thailand cannabis market +
+  Thai language.** New wifi_scans table (RLS-sealed, zero policies) logs one
+  row per AP per scan with user, GPS fix and RSSI, written by
+  /api/mobile/wifi/observe best-effort; /admin/wifi reads it through the
+  service role for a coverage map (dot colour = signal, red ring = open
+  network), scan-activity + security + signal-band bar charts and a per-user
+  contribution table; /admin/data charts the whole system (module totals,
+  per-table with 7-day growth, log-scale toggle) off getModuleMetrics
+  (PR #411, deploy #167). /strains/market gains Thailand first: SET-listed
+  cannabis/hemp equities in THB via Yahoo .BK, a hand-recorded Thai price log
+  (cannabis_quotes + /api/cannabis/quotes, admin-gated writes) with quick-picks
+  for grades and provinces, and a specific Thai legal-compliance panel — FDA
+  cultivation registration, DTAM sale licence, the 0.2 % THC extract line,
+  under-20/pregnancy sale ban, advertising prohibition, 2025 prescription
+  rules — plus a third language, Thai (PR #412, deploy #168). App (APK 226-228):
+  shared signal_meter widgets put signal strength on every scan screen (WiFi
+  map live panel with bars/band/security/dBm/%, Bluetooth finder rows), Strains
+  opens the market board, and GwLang gains th with tr3() so Thai falls back to
+  English where untranslated. Both SQL files applied on RDS by the user.
+
 - 2026-07-30 (late morning): **Market log split + border gates + cannabis
   market board.** metals.dev free tier confirmed to carry no tin/rhodium
   (key list checked on prod), so per the user's decision the market log now
