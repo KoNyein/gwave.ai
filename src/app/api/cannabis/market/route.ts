@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
  */
 const YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart";
 
-type Category = "etf" | "producer" | "us_retail" | "cbd_hemp";
+type Category = "etf" | "producer" | "us_retail" | "cbd_hemp" | "thai";
 
 interface Row {
   symbol: string;
@@ -27,6 +27,8 @@ interface Row {
   category: Category;
   exchange: string;
   note: string; // one-line what-this-is, English (UI translates around it)
+  /** Quote currency — SET tickers price in THB, everything else in USD. */
+  currency: "USD" | "THB";
   usd: number;
   changePct: number | null;
   spark: number[];
@@ -35,23 +37,32 @@ interface Row {
 
 const SYMBOLS: Omit<Row, "usd" | "changePct" | "spark" | "ts">[] = [
   // Sector ETFs — the closest thing to a "cannabis market index".
-  { symbol: "MSOS", key: "msos", name: "AdvisorShares Pure US Cannabis ETF", category: "etf", exchange: "NYSE Arca", note: "US multi-state operators index" },
-  { symbol: "MJ", key: "mj", name: "Amplify Alternative Harvest ETF", category: "etf", exchange: "NYSE Arca", note: "Global cannabis index" },
-  { symbol: "YOLO", key: "yolo", name: "AdvisorShares Pure Cannabis ETF", category: "etf", exchange: "NYSE Arca", note: "Global cannabis, actively managed" },
+  { symbol: "MSOS", key: "msos", name: "AdvisorShares Pure US Cannabis ETF", category: "etf", exchange: "NYSE Arca", note: "US multi-state operators index", currency: "USD" },
+  { symbol: "MJ", key: "mj", name: "Amplify Alternative Harvest ETF", category: "etf", exchange: "NYSE Arca", note: "Global cannabis index", currency: "USD" },
+  { symbol: "YOLO", key: "yolo", name: "AdvisorShares Pure Cannabis ETF", category: "etf", exchange: "NYSE Arca", note: "Global cannabis, actively managed", currency: "USD" },
   // Licensed producers (Canada, world's first federal legal market).
-  { symbol: "TLRY", key: "tlry", name: "Tilray Brands", category: "producer", exchange: "NASDAQ", note: "Largest Canadian producer" },
-  { symbol: "CGC", key: "cgc", name: "Canopy Growth", category: "producer", exchange: "NASDAQ", note: "Canadian producer" },
-  { symbol: "CRON", key: "cron", name: "Cronos Group", category: "producer", exchange: "NASDAQ", note: "Canadian producer" },
-  { symbol: "ACB", key: "acb", name: "Aurora Cannabis", category: "producer", exchange: "NASDAQ", note: "Canadian medical-focus producer" },
-  { symbol: "OGI", key: "ogi", name: "Organigram", category: "producer", exchange: "NASDAQ", note: "Canadian producer" },
+  { symbol: "TLRY", key: "tlry", name: "Tilray Brands", category: "producer", exchange: "NASDAQ", note: "Largest Canadian producer", currency: "USD" },
+  { symbol: "CGC", key: "cgc", name: "Canopy Growth", category: "producer", exchange: "NASDAQ", note: "Canadian producer", currency: "USD" },
+  { symbol: "CRON", key: "cron", name: "Cronos Group", category: "producer", exchange: "NASDAQ", note: "Canadian producer", currency: "USD" },
+  { symbol: "ACB", key: "acb", name: "Aurora Cannabis", category: "producer", exchange: "NASDAQ", note: "Canadian medical-focus producer", currency: "USD" },
+  { symbol: "OGI", key: "ogi", name: "Organigram", category: "producer", exchange: "NASDAQ", note: "Canadian producer", currency: "USD" },
   // US multi-state retailers (OTC because of US federal law).
-  { symbol: "GTBIF", key: "gtbif", name: "Green Thumb Industries", category: "us_retail", exchange: "OTC", note: "US multi-state operator" },
-  { symbol: "CURLF", key: "curlf", name: "Curaleaf", category: "us_retail", exchange: "OTC", note: "US multi-state operator" },
-  { symbol: "TCNNF", key: "tcnnf", name: "Trulieve", category: "us_retail", exchange: "OTC", note: "US multi-state operator" },
-  { symbol: "CRLBF", key: "crlbf", name: "Cresco Labs", category: "us_retail", exchange: "OTC", note: "US multi-state operator" },
+  { symbol: "GTBIF", key: "gtbif", name: "Green Thumb Industries", category: "us_retail", exchange: "OTC", note: "US multi-state operator", currency: "USD" },
+  { symbol: "CURLF", key: "curlf", name: "Curaleaf", category: "us_retail", exchange: "OTC", note: "US multi-state operator", currency: "USD" },
+  { symbol: "TCNNF", key: "tcnnf", name: "Trulieve", category: "us_retail", exchange: "OTC", note: "US multi-state operator", currency: "USD" },
+  { symbol: "CRLBF", key: "crlbf", name: "Cresco Labs", category: "us_retail", exchange: "OTC", note: "US multi-state operator", currency: "USD" },
   // Hemp / CBD economy.
-  { symbol: "CWBHF", key: "cwbhf", name: "Charlotte's Web", category: "cbd_hemp", exchange: "OTC", note: "Hemp-derived CBD products" },
-  { symbol: "IIPR", key: "iipr", name: "Innovative Industrial Properties", category: "cbd_hemp", exchange: "NYSE", note: "Cannabis-facility REIT" },
+  { symbol: "CWBHF", key: "cwbhf", name: "Charlotte's Web", category: "cbd_hemp", exchange: "OTC", note: "Hemp-derived CBD products", currency: "USD" },
+  { symbol: "IIPR", key: "iipr", name: "Innovative Industrial Properties", category: "cbd_hemp", exchange: "NYSE", note: "Cannabis-facility REIT", currency: "USD" },
+  // Thailand — SET-listed companies with cannabis/hemp exposure, quoted in
+  // THB. Thailand decriminalised cannabis in 2022 but no exchange trades the
+  // flower itself, so these equities plus the hand-recorded Thai price log
+  // below are the only honest market signals available.
+  { symbol: "DOD.BK", key: "dod", name: "DOD Biotech", category: "thai", exchange: "SET", note: "Hemp/CBD extract & supplements", currency: "THB" },
+  { symbol: "RBF.BK", key: "rbf", name: "R&B Food Supply", category: "thai", exchange: "SET", note: "Food ingredients incl. hemp extract", currency: "THB" },
+  { symbol: "GUNKUL.BK", key: "gunkul", name: "Gunkul Engineering", category: "thai", exchange: "SET", note: "Energy group with a cannabis venture", currency: "THB" },
+  { symbol: "BCH.BK", key: "bch", name: "Bangkok Chain Hospital", category: "thai", exchange: "SET", note: "Hospital group, medical cannabis clinics", currency: "THB" },
+  { symbol: "THG.BK", key: "thg", name: "Thonburi Healthcare", category: "thai", exchange: "SET", note: "Healthcare group, medical cannabis" , currency: "THB" },
 ];
 
 let cache: { at: number; rows: Row[] } | null = null;
