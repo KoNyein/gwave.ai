@@ -7,8 +7,8 @@ import { RefreshCw } from "lucide-react";
 /**
  * Force a fresh Cost Explorer read.
  *
- * Deliberately a button rather than an automatic refresh: each pull is three
- * billed API requests (~$0.03), so the confirm spells that out and the label
+ * Deliberately a button rather than an automatic refresh: each pull is four
+ * billed API requests (~$0.04), so the confirm spells that out and the label
  * shows how old the cached figures are — a six-hour-old number is usually fine
  * and the user should be able to see that before spending anything.
  */
@@ -33,7 +33,7 @@ export function CostRefreshButton({ fetchedAt }: { fetchedAt: string }) {
   async function refresh() {
     if (
       !window.confirm(
-        "Cost Explorer ကို ပြန်ခေါ်မှာ သေချာလား? တစ်ကြိမ်လျှင် ခန့်မှန်း $0.03 ကျသင့်ပါမည်။",
+        "Cost Explorer ကို ပြန်ခေါ်မှာ သေချာလား? တစ်ကြိမ်လျှင် ခန့်မှန်း $0.04 ကျသင့်ပါမည်။",
       )
     ) {
       return;
@@ -56,7 +56,7 @@ export function CostRefreshButton({ fetchedAt }: { fetchedAt: string }) {
         className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-muted disabled:opacity-60"
       >
         <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} />
-        Refresh (≈$0.03)
+        Refresh (≈$0.04)
       </button>
       {age ? (
         <p className="mt-1 text-[11px] text-muted-foreground">ရယူချိန်: {age}</p>

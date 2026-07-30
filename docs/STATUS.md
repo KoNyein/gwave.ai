@@ -51,6 +51,18 @@
 
 ## Changelog
 
+- 2026-07-30 (night, 2): **AWS cost board now shows real usage, not the
+  credit-masked number.** Grouping Cost Explorer by SERVICE without a
+  RECORD_TYPE filter nets credits into each service, and on this account that
+  made EC2 read $0.01 against **$149 of actual usage** — the whole bill showed
+  $52 when real consumption was **$228.50/month against $180/month of credits**.
+  A dashboard that hides that is worse than none, because the day the credits
+  run out the invoice jumps 4.5x with no warning. The service table and the
+  daily trend are now filtered to `RECORD_TYPE=Usage`, a fourth query pulls the
+  credit/tax/refund split, and the page leads with real usage, shows the
+  invoice figure beside it, and carries a warning panel naming the gap. Refresh
+  is now four billed requests (≈$0.04).
+
 - 2026-07-30 (night): **Admin storage + AWS cost dashboards.** /admin/storage
   answers "how much data does the system hold, and where" — `admin_storage_tables()`
   / `admin_storage_summary()` (SECURITY DEFINER, EXECUTE granted only to
