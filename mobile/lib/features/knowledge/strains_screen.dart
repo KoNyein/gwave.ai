@@ -162,9 +162,7 @@ class _StrainsScreenState extends State<StrainsScreen> {
               color: GwColors.primary,
               onRefresh: _load,
               child: _loading && _strains.isEmpty
-                  ? const Center(
-                      child:
-                          CircularProgressIndicator(color: GwColors.primary))
+                  ? const GwSkeletonList(count: 6, hasAvatar: false)
                   : _error != null && _strains.isEmpty
                       ? ListView(children: [
                           const SizedBox(height: 80),

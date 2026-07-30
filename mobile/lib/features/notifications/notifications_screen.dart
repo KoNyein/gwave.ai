@@ -53,8 +53,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading
-            ? const Center(
-                child: CircularProgressIndicator(color: GwColors.primary))
+            ? const GwSkeletonList(count: 7)
             : _error != null && _items.isEmpty
                 ? ListView(children: [
                     const SizedBox(height: 120),

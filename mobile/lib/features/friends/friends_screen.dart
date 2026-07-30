@@ -102,8 +102,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         color: GwColors.primary,
         onRefresh: _load,
         child: _loading && _friends.isEmpty && _incoming.isEmpty
-            ? const Center(
-                child: CircularProgressIndicator(color: GwColors.primary))
+            ? const GwSkeletonList(count: 6)
             : _error != null && _friends.isEmpty
                 ? ListView(children: [
                     const SizedBox(height: 100),
