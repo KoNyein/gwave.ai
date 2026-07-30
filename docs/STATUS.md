@@ -51,6 +51,24 @@
 
 ## Changelog
 
+- 2026-07-30 (night): **Admin storage + AWS cost dashboards.** /admin/storage
+  answers "how much data does the system hold, and where" — `admin_storage_tables()`
+  / `admin_storage_summary()` (SECURITY DEFINER, EXECUTE granted only to
+  service_role) give per-table size split into data/index/TOAST plus row
+  estimates, because PostgREST serves rows not catalogue views; S3 bucket size
+  and object count come from the CloudWatch daily metrics rather than listing
+  objects, which on the media bucket would be hundreds of thousands of API
+  calls per page load. /admin/aws answers "what is AWS charging for, and why" —
+  Cost Explorer month-to-date by service with last-month comparison, a 30-day
+  daily bar trend, AWS's own month forecast, and for each service a written
+  note saying what Gwave runs on it, what the meter counts, and the one lever
+  that would reduce it. Cost Explorer bills $0.01 per request, so the report is
+  cached six hours in-process and refreshing is an explicit button that says
+  what it costs. Missing IAM permission renders as the exact policy to add, not
+  a 500. **`db/sql/admin-storage.sql` must be run on RDS + `sudo docker restart
+  postgrest`**, and the EC2 instance role needs `ce:GetCostAndUsage`,
+  `ce:GetCostForecast` and `cloudwatch:GetMetricData`.
+
 - 2026-07-30 (evening): **Community mine-site map.** /minerals/mines —
   `mine_sites` + `mine_site_reports`, RLS-sealed behind /api/mine/sites, so
   the metal board's "what is tin worth" now has a "where is it dug" companion.

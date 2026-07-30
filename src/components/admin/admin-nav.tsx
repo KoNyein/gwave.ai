@@ -9,6 +9,8 @@ import {
   Gamepad2,
   GraduationCap,
   LayoutGrid,
+  Cloud,
+  HardDrive,
   Mountain,
   Music,
   ShieldAlert,
@@ -81,6 +83,8 @@ const SECTIONS: AdminNavSection[] = [
       { href: "/admin/gpay", label: "G-Pay", icon: Wallet },
       { href: "/admin/settings", label: "Settings", icon: SettingsIcon },
       { href: "/admin/system", label: "System", icon: Activity },
+      { href: "/admin/storage", label: "Storage", icon: HardDrive },
+      { href: "/admin/aws", label: "AWS cost", icon: Cloud },
     ],
   },
 ];
