@@ -11,6 +11,7 @@ import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import 'knowledge_i18n.dart';
 import 'subject_comments_sheet.dart';
+import '../web/web_screen.dart';
 
 const _typeColors = <String, Color>{
   "indica": Color(0xFF7A4DD6),
@@ -76,7 +77,24 @@ class _StrainsScreenState extends State<StrainsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(tr(context, "Strains", "မျိုးကွဲများ"))),
+      appBar: AppBar(
+        title: Text(tr(context, "Strains", "မျိုးကွဲများ")),
+        actions: [
+          // Cannabis/hemp/CBD market board — educational, and the web page
+          // itself enforces the 18+ gate (requireAdult) on the session the
+          // webview signs in with.
+          IconButton(
+            tooltip: tr(context, "Markets (18+, educational)",
+                "ဈေးကွက် (၁၈+၊ ပညာပေး)"),
+            icon: const Icon(Icons.trending_up),
+            onPressed: () => openWeb(
+              context,
+              "https://gwave.cc/strains/market",
+              title: tr(context, "Cannabis markets", "ဈေးကွက်"),
+            ),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
