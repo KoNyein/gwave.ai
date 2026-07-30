@@ -43,7 +43,7 @@ export default async function AdminAwsPage() {
           </h1>
           <p className="text-sm text-muted-foreground">
             ဘယ်ဝန်ဆောင်မှုတွေကို အခပေးနေရလဲ၊ ဘာကြောင့်လဲ — Cost Explorer မှ
-            တိုက်ရိုက်။ Data အရွယ်အစားကို{" "}
+            တိုက်ရိုက်၊ credit မခုနှိမ်မီ တကယ့်သုံးစွဲမှုအတိုင်း။ Data အရွယ်အစားကို{" "}
             <a href="/admin/storage" className="text-primary hover:underline">
               Storage
             </a>{" "}
@@ -83,7 +83,7 @@ export default async function AdminAwsPage() {
         <Card>
           <CardContent className="p-3">
             <p className="text-xs text-muted-foreground">
-              ဤလ ({report.monthLabel})
+              တကယ့်သုံးစွဲမှု ({report.monthLabel})
             </p>
             <p className="text-xl font-bold tabular-nums">
               {usd(report.monthToDate)}
@@ -127,16 +127,48 @@ export default async function AdminAwsPage() {
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">ဝန်ဆောင်မှု အရေအတွက်</p>
+            <p className="text-xs text-muted-foreground">အမှန်တကယ် ပေးရမည့်ငွေ</p>
             <p className="text-xl font-bold tabular-nums">
-              {report.services.length}
+              {usd(report.netPayable)}
             </p>
             <p className="text-[11px] text-muted-foreground">
-              ငွေကျသင့်နေသည့် service
+              credit ${report.credits.toFixed(0)} ခုနှိမ်ပြီး
             </p>
           </CardContent>
         </Card>
       </div>
+
+      {report.credits > 0 ? (
+        <div className="space-y-1 rounded-xl border-2 border-amber-500 bg-amber-500/10 p-3 text-sm">
+          <p className="flex items-center gap-2 font-bold text-amber-700 dark:text-amber-400">
+            <TriangleAlert className="h-4 w-4" /> Credit က တကယ့်ကုန်ကျစရိတ်ကို
+            ဖုံးထားပါသည်
+          </p>
+          <p className="leading-relaxed">
+            ဤလ တကယ်သုံးထားသည်မှာ{" "}
+            <strong className="tabular-nums">{usd(report.monthToDate)}</strong>{" "}
+            ဖြစ်ပြီး AWS credit{" "}
+            <strong className="tabular-nums">{usd(report.credits)}</strong> က
+            ခုနှိမ်ပေးထားသဖြင့် ယခု{" "}
+            <strong className="tabular-nums">{usd(report.netPayable)}</strong>{" "}
+            သာ ပေးနေရပါသည်။{" "}
+            <strong>
+              Credit ကုန်သည့်နေ့တွင် ငွေတောင်းခံလွှာသည်{" "}
+              {report.previousMonth > 0
+                ? `တစ်လလျှင် ${usd(report.monthToDate)} ခန့်သို့ `
+                : ""}
+              ရုတ်တရက် တက်လာပါလိမ့်မည်။
+            </strong>{" "}
+            ကျန်ရှိသော credit နှင့် သက်တမ်းကုန်ရက်ကို AWS console → Billing →
+            Credits တွင် ကြည့်ပါ။
+          </p>
+          <p className="text-xs text-muted-foreground">
+            အောက်ပါ ဇယားသည် <strong>credit မခုနှိမ်မီ</strong> တကယ့်သုံးစွဲမှု
+            ဖြစ်သည် — ဘယ်ဝန်ဆောင်မှုက တကယ် ငွေကုန်နေလဲ သိရန် ဤဂဏန်းကသာ
+            အသုံးဝင်ပါသည်။
+          </p>
+        </div>
+      ) : null}
 
       {report.daily.length > 0 ? (
         <Card>
@@ -260,8 +292,8 @@ export default async function AdminAwsPage() {
         <p>
           <strong>ဤစာမျက်နှာကိုယ်တိုင် ငွေကုန်ပါသည်။</strong> AWS Cost Explorer
           API သည် တစ်ခေါ်လျှင် $0.01 ကျသင့်သည်။ ထို့ကြောင့် အချက်အလက်များကို ၆
-          နာရီ cache လုပ်ထားပြီး၊ တစ်ကြိမ် refresh လျှင် ခေါ်ဆိုမှု ၃ ခု (≈
-          $0.03) သာ ဖြစ်ပါသည်။ လိုအပ်မှသာ refresh နှိပ်ပါ။
+          နာရီ cache လုပ်ထားပြီး၊ တစ်ကြိမ် refresh လျှင် ခေါ်ဆိုမှု ၄ ခု (≈
+          $0.04) သာ ဖြစ်ပါသည်။ လိုအပ်မှသာ refresh နှိပ်ပါ။
         </p>
         <p className="mt-1">
           ကိန်းဂဏန်းများသည် unblended cost ဖြစ်ပြီး credit/refund များ

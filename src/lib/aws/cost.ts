@@ -16,8 +16,8 @@ import {
  *  1. **Cost Explorer is itself billed at $0.01 per request.** A dashboard that
  *     re-queried on every page load would quietly add its own line to the bill,
  *     which would be a bad joke. So the results are cached in-process for six
- *     hours and the UI says when they were fetched. Three requests per refresh
- *     ≈ $0.03; at most four refreshes a day that is about $0.12/month.
+ *     hours and the UI says when they were fetched. Four requests per refresh
+ *     ≈ $0.04; at most four refreshes a day that is about $0.16/month.
  *  2. **Cost Explorer only lives in us-east-1**, regardless of where the
  *     workload runs. The region below is not a mistake.
  *
@@ -42,8 +42,17 @@ export interface DailyCost {
 export interface AwsCostReport {
   currency: string;
   monthLabel: string;
+  /** Real usage this month, BEFORE credits. What the account actually consumed. */
   monthToDate: number;
+  /** Same figure for the whole of last month. */
   previousMonth: number;
+  /** Credits applied this month (positive number; they reduce the invoice). */
+  credits: number;
+  /** Tax and any refunds, this month. */
+  tax: number;
+  refunds: number;
+  /** What the invoice actually says: usage - credits + tax - refunds. */
+  netPayable: number;
   /** Cost Explorer's own projection for the full current month, when available. */
   forecast: number | null;
   services: ServiceCost[];
@@ -86,6 +95,10 @@ export async function getAwsCostReport(
     monthLabel: monthStart.toISOString().slice(0, 7),
     monthToDate: 0,
     previousMonth: 0,
+    credits: 0,
+    tax: 0,
+    refunds: 0,
+    netPayable: 0,
     forecast: null,
     services: [],
     daily: [],
@@ -96,6 +109,12 @@ export async function getAwsCostReport(
   try {
     const client = new CostExplorerClient({ region: "us-east-1" });
 
+    // Filtered to RECORD_TYPE=Usage on purpose. Without the filter, credits are
+    // netted into each service and the board shows a number the account is not
+    // actually costing — on this account EC2 read $0.01 against $149 of real
+    // usage. A dashboard that hides that is worse than no dashboard, because
+    // the day the credits run out the bill jumps with no warning.
+    //
     // One call covers both months: MONTHLY granularity over last month → today
     // returns two buckets, so the comparison costs nothing extra.
     const byService = await client.send(
@@ -103,6 +122,7 @@ export async function getAwsCostReport(
         TimePeriod: { Start: ymd(prevStart), End: ymd(tomorrow) },
         Granularity: "MONTHLY",
         Metrics: ["UnblendedCost"],
+        Filter: { Dimensions: { Key: "RECORD_TYPE", Values: ["Usage"] } },
         GroupBy: [{ Type: "DIMENSION", Key: "SERVICE" }],
       }),
     );
@@ -137,12 +157,39 @@ export async function getAwsCostReport(
       .filter((s) => s.amount > 0.0000001 || s.previous > 0.0000001)
       .sort((a, b) => b.amount - a.amount || b.previous - a.previous);
 
+    // Credits, tax and refunds, so the page can show both the real cost and
+    // the invoice — and the gap between them.
+    const byRecord = await client.send(
+      new GetCostAndUsageCommand({
+        TimePeriod: { Start: ymd(monthStart), End: ymd(tomorrow) },
+        Granularity: "MONTHLY",
+        Metrics: ["UnblendedCost"],
+        GroupBy: [{ Type: "DIMENSION", Key: "RECORD_TYPE" }],
+      }),
+    );
+    let credits = 0;
+    let tax = 0;
+    let refunds = 0;
+    for (const period of byRecord.ResultsByTime ?? []) {
+      for (const g of period.Groups ?? []) {
+        const kind = (g.Keys?.[0] ?? "").toLowerCase();
+        const amount = Number(g.Metrics?.UnblendedCost?.Amount ?? 0);
+        // Credits and refunds come back negative; store them positive so the
+        // UI reads "credits: $180" rather than "credits: -$180".
+        if (kind.includes("credit")) credits += -amount;
+        else if (kind.includes("refund")) refunds += -amount;
+        else if (kind.includes("tax")) tax += amount;
+      }
+    }
+
     // Daily totals for the trend bars — one more request.
     const byDay = await client.send(
       new GetCostAndUsageCommand({
         TimePeriod: { Start: ymd(thirtyDaysAgo), End: ymd(tomorrow) },
         Granularity: "DAILY",
         Metrics: ["UnblendedCost"],
+        // Usage only, to match the service table above.
+        Filter: { Dimensions: { Key: "RECORD_TYPE", Values: ["Usage"] } },
       }),
     );
     const daily: DailyCost[] = (byDay.ResultsByTime ?? []).map((p) => ({
@@ -171,11 +218,16 @@ export async function getAwsCostReport(
       }
     }
 
+    const usage = [...current.values()].reduce((n, v) => n + v, 0);
     const report: AwsCostReport = {
       ...base,
       currency,
-      monthToDate: [...current.values()].reduce((n, v) => n + v, 0),
+      monthToDate: usage,
       previousMonth: [...previous.values()].reduce((n, v) => n + v, 0),
+      credits,
+      tax,
+      refunds,
+      netPayable: usage - credits + tax - refunds,
       forecast,
       services,
       daily,
