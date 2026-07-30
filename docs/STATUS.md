@@ -51,6 +51,21 @@
 
 ## Changelog
 
+- 2026-07-30 (late morning): **Market log split + border gates + cannabis
+  market board.** metals.dev free tier confirmed to carry no tin/rhodium
+  (key list checked on prod), so per the user's decision the market log now
+  has a hand-recorded world-price section (e.g. tin LME) on top and Myanmar
+  border/local prices below; a local quote with no live row compares
+  against the logged world entry (PR #406). Border-gate quick-picks north
+  to south — Tachileik, Maese, Gate 13/14 (Kayah), Myawaddy, Mae Tha Waw,
+  Mae Tha Lay, Htee Khee, Nat Ein Taung, Kawthaung — each gate its own row,
+  with a note that prices differ per gate (PRs #407-408, deploys 164-165).
+  New /strains/market (PR #409, deploy #166): cannabis/hemp/CBD equity
+  board (ETFs, Canadian producers, US MSOs, CBD companies via Yahoo)
+  behind requireAdult 18+, with educational-only + illegal-in-Myanmar
+  disclaimer and my/en toggle; app Strains screen opens it via the
+  signed-in webview (APK 226, which also carries the main merge f109d07).
+
 - 2026-07-30 (mid-morning): **Metal board v3, drone radar v2, map travel
   tools.** Web (PR #404, deploy #162): tap-to-expand metal rows (1-mo
   chart, high/low/avg, kyattha/gram/kg/tonne conversion cards, per-metal
