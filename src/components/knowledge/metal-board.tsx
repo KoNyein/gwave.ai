@@ -616,7 +616,13 @@ const QUICK_MARKETS = [
   "တာချီလိတ်",
   "မြဝတီ",
   "ရန်ကုန်",
+  "LME (ကမ္ဘာ့ဈေး)",
 ];
+
+/** A quote whose market says LME/world belongs in the world section of the
+ *  log — the hand-recorded stand-in for feeds the free tier doesn't carry
+ *  (tin). Everything else is a Myanmar border/local price. */
+const WORLD_MARKET_RE = /lme|rotterdam|world|ကမ္ဘာ|ရော်တာဒမ်/i;
 
 function MarketLog({
   quotes,
@@ -658,19 +664,35 @@ function MarketLog({
 
   if (latest.length === 0 && !isAdmin) return null;
 
-  /** The matching international quote, so a border price is never read in a
-   *  vacuum. Longest name first so ခဲမဖြူ matches tin before ခဲ matches lead. */
-  function reference(q: MetalQuote): Metal | null {
+  // The world section on top, Myanmar border/local prices below — the
+  // reader always knows which is which.
+  const world = latest.filter((q) => WORLD_MARKET_RE.test(q.market));
+  const local = latest.filter((q) => !WORLD_MARKET_RE.test(q.market));
+
+  /** The Burmese trade name this quote is about, longest first so ခဲမဖြူ
+   *  matches tin before ခဲ matches lead. */
+  function tradeName(q: MetalQuote): string | null {
     const names = Object.keys(QUOTE_TO_LIVE).sort(
       (a, b) => b.length - a.length,
     );
     for (const name of names) {
-      if (q.name_my.includes(name)) {
-        const row = live.find((m) => m.key === QUOTE_TO_LIVE[name]);
-        if (row) return row;
-      }
+      if (q.name_my.includes(name)) return name;
     }
     return null;
+  }
+
+  /** The matching live exchange row, so a border price is never read in a
+   *  vacuum. */
+  function reference(q: MetalQuote): Metal | null {
+    const name = tradeName(q);
+    if (!name) return null;
+    return live.find((m) => m.key === QUOTE_TO_LIVE[name]) ?? null;
+  }
+
+  /** No live feed (tin) → fall back to the hand-logged world quote. */
+  function loggedWorld(q: MetalQuote): MetalQuote | null {
+    const name = tradeName(q) ?? q.name_my;
+    return world.find((w) => w.id !== q.id && w.name_my.includes(name)) ?? null;
   }
 
   async function submit() {
@@ -840,57 +862,94 @@ function MarketLog({
           {t.logEmpty}
         </p>
       ) : (
-        <table className="w-full text-sm">
-          <tbody>
-            {latest.map((q) => (
-              <tr key={q.id} className="border-b last:border-b-0">
-                <td className="px-4 py-2.5">
-                  <p className="font-semibold leading-tight">{q.name_my}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {[q.grade, q.market].filter(Boolean).join(" · ")}
-                  </p>
+        (() => {
+          const row = (q: MetalQuote, withRef: boolean) => (
+            <tr key={q.id} className="border-b last:border-b-0">
+              <td className="px-4 py-2.5">
+                <p className="font-semibold leading-tight">{q.name_my}</p>
+                <p className="text-xs text-muted-foreground">
+                  {[q.grade, q.market].filter(Boolean).join(" · ")}
+                </p>
+              </td>
+              <td className="px-4 py-2.5 text-right">
+                <p className="font-bold tabular-nums">
+                  {q.price.toLocaleString("en-US")} {q.currency}
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">
+                    /{q.unit}
+                  </span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {q.quoted_at}
+                  {q.note ? ` · ${q.note}` : ""}
+                </p>
+                {withRef
+                  ? (() => {
+                      const ref = reference(q);
+                      if (ref) {
+                        return (
+                          <p className="text-[11px] text-sky-700 dark:text-sky-400">
+                            {t.worldPrice} ({ref.exchange}): $
+                            {ref.usd.toLocaleString("en-US", {
+                              maximumFractionDigits:
+                                ref.unit === "t" ? 0 : 2,
+                            })}
+                            /{UNIT_LABEL[ref.unit]}
+                          </p>
+                        );
+                      }
+                      const wq = loggedWorld(q);
+                      if (wq) {
+                        return (
+                          <p className="text-[11px] text-sky-700 dark:text-sky-400">
+                            {t.worldPrice} ({wq.market}):{" "}
+                            {wq.price.toLocaleString("en-US")} {wq.currency}/
+                            {wq.unit} · {wq.quoted_at}
+                          </p>
+                        );
+                      }
+                      return null;
+                    })()
+                  : null}
+              </td>
+              {isAdmin ? (
+                <td className="pr-3 text-right">
+                  <button
+                    type="button"
+                    onClick={() => void remove(q.id)}
+                    className="text-xs text-muted-foreground hover:text-red-600"
+                    aria-label="Delete"
+                  >
+                    ✕
+                  </button>
                 </td>
-                <td className="px-4 py-2.5 text-right">
-                  <p className="font-bold tabular-nums">
-                    {q.price.toLocaleString("en-US")} {q.currency}
-                    <span className="ml-1 text-xs font-normal text-muted-foreground">
-                      /{q.unit}
-                    </span>
+              ) : null}
+            </tr>
+          );
+          return (
+            <>
+              {world.length > 0 ? (
+                <>
+                  <p className="border-b bg-sky-500/10 px-4 py-1.5 text-xs font-semibold text-sky-700 dark:text-sky-400">
+                    {t.logWorldSection}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    {q.quoted_at}
-                    {q.note ? ` · ${q.note}` : ""}
+                  <table className="w-full text-sm">
+                    <tbody>{world.map((q) => row(q, false))}</tbody>
+                  </table>
+                </>
+              ) : null}
+              {local.length > 0 ? (
+                <>
+                  <p className="border-b border-t bg-muted/40 px-4 py-1.5 text-xs font-semibold">
+                    {t.logLocalSection}
                   </p>
-                  {(() => {
-                    const ref = reference(q);
-                    if (!ref) return null;
-                    return (
-                      <p className="text-[11px] text-sky-700 dark:text-sky-400">
-                        {t.worldPrice} ({ref.exchange}): $
-                        {ref.usd.toLocaleString("en-US", {
-                          maximumFractionDigits: ref.unit === "t" ? 0 : 2,
-                        })}
-                        /{UNIT_LABEL[ref.unit]}
-                      </p>
-                    );
-                  })()}
-                </td>
-                {isAdmin ? (
-                  <td className="pr-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => void remove(q.id)}
-                      className="text-xs text-muted-foreground hover:text-red-600"
-                      aria-label="Delete"
-                    >
-                      ✕
-                    </button>
-                  </td>
-                ) : null}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  <table className="w-full text-sm">
+                    <tbody>{local.map((q) => row(q, true))}</tbody>
+                  </table>
+                </>
+              ) : null}
+            </>
+          );
+        })()
       )}
       <p className="border-t px-4 py-2 text-[11px] leading-relaxed text-muted-foreground">
         {t.logDisclaimer}
