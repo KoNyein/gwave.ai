@@ -1154,7 +1154,18 @@
     "payGpayNow": "ادفع الآن عبر G-Pay",
     "gpayBalance": "الرصيد",
     "gpayInsufficient": "رصيد غير كافٍ",
-    "gpayPayHint": "يُخصم فورًا من محفظة G-Pay الخاصة بك."
+    "gpayPayHint": "يُخصم فورًا من محفظة G-Pay الخاصة بك.",
+    "sold": "sold",
+    "specifications": "Specifications",
+    "syncedAt": "Merchant data updated {when}",
+    "packHeading": "Send to your customer",
+    "packHint": "Copy the message, share it, or save every photo at once — then paste it into Facebook, Messenger or Viber.",
+    "packCopy": "Copy message",
+    "packCopied": "Copied",
+    "packShare": "Share",
+    "packSavePhotos": "Save photos",
+    "packSaving": "Saving…",
+    "packPhotoCount": "{count} photos"
   },
   "finance": {
     "title": "مالية الأعمال",

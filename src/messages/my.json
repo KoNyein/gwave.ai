@@ -1170,7 +1170,18 @@
     "payGpayNow": "G-Pay ဖြင့် ချက်ချင်းပေးမည်",
     "gpayBalance": "လက်ကျန်",
     "gpayInsufficient": "လက်ကျန် မလုံလောက်ပါ",
-    "gpayPayHint": "သင့် G-Pay wallet မှ ချက်ချင်း နုတ်ယူပါမည်။"
+    "gpayPayHint": "သင့် G-Pay wallet မှ ချက်ချင်း နုတ်ယူပါမည်။",
+    "sold": "ရောင်းပြီး",
+    "specifications": "အသေးစိတ် အချက်အလက်",
+    "syncedAt": "ရောင်းသူ၏ အချက်အလက် နောက်ဆုံး ရယူချိန် {when}",
+    "packHeading": "ဝယ်သူထံ ပို့ရန်",
+    "packHint": "စာသားကို ကူးယူပါ၊ share လုပ်ပါ၊ ဓာတ်ပုံအားလုံးကို တစ်ခါတည်း သိမ်းပါ — ပြီးရင် Facebook, Messenger, Viber တွင် ကူးထည့်လိုက်ပါ။",
+    "packCopy": "စာသား ကူးယူ",
+    "packCopied": "ကူးပြီးပါပြီ",
+    "packShare": "မျှဝေ",
+    "packSavePhotos": "ဓာတ်ပုံ သိမ်း",
+    "packSaving": "သိမ်းနေသည်…",
+    "packPhotoCount": "ပုံ {count} ပုံ"
   },
   "finance": {
     "title": "လုပ်ငန်း ငွေစာရင်း",

@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ExternalLink, ImageOff } from "lucide-react";
+import { ArrowLeft, ExternalLink, Package, Star, Truck } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { ReviewSection } from "@/components/reviews/review-section";
 import { AffiliateButton } from "@/components/shop/affiliate-button";
+import { CustomerPack } from "@/components/shop/customer-pack";
+import { ProductGallery } from "@/components/shop/product-gallery";
 import { OrderForm } from "@/components/shop/order-form";
 import { KindBadge } from "@/components/shop/product-card";
 import { UserAvatar } from "@/components/social/user-avatar";
@@ -19,6 +21,8 @@ import { displayName, formatPrice } from "@/lib/format";
 import { mediaRef } from "@/lib/media-url";
 
 export const dynamic = "force-dynamic";
+
+const numberFmt = new Intl.NumberFormat("en-US");
 
 export async function generateMetadata(
   props: {
@@ -83,6 +87,22 @@ export default async function ProductPage(
     ),
   ];
 
+  // Merchant attributes arrive as jsonb; anything that is not a {name, value}
+  // pair is dropped rather than rendered as "[object Object]".
+  const specs = (product.specs ?? []).filter(
+    (s): s is { name: string; value: string } =>
+      Boolean(s) &&
+      typeof s === "object" &&
+      typeof s.name === "string" &&
+      typeof s.value === "string" &&
+      s.name.trim() !== "" &&
+      s.value.trim() !== "",
+  );
+  const isSeller = profile.id === product.seller_id;
+  const siteUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL || "https://gwave.cc"
+  ).replace(/\/$/, "");
+
   return (
     <div className="space-y-4">
       <Link
@@ -92,48 +112,11 @@ export default async function ProductPage(
         <ArrowLeft className="h-4 w-4" /> {t("backToShop")}
       </Link>
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <div className="relative aspect-square w-full overflow-hidden rounded-xl border bg-muted">
-            {gallery.length > 0 ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              (<img
-                src={gallery[0]}
-                alt={product.title}
-                referrerPolicy="no-referrer"
-                className="h-full w-full object-cover"
-              />)
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                <ImageOff className="h-10 w-10" />
-              </div>
-            )}
-          </div>
-          {/* A server component can't run a lightbox, so the rest of the
-              gallery is a scrolling strip of full-size links rather than a
-              row of thumbnails that do nothing. */}
-          {gallery.length > 1 ? (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {gallery.slice(1).map((src, i) => (
-                <a
-                  key={src}
-                  href={src}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shrink-0 overflow-hidden rounded-lg border bg-muted"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={src}
-                    alt={`${product.title} — ${i + 2}`}
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    className="h-20 w-20 object-cover"
-                  />
-                </a>
-              ))}
-            </div>
-          ) : null}
-        </div>
+        <ProductGallery
+          images={gallery}
+          title={product.title}
+          video={product.video_url}
+        />
 
         <div className="space-y-3">
           <KindBadge kind={product.kind} labels={kindLabels} />
@@ -146,8 +129,57 @@ export default async function ProductPage(
           {product.merchant && (
             <p className="text-sm text-muted-foreground">
               {t("soldBy")}: <span className="font-medium">{product.merchant}</span>
+              {product.store_name ? (
+                <>
+                  {" · "}
+                  {product.store_url ? (
+                    <a
+                      href={product.store_url}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      className="hover:underline"
+                    >
+                      {product.store_name}
+                    </a>
+                  ) : (
+                    product.store_name
+                  )}
+                </>
+              ) : null}
             </p>
           )}
+
+          {/* The merchant's own numbers, shown as theirs. Gwave has its own
+              review section further down; conflating the two would let a
+              supplier's rating masquerade as this seller's. */}
+          {product.rating != null ||
+          product.orders_count != null ||
+          product.shipping_note ? (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              {product.rating != null ? (
+                <span className="inline-flex items-center gap-1">
+                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                  <span className="font-semibold text-foreground">
+                    {product.rating.toFixed(1)}
+                  </span>
+                  {product.reviews_count != null
+                    ? ` (${numberFmt.format(product.reviews_count)})`
+                    : ""}
+                </span>
+              ) : null}
+              {product.orders_count != null && product.orders_count > 0 ? (
+                <span className="inline-flex items-center gap-1">
+                  <Package className="h-3.5 w-3.5" />
+                  {numberFmt.format(product.orders_count)} {t("sold")}
+                </span>
+              ) : null}
+              {product.shipping_note ? (
+                <span className="inline-flex items-center gap-1">
+                  <Truck className="h-3.5 w-3.5" /> {product.shipping_note}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <UserAvatar profile={product.seller} className="h-6 w-6" />
@@ -183,6 +215,61 @@ export default async function ProductPage(
           </CardContent>
         </Card>
       ) : null}
+      {specs.length > 0 ? (
+        <Card>
+          <CardContent className="p-4">
+            <h2 className="mb-2 font-semibold">{t("specifications")}</h2>
+            <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+              {specs.map((spec) => (
+                <div
+                  key={`${spec.name}-${spec.value}`}
+                  className="flex justify-between gap-3 border-b py-1 text-sm last:border-0"
+                >
+                  <dt className="shrink-0 text-muted-foreground">{spec.name}</dt>
+                  <dd className="text-right font-medium">{spec.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {/* The seller's own toolkit. Only they see it: for a buyer it would be
+          a confusing second copy of the page they are already reading. */}
+      {isSeller ? (
+        <CustomerPack
+          title={product.title}
+          priceLabel={
+            product.price != null
+              ? formatPrice(product.price, product.currency)
+              : ""
+          }
+          url={`${siteUrl}/shop/${product.id}`}
+          images={gallery}
+          specs={specs}
+          shippingNote={product.shipping_note}
+          storeName={product.store_name}
+          strings={{
+            heading: t("packHeading"),
+            hint: t("packHint"),
+            copy: t("packCopy"),
+            copied: t("packCopied"),
+            share: t("packShare"),
+            savePhotos: t("packSavePhotos"),
+            saving: t("packSaving"),
+            photoCount: (n: number) => t("packPhotoCount", { count: n }),
+          }}
+        />
+      ) : null}
+
+      {product.source_synced_at ? (
+        <p className="text-[11px] text-muted-foreground">
+          {t("syncedAt", {
+            when: new Date(product.source_synced_at).toLocaleDateString(),
+          })}
+        </p>
+      ) : null}
+
       {/* Only an affiliate listing points at the merchant. On a dropship one
           we are the seller, so this link would walk the buyer straight out of
           the checkout they were about to complete. */}

@@ -51,6 +51,27 @@
 
 ## Changelog
 
+- 2026-07-31: **Dropship listings carry the whole product, and a kit for
+  selling it.** The AliExpress import was pulling one photo out of a feed that
+  publishes six plus a video, a store name and a satisfaction score — so a
+  reseller had nothing to show a customer. `PRODUCT_FIELDS` now asks for all of
+  it, `merchantDetail()` writes it on **both** import and refresh (the first
+  cut only set it on import, so a refreshed listing silently reverted to one
+  photo), and `shop_product_detail.sql` adds specs/variants/rating/orders/
+  store/video/shipping columns with the images cap raised 10 → 24. The product
+  page gets a real gallery — swipe, arrows, counter, full-screen viewer, video
+  first when there is one — plus a specs table and the merchant's own numbers
+  shown as *theirs*, separate from Gwave's review section. The piece that
+  matters commercially is the seller-only **customer pack**: a ready-made sales
+  message, a share-sheet button, and a save-every-photo button that fetches
+  blobs (a cross-origin `download` attribute is ignored, which is why the
+  obvious version opens tabs and saves nothing). Merchant list price is
+  deliberately NOT copied into `original_price` — our price is theirs plus a
+  markup, so showing their "was" beside our "now" would advertise a discount
+  that does not exist. **`db/sql/shop-product-detail.sql` must be run on RDS +
+  `sudo docker restart postgrest`**, and the import still needs
+  `ALIEXPRESS_APP_KEY` / `_APP_SECRET` / `_TRACKING_ID` in `/etc/gwave-web.env`.
+
 - 2026-07-30 (night, 2): **AWS cost board now shows real usage, not the
   credit-masked number.** Grouping Cost Explorer by SERVICE without a
   RECORD_TYPE filter nets credits into each service, and on this account that
