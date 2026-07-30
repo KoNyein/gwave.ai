@@ -610,11 +610,23 @@ const QUICK_METALS = [
   "နီကယ်",
   "ကြေးနီ",
 ];
+/** Every border gate trades at its own price — transport difficulty and the
+ *  local security situation differ gate to gate — and the log keeps one row
+ *  per (metal, market), so each gate gets its own quote. China border, then
+ *  the Thai-border gates north to south, then domestic, then world. */
 const QUICK_MARKETS = [
   "မူဆယ်နယ်စပ်",
   "ကချင် (ပန်ဝါနယ်စပ်)",
   "တာချီလိတ်",
+  "မယ်စဲ (ကယား)",
+  "၁၃ မိုင်ဂိတ် (ကယား)",
+  "၁၄ မိုင်ဂိတ် (ကယား)",
   "မြဝတီ",
+  "မဲသဝေါ (မြဝတီ)",
+  "မဲသလေ (မြဝတီ)",
+  "ထီးခီး (ထားဝယ်)",
+  "နတ်အိမ်တောင် (တနင်္သာရီ)",
+  "ကော့သောင်း (ရနောင်းဂိတ်)",
   "ရန်ကုန်",
   "LME (ကမ္ဘာ့ဈေး)",
 ];
@@ -829,6 +841,9 @@ function MarketLog({
               </button>
             ))}
           </div>
+          <p className="text-[11px] leading-relaxed text-muted-foreground sm:col-span-2">
+            {t.logGateNote}
+          </p>
           <input
             className="rounded-md border bg-background px-2 py-1.5 text-sm"
             placeholder={t.phMarket}
