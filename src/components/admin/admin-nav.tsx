@@ -65,6 +65,7 @@ const SECTIONS: AdminNavSection[] = [
     hint: "တိုင်ကြားချက်၊ ဂိမ်း အတည်ပြု",
     links: [
       { href: "/admin/moderation", label: "Moderation", icon: ShieldAlert },
+      { href: "/admin/places", label: "Places", icon: MapPin },
       { href: "/admin/games", label: "Games", icon: Gamepad2 },
       { href: "/admin/audio", label: "Audio", icon: Music },
     ],
