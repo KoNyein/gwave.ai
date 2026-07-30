@@ -17,6 +17,7 @@ import {
   Wallet,
   MapPin,
   type LucideIcon,
+  Wifi,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -45,6 +46,7 @@ const SECTIONS: AdminNavSection[] = [
     links: [
       { href: "/admin", label: "Overview", icon: BarChart3 },
       { href: "/admin/modules", label: "Modules", icon: LayoutGrid },
+      { href: "/admin/data", label: "Data charts", icon: BarChart3 },
     ],
   },
   {
@@ -53,6 +55,7 @@ const SECTIONS: AdminNavSection[] = [
     links: [
       { href: "/admin/users", label: "Users", icon: Users },
       { href: "/admin/map", label: "Users map", icon: MapPin },
+      { href: "/admin/wifi", label: "WiFi data", icon: Wifi },
       { href: "/admin/membership", label: "Membership", icon: BadgeCheck },
       { href: "/admin/teachers", label: "Teachers", icon: GraduationCap },
     ],
