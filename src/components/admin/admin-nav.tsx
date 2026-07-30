@@ -18,6 +18,7 @@ import {
   MapPin,
   type LucideIcon,
   Wifi,
+  Search as SearchIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -47,6 +48,7 @@ const SECTIONS: AdminNavSection[] = [
       { href: "/admin", label: "Overview", icon: BarChart3 },
       { href: "/admin/modules", label: "Modules", icon: LayoutGrid },
       { href: "/admin/data", label: "Data charts", icon: BarChart3 },
+      { href: "/admin/search", label: "Search", icon: SearchIcon },
     ],
   },
   {
