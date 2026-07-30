@@ -29,7 +29,10 @@ export const dynamic = "force-dynamic";
  * is the only door.
  */
 
-export const MINE_METALS = [
+// Not exported: a Next.js route file may only export route handlers and
+// route config, so the mineral list lives here privately and mirrors both
+// db/sql/mine-sites.sql's CHECK and components/knowledge/mine-data.ts.
+const MINE_METALS = [
   "tin",
   "antimony",
   "rare_earth",
@@ -48,9 +51,9 @@ export const MINE_METALS = [
   "other",
 ] as const;
 
-export type MineMetal = (typeof MINE_METALS)[number];
+type MineMetal = (typeof MINE_METALS)[number];
 
-export interface MineSite {
+interface MineSite {
   id: string;
   metal: MineMetal;
   name: string;
