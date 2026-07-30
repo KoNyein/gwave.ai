@@ -35,6 +35,8 @@ const STRINGS = {
     worldPrice: "ကမ္ဘာ့ဈေး",
     logWorldSection: "ကမ္ဘာ့ဈေး (လက်ရေးမှတ်တမ်း — ဥပမာ ခဲမဖြူ LME)",
     logLocalSection: "မြန်မာ့ဈေး (နယ်စပ် / ပြည်တွင်း)",
+    logGateNote:
+      "နယ်စပ်ဂိတ်တစ်ခုချင်းစီမှာ သယ်ယူပို့ဆောင်ရေး အခက်အခဲနှင့် ဒေသလုံခြုံရေး အခြေအနေအလိုက် ဈေးကွာနိုင်သည် — မှတ်တမ်းတိုင်းတွင် ဂိတ်အမည်ကို တိကျစွာ ဖော်ပြပါ။ ဂိတ်တစ်ခုချင်းစီက သီးသန့် row ဖြင့် ပြပါမည်။",
     phName: "သတ္တုအမည် (ဥပမာ — ခနောက်စိမ်း)",
     phGrade: "Grade (ဥပမာ — သတ္တုရိုင်း 45%)",
     phPrice: "ဈေးနှုန်း",
@@ -73,6 +75,8 @@ const STRINGS = {
     worldPrice: "World price",
     logWorldSection: "World prices (hand-recorded — e.g. tin LME)",
     logLocalSection: "Myanmar prices (border / local)",
+    logGateNote:
+      "Every border gate trades at its own price — transport difficulty and local security differ gate to gate — so name the exact gate on each quote. Each gate shows as its own row.",
     phName: "Metal name (e.g. antimony)",
     phGrade: "Grade (e.g. ore 45%)",
     phPrice: "Price",
