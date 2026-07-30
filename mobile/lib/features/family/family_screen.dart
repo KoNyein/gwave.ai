@@ -15,6 +15,7 @@ import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/signal_meter.dart';
 import '../map/map_screen.dart';
 
 /// Native Family locator — replaces the web /family hand-off. Create a family
@@ -915,11 +916,25 @@ class _NearbyFinderSheetState extends State<_NearbyFinderSheet> {
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.bluetooth,
                           color: GwColors.primary, size: 20),
-                      title: Text(name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 13.5)),
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13.5)),
+                          ),
+                          SignalBars(rssi: r.rssi, size: 14),
+                          const SizedBox(width: 6),
+                          Text("${(strength * 100).round()}%",
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: signalColor(strength, context))),
+                        ],
+                      ),
                       subtitle: Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: ClipRRect(
