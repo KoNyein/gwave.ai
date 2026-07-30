@@ -92,5 +92,28 @@ export async function POST(request: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Raw contribution log — wifi_networks is deduped by BSSID and can't say
+  // who scanned what, when, or from where. The admin dashboard reads this.
+  // Best-effort: a missing table (migration not yet run) must not fail the
+  // scan the user just made.
+  await admin
+    .from("wifi_scans")
+    .insert(
+      networks.map((n) => ({
+        user_id: claims.sub,
+        bssid: n.bssid.toLowerCase(),
+        ssid: n.ssid || null,
+        security: n.security || null,
+        signal: n.signal ?? null,
+        latitude,
+        longitude,
+      })),
+    )
+    .then(
+      () => {},
+      () => {},
+    );
+
   return NextResponse.json({ saved: upsertRows.length });
 }
