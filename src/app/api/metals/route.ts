@@ -58,19 +58,24 @@ const YAHOO_METALS: {
   { symbol: "ALI=F", key: "aluminum", name: "Aluminium", nameMy: "အလူမီနီယမ်", group: "base", unit: "t", exchange: "CME" },
 ];
 
-/** metals.dev answers in USD per troy oz for everything we ask of it. */
-const METALS_DEV_METALS: Omit<MetalRow, "usd" | "changePct" | "spark" | "ts">[] = [
-  { key: "rhodium", name: "Rhodium", nameMy: "ရိုဒီယမ်", group: "precious", unit: "toz", exchange: "Spot" },
-  { key: "lme_nickel", name: "Nickel", nameMy: "နီကယ်", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
-  { key: "lme_zinc", name: "Zinc", nameMy: "သွပ် (ခဲမ)", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
-  { key: "lme_tin", name: "Tin", nameMy: "ခဲမဖြူ (ရော်တာဒမ်ဈေး)", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
-  { key: "lme_lead", name: "Lead", nameMy: "ခဲ", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
+/** metals.dev answers in USD per troy oz for everything we ask of it.
+ *  `sources` lists the provider's key candidates in preference order — the
+ *  key set differs by plan (the free tier serves plain `tin`, not
+ *  `lme_tin`), so each row takes the first candidate actually present. */
+const METALS_DEV_METALS: (Omit<MetalRow, "usd" | "changePct" | "spark" | "ts"> & {
+  sources: string[];
+})[] = [
+  { key: "rhodium", sources: ["rhodium"], name: "Rhodium", nameMy: "ရိုဒီယမ်", group: "precious", unit: "toz", exchange: "Spot" },
+  { key: "lme_nickel", sources: ["lme_nickel", "nickel"], name: "Nickel", nameMy: "နီကယ်", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
+  { key: "lme_zinc", sources: ["lme_zinc", "zinc"], name: "Zinc", nameMy: "သွပ် (ခဲမ)", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
+  { key: "lme_tin", sources: ["lme_tin", "tin"], name: "Tin", nameMy: "ခဲမဖြူ (ရော်တာဒမ်ဈေး)", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
+  { key: "lme_lead", sources: ["lme_lead", "lead"], name: "Lead", nameMy: "ခဲ", group: "base", unit: "t", exchange: "LME (Rotterdam)" },
   // No exchange trades antimony — its benchmarks (Fastmarkets Rotterdam,
   // SMM China) are licensed. Asked for defensively: if the provider ever
   // serves these keys the row appears by itself; until then it costs
   // nothing and shows nothing, which beats a made-up number.
-  { key: "antimony", name: "Antimony", nameMy: "ခနောက်စိမ်း", group: "base", unit: "t", exchange: "Spot" },
-  { key: "cobalt", name: "Cobalt", nameMy: "ကိုဘော့", group: "base", unit: "t", exchange: "Spot" },
+  { key: "antimony", sources: ["antimony"], name: "Antimony", nameMy: "ခနောက်စိမ်း", group: "base", unit: "t", exchange: "Spot" },
+  { key: "cobalt", sources: ["cobalt"], name: "Cobalt", nameMy: "ကိုဘော့", group: "base", unit: "t", exchange: "Spot" },
 ];
 
 let yahooCache: { at: number; rows: MetalRow[] } | null = null;
@@ -152,13 +157,16 @@ async function fetchMetalsDev(): Promise<MetalRow[]> {
     const TOZ_PER_TONNE = 32_150.7;
     const rows: MetalRow[] = [];
     for (const m of METALS_DEV_METALS) {
-      const perToz = prices[m.key];
-      if (perToz == null || perToz <= 0) continue;
+      const { sources, ...meta } = m;
+      const perToz = sources
+        .map((s) => prices[s])
+        .find((v) => v != null && v > 0);
+      if (perToz == null) continue;
       rows.push({
-        ...m,
+        ...meta,
         // LME base metals are quoted per tonne everywhere; convert from the
         // per-toz figure the API normalised to. Rhodium stays per toz.
-        usd: m.unit === "t" ? perToz * TOZ_PER_TONNE : perToz,
+        usd: meta.unit === "t" ? perToz * TOZ_PER_TONNE : perToz,
         changePct: null,
         spark: [],
         ts,
