@@ -1,5 +1,11 @@
 import { WifiAnalytics } from "@/components/admin/wifi-analytics";
-import { getWifiNetworks, getWifiOverview } from "@/lib/db/wifi-admin";
+import { WifiDetailTables } from "@/components/admin/wifi-detail-tables";
+import {
+  getWifiClusters,
+  getWifiNetworks,
+  getWifiOverview,
+  getWifiWatchlist,
+} from "@/lib/db/wifi-admin";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "WiFi data — Admin" };
@@ -12,9 +18,11 @@ export const metadata = { title: "WiFi data — Admin" };
  * reachable through the server admin client.
  */
 export default async function AdminWifiPage() {
-  const [overview, networks] = await Promise.all([
+  const [overview, networks, clusters, watchlist] = await Promise.all([
     getWifiOverview(),
     getWifiNetworks(),
+    getWifiClusters(),
+    getWifiWatchlist(),
   ]);
 
   const points = networks.map((n) => ({
@@ -36,6 +44,22 @@ export default async function AdminWifiPage() {
         </p>
       </div>
       <WifiAnalytics overview={overview} points={points} />
+      <WifiDetailTables
+        networks={networks}
+        clusters={clusters}
+        watchlist={watchlist}
+        charts={{
+          byBand: overview.byBand,
+          byChannel: overview.byChannel,
+          byVendor: overview.byVendor,
+          byEncryption: overview.byEncryption,
+          byBrowser: overview.byBrowser,
+          byOs: overview.byOs,
+          byApp: overview.byApp,
+          wpsCount: overview.wpsCount,
+          hiddenCount: overview.hiddenCount,
+        }}
+      />
     </div>
   );
 }
