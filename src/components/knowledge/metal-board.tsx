@@ -254,6 +254,7 @@ export function MetalBoard({
 
       <MarketLog
         quotes={quotes}
+        live={data?.metals ?? []}
         isAdmin={isAdmin}
         onChanged={() => void load()}
       />
@@ -285,12 +286,49 @@ export function MetalBoard({
  * apart from the live rows and labelled with market and date, so a reader
  * always knows which numbers are a wire and which are a person.
  */
+/** Burmese trade name → the live board row it should be compared against. */
+const QUOTE_TO_LIVE: Record<string, string> = {
+  "ခနောက်စိမ်း": "antimony",
+  "ခဲမဖြူ": "lme_tin",
+  "သွပ်": "lme_zinc",
+  "ခဲမ": "lme_zinc",
+  "ခဲ": "lme_lead",
+  "နီကယ်": "lme_nickel",
+  "ကြေးနီ": "copper",
+  "အလူမီနီယမ်": "aluminum",
+  "ရွှေ": "gold",
+  "ငွေ": "silver",
+};
+
+/** Common entries first — a border trader shouldn't have to type. Rare
+ *  earths (Kachin's dysprosium/terbium trade through Pangwa) have no public
+ *  exchange feed at all, so the log is the only place they can live. */
+const QUICK_METALS = [
+  "ခနောက်စိမ်း",
+  "ခဲမဖြူ",
+  "ရှားပါးမြေ (Dysprosium)",
+  "ရှားပါးမြေ (Terbium)",
+  "သွပ်",
+  "ခဲ",
+  "နီကယ်",
+  "ကြေးနီ",
+];
+const QUICK_MARKETS = [
+  "မူဆယ်နယ်စပ်",
+  "ကချင် (ပန်ဝါနယ်စပ်)",
+  "တာချီလိတ်",
+  "မြဝတီ",
+  "ရန်ကုန်",
+];
+
 function MarketLog({
   quotes,
+  live,
   isAdmin,
   onChanged,
 }: {
   quotes: MetalQuote[];
+  live: Metal[];
   isAdmin: boolean;
   onChanged: () => void;
 }) {
@@ -319,6 +357,21 @@ function MarketLog({
   }
 
   if (latest.length === 0 && !isAdmin) return null;
+
+  /** The matching international quote, so a border price is never read in a
+   *  vacuum. Longest name first so ခဲမဖြူ matches tin before ခဲ matches lead. */
+  function reference(q: MetalQuote): Metal | null {
+    const names = Object.keys(QUOTE_TO_LIVE).sort(
+      (a, b) => b.length - a.length,
+    );
+    for (const name of names) {
+      if (q.name_my.includes(name)) {
+        const row = live.find((m) => m.key === QUOTE_TO_LIVE[name]);
+        if (row) return row;
+      }
+    }
+    return null;
+  }
 
   async function submit() {
     const price = Number(form.price.replace(/,/g, ""));
@@ -367,7 +420,7 @@ function MarketLog({
   return (
     <section className="overflow-hidden rounded-xl border">
       <h2 className="flex items-center justify-between border-b bg-muted/50 px-4 py-2 text-sm font-semibold">
-        <span>ဈေးမှတ်တမ်း (ခနောက်စိမ်း / သတ္တုရိုင်း / နယ်စပ်ဈေး)</span>
+        <span>ဈေးမှတ်တမ်း (ခနောက်စိမ်း / ခဲမဖြူ / ရှားပါးမြေ / နယ်စပ်ဈေး)</span>
         {isAdmin ? (
           <button
             type="button"
@@ -381,6 +434,22 @@ function MarketLog({
 
       {isAdmin && formOpen ? (
         <div className="grid gap-2 border-b p-3 sm:grid-cols-2">
+          <div className="flex flex-wrap gap-1 sm:col-span-2">
+            {QUICK_METALS.map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, nameMy: n }))}
+                className={`rounded-full border px-2 py-0.5 text-xs ${
+                  form.nameMy === n
+                    ? "border-primary bg-primary/10 font-semibold text-primary"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
           <input
             className="rounded-md border bg-background px-2 py-1.5 text-sm"
             placeholder="သတ္တုအမည် (ဥပမာ — ခနောက်စိမ်း)"
@@ -422,6 +491,22 @@ function MarketLog({
               ))}
             </select>
           </div>
+          <div className="flex flex-wrap gap-1 sm:col-span-2">
+            {QUICK_MARKETS.map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, market: n }))}
+                className={`rounded-full border px-2 py-0.5 text-xs ${
+                  form.market === n
+                    ? "border-primary bg-primary/10 font-semibold text-primary"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
           <input
             className="rounded-md border bg-background px-2 py-1.5 text-sm"
             placeholder="ဈေးကွက် (ဥပမာ — မူဆယ်နယ်စပ်)"
@@ -452,8 +537,9 @@ function MarketLog({
 
       {latest.length === 0 ? (
         <p className="p-4 text-sm text-muted-foreground">
-          မှတ်တမ်း မရှိသေးပါ — ခနောက်စိမ်းကဲ့သို့ feed မရှိသော သတ္တုဈေးများကို
-          admin က ဤနေရာတွင် မှတ်တမ်းတင်ပါသည်။
+          မှတ်တမ်း မရှိသေးပါ — ခနောက်စိမ်း၊ ခဲမဖြူ နယ်စပ်ဈေး၊ ကချင်ထွက်
+          ရှားပါးမြေ (rare earth) ကဲ့သို့ feed မရှိသော သတ္တုဈေးများကို admin က
+          ဤနေရာတွင် မှတ်တမ်းတင်ပါသည်။
         </p>
       ) : (
         <table className="w-full text-sm">
@@ -477,6 +563,19 @@ function MarketLog({
                     {q.quoted_at}
                     {q.note ? ` · ${q.note}` : ""}
                   </p>
+                  {(() => {
+                    const ref = reference(q);
+                    if (!ref) return null;
+                    return (
+                      <p className="text-[11px] text-sky-700 dark:text-sky-400">
+                        ကမ္ဘာ့ဈေး ({ref.exchange}): $
+                        {ref.usd.toLocaleString("en-US", {
+                          maximumFractionDigits: ref.unit === "t" ? 0 : 2,
+                        })}
+                        /{UNIT_LABEL[ref.unit]}
+                      </p>
+                    );
+                  })()}
                 </td>
                 {isAdmin ? (
                   <td className="pr-3 text-right">
