@@ -1095,6 +1095,151 @@ class ApiClient {
     }
   }
 
+  // ---- Metal prices ---------------------------------------------------------
+
+  /// Live world metal prices (COMEX/NYMEX via Yahoo, LME via metals.dev when
+  /// the key is configured). Public — no token needed.
+  Future<Map<String, dynamic>> metals() async {
+    final res = await _http
+        .get(Uri.parse("${AppConfig.apiBase}/api/metals"))
+        .timeout(const Duration(seconds: 20));
+    final j = _decode(res);
+    if (res.statusCode >= 400 || j == null) {
+      throw ApiException(
+        (j?["error"] ?? "Couldn't load metal prices.").toString(),
+        res.statusCode,
+      );
+    }
+    return j;
+  }
+
+  /// The hand-recorded market log — border-gate and world quotes an admin
+  /// typed in for the metals no free feed prices (tin, antimony, rare earth).
+  Future<List<Map<String, dynamic>>> metalQuotes() async {
+    final s = _session;
+    final res = await _http.get(
+      Uri.parse("${AppConfig.apiBase}/api/metals/quotes"),
+      headers: {if (s != null) "Authorization": "Bearer ${s.token}"},
+    ).timeout(const Duration(seconds: 20));
+    final j = _decode(res);
+    if (res.statusCode >= 400 || j == null) return const [];
+    return ((j["quotes"] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .toList();
+  }
+
+  // ---- Cannabis (18+, educational) ------------------------------------------
+  // The market board and the community places map used to be web pages in a
+  // webview. These are the same routes the browser calls; the data token goes
+  // as the bearer so the server's own 18+ check applies to the app too.
+
+  /// Listed cannabis/hemp/CBD equities and ETFs — public quotes, no auth.
+  Future<List<Map<String, dynamic>>> cannabisMarket() async {
+    final res = await _http
+        .get(Uri.parse("${AppConfig.apiBase}/api/cannabis/market"))
+        .timeout(const Duration(seconds: 20));
+    final j = _decode(res);
+    if (res.statusCode >= 400 || j == null) {
+      throw ApiException(
+        (j?["error"] ?? "Couldn't load the market board.").toString(),
+        res.statusCode,
+      );
+    }
+    return ((j["rows"] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .toList();
+  }
+
+  /// The hand-recorded Thai price log — no exchange prices flower, so these
+  /// are trade quotes someone typed in, with the market and grade attached.
+  Future<List<Map<String, dynamic>>> cannabisQuotes() async {
+    final s = _session;
+    final res = await _http.get(
+      Uri.parse("${AppConfig.apiBase}/api/cannabis/quotes"),
+      headers: {if (s != null) "Authorization": "Bearer ${s.token}"},
+    ).timeout(const Duration(seconds: 20));
+    final j = _decode(res);
+    if (res.statusCode >= 400 || j == null) return const [];
+    return ((j["quotes"] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .toList();
+  }
+
+  /// The community cannabis map — shops, farms and clinics. 18+ server-side,
+  /// so a minor's token gets a 403 here rather than an empty list.
+  Future<List<Map<String, dynamic>>> cannabisPlaces() async {
+    await _ensureFreshToken();
+    final s = _session;
+    if (s == null) throw ApiException("Not signed in.");
+    final res = await _http.get(
+      Uri.parse("${AppConfig.apiBase}/api/cannabis/places"),
+      headers: {"Authorization": "Bearer ${s.token}"},
+    ).timeout(const Duration(seconds: 20));
+    final j = _decode(res);
+    if (res.statusCode >= 400 || j == null) {
+      throw ApiException(
+        (j?["error"] ?? "Couldn't load the map.").toString(),
+        res.statusCode,
+      );
+    }
+    return ((j["places"] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .toList();
+  }
+
+  /// Add a place, or correct one when [id] is given. The server rejects an
+  /// incomplete listing — name, kind, address, phone, coordinates and at least
+  /// one photo are all required.
+  Future<void> cannabisPlaceSave(
+    Map<String, dynamic> body, {
+    String? id,
+  }) async {
+    await _ensureFreshToken();
+    final s = _session;
+    if (s == null) throw ApiException("Not signed in.");
+    final uri = Uri.parse("${AppConfig.apiBase}/api/cannabis/places")
+        .replace(queryParameters: id == null ? null : {"id": id});
+    final headers = {
+      "Authorization": "Bearer ${s.token}",
+      "content-type": "application/json",
+    };
+    final payload = jsonEncode(body);
+    final res = id == null
+        ? await _http.post(uri, headers: headers, body: payload)
+        : await _http.patch(uri, headers: headers, body: payload);
+    if (res.statusCode >= 400) {
+      throw ApiException(
+        (_decode(res)?["error"] ?? "Couldn't save the place.").toString(),
+        res.statusCode,
+      );
+    }
+  }
+
+  /// Flag a bad listing for the admin queue. One report per person per place.
+  Future<void> cannabisPlaceReport(String placeId, String reason) =>
+      _mobilePost("/api/cannabis/places/report", {
+        "placeId": placeId,
+        "reason": reason,
+      });
+
+  /// Admin-only removal — the server re-checks the role.
+  Future<void> cannabisPlaceDelete(String id) async {
+    await _ensureFreshToken();
+    final s = _session;
+    if (s == null) throw ApiException("Not signed in.");
+    final res = await _http.delete(
+      Uri.parse("${AppConfig.apiBase}/api/cannabis/places")
+          .replace(queryParameters: {"id": id}),
+      headers: {"Authorization": "Bearer ${s.token}"},
+    );
+    if (res.statusCode >= 400) {
+      throw ApiException(
+        (_decode(res)?["error"] ?? "Couldn't delete.").toString(),
+        res.statusCode,
+      );
+    }
+  }
+
   // ---- Mine sites -----------------------------------------------------------
   // The community mine-site map. mine_sites is RLS-sealed, so everything goes
   // through /api/mine/sites with the data token as bearer — the same door the

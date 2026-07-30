@@ -9,9 +9,10 @@ import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import 'cannabis_market_screen.dart';
+import 'cannabis_places_screen.dart';
 import 'knowledge_i18n.dart';
 import 'subject_comments_sheet.dart';
-import '../web/web_screen.dart';
 
 const _typeColors = <String, Color>{
   "indica": Color(0xFF7A4DD6),
@@ -80,29 +81,25 @@ class _StrainsScreenState extends State<StrainsScreen> {
       appBar: AppBar(
         title: Text(tr(context, "Strains", "မျိုးကွဲများ")),
         actions: [
-          // Cannabis/hemp/CBD market board — educational, and the web page
-          // itself enforces the 18+ gate (requireAdult) on the session the
-          // webview signs in with.
-          // Community map of shops, farms and clinics — users add, correct
-          // and report listings; the web page enforces the 18+ gate.
+          // Both were web pages in a webview, which put the site's own header
+          // inside the app. Native now, over the same routes — and the map
+          // needs the camera and GPS, which a webview handles badly.
           IconButton(
             tooltip: tr(context, "Shops / farms / clinics map",
                 "ဆိုင် / စိုက်ခင်း / ကလင်းနစ် မြေပုံ"),
             icon: const Icon(Icons.map_outlined),
-            onPressed: () => openWeb(
-              context,
-              "https://gwave.cc/strains/places",
-              title: tr(context, "Cannabis map", "မြေပုံ"),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const CannabisPlacesScreen()),
             ),
           ),
           IconButton(
             tooltip: tr(context, "Markets (18+, educational)",
                 "ဈေးကွက် (၁၈+၊ ပညာပေး)"),
             icon: const Icon(Icons.trending_up),
-            onPressed: () => openWeb(
-              context,
-              "https://gwave.cc/strains/market",
-              title: tr(context, "Cannabis markets", "ဈေးကွက်"),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const CannabisMarketScreen()),
             ),
           ),
         ],
