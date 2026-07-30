@@ -400,11 +400,10 @@ ThemeData buildGwTheme() {
     ),
     // The default Android page slide feels heavy next to the rest of this
     // shell; the zoom transition is the one Material 3 ships for a reason.
+    // Android only: this app has no iOS target, and naming the Cupertino
+    // builder here broke the release compile on the CI Flutter channel.
     pageTransitionsTheme: const PageTransitionsTheme(
-      builders: {
-        TargetPlatform.android: ZoomPageTransitionsBuilder(),
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-      },
+      builders: {TargetPlatform.android: ZoomPageTransitionsBuilder()},
     ),
     // Bump the whole app one notch larger for comfortable reading — Burmese
     // script especially benefits from the extra size ("ကကြီး") and the extra
@@ -536,11 +535,10 @@ ThemeData buildGwDarkTheme() {
       linearTrackColor: s.dSurfaceMuted,
       circularTrackColor: Colors.transparent,
     ),
+    // Android only: this app has no iOS target, and naming the Cupertino
+    // builder here broke the release compile on the CI Flutter channel.
     pageTransitionsTheme: const PageTransitionsTheme(
-      builders: {
-        TargetPlatform.android: ZoomPageTransitionsBuilder(),
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-      },
+      builders: {TargetPlatform.android: ZoomPageTransitionsBuilder()},
     ),
     textTheme: _text(base.textTheme, s.dInk),
   );
