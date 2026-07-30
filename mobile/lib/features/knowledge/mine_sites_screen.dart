@@ -1354,10 +1354,8 @@ class _MineEditorScreenState extends State<MineEditorScreen> {
         padding: const EdgeInsets.fromLTRB(
             GwSpace.lg, GwSpace.lg, GwSpace.lg, GwSpace.xxl),
         children: [
-          GwSectionHeader(
-            title: tr3(context, "Mineral", "သတ္တုအမျိုးအစား", "ชนิดแร่"),
-            icon: Icons.diamond_outlined,
-          ),
+          _header(tr3(context, "Mineral", "သတ္တုအမျိုးအစား", "ชนิดแร่"),
+              icon: Icons.diamond_outlined),
           Wrap(
             spacing: GwSpace.sm,
             runSpacing: GwSpace.sm,
@@ -1388,18 +1386,16 @@ class _MineEditorScreenState extends State<MineEditorScreen> {
                 ),
             ],
           ),
-          GwSectionHeader(
-            title: tr3(context, "Where it is", "တည်နေရာ", "ที่ตั้ง"),
-            icon: Icons.place_outlined,
-          ),
+          _header(tr3(context, "Where it is", "တည်နေရာ", "ที่ตั้ง"),
+              icon: Icons.place_outlined),
           _field(_name, tr3(context, "Mine name *", "မိုင်းအမည် *", "ชื่อเหมือง *")),
           _field(_region,
               tr3(context, "State / Region *", "ပြည်နယ် / တိုင်း *", "รัฐ / ภูมิภาค *")),
           _field(_township, tr3(context, "Township *", "မြို့နယ် *", "อำเภอ *")),
           const SizedBox(height: GwSpace.sm),
           _locationPicker(),
-          GwSectionHeader(
-            title: tr3(context, "Photos *", "ဓာတ်ပုံ *", "รูปภาพ *"),
+          _header(
+            tr3(context, "Photos *", "ဓာတ်ပုံ *", "รูปภาพ *"),
             subtitle: tr3(
               context,
               "At least one, up to eight.",
@@ -1409,10 +1405,8 @@ class _MineEditorScreenState extends State<MineEditorScreen> {
             icon: Icons.photo_camera_outlined,
           ),
           _photoStrip(),
-          GwSectionHeader(
-            title: tr3(context, "Details", "အသေးစိတ်", "รายละเอียด"),
-            icon: Icons.notes_outlined,
-          ),
+          _header(tr3(context, "Details", "အသေးစိတ်", "รายละเอียด"),
+              icon: Icons.notes_outlined),
           _choiceRow(
             tr3(context, "Scale", "လုပ်ငန်းအရွယ်", "ขนาดกิจการ"),
             kMineScales,
@@ -1463,6 +1457,47 @@ class _MineEditorScreenState extends State<MineEditorScreen> {
             label: Text(_busy
                 ? tr3(context, "Saving…", "သိမ်းနေသည်…", "กำลังบันทึก…")
                 : tr3(context, "Save", "သိမ်းမည်", "บันทึก")),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// A section title without GwSectionHeader's own horizontal padding — this
+  /// list already pads its edges, and stacking the two pushed headings 32px in
+  /// while the fields sat at 16.
+  Widget _header(String title, {String? subtitle, IconData? icon}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: GwSpace.lg, bottom: GwSpace.sm),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 18, color: GwColors.accentOf(context)),
+            const SizedBox(width: GwSpace.sm),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15.5,
+                    color: GwColors.inkOf(context),
+                  ),
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: GwColors.inkSoftOf(context),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),
