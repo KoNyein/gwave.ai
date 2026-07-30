@@ -1,7 +1,24 @@
 "use client";
 
 import * as React from "react";
-import { Gem, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
+import {
+  ChevronDown,
+  Gem,
+  HelpCircle,
+  Languages,
+  Mountain,
+  RefreshCw,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
+
+import {
+  HELP,
+  METAL_INFO,
+  MYANMAR_MINERALS,
+  STR,
+  type Lang,
+} from "./metal-data";
 
 interface Metal {
   key: string;
@@ -74,6 +91,23 @@ export function MetalBoard({
   const [currency, setCurrency] = React.useState("USD");
   const [refreshing, setRefreshing] = React.useState(false);
   const [quotes, setQuotes] = React.useState<MetalQuote[]>([]);
+  const [lang, setLang] = React.useState<Lang>("my");
+  const [expanded, setExpanded] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const saved = window.localStorage.getItem("gwave-metals-lang");
+    if (saved === "en" || saved === "my") setLang(saved);
+  }, []);
+
+  function switchLang() {
+    setLang((l) => {
+      const next: Lang = l === "my" ? "en" : "my";
+      window.localStorage.setItem("gwave-metals-lang", next);
+      return next;
+    });
+  }
+
+  const t = STR[lang];
 
   const load = React.useCallback(async () => {
     setRefreshing(true);
@@ -130,8 +164,8 @@ export function MetalBoard({
   }
 
   const groups: { key: Metal["group"]; title: string }[] = [
-    { key: "precious", title: "အဖိုးတန်သတ္တု (Precious)" },
-    { key: "base", title: "စက်မှုသတ္တု (Base / LME)" },
+    { key: "precious", title: t.groupPrecious },
+    { key: "base", title: t.groupBase },
   ];
 
   return (
@@ -149,11 +183,20 @@ export function MetalBoard({
                   : "bg-muted text-muted-foreground hover:text-foreground"
               }`}
             >
-              {u.labelMy}
+              {lang === "my" ? u.labelMy : u.labelEn}
             </button>
           ))}
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={switchLang}
+            className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Language"
+          >
+            <Languages className="h-3.5 w-3.5" />
+            {lang === "my" ? "EN" : "မြန်မာ"}
+          </button>
           <select
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
@@ -181,8 +224,12 @@ export function MetalBoard({
 
       {error && !data ? (
         <p className="rounded-xl border p-4 text-sm text-muted-foreground">
-          ဈေးနှုန်း ယူ၍မရသေးပါ — ခဏနေ ပြန်စမ်းပါ။
+          {t.loadError}
         </p>
+      ) : null}
+
+      {data ? (
+        <p className="text-[11px] text-muted-foreground">{t.tapHint}</p>
       ) : null}
 
       {data
@@ -199,14 +246,18 @@ export function MetalBoard({
                   <tbody>
                     {rows.map((m) => {
                       const c = convert(m);
-                      return (
-                        <tr key={m.key} className="border-b last:border-b-0">
+                      const open = expanded === m.key;
+                      return (<React.Fragment key={m.key}>
+                        <tr
+                          className="cursor-pointer border-b last:border-b-0 hover:bg-muted/30"
+                          onClick={() => setExpanded(open ? null : m.key)}
+                        >
                           <td className="px-4 py-2.5">
                             <p className="font-semibold leading-tight">
-                              {m.nameMy}
+                              {lang === "my" ? m.nameMy : m.name}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {m.name} · {m.exchange}
+                              {lang === "my" ? m.name : m.nameMy} · {m.exchange}
                             </p>
                           </td>
                           <td className="px-2 py-2.5">
@@ -243,7 +294,19 @@ export function MetalBoard({
                             ) : null}
                           </td>
                         </tr>
-                      );
+                        {open ? (
+                          <tr className="border-b bg-muted/20 last:border-b-0">
+                            <td colSpan={3} className="px-4 py-3">
+                              <MetalDetail
+                                m={m}
+                                lang={lang}
+                                currency={currency}
+                                rates={rates}
+                              />
+                            </td>
+                          </tr>
+                        ) : null}
+                      </React.Fragment>);
                     })}
                   </tbody>
                 </table>
@@ -256,27 +319,261 @@ export function MetalBoard({
         quotes={quotes}
         live={data?.metals ?? []}
         isAdmin={isAdmin}
+        lang={lang}
         onChanged={() => void load()}
       />
 
+      <MineralGuide live={data?.metals ?? []} quotes={quotes} lang={lang} />
+
+      <HelpSection lang={lang} />
+
       {data && !data.sources.lmeConfigured ? (
         <p className="rounded-xl border border-dashed p-3 text-xs leading-relaxed text-muted-foreground">
-          LME (ရော်တာဒမ်) — နီကယ်၊ သွပ်၊ ခဲမဖြူ၊ ခဲ နှင့် ရိုဒီယမ် ဈေးများ
-          ပြရန် metals.dev မှ အခမဲ့ API key တစ်ခု လိုပါသည်။
+          {t.lmeHintPre}
           <code className="mx-1 rounded bg-muted px-1">METALS_DEV_API_KEY</code>
-          ကို /etc/gwave-web.env တွင် ထည့်ပြီး redeploy လုပ်ပါ။
+          {t.lmeHintPost}
         </p>
       ) : null}
 
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        ရွှေ/ငွေ/ကြေးနီ — COMEX (နယူးယောက်) ကမ္ဘာ့စံဈေး၊ ၁၀ မိနစ်တစ်ကြိမ်။
-        LME ဈေးများသည် မြန်မာ့သတ္တုဈေးကွက်က ခေါ်နေကျ「ရော်တာဒမ်ဈေး」ဖြစ်ပြီး
-        ရက်စဉ် official settlement ဖြစ်သည်။ ရှန်ဟိုင်း (SHFE) နှင့်
-        ဝူဖရမ်/APT ဈေးများမှာ licence ဝယ်ယူရသော feed များဖြစ်၍ မမှန်သော
-        ကိန်းဂဏန်း မပြလိုသဖြင့် ချန်ထားပါသည်။ ဤဈေးနှုန်းများသည်
-        ရည်ညွှန်းချက်သာဖြစ်ပြီး အရောင်းအဝယ် စာချုပ်ဈေး မဟုတ်ပါ။
+      <p className="text-xs leading-relaxed text-muted-foreground">{t.footer}</p>
+    </div>
+  );
+}
+
+/** Expanded row: month chart, unit conversions, background, provenance. */
+function MetalDetail({
+  m,
+  lang,
+  currency,
+  rates,
+}: {
+  m: Metal;
+  lang: Lang;
+  currency: string;
+  rates: Record<string, number>;
+}) {
+  const t = STR[lang];
+  const rate = currency === "USD" ? 1 : rates[currency];
+  const perGram = m.usd / GRAMS[m.unit];
+  const convRows = [
+    { label: lang === "my" ? "ကျပ်သား" : "Kyattha (16.6 g)", grams: 16.606 },
+    { label: lang === "my" ? "ဂရမ်" : "Gram", grams: 1 },
+    { label: lang === "my" ? "ကီလို" : "Kilogram", grams: 1000 },
+    { label: lang === "my" ? "တန်" : "Tonne", grams: 1_000_000 },
+  ];
+  const info = METAL_INFO[m.key];
+  // 1-month stats from the sparkline closes — free extra signal, no fetch.
+  const stats =
+    m.spark.length > 1
+      ? {
+          high: Math.max(...m.spark),
+          low: Math.min(...m.spark),
+          avg: m.spark.reduce((a, b) => a + b, 0) / m.spark.length,
+        }
+      : null;
+  const statLabels =
+    lang === "my"
+      ? ["၁လ အမြင့်", "၁လ အနိမ့်", "၁လ ပျမ်းမျှ"]
+      : ["1-mo high", "1-mo low", "1-mo avg"];
+  return (
+    <div className="space-y-3 text-sm">
+      {m.spark.length > 1 ? (
+        <Sparkline points={m.spark} up={(m.changePct ?? 0) >= 0} wide />
+      ) : null}
+      {stats ? (
+        <div className="grid grid-cols-3 gap-1">
+          {[stats.high, stats.low, stats.avg].map((v, i) => (
+            <div
+              key={statLabels[i]}
+              className="rounded-md border bg-background px-2 py-1.5"
+            >
+              <p className="text-[11px] text-muted-foreground">
+                {statLabels[i]} (USD/{UNIT_LABEL[m.unit]})
+              </p>
+              <p className="font-semibold tabular-nums">
+                {v.toLocaleString("en-US", {
+                  maximumFractionDigits: v >= 100 ? 0 : 2,
+                })}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {rate ? (
+        <div>
+          <p className="mb-1 text-xs font-semibold text-muted-foreground">
+            {t.convTitle} ({currency})
+          </p>
+          <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
+            {convRows.map((r) => {
+              const v = perGram * r.grams * rate;
+              return (
+                <div
+                  key={r.label}
+                  className="rounded-md border bg-background px-2 py-1.5"
+                >
+                  <p className="text-[11px] text-muted-foreground">{r.label}</p>
+                  <p className="font-semibold tabular-nums">
+                    {v.toLocaleString("en-US", {
+                      maximumFractionDigits: v >= 100 ? 0 : v >= 1 ? 2 : 4,
+                    })}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+      {info ? (
+        <p className="leading-relaxed text-muted-foreground">{info[lang]}</p>
+      ) : null}
+      <p className="text-[11px] text-muted-foreground">
+        {t.updated}: {new Date(m.ts).toLocaleString()} · {m.exchange}
       </p>
     </div>
+  );
+}
+
+/**
+ * The Myanmar minerals guide — regions, legal status and world-price link
+ * for each mineral the country produces. Educational: the uranium entry is
+ * a warning, deliberately without a price, because private trade in
+ * radioactive minerals is illegal.
+ */
+function MineralGuide({
+  live,
+  quotes,
+  lang,
+}: {
+  live: Metal[];
+  quotes: MetalQuote[];
+  lang: Lang;
+}) {
+  const t = STR[lang];
+  const [open, setOpen] = React.useState<string | null>(null);
+  return (
+    <section className="overflow-hidden rounded-xl border">
+      <h2 className="flex items-center gap-2 border-b bg-muted/50 px-4 py-2 text-sm font-semibold">
+        <Mountain className="h-4 w-4 text-primary" />
+        {t.guideTitle}
+      </h2>
+      <p className="border-b px-4 py-2 text-xs leading-relaxed text-muted-foreground">
+        {t.guideIntro}
+      </p>
+      <ul>
+        {MYANMAR_MINERALS.map((mineral) => {
+          const isOpen = open === mineral.key;
+          const liveRow = mineral.liveKey
+            ? live.find((m) => m.key === mineral.liveKey)
+            : undefined;
+          const quote = mineral.logMatch
+            ? quotes.find((q) => q.name_my.includes(mineral.logMatch!))
+            : undefined;
+          return (
+            <li key={mineral.key} className="border-b last:border-b-0">
+              <button
+                type="button"
+                onClick={() => setOpen(isOpen ? null : mineral.key)}
+                className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm"
+              >
+                <span
+                  className={`font-semibold ${mineral.danger ? "text-red-600" : ""}`}
+                >
+                  {lang === "my" ? mineral.nameMy : mineral.nameEn}
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+                    isOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              {isOpen ? (
+                <div className="space-y-2 px-4 pb-3 text-sm">
+                  <p>
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {t.regions}:{" "}
+                    </span>
+                    {mineral.regions[lang]}
+                  </p>
+                  <p
+                    className={
+                      mineral.danger
+                        ? "rounded-md border border-red-300 bg-red-50 p-2 leading-relaxed text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400"
+                        : "leading-relaxed"
+                    }
+                  >
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {t.legality}:{" "}
+                    </span>
+                    {mineral.legal[lang]}
+                  </p>
+                  {liveRow ? (
+                    <p>
+                      <span className="text-xs font-semibold text-muted-foreground">
+                        {t.worldPrice}:{" "}
+                      </span>
+                      <span className="font-semibold tabular-nums">
+                        $
+                        {liveRow.usd.toLocaleString("en-US", {
+                          maximumFractionDigits:
+                            liveRow.unit === "t" ? 0 : 2,
+                        })}
+                        /{UNIT_LABEL[liveRow.unit]}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {" "}
+                        · {liveRow.exchange}
+                      </span>
+                    </p>
+                  ) : mineral.danger ? null : (
+                    <p className="text-xs text-muted-foreground">{t.noFeed}</p>
+                  )}
+                  {quote ? (
+                    <p>
+                      <span className="text-xs font-semibold text-muted-foreground">
+                        {t.latestLog}:{" "}
+                      </span>
+                      <span className="font-semibold tabular-nums">
+                        {quote.price.toLocaleString("en-US")} {quote.currency}/
+                        {quote.unit}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {" "}
+                        · {quote.market} · {quote.quoted_at}
+                      </span>
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** Plain-language user guide. <details> keeps it dependency-free. */
+function HelpSection({ lang }: { lang: Lang }) {
+  const t = STR[lang];
+  return (
+    <section className="overflow-hidden rounded-xl border">
+      <h2 className="flex items-center gap-2 border-b bg-muted/50 px-4 py-2 text-sm font-semibold">
+        <HelpCircle className="h-4 w-4 text-primary" />
+        {t.helpTitle}
+      </h2>
+      {HELP.map((h) => (
+        <details
+          key={h.q.en}
+          className="border-b px-4 py-2 text-sm last:border-b-0"
+        >
+          <summary className="cursor-pointer font-medium">{h.q[lang]}</summary>
+          <p className="pb-1 pt-2 leading-relaxed text-muted-foreground">
+            {h.a[lang]}
+          </p>
+        </details>
+      ))}
+    </section>
   );
 }
 
@@ -325,13 +622,16 @@ function MarketLog({
   quotes,
   live,
   isAdmin,
+  lang,
   onChanged,
 }: {
   quotes: MetalQuote[];
   live: Metal[];
   isAdmin: boolean;
+  lang: Lang;
   onChanged: () => void;
 }) {
+  const t = STR[lang];
   const [formOpen, setFormOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -376,7 +676,7 @@ function MarketLog({
   async function submit() {
     const price = Number(form.price.replace(/,/g, ""));
     if (!form.nameMy.trim() || !price || price <= 0 || !form.market.trim()) {
-      setFormError("အမည်၊ ဈေးနှုန်းနှင့် ဈေးကွက် ဖြည့်ပါ။");
+      setFormError(t.formErr);
       return;
     }
     setBusy(true);
@@ -420,14 +720,14 @@ function MarketLog({
   return (
     <section className="overflow-hidden rounded-xl border">
       <h2 className="flex items-center justify-between border-b bg-muted/50 px-4 py-2 text-sm font-semibold">
-        <span>ဈေးမှတ်တမ်း (ခနောက်စိမ်း / ခဲမဖြူ / ရှားပါးမြေ / နယ်စပ်ဈေး)</span>
+        <span>{t.logTitle}</span>
         {isAdmin ? (
           <button
             type="button"
             onClick={() => setFormOpen((o) => !o)}
             className="rounded-full bg-primary px-3 py-0.5 text-xs font-semibold text-primary-foreground"
           >
-            {formOpen ? "ပိတ်မည်" : "+ ဈေးထည့်"}
+            {formOpen ? t.logClose : t.logAdd}
           </button>
         ) : null}
       </h2>
@@ -452,14 +752,14 @@ function MarketLog({
           </div>
           <input
             className="rounded-md border bg-background px-2 py-1.5 text-sm"
-            placeholder="သတ္တုအမည် (ဥပမာ — ခနောက်စိမ်း)"
+            placeholder={t.phName}
             value={form.nameMy}
             onChange={(e) => setForm({ ...form, nameMy: e.target.value })}
             maxLength={80}
           />
           <input
             className="rounded-md border bg-background px-2 py-1.5 text-sm"
-            placeholder="Grade (ဥပမာ — သတ္တုရိုင်း 45%)"
+            placeholder={t.phGrade}
             value={form.grade}
             onChange={(e) => setForm({ ...form, grade: e.target.value })}
             maxLength={80}
@@ -467,7 +767,7 @@ function MarketLog({
           <div className="flex gap-2">
             <input
               className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
-              placeholder="ဈေးနှုန်း"
+              placeholder={t.phPrice}
               inputMode="decimal"
               value={form.price}
               onChange={(e) => setForm({ ...form, price: e.target.value })}
@@ -509,14 +809,14 @@ function MarketLog({
           </div>
           <input
             className="rounded-md border bg-background px-2 py-1.5 text-sm"
-            placeholder="ဈေးကွက် (ဥပမာ — မူဆယ်နယ်စပ်)"
+            placeholder={t.phMarket}
             value={form.market}
             onChange={(e) => setForm({ ...form, market: e.target.value })}
             maxLength={80}
           />
           <input
             className="rounded-md border bg-background px-2 py-1.5 text-sm sm:col-span-2"
-            placeholder="မှတ်ချက် (ရွေးချယ်)"
+            placeholder={t.phNote}
             value={form.note}
             onChange={(e) => setForm({ ...form, note: e.target.value })}
             maxLength={300}
@@ -530,16 +830,14 @@ function MarketLog({
             onClick={() => void submit()}
             className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground disabled:opacity-60 sm:col-span-2"
           >
-            {busy ? "သိမ်းနေသည်…" : "မှတ်တမ်းတင်မည်"}
+            {busy ? t.logSaving : t.logSave}
           </button>
         </div>
       ) : null}
 
       {latest.length === 0 ? (
         <p className="p-4 text-sm text-muted-foreground">
-          မှတ်တမ်း မရှိသေးပါ — ခနောက်စိမ်း၊ ခဲမဖြူ နယ်စပ်ဈေး၊ ကချင်ထွက်
-          ရှားပါးမြေ (rare earth) ကဲ့သို့ feed မရှိသော သတ္တုဈေးများကို admin က
-          ဤနေရာတွင် မှတ်တမ်းတင်ပါသည်။
+          {t.logEmpty}
         </p>
       ) : (
         <table className="w-full text-sm">
@@ -568,7 +866,7 @@ function MarketLog({
                     if (!ref) return null;
                     return (
                       <p className="text-[11px] text-sky-700 dark:text-sky-400">
-                        ကမ္ဘာ့ဈေး ({ref.exchange}): $
+                        {t.worldPrice} ({ref.exchange}): $
                         {ref.usd.toLocaleString("en-US", {
                           maximumFractionDigits: ref.unit === "t" ? 0 : 2,
                         })}
@@ -595,8 +893,7 @@ function MarketLog({
         </table>
       )}
       <p className="border-t px-4 py-2 text-[11px] leading-relaxed text-muted-foreground">
-        ဤအပိုင်းသည် လူကိုယ်တိုင် မှတ်တမ်းတင်ထားသော ဈေးများဖြစ်သည် — အပေါ်က
-        exchange ဈေးများနှင့် ရင်းမြစ်မတူပါ။ ရက်စွဲကို ကြည့်ပါ။
+        {t.logDisclaimer}
       </p>
     </section>
   );
@@ -604,9 +901,17 @@ function MarketLog({
 
 /** A 1-month closing-price line, coloured by direction. Pure SVG — this
  *  renders 11 times per load and must cost nothing. */
-function Sparkline({ points, up }: { points: number[]; up: boolean }) {
-  const w = 96;
-  const h = 28;
+function Sparkline({
+  points,
+  up,
+  wide = false,
+}: {
+  points: number[];
+  up: boolean;
+  wide?: boolean;
+}) {
+  const w = wide ? 320 : 96;
+  const h = wide ? 64 : 28;
   const min = Math.min(...points);
   const max = Math.max(...points);
   const span = max - min || 1;
@@ -622,9 +927,10 @@ function Sparkline({ points, up }: { points: number[]; up: boolean }) {
     .join(" ");
   return (
     <svg
-      width={w}
+      width={wide ? "100%" : w}
       height={h}
       viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio={wide ? "none" : undefined}
       className="text-muted-foreground"
       aria-hidden
     >
