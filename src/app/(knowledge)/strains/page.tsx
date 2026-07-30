@@ -88,12 +88,20 @@ export default async function StrainsPage(
           <h1 className="text-xl font-bold">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <Link
-          href="/strains/market"
-          className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
-        >
-          📈 ဈေးကွက် (18+)
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/strains/places"
+            className="inline-flex items-center gap-1 rounded-full border border-primary px-3 py-1.5 text-xs font-semibold text-primary"
+          >
+            🗺 မြေပုံ (ဆိုင်/စိုက်ခင်း)
+          </Link>
+          <Link
+            href="/strains/market"
+            className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+          >
+            📈 ဈေးကွက် (18+)
+          </Link>
+        </div>
         <form action="/strains" className="flex gap-2">
           <input
             type="search"
