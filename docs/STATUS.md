@@ -51,6 +51,22 @@
 
 ## Changelog
 
+- 2026-07-30 (evening): **Community mine-site map.** /minerals/mines —
+  `mine_sites` + `mine_site_reports`, RLS-sealed behind /api/mine/sites, so
+  the metal board's "what is tin worth" now has a "where is it dug" companion.
+  Reads are public; any signed-in user adds or corrects a pin; anyone reports
+  (unique per reporter, count recomputed not incremented); admin deletes at
+  /admin/mines. A pin is only accepted complete — mineral, name, state/region,
+  township, exact coordinates and ≥1 photo — enforced in zod AND CHECK
+  constraints. 16 minerals (tin, antimony, rare earth, tungsten, jade, ruby,
+  …) each with their own pin colour and emoji so a region reads at a glance;
+  Leaflet map, standard SearchBar over name/township/region/operator/tags,
+  scale + status + operator + access + hazard fields, trilingual (my/en/th)
+  with a language button, user guide and an explicit "user-submitted, not an
+  official record; mining without a licence is illegal" banner. Access and
+  hazard notes are labelled user-reported — a mine map that pretended to know
+  a road was safe would get someone hurt. **`db/sql/mine-sites.sql` must be run
+  on RDS + `sudo docker restart postgrest`.**
 - 2026-07-30 (afternoon): **Community cannabis map, standard search bar +
   keyword analytics, WiGLE-depth WiFi dashboard.** /strains/places (PR #414,
   deploy #169): cannabis_places + cannabis_place_reports, RLS-sealed, any adult

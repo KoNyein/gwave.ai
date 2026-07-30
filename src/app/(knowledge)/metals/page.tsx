@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Mountain } from "lucide-react";
 
 import { MetalBoard } from "@/components/knowledge/metal-board";
 import { getCurrentProfile } from "@/lib/auth";
@@ -36,6 +36,13 @@ export default async function MetalPricesPage() {
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> Minerals
+        </Link>
+        {/* Prices answer "what is it worth"; the map answers "where is it". */}
+        <Link
+          href="/minerals/mines"
+          className="ml-auto inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors hover:bg-muted"
+        >
+          <Mountain className="h-3.5 w-3.5 text-primary" /> မိုင်းနေရာ မြေပုံ
         </Link>
       </div>
       <div>
