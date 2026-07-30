@@ -373,7 +373,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// App language — English is the default; Burmese is the opt-in choice.
+  /// App language — English is the default; Burmese and Thai are opt-in.
+  /// Screens without Thai copy fall back to English (see tr3 in core/i18n).
   Widget _languageRow(BuildContext context) {
     final lang = context.watch<GwLang>();
     return ListTile(
@@ -393,6 +394,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         segments: const [
           ButtonSegment(value: "en", label: Text("EN")),
           ButtonSegment(value: "my", label: Text("မြန်မာ")),
+          ButtonSegment(value: "th", label: Text("ไทย")),
         ],
         selected: {lang.code},
         showSelectedIcon: false,

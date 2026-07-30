@@ -568,14 +568,17 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
     );
   }
 
-  /// One-tap app-wide language flip. tr() watches [GwLang], so every screen
-  /// in the app re-renders in the chosen language, not just this one.
+  /// One-tap app-wide language cycle (EN → မြန်မာ → ไทย). tr() watches
+  /// [GwLang], so every screen in the app re-renders, not just this one.
   Widget _langButton() {
-    final my = context.watch<GwLang>().isMyanmar;
+    const labels = {"en": "EN", "my": "မြန်မာ", "th": "ไทย"};
+    final code = context.watch<GwLang>().code;
+    final order = GwLang.supported;
+    final next = order[(order.indexOf(code) + 1) % order.length];
     return TextButton.icon(
-      onPressed: () => context.read<GwLang>().setCode(my ? "en" : "my"),
+      onPressed: () => context.read<GwLang>().setCode(next),
       icon: const Icon(Icons.translate, size: 16, color: Colors.white70),
-      label: Text(my ? "EN" : "မြန်မာ",
+      label: Text(labels[next] ?? next,
           style: const TextStyle(
               color: Colors.white70,
               fontSize: 12,
