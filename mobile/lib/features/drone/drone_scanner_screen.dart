@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 import 'package:wifi_scan/wifi_scan.dart';
 
 import '../../core/i18n.dart';
@@ -489,6 +490,7 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
         foregroundColor: Colors.white,
         title: Text(tr(context, "Drone radar", "ဒရုန်း ရေဒါ")),
         actions: [
+          _langButton(),
           _alertsButton(),
           IconButton(
             tooltip: tr(context, "Signal library", "Signal စာကြည့်တိုက်"),
@@ -562,6 +564,25 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// One-tap app-wide language flip. tr() watches [GwLang], so every screen
+  /// in the app re-renders in the chosen language, not just this one.
+  Widget _langButton() {
+    final my = context.watch<GwLang>().isMyanmar;
+    return TextButton.icon(
+      onPressed: () => context.read<GwLang>().setCode(my ? "en" : "my"),
+      icon: const Icon(Icons.translate, size: 16, color: Colors.white70),
+      label: Text(my ? "EN" : "မြန်မာ",
+          style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w800)),
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        minimumSize: const Size(0, 40),
       ),
     );
   }
@@ -777,6 +798,24 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700)),
                       ),
+                      if (DateTime.now().difference(h.firstSeen).inSeconds <
+                          12) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF7ED957)
+                                .withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text("NEW",
+                              style: TextStyle(
+                                  color: Color(0xFF7ED957),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900)),
+                        ),
+                      ],
                       if (h.unusual) ...[
                         const SizedBox(width: 6),
                         const Icon(Icons.priority_high,
@@ -797,6 +836,7 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
                       if (h.protocol != null) h.protocol!,
                       h.source,
                       if (h.band != null) h.band!,
+                      if (h.channel != null) "ch ${h.channel}",
                       "${h.rssi} dBm",
                       "≈ ${d < 1000 ? "${d.round()} m" : "${(d / 1000).toStringAsFixed(1)} km"}",
                     ].join(" · "),
@@ -837,22 +877,55 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
     );
   }
 
+  String _classLabel(HitClass c) {
+    switch (c) {
+      case HitClass.remoteId:
+        return tr(context, "Remote ID drone", "Remote ID ဒရုန်း");
+      case HitClass.drone:
+        return tr(context, "Drone-maker device", "ဒရုန်းထုတ်လုပ်သူ စက်");
+      case HitClass.unusual:
+        return tr(context, "Unusual signal", "ထူးခြား signal");
+      case HitClass.unknown:
+        return tr(context, "Ordinary signal", "သာမန် signal");
+    }
+  }
+
+  String _hhmmss(DateTime t) =>
+      "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:${t.second.toString().padLeft(2, '0')}";
+
   void _showDetail(DroneHit h) {
     final d = h.distanceM;
+    final c = _classColor(h.klass);
+    final quality = (((h.rssi + 100) / 60).clamp(0.0, 1.0) * 100).round();
+    final seenFor = DateTime.now().difference(h.firstSeen);
+    Widget chip(String text, Color color) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withValues(alpha: 0.5)),
+          ),
+          child: Text(text,
+              style: TextStyle(
+                  color: color, fontSize: 11, fontWeight: FontWeight.w800)),
+        );
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: const Color(0xFF161719),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (sheetCtx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.72,
+        maxChildSize: 0.94,
+        builder: (_, controller) => ListView(
+          controller: controller,
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
           children: [
             Row(
               children: [
-                Icon(_kindIcon(h), color: _classColor(h.klass)),
+                Icon(_kindIcon(h), color: c, size: 26),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(h.sig?.title ?? h.label,
@@ -863,7 +936,71 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                chip(_classLabel(h.klass), c),
+                chip(h.source,
+                    h.source == "WiFi" ? const Color(0xFF44C8FF) : Colors.white70),
+                if (h.trend != 0)
+                  chip(
+                      h.trend > 0
+                          ? tr(context, "Approaching", "ချဉ်းကပ်လာ")
+                          : tr(context, "Moving away", "ဝေးသွား"),
+                      h.trend > 0 ? GwColors.live : const Color(0xFF7ED957)),
+              ],
+            ),
             const SizedBox(height: 14),
+            // Signal-strength meter + 20-sample RSSI history: is it stable,
+            // creeping closer, or fading? The row's arrow says the verdict;
+            // this shows the evidence.
+            Row(
+              children: [
+                Text("RSSI ${h.rssi} dBm",
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13)),
+                const Spacer(),
+                Text("${tr(context, "Quality", "အားကောင်းမှု")} $quality%",
+                    style: TextStyle(
+                        color: quality >= 60
+                            ? const Color(0xFF7ED957)
+                            : (quality >= 30
+                                ? const Color(0xFFF0B429)
+                                : Colors.white54),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: quality / 100,
+                minHeight: 6,
+                backgroundColor: Colors.white12,
+                valueColor: AlwaysStoppedAnimation(c),
+              ),
+            ),
+            if (h.rssiHistory.length > 2) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 46,
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: _RssiSparkPainter(List.of(h.rssiHistory), c),
+                ),
+              ),
+              Text(
+                  tr(context, "Signal history (last ~20 samples)",
+                      "Signal မှတ်တမ်း (နောက်ဆုံး ~၂၀ ကြိမ်)"),
+                  style:
+                      const TextStyle(color: Colors.white38, fontSize: 10.5)),
+            ],
+            const SizedBox(height: 12),
             if (h.vendor != null)
               _detailRow(tr(context, "Maker", "ထုတ်လုပ်သူ"), h.vendor!),
             if (h.protocol != null)
@@ -873,18 +1010,19 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
             if (h.band != null)
               _detailRow(tr(context, "Band", "လှိုင်း"),
                   "${h.band}${h.channel != null ? "  ·  ch ${h.channel}" : ""}"),
-            _detailRow("RSSI", "${h.rssi} dBm"),
             _detailRow(tr(context, "Distance (est.)", "အကွာအဝေး (ခန့်)"),
                 d < 1000
                     ? "≈ ${d.round()} m"
                     : "≈ ${(d / 1000).toStringAsFixed(1)} km"),
+            _detailRow(tr(context, "First seen", "စတွေ့ချိန်"),
+                _hhmmss(h.firstSeen)),
             _detailRow(
-                tr(context, "Proximity", "ချဉ်းကပ်မှု"),
-                h.trend > 0
-                    ? tr(context, "Approaching ↑", "ချဉ်းကပ်လာ ↑")
-                    : (h.trend < 0
-                        ? tr(context, "Moving away ↓", "ဝေးသွား ↓")
-                        : tr(context, "Steady", "တည်ငြိမ်"))),
+                tr(context, "Tracked for", "စောင့်ကြည့်ချိန်"),
+                seenFor.inMinutes > 0
+                    ? "${seenFor.inMinutes} min ${seenFor.inSeconds % 60} s"
+                    : "${seenFor.inSeconds} s"),
+            _detailRow(tr(context, "Last update", "နောက်ဆုံး update"),
+                _hhmmss(h.seen)),
             if (h.ssid != null) _detailRow("SSID", h.ssid!),
             if (h.mac != null) _detailRow("MAC / ID", h.mac!),
             if (h.remoteId != null && h.remoteId!.isNotEmpty)
@@ -907,6 +1045,47 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
                               "A nearby Wi-Fi/BLE device. Not identified as a drone.",
                               "အနီးက Wi-Fi/BLE စက်။ ဒရုန်းအဖြစ် မသတ်မှတ်ရသေး။"))),
               style: const TextStyle(color: Colors.white54, fontSize: 12.5),
+            ),
+            Text(
+              tr(context,
+                  "Distance is estimated from signal strength — walls, pockets and rain skew it. Treat it as near / mid / far, not metres.",
+                  "အကွာအဝေးကို signal အားဖြင့် ခန့်မှန်းတာ — နံရံ/အိတ်ကပ်/မိုးကြောင့် လွဲနိုင်။ မီတာအတိအကျမဟုတ်ဘဲ နီး/လတ်/ဝေး အဆင့်လောက်သာ ယူဆပါ။"),
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                if (h.lat != null) ...[
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(
+                            text:
+                                "${h.lat!.toStringAsFixed(6)},${h.lng!.toStringAsFixed(6)}"));
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(tr(context, "GPS copied",
+                                "GPS ကူးယူပြီး"))));
+                      },
+                      icon: const Icon(Icons.copy, size: 15),
+                      label: Text(tr(context, "Copy GPS", "GPS ကူးမည်")),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(sheetCtx);
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => DroneMapScreen(
+                            liveHits: () => _hits.values.toList()),
+                      ));
+                    },
+                    icon: const Icon(Icons.map_outlined, size: 15),
+                    label: Text(tr(context, "Show on map", "မြေပုံပေါ်ပြ")),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1101,18 +1280,150 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
     );
   }
 
+  /// Bottom strip: the honesty note, plus the user-guide button — help has
+  /// to be reachable from the main screen, not buried in an app-bar menu.
   Widget _disclaimer(BuildContext context) => Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
         color: Colors.white.withValues(alpha: 0.04),
-        child: Text(
-          tr(
-              context,
-              "Lists all nearby Wi-Fi/BLE signals, flags drones + unusual approaching signals, and buzzes you. DJI OcuSync, ELRS, Crossfire, FrSky & analog FPV need an external SDR — tap ⓘ. A safety aid, not a guarantee.",
-              "အနီးက Wi-Fi/BLE signal အားလုံး ပြ၊ ဒရုန်း + ချဉ်းကပ်လာ ထူးခြား signal သတိပေး။ DJI OcuSync၊ ELRS၊ Crossfire၊ FrSky၊ analog FPV အတွက် SDR လို — ⓘ ။ အာမခံ မဟုတ်။"),
-          style: const TextStyle(color: Colors.white38, fontSize: 11),
+        child: Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: _showCapabilities,
+                child: Text(
+                  tr(
+                      context,
+                      "Lists all nearby Wi-Fi/BLE signals, flags drones + unusual approaching signals, and buzzes you. DJI OcuSync, ELRS, Crossfire, FrSky & analog FPV need an external SDR — tap ⓘ. A safety aid, not a guarantee.",
+                      "အနီးက Wi-Fi/BLE signal အားလုံး ပြ၊ ဒရုန်း + ချဉ်းကပ်လာ ထူးခြား signal သတိပေး။ DJI OcuSync၊ ELRS၊ Crossfire၊ FrSky၊ analog FPV အတွက် SDR လို — ⓘ ။ အာမခံ မဟုတ်။"),
+                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: _showGuide,
+              icon: const Icon(Icons.menu_book, size: 15),
+              label: Text(tr(context, "Guide", "လမ်းညွှန်")),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF7ED957),
+                side: const BorderSide(color: Color(0xFF2E9E5B)),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                minimumSize: const Size(0, 34),
+              ),
+            ),
+          ],
         ),
       );
+
+  /// The full user guide — how to read the radar, the list, filters, alerts,
+  /// the detail view, and what the numbers do and don't mean.
+  void _showGuide() {
+    Widget section(String title, String body) => Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: const TextStyle(
+                      color: Color(0xFF7ED957),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14)),
+              const SizedBox(height: 4),
+              Text(body,
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 12.5, height: 1.45)),
+            ],
+          ),
+        );
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF161719),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.85,
+        maxChildSize: 0.94,
+        builder: (_, controller) => ListView(
+          controller: controller,
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+          children: [
+            Text(tr(context, "User guide", "အသုံးပြုနည်း လမ်းညွှန်"),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18)),
+            const SizedBox(height: 14),
+            section(
+              tr(context, "1. Reading the radar", "၁။ ရေဒါမျက်နှာပြင် ဖတ်နည်း"),
+              tr(
+                  context,
+                  "The white dot is you. Rings are distance zones — inner ring ≈ near, outer ring ≈ far (up to ~600 m). The green sweep is the scan cycle. Every dot is a live signal; big glowing dots need attention.",
+                  "အဖြူစက်က သင်ပါ။ စက်ဝိုင်းတွေက အကွာအဝေးအဆင့်တွေ — အတွင်းဆုံး ≈ အနီး၊ အပြင်ဆုံး ≈ အဝေး (~၆၀၀ မီတာအထိ)။ အစိမ်းရောင်လက်တံက scan လည်ပတ်မှု။ အစက်တိုင်းက live signal — ကြီးပြီး တောက်နေတဲ့အစက်တွေက ဂရုစိုက်ရမယ့်ဟာတွေ။"),
+            ),
+            section(
+              tr(context, "2. Colors & icons", "၂။ အရောင်နှင့် အိုင်ကွန်များ"),
+              tr(
+                  context,
+                  "🔴 Red ✈ = confirmed Remote ID drone (highest confidence). 🔵 Blue = a drone-maker device (DJI, Parrot, Autel…). 🟡 Amber ❗ = unusual — an unknown device that is close AND approaching. Grey = the ordinary Wi-Fi routers and BLE gadgets around everyone.",
+                  "🔴 အနီ ✈ = Remote ID အတည်ပြု ဒရုန်း (ယုံကြည်ရဆုံး)။ 🔵 အပြာ = ဒရုန်းထုတ်လုပ်သူ စက် (DJI, Parrot, Autel…)။ 🟡 လိမ္မော် ❗ = ထူးခြား — အနီးရောက်ပြီး ချဉ်းကပ်လာနေတဲ့ အမည်မသိစက်။ မီးခိုး = ပတ်ဝန်းကျင်က သာမန် Wi-Fi/BLE စက်များ။"),
+            ),
+            section(
+              tr(context, "3. Reading a signal row", "၃။ Signal တစ်ကြောင်း ဖတ်နည်း"),
+              tr(
+                  context,
+                  "Each row shows: name · link type · source (WiFi/BLE) · band · channel · dBm · ≈ distance. dBm closer to 0 = nearer (−40 is very close, −85 is far). The arrow: ↑ approaching (red), ↓ moving away (green), → steady. Bars on the right = signal strength. NEW = first seen in the last 12 seconds.",
+                  "တစ်ကြောင်းချင်းမှာ — အမည် · link အမျိုးအစား · ရင်းမြစ် (WiFi/BLE) · လှိုင်း · channel · dBm · ခန့်မှန်းအကွာအဝေး ပြထားတယ်။ dBm က 0 နဲ့နီးလေ နီးလေ (−40 ဆို အရမ်းနီး၊ −85 ဆို ဝေး)။ မြှား — ↑ ချဉ်းကပ်လာ (အနီ)၊ ↓ ဝေးသွား (အစိမ်း)၊ → တည်ငြိမ်။ ညာဘက်တိုင်တွေက signal အား။ NEW = ၁၂ စက္ကန့်အတွင်း အသစ်တွေ့။"),
+            ),
+            section(
+              tr(context, "4. Filters", "၄။ စစ်ထုတ်ခလုတ်များ"),
+              tr(
+                  context,
+                  "Priority — threats first (Remote ID → drone-maker → unusual → the rest). All — everything by strength. Drones — only drone matches. Unusual — only flagged signals.",
+                  "ဦးစားပေး — အန္တရာယ်အလားအလာ အရင် (Remote ID → ဒရုန်းထုတ်လုပ်သူ → ထူးခြား → ကျန်တာ)။ အားလုံး — signal အားအလိုက် အကုန်။ ဒရုန်း — ဒရုန်းကိုက်ညီမှုသာ။ ထူးခြား — အလံတင်ထားတာသာ။"),
+            ),
+            section(
+              tr(context, "5. Alerts & vibration", "၅။ သတိပေးချက်နှင့် တုန်ခါမှု"),
+              tr(
+                  context,
+                  "The phone buzzes once when a new drone or unusual signal appears, and pulses continuously while a drone is within ~200 m. The bell shows alert history; Clear resets it. Alerts fire even while you're reading another part of the screen.",
+                  "ဒရုန်း/ထူးခြား signal အသစ်ပေါ်ရင် တစ်ကြိမ်တုန်ခါပြီး၊ ဒရုန်းက ~၂၀၀ မီတာအတွင်း ရှိနေသရွေ့ ဆက်တိုက် တုန်ခါနေမယ်။ ခေါင်းလောင်းမှာ သတိပေးချက်မှတ်တမ်း ကြည့်နိုင်ပြီး ရှင်း နဲ့ ဖျက်နိုင်တယ်။"),
+            ),
+            section(
+              tr(context, "6. Detail view", "၆။ အသေးစိတ်ကြည့်ရှုမှု"),
+              tr(
+                  context,
+                  "Tap any row: signal-strength graph (last ~20 samples), quality %, first-seen time, tracking duration, channel, MAC, SSID, Remote ID and live GPS when the drone broadcasts it. Copy GPS puts coordinates on the clipboard; Show on map plots GPS drones around you.",
+                  "ဘယ် row ကိုမဆို နှိပ်ပါ — signal အားဂရပ် (နောက်ဆုံး ~၂၀ ကြိမ်)၊ အားကောင်းမှု %၊ စတွေ့ချိန်၊ စောင့်ကြည့်ကြာချိန်၊ channel၊ MAC၊ SSID၊ Remote ID နဲ့ ဒရုန်းက ထုတ်လွှင့်ရင် GPS တည်နေရာပါ မြင်ရမယ်။ GPS ကူးမည် နဲ့ တည်နေရာကူးယူပြီး မြေပုံပေါ်ပြ နဲ့ မြေပုံပေါ်ကြည့်နိုင်တယ်။"),
+            ),
+            section(
+              tr(context, "7. Library & map", "၇။ စာကြည့်တိုက်နှင့် မြေပုံ"),
+              tr(
+                  context,
+                  "The book icon opens the signal library — every drone signature this radar knows. The map icon plots you and any GPS-broadcasting drones on a live map.",
+                  "စာအုပ်အိုင်ကွန်က signal စာကြည့်တိုက် — ဒီရေဒါသိတဲ့ ဒရုန်း signature အားလုံး။ မြေပုံအိုင်ကွန်က သင်နဲ့ GPS ထုတ်လွှင့်နေတဲ့ ဒရုန်းတွေကို live မြေပုံပေါ် ပြပေးတယ်။"),
+            ),
+            section(
+              tr(context, "8. Limits & accuracy", "၈။ ကန့်သတ်ချက်နှင့် တိကျမှု"),
+              tr(
+                  context,
+                  "Distance is an estimate from signal strength — read it as near/mid/far. DJI OcuSync, ELRS, Crossfire, FrSky and analog FPV use bands a phone cannot tune; they need an external SDR (tap ⓘ). The radar is fully passive: it only listens, never transmits or jams anything. A safety aid, not a guarantee.",
+                  "အကွာအဝေးက signal အားကနေ ခန့်မှန်းတာသာ — နီး/လတ်/ဝေး အဆင့်လောက်ပဲ ယူဆပါ။ DJI OcuSync၊ ELRS၊ Crossfire၊ FrSky နဲ့ analog FPV တွေက ဖုန်းမဖမ်းနိုင်တဲ့ လှိုင်းတွေသုံးလို့ SDR အပိုလိုတယ် (ⓘ နှိပ်ပါ)။ ရေဒါက နားထောင်ရုံသာ — ဘာမှ မထုတ်လွှင့်၊ မနှောင့်ယှက်ပါ။ အာမခံချက်မဟုတ်ဘဲ အကူအညီသာ ဖြစ်ပါတယ်။"),
+            ),
+            section(
+              tr(context, "9. Tips", "၉။ အသုံးဝင်သော အကြံများ"),
+              tr(
+                  context,
+                  "Keep Bluetooth ON (Remote ID beacons are BLE). Grant location + nearby-devices permissions — Android requires them for Wi-Fi/BLE scanning. Keep the screen on while monitoring; Android throttles background scans.",
+                  "Bluetooth ဖွင့်ထားပါ (Remote ID က BLE)။ တည်နေရာ + အနီးစက် ခွင့်ပြုချက်တွေ ပေးပါ — Android မှာ Wi-Fi/BLE scan အတွက် မဖြစ်မနေလိုတယ်။ စောင့်ကြည့်နေချိန် မျက်နှာပြင် ဖွင့်ထားပါ — background မှာ Android က scan ကို လျှော့ချတတ်တယ်။"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _Alert {
@@ -1120,6 +1431,42 @@ class _Alert {
   final String reason;
   final String label;
   final DateTime at;
+}
+
+/// RSSI history line for the detail sheet — evidence behind the trend arrow.
+class _RssiSparkPainter extends CustomPainter {
+  _RssiSparkPainter(this.points, this.color);
+  final List<int> points;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.length < 2) return;
+    final min = points.reduce(math.min).toDouble();
+    final max = points.reduce(math.max).toDouble();
+    final span = (max - min) == 0 ? 1.0 : (max - min);
+    final path = Path();
+    for (var i = 0; i < points.length; i++) {
+      final x = i / (points.length - 1) * size.width;
+      final y =
+          size.height - ((points[i] - min) / span) * (size.height - 6) - 3;
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(
+        path,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.8
+          ..strokeJoin = StrokeJoin.round);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RssiSparkPainter old) => true;
 }
 
 class _RadarPainter extends CustomPainter {
