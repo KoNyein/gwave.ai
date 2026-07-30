@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -8,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:wifi_scan/wifi_scan.dart';
 
 import '../../core/app_state.dart';
+import '../../core/config.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../../widgets/signal_meter.dart';
@@ -127,6 +129,10 @@ class _WifiMapScreenState extends State<WifiMapScreen> {
                 "ssid": a.ssid,
                 "signal": a.level,
                 "security": _security(a.capabilities),
+                // Radio detail: the server derives band/channel from this and
+                // parses the raw capability string for the exact encryption.
+                "frequency": a.frequency,
+                "capabilities": a.capabilities,
               })
           .toList();
       if (networks.isEmpty) {
@@ -138,6 +144,11 @@ class _WifiMapScreenState extends State<WifiMapScreen> {
             latitude: at.latitude,
             longitude: at.longitude,
             networks: networks,
+            client: {
+              "platform": Platform.isAndroid ? "android" : "ios",
+              "osVersion": Platform.operatingSystemVersion,
+              "appBuild": "${AppConfig.appBuild}",
+            },
           );
       _contributed += networks.length;
       await _loadNearby();

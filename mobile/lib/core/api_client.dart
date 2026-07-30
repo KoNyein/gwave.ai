@@ -621,11 +621,15 @@ class ApiClient {
     required double latitude,
     required double longitude,
     required List<Map<String, dynamic>> networks,
+    /// Platform / OS / app build, so the admin dashboard can show which
+    /// clients are contributing scans.
+    Map<String, dynamic>? client,
   }) =>
       _mobilePost("/api/mobile/wifi/observe", {
         "latitude": latitude,
         "longitude": longitude,
         "networks": networks,
+        if (client != null) "client": client,
       });
 
   /// The collected WiFi points near a map viewport.
