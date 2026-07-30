@@ -51,6 +51,23 @@
 
 ## Changelog
 
+- 2026-07-30 (mid-morning): **Metal board v3, drone radar v2, map travel
+  tools.** Web (PR #404, deploy #162): tap-to-expand metal rows (1-mo
+  chart, high/low/avg, kyattha/gram/kg/tonne conversion cards, per-metal
+  background), Myanmar minerals guide (regions + legal status + world-price
+  link; uranium listed as education-only with a legal warning and
+  deliberately no price), my/en toggle flipping every board string
+  (metal-data.ts, compile-checked key parity), help accordion. App (APK
+  224): drone radar detail sheet with RSSI history graph, quality meter,
+  chips, first-seen/tracked-for, Copy GPS/Show-on-map; 9-section bilingual
+  user guide; app-bar language button flips the whole app via GwLang. App
+  (APK 225): map travel tools — long-press waypoints (fuel/camp/mine emoji
+  pins, on-device store), trip recorder (distance/duration/speed, live
+  chip) with animated replay ("travel video"), GPX export and stats share,
+  in-app OSRM routing with nav HUD (straight-line fallback offline),
+  share-my-location one-off, 8-section bilingual map guide
+  (trip_tools.dart).
+
 - 2026-07-30 (morning): **Market log v2 — tin border prices, Kachin rare
   earths, world-price reference** (PR #402, deploy #161). Quick-pick chips
   for metals (antimony, tin ခဲမဖြူ, rare-earth Dy/Tb, zinc, lead, nickel,
