@@ -3,6 +3,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { FileText, Gem, Leaf, Search, User } from "lucide-react";
+
+import { SearchBar } from "@/components/ui/search-bar";
 import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
@@ -168,11 +170,10 @@ export function GlobalSearch() {
 
   return (
     <div ref={containerRef} className="relative hidden md:block">
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-      <input
-        type="search"
+      <SearchBar
         value={query}
-        onChange={(event) => handleChange(event.target.value)}
+        onValueChange={handleChange}
+        onClear={() => setOpen(false)}
         onKeyDown={handleKeyDown}
         onFocus={() => {
           if (items.length > 0) setOpen(true);
@@ -182,7 +183,7 @@ export function GlobalSearch() {
         role="combobox"
         aria-expanded={open}
         aria-controls="global-search-results"
-        className="h-10 w-56 rounded-full border border-input bg-muted pl-9 pr-4 text-sm outline-none transition-colors focus:bg-background focus:ring-1 focus:ring-ring lg:w-72"
+        containerClassName="w-56 lg:w-72"
       />
 
       {open ? (
