@@ -1157,7 +1157,18 @@
     "payGpayNow": "立即用 G-Pay 支付",
     "gpayBalance": "余额",
     "gpayInsufficient": "余额不足",
-    "gpayPayHint": "将立即从您的 G-Pay 钱包扣款。"
+    "gpayPayHint": "将立即从您的 G-Pay 钱包扣款。",
+    "sold": "sold",
+    "specifications": "Specifications",
+    "syncedAt": "Merchant data updated {when}",
+    "packHeading": "Send to your customer",
+    "packHint": "Copy the message, share it, or save every photo at once — then paste it into Facebook, Messenger or Viber.",
+    "packCopy": "Copy message",
+    "packCopied": "Copied",
+    "packShare": "Share",
+    "packSavePhotos": "Save photos",
+    "packSaving": "Saving…",
+    "packPhotoCount": "{count} photos"
   },
   "finance": {
     "title": "商业财务",

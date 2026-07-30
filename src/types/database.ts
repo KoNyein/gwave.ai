@@ -253,6 +253,22 @@ export interface ShopProduct {
   image_url: string | null;
   /** Ordered gallery; image_url stays the cover. Null on older rows. */
   images: string[] | null;
+  /** Merchant attributes, [{name, value}]. Null when nothing was imported. */
+  specs: { name: string; value: string }[] | null;
+  /** Merchant options, [{name, image?, price?}]. */
+  variants: { name: string; image?: string | null; price?: number | null }[] | null;
+  /** The merchant's own social proof — 0-5, review and order counts. */
+  rating: number | null;
+  reviews_count: number | null;
+  orders_count: number | null;
+  /** A seller's own "was" price. Never copied from the merchant. */
+  original_price: number | null;
+  store_name: string | null;
+  store_url: string | null;
+  video_url: string | null;
+  shipping_note: string | null;
+  /** When the merchant data was last pulled, so staleness can be shown. */
+  source_synced_at: string | null;
   price: number | null;
   currency: string;
   external_url: string | null;

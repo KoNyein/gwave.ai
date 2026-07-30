@@ -13,6 +13,34 @@ import {
   type AliexpressProduct,
 } from "@/lib/aliexpress";
 
+
+/**
+ * The parts of a merchant listing a reseller actually shows a customer:
+ * the whole photo set, the video, the store behind it, and the numbers that
+ * answer "is this any good".
+ *
+ * Split out because import and refresh must write the same fields — the first
+ * version of this only set them on import, so a refreshed listing quietly
+ * reverted to one photo.
+ *
+ * Deliberately NOT copying the merchant's list price into original_price: our
+ * price is theirs plus a markup, so showing their "was" beside our "now" would
+ * advertise a discount that does not exist. original_price is for a seller who
+ * genuinely drops their own price.
+ */
+function merchantDetail(product: AliexpressProduct) {
+  return {
+    // The CHECK constraint rejects an empty array, so send null instead.
+    images: product.gallery.length > 0 ? product.gallery.slice(0, 24) : null,
+    video_url: product.videoUrl,
+    rating: product.rating,
+    orders_count: product.volume > 0 ? product.volume : null,
+    store_name: product.storeName?.slice(0, 120) ?? null,
+    store_url: product.storeUrl?.slice(0, 1000) ?? null,
+    source_synced_at: new Date().toISOString(),
+  };
+}
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -191,6 +219,9 @@ export async function POST(request: NextRequest) {
           // external_url alone rather than re-arming one on every refresh.
           ...(row.kind === "affiliate" ? { external_url: product.url } : {}),
           image_url: product.imageUrl,
+          // Re-pull the presentation data too: a merchant swapping their photos
+          // or adding a video is exactly the kind of drift a refresh is for.
+          ...merchantDetail(product),
           updated_at: new Date().toISOString(),
         })
         .eq("id", row.id);
@@ -252,6 +283,7 @@ export async function POST(request: NextRequest) {
       merchant: "AliExpress",
       category: product.category?.slice(0, 40) ?? null,
       commission_rate: product.commissionRate,
+      ...merchantDetail(product),
       status: "active" as const,
     };
 

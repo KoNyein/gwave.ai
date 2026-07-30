@@ -1157,7 +1157,18 @@
     "payGpayNow": "ابھی G-Pay سے ادا کریں",
     "gpayBalance": "بیلنس",
     "gpayInsufficient": "ناکافی بیلنس",
-    "gpayPayHint": "آپ کے G-Pay والیٹ سے فوری وصول کیا جاتا ہے۔"
+    "gpayPayHint": "آپ کے G-Pay والیٹ سے فوری وصول کیا جاتا ہے۔",
+    "sold": "sold",
+    "specifications": "Specifications",
+    "syncedAt": "Merchant data updated {when}",
+    "packHeading": "Send to your customer",
+    "packHint": "Copy the message, share it, or save every photo at once — then paste it into Facebook, Messenger or Viber.",
+    "packCopy": "Copy message",
+    "packCopied": "Copied",
+    "packShare": "Share",
+    "packSavePhotos": "Save photos",
+    "packSaving": "Saving…",
+    "packPhotoCount": "{count} photos"
   },
   "finance": {
     "title": "کاروباری مالیات",

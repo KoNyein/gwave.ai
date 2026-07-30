@@ -1170,7 +1170,18 @@
     "payGpayNow": "Pay now with G-Pay",
     "gpayBalance": "Balance",
     "gpayInsufficient": "Insufficient balance",
-    "gpayPayHint": "Charged instantly from your G-Pay wallet."
+    "gpayPayHint": "Charged instantly from your G-Pay wallet.",
+    "sold": "sold",
+    "specifications": "Specifications",
+    "syncedAt": "Merchant data updated {when}",
+    "packHeading": "Send to your customer",
+    "packHint": "Copy the message, share it, or save every photo at once — then paste it into Facebook, Messenger or Viber.",
+    "packCopy": "Copy message",
+    "packCopied": "Copied",
+    "packShare": "Share",
+    "packSavePhotos": "Save photos",
+    "packSaving": "Saving…",
+    "packPhotoCount": "{count} photos"
   },
   "finance": {
     "title": "Business finance",

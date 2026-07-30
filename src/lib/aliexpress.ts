@@ -95,8 +95,16 @@ export interface AliexpressProduct {
   productId: string;
   title: string;
   imageUrl: string | null;
+  /**
+   * Every photo the merchant publishes, cover first. A dropshipper's job is
+   * presenting someone else's product, and one photo does not sell anything —
+   * they need the back, the scale shot and the packaging to send a customer.
+   */
+  gallery: string[];
   /** Live sale price in [currency] — never a figure we cached ourselves. */
   price: number | null;
+  /** List price before the merchant's discount, so a saving can be shown. */
+  originalPrice: number | null;
   currency: string;
   /** Affiliate link (attributes the sale); falls back to the plain detail URL. */
   url: string;
@@ -105,6 +113,12 @@ export interface AliexpressProduct {
   commissionRate: number | null;
   /** Recent sales volume — what makes "best selling" mean anything. */
   volume: number;
+  /** 0–5, converted from the merchant's percentage satisfaction score. */
+  rating: number | null;
+  /** The merchant's storefront, so a customer can be told who actually ships. */
+  storeName: string | null;
+  storeUrl: string | null;
+  videoUrl: string | null;
 }
 
 function pick(row: Record<string, unknown>, ...keys: string[]): string | null {
@@ -121,6 +135,40 @@ function toNumber(value: string | null): number | null {
   if (value === null) return null;
   const n = Number(value.replace(/[^0-9.]/g, ""));
   return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * The gallery arrives in one of three shapes depending on the API version and
+ * whether `simplify` is on: a real array, `{ string: [...] }`, or a
+ * comma-separated string. Rather than guess, accept all three — a shape change
+ * upstream should cost us extra photos, not the whole import.
+ */
+function toUrlList(value: unknown): string[] {
+  const raw: unknown[] = Array.isArray(value)
+    ? value
+    : value && typeof value === "object" && Array.isArray((value as { string?: unknown[] }).string)
+      ? ((value as { string: unknown[] }).string)
+      : typeof value === "string"
+        ? value.split(",")
+        : [];
+  const out: string[] = [];
+  for (const item of raw) {
+    const url = `${item ?? ""}`.trim();
+    // Protocol-relative URLs are common in this feed and break <img> on https.
+    const normalized = url.startsWith("//") ? `https:${url}` : url;
+    if (/^https?:\/\//.test(normalized) && !out.includes(normalized)) {
+      out.push(normalized);
+    }
+  }
+  return out;
+}
+
+/** "95.2%" or "4.7" — the feed uses both for the same idea. Return 0–5. */
+function toRating(value: string | null): number | null {
+  const n = toNumber(value);
+  if (n === null) return null;
+  const stars = n > 5 ? (n / 100) * 5 : n;
+  return stars >= 0 && stars <= 5 ? Math.round(stars * 100) / 100 : null;
 }
 
 /**
@@ -161,10 +209,28 @@ function normalize(row: Record<string, unknown>): AliexpressProduct | null {
     pick(row, "product_detail_url", "productDetailUrl") ??
     `https://www.aliexpress.com/item/${productId}.html`;
 
+  const cover = pick(row, "product_main_image_url", "productMainImageUrl");
+  const small = toUrlList(
+    row.product_small_image_urls ?? row.productSmallImageUrls,
+  );
+  // Cover first, then the rest — de-duplicated, because the feed usually
+  // repeats the cover inside the small-image list.
+  const gallery = [
+    ...new Set([...(cover ? toUrlList(cover) : []), ...small]),
+  ].slice(0, 24);
+
   return {
     productId,
     title,
-    imageUrl: pick(row, "product_main_image_url", "productMainImageUrl"),
+    imageUrl: gallery[0] ?? cover,
+    gallery,
+    originalPrice: toNumber(
+      pick(row, "target_original_price", "original_price", "originalPrice"),
+    ),
+    rating: toRating(pick(row, "evaluate_rate", "evaluateRate", "avg_evaluation_rating")),
+    storeName: pick(row, "shop_name", "shopName", "store_name"),
+    storeUrl: pick(row, "shop_url", "shopUrl", "store_url"),
+    videoUrl: toUrlList(row.product_video_url ?? row.productVideoUrl)[0] ?? null,
     price: toNumber(
       pick(
         row,
@@ -187,6 +253,32 @@ function normalize(row: Record<string, unknown>): AliexpressProduct | null {
 }
 
 /**
+ * Every field worth asking for. The small-image list, the video and the store
+ * name are what turn a card into something a reseller can actually show a
+ * customer; asking for them costs nothing extra on the same call.
+ */
+const PRODUCT_FIELDS = [
+  "product_id",
+  "product_title",
+  "product_main_image_url",
+  "product_small_image_urls",
+  "product_video_url",
+  "product_detail_url",
+  "target_sale_price",
+  "target_sale_price_currency",
+  "target_original_price",
+  "original_price",
+  "evaluate_rate",
+  "promotion_link",
+  "first_level_category_name",
+  "second_level_category_name",
+  "shop_name",
+  "shop_url",
+  "commission_rate",
+  "lastest_volume",
+].join(",");
+
+/**
  * Best sellers, highest recent sales volume first. `keywords` and `category`
  * narrow the pull; omit both for the platform-wide hot list.
  */
@@ -206,18 +298,7 @@ export async function fetchBestSellers(opts: {
     page_no: "1",
     page_size: String(pageSize),
     sort: "LAST_VOLUME_DESC",
-    fields: [
-      "product_id",
-      "product_title",
-      "product_main_image_url",
-      "product_detail_url",
-      "target_sale_price",
-      "target_sale_price_currency",
-      "promotion_link",
-      "first_level_category_name",
-      "commission_rate",
-      "lastest_volume",
-    ].join(","),
+    fields: PRODUCT_FIELDS,
   };
   if (opts.keywords?.trim()) business.keywords = opts.keywords.trim();
   if (opts.categoryId?.trim()) business.category_ids = opts.categoryId.trim();
@@ -247,18 +328,7 @@ export async function fetchProductsByIds(
       target_currency: aliexpressCurrency(),
       target_language: "EN",
       ship_to_country: aliexpressShipTo(),
-      fields: [
-        "product_id",
-        "product_title",
-        "product_main_image_url",
-        "product_detail_url",
-        "target_sale_price",
-        "target_sale_price_currency",
-        "promotion_link",
-        "first_level_category_name",
-        "commission_rate",
-        "lastest_volume",
-      ].join(","),
+      fields: PRODUCT_FIELDS,
     });
     for (const row of extractProducts(payload)) {
       const product = normalize(row);
