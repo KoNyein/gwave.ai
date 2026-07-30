@@ -51,6 +51,32 @@
 
 ## Changelog
 
+- 2026-07-30 (afternoon): **Community cannabis map, standard search bar +
+  keyword analytics, WiGLE-depth WiFi dashboard.** /strains/places (PR #414,
+  deploy #169): cannabis_places + cannabis_place_reports, RLS-sealed, any adult
+  adds/corrects, anyone reports (unique per reporter, count recomputed not
+  incremented), admin deletes; a listing is only accepted complete — name,
+  address, phone, coordinates, ≥1 photo — enforced in zod AND CHECK
+  constraints; Leaflet map with emoji pins, detail card, multi-photo upload,
+  GPS + tap-the-map picker, trilingual; /admin/places moderation queue.
+  components/ui/search-bar.tsx is now the one search-box shape (magnifier,
+  clear ✕, consistent height), adopted by the navbar, /strains and /minerals;
+  search_queries logs keyword + user + source + result count and /admin/search
+  charts it, giving zero-result keywords equal billing since that list is the
+  content users wanted and we don't have (PR #415, deploy #170). /admin/wifi
+  gained WiGLE depth (PR #416, deploy #171): frequency/channel/band/
+  capabilities on networks and scans plus user_agent/platform/os/app_build on
+  the scan; lib/oui.ts derives vendor from OUI, exact encryption family from
+  the capability string, WPS, and browser/OS from the UA; charts for
+  encryption, band, channel congestion, vendor, browser, OS and app version;
+  full searchable AP table. Scam-compound work is deliberately split: dense
+  AP clusters are surfaced as LEADS with an explicit not-evidence banner (a
+  hotel or campus looks identical from a scan), and the only thing recorded is
+  a human admin flag in wifi_watchlist with risk, category, note and author.
+  App (APK 229-230): Strains opens the places map; the WiFi scan sends
+  frequency, raw capabilities and its platform/OS/build. Three SQL files
+  applied on RDS by the user.
+
 - 2026-07-30 (midday): **Admin data dashboards + Thailand cannabis market +
   Thai language.** New wifi_scans table (RLS-sealed, zero policies) logs one
   row per AP per scan with user, GPS fix and RSSI, written by
