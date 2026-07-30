@@ -51,6 +51,18 @@
 
 ## Changelog
 
+- 2026-07-30 (morning): **Market log v2 — tin border prices, Kachin rare
+  earths, world-price reference** (PR #402, deploy #161). Quick-pick chips
+  for metals (antimony, tin ခဲမဖြူ, rare-earth Dy/Tb, zinc, lead, nickel,
+  copper) and markets (Muse, Kachin Pangwa border, Tachileik, Myawaddy,
+  Yangon). Each hand-recorded quote shows the matching LME/COMEX price
+  beneath it (Burmese-name match, longest-first so ခဲမဖြူ→tin beats ခဲ→lead).
+  /api/metals: metals.dev key candidates per row — free tier serves plain
+  `tin`, not `lme_tin`, which is why tin was missing from prod (key-check
+  showed only lme_nickel/zinc/lead; rhodium absent may be plan-limited).
+  Rare earths have no public feed (SMM licensed) — the log is the only
+  honest source, so no reference line is shown for them.
+
 - 2026-07-24 (later): Media quality upgrade — new `src/lib/hls-quality.ts`
   with two shared hls.js profiles that auto-recover from fatal network/media
   errors (feed/rail/grid previews `attachPreviewHls`, watch/CCTV players
