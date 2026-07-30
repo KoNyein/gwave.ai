@@ -83,6 +83,18 @@ class _StrainsScreenState extends State<StrainsScreen> {
           // Cannabis/hemp/CBD market board — educational, and the web page
           // itself enforces the 18+ gate (requireAdult) on the session the
           // webview signs in with.
+          // Community map of shops, farms and clinics — users add, correct
+          // and report listings; the web page enforces the 18+ gate.
+          IconButton(
+            tooltip: tr(context, "Shops / farms / clinics map",
+                "ဆိုင် / စိုက်ခင်း / ကလင်းနစ် မြေပုံ"),
+            icon: const Icon(Icons.map_outlined),
+            onPressed: () => openWeb(
+              context,
+              "https://gwave.cc/strains/places",
+              title: tr(context, "Cannabis map", "မြေပုံ"),
+            ),
+          ),
           IconButton(
             tooltip: tr(context, "Markets (18+, educational)",
                 "ဈေးကွက် (၁၈+၊ ပညာပေး)"),
