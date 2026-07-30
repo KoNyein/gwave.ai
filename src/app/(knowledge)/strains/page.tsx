@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { StrainCard } from "@/components/knowledge/strain-card";
 import { Card, CardContent } from "@/components/ui/card";
+import { SearchBar } from "@/components/ui/search-bar";
 import { requireAdult } from "@/lib/auth";
 import { listStrains } from "@/lib/db/knowledge";
 import { cn } from "@/lib/utils";
@@ -88,13 +89,26 @@ export default async function StrainsPage(
           <h1 className="text-xl font-bold">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/strains/places"
+            className="inline-flex items-center gap-1 rounded-full border border-primary px-3 py-1.5 text-xs font-semibold text-primary"
+          >
+            🗺 မြေပုံ (ဆိုင်/စိုက်ခင်း)
+          </Link>
+          <Link
+            href="/strains/market"
+            className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+          >
+            📈 ဈေးကွက် (18+)
+          </Link>
+        </div>
         <form action="/strains" className="flex gap-2">
-          <input
-            type="search"
+          <SearchBar
             name="q"
             defaultValue={searchParams.q ?? ""}
             placeholder={t("searchPlaceholder")}
-            className="w-48 rounded-full border bg-background px-4 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
+            containerClassName="w-48 sm:w-64"
           />
         </form>
       </div>

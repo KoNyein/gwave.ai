@@ -51,6 +51,67 @@
 
 ## Changelog
 
+- 2026-07-30 (afternoon): **Community cannabis map, standard search bar +
+  keyword analytics, WiGLE-depth WiFi dashboard.** /strains/places (PR #414,
+  deploy #169): cannabis_places + cannabis_place_reports, RLS-sealed, any adult
+  adds/corrects, anyone reports (unique per reporter, count recomputed not
+  incremented), admin deletes; a listing is only accepted complete — name,
+  address, phone, coordinates, ≥1 photo — enforced in zod AND CHECK
+  constraints; Leaflet map with emoji pins, detail card, multi-photo upload,
+  GPS + tap-the-map picker, trilingual; /admin/places moderation queue.
+  components/ui/search-bar.tsx is now the one search-box shape (magnifier,
+  clear ✕, consistent height), adopted by the navbar, /strains and /minerals;
+  search_queries logs keyword + user + source + result count and /admin/search
+  charts it, giving zero-result keywords equal billing since that list is the
+  content users wanted and we don't have (PR #415, deploy #170). /admin/wifi
+  gained WiGLE depth (PR #416, deploy #171): frequency/channel/band/
+  capabilities on networks and scans plus user_agent/platform/os/app_build on
+  the scan; lib/oui.ts derives vendor from OUI, exact encryption family from
+  the capability string, WPS, and browser/OS from the UA; charts for
+  encryption, band, channel congestion, vendor, browser, OS and app version;
+  full searchable AP table. Scam-compound work is deliberately split: dense
+  AP clusters are surfaced as LEADS with an explicit not-evidence banner (a
+  hotel or campus looks identical from a scan), and the only thing recorded is
+  a human admin flag in wifi_watchlist with risk, category, note and author.
+  App (APK 229-230): Strains opens the places map; the WiFi scan sends
+  frequency, raw capabilities and its platform/OS/build. Three SQL files
+  applied on RDS by the user.
+
+- 2026-07-30 (midday): **Admin data dashboards + Thailand cannabis market +
+  Thai language.** New wifi_scans table (RLS-sealed, zero policies) logs one
+  row per AP per scan with user, GPS fix and RSSI, written by
+  /api/mobile/wifi/observe best-effort; /admin/wifi reads it through the
+  service role for a coverage map (dot colour = signal, red ring = open
+  network), scan-activity + security + signal-band bar charts and a per-user
+  contribution table; /admin/data charts the whole system (module totals,
+  per-table with 7-day growth, log-scale toggle) off getModuleMetrics
+  (PR #411, deploy #167). /strains/market gains Thailand first: SET-listed
+  cannabis/hemp equities in THB via Yahoo .BK, a hand-recorded Thai price log
+  (cannabis_quotes + /api/cannabis/quotes, admin-gated writes) with quick-picks
+  for grades and provinces, and a specific Thai legal-compliance panel — FDA
+  cultivation registration, DTAM sale licence, the 0.2 % THC extract line,
+  under-20/pregnancy sale ban, advertising prohibition, 2025 prescription
+  rules — plus a third language, Thai (PR #412, deploy #168). App (APK 226-228):
+  shared signal_meter widgets put signal strength on every scan screen (WiFi
+  map live panel with bars/band/security/dBm/%, Bluetooth finder rows), Strains
+  opens the market board, and GwLang gains th with tr3() so Thai falls back to
+  English where untranslated. Both SQL files applied on RDS by the user.
+
+- 2026-07-30 (late morning): **Market log split + border gates + cannabis
+  market board.** metals.dev free tier confirmed to carry no tin/rhodium
+  (key list checked on prod), so per the user's decision the market log now
+  has a hand-recorded world-price section (e.g. tin LME) on top and Myanmar
+  border/local prices below; a local quote with no live row compares
+  against the logged world entry (PR #406). Border-gate quick-picks north
+  to south — Tachileik, Maese, Gate 13/14 (Kayah), Myawaddy, Mae Tha Waw,
+  Mae Tha Lay, Htee Khee, Nat Ein Taung, Kawthaung — each gate its own row,
+  with a note that prices differ per gate (PRs #407-408, deploys 164-165).
+  New /strains/market (PR #409, deploy #166): cannabis/hemp/CBD equity
+  board (ETFs, Canadian producers, US MSOs, CBD companies via Yahoo)
+  behind requireAdult 18+, with educational-only + illegal-in-Myanmar
+  disclaimer and my/en toggle; app Strains screen opens it via the
+  signed-in webview (APK 226, which also carries the main merge f109d07).
+
 - 2026-07-30 (mid-morning): **Metal board v3, drone radar v2, map travel
   tools.** Web (PR #404, deploy #162): tap-to-expand metal rows (1-mo
   chart, high/low/avg, kyattha/gram/kg/tonne conversion cards, per-metal

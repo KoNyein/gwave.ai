@@ -17,6 +17,8 @@ import {
   Wallet,
   MapPin,
   type LucideIcon,
+  Wifi,
+  Search as SearchIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -45,6 +47,8 @@ const SECTIONS: AdminNavSection[] = [
     links: [
       { href: "/admin", label: "Overview", icon: BarChart3 },
       { href: "/admin/modules", label: "Modules", icon: LayoutGrid },
+      { href: "/admin/data", label: "Data charts", icon: BarChart3 },
+      { href: "/admin/search", label: "Search", icon: SearchIcon },
     ],
   },
   {
@@ -53,6 +57,7 @@ const SECTIONS: AdminNavSection[] = [
     links: [
       { href: "/admin/users", label: "Users", icon: Users },
       { href: "/admin/map", label: "Users map", icon: MapPin },
+      { href: "/admin/wifi", label: "WiFi data", icon: Wifi },
       { href: "/admin/membership", label: "Membership", icon: BadgeCheck },
       { href: "/admin/teachers", label: "Teachers", icon: GraduationCap },
     ],
@@ -62,6 +67,7 @@ const SECTIONS: AdminNavSection[] = [
     hint: "တိုင်ကြားချက်၊ ဂိမ်း အတည်ပြု",
     links: [
       { href: "/admin/moderation", label: "Moderation", icon: ShieldAlert },
+      { href: "/admin/places", label: "Places", icon: MapPin },
       { href: "/admin/games", label: "Games", icon: Gamepad2 },
       { href: "/admin/audio", label: "Audio", icon: Music },
     ],

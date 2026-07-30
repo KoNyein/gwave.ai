@@ -3,6 +3,7 @@ import { Gem, LineChart } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { SearchBar } from "@/components/ui/search-bar";
 import {
   getMineralCategories,
   listMinerals,
@@ -100,12 +101,11 @@ export default async function MineralsPage(
           သတ္တုဈေးနှုန်း Live
         </Link>
         <form action="/minerals" className="flex gap-2">
-          <input
-            type="search"
+          <SearchBar
             name="q"
             defaultValue={searchParams.q ?? ""}
             placeholder={t("searchPlaceholder")}
-            className="w-48 rounded-full border bg-background px-4 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
+            containerClassName="w-48 sm:w-64"
           />
         </form>
       </div>
