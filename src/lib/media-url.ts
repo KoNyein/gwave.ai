@@ -26,3 +26,14 @@ export function mediaUrl(storagePath: string): string {
   if (S3_CDN) return `${S3_CDN}/${storagePath}`;
   return `${publicEnv.NEXT_PUBLIC_DATA_API_URL}/storage/v1/object/public/media/${storagePath}`;
 }
+
+/**
+ * Resolve a reference that may be either. Shop listings carry both kinds in
+ * one column: an imported product's image_url is the merchant's absolute URL,
+ * while a photo someone uploaded from the app is a storage key. Passing a key
+ * to <img> renders a broken image, so anything shop-shaped goes through here.
+ */
+export function mediaRef(ref: string | null | undefined): string | null {
+  if (!ref) return null;
+  return /^https?:\/\//.test(ref) ? ref : mediaUrl(ref.replace(/^\//, ""));
+}
