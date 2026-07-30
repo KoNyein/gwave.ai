@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 import { CannabisMarket } from "@/components/knowledge/cannabis-market";
-import { requireAdult } from "@/lib/auth";
+import { getCurrentProfile, requireAdult } from "@/lib/auth";
 
 export const metadata = { title: "Cannabis Markets (Educational)" };
 export const dynamic = "force-dynamic";
@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function CannabisMarketPage() {
   // Cannabis content — verified adults (18+) only, same gate as /strains.
   await requireAdult();
+  const profile = await getCurrentProfile();
 
   return (
     <div className="space-y-4">
@@ -22,7 +23,7 @@ export default async function CannabisMarketPage() {
       <h1 className="text-xl font-bold">
         ဆေးခြောက် / Hemp / CBD ဈေးကွက် — ပညာပေး
       </h1>
-      <CannabisMarket />
+      <CannabisMarket isAdmin={profile?.role === "admin"} />
     </div>
   );
 }
