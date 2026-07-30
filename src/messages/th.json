@@ -1157,7 +1157,18 @@
     "payGpayNow": "จ่ายด้วย G-Pay ตอนนี้",
     "gpayBalance": "ยอดคงเหลือ",
     "gpayInsufficient": "ยอดคงเหลือไม่พอ",
-    "gpayPayHint": "หักจากกระเป๋า G-Pay ของคุณทันที"
+    "gpayPayHint": "หักจากกระเป๋า G-Pay ของคุณทันที",
+    "sold": "ขายแล้ว",
+    "specifications": "รายละเอียดสินค้า",
+    "syncedAt": "อัปเดตข้อมูลผู้ขายเมื่อ {when}",
+    "packHeading": "ส่งให้ลูกค้า",
+    "packHint": "คัดลอกข้อความ แชร์ หรือบันทึกรูปทั้งหมดในครั้งเดียว แล้ววางใน Facebook, Messenger หรือ Viber",
+    "packCopy": "คัดลอกข้อความ",
+    "packCopied": "คัดลอกแล้ว",
+    "packShare": "แชร์",
+    "packSavePhotos": "บันทึกรูป",
+    "packSaving": "กำลังบันทึก…",
+    "packPhotoCount": "{count} รูป"
   },
   "finance": {
     "title": "การเงินธุรกิจ",
