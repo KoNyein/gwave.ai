@@ -33,6 +33,8 @@ const STRINGS = {
     logDisclaimer:
       "ဤအပိုင်းသည် လူကိုယ်တိုင် မှတ်တမ်းတင်ထားသော ဈေးများဖြစ်သည် — အပေါ်က exchange ဈေးများနှင့် ရင်းမြစ်မတူပါ။ ရက်စွဲကို ကြည့်ပါ။",
     worldPrice: "ကမ္ဘာ့ဈေး",
+    logWorldSection: "ကမ္ဘာ့ဈေး (လက်ရေးမှတ်တမ်း — ဥပမာ ခဲမဖြူ LME)",
+    logLocalSection: "မြန်မာ့ဈေး (နယ်စပ် / ပြည်တွင်း)",
     phName: "သတ္တုအမည် (ဥပမာ — ခနောက်စိမ်း)",
     phGrade: "Grade (ဥပမာ — သတ္တုရိုင်း 45%)",
     phPrice: "ဈေးနှုန်း",
@@ -69,6 +71,8 @@ const STRINGS = {
     logDisclaimer:
       "These are hand-recorded quotes — a different source from the exchange prices above. Always check the date.",
     worldPrice: "World price",
+    logWorldSection: "World prices (hand-recorded — e.g. tin LME)",
+    logLocalSection: "Myanmar prices (border / local)",
     phName: "Metal name (e.g. antimony)",
     phGrade: "Grade (e.g. ore 45%)",
     phPrice: "Price",
