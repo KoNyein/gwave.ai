@@ -9,6 +9,7 @@ import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../web/web_screen.dart';
 import 'knowledge_i18n.dart';
 import 'subject_comments_sheet.dart';
 
@@ -81,7 +82,20 @@ class _MineralsScreenState extends State<MineralsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(tr(context, "Minerals", "ဓာတ်သတ္တုများ"))),
+      appBar: AppBar(
+        title: Text(tr(context, "Minerals", "ဓာတ်သတ္တုများ")),
+        actions: [
+          // The live board is the web page — one implementation of the price
+          // logic, and the in-app browser carries the session so an admin can
+          // record market-log quotes from the phone too.
+          IconButton(
+            tooltip: tr(context, "Metal prices", "သတ္တုဈေးနှုန်း"),
+            icon: const Icon(Icons.trending_up),
+            onPressed: () => openWeb(context, "https://gwave.cc/metals",
+                title: tr(context, "Metal prices", "သတ္တုဈေးနှုန်း")),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
