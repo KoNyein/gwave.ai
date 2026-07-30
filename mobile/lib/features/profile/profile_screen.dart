@@ -25,6 +25,7 @@ import '../gpay/gpay_screen.dart';
 import '../groups/groups_screen.dart';
 import '../jobs/jobs_screen.dart';
 import '../books/books_screen.dart';
+import '../knowledge/mine_sites_screen.dart';
 import '../knowledge/minerals_screen.dart';
 import '../knowledge/strains_screen.dart';
 import '../learn/learn_screen.dart';
@@ -277,6 +278,9 @@ class ProfileScreen extends StatelessWidget {
         _MenuEntry(Icons.diamond_outlined,
             tr(context, "Minerals", "ဓာတ်သတ္တု"),
             native: _Native.minerals),
+        _MenuEntry(Icons.terrain_outlined,
+            tr(context, "Mine sites", "မိုင်းနေရာများ"),
+            native: _Native.mineSites),
         _MenuEntry(Icons.calculate_outlined, tr(context, "Tools", "ကိရိယာများ"),
             native: _Native.tools),
       ]),
@@ -502,6 +506,9 @@ class ProfileScreen extends StatelessWidget {
       case _Native.minerals:
         _push(context, const MineralsScreen());
         return;
+      case _Native.mineSites:
+        _push(context, const MineSitesScreen());
+        return;
       case _Native.market:
         _push(context, const MarketScreen());
         return;
@@ -560,6 +567,7 @@ enum _Native {
   books,
   strains,
   minerals,
+  mineSites,
   market,
   dating,
   family,

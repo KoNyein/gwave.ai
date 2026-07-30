@@ -1095,6 +1095,85 @@ class ApiClient {
     }
   }
 
+  // ---- Mine sites -----------------------------------------------------------
+  // The community mine-site map. mine_sites is RLS-sealed, so everything goes
+  // through /api/mine/sites with the data token as bearer — the same door the
+  // web board uses, which is why a pin added in the app appears on gwave.cc.
+
+  /// Every mine site, newest first. Reads are public server-side, so this works
+  /// even before the user signs in — the map is the part worth browsing cold.
+  Future<List<Map<String, dynamic>>> mineSites({String? metal}) async {
+    final uri = Uri.parse("${AppConfig.apiBase}/api/mine/sites").replace(
+      queryParameters: metal == null ? null : {"metal": metal},
+    );
+    final s = _session;
+    final res = await _http.get(uri, headers: {
+      if (s != null) "Authorization": "Bearer ${s.token}",
+    }).timeout(const Duration(seconds: 20));
+    final j = _decode(res);
+    if (res.statusCode >= 400 || j == null) {
+      throw ApiException(
+        (j?["error"] ?? "Couldn't load the mine map.").toString(),
+        res.statusCode,
+      );
+    }
+    return ((j["sites"] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .toList();
+  }
+
+  /// Add a site, or correct one when [id] is given. The server rejects an
+  /// incomplete pin, so [body] must carry metal, name, region, township,
+  /// latitude, longitude and at least one photo path.
+  Future<void> mineSiteSave(Map<String, dynamic> body, {String? id}) async {
+    await _ensureFreshToken();
+    final s = _session;
+    if (s == null) throw ApiException("Not signed in.");
+    final uri = Uri.parse("${AppConfig.apiBase}/api/mine/sites").replace(
+      queryParameters: id == null ? null : {"id": id},
+    );
+    final headers = {
+      "Authorization": "Bearer ${s.token}",
+      "content-type": "application/json",
+    };
+    final payload = jsonEncode(body);
+    final res = id == null
+        ? await _http.post(uri, headers: headers, body: payload)
+        : await _http.patch(uri, headers: headers, body: payload);
+    final j = _decode(res);
+    if (res.statusCode >= 400) {
+      throw ApiException(
+        (j?["error"] ?? "Couldn't save the site.").toString(),
+        res.statusCode,
+      );
+    }
+  }
+
+  /// Flag a bad pin for the admin queue. One report per person per site.
+  Future<void> mineSiteReport(String siteId, String reason) =>
+      _mobilePost("/api/mine/sites/report", {
+        "siteId": siteId,
+        "reason": reason,
+      });
+
+  /// Admin-only removal — the server re-checks the role.
+  Future<void> mineSiteDelete(String id) async {
+    await _ensureFreshToken();
+    final s = _session;
+    if (s == null) throw ApiException("Not signed in.");
+    final res = await _http.delete(
+      Uri.parse("${AppConfig.apiBase}/api/mine/sites")
+          .replace(queryParameters: {"id": id}),
+      headers: {"Authorization": "Bearer ${s.token}"},
+    );
+    if (res.statusCode >= 400) {
+      throw ApiException(
+        (_decode(res)?["error"] ?? "Couldn't delete.").toString(),
+        res.statusCode,
+      );
+    }
+  }
+
   /// Call a PostgREST RPC (`/rpc/<fn>`).
   Future<dynamic> rpc(String fn, [Map<String, dynamic> args = const {}]) async {
     await _ensureFreshToken();

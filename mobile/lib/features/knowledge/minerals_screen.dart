@@ -11,6 +11,7 @@ import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../web/web_screen.dart';
 import 'knowledge_i18n.dart';
+import 'mine_sites_screen.dart';
 import 'subject_comments_sheet.dart';
 
 const _accent = Color(0xFF139C9C);
@@ -85,6 +86,16 @@ class _MineralsScreenState extends State<MineralsScreen> {
       appBar: AppBar(
         title: Text(tr(context, "Minerals", "ဓာတ်သတ္တုများ")),
         actions: [
+          // Prices answer "what is it worth"; the mine map answers "where does
+          // it come from". Native, because contributing a pin means the camera
+          // and GPS.
+          IconButton(
+            tooltip: tr(context, "Mine sites", "မိုင်းနေရာများ"),
+            icon: const Icon(Icons.terrain_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const MineSitesScreen()),
+            ),
+          ),
           // The live board is the web page — one implementation of the price
           // logic, and the in-app browser carries the session so an admin can
           // record market-log quotes from the phone too.
