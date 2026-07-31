@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
-import '../audio/mini_player.dart';
+import '../audio/floating_player.dart';
 import '../feed/feed_screen.dart';
 import '../live/live_list_screen.dart';
 import '../reels/reels_screen.dart';
@@ -34,15 +34,18 @@ class _HomeShellState extends State<HomeShell> {
       ProfileScreen(onSelectTab: _selectTab),
     ];
     return Scaffold(
-      body: IndexedStack(index: _index, children: tabs),
-      // The mini player rides above the nav bar so whatever is playing stays
-      // reachable from every tab. It renders nothing when nothing is loaded.
+      // The player floats *over* the tabs rather than taking a strip of every
+      // screen for itself. It renders nothing when nothing is loaded, and it
+      // is hidden over Reels — edge-to-edge video is no place for chrome.
+      body: Stack(
+        children: [
+          IndexedStack(index: _index, children: tabs),
+          GwFloatingPlayer(visible: _index != 1),
+        ],
+      ),
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Hidden over Reels: that tab is edge-to-edge video and a bar
-          // floating on top of it is exactly the chrome it exists without.
-          GwMiniPlayer(visible: _index != 1),
           Container(
             decoration: BoxDecoration(
               color: GwColors.surfaceOf(context),

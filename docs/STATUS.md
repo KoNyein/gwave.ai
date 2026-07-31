@@ -63,8 +63,10 @@
   stops it either: `video_player` requested audio focus even for a muted
   autoplaying feed clip, so a video nobody could hear paused the music —
   previews now use `mixWithOthers` (`mobile/lib/core/video_audio.dart`) and
-  only an *unmuted* video takes the sound. The bar is 48dp and hidden over
-  Reels.
+  only an *unmuted* video takes the sound. The bar itself is gone: what is
+  playing is now a **draggable floating bubble** that costs no layout, opens
+  into transport controls on a tap and closes itself again, and is stopped by
+  dragging it onto a ✕ — hidden over Reels, where even a bubble is chrome.
 - 2026-07-31 (app): **Driver Mode stayed online only while its screen was
   open.** The ride heartbeat was a screen-local position stream: a distance
   filter meant a parked driver stopped beating, and `dispose()` meant a driver
