@@ -177,7 +177,7 @@ class _DroneMapScreenState extends State<DroneMapScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(tr(context, "Drone map", "ဒရုန်း မြေပုံ")),
+        title: Text(tr(context, "Radar map", "ရေဒါ မြေပုံ")),
       ),
       body: Column(
         children: [
