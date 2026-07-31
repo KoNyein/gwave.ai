@@ -74,6 +74,7 @@ values
   ('delivery',      'Delivery',    'ပစ္စည်းပို့',        4,  800,  250,  20, 1500,  800, 0.150, 1)
 on conflict (code) do nothing;
 
+drop trigger if exists ride_vehicle_types_set_updated_at on public.ride_vehicle_types;
 create trigger ride_vehicle_types_set_updated_at
   before update on public.ride_vehicle_types
   for each row execute function public.handle_updated_at();
@@ -120,6 +121,7 @@ create table if not exists public.ride_driver_profiles (
 create index if not exists ride_driver_profiles_status_idx
   on public.ride_driver_profiles (status, created_at desc);
 
+drop trigger if exists ride_driver_profiles_set_updated_at on public.ride_driver_profiles;
 create trigger ride_driver_profiles_set_updated_at
   before update on public.ride_driver_profiles
   for each row execute function public.handle_updated_at();
@@ -277,6 +279,7 @@ create index if not exists rides_active_idx on public.rides (status, requested_a
 create index if not exists rides_unsettled_idx on public.rides (completed_at)
   where status = 'completed' and payment_status = 'pending';
 
+drop trigger if exists rides_set_updated_at on public.rides;
 create trigger rides_set_updated_at
   before update on public.rides
   for each row execute function public.handle_updated_at();
@@ -452,6 +455,7 @@ create table if not exists public.ride_settings (
 
 insert into public.ride_settings (id) values (true) on conflict (id) do nothing;
 
+drop trigger if exists ride_settings_set_updated_at on public.ride_settings;
 create trigger ride_settings_set_updated_at
   before update on public.ride_settings
   for each row execute function public.handle_updated_at();
@@ -527,6 +531,73 @@ revoke execute on function public.ride_nearest_drivers(
 grant execute on function public.ride_nearest_drivers(
   double precision, double precision, text, integer, integer, integer)
   to service_role;
+
+-- A driver accepts an offer. Exactly one can win.
+--
+-- Two drivers tapping Accept in the same second is not a rare case — it is what
+-- happens every time dispatch widens to a second driver just as the first one
+-- replies. Checking "is this ride still unassigned?" in application code and
+-- then updating is a lost-update race that assigns one ride to two drivers, and
+-- the loser drives to a pickup that isn't theirs.
+--
+-- The `for update` below serialises the contenders on the ride row; the second
+-- one wakes to find status = 'accepted' and gets a clean, specific failure.
+-- Returns true if this driver won.
+create or replace function public.ride_accept_offer(p_ride uuid, p_driver uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_ride public.rides;
+  v_offer public.ride_offers;
+begin
+  select * into v_ride from public.rides where id = p_ride for update;
+  if not found then
+    raise exception 'Ride % not found', p_ride;
+  end if;
+  if v_ride.status <> 'requested' then
+    -- Someone else got there first, or the rider cancelled while we were
+    -- deciding. Not an error the driver caused, so report it as a lost race.
+    return false;
+  end if;
+
+  select * into v_offer from public.ride_offers
+    where ride_id = p_ride and driver_id = p_driver;
+  if not found then
+    raise exception 'No offer for this driver on ride %', p_ride;
+  end if;
+  if v_offer.response <> 'pending' then
+    raise exception 'This offer was already %', v_offer.response;
+  end if;
+  if v_offer.expires_at < now() then
+    -- Let the caller distinguish "too slow" from "someone beat me".
+    update public.ride_offers set response = 'timeout', responded_at = now()
+      where id = v_offer.id;
+    return false;
+  end if;
+
+  update public.rides
+    set status = 'accepted', driver_id = p_driver
+    where id = p_ride;
+
+  update public.ride_offers set response = 'accepted', responded_at = now()
+    where id = v_offer.id;
+  -- Every other driver still holding this ride on screen loses it now.
+  update public.ride_offers set response = 'cancelled', responded_at = now()
+    where ride_id = p_ride and driver_id <> p_driver and response = 'pending';
+
+  -- Off the market until this ride ends.
+  update public.ride_driver_locations set is_available = false
+    where driver_id = p_driver;
+
+  return true;
+end;
+$$;
+
+revoke execute on function public.ride_accept_offer(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.ride_accept_offer(uuid, uuid) to service_role;
 
 -- Settle a completed ride: move the money and write the ledger, exactly once.
 --
