@@ -1066,21 +1066,40 @@ class _LiveBannerState extends State<_LiveBanner> {
 
   // Inline video preview: HLS (app broadcasts) plays muted; browser (LiveKit)
   // lives join the room as a muted subscriber — real video in the feed.
-  // A speaker toggle lets the viewer unmute right in the feed.
-  bool _muted = true;
+  // A speaker toggle lets the viewer unmute right in the feed, and sound is
+  // shared with the rest of the feed through [feedSoundHolder] — one mute
+  // button silences everything, and only one card can talk at a time.
   VideoPlayerController? _vc;
   lk.Room? _lkRoom;
   lk.EventsListener<lk.RoomEvent>? _lkListener;
   lk.VideoTrack? _lkVideo;
 
+  /// This card's claim on the feed's sound. Set once the preview URL is known,
+  /// which is the only stable id this card has.
+  String? _soundId;
+
+  bool get _muted => _soundId == null || feedSoundHolder.value != _soundId;
+
   @override
   void initState() {
     super.initState();
+    feedSoundHolder.addListener(_applyMute);
     _load();
+  }
+
+  void _applyMute() {
+    _vc?.setVolume(_muted ? 0 : 1);
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    feedSoundHolder.removeListener(_applyMute);
+    // Scrolling a talking preview off screen should not leave the feed
+    // thinking something is still speaking.
+    if (_soundId != null && feedSoundHolder.value == _soundId) {
+      feedSoundHolder.value = null;
+    }
     _vc?.dispose();
     _lkListener?.dispose();
     final room = _lkRoom;
@@ -1132,6 +1151,7 @@ class _LiveBannerState extends State<_LiveBanner> {
         // Silent preview — must not take audio focus off the user's music.
         final c = silentVideoController(Uri.parse(url));
         _vc = c;
+        _soundId = url;
         await c.initialize();
         await c.setVolume(0);
         await c.setLooping(true);
@@ -1145,6 +1165,7 @@ class _LiveBannerState extends State<_LiveBanner> {
       try {
         final c = silentVideoController(Uri.parse(hls));
         _vc = c;
+        _soundId = hls;
         await c.initialize();
         await c.setVolume(0);
         await c.play();
@@ -1288,10 +1309,13 @@ class _LiveBannerState extends State<_LiveBanner> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(20),
                         onTap: () {
-                          final v = _vc;
-                          if (v == null) return;
-                          setState(() => _muted = !_muted);
-                          v.setVolume(_muted ? 0 : 1);
+                          if (_vc == null) return;
+                          final id = _soundId;
+                          if (_muted && id != null) {
+                            feedUnmute(id);
+                          } else {
+                            feedMuteAll();
+                          }
                         },
                         child: Container(
                           width: 34,
@@ -1378,8 +1402,12 @@ class _LiveBannerState extends State<_LiveBanner> {
 }
 
 /// Inline feed video for an uploaded video post. Autoplays muted and loops
-/// (TikTok/Facebook style); tap toggles sound, long-standard controls appear
-/// on tap. Falls back to a tap-to-play poster if autoplay init fails.
+/// (TikTok/Facebook style); tap toggles sound. Falls back to a tap-to-play
+/// poster if autoplay init fails.
+///
+/// Sound is decided by [feedSoundHolder], not by this widget: muting here
+/// mutes the whole feed, and unmuting here takes the sound *from* whichever
+/// other card had it. See the note on that notifier.
 class _PostVideo extends StatefulWidget {
   const _PostVideo({required this.url});
   final String url;
@@ -1390,19 +1418,30 @@ class _PostVideo extends StatefulWidget {
 
 class _PostVideoState extends State<_PostVideo> {
   VideoPlayerController? _vc;
-  bool _muted = true;
   bool _failed = false;
+
+  bool get _muted => feedSoundHolder.value != widget.url;
 
   @override
   void initState() {
     super.initState();
+    feedSoundHolder.addListener(_applyMute);
     _init();
   }
 
   @override
   void dispose() {
+    feedSoundHolder.removeListener(_applyMute);
+    // Scrolling a talking video off screen should not leave the feed thinking
+    // something is still speaking.
+    if (feedSoundHolder.value == widget.url) feedSoundHolder.value = null;
     _vc?.dispose();
     super.dispose();
+  }
+
+  void _applyMute() {
+    _vc?.setVolume(_muted ? 0 : 1);
+    if (mounted) setState(() {});
   }
 
   Future<void> _init() async {
@@ -1423,11 +1462,14 @@ class _PostVideoState extends State<_PostVideo> {
   void _toggleSound() {
     final c = _vc;
     if (c == null) return;
-    setState(() => _muted = !_muted);
-    c.setVolume(_muted ? 0 : 1);
-    if (!c.value.isPlaying) c.play();
-    // Turning the sound on is the one moment the music should yield.
-    if (!_muted) videoTookTheSound();
+    if (_muted) {
+      // Takes the sound from any other card that had it, and from the music —
+      // the one moment there is a real conflict over the speaker.
+      feedUnmute(widget.url);
+      if (!c.value.isPlaying) c.play();
+    } else {
+      feedMuteAll();
+    }
   }
 
   @override

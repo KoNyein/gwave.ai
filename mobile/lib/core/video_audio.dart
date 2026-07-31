@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:video_player/video_player.dart';
 
 import '../features/audio/audio_service.dart';
@@ -32,3 +33,26 @@ Future<void> videoTookTheSound() async {
   final audio = GwAudio.instance;
   if (audio.playing) await audio.pause();
 }
+
+/// Which feed video, if any, is allowed to make sound — identified by its URL.
+///
+/// Mute is a property of *the feed*, not of one card. Each video used to own
+/// its own mute flag, so silencing one left the next one to shout at you a
+/// scroll later; there was no way to say "quiet, all of you" short of turning
+/// the phone down.
+///
+/// Null — where it starts, and where muting anything returns it — means the
+/// whole feed is silent. A non-null value names the single video that may
+/// speak. Sound is exclusive because several cards autoplay at once: a plain
+/// global unmute would have every visible video talking over the others.
+final ValueNotifier<String?> feedSoundHolder = ValueNotifier<String?>(null);
+
+/// This video, and only this video, now has the sound.
+Future<void> feedUnmute(String id) async {
+  feedSoundHolder.value = id;
+  await videoTookTheSound();
+}
+
+/// Silence the feed. Called from any video's mute button — one tap quiets all
+/// of them, which is what a mute button is for.
+void feedMuteAll() => feedSoundHolder.value = null;
