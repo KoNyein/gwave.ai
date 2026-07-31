@@ -78,7 +78,16 @@ class AudioTrack {
     this.narrator,
     this.episodeNo,
     this.seasonNo,
+    this.localPath,
   });
+
+  /// A file on this device, for songs the user picked themselves. Set only by
+  /// [localTrack]; catalogue rows never have one. When present it wins over
+  /// [audioUrl] and the track is played without an entitlement check or any
+  /// server-side progress saving — it is not ours to charge for or to track.
+  final String? localPath;
+
+  bool get isLocalFile => localPath != null;
 
   final String id;
   final AudioKind kind;

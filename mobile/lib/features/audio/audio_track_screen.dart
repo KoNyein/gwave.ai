@@ -1,13 +1,8 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
-
-import 'package:just_audio/just_audio.dart';
-import 'package:just_audio_background/just_audio_background.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -19,6 +14,7 @@ import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import 'audio_api.dart';
 import 'audio_models.dart';
+import 'audio_service.dart';
 
 /// Native "now playing" screen: full-bleed cover, transport controls, a
 /// scrubbable progress bar, ±10/30s, playback speed, queue with next/prev +
@@ -45,242 +41,146 @@ class AudioTrackScreen extends StatefulWidget {
 }
 
 class _AudioTrackScreenState extends State<AudioTrackScreen> {
-  // just_audio + just_audio_background: playback survives minimise / screen
-  // off / app switch and drives the media notification and lock screen.
-  final _player = AudioPlayer();
+  /// The player is [GwAudio], not this screen. Everything here reads from it
+  /// and calls into it; nothing here starts, stops or disposes a player. That
+  /// is what lets you walk out of this screen with the song still playing.
+  final _audio = GwAudio.instance;
   late final AudioApi _api = AudioApi(context.read<AppState>().api);
 
-  final _speeds = const [1.0, 1.25, 1.5, 1.75, 2.0, 0.75];
-  int _speedIdx = 0;
-
-  Duration _pos = Duration.zero;
-  Duration _dur = Duration.zero;
-  bool _playing = false;
+  // Display-only state — the bits that belong to *looking at* a track rather
+  // than to playing one.
   bool _dragging = false;
   double _dragValue = 0;
-
   bool _loading = true;
-  bool _entitled = false;
   bool _buying = false;
   int? _myRating;
-
   List<AudioChapter> _chapters = [];
   AudioLyrics? _lyrics;
-
-  Timer? _saveTimer;
-  int _lastSavedS = -1;
-
-  StreamSubscription<Duration>? _posSub;
-  StreamSubscription<Duration?>? _durSub;
-  StreamSubscription<PlayerState>? _stateSub;
-
-  // Queue + modes.
-  late final List<AudioTrack> _queue = widget.queue ?? [widget.track];
-  late int _qIdx = (widget.startIndex ?? 0)
-      .clamp(0, _queue.isEmpty ? 0 : _queue.length - 1)
-      .toInt();
-  late AudioTrack _current = widget.track;
-  bool _shuffle = false;
-  int _repeat = 0; // 0 off · 1 repeat all · 2 repeat one
-  final _rand = Random();
-
-  // Offline copy (Downloads live in the app documents dir).
-  File? _localFile;
   bool _downloading = false;
 
-  AudioTrack get track => _current;
+  /// Which track's metadata is on screen, so an auto-advance or a tap in the
+  /// queue reloads chapters, lyrics and rating for the new one.
+  String? _metaFor;
+
+  // Everything below is the player's state, read live.
+  AudioTrack get track => _audio.current ?? widget.track;
+  Duration get _pos => _audio.position;
+  Duration get _dur => _audio.duration;
+  bool get _playing => _audio.playing;
+  bool get _entitled => _audio.entitled;
+  List<AudioTrack> get _queue => _audio.queue;
+  int get _qIdx => _audio.index;
+  bool get _shuffle => _audio.shuffle;
+  int get _repeat => _audio.repeat;
+  File? get _localFile => _audio.localFile;
+  List<double> get _speeds => GwAudio.speeds;
+  int get _speedIdx => _audio.speedIndex;
 
   @override
   void initState() {
     super.initState();
-    _wirePlayer();
-    _init();
+    _audio.attach(_api);
+    _audio.addListener(_onAudio);
+    _audio.setChapterIndexResolver(_currentChapterIdx);
+    _start();
   }
 
-  void _wirePlayer() {
-    _posSub = _player.positionStream.listen((d) {
-      if (mounted && !_dragging) setState(() => _pos = d);
-      _maybeSave(d);
-    });
-    _durSub = _player.durationStream.listen((d) {
-      if (mounted && d != null && d > Duration.zero) setState(() => _dur = d);
-    });
-    _stateSub = _player.playerStateStream.listen((s) async {
-      if (mounted) setState(() => _playing = s.playing);
-      if (s.processingState != ProcessingState.completed) return;
-      await _onComplete();
-    });
-  }
-
-  /// End of track: save progress, then repeat-one / advance / stop.
-  Future<void> _onComplete() async {
-      _saveProgress(completed: true);
-      if (!mounted) return;
-      if (_repeat == 2) {
-        // Repeat one: start over.
-        await _player.seek(Duration.zero);
-        await _player.play();
-        return;
-      }
-      final hasNext =
-          _queue.length > 1 && (_shuffle || _repeat == 1 || _qIdx + 1 < _queue.length);
-      if (hasNext) {
-        await _advance(1, auto: true);
-      } else {
-        await _player.pause();
-        await _player.seek(Duration.zero);
-      }
-  }
-
-  /// Move through the queue (dir ±1). Shuffle picks a random other track;
-  /// repeat-all wraps at the ends. Auto-advance stops at the end when neither
-  /// shuffle nor repeat is on.
-  Future<void> _advance(int dir, {bool auto = false}) async {
-    if (_queue.length <= 1) return;
-    int next;
-    if (_shuffle) {
-      next = _rand.nextInt(_queue.length);
-      if (next == _qIdx) next = (next + 1) % _queue.length;
-    } else {
-      next = _qIdx + dir;
-      if (next >= _queue.length) {
-        if (_repeat == 1 || !auto) {
-          next = 0;
-        } else {
-          return;
-        }
-      }
-      if (next < 0) next = _queue.length - 1;
-    }
-    await _loadTrack(next, autoplay: true);
-  }
-
-  /// Swap the screen to another queue entry and (optionally) start playing.
-  Future<void> _loadTrack(int idx, {bool autoplay = false}) async {
-    await _player.stop();
+  void _onAudio() {
     if (!mounted) return;
-    setState(() {
-      _qIdx = idx;
-      _current = _queue[idx];
-      _pos = Duration.zero;
-      _dur = Duration.zero;
-      _playing = false;
-      _loading = true;
-      _entitled = false;
-      _chapters = [];
-      _lyrics = null;
-      _myRating = null;
-      _localFile = null;
-      _lastSavedS = -1;
-    });
-    await _init(autoplay: autoplay);
+    setState(() {});
+    final id = _audio.current?.id;
+    if (id != null && id != _metaFor) _loadMeta();
   }
 
-  Future<void> _init({bool autoplay = false}) async {
+  /// Hand our queue to the shared player.
+  ///
+  /// `autoplay: false` on purpose: opening a track preloads it and moves to
+  /// the saved position, and the user presses play. If this track is already
+  /// the one playing, [GwAudio.playQueue] leaves it alone rather than
+  /// restarting it from the top.
+  Future<void> _start() async {
+    await _audio.playQueue(
+      widget.queue ?? [widget.track],
+      widget.startIndex ?? 0,
+      autoplay: false,
+    );
+    await _loadMeta();
+  }
+
+  /// Chapters, lyrics and my rating — none of which the player needs, all of
+  /// which this screen shows.
+  Future<void> _loadMeta() async {
+    final t = track;
+    _metaFor = t.id;
+    if (t.isLocalFile) {
+      if (mounted) {
+        setState(() {
+          _chapters = [];
+          _lyrics = null;
+          _myRating = null;
+          _loading = false;
+        });
+      }
+      return;
+    }
+    if (mounted) setState(() => _loading = true);
     try {
-      _localFile = await _findLocal();
       final results = await Future.wait([
-        _api.isEntitled(track.id),
-        _api.resume(track.id),
-        _api.myRating(track.id),
-        track.kind == AudioKind.audiobook
-            ? _api.chapters(track.id)
+        _api.myRating(t.id),
+        t.kind == AudioKind.audiobook
+            ? _api.chapters(t.id)
             : Future.value(<AudioChapter>[]),
-        track.kind == AudioKind.music
-            ? _api.lyrics(track.id)
-            : Future.value(null),
+        t.kind == AudioKind.music ? _api.lyrics(t.id) : Future.value(null),
       ]);
       if (!mounted) return;
-      final entitled = results[0] as bool;
-      final resume = results[1] as AudioResume?;
       setState(() {
-        _entitled = entitled;
-        _myRating = results[2] as int?;
-        _chapters = results[3] as List<AudioChapter>;
-        _lyrics = results[4] as AudioLyrics?;
-        if (resume?.speed != null) {
-          final idx = _speeds.indexOf(resume!.speed!);
-          if (idx >= 0) _speedIdx = idx;
-        }
+        _myRating = results[0] as int?;
+        _chapters = results[1] as List<AudioChapter>;
+        _lyrics = results[2] as AudioLyrics?;
         _loading = false;
       });
-      // Preload so the seek bar has a duration, and jump to the saved point.
-      if (entitled && track.audioUrl != null) {
-        await _prepare(seekTo: autoplay ? 0 : (resume?.positionS ?? 0));
-        if (autoplay) await _player.play();
-      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _prepare({int seekTo = 0}) async {
-    final local = _localFile;
-    final url = resolveMedia(track.audioUrl, bucket: "media");
-    if (local == null && url == null) return;
+  @override
+  void dispose() {
+    _audio.removeListener(_onAudio);
+    _audio.setChapterIndexResolver(null);
+    // Save the position and walk away. Closing the player is not stopping the
+    // music — that is what the ✕ on the mini player is for.
+    unawaited(_audio.saveNow());
+    super.dispose();
+  }
+
+  // ── Transport (all of it delegated) ───────────────────────────────────────
+
+  Future<void> _togglePlay() async {
+    if (track.localPath == null &&
+        _localFile == null &&
+        resolveMedia(track.audioUrl, bucket: "media") == null) {
+      _snack(tr(context, "This track has no audio yet.",
+          "ဒီသီချင်းမှာ အသံ မရှိသေးပါ။"));
+      return;
+    }
     try {
-      // Offline copy wins — playback works with no network at all. The
-      // MediaItem tag is what the notification / lock screen displays.
-      final uri = local != null ? Uri.file(local.path) : Uri.parse(url!);
-      final cover = resolveMedia(track.coverUrl, bucket: "media");
-      await _player.setAudioSource(
-        AudioSource.uri(
-          uri,
-          tag: MediaItem(
-            id: track.id,
-            title: track.title,
-            artist: _bylinePlain(),
-            album: track.album,
-            duration: track.durationS != null
-                ? Duration(seconds: track.durationS!)
-                : null,
-            artUri: cover != null ? Uri.tryParse(cover) : null,
-          ),
-        ),
-        initialPosition: seekTo > 0 ? Duration(seconds: seekTo) : null,
-      );
-      await _player.setSpeed(_speeds[_speedIdx]);
-      if (seekTo > 0 && mounted) {
-        setState(() => _pos = Duration(seconds: seekTo));
-      }
-    } catch (_) {
-      // Source may load lazily on first play instead.
+      await _audio.toggle();
+    } catch (e) {
+      _snack(tr(context, "Playback failed — $e", "ဖွင့်၍မရပါ — $e"));
     }
   }
 
-  /// Artist / author line for the media notification (no BuildContext use —
-  /// this can run while the app is backgrounded).
-  String _bylinePlain() {
-    switch (track.kind) {
-      case AudioKind.music:
-        return track.artist ?? "Gwave";
-      case AudioKind.audiobook:
-        return track.author ?? "Gwave";
-      case AudioKind.podcast:
-        return track.episodeNo != null ? "Episode ${track.episodeNo}" : "Podcast";
-    }
+  Future<void> _skip(int seconds) => _audio.skip(seconds);
+
+  Future<void> _cycleSpeed() => _audio.cycleSpeed();
+
+  Future<void> _seekTo(int seconds) async {
+    await _audio.seekTo(seconds);
+    if (!_playing) await _audio.play();
   }
 
   // ── Offline downloads ─────────────────────────────────────────────────────
-
-  Future<Directory> _dlDir() async {
-    final base = await getApplicationDocumentsDirectory();
-    final d = Directory("${base.path}/audio");
-    if (!await d.exists()) await d.create(recursive: true);
-    return d;
-  }
-
-  String _extOf(String ref) {
-    final m = RegExp(r"\.([A-Za-z0-9]{2,4})(?:\?|$)").firstMatch(ref);
-    return m?.group(1)?.toLowerCase() ?? "mp3";
-  }
-
-  Future<File?> _findLocal() async {
-    final ref = track.audioUrl;
-    if (ref == null) return null;
-    final f = File("${(await _dlDir()).path}/${track.id}.${_extOf(ref)}");
-    return await f.exists() ? f : null;
-  }
 
   Future<void> _download() async {
     final ref = track.audioUrl;
@@ -291,10 +191,11 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
       final res =
           await http.get(Uri.parse(url)).timeout(const Duration(minutes: 3));
       if (res.statusCode >= 400) throw Exception("HTTP ${res.statusCode}");
-      final f = File("${(await _dlDir()).path}/${track.id}.${_extOf(ref)}");
+      final dir = await GwAudio.downloadsDir();
+      final f = File("${dir.path}/${track.id}.${GwAudio.extOf(ref)}");
       await f.writeAsBytes(res.bodyBytes);
+      _audio.setLocalFile(f);
       if (mounted) {
-        setState(() => _localFile = f);
         _snack(tr(context, "Downloaded — plays offline now 📥",
             "ဒေါင်းလုဒ်ပြီးပါပြီ — အော့ဖ်လိုင်း နားဆင်နိုင်ပါပြီ 📥"));
       }
@@ -309,30 +210,10 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
     try {
       await _localFile?.delete();
     } catch (_) {}
-    if (mounted) setState(() => _localFile = null);
+    _audio.setLocalFile(null);
   }
 
-  void _maybeSave(Duration d) {
-    // Throttle to once every ~10s of playback.
-    final s = d.inSeconds;
-    if (s > 0 && (s - _lastSavedS).abs() >= 10) {
-      _lastSavedS = s;
-      _saveProgress();
-    }
-  }
-
-  Future<void> _saveProgress({bool completed = false}) async {
-    if (!_entitled) return;
-    await _api.saveProgress(
-      track.id,
-      positionS: _pos.inSeconds,
-      durationS: _dur.inSeconds > 0 ? _dur.inSeconds : track.durationS,
-      chapterIdx: _currentChapterIdx(),
-      speed: _speeds[_speedIdx],
-      completed: completed || (_dur > Duration.zero && _pos >= _dur - const Duration(seconds: 2)),
-    );
-  }
-
+  /// Which chapter the playhead is in — drives the ▶ marker in the list.
   int? _currentChapterIdx() {
     if (_chapters.isEmpty) return null;
     int idx = _chapters.first.idx;
@@ -342,79 +223,14 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
     return idx;
   }
 
-  @override
-  void dispose() {
-    _saveTimer?.cancel();
-    _posSub?.cancel();
-    _durSub?.cancel();
-    _stateSub?.cancel();
-    // Best-effort final save before we tear the player down.
-    if (_entitled && _pos > Duration.zero) {
-      _api.saveProgress(
-        track.id,
-        positionS: _pos.inSeconds,
-        durationS: _dur.inSeconds > 0 ? _dur.inSeconds : track.durationS,
-        speed: _speeds[_speedIdx],
-      );
-    }
-    _player.dispose();
-    super.dispose();
-  }
-
-  Future<void> _togglePlay() async {
-    final local = _localFile;
-    final url = resolveMedia(track.audioUrl, bucket: "media");
-    if (local == null && url == null) {
-      _snack(tr(context, "This track has no audio yet.",
-          "ဒီသီချင်းမှာ အသံ မရှိသေးပါ။"));
-      return;
-    }
-    try {
-      if (_playing) {
-        await _player.pause();
-        _saveProgress();
-      } else {
-        // The source is set in _prepare(); if it never loaded (e.g. the buy
-        // just completed) set it now, then play.
-        if (_player.audioSource == null) await _prepare();
-        await _player.play();
-      }
-    } catch (e) {
-      _snack(tr(context, "Playback failed — $e", "ဖွင့်၍မရပါ — $e"));
-    }
-  }
-
-  Future<void> _skip(int seconds) async {
-    final target = _pos + Duration(seconds: seconds);
-    final clamped = target < Duration.zero
-        ? Duration.zero
-        : (_dur > Duration.zero && target > _dur ? _dur : target);
-    await _player.seek(clamped);
-    if (mounted) setState(() => _pos = clamped);
-  }
-
-  Future<void> _cycleSpeed() async {
-    setState(() => _speedIdx = (_speedIdx + 1) % _speeds.length);
-    await _player.setSpeed(_speeds[_speedIdx]);
-  }
-
-  Future<void> _seekTo(int seconds) async {
-    await _player.seek(Duration(seconds: seconds));
-    if (mounted) setState(() => _pos = Duration(seconds: seconds));
-    if (!_playing) await _player.play();
-  }
-
   Future<void> _buy() async {
     setState(() => _buying = true);
     try {
       await _api.buyTrack(track.id);
       if (!mounted) return;
-      setState(() {
-        _entitled = true;
-        _buying = false;
-      });
+      setState(() => _buying = false);
       _snack(tr(context, "Purchased — enjoy 🎧", "ဝယ်ယူပြီးပါပြီ — နားဆင်ပါ 🎧"));
-      await _prepare();
+      await _audio.grantEntitlement();
     } catch (e) {
       if (mounted) {
         setState(() => _buying = false);
@@ -729,28 +545,26 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
               icon: const Icon(Icons.shuffle),
               color: _shuffle ? GwColors.primary : GwColors.inkSoft,
               tooltip: tr(context, "Shuffle", "ရောသမ"),
-              onPressed:
-                  hasQueue ? () => setState(() => _shuffle = !_shuffle) : null,
+              onPressed: hasQueue ? _audio.toggleShuffle : null,
             ),
             IconButton(
               iconSize: 32,
               icon: const Icon(Icons.skip_previous),
               color: hasQueue ? GwColors.ink : GwColors.inkSoft,
-              onPressed: hasQueue ? () => _advance(-1) : null,
+              onPressed: hasQueue ? _audio.previous : null,
             ),
             IconButton(
               iconSize: 32,
               icon: const Icon(Icons.skip_next),
               color: hasQueue ? GwColors.ink : GwColors.inkSoft,
-              onPressed: hasQueue ? () => _advance(1) : null,
+              onPressed: hasQueue ? _audio.next : null,
             ),
             IconButton(
               iconSize: 24,
               icon: Icon(_repeat == 2 ? Icons.repeat_one : Icons.repeat),
               color: _repeat > 0 ? GwColors.primary : GwColors.inkSoft,
               tooltip: tr(context, "Repeat", "ထပ်ဖွင့်"),
-              onPressed: () =>
-                  setState(() => _repeat = (_repeat + 1) % 3),
+              onPressed: _audio.cycleRepeat,
             ),
           ],
         ),
@@ -789,13 +603,13 @@ class _AudioTrackScreenState extends State<AudioTrackScreen> {
       ),
     );
     if (mins == null) return;
-    _saveTimer?.cancel();
+    // The timer lives on the service: you set a sleep timer and put the phone
+    // down, which is exactly when this screen stops existing.
+    _audio.setSleep(mins);
     if (mins > 0) {
-      _saveTimer = Timer(Duration(minutes: mins), () async {
-        await _player.pause();
-        _saveProgress();
-      });
       _snack(tr(context, "Sleeping in $mins min", "$mins မိနစ်အကြာ ရပ်ပါမည်"));
+    } else {
+      _snack(tr(context, "Sleep timer off", "အိပ်ချိန် တိုင်မာ ပိတ်ပြီး"));
     }
   }
 

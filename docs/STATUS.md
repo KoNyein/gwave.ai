@@ -51,6 +51,22 @@
 
 ## Changelog
 
+- 2026-07-31 (app): **Music keeps playing when you leave the player.** The
+  `AudioPlayer` lived in `AudioTrackScreen`'s state — and a second one in
+  `LocalMusicScreen` — and both `dispose()`d it, so backing out of the player
+  stopped the song, and device music and catalogue music could play over each
+  other. Both now run on one process-wide `GwAudio` (`mobile/lib/features/
+  audio/audio_service.dart`); playback ends only on the explicit ✕, and a mini
+  player above the bottom nav keeps whatever is playing reachable from every
+  tab. Queue, shuffle, repeat, speed, sleep timer and position-saving all moved
+  onto the service, so they survive the screen too.
+- 2026-07-31 (app): **Driver Mode stayed online only while its screen was
+  open.** The ride heartbeat was a screen-local position stream: a distance
+  filter meant a parked driver stopped beating, and `dispose()` meant a driver
+  who tapped Back stopped beating. Either way the sweeper marked them offline
+  within 3 minutes while the switch still read "online", and no ride offer was
+  ever created. Now a process-wide `DriverPresence` with a 30s keepalive,
+  stopped only by the switch.
 - 2026-07-31 (app + web): **Ride: destination search and driver settlement.**
   Typing a destination now searches the rider's **own past destinations first**
   — most trips are somewhere they have already been, no geocoder answers a

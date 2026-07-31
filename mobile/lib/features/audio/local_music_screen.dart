@@ -1,19 +1,23 @@
-import 'dart:async';
 import 'dart:math';
 
-import 'package:just_audio/just_audio.dart';
-import 'package:just_audio_background/just_audio_background.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import 'audio_models.dart';
+import 'audio_service.dart';
 
 /// Local music player — pick songs already on the phone (any format the
 /// device decodes: mp3, m4a, aac, wav, ogg, flac, opus…) and play them as a
 /// playlist with the full transport: play/pause, seek, next/prev, shuffle,
 /// repeat (one/all) and speed. Fully offline; nothing is uploaded.
+///
+/// Playback runs on the shared [GwAudio] engine, the same one the catalogue
+/// uses. Two players meant device songs and store songs could play over each
+/// other, and each screen's `dispose()` killed its own — so a picked song
+/// stopped the moment you left this list.
 class LocalMusicScreen extends StatefulWidget {
   const LocalMusicScreen({super.key});
 
@@ -22,45 +26,51 @@ class LocalMusicScreen extends StatefulWidget {
 }
 
 class _LocalMusicScreenState extends State<LocalMusicScreen> {
-  final _player = AudioPlayer();
-  final _rand = Random();
+  final _audio = GwAudio.instance;
 
+  /// The picked files, in the order the user added them. Kept here because
+  /// they are this screen's list; what is *playing* lives on the service.
   List<PlatformFile> _files = [];
-  int _idx = -1;
-  bool _playing = false;
-  bool _shuffle = false;
-  int _repeat = 0; // 0 off · 1 all · 2 one
-  final _speeds = const [1.0, 1.25, 1.5, 0.75];
-  int _speedIdx = 0;
-
-  Duration _pos = Duration.zero;
-  Duration _dur = Duration.zero;
-
-  StreamSubscription<Duration>? _posSub;
-  StreamSubscription<Duration?>? _durSub;
-  StreamSubscription<PlayerState>? _stateSub;
 
   @override
   void initState() {
     super.initState();
-    _posSub = _player.positionStream
-        .listen((d) => mounted ? setState(() => _pos = d) : null);
-    _durSub = _player.durationStream
-        .listen((d) => mounted && d != null ? setState(() => _dur = d) : null);
-    _stateSub = _player.playerStateStream.listen((s) {
-      if (mounted) setState(() => _playing = s.playing);
-      if (s.processingState == ProcessingState.completed) _onDone();
-    });
+    _audio.addListener(_onAudio);
+  }
+
+  void _onAudio() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    _posSub?.cancel();
-    _durSub?.cancel();
-    _stateSub?.cancel();
-    _player.dispose();
+    // Leaves playback running on purpose. The list closes; the song does not.
+    _audio.removeListener(_onAudio);
     super.dispose();
   }
+
+  bool get _playing => _audio.playing;
+  Duration get _pos => _audio.position;
+  Duration get _dur => _audio.duration;
+  bool get _shuffle => _audio.shuffle;
+  int get _repeat => _audio.repeat;
+
+  /// Which row is playing — matched by path, since the queue is shared and may
+  /// have moved on to a track this list doesn't contain.
+  int get _idx {
+    final id = _audio.current?.id;
+    if (id == null || !id.startsWith("local:")) return -1;
+    final path = id.substring(6);
+    for (int i = 0; i < _files.length; i++) {
+      if (_files[i].path == path) return i;
+    }
+    return -1;
+  }
+
+  List<AudioTrack> get _tracks => [
+        for (final f in _files)
+          if (f.path != null) localTrack(path: f.path!, name: f.name),
+      ];
 
   Future<void> _pick() async {
     try {
@@ -73,71 +83,41 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
       );
       final picked = res?.files.where((f) => f.path != null).toList() ?? [];
       if (picked.isEmpty) return;
+      final firstNew = _files.length;
       setState(() => _files = [..._files, ...picked]);
-      if (_idx < 0) _play(_files.length - picked.length);
+      if (_idx < 0) await _play(firstNew);
     } catch (e) {
       _snack("File pick failed — $e");
     }
   }
 
+  /// Hand the whole list to the shared player so next/prev/shuffle/repeat and
+  /// the notification controls all work on it.
   Future<void> _play(int i) async {
-    if (i < 0 || i >= _files.length) return;
-    final path = _files[i].path;
-    if (path == null) return;
-    setState(() {
-      _idx = i;
-      _pos = Duration.zero;
-      _dur = Duration.zero;
-    });
+    final tracks = _tracks;
+    if (i < 0 || i >= tracks.length) return;
     try {
-      await _player.stop();
-      // The MediaItem tag drives the notification / lock-screen controls, so
-      // device songs keep playing (and stay controllable) in the background.
-      await _player.setAudioSource(AudioSource.uri(
-        Uri.file(path),
-        tag: MediaItem(
-          id: path,
-          title: _files[i].name,
-          artist: "Gwave",
-        ),
-      ));
-      await _player.setSpeed(_speeds[_speedIdx]);
-      await _player.play();
+      await _audio.playQueue(tracks, i);
     } catch (e) {
-      _snack(tr(context, "Can't play this file — $e",
-          "ဒီဖိုင်ကို ဖွင့်၍မရပါ — $e"));
-    }
-  }
-
-  void _onDone() {
-    if (!mounted || _files.isEmpty) return;
-    if (_repeat == 2) {
-      _play(_idx);
-      return;
-    }
-    int next;
-    if (_shuffle) {
-      next = _rand.nextInt(_files.length);
-      if (next == _idx && _files.length > 1) next = (next + 1) % _files.length;
-    } else {
-      next = _idx + 1;
-      if (next >= _files.length) {
-        if (_repeat != 1) {
-          setState(() => _playing = false);
-          return;
-        }
-        next = 0;
+      if (mounted) {
+        _snack(tr(context, "Can't play this file — $e",
+            "ဒီဖိုင်ကို ဖွင့်၍မရပါ — $e"));
       }
     }
-    _play(next);
   }
 
   Future<void> _toggle() async {
     if (_idx < 0) {
-      if (_files.isNotEmpty) _play(0);
+      if (_files.isNotEmpty) await _play(0);
       return;
     }
-    _playing ? await _player.pause() : await _player.play();
+    await _audio.toggle();
+  }
+
+  Future<void> _removeAt(int i) async {
+    final wasPlaying = _idx == i;
+    setState(() => _files.removeAt(i));
+    if (wasPlaying) await _audio.stop();
   }
 
   void _snack(String m) {
@@ -218,15 +198,7 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
                         trailing: IconButton(
                           icon: const Icon(Icons.close, size: 17),
                           color: GwColors.inkSoftOf(context),
-                          onPressed: () => setState(() {
-                            _files.removeAt(i);
-                            if (_idx == i) {
-                              _player.stop();
-                              _idx = -1;
-                            } else if (_idx > i) {
-                              _idx--;
-                            }
-                          }),
+                          onPressed: () => _removeAt(i),
                         ),
                         onTap: () => _play(i),
                       );
@@ -265,8 +237,7 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
                       value: _pos.inSeconds
                           .clamp(0, max(_dur.inSeconds, 1))
                           .toDouble(),
-                      onChanged: (v) =>
-                          _player.seek(Duration(seconds: v.round())),
+                      onChanged: (v) => _audio.seekTo(v.round()),
                     ),
                   ),
                   Row(
@@ -290,8 +261,7 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
                         color: _shuffle
                             ? GwColors.primary
                             : GwColors.inkSoftOf(context),
-                        onPressed: () =>
-                            setState(() => _shuffle = !_shuffle),
+                        onPressed: _audio.toggleShuffle,
                       ),
                       IconButton(
                         icon: const Icon(Icons.skip_previous, size: 30),
@@ -330,17 +300,11 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
                         color: _repeat > 0
                             ? GwColors.primary
                             : GwColors.inkSoftOf(context),
-                        onPressed: () =>
-                            setState(() => _repeat = (_repeat + 1) % 3),
+                        onPressed: _audio.cycleRepeat,
                       ),
                       TextButton(
-                        onPressed: () async {
-                          setState(() =>
-                              _speedIdx = (_speedIdx + 1) % _speeds.length);
-                          await _player
-                              .setSpeed(_speeds[_speedIdx]);
-                        },
-                        child: Text("${_speeds[_speedIdx]}×",
+                        onPressed: _audio.cycleSpeed,
+                        child: Text("${_audio.speed}×",
                             style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 color: GwColors.inkOf(context))),
