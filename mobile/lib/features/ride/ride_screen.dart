@@ -192,6 +192,18 @@ class _RideScreenState extends State<RideScreen> {
     );
   }
 
+  /// A label the server will accept as an address.
+  ///
+  /// The server requires two characters. A rider who typed one letter into the
+  /// search box and then picked their destination off the map would otherwise
+  /// send a one-character address and have the booking rejected at the very
+  /// last tap — after choosing a vehicle and a payment method — which is the
+  /// worst possible moment to be told no.
+  String _addressOr(String raw, String fallback) {
+    final t = raw.trim();
+    return t.length >= 2 ? t : fallback;
+  }
+
   // ---- Booking ------------------------------------------------------------
 
   Future<void> _book() async {
@@ -211,12 +223,10 @@ class _RideScreenState extends State<RideScreen> {
         vehicleType: option.vehicleType,
         fromLat: from.latitude,
         fromLng: from.longitude,
-        fromAddress: _pickupLabel.isEmpty ? "Pickup point" : _pickupLabel,
+        fromAddress: _addressOr(_pickupLabel, "Pickup point"),
         toLat: to.latitude,
         toLng: to.longitude,
-        toAddress: _dropoffLabel.text.trim().isEmpty
-            ? "Dropped pin"
-            : _dropoffLabel.text.trim(),
+        toAddress: _addressOr(_dropoffLabel.text, "Dropped pin"),
         paymentMethod: _payment,
         expectedFare: option.fare,
       );
