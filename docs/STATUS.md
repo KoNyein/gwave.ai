@@ -54,6 +54,15 @@
 
 ## Changelog
 
+- 2026-07-31 (web): **The live worked; the post announcing it didn't.** Moving
+  the status update ahead of the provider call fixed "nobody can see the
+  broadcast" and left the feed announcement stranded behind the same abort —
+  so the broadcast appeared and the post pointing at it never did, and hosts
+  couldn't find their own live afterwards. Everything a person sees (live,
+  in the feed, followers notified) now happens before any AWS call; the
+  replay/restream work is last and may be cut short without costing anything
+  visible.
+
 - 2026-07-31 (web): **Nineteen minutes of broadcasting that nobody could see.**
   `goLive` marked the row `live` *last*, after awaiting the provider's
   recording/restream call. The host component fires that action without
