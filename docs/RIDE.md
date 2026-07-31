@@ -131,16 +131,51 @@ chose to stop): merging them hides a supply problem inside a demand statistic.
 | `POST /api/ride/offers/respond` | driver | accept / decline, race-safe |
 | `POST /api/ride/driver/heartbeat` | driver | Position, every few seconds |
 | `POST /api/ride/dispatch/tick` | cron | Sweeper |
+| `POST /api/ride/driver/apply` | anyone | Apply to drive / resubmit |
+| `GET /api/ride/driver/apply` | driver | My status, balance, today's earnings |
+| `GET /api/ride/admin/drivers` | admin | Approval queue |
+| `POST /api/ride/admin/drivers` | admin | approve / reject / suspend / reinstate |
 
 Realtime channels: `ride:{rideId}` (both parties, plus `driver_position`) and
 `ride-driver:{driverId}` (offers).
 
+## Driver approval
+
+`status` on `ride_driver_profiles` can only be changed by
+`POST /api/ride/admin/drivers`. The application route cannot set it at all —
+the field is not in its schema and the write omits it — because an approved
+driver can carry passengers and collect cash.
+
+Approval refuses to run without all three documents on file (licence, vehicle
+photo, registration). The driver-facing form checks the same thing, but a form
+can be bypassed and an admin clicking through a queue at speed should not be
+the last line of defence.
+
+Losing approval takes the driver out of the dispatch pool immediately rather
+than at their next heartbeat, or a suspended driver keeps getting offers until
+their app happens to check in.
+
+## Android location and the Play Store
+
+Driver Mode runs geolocator's **foreground service** with a persistent
+notification. It deliberately does NOT request `ACCESS_BACKGROUND_LOCATION`.
+
+Background location triggers Play Store's prominent-disclosure review, which is
+the most common reason ride apps are rejected or pulled. A foreground service
+collects position only while Driver Mode is on and the driver can see that it
+is running. The manifest patcher in `build-flutter-apk.yml` adds
+`FOREGROUND_SERVICE_LOCATION` (required on Android 14+) and nothing more.
+
+**Do not add the background permission to make a missed offer more reliable.**
+Offers also arrive by FCM, which works with the screen off.
+
 ## Still to build
 
-- Driver signup + document upload, and the admin approval queue.
-- Native passenger and driver screens (Phase 3/4).
-- Android background location: foreground service, `ACCESS_BACKGROUND_LOCATION`,
-  and Play Store prominent disclosure. Getting this wrong gets the app removed,
-  so it is its own phase rather than a detail of the driver screen.
 - In-trip SOS. Gwave already has SOS with GPS, photo and SMS fallback; wiring
   the existing button into a ride is most of the work.
+- A web admin page for the approval queue (the API is done; today an admin
+  would be calling it by hand).
+- Address search. Destinations are set by tapping the map — there is no
+  geocoder, so an address box would be a field that does nothing.
+- Driver commission settlement from the app (`ride_driver_settle` exists and is
+  tested; nothing calls it yet).
