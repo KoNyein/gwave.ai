@@ -225,6 +225,43 @@ export async function goLive(streamId: string): Promise<ActionResult> {
   // only read/written when the relevant provider is configured, so a deploy that
   // predates a recording migration leaves go-live untouched.
   // Gated by the host's Record choice (international "record → replay" standard).
+  // ── Mark it live FIRST, before any provider call ──────────────────────────
+  //
+  // This update used to come last, after awaiting whichever recording/restream
+  // the provider needed. That made the one fact the whole product depends on —
+  // "this broadcast is happening" — conditional on an AWS round trip finishing.
+  //
+  // It doesn't always finish. The host component fires this action and does not
+  // await it (`void goLive(id)`), so a re-render or a navigation aborts the
+  // request mid-flight, and Next tears the action down where it stands:
+  //
+  //     ⨯ uncaughtException: [TypeError: Invalid state: Controller is already
+  //       closed] { code: 'ERR_INVALID_STATE' }
+  //
+  // Which is exactly what happened in production. A host published to their
+  // stage for nineteen minutes — AWS confirms `published: true` for the whole
+  // session — while the row sat at `idle`, so the app and the web listed
+  // nothing and every viewer saw an empty page. It had worked the hour before
+  // only because the composition ARNs weren't configured yet, so the AWS call
+  // returned instantly and the update squeaked in ahead of the abort.
+  //
+  // Being live is not a side effect of recording. Write it first, on its own,
+  // and let everything else be an improvement on top.
+  const { error } = await db
+    .from("live_streams")
+    .update({
+      status: "live",
+      started_at: stream.started_at ?? new Date().toISOString(),
+    })
+    .eq("id", stream.id)
+    .eq("host_id", user.id);
+  if (error) return { ok: false, error: error.message };
+
+  // ── Then the provider work, which may or may not survive ──────────────────
+  //
+  // If this half is cut short the broadcast is still live and still watchable;
+  // it just has no replay yet. The sweeper starts compositions for live stages
+  // that are missing one, so even a torn-down action heals within a minute.
   const extra: Record<string, string | null> = {};
   if (stream.ivs_stage_arn) {
     // Deliberately outside the record_enabled gate. For a stage the
@@ -259,16 +296,17 @@ export async function goLive(streamId: string): Promise<ActionResult> {
     }
   }
 
-  const { error } = await db
-    .from("live_streams")
-    .update({
-      status: "live",
-      started_at: stream.started_at ?? new Date().toISOString(),
-      ...extra,
-    })
-    .eq("id", stream.id)
-    .eq("host_id", user.id);
-  if (error) return { ok: false, error: error.message };
+  if (Object.keys(extra).length > 0) {
+    const { error: recErr } = await db
+      .from("live_streams")
+      .update(extra)
+      .eq("id", stream.id)
+      .eq("host_id", user.id);
+    if (recErr) {
+      // Not fatal: the broadcast is live either way.
+      console.warn("[live/goLive] recording columns not saved:", recErr.message);
+    }
+  }
 
   // Announce the broadcast in the news feed: a public post with the live link
   // (clickable + auto-playing live card), so everyone sees the Live without

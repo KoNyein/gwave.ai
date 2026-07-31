@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/data/admin";
 import { latestIvsRecordingPath } from "@/lib/ivs";
+import { startIvsComposition } from "@/lib/ivs-realtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -156,14 +157,73 @@ export async function POST(request: NextRequest) {
   }
 
   const endedGhosts = await endStaleLives(admin);
+  const composedNow = await startMissingCompositions(admin);
 
   return NextResponse.json({
     scanned: rows.length,
     linked,
     stillMissing: still.length,
     endedGhosts,
+    composedNow,
     lookbackHours: hours,
   });
+}
+
+/**
+ * Start compositions for stages that are live without one.
+ *
+ * `goLive` starts the composition, but the host component fires that action
+ * without awaiting it, so an abort can tear it down between marking the row
+ * live and getting the composition going. The broadcast is fine — it is live
+ * and, once the composition catches up, watchable off a browser — but until
+ * something starts it there is no HLS output and no replay.
+ *
+ * So: anything live on a stage with no composition gets one, within a minute.
+ * A failed start is not retried into a loop — `startIvsComposition` logs the
+ * reason and the next tick tries again, which is the right cadence for
+ * something that is usually a transient AWS hiccup.
+ */
+async function startMissingCompositions(
+  admin: ReturnType<typeof createAdminClient>,
+): Promise<number> {
+  const { data, error } = await admin
+    .from("live_streams")
+    .select("id, ivs_stage_arn, ivs_channel_arn, record_enabled")
+    .eq("status", "live")
+    .not("ivs_stage_arn", "is", null)
+    .is("ivs_composition_arn", null)
+    .limit(5)
+    .returns<
+      {
+        id: string;
+        ivs_stage_arn: string | null;
+        ivs_channel_arn: string | null;
+        record_enabled: boolean;
+      }[]
+    >();
+  if (error || !data?.length) return 0;
+
+  let started = 0;
+  for (const row of data) {
+    const stage = row.ivs_stage_arn;
+    if (!stage) continue;
+    const arn = await startIvsComposition(stage, row.ivs_channel_arn, {
+      record: row.record_enabled,
+    });
+    if (!arn) continue;
+    const { error: upErr } = await admin
+      .from("live_streams")
+      .update({ ivs_composition_arn: arn })
+      // Only if still missing — goLive may have finished after all, and its
+      // composition is the one that should be stopped later.
+      .is("ivs_composition_arn", null)
+      .eq("id", row.id);
+    if (!upErr) started += 1;
+  }
+  if (started > 0) {
+    console.info(`[live/sweep] started ${started} missing composition(s)`);
+  }
+  return started;
 }
 
 /**
