@@ -231,6 +231,18 @@ create table if not exists public.rides (
 
   -- --- Notes and cancellation ---
   rider_note text check (rider_note is null or length(rider_note) <= 500),
+
+  -- --- Safety ---
+  -- "Share my trip": an unguessable token that lets anyone holding the link
+  -- watch this one ride without a Gwave account. Minted on demand rather than
+  -- for every ride, so a ride nobody shared has no public handle at all.
+  --
+  -- The token grants read access to a deliberately thin slice — vehicle, plate,
+  -- driver's first name, positions, status — and never a phone number or the
+  -- rider's identity. A safety link that leaks the rider's details to whoever
+  -- the link reaches is not a safety feature.
+  share_token text unique check (share_token is null or length(share_token) >= 20),
+  shared_at timestamptz,
   cancelled_by text check (cancelled_by is null or cancelled_by in ('rider', 'driver', 'system', 'admin')),
   cancel_reason text check (cancel_reason is null or length(cancel_reason) <= 300),
   cancel_fee numeric(12, 2) not null default 0 check (cancel_fee >= 0),

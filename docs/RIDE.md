@@ -135,6 +135,9 @@ chose to stop): merging them hides a supply problem inside a demand statistic.
 | `GET /api/ride/driver/apply` | driver | My status, balance, today's earnings |
 | `GET /api/ride/admin/drivers` | admin | Approval queue |
 | `POST /api/ride/admin/drivers` | admin | approve / reject / suspend / reinstate |
+| `POST /api/ride/[id]/share` | rider | Mint the public follow link |
+| `GET /api/ride/track/[token]` | **public** | Thin trip state for a follower |
+| `/ride/track/[token]` | **public** | The follower's page |
 
 Realtime channels: `ride:{rideId}` (both parties, plus `driver_position`) and
 `ride-driver:{driverId}` (offers).
@@ -169,10 +172,34 @@ is running. The manifest patcher in `build-flutter-apk.yml` adds
 **Do not add the background permission to make a missed offer more reliable.**
 Offers also arrive by FCM, which works with the screen off.
 
+## Safety
+
+**SOS** during a trip is the existing Gwave SOS — same `sos_alerts` table, same
+map board, same responders — with the ride attached: plate, vehicle, driver
+name and destination. A "help me" with no vehicle in it is the version nobody
+can act on, and the plate is the first thing anyone will ask for. Both sides
+get the button; a driver alone in a car with a stranger is exposed the same way
+the passenger is.
+
+**Share my trip** mints an unguessable token (32 random bytes) so the person a
+rider sends it to needs no Gwave account — "install our app first" is not an
+answer to "I'm worried about you". Only the rider can mint it: a driver able to
+publish a link to their passenger's live position and destination would have a
+stalking tool, not a safety feature. Minting is idempotent, so sharing with a
+second person does not break the first one's link.
+
+The follower's page shows the vehicle, the plate, the driver's **first name**
+and the car's position. It does not show the rider's identity, either phone
+number, the fare or the payment method. The plate is in precisely because it is
+what you would read out to the police; the rest is not the follower's business
+and definitely not the business of whoever the link gets forwarded to. Position
+publishing stops the moment the trip ends, the link keeps answering for 30
+minutes after (so a follower opening it a minute late reads "Arrived safely"
+rather than a 404 that looks like something went wrong), and then expires. The
+page is `noindex`.
+
 ## Still to build
 
-- In-trip SOS. Gwave already has SOS with GPS, photo and SMS fallback; wiring
-  the existing button into a ride is most of the work.
 - A web admin page for the approval queue (the API is done; today an admin
   would be calling it by hand).
 - Address search. Destinations are set by tapping the map — there is no
