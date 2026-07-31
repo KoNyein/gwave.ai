@@ -51,6 +51,23 @@
 
 ## Changelog
 
+- 2026-07-31 (app + web): **In-trip safety — SOS and "share my trip".**
+  Both sides of a ride get an SOS button that raises the *existing* Gwave SOS
+  (same table, same map board, same responders) with the trip attached: plate,
+  vehicle, driver name, destination. A "help me" with no vehicle in it is the
+  version nobody can act on. There is also a pre-filled — never auto-dialled —
+  police number, because a pocket tap must not call the police. **Share my
+  trip** mints an unguessable token and a public `/ride/track/<token>` page, so
+  the person a rider sends it to at 11pm needs no Gwave account. That page
+  shows the vehicle, plate, driver's first name and live position and
+  deliberately withholds the rider's identity, both phone numbers, the fare and
+  the payment method — the plate is in because it is what you read out to the
+  police; the rest is not the business of whoever the link gets forwarded to.
+  Position publishing stops when the trip ends, the link answers for 30 more
+  minutes (so a late follower reads "Arrived safely", not a 404) and the page
+  is `noindex`. Only the rider can mint the link — a driver who could publish
+  their passenger's live position would have a stalking tool.
+
 - 2026-07-31 (app): **Driver Mode.** Apply to drive (three documents,
   resubmittable after a rejection), go online, take offers with a countdown,
   run the trip with one button at a time, see today's earnings and what is

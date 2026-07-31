@@ -380,6 +380,66 @@ class _DriverScreenState extends State<DriverScreen> {
     }
   }
 
+  // ---- Safety -------------------------------------------------------------
+
+  /// The same Gwave SOS the passenger has, raised from the driver's side and
+  /// carrying the trip: which ride, where it was going, and the current
+  /// position. A driver alone in a car with a stranger is exposed in exactly
+  /// the way a passenger is, and a safety feature only one side of the trip has
+  /// is half a safety feature.
+  Future<void> _sos() async {
+    final trip = _trip;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Send emergency alert?"),
+        content: const Text(
+            "Your live position and this trip's details go out to nearby Gwave "
+            "users and your family circle."),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text("Cancel")),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: GwColors.live),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Send SOS"),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    final pos = await _currentPosition();
+    if (pos == null) {
+      if (mounted) {
+        setState(() => _error = "Couldn't get your position for the SOS.");
+      }
+      return;
+    }
+    try {
+      await context.read<AppState>().repo.sendSos(
+            pos.latitude,
+            pos.longitude,
+            reason: "unsafe",
+            message: [
+              "SOS from a Gwave driver during a trip.",
+              if (trip != null) "Heading to: ${trip.dropoffAddress}",
+              if (_rider?.name != null) "Passenger: ${_rider!.name}",
+            ].join(" · "),
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("🆘 SOS sent with your location."),
+          duration: Duration(seconds: 5),
+        ),
+      );
+    } catch (e) {
+      if (mounted) setState(() => _error = "Couldn't send the SOS — $e");
+    }
+  }
+
   // ---- Build --------------------------------------------------------------
 
   @override
@@ -497,6 +557,7 @@ class _DriverScreenState extends State<DriverScreen> {
           ride: trip,
           rider: _rider,
           onAdvance: _advance,
+          onSos: _sos,
         ),
         const SizedBox(height: 14),
       ],
@@ -815,11 +876,13 @@ class _TripCard extends StatelessWidget {
     required this.ride,
     required this.rider,
     required this.onAdvance,
+    required this.onSos,
   });
 
   final Ride ride;
   final RideCounterpart? rider;
   final void Function(String status) onAdvance;
+  final VoidCallback onSos;
 
   @override
   Widget build(BuildContext context) {
@@ -851,6 +914,13 @@ class _TripCard extends StatelessWidget {
               Text(formatKyat(ride.payable),
                   style: const TextStyle(
                       fontSize: 18, fontWeight: FontWeight.w900)),
+              // A driver alone in a car with a stranger is as exposed as the
+              // passenger is. Same button, same alert board.
+              IconButton(
+                onPressed: onSos,
+                tooltip: "Emergency",
+                icon: const Icon(Icons.sos, color: GwColors.live),
+              ),
             ],
           ),
           const SizedBox(height: 10),

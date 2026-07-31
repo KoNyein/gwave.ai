@@ -914,6 +914,13 @@ class ApiClient {
         if (online != null) "online": online,
       });
 
+  /// Mint (or re-fetch) the public "share my trip" link. Idempotent — sharing
+  /// twice hands out the same URL, so the first person's link keeps working.
+  Future<String> rideShare(String rideId) async {
+    final j = await _mobilePost("/api/ride/$rideId/share", const {});
+    return j["url"].toString();
+  }
+
   /// Apply to drive, or resubmit after a rejection. Always lands as `pending`
   /// — the server refuses to let this route set a status.
   Future<void> rideDriverApply(Map<String, dynamic> body) =>

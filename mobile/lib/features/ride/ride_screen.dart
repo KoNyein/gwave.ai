@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:realtime_client/realtime_client.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api_client.dart';
@@ -55,6 +56,7 @@ class _RideScreenState extends State<RideScreen> {
   String _vehicle = "bike";
   String _payment = "cash";
   bool _loadingQuote = false;
+  bool _sharing = false;
   String? _error;
 
   Ride? _ride;
@@ -347,6 +349,123 @@ class _RideScreenState extends State<RideScreen> {
       await _refresh();
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
+    }
+  }
+
+  // ---- Safety -------------------------------------------------------------
+
+  /// Hand someone a link that follows this trip.
+  ///
+  /// The link needs no Gwave account, because the person a rider sends this to
+  /// at 11pm is often not a Gwave user, and "install our app first" is not an
+  /// answer to "I'm worried about you".
+  Future<void> _shareTrip() async {
+    final ride = _ride;
+    if (ride == null) return;
+    setState(() => _sharing = true);
+    try {
+      final url = await _api.rideShare(ride.id);
+      if (!mounted) return;
+      final driver = _driver;
+      await Share.share([
+        "I'm in a Gwave ride.",
+        if (driver?.plate != null) "Vehicle: ${driver!.plate}",
+        "To: ${ride.dropoffAddress}",
+        "Follow me live: $url",
+      ].join("\n"));
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } catch (_) {
+      if (mounted) setState(() => _error = "Couldn't create the link.");
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
+
+  /// Raise an SOS from inside the trip.
+  ///
+  /// This is the generic Gwave SOS — same table, same map board, same
+  /// responders — but the message carries the ride: the plate, the driver, and
+  /// where the trip was going. A "help me" with no vehicle in it is the version
+  /// nobody can act on, and the plate is the first thing anyone will ask for.
+  Future<void> _sos() async {
+    final ride = _ride;
+    if (ride == null) return;
+
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Text("Emergency",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Text(
+                "Your alert includes this trip's vehicle, plate and your live "
+                "position.",
+                style: TextStyle(color: GwColors.inkSoft, fontSize: 13),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.sos, color: GwColors.live),
+              title: const Text("Send Gwave SOS"),
+              subtitle: const Text("Alerts nearby Gwave users and your family circle"),
+              onTap: () => Navigator.pop(ctx, "sos"),
+            ),
+            ListTile(
+              leading: const Icon(Icons.local_police_outlined),
+              title: const Text("Call police (199)"),
+              subtitle: const Text("Opens your dialler"),
+              onTap: () => Navigator.pop(ctx, "call"),
+            ),
+            ListTile(
+              leading: const Icon(Icons.close),
+              title: const Text("Cancel"),
+              onTap: () => Navigator.pop(ctx),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+
+    if (choice == "call") {
+      // Pre-filled, not auto-dialled: a pocket tap must not call the police.
+      await launchUrl(Uri.parse("tel:199"));
+      return;
+    }
+
+    final driver = _driver;
+    final where = _driverPos ?? ride.pickup;
+    try {
+      await context.read<AppState>().repo.sendSos(
+            where.latitude,
+            where.longitude,
+            reason: "unsafe",
+            message: [
+              "SOS during a Gwave ride.",
+              if (driver?.plate != null) "Vehicle: ${driver!.plate}",
+              if (driver?.vehicle != null) driver!.vehicle!,
+              if (driver?.name != null) "Driver: ${driver!.name}",
+              "Heading to: ${ride.dropoffAddress}",
+            ].join(" · "),
+            phone: driver?.phone,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("🆘 SOS sent with your location and this vehicle."),
+          duration: Duration(seconds: 5),
+        ),
+      );
+    } catch (e) {
+      if (mounted) setState(() => _error = "Couldn't send the SOS — $e");
     }
   }
 
@@ -818,6 +937,42 @@ class _RideScreenState extends State<RideScreen> {
                   dense: true),
             ],
           ),
+        ),
+        const SizedBox(height: 12),
+        // Safety sits above the fare, not buried in a menu. The two things a
+        // passenger might need in a hurry are "let someone follow me" and
+        // "get help", and a rider who has to go hunting for either has
+        // already been failed.
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _sharing ? null : _shareTrip,
+                icon: _sharing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.ios_share, size: 18),
+                label: const Text("Share trip"),
+                style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _sos,
+                icon: const Icon(Icons.sos, size: 20),
+                label: const Text("SOS"),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
+                  backgroundColor: GwColors.live,
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         Row(
