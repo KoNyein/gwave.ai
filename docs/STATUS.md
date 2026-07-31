@@ -51,6 +51,30 @@
 
 ## Changelog
 
+- 2026-07-31 (app, v1.0.236): **The post "…" button now actually does
+  something.** It was a `const Icon` — no handler at all — so the app had never
+  had a way to edit or delete a post; the menu simply did not exist. It is now
+  an `IconButton` opening a bottom sheet: edit / delete / copy / share for the
+  author, copy / share / report for everyone else. `PostCard` keeps its own
+  `_content` and `_deleted` state so an edit shows immediately and a deleted
+  card disappears without a refetch (optimistic, rolled back if the write
+  fails), and `onChanged` re-loads feed / profile / groups. The three new
+  repository writes (`editPost`, `deletePost`, `reportPost`) filter on
+  `author_id` as well as `id` — a PATCH or DELETE that matches nothing returns
+  success, so the id alone would make a failed edit look like it worked.
+
+- 2026-07-31 (app, v1.0.235): **Calls stop logging themselves two or three
+  times, and the permission prompt is no longer a dead end.** The `decline` and
+  `hangup` signal handlers were missing the `_ownSignal` guard every other
+  handler has, so the server's relay echo re-entered `_teardown` and wrote a
+  second call log; `_teardown` also awaits before writing, so two overlapping
+  runs both read a live `_conversationId`. Fixed with the echo guard plus a
+  `_tearingDown` re-entry lock and a `_lastLoggedCallId` check. Separately, a
+  permanently-denied camera/mic permission failed silently — `_grantPermissions`
+  now records `permissionPermanentlyDenied` and both the chat screen and the
+  call screen offer a **Settings** action that opens the OS app settings, since
+  Android will not show the system prompt again.
+
 - 2026-07-31: **Dropship listings carry the whole product, and a kit for
   selling it.** The AliExpress import was pulling one photo out of a feed that
   publishes six plus a video, a store name and a satisfaction score — so a
