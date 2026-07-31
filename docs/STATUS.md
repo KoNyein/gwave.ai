@@ -20,6 +20,9 @@
   (`/api/mobile/call/notify`). Web ring verification is embed-free.
 - **Live**: browser→LiveKit, app-broadcast→IVS. IVS auto-records to S3;
   `latestIvsRecordingPath()` links `recording_path` on end/verify, and
+  `/api/live/recordings/sweep` (one-minute cron) links the ones that finalise
+  after the host has already tapped End — without it, long broadcasts silently
+  never got a replay (four out of ten in production), and
   `/recordings/[...path]` streams replays through the domain (app + web).
   Media-plane self-heal on `/api/mobile/live/verify`, `/api/mobile/live/token`
   and the web watch page marks dead lives ended (LiveKit host-absent or IVS
@@ -50,6 +53,19 @@
 - Old Vercel project deletion (user-side).
 
 ## Changelog
+
+- 2026-07-31 (web): **Replays that finalised too late to be caught.** IVS
+  finishes writing a recording to S3 *after* the broadcast stops, and how long
+  depends on the length of the stream, but the end routes looked the file up
+  the instant the host tapped End and never looked again. Short broadcasts got
+  a replay, long ones silently never did — six of the last ten, all with
+  recording on and all genuinely recorded; the files were in the bucket, only
+  the row was missing a path. `/api/live/recordings/sweep` now re-checks ended
+  broadcasts on a one-minute cron until the file appears or a day has passed
+  (`?hours=` up to 720 for a one-off catch-up over history). Idempotent, and
+  harmless alongside the EventBridge webhook that is meant to do this — a row
+  that already has a path is never selected. Uses `LIVE_SWEEP_SECRET`, falling
+  back to `RIDE_DISPATCH_SECRET`, so it needs no new env.
 
 - 2026-07-31: **Dropship listings carry the whole product, and a kit for
   selling it.** The AliExpress import was pulling one photo out of a feed that
