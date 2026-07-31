@@ -54,6 +54,21 @@
 
 ## Changelog
 
+- 2026-07-31 (web): **Nineteen minutes of broadcasting that nobody could see.**
+  `goLive` marked the row `live` *last*, after awaiting the provider's
+  recording/restream call. The host component fires that action without
+  awaiting it (`void goLive(id)`), so a re-render or navigation aborts the
+  request and Next tears the action down where it stands —
+  `TypeError: Invalid state: Controller is already closed`. A host published to
+  their IVS stage for 19 minutes (AWS: `published: true` for the whole session)
+  while the row sat at `idle` and every viewer saw nothing. It had worked an
+  hour earlier only because the composition ARNs weren't configured yet, so the
+  AWS call returned instantly and beat the abort. Being live is not a side
+  effect of recording: the status is now written first, on its own, and the
+  provider work is a second update that may or may not survive. The sweeper
+  also starts compositions for live stages missing one, so a torn-down action
+  heals within a minute.
+
 - 2026-07-31 (web): **A week-old broadcast pinned to the top of Live now.**
   `listStreams()` applies a 12-hour staleness cutoff — and then `/live`
   re-split the combined result on `status === "live"` alone, which put every
