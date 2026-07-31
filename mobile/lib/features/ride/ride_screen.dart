@@ -57,6 +57,9 @@ class _RideScreenState extends State<RideScreen> {
   String _payment = "cash";
   bool _loadingQuote = false;
   bool _sharing = false;
+  bool _searching = false;
+  List<Map<String, dynamic>> _places = const [];
+  Timer? _searchDebounce;
   String? _error;
 
   Ride? _ride;
@@ -72,11 +75,13 @@ class _RideScreenState extends State<RideScreen> {
     super.initState();
     _locate();
     _resumeActiveRide();
+    _search("");
   }
 
   @override
   void dispose() {
     _poll?.cancel();
+    _searchDebounce?.cancel();
     _channel?.unsubscribe();
     _rt?.disconnect();
     _dropoffLabel.dispose();
@@ -350,6 +355,54 @@ class _RideScreenState extends State<RideScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     }
+  }
+
+  // ---- Destination search -------------------------------------------------
+
+  /// Debounced so a rider typing "Junction City" costs one provider call
+  /// instead of thirteen. 350ms is roughly the gap between words rather than
+  /// between keystrokes.
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    // Editing the text un-picks the place it named — otherwise the rider ends
+    // up booking to the last thing they tapped under a label they since
+    // rewrote.
+    if (_dropoff != null) setState(() => _dropoff = null);
+    _searchDebounce =
+        Timer(const Duration(milliseconds: 350), () => _search(value));
+  }
+
+  Future<void> _search(String q) async {
+    if (!mounted) return;
+    setState(() => _searching = q.trim().isNotEmpty);
+    try {
+      final places = await _api.ridePlaces(
+        q.trim(),
+        nearLat: _pickup?.latitude,
+        nearLng: _pickup?.longitude,
+      );
+      if (mounted) setState(() => _places = places);
+    } catch (_) {
+      // No suggestions is a workable state — the map is still tappable.
+      if (mounted) setState(() => _places = const []);
+    } finally {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  void _pickPlace(Map<String, dynamic> place) {
+    final lat = (place["lat"] as num?)?.toDouble();
+    final lng = (place["lng"] as num?)?.toDouble();
+    if (lat == null || lng == null) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _dropoff = LatLng(lat, lng);
+      _dropoffLabel.text = place["label"]?.toString() ?? "";
+      _places = const [];
+      _quote = null;
+      _step = _Step.pickDropoff;
+    });
+    _fitRoute();
   }
 
   // ---- Safety -------------------------------------------------------------
@@ -671,27 +724,55 @@ class _RideScreenState extends State<RideScreen> {
           muted: _pickup == null,
         ),
         const SizedBox(height: 10),
-        if (_dropoff == null)
-          const _PointRow(
-            colour: GwColors.live,
-            label: "Tap the map to set your destination",
-            muted: true,
-          )
-        else
-          TextField(
-            controller: _dropoffLabel,
-            textInputAction: TextInputAction.done,
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.place, color: GwColors.live),
-              hintText: "Name this destination (optional)",
-              filled: true,
-              fillColor: GwColors.surfaceMutedOf(context),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+        // One field does both jobs: type to search, or leave the label you
+        // typed as the name for a pin you tapped. Splitting them into "search"
+        // and "name this place" would be two boxes that look the same and do
+        // different things.
+        TextField(
+          controller: _dropoffLabel,
+          textInputAction: TextInputAction.search,
+          onChanged: _onSearchChanged,
+          decoration: InputDecoration(
+            prefixIcon: const Icon(Icons.search, color: GwColors.live),
+            suffixIcon: _searching
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : _dropoff != null
+                    ? const Icon(Icons.check_circle,
+                        color: GwColors.primaryBright)
+                    : null,
+            hintText: "Where to? Or tap the map",
+            filled: true,
+            fillColor: GwColors.surfaceMutedOf(context),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        if (_places.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          ConstrainedBox(
+            // Capped so the suggestions never push the button off screen —
+            // a rider who cannot reach "See prices" is stuck.
+            constraints: const BoxConstraints(maxHeight: 210),
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              itemCount: _places.length,
+              itemBuilder: (_, i) => _PlaceTile(
+                place: _places[i],
+                onTap: () => _pickPlace(_places[i]),
               ),
             ),
           ),
+        ],
         const SizedBox(height: 16),
         FilledButton(
           onPressed: ready && !_loadingQuote ? _fetchQuote : null,
@@ -1148,6 +1229,63 @@ class _PointRow extends StatelessWidget {
           ),
         ],
       );
+}
+
+/// One destination suggestion.
+///
+/// History is badged with a clock rather than a pin, because "I have been here
+/// before" is the fastest signal for picking the right row out of a list where
+/// three entries can share a name.
+class _PlaceTile extends StatelessWidget {
+  const _PlaceTile({required this.place, required this.onTap});
+
+  final Map<String, dynamic> place;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final history = place["source"] == "history";
+    final detail = place["detail"]?.toString() ?? "";
+    final distance = (place["distanceM"] as num?)?.toInt();
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
+        child: Row(
+          children: [
+            Icon(
+              history ? Icons.history : Icons.place_outlined,
+              size: 20,
+              color: history ? GwColors.inkSoftOf(context) : GwColors.live,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(place["label"]?.toString() ?? "",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 14.5)),
+                  if (detail.isNotEmpty)
+                    Text(detail,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            color: GwColors.inkSoftOf(context), fontSize: 12)),
+                ],
+              ),
+            ),
+            if (distance != null)
+              Text(formatDistance(distance),
+                  style: TextStyle(
+                      color: GwColors.inkSoftOf(context), fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _Banner extends StatelessWidget {

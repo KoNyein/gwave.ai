@@ -380,6 +380,49 @@ class _DriverScreenState extends State<DriverScreen> {
     }
   }
 
+  /// Pay the platform what the cash trips owe it.
+  ///
+  /// Pre-filled with the full amount because that is what almost everyone
+  /// wants, but editable because a driver whose wallet is short should be able
+  /// to pay part of it now rather than nothing. The server refuses more than is
+  /// owed and more than the wallet holds, so this sheet does not re-implement
+  /// either rule — it just shows both numbers so the driver can see why.
+  Future<void> _openSettle() async {
+    Map<String, dynamic> info;
+    try {
+      info = await _api.rideSettleInfo();
+    } catch (e) {
+      if (mounted) setState(() => _error = "Couldn't load your balance — $e");
+      return;
+    }
+    if (!mounted) return;
+
+    final owed = (info["commissionOwed"] as num?) ?? 0;
+    final wallet = info["walletBalance"] as num?;
+    final controller =
+        TextEditingController(text: owed.round().toString());
+
+    final paid = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: 16 + MediaQuery.of(ctx).viewInsets.bottom),
+        child: _SettleSheet(
+          owed: owed,
+          wallet: wallet,
+          controller: controller,
+          onPay: (amount) => _api.rideSettlePay(amount),
+        ),
+      ),
+    );
+    controller.dispose();
+    if (paid == true) await _load();
+  }
+
   // ---- Safety -------------------------------------------------------------
 
   /// The same Gwave SOS the passenger has, raised from the driver's side and
@@ -587,6 +630,7 @@ class _DriverScreenState extends State<DriverScreen> {
       const SizedBox(height: 10),
       GwCard(
         accent: owed > 0 ? GwColors.gold : null,
+        onTap: owed > 0 ? _openSettle : null,
         child: Row(
           children: [
             Icon(Icons.account_balance_wallet_outlined,
@@ -612,6 +656,8 @@ class _DriverScreenState extends State<DriverScreen> {
             Text(formatKyat(owed),
                 style: const TextStyle(
                     fontWeight: FontWeight.w800, fontSize: 16)),
+            if (owed > 0)
+              Icon(Icons.chevron_right, color: GwColors.inkSoftOf(context)),
           ],
         ),
       ),
@@ -1012,4 +1058,152 @@ class _Leg extends StatelessWidget {
           ),
         ],
       );
+}
+
+/// The settle sheet: what you owe, what your wallet holds, and one field.
+///
+/// Its own widget with its own state so typing an amount repaints a text field
+/// rather than the whole driver dashboard behind it.
+class _SettleSheet extends StatefulWidget {
+  const _SettleSheet({
+    required this.owed,
+    required this.wallet,
+    required this.controller,
+    required this.onPay,
+  });
+
+  final num owed;
+  final num? wallet;
+  final TextEditingController controller;
+  final Future<num> Function(num amount) onPay;
+
+  @override
+  State<_SettleSheet> createState() => _SettleSheetState();
+}
+
+class _SettleSheetState extends State<_SettleSheet> {
+  bool _busy = false;
+  String? _error;
+
+  Future<void> _pay() async {
+    final amount = num.tryParse(widget.controller.text.trim().replaceAll(",", ""));
+    if (amount == null || amount < 1) {
+      setState(() => _error = "Enter an amount.");
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await widget.onPay(amount);
+      if (mounted) Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      // The server's messages are already written for a person — "That is more
+      // than the 450.00 owed", "Insufficient G-Pay balance" — so show them.
+      if (mounted) setState(() => _error = e.message);
+    } catch (_) {
+      if (mounted) setState(() => _error = "Couldn't complete the payment.");
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final short = widget.wallet != null && widget.wallet! < widget.owed;
+    return SafeArea(
+      top: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text("Settle commission",
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Text(
+            "Commission from cash trips, paid from your G-Pay wallet.",
+            style: TextStyle(color: GwColors.inkSoftOf(context), fontSize: 13),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: GwStatTile(
+                  label: "Owed",
+                  value: formatKyat(widget.owed),
+                  icon: Icons.receipt_long,
+                  color: GwColors.gold,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: GwStatTile(
+                  label: "Wallet",
+                  value: widget.wallet == null
+                      ? "No account"
+                      : formatKyat(widget.wallet!),
+                  icon: Icons.account_balance_wallet,
+                  color: short ? GwColors.live : null,
+                ),
+              ),
+            ],
+          ),
+          if (short) ...[
+            const SizedBox(height: 10),
+            const Text(
+              "Your wallet is short of the full amount — pay part of it now and "
+              "the rest later. Top up in G-Pay.",
+              style: TextStyle(color: GwColors.live, fontSize: 12.5),
+            ),
+          ],
+          const SizedBox(height: 14),
+          TextField(
+            controller: widget.controller,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: "Amount (Ks)",
+              filled: true,
+              fillColor: GwColors.surfaceMutedOf(context),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            Text(_error!,
+                style: const TextStyle(color: GwColors.live, fontSize: 13)),
+          ],
+          const SizedBox(height: 14),
+          FilledButton(
+            onPressed: _busy || widget.wallet == null ? null : _pay,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(50),
+              backgroundColor: GwColors.primary,
+            ),
+            child: _busy
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                : const Text("Pay now",
+                    style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+          if (widget.wallet == null) ...[
+            const SizedBox(height: 8),
+            Text(
+              "You need an active G-Pay account to settle from the app.",
+              textAlign: TextAlign.center,
+              style:
+                  TextStyle(color: GwColors.inkSoftOf(context), fontSize: 12),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

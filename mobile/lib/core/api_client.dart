@@ -914,6 +914,33 @@ class ApiClient {
         if (online != null) "online": online,
       });
 
+  /// Destination suggestions: the rider's own past destinations first (free,
+  /// and the best autocomplete there is for them), then a geocoder if the
+  /// server has one configured. An empty [q] returns recent destinations.
+  Future<List<Map<String, dynamic>>> ridePlaces(
+    String q, {
+    double? nearLat,
+    double? nearLng,
+  }) async {
+    final j = await _mobileGet("/api/ride/places", {
+      if (q.isNotEmpty) "q": q,
+      if (nearLat != null) "lat": "$nearLat",
+      if (nearLng != null) "lng": "$nearLng",
+    });
+    return ((j["places"] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  /// Driver: what is owed on cash trips, and what the wallet holds.
+  Future<Map<String, dynamic>> rideSettleInfo() =>
+      _mobileGet("/api/ride/driver/settle");
+
+  /// Driver: pay down commission from the G-Pay wallet. Returns the new
+  /// outstanding balance.
+  Future<num> rideSettlePay(num amount) async {
+    final j = await _mobilePost("/api/ride/driver/settle", {"amount": amount});
+    return (j["commissionOwed"] as num?) ?? 0;
+  }
+
   /// Mint (or re-fetch) the public "share my trip" link. Idempotent — sharing
   /// twice hands out the same URL, so the first person's link keeps working.
   Future<String> rideShare(String rideId) async {

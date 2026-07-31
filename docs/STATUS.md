@@ -51,6 +51,19 @@
 
 ## Changelog
 
+- 2026-07-31 (app + web): **Ride: destination search and driver settlement.**
+  Typing a destination now searches the rider's **own past destinations first**
+  — most trips are somewhere they have already been, no geocoder answers a
+  label somebody wrote for themselves, and every geocoder mangles Myanmar
+  addresses, so history is both the cheapest source and the best one. Opening
+  the screen shows recents. A geocoder (`RIDE_GEOCODER_URL`, Photon or
+  Nominatim, told apart by response shape) or Google Places is appended when
+  configured, skipped below 3 characters; with neither, history-only search
+  still works and the map is still tappable. Drivers can now pay down the
+  commission owed on cash trips from their G-Pay wallet — `ride_driver_settle`
+  had existed and been tested since the schema, but nothing called it, so the
+  ledger was right and the money was not moving.
+
 - 2026-07-31 (app + web): **In-trip safety — SOS and "share my trip".**
   Both sides of a ride get an SOS button that raises the *existing* Gwave SOS
   (same table, same map board, same responders) with the trip attached: plate,
