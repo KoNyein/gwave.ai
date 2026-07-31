@@ -40,7 +40,9 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const GwMiniPlayer(),
+          // Hidden over Reels: that tab is edge-to-edge video and a bar
+          // floating on top of it is exactly the chrome it exists without.
+          GwMiniPlayer(visible: _index != 1),
           Container(
             decoration: BoxDecoration(
               color: GwColors.surfaceOf(context),

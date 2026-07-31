@@ -59,7 +59,12 @@
   audio/audio_service.dart`); playback ends only on the explicit ✕, and a mini
   player above the bottom nav keeps whatever is playing reachable from every
   tab. Queue, shuffle, repeat, speed, sleep timer and position-saving all moved
-  onto the service, so they survive the screen too.
+  onto the service, so they survive the screen too. Silent video no longer
+  stops it either: `video_player` requested audio focus even for a muted
+  autoplaying feed clip, so a video nobody could hear paused the music —
+  previews now use `mixWithOthers` (`mobile/lib/core/video_audio.dart`) and
+  only an *unmuted* video takes the sound. The bar is 48dp and hidden over
+  Reels.
 - 2026-07-31 (app): **Driver Mode stayed online only while its screen was
   open.** The ride heartbeat was a screen-local position stream: a distance
   filter meant a parked driver stopped beating, and `dispose()` meant a driver

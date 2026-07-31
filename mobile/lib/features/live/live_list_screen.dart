@@ -12,6 +12,7 @@ import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import 'go_live_screen.dart';
 import 'live_watch_screen.dart';
+import '../../core/video_audio.dart';
 
 class LiveListScreen extends StatefulWidget {
   const LiveListScreen({super.key});
@@ -281,7 +282,8 @@ class _LiveCardState extends State<_LiveCard> {
     }
     if (url == null) return;
     try {
-      final c = VideoPlayerController.networkUrl(Uri.parse(url!));
+      // Silent list preview — leaves the user's music alone.
+      final c = silentVideoController(Uri.parse(url!));
       _vc = c;
       await c.initialize();
       await c.setVolume(0);

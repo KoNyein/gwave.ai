@@ -24,6 +24,7 @@ import '../map/quake.dart';
 import '../shop/product_screen.dart';
 import 'comments_sheet.dart';
 import 'reactions.dart';
+import '../../core/video_audio.dart';
 
 class PostCard extends StatefulWidget {
   const PostCard({super.key, required this.post, this.onChanged});
@@ -1128,7 +1129,8 @@ class _LiveBannerState extends State<_LiveBanner> {
       }
       if (url == null) return;
       try {
-        final c = VideoPlayerController.networkUrl(Uri.parse(url));
+        // Silent preview — must not take audio focus off the user's music.
+        final c = silentVideoController(Uri.parse(url));
         _vc = c;
         await c.initialize();
         await c.setVolume(0);
@@ -1141,7 +1143,7 @@ class _LiveBannerState extends State<_LiveBanner> {
     final hls = s.ivsPlaybackUrl;
     if (hls != null && hls.isNotEmpty) {
       try {
-        final c = VideoPlayerController.networkUrl(Uri.parse(hls));
+        final c = silentVideoController(Uri.parse(hls));
         _vc = c;
         await c.initialize();
         await c.setVolume(0);
@@ -1405,7 +1407,8 @@ class _PostVideoState extends State<_PostVideo> {
 
   Future<void> _init() async {
     try {
-      final c = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+      // Autoplays muted, so it stays out of the audio focus fight.
+      final c = silentVideoController(Uri.parse(widget.url));
       _vc = c;
       await c.initialize();
       await c.setVolume(0);
@@ -1423,6 +1426,8 @@ class _PostVideoState extends State<_PostVideo> {
     setState(() => _muted = !_muted);
     c.setVolume(_muted ? 0 : 1);
     if (!c.value.isPlaying) c.play();
+    // Turning the sound on is the one moment the music should yield.
+    if (!_muted) videoTookTheSound();
   }
 
   @override

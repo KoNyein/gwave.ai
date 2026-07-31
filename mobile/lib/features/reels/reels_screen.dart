@@ -12,6 +12,7 @@ import '../../core/theme.dart';
 import '../../widgets/share_sheet.dart';
 import '../../widgets/common.dart';
 import '../create/upload_flow.dart';
+import '../../core/video_audio.dart';
 
 /// Vertical, full-screen TikTok/Reels feed. One video per page; the visible page
 /// plays and loops, the rest pause. Right rail = like/comment/share, bottom-left
@@ -229,13 +230,18 @@ class _ReelPageState extends State<_ReelPage> {
   Future<void> _init() async {
     final url = resolveMedia(widget.reel.videoPath, bucket: "media");
     if (url == null) return;
-    final c = VideoPlayerController.networkUrl(Uri.parse(url));
+    // mixWithOthers, then decide about the music ourselves: a muted reel
+    // scrolling past has no claim on the speaker, an unmuted one does.
+    final c = silentVideoController(Uri.parse(url));
     _controller = c;
     try {
       await c.initialize();
       await c.setLooping(true);
       await c.setVolume(_muted ? 0 : 1);
-      if (widget.active) await c.play();
+      if (widget.active) {
+        if (!_muted) await videoTookTheSound();
+        await c.play();
+      }
       if (mounted) setState(() => _ready = true);
     } catch (_) {
       // Leave the poster/placeholder in place.
@@ -248,6 +254,7 @@ class _ReelPageState extends State<_ReelPage> {
     if (_controller == null) return;
     if (widget.active && !old.active) {
       _controller!.setVolume(_muted ? 0 : 1);
+      if (!_muted) videoTookTheSound();
       _controller!.play();
     } else if (!widget.active && old.active) {
       _controller!.pause();
@@ -260,6 +267,7 @@ class _ReelPageState extends State<_ReelPage> {
       _muted = !_muted;
       _controller?.setVolume(_muted ? 0 : 1);
     });
+    if (!_muted) videoTookTheSound();
   }
 
   @override

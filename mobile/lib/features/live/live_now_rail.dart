@@ -9,6 +9,7 @@ import '../../core/models.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import 'live_watch_screen.dart';
+import '../../core/video_audio.dart';
 
 /// Horizontal "Live now" rail for the top of the feed. Shows every stream that
 /// is broadcasting right now — regardless of who you follow — so a live
@@ -144,7 +145,8 @@ class _LiveRailCardState extends State<LiveRailCard> {
     final url = widget.stream.ivsPlaybackUrl;
     if (url == null || url.isEmpty) return;
     try {
-      final c = VideoPlayerController.networkUrl(Uri.parse(url));
+      // Silent rail preview — leaves the user's music alone.
+      final c = silentVideoController(Uri.parse(url));
       _vc = c;
       await c.initialize();
       await c.setVolume(0);
