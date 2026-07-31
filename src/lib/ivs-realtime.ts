@@ -190,6 +190,42 @@ export async function stopIvsComposition(
   }
 }
 
+/**
+ * Where a composition's recording landed, without stopping anything.
+ *
+ * `stopIvsComposition` does this too, but it only gets one chance: it runs
+ * when the host ends the broadcast, and IVS writes
+ * `events/recording-ended.json` asynchronously after that. Miss the window and
+ * the row keeps a null `recording_path` with nothing left to look again — the
+ * replay sweeper skips stage broadcasts, because their recording lands at the
+ * composition's prefix rather than the channel's.
+ *
+ * So the sweeper calls this instead. One retry pass only: the cron comes back
+ * in a minute, which is a better place to be patient than inside a request.
+ */
+export async function resolveIvsCompositionRecording(
+  compositionArn: string,
+): Promise<string | null> {
+  try {
+    const res = await rtClient().send(
+      new GetCompositionCommand({ arn: compositionArn }),
+    );
+    const s3 = res.composition?.destinations?.find((d) => d.detail?.s3)?.detail
+      ?.s3 as { recordingPrefix?: string } | undefined;
+    if (!s3?.recordingPrefix) return null;
+    return await readIvsRecordingManifest(s3.recordingPrefix, {
+      attempts: 1,
+      delayMs: 0,
+    });
+  } catch (e) {
+    console.warn(
+      "[ivs-rt] Could not resolve a composition recording:",
+      e instanceof Error ? e.message : e,
+    );
+    return null;
+  }
+}
+
 /** Public URL a saved IVS recording plays from. Defaults to the app's own
  * /recordings proxy (which streams from the private bucket via the instance
  * role), so replays work without a CloudFront distribution or env config. */

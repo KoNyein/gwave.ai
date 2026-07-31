@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/data/admin";
 import { latestIvsRecordingPath } from "@/lib/ivs";
-import { startIvsComposition } from "@/lib/ivs-realtime";
+import {
+  resolveIvsCompositionRecording,
+  startIvsComposition,
+} from "@/lib/ivs-realtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -158,6 +161,7 @@ export async function POST(request: NextRequest) {
 
   const endedGhosts = await endStaleLives(admin);
   const composedNow = await startMissingCompositions(admin);
+  const compositionReplays = await linkCompositionReplays(admin, since, until);
 
   return NextResponse.json({
     scanned: rows.length,
@@ -165,8 +169,55 @@ export async function POST(request: NextRequest) {
     stillMissing: still.length,
     endedGhosts,
     composedNow,
+    compositionReplays,
     lookbackHours: hours,
   });
+}
+
+/**
+ * Link replays for browser broadcasts.
+ *
+ * The loop at the top of this route handles channel recordings and skips stage
+ * broadcasts on purpose — their recording is written by the composition, at the
+ * composition's own S3 prefix, so looking under the channel's would find
+ * nothing. That left them with nobody looking again at all: `stopIvsComposition`
+ * gets one attempt as the host ends the broadcast, and IVS writes the events
+ * file after that, so a recording that finalises a few seconds late was lost
+ * for good.
+ */
+async function linkCompositionReplays(
+  admin: ReturnType<typeof createAdminClient>,
+  since: string,
+  until: string,
+): Promise<number> {
+  const { data, error } = await admin
+    .from("live_streams")
+    .select("id, ivs_composition_arn")
+    .eq("status", "ended")
+    .eq("record_enabled", true)
+    .is("recording_path", null)
+    .not("ivs_composition_arn", "is", null)
+    .gte("ended_at", since)
+    .lte("ended_at", until)
+    .order("ended_at", { ascending: false })
+    .limit(MAX_PER_SWEEP)
+    .returns<{ id: string; ivs_composition_arn: string | null }[]>();
+  if (error || !data?.length) return 0;
+
+  let linked = 0;
+  for (const row of data) {
+    const arn = row.ivs_composition_arn;
+    if (!arn) continue;
+    const path = await resolveIvsCompositionRecording(arn);
+    if (!path) continue;
+    const { error: upErr } = await admin
+      .from("live_streams")
+      .update({ recording_path: path })
+      .is("recording_path", null)
+      .eq("id", row.id);
+    if (!upErr) linked += 1;
+  }
+  return linked;
 }
 
 /**

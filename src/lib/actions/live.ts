@@ -257,11 +257,56 @@ export async function goLive(streamId: string): Promise<ActionResult> {
     .eq("host_id", user.id);
   if (error) return { ok: false, error: error.message };
 
+  // Announce the broadcast in the news feed: a public post with the live link
+  // (clickable + auto-playing live card), so everyone sees the Live without
+  // opening the Live tab. Idempotent + service-role + logged — this used to
+  // insert through the RLS client and swallow the error object, which left
+  // streams live with no feed post and no trace of why.
+  const announcementPostId = await ensureLiveAnnouncement({
+    hostId: user.id,
+    streamId,
+    title: stream.title,
+  });
+
+  // Notify the host's followers — once per stream. followers_notified_at is a
+  // server-owned column locked to the authenticated role (column-lockdown
+  // policy), so the atomic claim goes through the service role (BYPASSRLS).
+  // Only the first go-live flips it from null; the fan-out runs after the
+  // response so a large follower list never slows going live.
+  const admin = createAdminClient();
+  const { data: claimed } = await admin
+    .from("live_streams")
+    .update({ followers_notified_at: new Date().toISOString() })
+    .eq("id", streamId)
+    .is("followers_notified_at", null)
+    .select("id");
+  if (claimed && claimed.length > 0) {
+    after(() =>
+      notifyFollowersOfLive({
+        hostId: user.id,
+        streamId,
+        streamTitle: stream.title,
+        announcementPostId,
+      }),
+    );
+  }
+
   // ── Then the provider work, which may or may not survive ──────────────────
   //
-  // If this half is cut short the broadcast is still live and still watchable;
-  // it just has no replay yet. The sweeper starts compositions for live stages
-  // that are missing one, so even a torn-down action heals within a minute.
+  // Everything above this line is what a person sees: the broadcast is live,
+  // it is in the feed, followers have been told. Everything below is an
+  // improvement on that — a replay, an HLS restream — and none of it may come
+  // between a host going live and the feed knowing about it.
+  //
+  // Moving the status update up but leaving the announcement down here traded
+  // one missing thing for another: the broadcast appeared, and the post that
+  // points at it did not, so nobody could find it afterwards. An abort in the
+  // AWS call must not be able to swallow a feed post.
+  //
+  // If this half is cut short the broadcast is still live, still in the feed
+  // and still watchable; it just has no replay yet. The sweeper starts
+  // compositions for live stages that are missing one, so even a torn-down
+  // action heals within a minute.
   const extra: Record<string, string | null> = {};
   if (stream.ivs_stage_arn) {
     // Deliberately outside the record_enabled gate. For a stage the
@@ -306,40 +351,6 @@ export async function goLive(streamId: string): Promise<ActionResult> {
       // Not fatal: the broadcast is live either way.
       console.warn("[live/goLive] recording columns not saved:", recErr.message);
     }
-  }
-
-  // Announce the broadcast in the news feed: a public post with the live link
-  // (clickable + auto-playing live card), so everyone sees the Live without
-  // opening the Live tab. Idempotent + service-role + logged — this used to
-  // insert through the RLS client and swallow the error object, which left
-  // streams live with no feed post and no trace of why.
-  const announcementPostId = await ensureLiveAnnouncement({
-    hostId: user.id,
-    streamId,
-    title: stream.title,
-  });
-
-  // Notify the host's followers — once per stream. followers_notified_at is a
-  // server-owned column locked to the authenticated role (column-lockdown
-  // policy), so the atomic claim goes through the service role (BYPASSRLS).
-  // Only the first go-live flips it from null; the fan-out runs after the
-  // response so a large follower list never slows going live.
-  const admin = createAdminClient();
-  const { data: claimed } = await admin
-    .from("live_streams")
-    .update({ followers_notified_at: new Date().toISOString() })
-    .eq("id", streamId)
-    .is("followers_notified_at", null)
-    .select("id");
-  if (claimed && claimed.length > 0) {
-    after(() =>
-      notifyFollowersOfLive({
-        hostId: user.id,
-        streamId,
-        streamTitle: stream.title,
-        announcementPostId,
-      }),
-    );
   }
 
   revalidatePath(`/live/${streamId}`);
