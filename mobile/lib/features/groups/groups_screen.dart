@@ -287,7 +287,8 @@ class _GroupFeedScreenState extends State<GroupFeedScreen> {
                     : ListView.builder(
                         padding: const EdgeInsets.fromLTRB(0, 8, 0, 40),
                         itemCount: _posts.length,
-                        itemBuilder: (_, i) => PostCard(post: _posts[i]),
+                        itemBuilder: (_, i) =>
+                            PostCard(post: _posts[i], onChanged: _load),
                       ),
       ),
     );

@@ -387,7 +387,7 @@ class _MyPostsSectionState extends State<MyPostsSection> {
           for (final p in _posts)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: PostCard(post: p),
+              child: PostCard(post: p, onChanged: _load),
             ),
       ],
     );

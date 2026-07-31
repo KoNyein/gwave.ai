@@ -2,8 +2,10 @@ import '../../widgets/share_sheet.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
@@ -24,8 +26,12 @@ import 'comments_sheet.dart';
 import 'reactions.dart';
 
 class PostCard extends StatefulWidget {
-  const PostCard({super.key, required this.post});
+  const PostCard({super.key, required this.post, this.onChanged});
   final Post post;
+
+  /// Called after the post is edited or deleted, so a feed can refresh. The
+  /// card also updates itself, so a parent that does not care can omit this.
+  final VoidCallback? onChanged;
 
   @override
   State<PostCard> createState() => _PostCardState();
@@ -37,6 +43,11 @@ class _PostCardState extends State<PostCard> {
   late int _likes = widget.post.reactionCount;
   late int _comments = widget.post.commentCount;
   bool _busy = false;
+
+  /// The card owns the text after an edit so the change is visible instantly,
+  /// without waiting for whatever list is holding this post to reload.
+  late String _content = widget.post.content;
+  bool _deleted = false;
 
   @override
   void initState() {
@@ -51,6 +62,205 @@ class _PostCardState extends State<PostCard> {
       if (mounted && r != null) setState(() => _myReaction = r);
     } catch (_) {
       // Non-fatal — leave as not-reacted.
+    }
+  }
+
+  bool get _isMine =>
+      context.read<AppState>().api.session?.profileId == widget.post.authorId;
+
+  /// The post's own menu — the `…` used to be a plain Icon, so it looked like
+  /// a button and did nothing. Own posts get edit and delete; everyone else's
+  /// get report. Copy and share apply to both.
+  void _openMenu() {
+    final mine = _isMine;
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (mine) ...[
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: Text(tr(sheet, "Edit post", "ပို့စ် ပြင်မည်")),
+                onTap: () {
+                  Navigator.of(sheet).pop();
+                  _edit();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline,
+                    color: Color(0xFFDC2626)),
+                title: Text(
+                  tr(sheet, "Delete post", "ပို့စ် ဖျက်မည်"),
+                  style: const TextStyle(color: Color(0xFFDC2626)),
+                ),
+                onTap: () {
+                  Navigator.of(sheet).pop();
+                  _delete();
+                },
+              ),
+            ],
+            ListTile(
+              leading: const Icon(Icons.copy_outlined),
+              title: Text(tr(sheet, "Copy text", "စာသား ကူးယူ")),
+              onTap: () {
+                Navigator.of(sheet).pop();
+                Clipboard.setData(ClipboardData(text: _content));
+                _toast(tr(context, "Copied", "ကူးပြီးပါပြီ"));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_outlined),
+              title: Text(tr(sheet, "Share", "မျှဝေမည်")),
+              onTap: () {
+                Navigator.of(sheet).pop();
+                Share.share(
+                  _content.trim().isEmpty
+                      ? "${AppConfig.apiBase}/p/${widget.post.id}"
+                      : "$_content\n\n${AppConfig.apiBase}/p/${widget.post.id}",
+                );
+              },
+            ),
+            if (!mine)
+              ListTile(
+                leading: const Icon(Icons.flag_outlined,
+                    color: Color(0xFFD97706)),
+                title: Text(
+                  tr(sheet, "Report post", "ပို့စ် တိုင်ကြားမည်"),
+                  style: const TextStyle(color: Color(0xFFD97706)),
+                ),
+                onTap: () {
+                  Navigator.of(sheet).pop();
+                  _report();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _edit() async {
+    final controller = TextEditingController(text: _content);
+    final next = await showDialog<String>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(tr(d, "Edit post", "ပို့စ် ပြင်မည်")),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 8,
+          minLines: 3,
+          decoration: InputDecoration(
+            hintText: tr(d, "What's on your mind?", "ဘာတွေ တွေးနေလဲ?"),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(d).pop(),
+            child: Text(tr(d, "Cancel", "မလုပ်တော့")),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(d).pop(controller.text.trim()),
+            child: Text(tr(d, "Save", "သိမ်းမည်")),
+          ),
+        ],
+      ),
+    );
+    if (next == null || next == _content || !mounted) return;
+    final repo = context.read<AppState>().repo;
+    // Optimistic: the text is already what the user typed, so show it and put
+    // the old one back only if the write fails.
+    final previous = _content;
+    setState(() => _content = next);
+    try {
+      await repo.editPost(widget.post.id, next);
+      widget.onChanged?.call();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _content = previous);
+      _toast("$e");
+    }
+  }
+
+  Future<void> _delete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(tr(d, "Delete this post?", "ဤပို့စ်ကို ဖျက်မလား?")),
+        content: Text(tr(
+          d,
+          "This cannot be undone.",
+          "ပြန်ပြင်၍ မရတော့ပါ။",
+        )),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(d).pop(false),
+            child: Text(tr(d, "Cancel", "မလုပ်တော့")),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFDC2626)),
+            onPressed: () => Navigator.of(d).pop(true),
+            child: Text(tr(d, "Delete", "ဖျက်မည်")),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final repo = context.read<AppState>().repo;
+    try {
+      await repo.deletePost(widget.post.id);
+      if (!mounted) return;
+      setState(() => _deleted = true);
+      widget.onChanged?.call();
+    } catch (e) {
+      _toast("$e");
+    }
+  }
+
+  Future<void> _report() async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(tr(d, "Report post", "ပို့စ် တိုင်ကြားမည်")),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 3,
+          decoration: InputDecoration(
+            hintText: tr(d, "What is wrong with it?",
+                "ဘာဖြစ်လို့ တိုင်ကြားတာလဲ?"),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(d).pop(),
+            child: Text(tr(d, "Cancel", "မလုပ်တော့")),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(d).pop(controller.text.trim()),
+            child: Text(tr(d, "Send", "ပို့မည်")),
+          ),
+        ],
+      ),
+    );
+    if (reason == null || reason.length < 3 || !mounted) return;
+    final repo = context.read<AppState>().repo;
+    try {
+      await repo.reportPost(widget.post.id, reason);
+      _toast(tr(context, "Reported — a moderator will review it.",
+          "တိုင်ကြားပြီးပါပြီ — စစ်ဆေးပေးပါလိမ့်မယ်။"));
+    } catch (e) {
+      _toast("$e");
     }
   }
 
@@ -105,6 +315,9 @@ class _PostCardState extends State<PostCard> {
 
   @override
   Widget build(BuildContext context) {
+    // A deleted post leaves nothing behind: the list it sits in may not have
+    // reloaded yet, and a card for a row that is gone would 404 on every tap.
+    if (_deleted) return const SizedBox.shrink();
     final p = widget.post;
     final name = p.author?.displayName ?? "Gwave user";
     return Card(
@@ -194,7 +407,11 @@ class _PostCardState extends State<PostCard> {
                     ],
                   ),
                 ),
-                const Icon(Icons.more_horiz, color: GwColors.inkSoft),
+                IconButton(
+                  icon: const Icon(Icons.more_horiz, color: GwColors.inkSoft),
+                  tooltip: tr(context, "More", "နောက်ထပ်"),
+                  onPressed: _openMenu,
+                ),
               ],
             ),
             // A live announcement post carries a gwave.cc/live/<id> link.
@@ -202,37 +419,37 @@ class _PostCardState extends State<PostCard> {
             // not content: show the live video card (auto-playing preview,
             // LIVE/REPLAY badge, title, watch row) — no URL, like the big
             // platforms. Anything the user typed themselves still shows.
-            if (_liveStreamId(p.content) != null) ...[
-              if (_liveExtraText(p.content).isNotEmpty) ...[
+            if (_liveStreamId(_content) != null) ...[
+              if (_liveExtraText(_content).isNotEmpty) ...[
                 const SizedBox(height: 12),
-                _RichPostBody(content: _liveExtraText(p.content)),
+                _RichPostBody(content: _liveExtraText(_content)),
               ],
               const SizedBox(height: 12),
-              _LiveBanner(streamId: _liveStreamId(p.content)!),
+              _LiveBanner(streamId: _liveStreamId(_content)!),
             ]
             // A shared listing carries a gwave.cc/shop/<id> link. Same rule as
             // live: the URL is plumbing, so show the product itself — photo,
             // title, price, Buy — and never the raw link.
-            else if (_shopProductId(p.content) != null) ...[
-              if (_shopExtraText(p.content).isNotEmpty) ...[
+            else if (_shopProductId(_content) != null) ...[
+              if (_shopExtraText(_content).isNotEmpty) ...[
                 const SizedBox(height: 12),
-                _RichPostBody(content: _shopExtraText(p.content)),
+                _RichPostBody(content: _shopExtraText(_content)),
               ],
               const SizedBox(height: 12),
-              _ProductBanner(productId: _shopProductId(p.content)!),
+              _ProductBanner(productId: _shopProductId(_content)!),
             ]
             // A shared quake renders as an alert card — magnitude, place and
             // the safety guide — never as a URL.
-            else if (_quakeInfo(p.content) != null) ...[
-              if (_quakeExtraText(p.content).isNotEmpty) ...[
+            else if (_quakeInfo(_content) != null) ...[
+              if (_quakeExtraText(_content).isNotEmpty) ...[
                 const SizedBox(height: 12),
-                _RichPostBody(content: _quakeExtraText(p.content)),
+                _RichPostBody(content: _quakeExtraText(_content)),
               ],
               const SizedBox(height: 12),
-              _QuakePostCard(info: _quakeInfo(p.content)!),
-            ] else if (p.content.trim().isNotEmpty) ...[
+              _QuakePostCard(info: _quakeInfo(_content)!),
+            ] else if (_content.trim().isNotEmpty) ...[
               const SizedBox(height: 12),
-              _RichPostBody(content: p.content),
+              _RichPostBody(content: _content),
             ],
             // Video posts play inline (muted autoplay, tap for sound); an image
             // widget can't render a video, so this must come before firstImage.
@@ -302,7 +519,7 @@ class _PostCardState extends State<PostCard> {
                     GwColors.inkSoft, _openComments),
                 _action(Icons.share_outlined, "Share", GwColors.inkSoft, () {
                   final p = widget.post;
-                  final text = p.content.trim();
+                  final text = _content.trim();
                   showShareSheet(
                     context,
                     url: "https://gwave.cc/p/${p.id}",

@@ -614,6 +614,40 @@ class Repository {
     });
   }
 
+  /// Edit my own post. The `author_id` filter is belt-and-braces next to RLS:
+  /// a PATCH that matched nothing would otherwise look like success.
+  Future<void> editPost(String postId, String content) async {
+    final me = api.session?.profileId;
+    if (me == null) throw ApiException("Not signed in.");
+    await api.update(
+      "posts",
+      {"content": content},
+      filter: {"id": "eq.$postId", "author_id": "eq.$me"},
+    );
+  }
+
+  /// Delete my own post. Media rows and reactions cascade in the schema.
+  Future<void> deletePost(String postId) async {
+    final me = api.session?.profileId;
+    if (me == null) throw ApiException("Not signed in.");
+    await api.deleteRows(
+      "posts",
+      filter: {"id": "eq.$postId", "author_id": "eq.$me"},
+    );
+  }
+
+  /// Report someone else's post to the moderation queue (same `reports` table
+  /// the web writes to, so one queue serves both).
+  Future<void> reportPost(String postId, String reason) async {
+    final me = api.session?.profileId;
+    if (me == null) throw ApiException("Not signed in.");
+    await api.insert("reports", {
+      "reporter_id": me,
+      "post_id": postId,
+      "reason": reason.trim(),
+    });
+  }
+
   Future<void> deleteProduct(String productId) async {
     await api.deleteRows("shop_products", filter: {
       "id": "eq.$productId",

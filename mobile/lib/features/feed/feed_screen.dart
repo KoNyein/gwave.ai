@@ -266,7 +266,7 @@ class _FeedScreenState extends State<FeedScreen> {
         }
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: PostCard(post: _posts[idx]),
+          child: PostCard(post: _posts[idx], onChanged: () => _load(reset: true)),
         );
       },
     );
