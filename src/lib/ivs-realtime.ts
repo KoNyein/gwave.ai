@@ -90,11 +90,28 @@ export async function mintIvsStageToken(opts: {
  * Start a composite recording of the stage to S3. Returns the composition ARN
  * (needed to stop it), or null when recording isn't configured / fails — a
  * recording failure must never block going live.
+ *
+ * It must not block going live, but it must not be *silent* either. This
+ * swallowed its errors completely, and a malformed
+ * `IVS_RT_ENCODER_CONFIG_ARN` therefore cost hours to find: every browser
+ * broadcast recorded nothing, the row looked normal, and the one thing that
+ * knew why — a ValidationException naming the exact field — was thrown away
+ * inside an empty `catch`. AWS says precisely what is wrong; the only reason
+ * nobody could read it was that we discarded it.
  */
 export async function startIvsComposition(
   stageArn: string,
 ): Promise<string | null> {
-  if (!ivsRtRecordingConfigured()) return null;
+  if (!ivsRtRecordingConfigured()) {
+    // Not an error — recording is optional — but say so once, because "no
+    // replay ever appears" and "recording is switched off" look identical
+    // from the outside.
+    console.info(
+      "[ivs-rt] Recording skipped: IVS_RT_STORAGE_CONFIG_ARN / " +
+        "IVS_RT_ENCODER_CONFIG_ARN are not both set.",
+    );
+    return null;
+  }
   try {
     const res = await rtClient().send(
       new StartCompositionCommand({
@@ -110,7 +127,11 @@ export async function startIvsComposition(
       }),
     );
     return res.composition?.arn ?? null;
-  } catch {
+  } catch (e) {
+    console.warn(
+      "[ivs-rt] StartComposition failed — this broadcast will have no replay:",
+      e instanceof Error ? e.message : e,
+    );
     return null;
   }
 }
@@ -135,7 +156,14 @@ export async function stopIvsComposition(
   const client = rtClient();
   await client
     .send(new StopCompositionCommand({ arn: compositionArn }))
-    .catch(() => undefined);
+    // A composition that has already stopped on its own is fine; anything
+    // else is worth knowing about, since the recording may be incomplete.
+    .catch((e: unknown) =>
+      console.warn(
+        "[ivs-rt] StopComposition failed:",
+        e instanceof Error ? e.message : e,
+      ),
+    );
   try {
     // Read the prefix before the composition record is garbage-collected.
     const res = await client.send(
@@ -147,7 +175,11 @@ export async function stopIvsComposition(
     return {
       recordingPath: await readIvsRecordingManifest(s3.recordingPrefix),
     };
-  } catch {
+  } catch (e) {
+    console.warn(
+      "[ivs-rt] Could not resolve the recording path:",
+      e instanceof Error ? e.message : e,
+    );
     return { recordingPath: null };
   }
 }
