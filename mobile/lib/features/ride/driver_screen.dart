@@ -54,6 +54,8 @@ class _DriverScreenState extends State<DriverScreen> {
   DateTime? _offerExpires;
 
   StreamSubscription<Position>? _positions;
+  Timer? _keepalive;
+  Position? _lastPos;
   Timer? _tick;
   Timer? _tripPoll;
   RealtimeClient? _rt;
@@ -68,6 +70,7 @@ class _DriverScreenState extends State<DriverScreen> {
   @override
   void dispose() {
     _positions?.cancel();
+    _keepalive?.cancel();
     _tick?.cancel();
     _tripPoll?.cancel();
     _inbox?.unsubscribe();
@@ -152,8 +155,7 @@ class _DriverScreenState extends State<DriverScreen> {
         );
         await _startLocation();
       } else {
-        await _positions?.cancel();
-        _positions = null;
+        await _stopLocation();
         final pos = await _currentPosition();
         await _api.rideHeartbeat(
           lat: pos?.latitude ?? 0,
@@ -189,15 +191,28 @@ class _DriverScreenState extends State<DriverScreen> {
     }
   }
 
-  /// The heartbeat, as a distance-filtered position stream inside a foreground
-  /// service.
+  /// The heartbeat: a distance-filtered position stream plus a keepalive tick,
+  /// both inside the foreground service.
   ///
-  /// `distanceFilter` rather than a timer: a driver parked at a taxi rank does
-  /// not need to send the same coordinates every four seconds, and the phone
-  /// battery is the thing that ends their shift early. Movement is what the
-  /// dispatcher cares about.
+  /// Two signals travel on the same call and they need different triggers.
+  /// *Where the driver is* only changes when they move, so the stream is
+  /// distance-filtered — a car crawling in traffic does not need to resend the
+  /// same coordinates, and battery is what ends a shift early.
+  ///
+  /// *That the driver still exists* has nothing to do with movement, and the
+  /// first version of this got that wrong: with only the distance filter, a
+  /// driver waiting at a rank sent one heartbeat when they went online and
+  /// then nothing, so the sweeper marked them offline three minutes later. The
+  /// driver most likely to take the next ride was the one guaranteed to stop
+  /// receiving offers.
+  ///
+  /// So the keepalive re-sends the last known position every 30s regardless of
+  /// movement. It costs one small POST a minute per driver and it is the only
+  /// thing keeping a stationary driver in the dispatch pool.
   Future<void> _startLocation() async {
     await _positions?.cancel();
+    _keepalive?.cancel();
+
     _positions = Geolocator.getPositionStream(
       locationSettings: AndroidSettings(
         accuracy: LocationAccuracy.high,
@@ -213,18 +228,42 @@ class _DriverScreenState extends State<DriverScreen> {
         ),
       ),
     ).listen((pos) {
-      _api
-          .rideHeartbeat(
-            lat: pos.latitude,
-            lng: pos.longitude,
-            heading: pos.heading >= 0 ? pos.heading : null,
-            speed: pos.speed >= 0 ? pos.speed : null,
-            accuracy: pos.accuracy,
-          )
-          // A dropped heartbeat is normal on a bad connection and the next one
-          // is seconds away — never surface it as an error mid-shift.
-          .catchError((_) => <String, dynamic>{});
+      _lastPos = pos;
+      _beat(pos);
     });
+
+    // Send one immediately so going online does not depend on moving first.
+    final now = await _currentPosition();
+    if (now != null) {
+      _lastPos = now;
+      _beat(now);
+    }
+
+    _keepalive = Timer.periodic(const Duration(seconds: 30), (_) {
+      final pos = _lastPos;
+      if (pos != null) _beat(pos);
+    });
+  }
+
+  void _beat(Position pos) {
+    _api
+        .rideHeartbeat(
+          lat: pos.latitude,
+          lng: pos.longitude,
+          heading: pos.heading >= 0 ? pos.heading : null,
+          speed: pos.speed >= 0 ? pos.speed : null,
+          accuracy: pos.accuracy,
+        )
+        // A dropped heartbeat is normal on a bad connection and the next one is
+        // seconds away — never surface it as an error mid-shift.
+        .catchError((_) => <String, dynamic>{});
+  }
+
+  Future<void> _stopLocation() async {
+    _keepalive?.cancel();
+    _keepalive = null;
+    await _positions?.cancel();
+    _positions = null;
   }
 
   // ---- Offers -------------------------------------------------------------
