@@ -57,6 +57,9 @@ class _DriverScreenState extends State<DriverScreen> {
   DateTime? _offerExpires;
 
   Timer? _tick;
+  /// Refreshes the "last update" line while online. Cheap, and the only way
+  /// that line stays honest.
+  Timer? _beatTick;
   Timer? _tripPoll;
   RealtimeClient? _rt;
   RealtimeChannel? _inbox;
@@ -64,6 +67,9 @@ class _DriverScreenState extends State<DriverScreen> {
   @override
   void initState() {
     super.initState();
+    _beatTick = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted && _online) setState(() {});
+    });
     _load();
   }
 
@@ -71,6 +77,7 @@ class _DriverScreenState extends State<DriverScreen> {
   void dispose() {
     // Deliberately does NOT stop [DriverPresence]. Leaving this screen is not
     // going offline; only the switch is.
+    _beatTick?.cancel();
     _tick?.cancel();
     _tripPoll?.cancel();
     _inbox?.unsubscribe();
@@ -649,6 +656,10 @@ class _DriverScreenState extends State<DriverScreen> {
                     style: TextStyle(
                         color: GwColors.inkSoftOf(context), fontSize: 12.5),
                   ),
+                  if (_online) ...[
+                    const SizedBox(height: 3),
+                    _beatLine(),
+                  ],
                 ],
               ),
             ),
@@ -663,6 +674,50 @@ class _DriverScreenState extends State<DriverScreen> {
           ],
         ),
       );
+
+  /// "Online" is a claim, and this is the evidence for it.
+  ///
+  /// The switch used to say online while nothing was reaching the server, and
+  /// the only way to find that out was to query the database. A driver waiting
+  /// for work that is never going to arrive deserves to see why on the screen
+  /// they are already looking at.
+  Widget _beatLine() {
+    final presence = DriverPresence.instance;
+    final at = presence.lastBeatAt;
+    final err = presence.lastBeatError;
+    final bad = at == null ||
+        DateTime.now().difference(at) > const Duration(seconds: 90);
+    final text = at == null
+        ? (err != null
+            ? "Not reaching the server yet"
+            : "Waiting for your location…")
+        : "Last update ${_ago(DateTime.now().difference(at))}";
+    return Row(
+      children: [
+        Icon(bad ? Icons.error_outline : Icons.check_circle,
+            size: 12,
+            color: bad ? GwColors.live : GwColors.primaryBright),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11.5,
+              color: bad ? GwColors.live : GwColors.inkSoftOf(context),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _ago(Duration d) {
+    if (d.inSeconds < 60) return "${d.inSeconds}s ago";
+    if (d.inMinutes < 60) return "${d.inMinutes}m ago";
+    return "${d.inHours}h ago";
+  }
 }
 
 // ---- Cards ----------------------------------------------------------------

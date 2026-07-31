@@ -40,6 +40,18 @@ class DriverPresence {
   /// The last position we managed to read, if any.
   Position? get lastPosition => _lastPos;
 
+  /// When the server last accepted a heartbeat. Shown on the driver screen:
+  /// "online" with no recent beat is the exact state that used to fail
+  /// silently, and it should be readable from the phone rather than only from
+  /// the database.
+  DateTime? get lastBeatAt => _lastBeatAt;
+
+  /// Why the last heartbeat failed, if it did. Null while things are working.
+  String? get lastBeatError => _lastBeatError;
+
+  DateTime? _lastBeatAt;
+  String? _lastBeatError;
+
   /// Start beating.
   ///
   /// Two signals travel on the same call and they need different triggers.
@@ -98,7 +110,21 @@ class DriverPresence {
     _positions = null;
   }
 
+  /// Send one heartbeat.
+  ///
+  /// `online: true` on **every** beat, not just when the switch is flipped.
+  /// The heartbeat *is* the statement "I am here and taking rides", and the
+  /// server sweeper marks stale drivers offline — so with the flag omitted,
+  /// one missed window (a tunnel, a locked phone, an app the OS paused) set
+  /// `is_online = false` and nothing could ever set it back. The app kept
+  /// beating, the switch still read "online", the position kept updating, and
+  /// the driver was invisible to dispatch until they noticed and toggled the
+  /// switch by hand. Nobody notices that.
+  ///
+  /// The server still decides `is_available` — a driver mid-trip is online but
+  /// not available — so this cannot put a busy driver back in the pool.
   void _beat(ApiClient api, Position pos) {
+    if (!_running) return;
     api
         .rideHeartbeat(
           lat: pos.latitude,
@@ -106,10 +132,19 @@ class DriverPresence {
           heading: pos.heading >= 0 ? pos.heading : null,
           speed: pos.speed >= 0 ? pos.speed : null,
           accuracy: pos.accuracy,
+          online: true,
         )
+        .then((_) {
+          _lastBeatAt = DateTime.now();
+          _lastBeatError = null;
+        })
         // A dropped heartbeat is normal on a bad connection and the next one is
-        // seconds away — never surface it as an error mid-shift.
-        .catchError((_) => <String, dynamic>{});
+        // seconds away — never interrupt a shift with it. But do keep the
+        // reason, so the driver screen can say why it has gone quiet.
+        .catchError((Object e) {
+          _lastBeatError = e.toString();
+          return <String, dynamic>{};
+        });
   }
 }
 
