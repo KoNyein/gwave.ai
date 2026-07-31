@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -621,14 +622,27 @@ class _ChatScreenState extends State<ChatScreen> {
       await _confirmWebCall(withVideo ? "Video call" : "Audio call");
       return;
     }
-    final ok = await context
-        .read<CallService>()
-        .startCall(other, widget.conversation.id, withVideo: withVideo);
-    if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text("Microphone / camera permission is required to call."),
-      ));
-    }
+    final calls = context.read<CallService>();
+    final ok =
+        await calls.startCall(other, widget.conversation.id, withVideo: withVideo);
+    if (ok || !mounted) return;
+
+    // Say what actually went wrong — the service already worked it out — and,
+    // when Android has stopped showing the permission dialog, give the user
+    // the only thing that can fix it instead of the same refusal again.
+    final message = calls.lastError ??
+        tr(context, "Microphone / camera permission is required to call.",
+            "ခေါ်ဆိုရန် မိုက်ခရိုဖုန်း / ကင်မရာ ခွင့်ပြုချက် လိုအပ်ပါသည်။");
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      duration: const Duration(seconds: 6),
+      action: calls.permissionPermanentlyDenied
+          ? SnackBarAction(
+              label: tr(context, "Settings", "ဆက်တင်"),
+              onPressed: () => openAppSettings(),
+            )
+          : null,
+    ));
   }
 
   @override

@@ -51,6 +51,19 @@ class CallService extends ChangeNotifier {
   String? _callId;
   String? _conversationId;
   bool _isCaller = false;
+
+  /// True while [_teardown] is running, so overlapping end-of-call events
+  /// cannot each write their own call-log message.
+  bool _tearingDown = false;
+
+  /// The last call whose log message was written, so a late duplicate event
+  /// cannot append a second one.
+  String? _lastLoggedCallId;
+
+  /// Set when Android reports the mic/camera permission as permanently
+  /// denied — the request dialog will never appear again, so the UI has to
+  /// send the user to app settings instead of repeating the same snackbar.
+  bool permissionPermanentlyDenied = false;
   bool video = false;
   bool muted = false;
   bool cameraOff = false;
@@ -591,8 +604,22 @@ class CallService extends ChangeNotifier {
             if (_sigRx.where((e) => e == "ice").length < 3) _sigRx.add("ice");
             _onIce(b);
           })
-      ..onBroadcast(event: "decline", callback: (_) => _teardown(log: true))
-      ..onBroadcast(event: "hangup", callback: (_) => _teardown(log: true));
+      // These two used to take every event, including the one this device had
+      // just sent — the server relay echoes back to the sender, which is why a
+      // single hang-up wrote two or three call-log messages. They now drop
+      // their own echo exactly like accept/offer/answer/ice above.
+      ..onBroadcast(
+          event: "decline",
+          callback: (p) {
+            if (_ownSignal(_sigBody(p))) return;
+            _teardown(log: true);
+          })
+      ..onBroadcast(
+          event: "hangup",
+          callback: (p) {
+            if (_ownSignal(_sigBody(p))) return;
+            _teardown(log: true);
+          });
     ch.subscribe((status, [error]) {
       if (status == RealtimeSubscribeStatus.subscribed &&
           !ready.isCompleted) {
@@ -903,10 +930,19 @@ class CallService extends ChangeNotifier {
   // ---- Teardown -------------------------------------------------------------
 
   Future<void> _teardown({required bool log}) async {
+    // Re-entrancy guard. Several paths can end one call at nearly the same
+    // moment — a local hang-up, the peer's hangup broadcast, the relay, the
+    // ring watchdog — and this method awaits before it clears the fields the
+    // log is built from. Two overlapping runs therefore both saw a live
+    // conversation id and both wrote a message. One call, one teardown.
+    if (_tearingDown) return;
+    _tearingDown = true;
+
     final wasCaller = _isCaller;
     final convo = _conversationId;
     final wasVideo = video;
     final connected = _connectedAt;
+    final endedCallId = _callId;
 
     // A call that had a peer connection but never reached "connected" is the
     // failure we keep chasing — say why in the server log before the evidence
@@ -946,7 +982,12 @@ class CallService extends ChangeNotifier {
     _sdpError = "";
 
     // One call-log message per call, written by the caller (mirrors the web).
-    if (log && wasCaller && convo != null) {
+    // Keyed on the call id as well as the guard above, so even a teardown that
+    // arrives long after the first one cannot append a duplicate.
+    final alreadyLogged =
+        endedCallId != null && endedCallId == _lastLoggedCallId;
+    if (log && wasCaller && convo != null && !alreadyLogged) {
+      _lastLoggedCallId = endedCallId;
       final kind = wasVideo ? "Video" : "Audio";
       final content = connected != null
           ? "📞 $kind call · ${_fmt(DateTime.now().difference(connected).inSeconds)}"
@@ -961,6 +1002,7 @@ class CallService extends ChangeNotifier {
     _callId = null;
     _conversationId = null;
     _isCaller = false;
+    _tearingDown = false;
     video = false;
     muted = false;
     cameraOff = false;
@@ -978,6 +1020,12 @@ class CallService extends ChangeNotifier {
     final needed = <Permission>[Permission.microphone];
     if (withVideo) needed.add(Permission.camera);
     final result = await needed.request();
+    // "Permanently denied" is the state that traps people: Android stops
+    // showing the dialog, so request() returns denied instantly and the user
+    // sees the same refusal forever with no way to fix it. Flag it so the UI
+    // can offer app settings rather than repeating itself.
+    permissionPermanentlyDenied =
+        result.values.any((s) => s.isPermanentlyDenied);
     return result.values.every((s) => s.isGranted);
   }
 

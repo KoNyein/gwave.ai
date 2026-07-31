@@ -4,9 +4,11 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/call_service.dart';
+import '../../core/i18n.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
@@ -450,6 +452,16 @@ class _CallOverlayState extends State<CallOverlay>
           content: Text(err),
           duration: const Duration(seconds: 8),
           backgroundColor: GwColors.live,
+          // Once Android marks the permission permanently denied it stops
+          // showing the dialog, so telling the user to allow it is useless
+          // without a way to get to the switch.
+          action: call.permissionPermanentlyDenied
+              ? SnackBarAction(
+                  label: tr(context, "Settings", "ဆက်တင်"),
+                  textColor: Colors.white,
+                  onPressed: () => openAppSettings(),
+                )
+              : null,
         ));
       });
     } else if (err == null) {
