@@ -51,6 +51,24 @@
 
 ## Changelog
 
+- 2026-07-31 (app): **Ride hailing, passenger side.** One screen, a full-bleed
+  map, and a bottom sheet whose contents follow the trip's state — not a page
+  per step, because pushing a route for "choose vehicle" and another for
+  "searching" rebuilds the map each time and throws the camera away, so the
+  pickup pin jumps around underneath the rider while they are confirming where
+  it is. The screen mirrors the server's state machine rather than keeping one
+  of its own, so the UI cannot reach a state the database disagrees with.
+  While a ride is live it polls `/api/ride/{id}` every 3s — that poll is also
+  the dispatcher's clock server-side — and subscribes to `ride:{rideId}` for
+  the driver's position between polls, so the car glides instead of jumping.
+  A trip survives the app being killed: `/api/ride/active` on open rejoins it,
+  without which a rider reopens Gwave to a fresh booking screen while a driver
+  is on the way to them. Surge is labelled on the vehicle row rather than
+  folded into the number, and a failed wallet charge is shown on the receipt
+  instead of becoming a silent support ticket. Reached from Menu → Places &
+  Safety → Ride. **Needs `db/sql/ride-hailing.sql` + the `feat/ride-hailing`
+  server branch merged before it does anything.**
+
 - 2026-07-31 (app, v1.0.236): **The post "…" button now actually does
   something.** It was a `const Icon` — no handler at all — so the app had never
   had a way to edit or delete a post; the menu simply did not exist. It is now

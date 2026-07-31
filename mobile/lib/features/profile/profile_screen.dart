@@ -32,6 +32,7 @@ import '../knowledge/strains_screen.dart';
 import '../learn/learn_screen.dart';
 import '../map/map_screen.dart';
 import '../market/market_screen.dart';
+import '../ride/ride_screen.dart';
 import '../pos/pos_sell_screen.dart';
 import '../settings/settings_screen.dart';
 import '../talk/talk_screen.dart';
@@ -246,6 +247,8 @@ class ProfileScreen extends StatelessWidget {
             native: _Native.family),
         _MenuEntry(Icons.map_outlined, tr(context, "Map", "မြေပုံ"),
             native: _Native.map),
+        _MenuEntry(Icons.local_taxi_outlined, tr(context, "Ride", "ကားခေါ်ရန်"),
+            native: _Native.ride),
         _MenuEntry(Icons.radar, tr(context, "Drone radar", "ဒရုန်းရေဒါ"),
             native: _Native.drone),
         _MenuEntry(Icons.emergency_outlined, "SOS", native: _Native.map),
@@ -519,6 +522,9 @@ class ProfileScreen extends StatelessWidget {
       case _Native.market:
         _push(context, const MarketScreen());
         return;
+      case _Native.ride:
+        _push(context, const RideScreen());
+        return;
       case _Native.dating:
         _push(context, const DatingScreen());
         return;
@@ -582,6 +588,7 @@ enum _Native {
   boost,
   health,
   drone,
+  ride,
   audio,
   wellness,
   myprofile,

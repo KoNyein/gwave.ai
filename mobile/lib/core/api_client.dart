@@ -798,6 +798,122 @@ class ApiClient {
         .cast<Map<String, dynamic>>();
   }
 
+  // ---- Ride hailing ---------------------------------------------------------
+  // Everything goes through /api/ride/* rather than PostgREST: the ride tables
+  // have RLS with zero policies, so this is the only door. See docs/RIDE.md.
+
+  /// Price a trip for every vehicle type in one call.
+  Future<Map<String, dynamic>> rideQuote({
+    required double fromLat,
+    required double fromLng,
+    required double toLat,
+    required double toLng,
+  }) =>
+      _mobilePost("/api/ride/quote", {
+        "pickup": {"lat": fromLat, "lng": fromLng},
+        "dropoff": {"lat": toLat, "lng": toLng},
+      });
+
+  /// Book a ride. [expectedFare] is what the rider was shown — the server
+  /// rejects the booking with `fare_changed` if the price has since drifted,
+  /// rather than silently charging the new one.
+  Future<Map<String, dynamic>> rideRequest({
+    required String vehicleType,
+    required double fromLat,
+    required double fromLng,
+    required String fromAddress,
+    required double toLat,
+    required double toLng,
+    required String toAddress,
+    required String paymentMethod,
+    num? expectedFare,
+    String? note,
+  }) async {
+    final j = await _mobilePost("/api/ride/request", {
+      "vehicleType": vehicleType,
+      "pickup": {"lat": fromLat, "lng": fromLng, "address": fromAddress},
+      "dropoff": {"lat": toLat, "lng": toLng, "address": toAddress},
+      "paymentMethod": paymentMethod,
+      if (expectedFare != null) "expectedFare": expectedFare,
+      if (note != null && note.isNotEmpty) "note": note,
+    });
+    return Map<String, dynamic>.from(j["ride"] as Map);
+  }
+
+  /// One ride plus the other party's card.
+  ///
+  /// For the rider this call is not just a read: each one advances the driver
+  /// search by a step server-side, which is why the ride screen polls it while
+  /// waiting instead of sitting on a socket. See lib/ride/dispatch.ts.
+  Future<Map<String, dynamic>> rideGet(String rideId) =>
+      _mobileGet("/api/ride/$rideId");
+
+  /// What the signed-in user is in the middle of, as rider or as driver.
+  /// Called on app start so a killed app can rejoin a trip in progress.
+  Future<Map<String, dynamic>> rideActive() => _mobileGet("/api/ride/active");
+
+  Future<Map<String, dynamic>> rideCancel(String rideId, {String? reason}) =>
+      _mobilePost("/api/ride/$rideId/cancel", {
+        if (reason != null && reason.isNotEmpty) "reason": reason,
+      });
+
+  Future<void> rideRate(String rideId, int rating, {String? comment}) =>
+      _mobilePost("/api/ride/$rideId/rate", {
+        "rating": rating,
+        if (comment != null && comment.isNotEmpty) "comment": comment,
+      });
+
+  /// Driver: move the trip forward. `arrived` | `in_progress` | `completed`.
+  Future<Map<String, dynamic>> rideSetStatus(
+    String rideId,
+    String status, {
+    int? distanceM,
+    int? durationS,
+  }) async {
+    final j = await _mobilePost("/api/ride/$rideId/status", {
+      "status": status,
+      if (distanceM != null) "distanceM": distanceM,
+      if (durationS != null) "durationS": durationS,
+    });
+    return Map<String, dynamic>.from(j["ride"] as Map);
+  }
+
+  /// Driver: answer an offer. Returns false when another driver got there
+  /// first — a lost race, not an error worth showing as one.
+  Future<bool> rideRespondOffer(String rideId, {required bool accept}) async {
+    try {
+      await _mobilePost("/api/ride/offers/respond", {
+        "rideId": rideId,
+        "action": accept ? "accept" : "decline",
+      });
+      return true;
+    } on ApiException catch (e) {
+      if (e.status == 409) return false;
+      rethrow;
+    }
+  }
+
+  /// Driver: position heartbeat. [online] toggles Driver Mode; omit it to send
+  /// a position without changing the switch.
+  Future<Map<String, dynamic>> rideHeartbeat({
+    required double lat,
+    required double lng,
+    double? heading,
+    double? speed,
+    double? accuracy,
+    int? batteryPct,
+    bool? online,
+  }) =>
+      _mobilePost("/api/ride/driver/heartbeat", {
+        "lat": lat,
+        "lng": lng,
+        if (heading != null) "heading": heading,
+        if (speed != null) "speed": speed,
+        if (accuracy != null) "accuracy": accuracy,
+        if (batteryPct != null) "batteryPct": batteryPct,
+        if (online != null) "online": online,
+      });
+
   // ---- Live broadcasting ----------------------------------------------------
 
   Future<Map<String, dynamic>> _liveCall(
