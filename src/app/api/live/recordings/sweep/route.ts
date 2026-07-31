@@ -40,6 +40,24 @@ export const dynamic = "force-dynamic";
 const MAX_PER_SWEEP = 10;
 
 /**
+ * How long a row may claim to be live before we stop believing it.
+ *
+ * A row leaves `status='live'` when the host ends the broadcast or a webhook
+ * fires. Miss both — the browser tab closed, the phone died, the webhook was
+ * never wired — and the row says "live" forever. One from a week ago was still
+ * sitting at the top of the Live page under a pulsing LIVE badge with a viewer
+ * count, playing nothing, on both web and the app.
+ *
+ * The read paths know to ignore those, but *knowing* is not the same as
+ * *fixing*: every surface has to remember, the Flutter app can only be
+ * corrected by shipping a new APK, and the row keeps lying to anything new.
+ * Correcting the data fixes all of them at once and needs no release.
+ *
+ * Matches STALE_LIVE_HOURS in lib/db/live.ts.
+ */
+const STALE_LIVE_HOURS = 12;
+
+/**
  * Give a recording a moment to exist before asking for it. Below this the end
  * route has usually just looked and failed, and asking again immediately only
  * spends S3 calls to learn the same thing.
@@ -137,10 +155,51 @@ export async function POST(request: NextRequest) {
     linked += 1;
   }
 
+  const endedGhosts = await endStaleLives(admin);
+
   return NextResponse.json({
     scanned: rows.length,
     linked,
     stillMissing: still.length,
+    endedGhosts,
     lookbackHours: hours,
   });
+}
+
+/**
+ * Mark rows that have claimed to be live for longer than any real broadcast
+ * lasts as ended. Returns how many were corrected.
+ *
+ * `ended_at` is set to the row's own `started_at` rather than now: the
+ * broadcast did not end at the moment a cron noticed, and stamping it with the
+ * discovery time would invent hours of runtime that never happened.
+ */
+async function endStaleLives(
+  admin: ReturnType<typeof createAdminClient>,
+): Promise<number> {
+  const cutoff = new Date(
+    Date.now() - STALE_LIVE_HOURS * 3600_000,
+  ).toISOString();
+  const { data, error } = await admin
+    .from("live_streams")
+    .select("id, started_at")
+    .eq("status", "live")
+    .lt("started_at", cutoff)
+    .limit(50)
+    .returns<{ id: string; started_at: string | null }[]>();
+  if (error || !data?.length) return 0;
+
+  let fixed = 0;
+  for (const row of data) {
+    const { error: upErr } = await admin
+      .from("live_streams")
+      .update({ status: "ended", ended_at: row.started_at ?? cutoff })
+      .eq("id", row.id)
+      .eq("status", "live");
+    if (!upErr) fixed += 1;
+  }
+  if (fixed > 0) {
+    console.info(`[live/sweep] ended ${fixed} stale live row(s)`);
+  }
+  return fixed;
 }
