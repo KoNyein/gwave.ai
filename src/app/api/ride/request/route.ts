@@ -54,8 +54,16 @@ export async function POST(request: NextRequest) {
 
   const parsed = requestSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
+    // Name the fields that failed. The first version of this route returned
+    // only "Pickup, dropoff, vehicle type and payment method are required.",
+    // which told a rider nothing and told support less — a booking that fails
+    // for one bad field looked identical to one that never sent a body at all.
+    const fields = [...new Set(parsed.error.issues.map((i) => i.path.join(".")))];
     return NextResponse.json(
-      { error: "Pickup, dropoff, vehicle type and payment method are required." },
+      {
+        error: `Can't book this ride — check: ${fields.join(", ")}`,
+        details: fields,
+      },
       { status: 400 },
     );
   }
