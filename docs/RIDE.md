@@ -138,6 +138,7 @@ chose to stop): merging them hides a supply problem inside a demand statistic.
 | `POST /api/ride/[id]/share` | rider | Mint the public follow link |
 | `GET /api/ride/track/[token]` | **public** | Thin trip state for a follower |
 | `/ride/track/[token]` | **public** | The follower's page |
+| `/admin/drivers` | admin | The approval queue |
 
 Realtime channels: `ride:{rideId}` (both parties, plus `driver_position`) and
 `ride-driver:{driverId}` (offers).
@@ -200,8 +201,6 @@ page is `noindex`.
 
 ## Still to build
 
-- A web admin page for the approval queue (the API is done; today an admin
-  would be calling it by hand).
 - Address search. Destinations are set by tapping the map — there is no
   geocoder, so an address box would be a field that does nothing.
 - Driver commission settlement from the app (`ride_driver_settle` exists and is
