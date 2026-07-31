@@ -135,6 +135,25 @@ jobs:
                   '    <application',
                   1,
               )
+          # Driver Mode's location foreground service (geolocator's
+          # GeolocatorLocationService, declared by the plugin's own manifest).
+          # Android 14+ requires the per-type permission beside
+          # FOREGROUND_SERVICE or the service throws on start.
+          #
+          # This is deliberately a foreground service and NOT
+          # ACCESS_BACKGROUND_LOCATION: a driver's position is only collected
+          # while Driver Mode is on and a persistent notification is showing,
+          # which keeps the app out of Play Store's background-location review
+          # — the review that most often rejects ride apps. Do not add the
+          # background permission to "make it more reliable".
+          if 'android.permission.FOREGROUND_SERVICE_LOCATION' not in s:
+              s = s.replace(
+                  '<application',
+                  '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n'
+                  '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />\n'
+                  '    <application',
+                  1,
+              )
           # Android 13+ runtime notification permission — needed for FCM push
           # (incoming-call wake) to show anything. Harmless on older versions.
           if 'android.permission.POST_NOTIFICATIONS' not in s:

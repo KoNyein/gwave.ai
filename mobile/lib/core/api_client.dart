@@ -914,6 +914,16 @@ class ApiClient {
         if (online != null) "online": online,
       });
 
+  /// Apply to drive, or resubmit after a rejection. Always lands as `pending`
+  /// — the server refuses to let this route set a status.
+  Future<void> rideDriverApply(Map<String, dynamic> body) =>
+      _mobilePost("/api/ride/driver/apply", body);
+
+  /// My driver profile, balance and today's earnings. `driver` is null when
+  /// the signed-in user has never applied.
+  Future<Map<String, dynamic>> rideDriverMe() =>
+      _mobileGet("/api/ride/driver/apply");
+
   // ---- Live broadcasting ----------------------------------------------------
 
   Future<Map<String, dynamic>> _liveCall(

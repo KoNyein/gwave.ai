@@ -51,6 +51,21 @@
 
 ## Changelog
 
+- 2026-07-31 (app): **Driver Mode.** Apply to drive (three documents,
+  resubmittable after a rejection), go online, take offers with a countdown,
+  run the trip with one button at a time, see today's earnings and what is
+  owed. Not a second APK — a mode behind an approved `ride_driver_profiles`
+  row, which costs no second signing key, release channel or pipeline.
+  **Location is a foreground service with a persistent notification, NOT
+  `ACCESS_BACKGROUND_LOCATION`**: background location triggers Play Store's
+  prominent-disclosure review, the most common reason ride apps get pulled, and
+  offers reach a sleeping screen over FCM anyway. The heartbeat is
+  distance-filtered rather than timed — a driver parked at a rank does not need
+  to resend the same coordinates, and battery is what ends a shift early.
+  Commission owed is shown even at zero, because a driver who only finds out
+  when offers stop assumes the app is broken. Navigation hands off to the maps
+  app the driver already uses.
+
 - 2026-07-31 (app): **Ride hailing, passenger side.** One screen, a full-bleed
   map, and a bottom sheet whose contents follow the trip's state — not a page
   per step, because pushing a route for "choose vehicle" and another for
