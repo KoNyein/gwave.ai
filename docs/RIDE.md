@@ -59,7 +59,12 @@ finds it.
 ```
 RIDE_OSRM_URL=http://127.0.0.1:5000
 RIDE_DISPATCH_SECRET=<openssl rand -hex 32>
-# Optional: switches routing to Google, at US$5/1,000 calls.
+# Optional: address search. Photon and Nominatim are both accepted and told
+# apart by their response shape, so this is one variable rather than two.
+# Without it, destination search still returns the rider's own past
+# destinations — which is most of what they want anyway.
+# RIDE_GEOCODER_URL=http://127.0.0.1:2322
+# Optional: switches routing AND place search to Google, at US$5/1,000 calls.
 # RIDE_GOOGLE_MAPS_KEY=
 ```
 
@@ -139,6 +144,9 @@ chose to stop): merging them hides a supply problem inside a demand statistic.
 | `GET /api/ride/track/[token]` | **public** | Thin trip state for a follower |
 | `/ride/track/[token]` | **public** | The follower's page |
 | `/admin/drivers` | admin | The approval queue |
+| `GET /api/ride/places` | rider | Destination search — history first, geocoder second |
+| `GET /api/ride/driver/settle` | driver | What is owed, and what the wallet holds |
+| `POST /api/ride/driver/settle` | driver | Pay commission from the wallet |
 
 Realtime channels: `ride:{rideId}` (both parties, plus `driver_position`) and
 `ride-driver:{driverId}` (offers).
@@ -199,9 +207,23 @@ minutes after (so a follower opening it a minute late reads "Arrived safely"
 rather than a 404 that looks like something went wrong), and then expires. The
 page is `noindex`.
 
+## Destination search
+
+The rider's own past destinations are searched first, always, and cost one
+indexed query. Most trips a person takes are somewhere they have already been;
+no geocoder answers a label somebody wrote for themselves; and every geocoder
+mangles Myanmar addresses. Their own history is both the cheapest source and
+the best one. Opening the screen with no query shows recent destinations, which
+is the list a rider wants at that moment.
+
+External results are appended and deduplicated against history (history wins —
+their own wording is what they will recognise), and only when a provider is
+configured. External search is skipped below three characters: one or two match
+everything and are almost always still being typed.
+
+With no provider at all, history-only search still works and the map is still
+tappable. That is the honest degradation.
+
 ## Still to build
 
-- Address search. Destinations are set by tapping the map — there is no
-  geocoder, so an address box would be a field that does nothing.
-- Driver commission settlement from the app (`ride_driver_settle` exists and is
-  tested; nothing calls it yet).
+- A rider's saved "Home" and "Work" places. History covers most of it today.
