@@ -54,6 +54,18 @@
 
 ## Changelog
 
+- 2026-07-31 (web): **A week-old broadcast pinned to the top of Live now.**
+  `listStreams()` applies a 12-hour staleness cutoff — and then `/live`
+  re-split the combined result on `status === "live"` alone, which put every
+  stale row straight back where the cutoff had removed it. A broadcast from
+  Jul 24 sat under a pulsing LIVE badge with a viewer count, playing nothing,
+  and was filtered *out* of Recent broadcasts — visible only in the one place
+  where it was a lie. The rule is now one exported `isBroadcastingNow()` used
+  by both halves. The sweeper also ends stale rows outright (`ended_at` = the
+  row's own `started_at`, not the moment a cron noticed), which corrects the
+  Flutter app too — it read the same ghost, and data is the only thing that
+  fixes a shipped APK without shipping another.
+
 - 2026-07-31 (web): **Browser broadcasts were unwatchable on phones.** Browser
   Go Live creates an IVS Real-Time *stage*, and a stage is a WebRTC SFU: only
   an IVS Real-Time SDK can subscribe to one, which the Flutter app has none of
