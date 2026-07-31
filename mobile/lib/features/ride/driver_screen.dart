@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:realtime_client/realtime_client.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -12,6 +11,7 @@ import '../../core/config.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import 'driver_apply_screen.dart';
+import 'driver_presence.dart';
 import 'ride_models.dart';
 
 /// Driver Mode — go online, take offers, run the trip, see the money.
@@ -32,6 +32,9 @@ import 'ride_models.dart';
 /// foreground service collects position only while Driver Mode is on and the
 /// driver can see that it is. Do not "fix" a missed offer by adding the
 /// background permission.
+///
+/// The heartbeat itself lives in [DriverPresence], not in this state object,
+/// because being online has to outlive this screen — see the note there.
 class DriverScreen extends StatefulWidget {
   const DriverScreen({super.key});
 
@@ -53,9 +56,6 @@ class _DriverScreenState extends State<DriverScreen> {
   Map<String, dynamic>? _offer;
   DateTime? _offerExpires;
 
-  StreamSubscription<Position>? _positions;
-  Timer? _keepalive;
-  Position? _lastPos;
   Timer? _tick;
   Timer? _tripPoll;
   RealtimeClient? _rt;
@@ -69,8 +69,8 @@ class _DriverScreenState extends State<DriverScreen> {
 
   @override
   void dispose() {
-    _positions?.cancel();
-    _keepalive?.cancel();
+    // Deliberately does NOT stop [DriverPresence]. Leaving this screen is not
+    // going offline; only the switch is.
     _tick?.cancel();
     _tripPoll?.cancel();
     _inbox?.unsubscribe();
@@ -123,7 +123,12 @@ class _DriverScreenState extends State<DriverScreen> {
         _startTicking();
       }
       if (_trip != null) _watchTrip();
-      if (_online) await _startLocation();
+      // The server says this driver is online. If the heartbeat is not actually
+      // running — a fresh app start, or a process the OS killed overnight —
+      // start it, or the switch would read "online" while nothing was beating.
+      if (_online && !DriverPresence.instance.running) {
+        await DriverPresence.instance.start(_api);
+      }
     } catch (_) {
       // Nothing to resume, or the server is briefly unreachable.
     }
@@ -139,7 +144,7 @@ class _DriverScreenState extends State<DriverScreen> {
     });
     try {
       if (value) {
-        final pos = await _currentPosition();
+        final pos = await currentDriverPosition();
         if (pos == null) {
           setState(() => _error =
               "Location permission is needed to go online. Allow it in Settings.");
@@ -153,10 +158,11 @@ class _DriverScreenState extends State<DriverScreen> {
           accuracy: pos.accuracy,
           online: true,
         );
-        await _startLocation();
+        await DriverPresence.instance.start(_api);
       } else {
-        await _stopLocation();
-        final pos = await _currentPosition();
+        await DriverPresence.instance.stop();
+        final pos =
+            DriverPresence.instance.lastPosition ?? await currentDriverPosition();
         await _api.rideHeartbeat(
           lat: pos?.latitude ?? 0,
           lng: pos?.longitude ?? 0,
@@ -171,99 +177,6 @@ class _DriverScreenState extends State<DriverScreen> {
     } finally {
       if (mounted) setState(() => _toggling = false);
     }
-  }
-
-  Future<Position?> _currentPosition() async {
-    try {
-      var p = await Geolocator.checkPermission();
-      if (p == LocationPermission.denied) {
-        p = await Geolocator.requestPermission();
-      }
-      if (p == LocationPermission.denied || p == LocationPermission.deniedForever) {
-        return null;
-      }
-      return await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.high),
-      ).timeout(const Duration(seconds: 12));
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// The heartbeat: a distance-filtered position stream plus a keepalive tick,
-  /// both inside the foreground service.
-  ///
-  /// Two signals travel on the same call and they need different triggers.
-  /// *Where the driver is* only changes when they move, so the stream is
-  /// distance-filtered — a car crawling in traffic does not need to resend the
-  /// same coordinates, and battery is what ends a shift early.
-  ///
-  /// *That the driver still exists* has nothing to do with movement, and the
-  /// first version of this got that wrong: with only the distance filter, a
-  /// driver waiting at a rank sent one heartbeat when they went online and
-  /// then nothing, so the sweeper marked them offline three minutes later. The
-  /// driver most likely to take the next ride was the one guaranteed to stop
-  /// receiving offers.
-  ///
-  /// So the keepalive re-sends the last known position every 30s regardless of
-  /// movement. It costs one small POST a minute per driver and it is the only
-  /// thing keeping a stationary driver in the dispatch pool.
-  Future<void> _startLocation() async {
-    await _positions?.cancel();
-    _keepalive?.cancel();
-
-    _positions = Geolocator.getPositionStream(
-      locationSettings: AndroidSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 25,
-        intervalDuration: const Duration(seconds: 5),
-        foregroundNotificationConfig: const ForegroundNotificationConfig(
-          notificationTitle: "Gwave Driver",
-          notificationText: "You're online and receiving ride requests.",
-          notificationIcon:
-              AndroidResource(name: "ic_launcher", defType: "mipmap"),
-          enableWakeLock: true,
-          setOngoing: true,
-        ),
-      ),
-    ).listen((pos) {
-      _lastPos = pos;
-      _beat(pos);
-    });
-
-    // Send one immediately so going online does not depend on moving first.
-    final now = await _currentPosition();
-    if (now != null) {
-      _lastPos = now;
-      _beat(now);
-    }
-
-    _keepalive = Timer.periodic(const Duration(seconds: 30), (_) {
-      final pos = _lastPos;
-      if (pos != null) _beat(pos);
-    });
-  }
-
-  void _beat(Position pos) {
-    _api
-        .rideHeartbeat(
-          lat: pos.latitude,
-          lng: pos.longitude,
-          heading: pos.heading >= 0 ? pos.heading : null,
-          speed: pos.speed >= 0 ? pos.speed : null,
-          accuracy: pos.accuracy,
-        )
-        // A dropped heartbeat is normal on a bad connection and the next one is
-        // seconds away — never surface it as an error mid-shift.
-        .catchError((_) => <String, dynamic>{});
-  }
-
-  Future<void> _stopLocation() async {
-    _keepalive?.cancel();
-    _keepalive = null;
-    await _positions?.cancel();
-    _positions = null;
   }
 
   // ---- Offers -------------------------------------------------------------
@@ -492,7 +405,7 @@ class _DriverScreenState extends State<DriverScreen> {
     );
     if (ok != true || !mounted) return;
 
-    final pos = await _currentPosition();
+    final pos = await currentDriverPosition();
     if (pos == null) {
       if (mounted) {
         setState(() => _error = "Couldn't get your position for the SOS.");
