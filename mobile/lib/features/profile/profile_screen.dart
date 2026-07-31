@@ -253,7 +253,7 @@ class ProfileScreen extends StatelessWidget {
         _MenuEntry(Icons.drive_eta_outlined,
             tr(context, "Drive", "ကားမောင်းရန်"),
             native: _Native.driver),
-        _MenuEntry(Icons.radar, tr(context, "Drone radar", "ဒရုန်းရေဒါ"),
+        _MenuEntry(Icons.radar, tr(context, "Radar", "ရေဒါ"),
             native: _Native.drone),
         _MenuEntry(Icons.emergency_outlined, "SOS", native: _Native.map),
       ]),

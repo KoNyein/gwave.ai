@@ -488,7 +488,7 @@ class _DroneScannerScreenState extends State<DroneScannerScreen>
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: Text(tr(context, "Drone radar", "ဒရုန်း ရေဒါ")),
+        title: Text(tr(context, "Radar", "ရေဒါ")),
         actions: [
           _langButton(),
           _alertsButton(),
