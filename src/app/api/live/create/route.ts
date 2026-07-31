@@ -3,7 +3,12 @@ import { z } from "zod";
 
 import { agoraIsDefaultProvider } from "@/lib/agora";
 import { getCurrentProfile } from "@/lib/auth";
-import { createIvsChannel, deleteIvsChannel, ivsIsDefaultProvider } from "@/lib/ivs";
+import {
+  createIvsChannel,
+  deleteIvsChannel,
+  ivsIsDefaultProvider,
+  type IvsChannel,
+} from "@/lib/ivs";
 import { createIvsStage, deleteIvsStage } from "@/lib/ivs-realtime";
 import { livekitConfigured } from "@/lib/livekit";
 import { getMux } from "@/lib/mux";
@@ -91,6 +96,33 @@ export async function POST(request: Request) {
       );
     }
 
+    // A stage is a WebRTC SFU — only an IVS Real-Time SDK can subscribe to it,
+    // and the Flutter app has none. So every stage broadcast also gets a
+    // Low-Latency channel: goLive() composites the stage into it, and the
+    // channel publishes the ordinary HLS URL that the app, the web player, the
+    // feed card and the live rail all already know how to play. Without it a
+    // browser broadcast is invisible to everyone not on a browser.
+    //
+    // No recording configuration on this channel: the composition writes the
+    // replay to S3 itself, and a second recording would bill twice for one
+    // broadcast.
+    let watchChannel: IvsChannel | null = null;
+    try {
+      watchChannel = await createIvsChannel(
+        `gwave-rt-${profile.id.slice(0, 8)}`,
+        false,
+      );
+    } catch (e) {
+      // Not fatal: the host can still broadcast and browser viewers still see
+      // it through the stage. Only the HLS audience is lost, and saying so
+      // here is what turns "no video on phones" into a one-line log.
+      console.warn(
+        "[live/create] No watch channel for this stage — phone viewers will " +
+          "see no video:",
+        e instanceof Error ? e.message : e,
+      );
+    }
+
     const admin = createAdminClient();
     const { data: row, error } = await admin
       .from("live_streams")
@@ -100,6 +132,12 @@ export async function POST(request: Request) {
         description: parsed.data.description?.trim() || null,
         record_enabled: parsed.data.record,
         ivs_stage_arn: stageArn,
+        ...(watchChannel
+          ? {
+              ivs_channel_arn: watchChannel.channelArn,
+              ivs_playback_url: watchChannel.playbackUrl,
+            }
+          : {}),
         kind: parsed.data.kind,
         track_slug:
           parsed.data.kind === "class" ? parsed.data.trackSlug || null : null,
@@ -112,6 +150,7 @@ export async function POST(request: Request) {
       .single();
     if (error || !row) {
       await deleteIvsStage(stageArn);
+      if (watchChannel) await deleteIvsChannel(watchChannel.channelArn);
       return NextResponse.json(
         { error: error?.message ?? "Failed to save the stream." },
         { status: 500 },

@@ -191,7 +191,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
 
   const providerCols =
     process.env.NEXT_PUBLIC_LIVE_PROVIDER === "ivs"
-      ? ", ivs_stage_arn"
+      ? ", ivs_stage_arn, ivs_channel_arn"
       : "";
   const { data: stream } = await db
     .from("live_streams")
@@ -209,6 +209,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
       livekit_room: string | null;
       agora_channel: string | null;
       ivs_stage_arn?: string | null;
+      ivs_channel_arn?: string | null;
     }>();
   if (!stream) return { ok: false, error: "Stream not found" };
   if (stream.host_id !== user.id) return { ok: false, error: "Host only" };
@@ -225,7 +226,23 @@ export async function goLive(streamId: string): Promise<ActionResult> {
   // predates a recording migration leaves go-live untouched.
   // Gated by the host's Record choice (international "record → replay" standard).
   const extra: Record<string, string | null> = {};
-  if (!stream.record_enabled) {
+  if (stream.ivs_stage_arn) {
+    // Deliberately outside the record_enabled gate. For a stage the
+    // composition is not only how the replay gets written — it is also how the
+    // broadcast reaches an HLS URL, and therefore how anyone not on a browser
+    // watches it at all. A host who turns Record off is asking not to be
+    // recorded, not to be invisible to every phone in the app. record_enabled
+    // decides the S3 destination and nothing else.
+    const arn = await startIvsComposition(
+      stream.ivs_stage_arn,
+      stream.ivs_channel_arn,
+      { record: stream.record_enabled },
+    );
+    if (arn) {
+      extra.ivs_composition_arn = arn;
+      extra.recording_path = null;
+    }
+  } else if (!stream.record_enabled) {
     // Host turned Record off — no replay saved.
   } else if (stream.livekit_room && egressConfigured()) {
     const rec = await startRoomRecording(stream.livekit_room);
@@ -238,12 +255,6 @@ export async function goLive(streamId: string): Promise<ActionResult> {
     if (rec) {
       extra.agora_resource_id = rec.resourceId;
       extra.agora_recording_sid = rec.sid;
-      extra.recording_path = null;
-    }
-  } else if (stream.ivs_stage_arn) {
-    const arn = await startIvsComposition(stream.ivs_stage_arn);
-    if (arn) {
-      extra.ivs_composition_arn = arn;
       extra.recording_path = null;
     }
   }

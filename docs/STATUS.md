@@ -54,6 +54,18 @@
 
 ## Changelog
 
+- 2026-07-31 (web): **Browser broadcasts were unwatchable on phones.** Browser
+  Go Live creates an IVS Real-Time *stage*, and a stage is a WebRTC SFU: only
+  an IVS Real-Time SDK can subscribe to one, which the Flutter app has none of
+  and cannot get. So the app listed the broadcast, showed its LIVE badge and
+  its viewer count, and rendered a grey placeholder where the video should be.
+  Every stage broadcast now also gets a Low-Latency channel, and the
+  composition restreams the mixed stage into it — so the same HLS URL the app,
+  the web player, the feed card and the live rail already play works for
+  browser broadcasts too. The composition also runs when the host turns Record
+  *off*: it is how the broadcast reaches an HLS URL, not only how a replay gets
+  written, and "don't record me" must not mean "hide me from every phone".
+
 - 2026-07-31 (web): **Replays that finalised too late to be caught.** IVS
   finishes writing a recording to S3 *after* the broadcast stops, and how long
   depends on the length of the stream, but the end routes looked the file up
