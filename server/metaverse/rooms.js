@@ -5,7 +5,11 @@
 /// Phase 8 မှာ map ၄ ခု ဖြစ်လာမယ် (city/farm/snow/sky) — အဲဒီအခါ room က
 /// map id ဖြစ်သွားတယ်။ အခုကတည်းက ခွဲထားတာက နောက်မှ ပြန်မွမ်းစရာမလိုအောင်။
 
-const ROOMS = new Set(["city", "farm", "snow", "sky", "main"]);
+const ROOMS = new Set(["city", "farm", "snow", "sky", "main", "vip"]);
+
+/// ★ NFT ပိုင်မှ ဝင်လို့ရတဲ့ room။ စစ်ဆေးမှုက **server မှာသာ** ဖြစ်တယ် —
+/// client မှာ ခလုတ်ဖျောက်ထားရုံနဲ့ ဘာမှမကာကွယ်ဘူး (server.js ကြည့်ပါ)။
+const GATED_ROOMS = new Set(["vip"]);
 
 /// room name ကို client ကနေတိုက်ရိုက်မယူရ — မသိတဲ့ name တစ်ခုနဲ့ တစ်ယောက်တည်း
 /// ရှိတဲ့ "room" အသစ်တွေ အကန့်အသတ်မဲ့ ဆောက်လို့ရသွားမယ် (memory leak)။
@@ -175,4 +179,4 @@ class Rooms {
   }
 }
 
-module.exports = { Rooms, normalizeRoom, ROOMS };
+module.exports = { Rooms, normalizeRoom, ROOMS, GATED_ROOMS };

@@ -61,6 +61,38 @@
 
 ## Changelog
 
+- 2026-08-02 (web): **Metaverse — phase 7, Web3 as a side door.** Wallets are
+  an addition, never a requirement: with no wallet, no RPC and no contracts
+  the world is exactly as complete as before — verified by walking it with
+  none of them configured. Signed-in users get a "Wallet ချိတ်မယ်" button that
+  runs the four-step SIWE flow: the server mints a single-use nonce, the wallet
+  signs a **readable Burmese sentence** (not an opaque hex blob — teaching
+  people to sign things they can't read is how they get drained), the server
+  recovers the address with viem and compares it, then closes the nonce with
+  `update … where used_at is null` so two simultaneous requests can't both win.
+  Gwave never sees a private key or seed phrase.
+  Token-gated rooms are decided **only on the server**: `room=vip` looks up the
+  wallet linked to the account in the database — never one the client sends,
+  or anyone could claim someone else's NFT — and asks the chain. No wallet is
+  4003, no NFT is 4004, and if the RPC is missing or down it refuses rather
+  than admits, because a gate that opens when the check fails is not a gate.
+  Five new tests connect straight to the WebSocket with `room=vip`, which is
+  what an attacker would do rather than pressing a hidden button.
+  `GwaveLand.sol` (ERC-721, `tokenId = gx*32 + gz`, so a plot can never be
+  minted twice) and `GwaveItems.sol` (ERC-1155) are in `contracts/`, undeployed.
+  **Deviation from the spec, deliberate**: it specifies wagmi + @web3modal;
+  this uses the injected EIP-1193 provider instead. WalletConnect needs a cloud
+  project id nobody has yet and could not be tested here, the three packages
+  add ~300 KB for a feature most people won't touch, and the wallets actually
+  used around Mae Sot are MetaMask/Trust/Coinbase in-app browsers, which inject
+  `window.ethereum` already. Only `connect()` would change if WalletConnect is
+  added later — the nonce → sign → verify flow is untouched.
+  Verified with real secp256k1 keys: a valid signature passes, another
+  wallet's signature for the same address fails, a one-character change to the
+  nonce invalidates it, and claiming the same nonce twice returns nothing the
+  second time. **Not deployed**: no contracts on chain, no `WEB3_*` env set —
+  `contracts/README.md` has the Foundry commands, testnet first.
+
 - 2026-08-02 (web): **Metaverse — phase 6, performance and scale.** The old
   phone in Mae Sot is the target, not the desktop. Distant avatars stop
   animating past 45 m and stop drawing past 90 m; nametags are DOM elements

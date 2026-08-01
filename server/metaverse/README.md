@@ -36,6 +36,10 @@ Close code — `4001` auth လိုတယ် (client က retry မလုပ်�
 | `MV_TICKET_SECRET` | Next.js ရဲ့ `/api/metaverse/ws-ticket` နဲ့ **တူရမယ်** |
 | `DATABASE_URL` | RDS persistence။ မထည့်ရင် လောကက ပုံမှန်အလုပ်လုပ်ပြီး နေရာ မမှတ်ဘူး |
 | `REDIS_URL` | Task များခုကြား state မျှဖို့ (ElastiCache)။ မထည့်ရင် task တစ်လုံးတည်း mode |
+| `WEB3_RPC_URL` | Base RPC (Alchemy/QuickNode)။ မထည့်ရင် ဂိတ်ပါတဲ့ room ကို ဘယ်သူမှ မဝင်ရ |
+| `WEB3_CHAIN` | default `base`၊ testnet ဆိုရင် `baseSepolia` |
+| `WEB3_LAND_ADDRESS` | GwaveLand (ERC-721) |
+| `WEB3_ITEMS_ADDRESS` | GwaveItems (ERC-1155) |
 
 ★ `MV_TICKET_SECRET` နဲ့ `DATABASE_URL` ကို task-definition ရဲ့ `environment`
 ထဲ **plain text မထည့်ရ** — `secrets` field နဲ့ Secrets Manager ARN ကိုသာ

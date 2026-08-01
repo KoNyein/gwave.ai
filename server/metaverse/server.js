@@ -4,10 +4,11 @@ const http = require("http");
 const crypto = require("crypto");
 const { WebSocketServer } = require("ws");
 
-const { Rooms, normalizeRoom, ROOMS } = require("./rooms");
+const { Rooms, normalizeRoom, ROOMS, GATED_ROOMS } = require("./rooms");
 const { identify } = require("./auth");
 const { createStore } = require("./store");
 const { createBus } = require("./bus");
+const { createWeb3 } = require("./web3");
 
 const PORT = Number(process.env.PORT || 8080);
 const REQUIRE_AUTH = process.env.REQUIRE_AUTH === "true";
@@ -32,6 +33,11 @@ const rooms = new Rooms();
 /// ထွက်ရင် နေရာ မမှတ်ဘူး။ (Guest တွေက ဘယ်လိုမှ မမှတ်ဘူး — id က session
 /// တိုင်း ပြောင်းလို့။)
 const store = createStore(process.env.DATABASE_URL);
+
+/// Web3 — မထည့်ထားရင် ပိတ်ထားတယ်။ ★ ပိတ်ထားရင် token-gated room ကို
+/// **ဘယ်သူမှ မဝင်ရဘူး** (ဖွင့်ပေးလိုက်တာ မဟုတ်ဘူး) — စစ်လို့မရရင်
+/// ငြင်းရမယ်၊ မဟုတ်ရင် env တစ်ခု ဖျောက်လိုက်ရုံနဲ့ ဂိတ်က ပျောက်သွားမယ်။
+const web3 = createWeb3();
 
 /// ၃၀ စက္ကန့်တစ်ခါ — spec ရဲ့ "player တစ်ယောက်လျှင် တစ်မိနစ် ၂ ကြိမ်ထက်
 /// မပို" ဆိုတဲ့ ကန့်သတ်ချက်နဲ့ ကိုက်တယ်။
@@ -132,6 +138,20 @@ const wss = new WebSocketServer({ server, maxPayload: MAX_MESSAGE_BYTES });
 
 function send(ws, msg) {
   if (ws.readyState === 1) ws.send(JSON.stringify(msg));
+}
+
+/// Gwave အကောင့်နဲ့ ချိတ်ထားတဲ့ wallet ကို DB ကနေ ရှာတယ် (SIWE က
+/// `/api/metaverse/siwe/verify` မှာ သိမ်းထားတာ)။
+/// ★ Client ကနေ wallet address ကို **လက်မခံရ** — ဘယ်သူမဆို တခြားသူရဲ့
+/// address ကို ပြောပြီး သူ့ NFT နဲ့ ဝင်လို့ရသွားမယ်။
+async function lookupWallet(userId) {
+  if (!store.enabled) return null;
+  try {
+    const saved = await store.loadPlayer(userId);
+    return saved?.wallet ?? null;
+  } catch {
+    return null;
+  }
 }
 
 // ── Persistence ──────────────────────────────────────────────────────────────
@@ -296,6 +316,29 @@ wss.on("connection", async (ws, req) => {
     /// ရွှေ့ပြီးမှ သိမ်းတယ် — ငြိမ်နေတဲ့သူကို ၃၀ စက္ကန့်တိုင်း ထပ်ရေးနေစရာမလို
     dirty: false,
   };
+
+  // ── Token-gated room (Phase 7.6) ──────────────────────────────────────
+  // ★ ဒီစစ်ဆေးမှုက **server မှာသာ** ဖြစ်ရမယ်။ Client မှာ ခလုတ်ဖျောက်ထားရုံ
+  // ဒါမှမဟုတ် `room=vip` ကို URL မှာ မပြရုံနဲ့ ဘာမှ မကာကွယ်ဘူး —
+  // WebSocket URL ကို လက်နဲ့ရိုက်ပြီး ချိတ်လို့ရတယ်။
+  if (GATED_ROOMS.has(room)) {
+    if (!player.authed) {
+      ws.close(4003, "wallet required");
+      return;
+    }
+    const wallet = await lookupWallet(player.id);
+    if (!wallet) {
+      ws.close(4003, "wallet required");
+      return;
+    }
+    // ★ fail-closed — RPC ကျနေရင် "ပိုင်တယ်" လို့ မယူဆရ။
+    const owns = await web3.ownsLand(wallet);
+    if (!owns) {
+      ws.close(4004, "NFT required");
+      return;
+    }
+    if (ws.readyState !== 1) return;
+  }
 
   // ── နေရာဟောင်း ပြန်ယူ ─────────────────────────────────────────────────
   // ★ Room တူမှသာ နေရာကို ပြန်သုံးတယ် — farm မှာ ထွက်ခဲ့တဲ့ coordinate ကို
