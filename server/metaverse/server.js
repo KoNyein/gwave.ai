@@ -112,7 +112,10 @@ const moveFlusher = setInterval(() => {
     // ★ ရွှေ့သူကိုပါ ပြန်ပို့တယ် — client က ကိုယ့် id ကို remotes ထဲ
     // မထားလို့ ကိုယ့်ဟာကို သူ့ဘာသာ လျစ်လျူရှုတယ်။ id တစ်ခုချင်း ခွဲပြီး
     // packet သီးသန့် ဆောက်ရင် စုပို့တဲ့ အကျိုးကျေးဇူး ပျောက်သွားမယ်။
-    emit(roomId, { type: "updates", p });
+    // ★ AFK (background) ကို ချန်တယ် — render မလုပ်တော့တဲ့ ဖုန်းဆီ 15Hz နဲ့
+    // ပို့နေတာက data ကို အလကား စားတာပဲ (Phase 17.4)。
+    rooms.broadcast(roomId, { type: "updates", p }, undefined, true);
+    bus.publish(roomId, { type: "updates", p });
   }
 }, MOVE_FLUSH_MS);
 
@@ -591,6 +594,30 @@ wss.on("connection", async (ws, req) => {
           { type: "vstate", vehicleId: vid, x: vx, y: vy, z: vz, ry: vry, speed: vspeed },
           player.id,
         );
+        break;
+      }
+
+      case "afk": {
+        // ★ Tab/app က နောက်ပိုင်း ရောက်သွားပြီ (Phase 17.4)。 အဲဒီလူဆီ
+        // position update တွေ ပို့နေတာက အလကား — ဖုန်းက render မလုပ်တော့ဘဲ
+        // data ကိုပဲ စားနေမယ်။ ပြန်လာချိန်မှာ `sync`/`init` က နောက်ဆုံး
+        // အခြေအနေကို ပြန်ပေးတယ်။
+        const wasAfk = player.afk === true;
+        player.afk = msg.afk === true;
+        // ★ ပြန်လာချိန်မှာ **နောက်ဆုံးအခြေအနေကို တစ်ခါ ပြန်ပို့ရမယ်** —
+        // မပို့ရင် နောက်ပိုင်းရောက်နေစဉ် ရွှေ့ခဲ့တဲ့သူတွေက ကိုယ့်မျက်စိထဲမှာ
+        // အဟောင်းနေရာမှာ ရပ်နေမယ် (နောက်တစ်ခါ ရွှေ့မှ ပြန်ကောင်းမယ်)。
+        if (wasAfk && !player.afk) {
+          const snap = rooms.snapshot(player.room, player.id);
+          const catchUp = Object.entries(snap).map(([id, st]) => [
+            id,
+            r2(st.x),
+            r2(st.y),
+            r2(st.z),
+            r2(st.ry),
+          ]);
+          if (catchUp.length) send(ws, { type: "updates", p: catchUp });
+        }
         break;
       }
 

@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import '../features/health/health_store.dart';
+import '../features/metaverse/metaverse_screen.dart';
 import 'api_client.dart';
 import 'config.dart';
 import 'models.dart';
+import 'navigation.dart';
 import 'repository.dart';
 import 'session.dart';
 
@@ -166,6 +168,22 @@ class AppState extends ChangeNotifier {
 
   void _handleLink(Uri uri) {
     if (uri.scheme != "gwave") return;
+
+    // gwave://metaverse?room=city — open the 3D world straight from a link.
+    // ★ Sign in ဝင်ထားမှ ဖွင့်တယ် — မဝင်ရသေးရင် Navigator က login screen
+    // ပေါ်မှာ ဖွင့်ပြီး ဘာမှမမြင်ရဘဲ ဖြစ်မယ်။
+    if (uri.host == "metaverse") {
+      if (status != AuthStatus.signedIn) return;
+      final room = uri.queryParameters["room"] ?? "city";
+      final nav = gwNavigatorKey.currentState;
+      if (nav != null) {
+        nav.push(
+          MaterialPageRoute(builder: (_) => MetaverseScreen(room: room)),
+        );
+      }
+      return;
+    }
+
     final code = uri.queryParameters["code"];
     if (code != null && code.isNotEmpty) completeGoogleSignIn(code);
   }

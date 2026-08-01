@@ -106,6 +106,9 @@ export type NetClient = {
   sendDismount(): void;
   /// ★ "ငါဝင်မယ်" ပဲ ပြောလို့ရတယ် — အမှတ်တွက်တာ server မှာ (spec 16.3)。
   sendGameJoin(gameId: string): void;
+  /// Tab/app က နောက်ပိုင်းရောက်သွားပြီ — server က position update တွေ
+  /// ပို့မနေတော့ဘူး (ဖုန်း data + ဘက်ထရီ ချွေတယ်)。
+  sendAfk(afk: boolean): void;
   /// ★ `action` က လုပ်ဆောင်ချက်သာ (ပစ်တယ်/စိုက်တယ်)。 ရလဒ်ကို server က
   /// ဆုံးဖြတ်တယ် — score ပါပို့လည်း ဘယ်နေရာမှာမှ မဖတ်ဘူး။
   sendGameAction(action: Record<string, unknown>): void;
@@ -203,6 +206,10 @@ export function connectMetaverse(
     sendGameJoin(gameId) {
       if (ws?.readyState !== WebSocket.OPEN) return;
       ws.send(JSON.stringify({ type: "gameJoin", gameId }));
+    },
+    sendAfk(afk) {
+      if (ws?.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "afk", afk }));
     },
     sendGameAction(action) {
       if (ws?.readyState !== WebSocket.OPEN) return;

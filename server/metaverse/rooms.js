@@ -85,12 +85,18 @@ class Rooms {
   }
 
   /// ကိုယ့်ကလွဲပြီး ကျန်တဲ့သူတွေဆီ ပို့။
-  broadcast(roomId, msg, exceptId) {
+  ///
+  /// ★ `skipAfk` က နေရာ update အတွက်သာ — tab/app ကို နောက်ပိုင်း ပို့ထားသူက
+  /// render မလုပ်တော့ဘူး၊ သူ့ဆီ 15Hz နဲ့ ပို့နေတာက ဖုန်း data ကို အလကား
+  /// စားတာပဲ (Phase 17.4)。 chat/join/leave တို့ကတော့ အမြဲ ပို့ရမယ် —
+  /// မဟုတ်ရင် ပြန်လာချိန်မှာ စာတွေ ပျောက်နေမယ်။
+  broadcast(roomId, msg, exceptId, skipAfk = false) {
     const room = this.rooms.get(roomId);
     if (!room) return;
     const data = JSON.stringify(msg);
     for (const p of room.values()) {
       if (p.id === exceptId) continue;
+      if (skipAfk && p.afk) continue;
       if (p.ws.readyState === 1) p.ws.send(data);
     }
   }

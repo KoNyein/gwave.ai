@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'core/app_state.dart';
 import 'core/call_service.dart';
 import 'core/i18n.dart';
+import 'core/navigation.dart';
 import 'core/push_service.dart';
 import 'core/theme.dart';
 import 'core/theme_pref.dart';
@@ -69,6 +70,10 @@ class GwaveApp extends StatelessWidget {
     GwColors.skin = pref.skin;
     return MaterialApp(
       title: "Gwave",
+      // Deep links (gwave://metaverse?room=city) arrive from outside the
+      // widget tree, so they need a navigator they can reach without a
+      // BuildContext.
+      navigatorKey: gwNavigatorKey,
       debugShowCheckedModeBanner: false,
       theme: buildGwTheme(),
       darkTheme: buildGwDarkTheme(),

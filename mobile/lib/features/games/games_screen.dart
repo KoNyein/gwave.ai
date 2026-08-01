@@ -6,6 +6,7 @@ import '../../core/app_state.dart';
 import '../../core/config.dart';
 import '../../core/models.dart';
 import '../../core/theme.dart';
+import '../metaverse/metaverse_screen.dart';
 import '../web/web_screen.dart';
 import '../../widgets/common.dart';
 
@@ -69,6 +70,11 @@ class _GamesScreenState extends State<GamesScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
           children: [
+            // ── 3D လောက ─────────────────────────────────────────────────
+            // ★ ဂိမ်းစာရင်းရဲ့ ထိပ်မှာ ထားတယ် — အကြီးဆုံး feature ကို
+            // အောက်ဆုံးမှာ ဝှက်ထားလို့ မဖြစ်ဘူး။
+            _MetaverseBanner(onTap: () => openMetaverse(context)),
+            const SizedBox(height: 18),
             const Text("ပါဝင်ပြီးသား ဂိမ်းများ",
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
             const SizedBox(height: 10),
@@ -234,6 +240,71 @@ class _GamesScreenState extends State<GamesScreen> {
                         fontWeight: FontWeight.w800,
                         fontSize: 13)),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Entry card for the 3D world (Phase 17).
+///
+/// ★ ခလုတ်ကို ကြီးကြီး ထားရမယ် — 3D လောကဆိုတာ စာသား link တစ်ခုနဲ့
+/// ဖော်ပြလို့ရတဲ့ feature မဟုတ်ဘူး၊ ဘာလဲဆိုတာ မြင်ရမှ နှိပ်ကြည့်မယ်။
+class _MetaverseBanner extends StatelessWidget {
+  const _MetaverseBanner({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF14243A), Color(0xFF0B7A5A)],
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          child: Row(
+            children: [
+              const Text("🌐", style: TextStyle(fontSize: 34)),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Gwave Metaverse",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 17,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      "မြို့ · လယ် · နှင်းတောင် · ကောင်းကင် — သူငယ်ချင်းတွေနဲ့ 3D လောကထဲ",
+                      style: TextStyle(color: Colors.white70, fontSize: 11.5),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      "ပြိုင်ပွဲ ၄ မျိုး · ဝင်ကြေး မရှိ",
+                      style: TextStyle(color: Colors.white54, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white70),
             ],
           ),
         ),

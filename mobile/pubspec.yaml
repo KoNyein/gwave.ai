@@ -83,6 +83,10 @@ dependencies:
   share_plus: ^10.0.0
   # Scan nearby WiFi access points for the crowdsourced WiFi map (WiGLE-style).
   wifi_scan: ^0.4.1
+  # Metaverse: keep the screen on while the 3D world is open. Standing still
+  # in a world looks like "doing nothing" to Android, which then blanks the
+  # screen mid-session. WAKE_LOCK is already in the manifest.
+  wakelock_plus: ^1.2.8
   # Health: PPG heart-rate — cover the rear camera + torch with a fingertip and
   # read the red-channel pulse to draw a live heart-rhythm ("health wave").
   camera: ^0.11.0

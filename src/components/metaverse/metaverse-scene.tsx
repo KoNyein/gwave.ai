@@ -26,6 +26,7 @@ import { createQuality } from "./quality";
 import { createVehicle, type Vehicle } from "./vehicles";
 import { createWeather } from "./weather";
 import { buildWorld, resolveCollision } from "./world";
+import { isInApp, native } from "@/lib/metaverse/native";
 
 /// Gwave Metaverse ရဲ့ အဓိက client component။
 ///
@@ -193,6 +194,13 @@ export function MetaverseScene() {
   // Bloom ရွေးချယ်မှုကို ပြန်ဖတ် — ဖုန်းအဟောင်းမှာ ပိတ်ထားသူက ဝင်တိုင်း
   // ပြန်ပိတ်နေရရင် အသုံးမဝင်ဘူး။
   useEffect(() => {
+    // ★ App (WebView) ထဲမှာ bloom နဲ့ အရိပ်ကို default ပိတ်တယ် — ဒါ ၂ ခုက
+    // ဖုန်းမှာ အကုန်ဆုံး ၂ ခု (spec 17.4)。 ခလုတ်တွေက ရှိနေဆဲမို့ ဖွင့်ချင်ရင်
+    // ဖွင့်လို့ရတယ်။
+    if (isInApp()) {
+      setBloom(false);
+      setShadows(false);
+    }
     if (window.localStorage.getItem(BLOOM_KEY) === "0") setBloom(false);
     if (window.localStorage.getItem(SHADOW_KEY) === "0") setShadows(false);
     const saved = window.localStorage.getItem(MAP_KEY);
@@ -260,6 +268,11 @@ export function MetaverseScene() {
     if (!mount) return;
     const map = getMap(roomId);
 
+    /// Gwave app ရဲ့ WebView ထဲမှာ ဖွင့်နေလား (Phase 17)。
+    /// ★ URL ရဲ့ `app=1` ကနေ ချက်ချင်း သိရတယ် — bridge ရောက်တာကို စောင့်ရင်
+    /// ပထမ frame တွေက အရည်အသွေး မြင့်နေပြီး ပြီးမှ ခုန်ကျမယ်။
+    const inApp = isInApp();
+
     // ── Renderer ──────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -267,9 +280,12 @@ export function MetaverseScene() {
     });
     // ★ devicePixelRatio ကို ၂ မှာ ကန့်သတ် — iPhone က 3 ပြန်ပေးတယ်၊
     // pixel ၉ ဆ ဆွဲရတာက ဘက်ထရီကုန်ပြီး frame ကျတယ်။
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // ★ App (WebView) ထဲမှာ pixelRatio ကို 1 — WebView က browser ထက်
+    // နှေးပြီး ဖုန်းက ပူလွယ်တယ်။ ရုပ်ထွက် အနည်းငယ် လျော့ပေမယ့် frame
+    // တည်ငြိမ်တာက ပိုအရေးကြီးတယ် (spec 17.4)。
+    renderer.setPixelRatio(inApp ? 1 : Math.min(window.devicePixelRatio, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
-    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.enabled = !inApp;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
     renderer.domElement.style.touchAction = "none";
@@ -284,6 +300,12 @@ export function MetaverseScene() {
     );
 
     const world = buildWorld(scene, map);
+
+    // ★ App ထဲမှာ မြင်ကွင်းကို ချုံ့တယ် — ဝေးတဲ့အရာတွေ မဆွဲရတော့လို့
+    // draw call နဲ့ fill rate နှစ်ခုစလုံး ကျတယ်။
+    if (inApp && scene.fog instanceof THREE.Fog) {
+      scene.fog.far = Math.min(scene.fog.far, 70);
+    }
 
     // ── အရိပ် ───────────────────────────────────────────────────────────
     // ★ `renderer.shadowMap.enabled` ကို ပြောင်းပြီး material တွေကို
@@ -369,7 +391,7 @@ export function MetaverseScene() {
     /// ပြန်ချိန်ရမယ်၊ မဟုတ်ရင် ရုပ်က ဝါးနေဆဲ ဖြစ်ပြီး ဒုတိယအကြိမ် ချက်ချင်း
     /// ပြန်လျှော့ခံရမယ်။
     restoreRef.current = () => {
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setPixelRatio(inApp ? 1 : Math.min(window.devicePixelRatio, 2));
       postfx.setSize(mount.clientWidth, mount.clientHeight);
       quality.reset();
     };
@@ -413,8 +435,14 @@ export function MetaverseScene() {
     // ── Multiplayer ───────────────────────────────────────────────────────
     const remotes = new Map<string, Remote>();
 
+    /// ★ App ထဲမှာ တစ်ပြိုင်နက် ပြမယ့် လူအရေအတွက်ကို ကန့်သတ်တယ် —
+    /// avatar တစ်ယောက်က mesh အများကြီးနဲ့ nametag တစ်ခုစီ ရှိတယ်၊
+    /// ဖုန်းမှာ ၅၀ ယောက် ပြရင် frame က ကျတယ် (spec 17.4)。
+    const MAX_REMOTES = inApp ? 20 : 80;
+
     const addRemote = (id: string, s: RemoteState) => {
       if (remotes.has(id)) return;
+      if (remotes.size >= MAX_REMOTES) return;
       const avatar = createHuman(colorFor(id));
       avatar.group.position.set(s.x ?? 0, s.y ?? 0, s.z ?? 0);
       scene.add(avatar.group);
@@ -1031,13 +1059,50 @@ export function MetaverseScene() {
       }
     }
 
+    // ── Background သွားရင် render ရပ် (Phase 17.4) ────────────────────────
+    // ★ ဒါက **မဖြစ်မနေ**။ မလုပ်ရင် tab/app ကို နောက်ပိုင်း ပို့လိုက်တဲ့အခါ
+    //   60fps နဲ့ ဆက်ဆွဲနေပြီး ဖုန်း ပူပြီး ဘက်ထရီ ကုန်တယ် — app ဖျက်ရတဲ့
+    //   အကြောင်းရင်း အဖြစ်များဆုံးပါ။
+    // ★ `afk` ကို server ဆီ ပြောတယ် — server က အဲဒီလူဆီ position update
+    //   တွေ ပို့မနေတော့ဘူး (ဖုန်း data ရော ဘက်ထရီရော ချွေတယ်)。
+    let hidden = false;
+    const onVisibility = () => {
+      if (killed) return;
+      if (document.hidden) {
+        if (hidden) return;
+        hidden = true;
+        cancelAnimationFrame(raf);
+        raf = 0;
+        net?.sendAfk(true);
+        native.setKeepAwake(false);
+      } else {
+        if (!hidden) return;
+        hidden = false;
+        // ★ Clock ကို reset — မလုပ်ရင် ပြန်လာချိန်မှာ dt က မိနစ်ချီ
+        // ဖြစ်ပြီး player က လောကတစ်ဖက်ကို ခုန်ထွက်သွားမယ်။
+        frameClock.getDelta();
+        net?.sendAfk(false);
+        native.setKeepAwake(true);
+        tick();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     setReady(true);
+    // ★ App ကို "ပြီးပြီ" လို့ ပြောတယ် — splash ဖျောက်ပြီး ဖန်သားပြင်ကို
+    // ဖွင့်ထားခိုင်းတယ်။ Browser မှာ ဒါတွေက ဘာမှမလုပ်ဘူး။
+    native.ready();
+    native.setKeepAwake(true);
     tick();
 
     // ── Cleanup ───────────────────────────────────────────────────────────
     return () => {
       killed = true;
       cancelAnimationFrame(raf);
+      document.removeEventListener("visibilitychange", onVisibility);
+      // ★ ထွက်တာနဲ့ wakelock ပြန်ဖြုတ်ရမယ် — မဖြုတ်ရင် metaverse ကထွက်ပြီး
+      // တောင် ဖန်သားပြင်က ဘယ်တော့မှ မပိတ်တော့ဘူး။
+      native.setKeepAwake(false);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("resize", onResize);

@@ -104,3 +104,27 @@ lib/
 
 The backend contract (mobile auth API) lives in the web repo at
 `src/app/api/mobile/auth/{start,exchange,refresh}/route.ts`.
+
+## Metaverse (WebView)
+
+The 3D world is the web client rendered inside a WebView
+(`lib/features/metaverse/metaverse_screen.dart`) — one codebase, one deploy.
+Reached from **Games → Gwave Metaverse** or the `gwave://metaverse?room=city`
+deep link.
+
+- **Signed in already.** The screen plants the app's own token as the `gw_at`
+  cookie before loading, exactly like `WebScreen`, so there is no second login.
+- **`?app=1`** tells the web client it is inside the app before the JS bridge
+  has been injected. It uses that to drop `pixelRatio` to 1, turn bloom and
+  shadows off, pull the fog in to 70 units and cap visible players at 20.
+- **`window.GwaveNative`** is injected on page start/finish and exposes
+  `vibrate`, `setKeepAwake`, `openNative` and `onMetaverseReady`. Calls travel
+  over the `GwaveNativeBridge` JavaScript channel as JSON. Everything degrades
+  silently in a plain browser, where the object simply does not exist.
+- **Microphone**: `setOnPlatformPermissionRequest` asks for the Android
+  permission first and only grants the WebView once the user has said yes —
+  granting straight away gets rejected by the OS and voice chat fails silently.
+- **Backgrounding** stops the render loop and sends `afk` to the metaverse
+  server, which then skips position broadcasts to that socket; coming back
+  sends one catch-up snapshot. Without this the phone renders at 60fps in the
+  background and gets hot.
