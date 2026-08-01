@@ -9,6 +9,7 @@ import 'core/i18n.dart';
 import 'core/push_service.dart';
 import 'core/theme.dart';
 import 'core/theme_pref.dart';
+import 'core/video_audio.dart';
 import 'features/auth/login_screen.dart';
 import 'features/messenger/call_screen.dart';
 import 'features/shell/home_shell.dart';
@@ -27,6 +28,10 @@ Future<void> main() async {
       androidStopForegroundOnPause: true,
     );
   } catch (_) {}
+  // One owner of the speaker at a time, and nothing keeps playing in the
+  // background except the audio player and calls. Installing the observer here
+  // is what makes "the app went to the background" reach whatever is playing.
+  GwSound.instance.install();
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -68,6 +73,10 @@ class GwaveApp extends StatelessWidget {
       theme: buildGwTheme(),
       darkTheme: buildGwDarkTheme(),
       themeMode: pref.mode,
+      // Players subscribe to this so a screen pushed over a Live (profile,
+      // shop sheet, in-app browser) silences it instead of leaving it playing
+      // behind the new screen.
+      navigatorObservers: [gwRouteObserver],
       home: const _Root(),
     );
   }

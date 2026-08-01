@@ -8,6 +8,7 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/repository.dart';
+import '../../core/video_audio.dart';
 import 'audio_api.dart';
 import 'audio_models.dart';
 
@@ -33,6 +34,20 @@ class GwAudio extends ChangeNotifier {
   static final GwAudio instance = GwAudio._();
 
   final AudioPlayer _player = AudioPlayer();
+
+  /// This player's standing claim on the speaker.
+  ///
+  /// Background listening is the entire point of this class, so the claim
+  /// survives the app being minimised — but it is the *lowest* priority one,
+  /// which is what makes a Live, a reel or a call pause the podcast instead of
+  /// playing on top of it. Yielding is automatic: whoever claims next calls
+  /// [pause] through [onSilence].
+  late final SoundClaim _sound = SoundClaim(
+    tag: "audio-player",
+    priority: SoundClaim.background,
+    survivesBackground: true,
+    onSilence: () => unawaited(pause()),
+  );
 
   /// Set the first time a screen attaches. Used for entitlement, resume points
   /// and progress saving; null until someone signs in and opens audio.
@@ -293,11 +308,15 @@ class GwAudio extends ChangeNotifier {
 
   Future<void> play() async {
     if (_current == null) return;
+    // A call is a conversation with a person; music is not allowed to start
+    // underneath one.
+    if (!GwSound.instance.claim(_sound)) return;
     if (_player.audioSource == null) await _prepare();
     await _player.play();
   }
 
   Future<void> pause() async {
+    GwSound.instance.release(_sound);
     await _player.pause();
     await _flushProgress();
   }
@@ -309,6 +328,7 @@ class GwAudio extends ChangeNotifier {
   /// The only thing in the app that ends playback outright. Everything else —
   /// leaving the screen, switching tabs, locking the phone — leaves it running.
   Future<void> stop() async {
+    GwSound.instance.release(_sound);
     _clearSleep();
     await _flushProgress();
     await _player.stop();

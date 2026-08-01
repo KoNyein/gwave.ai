@@ -1098,7 +1098,7 @@ class _LiveBannerState extends State<_LiveBanner> {
     // Scrolling a talking preview off screen should not leave the feed
     // thinking something is still speaking.
     if (_soundId != null && feedSoundHolder.value == _soundId) {
-      feedSoundHolder.value = null;
+      feedMuteAll();
     }
     _vc?.dispose();
     _lkListener?.dispose();
@@ -1434,7 +1434,7 @@ class _PostVideoState extends State<_PostVideo> {
     feedSoundHolder.removeListener(_applyMute);
     // Scrolling a talking video off screen should not leave the feed thinking
     // something is still speaking.
-    if (feedSoundHolder.value == widget.url) feedSoundHolder.value = null;
+    if (feedSoundHolder.value == widget.url) feedMuteAll();
     _vc?.dispose();
     super.dispose();
   }

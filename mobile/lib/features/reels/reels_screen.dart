@@ -221,10 +221,32 @@ class _ReelPageState extends State<_ReelPage> {
   /// user scrolls the feed.
   static bool _muted = false;
 
+  /// The reel's claim on the speaker, so an unmuted reel pauses the music
+  /// instead of playing over it — and stops when the app is backgrounded
+  /// instead of playing on in the user's pocket.
+  late final SoundClaim _sound = SoundClaim(
+    tag: "reel:${widget.reel.id}",
+    onSilence: () => _controller?.pause(),
+    onRestore: () {
+      if (mounted && widget.active) _controller?.play();
+    },
+  );
+
   @override
   void initState() {
     super.initState();
     _init();
+  }
+
+  /// Take or hand back the speaker, and set the volume to match. Returns the
+  /// volume actually applied: a reel that cannot have the sound (a call is in
+  /// progress) keeps playing silently rather than interrupting.
+  double _applySound({required bool wantsSound}) {
+    if (!wantsSound) {
+      GwSound.instance.release(_sound);
+      return 0;
+    }
+    return GwSound.instance.claim(_sound) ? 1 : 0;
   }
 
   Future<void> _init() async {
@@ -237,11 +259,9 @@ class _ReelPageState extends State<_ReelPage> {
     try {
       await c.initialize();
       await c.setLooping(true);
-      await c.setVolume(_muted ? 0 : 1);
-      if (widget.active) {
-        if (!_muted) await videoTookTheSound();
-        await c.play();
-      }
+      await c.setVolume(
+          _applySound(wantsSound: widget.active && !_muted));
+      if (widget.active) await c.play();
       if (mounted) setState(() => _ready = true);
     } catch (_) {
       // Leave the poster/placeholder in place.
@@ -253,25 +273,26 @@ class _ReelPageState extends State<_ReelPage> {
     super.didUpdateWidget(old);
     if (_controller == null) return;
     if (widget.active && !old.active) {
-      _controller!.setVolume(_muted ? 0 : 1);
-      if (!_muted) videoTookTheSound();
+      _controller!.setVolume(_applySound(wantsSound: !_muted));
       _controller!.play();
     } else if (!widget.active && old.active) {
+      // Scrolled away or the tab was left: this reel has no claim on the
+      // speaker any more, so the music it interrupted can come back.
+      _applySound(wantsSound: false);
       _controller!.pause();
       _controller!.seekTo(Duration.zero);
     }
   }
 
   void _toggleMute() {
-    setState(() {
-      _muted = !_muted;
-      _controller?.setVolume(_muted ? 0 : 1);
-    });
-    if (!_muted) videoTookTheSound();
+    _muted = !_muted;
+    _controller?.setVolume(_applySound(wantsSound: widget.active && !_muted));
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    GwSound.instance.release(_sound);
     _controller?.dispose();
     super.dispose();
   }

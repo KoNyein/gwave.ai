@@ -14,6 +14,7 @@ import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
+import '../../core/video_audio.dart';
 import 'reaction_channel.dart';
 import '../../widgets/share_sheet.dart';
 import '../../widgets/common.dart';
@@ -44,11 +45,56 @@ class LiveWatchScreen extends StatefulWidget {
   State<LiveWatchScreen> createState() => _LiveWatchScreenState();
 }
 
-class _LiveWatchScreenState extends State<LiveWatchScreen> {
+class _LiveWatchScreenState extends State<LiveWatchScreen>
+    with SoundScreen<LiveWatchScreen> {
   VideoPlayerController? _controller;
   bool _ready = false;
   bool _muted = false; // viewers can mute; audio is on by default
   String? _error;
+
+  /// A Live owns the speaker while it is the screen you are looking at — and
+  /// only while. Watching one used to keep playing behind whatever was opened
+  /// on top of it, and kept playing when the app went to the background, so a
+  /// broadcast carried on talking in the user's pocket with nothing on screen
+  /// to stop it. [SoundScreen] and [GwSound] deliver both events; this claim is
+  /// what they act on.
+  late final SoundClaim _sound = SoundClaim(
+    tag: "live:${widget.stream.id}",
+    onSilence: _silenceSound,
+    onRestore: _restoreSound,
+  );
+
+  @override
+  SoundClaim? get soundClaim => _sound;
+
+  /// Stop making noise — the screen is covered, the app is in the background,
+  /// or something more important is speaking. Playback pauses rather than
+  /// stopping so returning picks the broadcast back up.
+  void _silenceSound() {
+    _controller?.pause();
+    unawaited(_setRoomAudio(false));
+  }
+
+  void _restoreSound() {
+    if (!mounted || _muted) return;
+    _controller?.play();
+    unawaited(_setRoomAudio(true));
+  }
+
+  /// Browser broadcasts arrive over the LiveKit SFU, where the audio is played
+  /// by the SDK rather than by a controller we hold — disabling the remote
+  /// publication is how a subscriber stops receiving it.
+  Future<void> _setRoomAudio(bool on) async {
+    final room = _room;
+    if (room == null) return;
+    for (final p in room.remoteParticipants.values) {
+      for (final pub in p.audioTrackPublications) {
+        try {
+          pub.enabled = on;
+        } catch (_) {}
+      }
+    }
+  }
 
   // Browser Go Live broadcasts publish over the LiveKit SFU (WebRTC) and have
   // no HLS URL — the app joins the room as a subscriber like the web viewer.
@@ -190,6 +236,10 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
           if (track is lk.VideoTrack) _lkVideo = track;
         }
       }
+      // Same rule as the HLS path: the broadcast owns the speaker while it is
+      // on screen, and receives no audio at all when it is not.
+      final gotSound = GwSound.instance.claim(_sound);
+      await _setRoomAudio(gotSound && !_muted);
       if (mounted) setState(() => _lkConnected = true);
     } catch (e) {
       if (mounted) {
@@ -234,9 +284,12 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
       if (widget.onEnded != null && !widget.stream.isLive) {
         c.addListener(_maybeFireEnded);
       }
-      // Watching a Live is a listening experience — force full media volume so
-      // muted feed/rail previews or leftover call-audio state can't silence it.
-      await c.setVolume(1.0);
+      // Watching a Live is a listening experience, so it takes the speaker:
+      // whatever was playing — a podcast, a reel left running, an unmuted feed
+      // video — is paused rather than talked over. A call outranks a broadcast,
+      // and then the Live plays silently until the call ends.
+      final gotSound = GwSound.instance.claim(_sound);
+      await c.setVolume(gotSound && !_muted ? 1.0 : 0);
       await c.play();
       if (mounted) setState(() => _ready = true);
     } catch (e) {
@@ -337,6 +390,7 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
 
   @override
   void dispose() {
+    GwSound.instance.release(_sound);
     _poll?.cancel();
     _heartbeat?.cancel();
     unawaited(_reactions.dispose());
@@ -757,8 +811,19 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
           _muted ? "Muted" : "Sound",
           _muted ? Colors.white54 : Colors.white,
           onTap: () {
-            setState(() => _muted = !_muted);
-            _controller?.setVolume(_muted ? 0 : 1);
+            final muting = !_muted;
+            setState(() => _muted = muting);
+            if (muting) {
+              // Muting a Live hands the speaker back, so a podcast paused when
+              // the broadcast opened is free to be resumed.
+              _controller?.setVolume(0);
+              unawaited(_setRoomAudio(false));
+              GwSound.instance.release(_sound);
+            } else {
+              final gotSound = GwSound.instance.claim(_sound);
+              _controller?.setVolume(gotSound ? 1 : 0);
+              unawaited(_setRoomAudio(gotSound));
+            }
           },
         ),
         const SizedBox(height: 16),

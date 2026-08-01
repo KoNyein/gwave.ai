@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/video_audio.dart';
+
 /// A minimal, self-contained fullscreen player for a chat video attachment.
 /// Tap to play/pause; a scrubber shows progress. No external controls package
 /// so it stays light and always builds.
@@ -14,10 +16,24 @@ class VideoViewScreen extends StatefulWidget {
   State<VideoViewScreen> createState() => _VideoViewScreenState();
 }
 
-class _VideoViewScreenState extends State<VideoViewScreen> {
+class _VideoViewScreenState extends State<VideoViewScreen>
+    with SoundScreen<VideoViewScreen> {
   VideoPlayerController? _c;
   bool _ready = false;
   bool _error = false;
+
+  /// A clip opened from a chat takes the speaker while it is open, and gives
+  /// it back the moment it isn't.
+  late final SoundClaim _sound = SoundClaim(
+    tag: "chat-video",
+    onSilence: () => _c?.pause(),
+    onRestore: () {
+      if (mounted) _c?.play();
+    },
+  );
+
+  @override
+  SoundClaim? get soundClaim => _sound;
 
   @override
   void initState() {
@@ -27,8 +43,12 @@ class _VideoViewScreenState extends State<VideoViewScreen> {
 
   Future<void> _init() async {
     try {
-      final c = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+      final c = watchVideoController(Uri.parse(widget.url));
+      // Held before `initialize()` completes so a background or a cover during
+      // start-up still has something to pause.
+      _c = c;
       await c.initialize();
+      await c.setVolume(GwSound.instance.claim(_sound) ? 1 : 0);
       c.addListener(() {
         if (mounted) setState(() {});
       });
@@ -46,6 +66,7 @@ class _VideoViewScreenState extends State<VideoViewScreen> {
 
   @override
   void dispose() {
+    GwSound.instance.release(_sound);
     _c?.dispose();
     super.dispose();
   }

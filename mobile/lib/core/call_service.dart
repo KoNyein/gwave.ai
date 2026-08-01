@@ -9,6 +9,7 @@ import 'api_client.dart';
 import 'config.dart';
 import 'models.dart';
 import 'repository.dart';
+import 'video_audio.dart';
 
 /// Native 1:1 messenger calls — WebRTC media with Supabase Realtime broadcast
 /// signaling. The protocol matches the web client exactly, so an app user and
@@ -45,6 +46,19 @@ class CallService extends ChangeNotifier {
   final _remoteRenderer = RTCVideoRenderer();
   RTCVideoRenderer get localRenderer => _localRenderer;
   RTCVideoRenderer get remoteRenderer => _remoteRenderer;
+
+  /// A call outranks every other sound in the app: a Live opened mid-call
+  /// plays silently rather than taking the other person's voice away, and
+  /// music cannot start underneath one. Nothing can silence a call, which is
+  /// why [SoundClaim.onSilence] here has nothing to do — the priority is what
+  /// enforces it. It survives backgrounding for the obvious reason: people
+  /// leave the app during calls.
+  final SoundClaim _sound = SoundClaim(
+    tag: "call",
+    priority: SoundClaim.conversation,
+    survivesBackground: true,
+    onSilence: () {},
+  );
 
   CallPhase phase = CallPhase.idle;
   Profile? peer;
@@ -346,6 +360,9 @@ class CallService extends ChangeNotifier {
     peer = Profile.fromJson(Map<String, dynamic>.from(from));
     _isCaller = false;
     phase = CallPhase.incoming;
+    // The ringtone, and then the conversation, own the speaker — whatever was
+    // playing pauses instead of continuing under someone's voice.
+    GwSound.instance.claim(_sound);
     // Ring out if the caller vanishes without cancelling.
     _ringTimer?.cancel();
     _ringTimer = Timer(const Duration(seconds: 50), () {
@@ -418,6 +435,7 @@ class CallService extends ChangeNotifier {
     video = withVideo;
     _isCaller = true;
     phase = CallPhase.outgoing;
+    GwSound.instance.claim(_sound);
     notifyListeners();
 
     // Our own per-call channel: listen for the callee's accept/answer/ice.
@@ -997,6 +1015,9 @@ class CallService extends ChangeNotifier {
       } catch (_) {}
     }
 
+    // The call is over: hand the speaker back, so whatever was playing before
+    // it can be resumed by the user.
+    GwSound.instance.release(_sound);
     phase = CallPhase.idle;
     peer = null;
     _callId = null;

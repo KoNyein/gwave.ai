@@ -15,6 +15,7 @@ import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
+import '../../core/video_audio.dart';
 import '../../widgets/common.dart';
 
 /// Native walkie-talkie console for one channel, Zello-style. Hold the big
@@ -36,6 +37,19 @@ class _PttChannelScreenState extends State<PttChannelScreen>
   final _recorder = AudioRecorder();
   final _player = AudioPlayer();
   final _scroll = ScrollController();
+
+  /// Incoming push-to-talk audio. Conversation priority for the same reason a
+  /// call has it: this is a person speaking to the user, not something they
+  /// chose to play.
+  late final SoundClaim _sound = SoundClaim(
+    tag: "ptt:${widget.channel.id}",
+    priority: SoundClaim.conversation,
+    onSilence: () {
+      _player.stop();
+      _playQueue.clear();
+      if (mounted) setState(() => _playingId = null);
+    },
+  );
 
   List<PttMessage> _messages = [];
   bool _loading = true;
@@ -79,12 +93,15 @@ class _PttChannelScreenState extends State<PttChannelScreen>
     _player.onPlayerComplete.listen((_) {
       if (!mounted) return;
       setState(() => _playingId = null);
+      // Nothing left to play means the speaker goes back to whoever had it.
+      if (_playQueue.isEmpty) GwSound.instance.release(_sound);
       _drainQueue();
     });
   }
 
   @override
   void dispose() {
+    GwSound.instance.release(_sound);
     _poll?.cancel();
     _pingTimer?.cancel();
     _talkingClear?.cancel();
@@ -300,6 +317,9 @@ class _PttChannelScreenState extends State<PttChannelScreen>
   Future<void> _play(PttMessage m) async {
     final url = resolveMedia(m.audioPath, bucket: "media");
     if (url == null) return;
+    // Someone talking to you is a conversation, not media: it pauses music the
+    // way a call does, and it stops rather than playing on out of a pocket.
+    if (!GwSound.instance.claim(_sound)) return;
     try {
       await _player.stop();
       setState(() => _playingId = m.id);
@@ -312,6 +332,7 @@ class _PttChannelScreenState extends State<PttChannelScreen>
   Future<void> _togglePlay(PttMessage m) async {
     if (_playingId == m.id) {
       await _player.stop();
+      GwSound.instance.release(_sound);
       if (mounted) setState(() => _playingId = null);
       return;
     }

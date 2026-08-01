@@ -54,6 +54,26 @@
 
 ## Changelog
 
+- 2026-08-01 (app): **One owner of the speaker, and it stops when you leave.**
+  Every noisy feature started playing on its own and stopped only when its
+  widget was disposed, so a Live kept talking behind anything opened on top of
+  it and kept talking after the app was backgrounded — a broadcast playing in
+  the user's pocket with nothing on screen to stop it. Audio focus cannot
+  express the rule we want, because the rule is a product one: *one feature
+  owns the speaker at a time, and it stops the moment its screen stops being
+  what you are looking at.* `core/video_audio.dart` now holds that ownership
+  explicitly (`GwSound` + `SoundClaim`), with three priorities — background
+  listening (the audio player), media (live, reels, feed video, CCTV, chat
+  clips, lesson speech) and conversation (calls, PTT), which nothing may
+  interrupt. A claim is dropped by all four things that end it: someone else
+  claiming, a screen pushed on top (`gwRouteObserver` + the `SoundScreen`
+  mixin), a bottom-nav tab switch (`silenceMedia()`, which routes never see),
+  and the app going to the background. Music and calls are the only two that
+  survive backgrounding, because that is what they are for. Live also claims on
+  play — it never did, so a podcast played *underneath* a broadcast — and
+  browser (LiveKit) lives disable the remote audio publication rather than only
+  pausing a controller they don't have.
+
 - 2026-07-31 (web): **The live worked; the post announcing it didn't.** Moving
   the status update ahead of the provider call fixed "nobody can see the
   broadcast" and left the feed announcement stranded behind the same abort —

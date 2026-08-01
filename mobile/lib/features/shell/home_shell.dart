@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
+import '../../core/video_audio.dart';
 import '../audio/floating_player.dart';
 import '../feed/feed_screen.dart';
 import '../live/live_list_screen.dart';
@@ -20,7 +21,13 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
-  void _selectTab(int i) => setState(() => _index = i);
+  /// Switching tabs is not a route push, so the route observer never hears
+  /// about it — but leaving the Feed with a video talking is exactly the case
+  /// users notice. Anything being watched stops here; music and calls don't.
+  void _selectTab(int i) {
+    if (i != _index) GwSound.instance.silenceMedia();
+    setState(() => _index = i);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +84,7 @@ class _HomeShellState extends State<HomeShell> {
                 child: NavigationBar(
                   height: 64,
                   selectedIndex: _index,
-                  onDestinationSelected: (i) => setState(() => _index = i),
+                  onDestinationSelected: _selectTab,
                   destinations: const [
                     NavigationDestination(
                       icon: Icon(Icons.home_outlined, color: GwColors.inkSoft),

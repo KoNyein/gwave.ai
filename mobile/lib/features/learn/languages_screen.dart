@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../core/app_state.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
+import '../../core/video_audio.dart';
 import '../../widgets/common.dart';
 
 /// Native language courses — the app twin of `/learn/languages`. Burmese
@@ -387,8 +388,20 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
     } catch (_) {}
   }
 
+  /// Lesson audio stops when the lesson stops being what is on screen — a
+  /// phrase reading itself out of a pocket after the phone was put away is
+  /// exactly the kind of stray sound this claim exists to prevent.
+  late final SoundClaim _sound = SoundClaim(
+    tag: "lesson-speech",
+    onSilence: () {
+      _player.stop();
+      _tts.stop();
+    },
+  );
+
   @override
   void dispose() {
+    GwSound.instance.release(_sound);
     _tts.stop();
     _player.dispose();
     super.dispose();
@@ -399,6 +412,8 @@ class _LangUnitScreenState extends State<LangUnitScreen> {
   /// for one playback (used by the 🐢 slow-replay buttons).
   Future<void> _speak(String text, {int? speedIndex}) async {
     if (text.trim().isEmpty) return;
+    // A lesson reading a phrase aloud is not allowed over a call.
+    if (!GwSound.instance.claim(_sound)) return;
     final idx = speedIndex ?? _speedIndex;
     final lang = (widget.course["bcp47"] ?? "en-US").toString();
 
