@@ -54,6 +54,13 @@
 
 ## Changelog
 
+- 2026-08-01 (web): **Three compositions on one stage.** `goLive` runs every
+  time the host's browser joins — a reload, a reconnect, a second tab — and
+  each run started another IVS composition on the same stage. IVS composites a
+  stage once: the first keeps working, every later one FAILS outright.
+  Production had three inside a minute from a single broadcast. goLive now
+  starts one only when the row has none.
+
 - 2026-08-01 (web): **A composition ARN is not a composition.** `StartComposition`
   returning an ARN says only that IVS accepted the call. Start one a second too
   early — before the host's camera is publishing — and IVS looks at the stage,
