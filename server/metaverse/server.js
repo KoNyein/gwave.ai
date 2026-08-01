@@ -4,9 +4,10 @@ const http = require("http");
 const crypto = require("crypto");
 const { WebSocketServer } = require("ws");
 
-const { Rooms, normalizeRoom } = require("./rooms");
+const { Rooms, normalizeRoom, ROOMS } = require("./rooms");
 const { identify } = require("./auth");
 const { createStore } = require("./store");
+const { createBus } = require("./bus");
 
 const PORT = Number(process.env.PORT || 8080);
 const REQUIRE_AUTH = process.env.REQUIRE_AUTH === "true";
@@ -36,6 +37,66 @@ const store = createStore(process.env.DATABASE_URL);
 /// မပို" ဆိုတဲ့ ကန့်သတ်ချက်နဲ့ ကိုက်တယ်။
 const FLUSH_MS = 30_000;
 const PURGE_MS = 60 * 60 * 1000;
+
+/// ── Task များခု (Phase 6.2) ─────────────────────────────────────────────
+/// ★ SYNC က မဖြစ်မနေလိုတယ် — message တစ်ခုချင်းနဲ့ ခြေရာခံရင် task အသစ်
+///   တက်လာချိန်မှာ **ငြိမ်နေတဲ့ player တွေကို ဘယ်တော့မှ မမြင်ရဘူး**
+///   (မရွှေ့ရင် update မပို့လို့)။ ၅ စက္ကန့်တစ်ခါ စာရင်းအပြည့်အစုံ ပို့တယ်။
+/// ★ GHOST_TTL က SYNC ရဲ့ ၃ ဆ — task တစ်လုံး ရုတ်တရက် သေရင် သူ့လူတွေက
+///   ၁၅ စက္ကန့်အတွင်း ပျောက်သွားမယ်၊ ကြားထဲ packet တစ်ခု ကျသွားရုံနဲ့
+///   လူတွေ မှိတ်တုတ်မှိတ်တုတ် မဖြစ်ဘူး။
+const SYNC_MS = 5_000;
+const GHOST_TTL_MS = 15_000;
+
+/// ── နေရာတွေကို တစ်စုတည်း ပို့ခြင်း ─────────────────────────────────────────
+/// ★ ဒါက scale ရဲ့ အဓိကသော့ချက်။ player တစ်ယောက် ရွှေ့တိုင်း သီးခြား
+///   message တစ်ခုစီ ပို့ရင် fan-out က **n²** ဖြစ်တယ် — player ၂၀၀ × 15Hz
+///   × ၂၀၀ လက်ခံသူ = တစ်စက္ကန့် `ws.send` ခေါ်မှု ၅၆၀,၀၀၀။ တိုင်းတာကြည့်တော့
+///   core တစ်ခုလုံး ၉၈% ကုန်တယ် (loadtest.js)။
+/// ★ 15Hz မှာ တစ်ခါတည်း စုပို့ရင် လက်ခံသူတစ်ယောက်လျှင် တစ်တစ်ခါပဲ ဖြစ်ပြီး
+///   send ခေါ်မှုက n² ကနေ n ဆင်းသွားတယ်။ Latency က မတိုးဘူး — client က
+///   ဘယ်လိုမှ 15Hz ထက် ပိုမပို့ဘူး။
+const MOVE_FLUSH_MS = 66;
+/// ဒဿမ ၂ နေရာ လုံလောက်တယ် — ၁ စင်တီမီတာ။ အပြည့်ရေးရင် entry တစ်ခုက
+/// ၈၀ byte ဖြစ်ပြီး ၂၀၀ ယောက်စာက packet တစ်ခုကို ၁၆KB ရောက်တယ်။
+const r2 = (n) => Math.round(n * 100) / 100;
+
+/// Bus ကို message handler ရေးပြီးမှ ဆောက်တယ် (အောက်မှာ)
+let bus = { enabled: false, publish() {}, async start() {}, async close() {} };
+
+/// Local socket တွေဆီ ပို့ပြီး တခြား task တွေဆီလည်း ထပ်ပို့တယ်။
+/// ★ `exceptId` က **local အတွက်သာ** — တခြား task မှာ အဲဒီ id ရှိမှာမဟုတ်ဘူး။
+function emit(roomId, msg, exceptId) {
+  rooms.broadcast(roomId, msg, exceptId);
+  bus.publish(roomId, msg);
+}
+
+/// roomId -> Map<playerId, player> — ဒီ tick ထဲမှာ ရွှေ့ခဲ့သူတွေ
+const moved = new Map();
+
+function markMoved(player) {
+  let m = moved.get(player.room);
+  if (!m) {
+    m = new Map();
+    moved.set(player.room, m);
+  }
+  // ★ Map ဖြစ်လို့ tick တစ်ခုထဲမှာ ၅ ခါ ရွှေ့လည်း **နောက်ဆုံးနေရာ** ပဲ
+  // ပါမယ် — ကြားထဲက နေရာတွေက ဘယ်သူ့မှ အသုံးမဝင်ဘူး။
+  m.set(player.id, player);
+}
+
+const moveFlusher = setInterval(() => {
+  for (const [roomId, m] of moved) {
+    if (m.size === 0) continue;
+    const p = [];
+    for (const pl of m.values()) p.push([pl.id, r2(pl.x), r2(pl.y), r2(pl.z), r2(pl.ry)]);
+    m.clear();
+    // ★ ရွှေ့သူကိုပါ ပြန်ပို့တယ် — client က ကိုယ့် id ကို remotes ထဲ
+    // မထားလို့ ကိုယ့်ဟာကို သူ့ဘာသာ လျစ်လျူရှုတယ်။ id တစ်ခုချင်း ခွဲပြီး
+    // packet သီးသန့် ဆောက်ရင် စုပို့တဲ့ အကျိုးကျေးဇူး ပျောက်သွားမယ်။
+    emit(roomId, { type: "updates", p });
+  }
+}, MOVE_FLUSH_MS);
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 // ★ ALB ရဲ့ health check က ဒီ endpoint ကို ခေါ်တယ်။ မရှိရင် target ကို
@@ -137,6 +198,59 @@ const purger = store.enabled
   : null;
 if (purger) purger.unref();
 
+// ── Task များခု: တခြား task ကနေ လာတဲ့ message ─────────────────────────────
+/// ★ ဒီမှာ **ပြန် publish မလုပ်ရ** — လုပ်ရင် task ၂ လုံးက message တစ်ခုကို
+///   အဆုံးမရှိ တစ်ယောက်ဆီတစ်ယောက် ပစ်ပေးနေမယ် (broadcast storm)။
+function onBusMessage(roomId, msg, origin) {
+  switch (msg.type) {
+    case "sync":
+      rooms.syncGhosts(roomId, origin, msg.players);
+      return; // sync က ကိုယ်တွင်းသုံး — client ဆီ မပို့ဘူး
+    case "join":
+      rooms.setGhost(roomId, msg.id, msg.state ?? {}, origin);
+      break;
+    case "leave":
+      rooms.removeGhost(roomId, msg.id);
+      break;
+    case "update":
+      rooms.setGhost(roomId, msg.id, { x: msg.x, y: msg.y, z: msg.z, ry: msg.ry }, origin);
+      break;
+    case "updates":
+      for (const e of msg.p ?? []) {
+        rooms.setGhost(roomId, e[0], { x: e[1], y: e[2], z: e[3], ry: e[4] }, origin);
+      }
+      break;
+    case "emote":
+      rooms.setGhost(roomId, msg.id, { emote: msg.emote }, origin);
+      break;
+    case "name":
+      rooms.setGhost(roomId, msg.id, { name: msg.name, authed: false }, origin);
+      break;
+    case "chat":
+      break; // chat က state မရှိဘူး — ပြရုံပဲ
+    default:
+      return; // မသိတဲ့ type ကို client ဆီ ထပ်မပို့ဘူး
+  }
+  rooms.broadcast(roomId, msg);
+}
+
+bus = createBus(process.env.REDIS_URL, ROOMS, onBusMessage);
+
+/// ၅ စက္ကန့်တစ်ခါ ကိုယ့် task ပေါ်က player စာရင်း အပြည့်အစုံ ကြေညာတယ်။
+const syncer = bus.enabled
+  ? setInterval(() => {
+      for (const roomId of ROOMS) {
+        const players = rooms.localSnapshot(roomId);
+        // ★ ဗလာဆိုလည်း ပို့ရမယ် — မပို့ရင် နောက်ဆုံးလူ ထွက်သွားတဲ့ task ရဲ့
+        // ဂိုးစ်တွေက တခြား task မှာ TTL ကုန်တဲ့အထိ ကျန်နေမယ်။
+        bus.publish(roomId, { type: "sync", players });
+      }
+      for (const [roomId, id] of rooms.sweepGhosts(GHOST_TTL_MS)) {
+        rooms.broadcast(roomId, { type: "leave", id });
+      }
+    }, SYNC_MS)
+  : null;
+
 wss.on("connection", async (ws, req) => {
   ws.isAlive = true;
   ws.on("pong", () => {
@@ -210,7 +324,7 @@ wss.on("connection", async (ws, req) => {
   if (existing && existing.ws !== ws) {
     existing.ws.close(4002, "signed in elsewhere");
     rooms.remove(room, player.id);
-    rooms.broadcast(room, { type: "leave", id: player.id });
+    emit(room, { type: "leave", id: player.id });
   }
 
   rooms.add(room, player);
@@ -226,7 +340,7 @@ wss.on("connection", async (ws, req) => {
     players: rooms.snapshot(room, player.id),
   });
 
-  rooms.broadcast(
+  emit(
     room,
     {
       type: "join",
@@ -291,7 +405,9 @@ wss.on("connection", async (ws, req) => {
         player.lastMoveAt = now;
         player.dirty = true;
 
-        rooms.broadcast(player.room, { type: "update", id: player.id, x, y, z, ry }, player.id);
+        // ★ ချက်ချင်း မပို့ဘူး — 15Hz tick မှာ room တစ်ခုလုံးအတွက်
+        // တစ်ခါတည်း စုပို့တယ် (moveFlusher)။
+        markMoved(player);
         break;
       }
 
@@ -309,7 +425,7 @@ wss.on("connection", async (ws, req) => {
           text,
         };
         send(ws, out); // ကိုယ့်စာကို ကိုယ်လည်း မြင်ရမယ်
-        rooms.broadcast(player.room, out, player.id);
+        emit(player.room, out, player.id);
         // Moderation log — best-effort၊ chat က DB ကို ဘယ်တော့မှ မစောင့်ရ
         void store.logChat(player.id, player.name, player.room, text);
         break;
@@ -321,7 +437,7 @@ wss.on("connection", async (ws, req) => {
         const e = msg.emote === null ? null : String(msg.emote);
         if (e !== null && !EMOTES.has(e)) return;
         player.emote = e;
-        rooms.broadcast(player.room, { type: "emote", id: player.id, emote: e }, player.id);
+        emit(player.room, { type: "emote", id: player.id, emote: e }, player.id);
         break;
       }
 
@@ -336,7 +452,7 @@ wss.on("connection", async (ws, req) => {
           .trim();
         if (!name) return;
         player.name = name;
-        rooms.broadcast(
+        emit(
           player.room,
           { type: "name", id: player.id, name, authed: false },
           player.id,
@@ -351,7 +467,7 @@ wss.on("connection", async (ws, req) => {
 
   const drop = () => {
     rooms.remove(player.room, player.id);
-    rooms.broadcast(player.room, { type: "leave", id: player.id });
+    emit(player.room, { type: "leave", id: player.id });
     // ★ ထွက်ချိန်မှာ မဖြစ်မနေ သိမ်းရမယ် — ၃၀ စက္ကန့် flush ကို စောင့်ရင်
     // ထွက်သွားတဲ့ ၂၉ စက္ကန့်စာ ရွှေ့ခဲ့တာ ပျောက်မယ်။
     void flushPlayer(player);
@@ -386,6 +502,8 @@ async function shutdown(signal) {
   clearInterval(heartbeat);
   if (flusher) clearInterval(flusher);
   if (purger) clearInterval(purger);
+  if (syncer) clearInterval(syncer);
+  clearInterval(moveFlusher);
 
   // Client တွေ မထွက်သေးရင်တောင် ၁၀ စက္ကန့်ထက် မစောင့်ဘူး
   const hardStop = setTimeout(() => process.exit(0), 10_000);
@@ -408,6 +526,7 @@ async function shutdown(signal) {
     }
   }
   await store.close().catch(() => {});
+  await bus.close().catch(() => {});
   server.close(() => process.exit(0));
 }
 process.on("SIGTERM", () => shutdown("SIGTERM"));
@@ -415,6 +534,12 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 
 server.listen(PORT, () => {
   console.log(
-    `[mv] listening on :${PORT} · auth=${REQUIRE_AUTH ? "required" : "guest ok"}`,
+    `[mv] listening on :${PORT} · auth=${REQUIRE_AUTH ? "required" : "guest ok"}` +
+      ` · db=${store.enabled ? "on" : "off"} · bus=${bus.enabled ? "redis" : "off"}`,
   );
+  // ★ Bus ချိတ်မရလည်း server က ဆက်လုပ်ရမယ် — Redis ကျတာက task တစ်လုံးတည်း
+  // အဖြစ် ကျဆင်းသွားတာပဲ ဖြစ်သင့်တယ်၊ လောကတစ်ခုလုံး ပိတ်သွားလို့မဟုတ်ဘူး။
+  void bus.start().catch((err) => {
+    console.error("[mv/bus] start failed:", err.message);
+  });
 });

@@ -16,7 +16,8 @@ npm test           # protocol + anti-cheat + room isolation
 | S→C | `init` | `{ id, room, name, authed, serverTime, players }` |
 | S→C | `join` | `{ id, state }` |
 | S→C | `leave` | `{ id }` |
-| C↔S | `update` | `{ x, y, z, ry }` |
+| C→S | `update` | `{ x, y, z, ry }` |
+| S→C | `updates` | `{ p: [[id, x, y, z, ry], …] }` — 15Hz tick တစ်ခါစီ စုပို့ |
 | S→C | `correct` | `{ x, y, z }` — anti-cheat က ငြင်းလိုက်တဲ့အခါ |
 | C↔S | `chat` | `{ text }` (≤200 လုံး, 0.5s တစ်ကြိမ်) |
 | C↔S | `emote` | `{ emote: 'wave'\|'dance'\|'sit'\|null }` |
@@ -34,6 +35,7 @@ Close code — `4001` auth လိုတယ် (client က retry မလုပ်�
 | `REQUIRE_AUTH` | `true` ဆိုရင် ticket မပါတဲ့သူကို `4001` နဲ့ ပိတ် |
 | `MV_TICKET_SECRET` | Next.js ရဲ့ `/api/metaverse/ws-ticket` နဲ့ **တူရမယ်** |
 | `DATABASE_URL` | RDS persistence။ မထည့်ရင် လောကက ပုံမှန်အလုပ်လုပ်ပြီး နေရာ မမှတ်ဘူး |
+| `REDIS_URL` | Task များခုကြား state မျှဖို့ (ElastiCache)။ မထည့်ရင် task တစ်လုံးတည်း mode |
 
 ★ `MV_TICKET_SECRET` နဲ့ `DATABASE_URL` ကို task-definition ရဲ့ `environment`
 ထဲ **plain text မထည့်ရ** — `secrets` field နဲ့ Secrets Manager ARN ကိုသာ
@@ -153,11 +155,76 @@ aws ecs update-service --cluster gwave-cluster --service metaverse \
 #   ပြန်ချိတ်ရမယ် (SIGTERM → close 1001 → backoff reconnect)
 ```
 
+## Scale (Phase 6.2)
+
+### Task တစ်လုံးက ဘယ်လောက် ခံနိုင်လဲ
+
+`node loadtest.js` (bot တွေက 15Hz နဲ့ ရွှေ့တယ်၊ ၂၀ စက္ကန့်) နဲ့ တိုင်းတာချက်:
+
+| Bot | Server CPU | ပြင်ပသို့ message |
+| --- | --- | --- |
+| ၅၀ | 6% | ၁,၀၀၀/s |
+| ၂၀၀ | 9% | ၄,၀၀၀/s |
+| ၈၀၀ | 70% | ၂၅,၀၀၀/s |
+
+```bash
+node loadtest.js                    # bot ၅၀
+BOTS=800 SECONDS=30 node loadtest.js
+```
+
+★ **နေရာတွေကို စုပို့တယ်** (`updates` message)။ ရွှေ့တိုင်း သီးခြားပို့ရင်
+fan-out က n² — player ၂၀၀ မှာ တစ်စက္ကန့် send ၅၆၀,၀၀၀ ဖြစ်ပြီး core
+တစ်ခုလုံး ၉၈% ကုန်တယ် (တိုင်းတာပြီးသား)။ 15Hz tick မှာ တစ်ခါတည်း စုပို့တော့
+၄,၀၀၀ ကျပြီး CPU က ၉% ပဲ။ ဒါကြောင့် task တစ်လုံးက **~၆၀၀ ယောက်** ခံနိုင်တယ်
+(spec ရဲ့ ခန့်မှန်း ၂၀၀ မဟုတ်တော့ဘူး)။
+
+### Redis (ElastiCache) — task ၂ လုံးအထက်မှ
+
+Task တစ်လုံးထက် များရင် `REDIS_URL` မဖြစ်မနေ လိုတယ် — မဟုတ်ရင် task A ကလူတွေက
+task B ကလူတွေကို **လုံးဝ မမြင်ရဘူး** (တစ်လောကထဲမှာ ရှိပေမယ့် မတွေ့တဲ့ လောက ၂ ခု)။
+
+```bash
+aws elasticache create-cache-cluster --cache-cluster-id gwave-mv \
+  --engine redis --cache-node-type cache.t4g.micro --num-cache-nodes 1 \
+  --security-group-ids $TASK_SG --region $REGION
+# → REDIS_URL=redis://gwave-mv.xxxx.cache.amazonaws.com:6379 (Secrets Manager)
+```
+
+- Task တစ်ခုချင်းက `mv:{room}` channel ကို subscribe လုပ်တယ်။
+- ၅ စက္ကန့်တစ်ခါ ကိုယ့် player စာရင်း အပြည့်အစုံ ကြေညာတယ် (`sync`) —
+  ★ ဒါမရှိရင် task အသစ်တက်ချိန်မှာ **ငြိမ်နေတဲ့သူတွေကို ဘယ်တော့မှ မမြင်ရဘူး**
+  (မရွှေ့ရင် update မပို့လို့)။
+- Task တစ်လုံး ရုတ်တရက် သေရင် သူ့လူတွေက ၁၅ စက္ကန့်အတွင်း ပျောက်တယ် (TTL)။
+- Redis ကျရင် server က မကျဘူး — task တစ်လုံးတည်း အဖြစ် ကျဆင်းသွားရုံပဲ။
+
+### Auto-scaling
+
+```bash
+aws application-autoscaling register-scalable-target \
+  --service-namespace ecs --scalable-dimension ecs:service:DesiredCount \
+  --resource-id service/gwave-cluster/metaverse \
+  --min-capacity 1 --max-capacity 6 --region $REGION
+
+aws application-autoscaling put-scaling-policy \
+  --service-namespace ecs --scalable-dimension ecs:service:DesiredCount \
+  --resource-id service/gwave-cluster/metaverse \
+  --policy-name mv-cpu65 --policy-type TargetTrackingScaling \
+  --target-tracking-scaling-policy-configuration \
+    '{"TargetValue":65,"PredefinedMetricSpecification":{"PredefinedMetricType":"ECSServiceAverageCPUUtilization"},"ScaleInCooldown":300,"ScaleOutCooldown":60}' \
+  --region $REGION
+```
+
+★ ScaleIn cooldown ကို ရှည်ရှည် (၅ မိနစ်) ထားရတယ် — WebSocket connection တွေက
+ရှည်လျားတာမို့ task တစ်လုံး ဖြုတ်လိုက်တိုင်း အဲဒီပေါ်က player တွေ ပြန်ချိတ်ရတယ်။
+
 ## သိထားသင့်တဲ့ ကန့်သတ်ချက်
 
-- Player state က **task ရဲ့ memory ထဲမှာ** ရှိတယ်။ Task ၂ လုံးဆိုရင် stickiness
-  မဖြစ်မနေ လိုတယ်။ တကယ် scale (player ၁၀၀၀+) ဖြစ်ချင်ရင် Redis pub/sub —
-  Phase 6.2။
+- Player state က **task ရဲ့ memory ထဲမှာ** ရှိတယ်။ `REDIS_URL` မထည့်ရင်
+  task ၂ လုံးက player တွေ တစ်ယောက်နဲ့တစ်ယောက် မမြင်ရဘူး — အဲဒီအခြေအနေမှာ
+  ALB stickiness က မဖြစ်မနေလိုတယ်။
+- `updates` က နေရာတွေကို 15Hz မှာ စုပို့တာမို့ တစ်ယောက်ရဲ့ ရွှေ့မှုက
+  အများဆုံး ၆၆ ms နောက်ကျပြီးမှ တခြားသူဆီ ရောက်တယ်။ Client က interpolate
+  လုပ်ထားလို့ မျက်လုံးနဲ့ မမြင်ရဘူး။
 - နောက်ဆုံး flush ကနေ ပြတ်သွားချိန်အထိ (အများဆုံး ၃၀ စက္ကန့်) ရွှေ့ခဲ့တာက
   server ကို **တစ်ခါတည်း သတ်လိုက်ရင်** (SIGKILL / task crash) ပျောက်တယ်။
   ပုံမှန် deploy (SIGTERM) မှာတော့ မပျောက်ဘူး။

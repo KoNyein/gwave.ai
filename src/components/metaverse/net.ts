@@ -14,6 +14,10 @@ export type RemoteState = {
   ry: number;
   name?: string;
   emote?: string | null;
+  /// ★ Gwave အကောင့်နဲ့ ဝင်ထားသူလား ဆိုတာ **server ကနေသာ** လာတယ်။
+  /// နာမည်ကို ကြည့်ပြီး ခန့်မှန်းလို့ မရဘူး — ဧည့်သည်က ဘယ်နာမည်မဆို
+  /// ပေးလို့ရလို့။
+  authed?: boolean;
 };
 
 export type NetHandlers = {
@@ -183,6 +187,8 @@ export function connectMetaverse(
           handlers.onLeave?.(String(m.id));
           break;
         case "update":
+          // ရိုးရိုး တစ်ယောက်စာ — rolling deploy အတွင်း task အဟောင်းက
+          // ဒီပုံစံနဲ့ ပို့နေဆဲ ဖြစ်နိုင်လို့ ဆက်ထားတယ်
           handlers.onUpdate?.(
             String(m.id),
             Number(m.x),
@@ -191,6 +197,23 @@ export function connectMetaverse(
             Number(m.ry),
           );
           break;
+        case "updates": {
+          // ★ စုပို့တဲ့ပုံစံ — `[id, x, y, z, ry]` array တွေ။ key နာမည်တွေ
+          // ထည့်ရင် player ၂၀၀ စာ packet က ၂ ဆ ကြီးမယ်။
+          const list = m.p as unknown[];
+          if (!Array.isArray(list)) break;
+          for (const e of list) {
+            if (!Array.isArray(e) || e.length < 5) continue;
+            handlers.onUpdate?.(
+              String(e[0]),
+              Number(e[1]),
+              Number(e[2]),
+              Number(e[3]),
+              Number(e[4]),
+            );
+          }
+          break;
+        }
         case "emote":
           handlers.onEmote?.(String(m.id), (m.emote as string | null) ?? null);
           break;

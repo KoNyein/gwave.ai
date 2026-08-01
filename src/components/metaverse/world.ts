@@ -18,6 +18,9 @@ export type World = {
   /// နေရောင်အား 0 (ည) → 1 (နေ့) ကို ပြန်ပေးတယ် — bloom အားနဲ့ HUD က
   /// အဲဒါကို သုံးတယ်၊ တွက်ပုံကို ၂ နေရာမှာ ထပ်ရေးစရာမလိုအောင်။
   updateSky(timeOfDay: number): number;
+  /// ★ အရိပ်ကို ပိတ်တာက ဖုန်းအဟောင်းအတွက် အကြီးမားဆုံး အမြတ်တစ်ခု —
+  /// shadow map က scene တစ်ခုလုံးကို ဒုတိယအကြိမ် ပြန်ဆွဲရတယ်။
+  setShadows(enabled: boolean): void;
   dispose(): void;
 };
 
@@ -310,7 +313,11 @@ export function buildWorld(scene: THREE.Scene): World {
     scene.background = null;
   }
 
-  return { colliders, lamps, lampLights, screenMesh, updateSky, dispose };
+  function setShadows(enabled: boolean) {
+    sun.castShadow = enabled;
+  }
+
+  return { colliders, lamps, lampLights, screenMesh, updateSky, setShadows, dispose };
 }
 
 /// နံရံနဲ့ တိုက်မိမှုကို ဖြေရှင်း — ★ x နဲ့ z ကို **သီးခြားစီ** စစ်တယ်။

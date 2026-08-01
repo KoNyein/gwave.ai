@@ -61,6 +61,35 @@
 
 ## Changelog
 
+- 2026-08-02 (web): **Metaverse — phase 6, performance and scale.** The old
+  phone in Mae Sot is the target, not the desktop. Distant avatars stop
+  animating past 45 m and stop drawing past 90 m; nametags are DOM elements
+  moved with `transform` (never `left`/`top`, which would reflow the page 500
+  times a second) and fade out between 28 m and 40 m; shadows have a switch;
+  and if the frame rate stays under 25 for three consecutive seconds the world
+  turns bloom and shadows off and drops to pixel ratio 1 by itself, says so,
+  and offers a button to undo it. The automatic downgrade never overwrites the
+  player's own saved preference — a better phone next time gets their choice
+  back.
+  **The measurement that mattered**: a 200-bot load test pinned a whole core
+  at 98%. Every player's move was its own message to every other player —
+  n², 562 629 sends per second. Batching positions into one `updates` array
+  per room per 15 Hz tick took the same 200 bots to **9.4% CPU and 4 059
+  messages/s**, and 800 bots now sit at 70%. One task holds roughly 600
+  players, not the 200 the spec assumed. `node server/metaverse/loadtest.js`
+  reproduces it.
+  Beyond one task, `REDIS_URL` (ElastiCache) shares room state: each task
+  subscribes to `mv:{room}`, republishes its own player list every 5 seconds —
+  without that a task starting fresh would never see anyone standing still —
+  and drops players it has not heard about for 15 seconds, so a task dying
+  does not leave ghosts. Redis being down degrades to single-task, never to a
+  dead world. Five new tests run two servers against a real Redis and check
+  they see each other, chat across, and still keep rooms apart.
+  **User-side**: create the ElastiCache cluster and put `REDIS_URL` in Secrets
+  Manager (`gwave/MV_REDIS_URL`) — the task definition already references it —
+  then register the autoscaling target and the 65% CPU policy. Commands in
+  `server/metaverse/README.md`.
+
 - 2026-08-02 (web): **Metaverse — phase 5, world features.** The city now has
   a clock everyone shares, a minimap, footsteps you can hear coming from the
   left or the right, bloom you can switch off, a live screen, and doors back

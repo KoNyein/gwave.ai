@@ -126,7 +126,15 @@ test("a second player is seen joining and moving", async () => {
   assert.strictEqual(join.id, initB.id);
 
   b.send(JSON.stringify({ type: "update", x: 1, y: 0, z: 12, ry: 0 }));
-  const upd = await waitFor(a, "update", (m) => m.id === initB.id);
+  // ★ နေရာတွေက 15Hz tick မှာ စုပို့တယ် (`updates`) — တစ်ယောက်စာ `update`
+  // မဟုတ်တော့ဘူး။ fan-out ကို n² ကနေ n ချဖို့ (loadtest.js)။
+  const batch = await waitFor(a, "updates", (m) =>
+    (m.p ?? []).some((e) => e[0] === initB.id),
+  );
+  const upd = (() => {
+    const e = batch.p.find((x) => x[0] === initB.id);
+    return { id: e[0], x: e[1], y: e[2], z: e[3], ry: e[4] };
+  })();
   assert.strictEqual(upd.x, 1);
 
   b.close();
@@ -147,11 +155,12 @@ test("a teleport is rejected and corrected, and nobody else sees it", async () =
   const corr = await next(b, "correct");
   assert.notStrictEqual(corr.x, 9999);
 
-  // a ဆီကို update မရောက်ဘူးဆိုတာ သက်သေပြဖို့ — တရားဝင် update တစ်ခု
-  // ပို့ပြီး အဲဒါက ပထမဆုံးရောက်လာတာ ဖြစ်ရမယ်
+  // a ဆီကို ခုန်ခဲ့တဲ့နေရာ မရောက်ဘူးဆိုတာ သက်သေပြဖို့ — တရားဝင် update
+  // တစ်ခု ပို့ပြီး a မြင်ရတဲ့ ပထမဆုံး နေရာက အဲဒါ ဖြစ်ရမယ်။
   b.send(JSON.stringify({ type: "update", x: 0.5, y: 0, z: 12, ry: 0 }));
-  const upd = await next(a, "update");
-  assert.strictEqual(upd.x, 0.5);
+  const batch = await next(a, "updates");
+  const e = batch.p.find((x) => x[0] !== undefined);
+  assert.strictEqual(e[1], 0.5);
 
   a.close();
   b.close();

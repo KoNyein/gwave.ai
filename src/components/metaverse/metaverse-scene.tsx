@@ -8,8 +8,10 @@ import { createHuman, type Avatar, type HumanState } from "./human";
 import { buildLandmarks, type Landmark } from "./landmarks";
 import { attachLiveScreen, type LiveScreen } from "./livescreen";
 import { createMinimap } from "./minimap";
+import { createNametags } from "./nametags";
 import { connectMetaverse, type NetClient, type RemoteState } from "./net";
 import { createPostFx } from "./postfx";
+import { createQuality } from "./quality";
 import { buildWorld, resolveCollision, WORLD_RADIUS } from "./world";
 
 /// Gwave Metaverse ရဲ့ အဓိက client component။
@@ -42,6 +44,13 @@ const IVS_URL = process.env.NEXT_PUBLIC_IVS_PLAYBACK_URL || "";
 /// Bloom ကို ဖုန်းအဟောင်းမှာ ပိတ်ထားလို့ရအောင် — ရွေးချယ်မှုက localStorage
 /// မှာ ကျန်ရမယ်၊ ဝင်တိုင်း ပြန်ပိတ်နေရရင် အသုံးမဝင်ဘူး။
 const BLOOM_KEY = "gw.mv.bloom";
+const SHADOW_KEY = "gw.mv.shadows";
+
+/// Animation LOD / visibility cull ရဲ့ အကွာအဝေး (spec 6.1)။
+/// ★ ဝေးတဲ့သူတွေရဲ့ **နေရာကိုတော့ ဆက်တွက်တယ်** — animation ကိုပဲ ရပ်တာ။
+/// နေရာပါ ရပ်လိုက်ရင် အနားရောက်လာချိန်မှာ ရုတ်တရက် နေရာသစ်ဆီ ခုန်သွားမယ်။
+const LOD_ANIMATE_WITHIN = 45;
+const CULL_BEYOND = 90;
 
 /// Player id ကနေ အဝတ်အရောင် — တစ်ယောက်နဲ့တစ်ယောက် ခွဲမြင်ရဖို့။
 /// Server ကနေ အရောင်မပို့ဘဲ id ကနေ တွက်တာက packet မလိုဘဲ တည်ငြိမ်တယ်
@@ -100,12 +109,22 @@ export function MetaverseScene() {
   const [fps, setFps] = useState(0);
   const [emote, setEmote] = useState<HumanState["emote"]>(null);
   const [bloom, setBloom] = useState(true);
+  const [shadows, setShadows] = useState(true);
   const [sound, setSound] = useState(false);
+  /// စက်နှေးလို့ အလိုအလျောက် လျှော့ချထားလား
+  const [degraded, setDegraded] = useState(false);
   /// လောကထဲက နာရီ — HUD မှာ ပြဖို့ (player အားလုံး တူညီရမယ်)
   const [clock, setClock] = useState("");
   const [nearby, setNearby] = useState<Landmark | null>(null);
+  const tagsRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<SpatialAudio | null>(null);
   const bloomRef = useRef(true);
+  const shadowRef = useRef<((on: boolean) => void) | null>(null);
+  const restoreRef = useRef<(() => void) | null>(null);
+  /// အလိုအလျောက် လျှော့ချထားရင် bloom ကို ဖွင့်ခွင့်မပြုဘူး — ဒါပေမယ့်
+  /// လူရဲ့ ရွေးချယ်မှု (localStorage) ကို မဖျက်ဘူး၊ စက်ကောင်းတဲ့ဖုန်းနဲ့
+  /// နောက်တစ်ခါဝင်ရင် ပြန်ရမယ်။
+  const degradedRef = useRef(false);
   // ဒီ ၃ ခုက မကြာခဏမပြောင်းလို့ React state နဲ့ ရတယ် (position မဟုတ်ဘူး)
   const [online, setOnline] = useState(1);
   const [link, setLink] = useState<"off" | "connecting" | "live" | "auth">(
@@ -130,8 +149,8 @@ export function MetaverseScene() {
   // Bloom ရွေးချယ်မှုကို ပြန်ဖတ် — ဖုန်းအဟောင်းမှာ ပိတ်ထားသူက ဝင်တိုင်း
   // ပြန်ပိတ်နေရရင် အသုံးမဝင်ဘူး။
   useEffect(() => {
-    const saved = window.localStorage.getItem(BLOOM_KEY);
-    if (saved === "0") setBloom(false);
+    if (window.localStorage.getItem(BLOOM_KEY) === "0") setBloom(false);
+    if (window.localStorage.getItem(SHADOW_KEY) === "0") setShadows(false);
   }, []);
 
   // render loop က ref ကနေ ဖတ်တယ် — state ကို closure ထဲ ဖမ်းထားလို့
@@ -139,6 +158,15 @@ export function MetaverseScene() {
     bloomRef.current = bloom;
     window.localStorage.setItem(BLOOM_KEY, bloom ? "1" : "0");
   }, [bloom]);
+
+  useEffect(() => {
+    window.localStorage.setItem(SHADOW_KEY, shadows ? "1" : "0");
+    shadowRef.current?.(shadows);
+  }, [shadows]);
+
+  useEffect(() => {
+    degradedRef.current = degraded;
+  }, [degraded]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -168,6 +196,23 @@ export function MetaverseScene() {
     );
 
     const world = buildWorld(scene);
+
+    // ── အရိပ် ───────────────────────────────────────────────────────────
+    // ★ `renderer.shadowMap.enabled` ကို ပြောင်းပြီး material တွေကို
+    // `needsUpdate` မလုပ်ရင် shader အဟောင်းက ဆက်သုံးနေလို့ ဘာမှမပြောင်းဘူး
+    // (ဒါမှမဟုတ် အရိပ်နေရာမှာ အနက်ရောင် အကွက်တွေ ကျန်နေတယ်)။
+    const applyShadows = (on: boolean) => {
+      renderer.shadowMap.enabled = on;
+      world.setShadows(on);
+      scene.traverse((o) => {
+        const mat = (o as THREE.Mesh).material;
+        if (!mat) return;
+        if (Array.isArray(mat)) for (const m of mat) m.needsUpdate = true;
+        else mat.needsUpdate = true;
+      });
+    };
+    shadowRef.current = applyShadows;
+    applyShadows(window.localStorage.getItem(SHADOW_KEY) !== "0");
 
     // ── Post-processing (bloom) ───────────────────────────────────────────
     const postfx = createPostFx(
@@ -201,6 +246,20 @@ export function MetaverseScene() {
     // ★ ဒီမှာ AudioContext မဆောက်ဘူး — ဖွင့်တဲ့ခလုတ် နှိပ်မှသာ ဆောက်တယ်။
     const audio = createSpatialAudio();
     audioRef.current = audio;
+
+    // ── နာမည်တံဆိပ် + အရည်အသွေး စောင့်ကြည့်မှု ────────────────────────────
+    const tagHost = tagsRef.current;
+    const nametags = tagHost ? createNametags(tagHost) : null;
+    const quality = createQuality();
+
+    /// လူကိုယ်တိုင် "ပြန်မြှင့်" နှိပ်တဲ့အခါ — pixelRatio နဲ့ warm-up ကိုပါ
+    /// ပြန်ချိန်ရမယ်၊ မဟုတ်ရင် ရုပ်က ဝါးနေဆဲ ဖြစ်ပြီး ဒုတိယအကြိမ် ချက်ချင်း
+    /// ပြန်လျှော့ခံရမယ်။
+    restoreRef.current = () => {
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      postfx.setSize(mount.clientWidth, mount.clientHeight);
+      quality.reset();
+    };
 
     // ── ကိုယ့်လူရုပ် ───────────────────────────────────────────────────────
     const me: Avatar = createHuman(0x44bba4, 0xe8b088);
@@ -237,6 +296,7 @@ export function MetaverseScene() {
         emote: (s.emote as HumanState["emote"]) ?? null,
         speed: 0,
       });
+      nametags?.add(id, s.name ?? "Gwave", s.authed !== false);
       setOnline(remotes.size + 1);
     };
 
@@ -246,6 +306,7 @@ export function MetaverseScene() {
       r.avatar.dispose();
       remotes.delete(id);
       audio.drop(id);
+      nametags?.remove(id);
       setOnline(remotes.size + 1);
     };
 
@@ -295,6 +356,9 @@ export function MetaverseScene() {
         onName: (id, name) => {
           const r = remotes.get(id);
           if (r) r.name = name;
+          // setname က ဧည့်သည်ကသာ ပို့လို့ရတယ် (server က signed-in user ကို
+          // ငြင်းတယ်) — ဒါကြောင့် အမှတ်အသားက "ဧည့်သည်" အတိုင်း ကျန်တယ်
+          nametags?.rename(id, name);
         },
         onCorrect: (x, y, z) => {
           // Server က ငြင်းလိုက်တယ် — server ရဲ့ နေရာက အမှန်။
@@ -567,12 +631,20 @@ export function MetaverseScene() {
 
         r.avatar.group.position.set(r.cur.x, r.cur.y, r.cur.z);
         r.avatar.group.rotation.y = r.cur.ry;
-        r.avatar.update(dt, {
-          speed: r.speed,
-          running: r.speed > 5,
-          airborne: r.cur.y > 0.15,
-          emote: r.emote,
-        });
+
+        // ── LOD + cull (spec 6.1) ────────────────────────────────────────
+        // ★ နေရာကို အပေါ်မှာ တွက်ပြီးပြီ — animation ကိုပဲ ချန်တယ်။ နေရာပါ
+        // ရပ်ရင် ၄၅ ကျော် ဝေးရာက ပြန်နီးလာချိန်မှာ ခုန်သွားမယ်။
+        const far = Math.hypot(r.cur.x - p.x, r.cur.z - p.z);
+        r.avatar.group.visible = far < CULL_BEYOND;
+        if (far < LOD_ANIMATE_WITHIN) {
+          r.avatar.update(dt, {
+            speed: r.speed,
+            running: r.speed > 5,
+            airborne: r.cur.y > 0.15,
+            emote: r.emote,
+          });
+        }
       }
 
       net?.sendUpdate(p.x, p.y, p.z, p.ry);
@@ -599,11 +671,25 @@ export function MetaverseScene() {
       const daylight = world.updateSky(worldTime);
 
       // ── Bloom ──────────────────────────────────────────────────────────
-      postfx.enabled = bloomRef.current;
+      // ★ လျှော့ချထားရင် လူရဲ့ ရွေးချယ်မှုကို မဖျက်ဘဲ ပိတ်ထားတယ် —
+      // စက်ကောင်းတဲ့ဖုန်းနဲ့ နောက်တစ်ခါဝင်ရင် သူ့ရွေးချယ်မှု ပြန်ရမယ်။
+      postfx.enabled = bloomRef.current && !degradedRef.current;
       postfx.setDaylight(daylight);
       screen.update(p.x, p.z);
       minimap?.draw(p, remoteViews());
+      nametags?.update(camera, mount.clientWidth, mount.clientHeight, taggable());
       postfx.render();
+
+      // ── Adaptive quality ───────────────────────────────────────────────
+      // ★ ဖုန်းအဟောင်းက ခလုတ်ရှာပြီး ပိတ်မယ့်အထိ မစောင့်ဘူး — အဲဒီအချိန်မှာ
+      // tab ကို ပိတ်လိုက်ပြီ ဖြစ်တယ်။
+      if (quality.sample(dt)) {
+        degradedRef.current = true;
+        renderer.setPixelRatio(1);
+        postfx.setSize(mount.clientWidth, mount.clientHeight);
+        applyShadows(false);
+        setDegraded(true);
+      }
 
       // FPS — ၂ စက္ကန့်တစ်ခါသာ state ထဲတင် (re-render နည်းအောင်)
       frames++;
@@ -637,6 +723,13 @@ export function MetaverseScene() {
       for (const r of remotes.values()) yield r.cur;
     }
 
+    /// နာမည်တံဆိပ်တွေ — ကိုယ့်ကိုယ်ကို မပါဘူး (ကိုယ့်နာမည်က HUD မှာ ရှိပြီးသား)
+    function* taggable() {
+      for (const [id, r] of remotes) {
+        yield { id, x: r.cur.x, y: r.cur.y, z: r.cur.z };
+      }
+    }
+
     setReady(true);
     tick();
 
@@ -667,6 +760,9 @@ export function MetaverseScene() {
       // ★ screen က fetch ပြီးမှ အစားထိုးခံရနိုင်လို့ holder ကနေ dispose လုပ်တယ်
       screen.dispose();
       minimap?.dispose();
+      nametags?.dispose();
+      shadowRef.current = null;
+      restoreRef.current = null;
       landmarks.dispose();
       audio.dispose();
       audioRef.current = null;
@@ -680,6 +776,13 @@ export function MetaverseScene() {
 
   return (
     <div ref={mountRef} className="relative h-full w-full">
+      {/* နာမည်တံဆိပ်တွေ ကပ်တဲ့နေရာ — 3D မဟုတ်ဘဲ DOM (nametags.ts) */}
+      <div
+        ref={tagsRef}
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-[5] overflow-hidden"
+      />
+
       {/* ── HUD ─────────────────────────────────────────────────────── */}
       <div className="pointer-events-none absolute left-3 top-3 z-10 select-none rounded-lg bg-black/40 px-3 py-2 text-[11px] leading-relaxed text-white/80 backdrop-blur">
         <div className="font-semibold text-emerald-300">Gwave Metaverse</div>
@@ -779,12 +882,27 @@ export function MetaverseScene() {
             onClick={() => setBloom((b) => !b)}
             title="အလင်းအရောင် (bloom)"
             className={`rounded-lg border px-2 py-1 text-[11px] backdrop-blur transition ${
-              bloom
+              bloom && !degraded
                 ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200"
                 : "border-white/15 bg-black/40 text-white/60"
             }`}
           >
-            ✨ {bloom ? "ဖွင့်" : "ပိတ်"}
+            ✨ {bloom && !degraded ? "ဖွင့်" : "ပိတ်"}
+          </button>
+
+          {/* အရိပ်က shadow map တစ်ခုလုံး ပြန်ဆွဲရတာမို့ ဖုန်းအဟောင်းမှာ
+              အကြီးမားဆုံး ကုန်ကျစရိတ်တစ်ခု */}
+          <button
+            data-hud="1"
+            onClick={() => setShadows((s) => !s)}
+            title="အရိပ် (shadows)"
+            className={`rounded-lg border px-2 py-1 text-[11px] backdrop-blur transition ${
+              shadows
+                ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200"
+                : "border-white/15 bg-black/40 text-white/60"
+            }`}
+          >
+            🌒 {shadows ? "ဖွင့်" : "ပိတ်"}
           </button>
 
           {/* ★ Browser က user gesture ပြီးမှ audio ခွင့်ပြုတယ် — ဒါကြောင့်
@@ -811,6 +929,28 @@ export function MetaverseScene() {
             {sound ? "🔊 အသံ" : "🔇 အသံ"}
           </button>
         </div>
+
+        {/* ★ လျှော့ချလိုက်တာကို **တိတ်တိတ်မလုပ်ရ** — ဘာလို့ ရုပ်ညံ့သွားလဲ
+            မသိရင် "ဒီ site က ချွတ်ယွင်းနေတယ်" လို့ ထင်မယ်။ ပြန်မြှင့်ဖို့
+            လမ်းလည်း ပေးထားရမယ်။ */}
+        {degraded && (
+          <div
+            data-hud="1"
+            className="max-w-[16rem] rounded-lg border border-amber-400/40 bg-black/60 px-2.5 py-1.5 text-right text-[11px] leading-snug text-amber-200 backdrop-blur"
+          >
+            စက်နှေးလို့ ရုပ်ထွက်ကို လျှော့ချလိုက်ပါတယ်။
+            <button
+              onClick={() => {
+                restoreRef.current?.();
+                setDegraded(false);
+                setShadows(true);
+              }}
+              className="ml-1 underline underline-offset-2 hover:text-amber-100"
+            >
+              ပြန်မြှင့်
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Landmark — အနားရောက်မှ ပေါ်တယ် ───────────────────────────── */}

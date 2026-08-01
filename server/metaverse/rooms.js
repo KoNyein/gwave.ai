@@ -16,8 +16,14 @@ function normalizeRoom(raw) {
 
 class Rooms {
   constructor() {
-    /// roomId -> Map<playerId, player>
+    /// roomId -> Map<playerId, player>  (ဒီ task ပေါ်က socket ရှိသူတွေ)
     this.rooms = new Map();
+    /// roomId -> Map<playerId, ghost>   (တခြား task ပေါ်က player တွေ)
+    ///
+    /// ★ "ဂိုးစ်" မှာ socket မရှိဘူး — ပြရုံသက်သက် အခြေအနေပဲ။ ဒီခွဲထားမှုက
+    /// အရေးကြီးတယ်: broadcast က local socket တွေဆီပဲ ပို့ရမယ်၊ ဂိုးစ်ဆီ
+    /// ပို့ဖို့ ကြိုးစားရင် `p.ws.send` က ချက်ချင်း ကျမယ်။
+    this.ghosts = new Map();
   }
 
   get(roomId) {
@@ -52,22 +58,91 @@ class Rooms {
     }
   }
 
-  /// init message အတွက် — room ထဲရှိပြီးသားလူတွေ
+  // ── တခြား task ပေါ်က player တွေ (Phase 6.2) ─────────────────────────────
+
+  ghostRoom(roomId) {
+    let g = this.ghosts.get(roomId);
+    if (!g) {
+      g = new Map();
+      this.ghosts.set(roomId, g);
+    }
+    return g;
+  }
+
+  setGhost(roomId, id, state, origin) {
+    const g = this.ghostRoom(roomId);
+    const cur = g.get(id) ?? { id, x: 0, y: 0, z: 0, ry: 0, name: "Gwave", emote: null, authed: false };
+    g.set(id, { ...cur, ...state, origin, seenAt: Date.now() });
+  }
+
+  removeGhost(roomId, id) {
+    this.ghosts.get(roomId)?.delete(id);
+  }
+
+  /// Task တစ်ခုရဲ့ player စာရင်း အပြည့်အစုံ ရောက်လာတဲ့အခါ — အဲဒီ task ကလာတဲ့
+  /// ဂိုးစ်အားလုံးကို အစားထိုးတယ်။ ★ ဒါက **မဖြစ်မနေလိုတယ်** — message
+  /// တစ်ခုချင်းနဲ့ ခြေရာခံရင် task အသစ်တက်လာချိန်မှာ ငြိမ်နေတဲ့လူတွေကို
+  /// ဘယ်တော့မှ မမြင်ရဘူး (မရွှေ့ရင် update မပို့လို့)။
+  syncGhosts(roomId, origin, players) {
+    const g = this.ghostRoom(roomId);
+    for (const [id, ghost] of g) {
+      if (ghost.origin === origin) g.delete(id);
+    }
+    for (const [id, state] of Object.entries(players || {})) {
+      g.set(id, { ...state, id, origin, seenAt: Date.now() });
+    }
+  }
+
+  /// Task တစ်လုံး ရုတ်တရက် သေသွားရင် သူ့ဂိုးစ်တွေ ကျန်နေမယ် — အလှည့်ကျ
+  /// ရှင်းတယ်။ (sync က ပုံမှန် ရောက်နေသရွေ့ seenAt အသစ်ဖြစ်နေမယ်။)
+  sweepGhosts(maxAgeMs) {
+    const cutoff = Date.now() - maxAgeMs;
+    const dropped = [];
+    for (const [roomId, g] of this.ghosts) {
+      for (const [id, ghost] of g) {
+        if (ghost.seenAt < cutoff) {
+          g.delete(id);
+          dropped.push([roomId, id]);
+        }
+      }
+    }
+    return dropped;
+  }
+
+  /// init message အတွက် — room ထဲရှိပြီးသားလူတွေ (local + ဂိုးစ်)
   snapshot(roomId, exceptId) {
-    const room = this.rooms.get(roomId);
     const out = {};
-    if (!room) return out;
-    for (const p of room.values()) {
-      if (p.id === exceptId) continue;
+    const view = (p) => ({
+      x: p.x,
+      y: p.y,
+      z: p.z,
+      ry: p.ry,
+      name: p.name,
+      emote: p.emote ?? null,
+      // ★ authed က client ဘက်မှာ "ဧည့်သည်" အမှတ်အသား ပြဖို့ — နာမည်ကို
+      // ကြည့်ပြီး ခွဲလို့မရဘူး၊ guest က ဘယ်နာမည်မဆို ပေးလို့ရလို့။
+      authed: p.authed,
+    });
+    for (const p of this.rooms.get(roomId)?.values() ?? []) {
+      if (p.id !== exceptId) out[p.id] = view(p);
+    }
+    for (const p of this.ghosts.get(roomId)?.values() ?? []) {
+      if (p.id !== exceptId && !out[p.id]) out[p.id] = view(p);
+    }
+    return out;
+  }
+
+  /// ဒီ task ပေါ်က player တွေချည်း — bus ပေါ် sync ပို့ဖို့
+  localSnapshot(roomId) {
+    const out = {};
+    for (const p of this.rooms.get(roomId)?.values() ?? []) {
       out[p.id] = {
         x: p.x,
         y: p.y,
         z: p.z,
         ry: p.ry,
         name: p.name,
-        emote: p.emote,
-        // ★ authed က client ဘက်မှာ "ဧည့်သည်" အမှတ်အသား ပြဖို့ — နာမည်ကို
-        // ကြည့်ပြီး ခွဲလို့မရဘူး၊ guest က ဘယ်နာမည်မဆို ပေးလို့ရလို့။
+        emote: p.emote ?? null,
         authed: p.authed,
       };
     }
@@ -79,13 +154,23 @@ class Rooms {
     for (const room of this.rooms.values()) yield* room.values();
   }
 
+  /// ★ ဂိုးစ်တွေပါ ရေတွက်တယ် — client မှာပြတဲ့ "👥 5" က တစ်လောကလုံးက
+  /// အရေအတွက် ဖြစ်ရမယ်၊ ဒီ task ပေါ်က အရေအတွက် မဟုတ်ဘူး။
   count(roomId) {
-    return this.rooms.get(roomId)?.size ?? 0;
+    return (this.rooms.get(roomId)?.size ?? 0) + (this.ghosts.get(roomId)?.size ?? 0);
+  }
+
+  /// ဒီ task ရဲ့ တကယ့် socket အရေအတွက် — /health မှာ ဒါက ပိုအသုံးဝင်တယ်
+  /// (autoscaling က task တစ်ခုချင်းရဲ့ ဝန်ကို ကြည့်ရမှာမို့)။
+  localTotal() {
+    let n = 0;
+    for (const room of this.rooms.values()) n += room.size;
+    return n;
   }
 
   total() {
-    let n = 0;
-    for (const room of this.rooms.values()) n += room.size;
+    let n = this.localTotal();
+    for (const g of this.ghosts.values()) n += g.size;
     return n;
   }
 }

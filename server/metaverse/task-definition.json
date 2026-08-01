@@ -25,6 +25,10 @@
         {
           "name": "DATABASE_URL",
           "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<ACCOUNT>:secret:gwave/MV_DATABASE_URL"
+        },
+        {
+          "name": "REDIS_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<ACCOUNT>:secret:gwave/MV_REDIS_URL"
         }
       ],
       "logConfiguration": {
