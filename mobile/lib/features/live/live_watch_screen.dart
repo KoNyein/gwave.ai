@@ -14,6 +14,7 @@ import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
+import 'reaction_channel.dart';
 import '../../widgets/share_sheet.dart';
 import '../../widgets/common.dart';
 import '../web/web_screen.dart';
@@ -67,6 +68,7 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
 
   Timer? _poll;
   Timer? _heartbeat;
+  late final LiveReactions _reactions;
   String? _lastChatAt;
   bool _endedFired = false;
 
@@ -83,7 +85,6 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
       widget.onEnded?.call();
     }
   }
-  String? _lastReactAt;
   int _viewers = 0;
   bool _sending = false;
 
@@ -103,6 +104,13 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
     _isHost = context.read<AppState>().me?.id == widget.stream.hostId;
     _viewers = widget.stream.viewerCount;
+    // Everyone watching this broadcast — phone or browser — is in the same
+    // reaction channel, so a heart tapped on either side floats on both.
+    _reactions = LiveReactions(context.read<AppState>().api)
+      ..onEmoji = (emoji) {
+        if (mounted) _spawnHeart(emoji);
+      };
+    unawaited(_reactions.join(widget.stream.id));
     if (_useLivekit) {
       _initLivekit();
     } else {
@@ -310,16 +318,6 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
       }
     } catch (_) {}
     try {
-      final n = await repo.liveReactionCount(widget.stream.id,
-          sinceIso: _lastReactAt);
-      _lastReactAt = DateTime.now().toUtc().toIso8601String();
-      if (mounted && n > 0) {
-        for (var i = 0; i < min(n, 8); i++) {
-          _spawnHeart(_emojis[Random().nextInt(_emojis.length)]);
-        }
-      }
-    } catch (_) {}
-    try {
       final s = await repo.refreshStream(widget.stream.id);
       if (mounted && s != null) setState(() => _viewers = s.viewerCount);
     } catch (_) {}
@@ -341,6 +339,7 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
   void dispose() {
     _poll?.cancel();
     _heartbeat?.cancel();
+    unawaited(_reactions.dispose());
     _lkListener?.dispose();
     final room = _room;
     if (room != null) {
@@ -382,11 +381,19 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
   }
 
   Future<void> _react(String emoji) async {
-    _spawnHeart(emoji);
+    // Out over the channel first, and let the float come back with everyone
+    // else's — one tap, one heart, whichever way round it arrives. Spawning
+    // locally as well would show the sender two.
+    _reactions.send(emoji);
+    if (_reactions.connected) {
+      // Nothing to do: the echo will spawn it.
+    } else {
+      _spawnHeart(emoji);
+    }
     try {
       await context.read<AppState>().repo.sendLiveReaction(widget.stream.id, emoji);
     } catch (_) {
-      // Reaction send is best-effort — the local float already gave feedback.
+      // Reaction send is best-effort — the float already gave feedback.
     }
   }
 
