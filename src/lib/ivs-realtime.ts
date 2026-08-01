@@ -173,7 +173,16 @@ export async function stopIvsComposition(
   const client = rtClient();
   await client
     .send(new StopCompositionCommand({ arn: compositionArn }))
-    .catch(() => undefined);
+    // A composition that already stopped on its own is fine and common — the
+    // host's broadcast ending takes the stage with it. Anything else means the
+    // recording may be incomplete, and the last remaining empty catch in this
+    // file is not the place to find that out.
+    .catch((e: unknown) =>
+      console.warn(
+        "[ivs-rt] StopComposition failed:",
+        e instanceof Error ? e.message : e,
+      ),
+    );
   try {
     // Read the prefix before the composition record is garbage-collected.
     const res = await client.send(
@@ -185,7 +194,11 @@ export async function stopIvsComposition(
     return {
       recordingPath: await readIvsRecordingManifest(s3.recordingPrefix),
     };
-  } catch {
+  } catch (e) {
+    console.warn(
+      "[ivs-rt] Could not resolve the recording path on stop:",
+      e instanceof Error ? e.message : e,
+    );
     return { recordingPath: null };
   }
 }
