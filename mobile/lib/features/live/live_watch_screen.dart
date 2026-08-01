@@ -90,7 +90,13 @@ class _LiveWatchScreenState extends State<LiveWatchScreen>
     for (final p in room.remoteParticipants.values) {
       for (final pub in p.audioTrackPublications) {
         try {
-          pub.enabled = on;
+          // `enabled` is read-only; enable()/disable() tell the server to stop
+          // sending this track, which stops the sound and the bandwidth.
+          if (on) {
+            await pub.enable();
+          } else {
+            await pub.disable();
+          }
         } catch (_) {}
       }
     }
