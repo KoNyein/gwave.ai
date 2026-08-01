@@ -45,10 +45,21 @@ Table တွေကို အရင် ဆောက်ရမယ် — EC2 ပေ
 
 ```bash
 DBPASS=$(sudo cat /root/gwaveadmin_newpw.txt)
-sudo docker run --rm -i -e PGPASSWORD="$DBPASS" postgres:16 \
-  psql -h <rds-host> -U gwaveadmin -d postgres -v ON_ERROR_STOP=1 \
-  < db/sql/metaverse.sql
+curl -sSL https://raw.githubusercontent.com/KoNyein/gwave.ai/claude/phase-1-implementation-7ysxtj/db/sql/metaverse.sql \
+  | sudo docker run --rm -i -e PGPASSWORD="$DBPASS" postgres:16 \
+      psql -h gwave-db.c5w6wyccw6bo.ap-southeast-1.rds.amazonaws.com \
+           -U gwaveadmin -d gwave -v ON_ERROR_STOP=1
 sudo docker restart postgrest
+```
+
+★ database က `gwave` — `postgres` မဟုတ်ဘူး။ ထပ်ခါထပ်ခါ run လို့ရတယ်။
+စစ်ဆေးဖို့ — table ၄ ခုစလုံး `rls=t` ဖြစ်ရမယ်:
+
+```bash
+DBPASS=$(sudo cat /root/gwaveadmin_newpw.txt)
+sudo docker run --rm -i -e PGPASSWORD="$DBPASS" postgres:16 \
+  psql -h gwave-db.c5w6wyccw6bo.ap-southeast-1.rds.amazonaws.com -U gwaveadmin -d gwave \
+  -c "select tablename, rowsecurity as rls from pg_tables where tablename like 'mv\_%';"
 ```
 
 ဘယ်လိုအလုပ်လုပ်လဲ:
