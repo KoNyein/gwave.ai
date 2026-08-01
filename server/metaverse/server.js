@@ -9,6 +9,7 @@ const { identify } = require("./auth");
 const { createStore } = require("./store");
 const { createBus } = require("./bus");
 const { createWeb3 } = require("./web3");
+const { createWeatherDirector } = require("./weather");
 
 const PORT = Number(process.env.PORT || 8080);
 const REQUIRE_AUTH = process.env.REQUIRE_AUTH === "true";
@@ -28,6 +29,7 @@ const MAX_CHAT_CHARS = 200;
 const EMOTES = new Set(["wave", "dance", "sit"]);
 
 const rooms = new Rooms();
+const weather = createWeatherDirector(ROOMS);
 
 /// DATABASE_URL မရှိရင် persistence မရှိတဲ့ mode — လောကက ပုံမှန်အလုပ်လုပ်ပြီး
 /// ထွက်ရင် နေရာ မမှတ်ဘူး။ (Guest တွေက ဘယ်လိုမှ မမှတ်ဘူး — id က session
@@ -51,6 +53,15 @@ const PURGE_MS = 60 * 60 * 1000;
 /// ★ GHOST_TTL က SYNC ရဲ့ ၃ ဆ — task တစ်လုံး ရုတ်တရက် သေရင် သူ့လူတွေက
 ///   ၁၅ စက္ကန့်အတွင်း ပျောက်သွားမယ်၊ ကြားထဲ packet တစ်ခု ကျသွားရုံနဲ့
 ///   လူတွေ မှိတ်တုတ်မှိတ်တုတ် မဖြစ်ဘူး။
+/// ရာသီဥတုကို ၃၀ စက္ကန့်တစ်ခါ စစ်တယ် — ပြောင်းချိန်က ၅–၁၅ မိနစ်မို့
+/// ဒီထက် မကြာခဏ စစ်စရာ မလိုဘူး။
+const WEATHER_TICK_MS = 30_000;
+
+/// ★ ယာဉ်ရဲ့ နေရာကို driver ရဲ့ client က တွက်တယ်။ Server က relay +
+/// **speed cap** ပဲ လုပ်တယ် — cap မရှိရင် client ကို ပြင်ပြီး ကားကို
+/// တစ်စက္ကန့် ၁၀၀၀ unit မောင်းလို့ရမယ်။
+const VEHICLE_MAX_SPEED = 22 * 1.5;
+
 const SYNC_MS = 5_000;
 const GHOST_TTL_MS = 15_000;
 
@@ -247,7 +258,11 @@ function onBusMessage(roomId, msg, origin) {
       rooms.setGhost(roomId, msg.id, { name: msg.name, authed: false }, origin);
       break;
     case "chat":
-      break; // chat က state မရှိဘူး — ပြရုံပဲ
+    case "weather":
+    case "vstate":
+    case "mounted":
+    case "dismounted":
+      break; // state မရှိဘူး ဒါမှမဟုတ် ယာဉ် lock က room-local — ပြရုံပဲ
     default:
       return; // မသိတဲ့ type ကို client ဆီ ထပ်မပို့ဘူး
   }
@@ -380,6 +395,9 @@ wss.on("connection", async (ws, req) => {
     authed: player.authed,
     // ★ Server ရဲ့ နာရီ — client တွေအားလုံး နေ့/ည တူညီဖို့ (Phase 5)
     serverTime: Date.now(),
+    // ★ ဝင်လာတာနဲ့ မှန်တဲ့ရာသီဥတု — မဟုတ်ရင် ပထမ ၅ မိနစ်လုံး
+    // ကျန်တဲ့သူတွေနဲ့ မတူတဲ့ မိုးလေဝသထဲ ရောက်နေမယ်
+    weather: weather.get(room),
     players: rooms.snapshot(room, player.id),
   });
 
@@ -484,6 +502,50 @@ wss.on("connection", async (ws, req) => {
         break;
       }
 
+      case "mount": {
+        // ★ ယာဉ်တစ်စီးမှာ driver တစ်ယောက်တည်း — server က ဆုံးဖြတ်တယ်။
+        // Client ၂ ခု တစ်ပြိုင်နက် နှိပ်ရင် တစ်ယောက်ပဲ ရရမယ်။
+        const vid = String(msg.vehicleId || "");
+        if (!vid) return;
+        const held = rooms.vehicleDriver(player.room, vid);
+        if (held && held !== player.id) {
+          send(ws, { type: "mountDenied", vehicleId: vid });
+          return;
+        }
+        rooms.setVehicleDriver(player.room, vid, player.id);
+        emit(player.room, { type: "mounted", vehicleId: vid, playerId: player.id });
+        break;
+      }
+
+      case "dismount": {
+        const vid = rooms.releaseVehicles(player.room, player.id);
+        for (const id of vid) {
+          emit(player.room, { type: "dismounted", vehicleId: id, playerId: player.id });
+        }
+        break;
+      }
+
+      case "vstate": {
+        const vid = String(msg.vehicleId || "");
+        // ★ မောင်းနေတဲ့သူကသာ ပို့လို့ရရမယ် — မဟုတ်ရင် ဘယ်သူမဆို
+        // တခြားသူ့ကားကို နေရာအနှံ့ ပစ်ရွှေ့လို့ရမယ်။
+        if (rooms.vehicleDriver(player.room, vid) !== player.id) return;
+        const vx = Number(msg.x);
+        const vy = Number(msg.y);
+        const vz = Number(msg.z);
+        const vry = Number(msg.ry);
+        const vspeed = Number(msg.speed);
+        if (![vx, vy, vz, vry, vspeed].every(Number.isFinite)) return;
+        if (Math.abs(vspeed) > VEHICLE_MAX_SPEED) return;
+        if (Math.hypot(vx, vz) > WORLD_RADIUS * 2.2 || vy < -5 || vy > 80) return;
+        emit(
+          player.room,
+          { type: "vstate", vehicleId: vid, x: vx, y: vy, z: vz, ry: vry, speed: vspeed },
+          player.id,
+        );
+        break;
+      }
+
       case "setname": {
         // ★ Auth ရှိရင် နာမည်က token ကလာရမယ် — client ကို ခွင့်ပြုရင်
         // ဘယ်သူမဆို တခြားသူ့နာမည်နဲ့ ဝင်လို့ရသွားမယ်။
@@ -509,6 +571,12 @@ wss.on("connection", async (ws, req) => {
   });
 
   const drop = () => {
+    // ★ Driver ပြတ်သွားရင် ယာဉ် လွတ်ရမယ် — မဟုတ်ရင် အဲဒီယာဉ်ကို
+    // ဘယ်သူမှ ဘယ်တော့မှ မစီးရတော့ဘူး
+    for (const id of rooms.releaseVehicles(player.room, player.id)) {
+      rooms.broadcast(player.room, { type: "dismounted", vehicleId: id, playerId: player.id });
+      bus.publish(player.room, { type: "dismounted", vehicleId: id, playerId: player.id });
+    }
     rooms.remove(player.room, player.id);
     emit(player.room, { type: "leave", id: player.id });
     // ★ ထွက်ချိန်မှာ မဖြစ်မနေ သိမ်းရမယ် — ၃၀ စက္ကန့် flush ကို စောင့်ရင်
@@ -522,6 +590,13 @@ wss.on("connection", async (ws, req) => {
 // ── Heartbeat ────────────────────────────────────────────────────────────────
 // ★ TCP က ဖုန်းရဲ့ WiFi ပြတ်သွားတာကို ချက်ချင်းမသိဘူး — socket က "ဖွင့်နေတယ်"
 // လို့ပဲ ပြနေမယ်။ Ping မပြန်တဲ့သူကို ဖြုတ်မှ ghost player တွေ မကျန်တော့ဘူး။
+/// ရာသီဥတု ပြောင်းရင် room တစ်ခုလုံးကို ပြောတယ်
+const weatherTicker = setInterval(() => {
+  for (const roomId of weather.due()) {
+    emit(roomId, { type: "weather", ...weather.get(roomId) });
+  }
+}, WEATHER_TICK_MS);
+
 const heartbeat = setInterval(() => {
   for (const ws of wss.clients) {
     if (ws.isAlive === false) {
@@ -547,6 +622,7 @@ async function shutdown(signal) {
   if (purger) clearInterval(purger);
   if (syncer) clearInterval(syncer);
   clearInterval(moveFlusher);
+  clearInterval(weatherTicker);
 
   // Client တွေ မထွက်သေးရင်တောင် ၁၀ စက္ကန့်ထက် မစောင့်ဘူး
   const hardStop = setTimeout(() => process.exit(0), 10_000);

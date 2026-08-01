@@ -38,6 +38,12 @@ export type NetHandlers = {
   /// Server က anti-cheat နဲ့ ငြင်းလိုက်တဲ့အခါ — နေရာအမှန်ကို ပြန်ပေးတယ်
   onCorrect?: (x: number, y: number, z: number) => void;
   onStatus?: (connected: boolean, detail?: string) => void;
+  /// ★ ရာသီဥတုက **server ကနေသာ** လာတယ် — client မှာ ကျပန်းလုပ်ရင်
+  /// ဘေးချင်းကပ်နေတဲ့ ၂ ယောက် မတူတဲ့ မိုးလေဝသထဲ ရောက်နေမယ်။
+  onWeather?: (kind: string, intensity: number, windX: number, windZ: number) => void;
+  onVehicle?: (id: string, x: number, y: number, z: number, ry: number, speed: number) => void;
+  onMounted?: (vehicleId: string, playerId: string) => void;
+  onDismounted?: (vehicleId: string, playerId: string) => void;
 };
 
 export type NetClient = {
@@ -46,6 +52,14 @@ export type NetClient = {
   sendEmote(emote: string | null): void;
   /// Guest သာ — signed-in user ရဲ့ နာမည်က token ကလာလို့ server က ငြင်းတယ်။
   sendName(name: string): void;
+  sendMount(vehicleId: string): void;
+  sendDismount(): void;
+  /// ★ Driver ရဲ့ client က ယာဉ်ရဲ့ နေရာကို တွက်ပြီး ပို့တယ် (authority)。
+  /// Server က relay + speed cap ပဲ လုပ်တယ် — latency အနည်းဆုံးဖြစ်စေဖို့။
+  sendVehicleState(
+    vehicleId: string,
+    s: { x: number; y: number; z: number; ry: number; speed: number },
+  ): void;
   close(): void;
   readonly connected: boolean;
 };
@@ -79,6 +93,7 @@ export function connectMetaverse(
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
   let lastSentAt = 0;
+  let lastVehicleAt = 0;
   const lastSent = { x: NaN, y: NaN, z: NaN, ry: NaN };
 
   const client: NetClient = {
@@ -121,6 +136,32 @@ export function connectMetaverse(
       const n = name.slice(0, 24).trim();
       if (!n) return;
       ws.send(JSON.stringify({ type: "setname", name: n }));
+    },
+    sendMount(vehicleId) {
+      if (ws?.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "mount", vehicleId }));
+    },
+    sendDismount() {
+      if (ws?.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "dismount" }));
+    },
+    sendVehicleState(vehicleId, st) {
+      if (ws?.readyState !== WebSocket.OPEN) return;
+      const now = performance.now();
+      // ★ 15Hz — player ရဲ့ position နဲ့ တူညီတဲ့ နှုန်း
+      if (now - lastVehicleAt < SEND_GAP_MS) return;
+      lastVehicleAt = now;
+      ws.send(
+        JSON.stringify({
+          type: "vstate",
+          vehicleId,
+          x: st.x,
+          y: st.y,
+          z: st.z,
+          ry: st.ry,
+          speed: st.speed,
+        }),
+      );
     },
     close() {
       closed = true;
@@ -227,6 +268,30 @@ export function connectMetaverse(
           break;
         case "name":
           handlers.onName?.(String(m.id), String(m.name));
+          break;
+        case "weather":
+          handlers.onWeather?.(
+            String(m.kind ?? "clear"),
+            Number(m.intensity ?? 1),
+            Number(m.windX ?? 0),
+            Number(m.windZ ?? 0),
+          );
+          break;
+        case "vstate":
+          handlers.onVehicle?.(
+            String(m.vehicleId),
+            Number(m.x),
+            Number(m.y),
+            Number(m.z),
+            Number(m.ry),
+            Number(m.speed),
+          );
+          break;
+        case "mounted":
+          handlers.onMounted?.(String(m.vehicleId), String(m.playerId));
+          break;
+        case "dismounted":
+          handlers.onDismounted?.(String(m.vehicleId), String(m.playerId));
           break;
         case "correct":
           handlers.onCorrect?.(Number(m.x), Number(m.y), Number(m.z));

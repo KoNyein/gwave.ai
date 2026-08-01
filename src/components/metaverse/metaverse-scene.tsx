@@ -13,6 +13,8 @@ import { createNametags } from "./nametags";
 import { connectMetaverse, type NetClient, type RemoteState } from "./net";
 import { createPostFx } from "./postfx";
 import { createQuality } from "./quality";
+import { createVehicle, type Vehicle } from "./vehicles";
+import { createWeather } from "./weather";
 import { buildWorld, resolveCollision } from "./world";
 
 /// Gwave Metaverse ရဲ့ အဓိက client component။
@@ -130,6 +132,9 @@ export function MetaverseScene() {
   /// — map တစ်ခုချင်းက သီးခြားလောက ဖြစ်လို့ ကြားခံ state ကျန်ခဲ့လို့မရဘူး။
   const [roomId, setRoomId] = useState(DEFAULT_ROOM);
   const [picker, setPicker] = useState(false);
+  /// စီးလို့ရတဲ့ ယာဉ် အနားမှာ ရှိလား / စီးနေလား
+  const [ride, setRide] = useState<{ label: string; riding: boolean } | null>(null);
+  const rideRef = useRef<(() => void) | null>(null);
   const tagsRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<SpatialAudio | null>(null);
   const bloomRef = useRef(true);
@@ -282,6 +287,24 @@ export function MetaverseScene() {
       bloomRef.current,
     );
 
+    // ── ရာသီဥတု ───────────────────────────────────────────────────────────
+    // ★ Client မှာ ကျပန်း မလုပ်ဘူး — server က ပြောတာကိုပဲ ပြတယ်။ မဟုတ်ရင်
+    // ဘေးချင်းကပ်နေတဲ့ ၂ ယောက် တစ်ယောက်က မိုးထဲ၊ တစ်ယောက်က နေသာနေမယ်။
+    const weather = createWeather(scene, world.ambient);
+    weather.set(map.weather.default, 0.8, 0.6, 0.2);
+
+    // ── ယာဉ်များ ──────────────────────────────────────────────────────────
+    const vehicles = new Map<string, Vehicle>();
+    map.vehicles.forEach((v, i) => {
+      const id = `${map.id}-v${i}`;
+      const veh = createVehicle(id, v.kind, v.x, v.z, v.ry);
+      scene.add(veh.group);
+      vehicles.set(id, veh);
+    });
+    /// ကိုယ် မောင်းနေတဲ့ ယာဉ် — `null` = ခြေလျင်
+    let riding: Vehicle | null = null;
+    let nearVeh: Vehicle | null = null;
+
     // ── Gwave ချိတ်ဆက်မှုများ ─────────────────────────────────────────────
     // ★ world.colliders ထဲကို တိုက်ရိုက် push လုပ်တယ် — သင်ပုန်းက အစိုင်အခဲ
     const landmarks = buildLandmarks(scene, world.colliders);
@@ -429,6 +452,28 @@ export function MetaverseScene() {
           // ငြင်းတယ်) — ဒါကြောင့် အမှတ်အသားက "ဧည့်သည်" အတိုင်း ကျန်တယ်
           nametags?.rename(id, name);
         },
+        onWeather: (kind, intensity, wx, wz) => {
+          // ★ map က ခွင့်ပြုထားတဲ့ ရာသီဥတုကိုသာ လက်ခံတယ် — server က
+          // မှားပို့လိုက်ရင် နှင်းတောင်ထိပ်မှာ aurora ဖြစ်နေမယ်။
+          const allowed = map.weather.allowed as string[];
+          const k = allowed.includes(kind) ? kind : map.weather.default;
+          weather.set(k as typeof map.weather.default, intensity, wx, wz);
+        },
+        onVehicle: (id, x, y, z, ry, speed) => {
+          const v = vehicles.get(id);
+          // ★ ကိုယ်မောင်းနေတဲ့ ယာဉ်ရဲ့ echo ကို လက်မခံဘူး — လက်ခံရင်
+          // ကိုယ့်နေရာက server ရဲ့ နောက်ကျတဲ့ တန်ဖိုးဆီ ဆွဲသွားပြီး တုန်မယ်။
+          if (!v || v === riding) return;
+          v.setTarget(x, y, z, ry, speed);
+        },
+        onMounted: (vehicleId, playerId) => {
+          const v = vehicles.get(vehicleId);
+          if (v) v.driver = playerId;
+        },
+        onDismounted: (vehicleId) => {
+          const v = vehicles.get(vehicleId);
+          if (v) v.driver = null;
+        },
         onCorrect: (x, y, z) => {
           // Server က ငြင်းလိုက်တယ် — server ရဲ့ နေရာက အမှန်။
           p.x = x;
@@ -443,6 +488,33 @@ export function MetaverseScene() {
       });
       netRef.current = net;
     }
+
+    // ── စီး / ဆင်း ────────────────────────────────────────────────────────
+    const toggleRide = () => {
+      if (riding) {
+        // ★ ယာဉ်ဘေး ၁.၅ unit မှာ ချတယ် — ယာဉ်ထဲမှာ ချရင် ကပ်နေမယ်
+        p.x = riding.state.x + Math.cos(riding.state.ry) * 1.8;
+        p.z = riding.state.z - Math.sin(riding.state.ry) * 1.8;
+        p.y = 0;
+        riding.state.speed = 0;
+        riding.driver = null;
+        net?.sendDismount();
+        riding = null;
+        me.group.visible = true;
+        setRide(nearVeh ? { label: nearVeh.spec.label, riding: false } : null);
+        return;
+      }
+      if (!nearVeh || nearVeh.driver) return;
+      riding = nearVeh;
+      riding.driver = "me";
+      // ★ avatar ကို ဖျောက်တယ် — ယာဉ်ပေါ် ထိုင်နေတဲ့ပုံ တိတိကျကျ ထားဖို့
+      // အဆစ်တွေ ချိန်ရမှာမို့ ဒီအဆင့်မှာ ဖျောက်တာက ရိုးရှင်းပြီး
+      // မှားနေတာထက် ကောင်းတယ်။
+      me.group.visible = false;
+      net?.sendMount(riding.id);
+      setRide({ label: riding.spec.label, riding: true });
+    };
+    rideRef.current = toggleRide;
 
     // ── Keyboard ──────────────────────────────────────────────────────────
     const keyMap: Record<string, keyof Input> = {
@@ -475,6 +547,7 @@ export function MetaverseScene() {
         input.jump = true;
         e.preventDefault();
       }
+      if (e.code === "KeyE") toggleRide();
     };
     const onKeyUp = (e: KeyboardEvent) => {
       if (typing(e)) return;
@@ -614,6 +687,8 @@ export function MetaverseScene() {
     let frames = 0;
     let fpsAcc = 0;
     let hudAcc = 0;
+    /// ရေလှိုင်း/မီးအတွက် တိုးနေတဲ့ အချိန် (နာရီနဲ့ မဆိုင်ဘူး)
+    let effectT = 0;
     let nearId: string | null = null;
 
     const tick = () => {
@@ -640,7 +715,11 @@ export function MetaverseScene() {
 
       const wants = mag > 0.02;
       const running = input.run && wants;
-      const speed = wants ? (running ? RUN_SPEED : WALK_SPEED) * Math.min(1, mag) : 0;
+      // ★ ရေထဲမှာ နှေးတယ် — ဒါက ရေကို ပန်းချီပုံတစ်ခုအဖြစ်ကနေ တကယ့်
+      // အတားအဆီးတစ်ခု ဖြစ်စေတယ်။
+      const depth = riding ? 0 : world.water.depthAt(p.x, p.z);
+      const wade = depth > 0.15 ? 0.5 : 1;
+      const speed = wants ? (running ? RUN_SPEED : WALK_SPEED) * Math.min(1, mag) * wade : 0;
 
       // ── ခုန် ───────────────────────────────────────────────────────────
       if (input.jump && !p.airborne) {
@@ -657,8 +736,31 @@ export function MetaverseScene() {
         }
       }
 
+      // ── ယာဉ် မောင်းနေရင် ─────────────────────────────────────────────
+      if (riding) {
+        riding.drive(
+          dt,
+          {
+            throttle: iz,
+            steer: ix,
+            lift: input.jump ? 1 : input.run ? -1 : 0,
+            brake: input.b > 0 && Math.abs(riding.state.speed) < 0.6,
+            boost: input.run && !riding.spec.flying,
+          },
+          world.colliders,
+          world.walkRadius,
+          (wx, wz) => world.water.isInside(wx, wz),
+        );
+        // player က ယာဉ်နဲ့အတူ ရွှေ့တယ် — တခြားသူတွေ မြင်ရဖို့
+        p.x = riding.state.x;
+        p.y = riding.state.y;
+        p.z = riding.state.z;
+        p.ry = riding.state.ry;
+        net?.sendVehicleState(riding.id, riding.state);
+      }
+
       // ── ရွှေ့ + collision ──────────────────────────────────────────────
-      if (speed > 0) {
+      if (!riding && speed > 0) {
         const nx = p.x + dirX * speed * dt;
         const nz = p.z + dirZ * speed * dt;
         const solved = resolveCollision(nx, nz, p.x, p.z, world.colliders, world.walkRadius);
@@ -724,12 +826,31 @@ export function MetaverseScene() {
         audio.move(id, r.cur.x, r.cur.y, r.cur.z, r.speed, dt, r.cur.y > 0.15);
       }
 
+      // ── အနားက ယာဉ် ─────────────────────────────────────────────────────
+      if (!riding) {
+        let best: Vehicle | null = null;
+        let bestD = 2.5;
+        for (const v of vehicles.values()) {
+          const d = Math.hypot(v.state.x - p.x, v.state.z - p.z);
+          if (d < bestD && !v.driver) {
+            best = v;
+            bestD = d;
+          }
+        }
+        if (best !== nearVeh) {
+          nearVeh = best;
+          setRide(best ? { label: best.spec.label, riding: false } : null);
+        }
+      }
+
       // ── ကင်မရာ ─────────────────────────────────────────────────────────
       const cp = Math.cos(cam.pitch);
+      // ယာဉ်ကြီးလေ ကင်မရာ ဝေးလေ — မဟုတ်ရင် ယာဉ်က မျက်နှာပြင် ဖုံးမယ်
+      const dist = riding ? riding.spec.camDist : cam.dist;
       camera.position.set(
-        p.x - Math.sin(cam.yaw) * cp * cam.dist,
-        p.y + 1.5 + Math.sin(cam.pitch) * cam.dist,
-        p.z - Math.cos(cam.yaw) * cp * cam.dist,
+        p.x - Math.sin(cam.yaw) * cp * dist,
+        p.y + 1.5 + Math.sin(cam.pitch) * dist,
+        p.z - Math.cos(cam.yaw) * cp * dist,
       );
       camera.lookAt(p.x, p.y + 1.1, p.z);
       // နားထောင်သူက ကင်မရာ — လှည့်တာနဲ့ အသံရဲ့ ဘယ်/ညာ ပြောင်းရမယ်
@@ -744,6 +865,15 @@ export function MetaverseScene() {
       // စက်ကောင်းတဲ့ဖုန်းနဲ့ နောက်တစ်ခါဝင်ရင် သူ့ရွေးချယ်မှု ပြန်ရမယ်။
       postfx.enabled = bloomRef.current && !degradedRef.current;
       postfx.setDaylight(daylight);
+      // ── ရေ / မီး / ရာသီဥတု ─────────────────────────────────────────────
+      effectT += dt;
+      world.updateEffects(dt, effectT, weather.wetness, p.x, p.z);
+      weather.update(dt, p.x, p.y + 6, p.z);
+      for (const v of vehicles.values()) {
+        if (v !== riding) v.follow(dt);
+        v.animate(dt);
+      }
+
       screen?.update(p.x, p.z);
       // ★ ဝေးတဲ့အခန်းထဲက ပရိဘောဂတွေကို ဖျောက် — အခန်း ၁၉ ခုစလုံး
       // အမြဲဆွဲနေရင် ဖုန်းအဟောင်းမှာ မတင်ဘူး
@@ -833,6 +963,13 @@ export function MetaverseScene() {
       screen?.dispose();
       minimap?.dispose();
       nametags?.dispose();
+      weather.dispose();
+      for (const v of vehicles.values()) {
+        scene.remove(v.group);
+        v.dispose();
+      }
+      vehicles.clear();
+      rideRef.current = null;
       shadowRef.current = null;
       restoreRef.current = null;
       landmarks.dispose();
@@ -1096,6 +1233,17 @@ export function MetaverseScene() {
             </button>
           ))}
         </div>
+      )}
+
+      {/* ── ယာဉ် — အနားရောက်မှ / စီးနေချိန် ─────────────────────────── */}
+      {ride && (
+        <button
+          data-hud="1"
+          onClick={() => rideRef.current?.()}
+          className="absolute bottom-32 left-1/2 z-10 -translate-x-1/2 rounded-full border border-amber-400/50 bg-black/60 px-4 py-2 text-xs text-amber-200 backdrop-blur transition hover:bg-black/80 sm:bottom-20"
+        >
+          {ride.riding ? `${ride.label} — ဆင်းရန် (E)` : `${ride.label} — စီးရန် (E)`}
+        </button>
       )}
 
       {/* ── Landmark — အနားရောက်မှ ပေါ်တယ် ───────────────────────────── */}

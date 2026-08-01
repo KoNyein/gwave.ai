@@ -28,6 +28,39 @@ class Rooms {
     /// အရေးကြီးတယ်: broadcast က local socket တွေဆီပဲ ပို့ရမယ်၊ ဂိုးစ်ဆီ
     /// ပို့ဖို့ ကြိုးစားရင် `p.ws.send` က ချက်ချင်း ကျမယ်။
     this.ghosts = new Map();
+    /// roomId -> Map<vehicleId, playerId> — ယာဉ်တစ်စီးမှာ driver တစ်ယောက်။
+    /// ★ Server မှာ lock လုပ်မှ race condition မဖြစ်ဘူး — client ၂ ခု
+    /// တစ်ပြိုင်နက် "ငါစီးမယ်" ပြောရင် တစ်ယောက်ပဲ ရရမယ်။
+    this.drivers = new Map();
+  }
+
+  vehicleDriver(roomId, vehicleId) {
+    return this.drivers.get(roomId)?.get(vehicleId) ?? null;
+  }
+
+  setVehicleDriver(roomId, vehicleId, playerId) {
+    let m = this.drivers.get(roomId);
+    if (!m) {
+      m = new Map();
+      this.drivers.set(roomId, m);
+    }
+    // player တစ်ယောက်က ယာဉ်တစ်စီးတည်း
+    for (const [vid, pid] of m) if (pid === playerId) m.delete(vid);
+    m.set(vehicleId, playerId);
+  }
+
+  /// ဒီ player ကိုင်ထားတဲ့ ယာဉ်အားလုံးကို လွတ်စေတယ်
+  releaseVehicles(roomId, playerId) {
+    const m = this.drivers.get(roomId);
+    if (!m) return [];
+    const freed = [];
+    for (const [vid, pid] of m) {
+      if (pid === playerId) {
+        m.delete(vid);
+        freed.push(vid);
+      }
+    }
+    return freed;
   }
 
   get(roomId) {

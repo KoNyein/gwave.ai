@@ -1,8 +1,10 @@
 import * as THREE from "three";
 
 import type { MapDef } from "./maps/types";
+import { createFire, type Fire } from "./world/fire";
 import { buildInterior, INTERIOR_VISIBLE_WITHIN, type Interior } from "./world/interior";
 import { createPropFactory } from "./world/props";
+import { createWater, type Water } from "./world/water";
 
 /// လောကတည်ဆောက်ခြင်း — **`MapDef` တစ်ခုကို ဖတ်ပြီး ဆောက်တဲ့ engine**။
 ///
@@ -30,6 +32,13 @@ export type World = {
   /// ★ ၂၅ unit အတွင်း ရောက်မှ အခန်းထဲက ပရိဘောဂတွေ ပြတယ် — frame တိုင်း
   /// ခေါ်ရမယ်။ အခန်း ၁၉ ခုစလုံး အမြဲဆွဲနေရင် ဖုန်းအဟောင်းမှာ မတင်ဘူး။
   updateInteriors(px: number, pz: number): void;
+  /// ရေ — ဂိမ်းစည်းမျဉ်း (ရေထဲမှာ နှေးတယ်၊ လှေက ကုန်းမတက်) အတွက်ပါ သုံးတယ်
+  water: Water;
+  /// ရေလှိုင်း + မီးတောက် — frame တိုင်း။ `wetness` က မိုးရွာနေရင် ၁ —
+  /// မိုးထဲမှာ မီးက အားပျော့ရမယ်။
+  updateEffects(dt: number, t: number, wetness: number, px: number, pz: number): void;
+  /// ★ ရာသီဥတုက ambient ကို ခဏ ပြင်းစေလို့ weather layer က ဒါကို လိုတယ်
+  ambient: THREE.AmbientLight;
   setShadows(enabled: boolean): void;
   dispose(): void;
 };
@@ -68,12 +77,15 @@ export function buildWorld(scene: THREE.Scene, map: MapDef): World {
   // တွေအောက်မှာ စိမ်းလန်းတဲ့ ကွင်းပြင်ကြီး ဖြစ်နေပြီး "လေထဲမှာ ပျံနေတယ်"
   // ဆိုတဲ့ ခံစားချက် လုံးဝ ပျောက်သွားတယ် (browser မှာ တွေ့ရတဲ့ အမှား)။
   const floating = map.terrain.kind === "islands";
+  // ★ တောင်ကုန်း terrain က မြေပြင်ကို အစားထိုးတယ် — ၂ ခုစလုံး ဆွဲရင်
+  // မျက်နှာပြင်တစ်ခုလုံးကို ၂ ခါ ဆွဲရပြီး fragment ကုန်ကျစရိတ် ၂ ဆ
+  // ဖြစ်တယ် (လယ်ကွင်း map က 0fps ဖြစ်ခဲ့တဲ့ အကြောင်းရင်း)။
+  const hilly = map.terrain.kind === "hills";
   let grid: THREE.GridHelper | null = null;
-  if (!floating) {
+  if (!floating && !hilly) {
     const groundGeo = track(new THREE.CircleGeometry(R, 64));
-    const groundMat = track(
-      new THREE.MeshStandardMaterial({ color: map.palette.ground, roughness: 0.95 }),
-    );
+    // ★ မြေပြင်က မျက်နှာပြင်အများစုကို ဖုံးတယ် — PBR မလိုဘူး
+    const groundMat = track(new THREE.MeshLambertMaterial({ color: map.palette.ground }));
     const ground = place(new THREE.Mesh(groundGeo, groundMat));
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
@@ -146,6 +158,19 @@ export function buildWorld(scene: THREE.Scene, map: MapDef): World {
 
   // ── သစ်ပင်များ ──────────────────────────────────────────────────────────
   buildTrees(map, place, track, colliders);
+
+  // ── ရေ ─────────────────────────────────────────────────────────────────
+  const water = createWater(map.water, scene);
+  disposables.push(water);
+
+  // ── မီး ────────────────────────────────────────────────────────────────
+  const fires: Fire[] = [];
+  for (const f of map.fires) {
+    const fire = createFire(f.x, f.z, f.scale);
+    place(fire.group);
+    fires.push(fire);
+    disposables.push(fire);
+  }
 
   // ── မီးအိမ်များ ─────────────────────────────────────────────────────────
   const poleGeo = track(new THREE.CylinderGeometry(0.09, 0.11, 4.2, 8));
@@ -311,6 +336,32 @@ export function buildWorld(scene: THREE.Scene, map: MapDef): World {
     }
   }
 
+  /// ★ အနီးဆုံး မီး ၂ ခုကိုသာ ဖွင့်ထားတယ်။ မီး ၆ ခုစလုံးရဲ့ PointLight
+  /// ကို ဖွင့်ထားရင် fragment shader က မီးတိုင်းအတွက် ပြန်တွက်ရပြီး
+  /// ဖုန်းအဟောင်းမှာ ရပ်သွားတယ် (browser မှာ တိုင်းတာပြီးသား)။
+  const ACTIVE_FIRES = 2;
+  const fireOrder: { f: (typeof fires)[number]; d: number }[] = [];
+
+  function updateEffects(dt: number, t: number, wetness: number, px: number, pz: number) {
+    water.update(t);
+    if (fires.length === 0) return;
+
+    fireOrder.length = 0;
+    for (let i = 0; i < fires.length; i++) {
+      const f = fires[i];
+      if (!f) continue;
+      fireOrder.push({ f, d: Math.hypot(f.group.position.x - px, f.group.position.z - pz) });
+    }
+    fireOrder.sort((a, b) => a.d - b.d);
+    for (let i = 0; i < fireOrder.length; i++) {
+      const entry = fireOrder[i];
+      if (!entry) continue;
+      entry.f.setActive(i < ACTIVE_FIRES && entry.d < 45);
+      entry.f.setWet(wetness);
+      entry.f.update(dt);
+    }
+  }
+
   function setShadows(enabled: boolean) {
     sun.castShadow = enabled;
   }
@@ -336,6 +387,9 @@ export function buildWorld(scene: THREE.Scene, map: MapDef): World {
     walkRadius: map.walkRadius ?? R,
     updateSky,
     updateInteriors,
+    water,
+    updateEffects,
+    ambient,
     setShadows,
     dispose,
   };
@@ -398,9 +452,7 @@ function buildTerrain(
       }
       geo.computeVertexNormals();
     }
-    const mat = track(
-      new THREE.MeshStandardMaterial({ color: map.palette.ground, roughness: 0.95 }),
-    );
+    const mat = track(new THREE.MeshLambertMaterial({ color: map.palette.ground }));
     const mesh = place(new THREE.Mesh(geo, mat));
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.y = -0.05;

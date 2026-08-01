@@ -61,6 +61,34 @@
 
 ## Changelog
 
+- 2026-08-02 (web): **Metaverse — phases 9-13, weather, water, fire, vehicles,
+  CI.** Rain and snow follow you inside a 30×20×30 box that recycles particles
+  out the bottom and back in the top, so 4 000 points cover a 200-metre world
+  instead of the millions real coverage would need; storms flash the ambient
+  light every 5-15 seconds; the sky islands get an aurora. **The weather is the
+  server's**, sent in `init` and re-rolled every 5-15 minutes per room from
+  that map's allowed list — a client rolling its own would put two people
+  standing together in different weather. Water is a real obstacle (wading
+  halves your speed, boats will not climb ashore, cars will not drive in) and
+  fire flickers its light on two sine waves plus noise, because a steady glow
+  reads as a torch, not a fire; rain halves it. Six vehicles — car, boat,
+  horse, drone, snowmobile, balloon — built from primitives, no physics engine,
+  arcade numbers, and **no turning while stopped**. The driver's own client
+  computes the position and the server relays it with a speed cap and a
+  one-driver lock; losing your connection frees the vehicle.
+  **A 40% frame-rate cliff, found by measuring**: adding this phase took two of
+  the four maps from 20 fps to **0**. Three causes, all real on phones —
+  `computeVertexNormals()` on every water vertex every frame; six fire
+  PointLights lighting every pixel at once (now the nearest two); and PBR
+  `MeshStandardMaterial` on map-spanning transparent rivers and on a hills
+  mesh drawn *on top of* the ground disc it was supposed to replace. All four
+  maps are back at 20 fps in software GL.
+  `.github/workflows/metaverse-server.yml` builds, pushes and deploys on
+  changes under `server/metaverse/**` using **OIDC, not access keys**, waits
+  for the service to stabilise and then curls `/health` — a green tick that
+  did not check would be worse than none. `docs/METAVERSE-TESTING.md` is the
+  pre-deploy checklist. 35 server tests pass.
+
 - 2026-08-02 (web): **Metaverse — phase 8, four worlds from data files.** The
   world engine no longer knows anything about Gwave City. `world.ts` reads a
   `MapDef` and builds it; what is in a map lives only in
