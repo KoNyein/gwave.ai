@@ -128,6 +128,14 @@ export interface LiveStream {
    */
   ivs_stage_arn: string | null;
   ivs_composition_arn: string | null;
+  /**
+   * The S3 prefix the composition writes its replay to, stored when the
+   * composition starts. IVS deletes the composition record shortly after the
+   * broadcast ends, so asking AWS for this afterwards returns "not found" — if
+   * it is not written down here, the replay is in the bucket with nothing able
+   * to point at it.
+   */
+  ivs_recording_prefix: string | null;
   viewer_count: number;
   /**
    * Opt-in recording: when true the broadcast is recorded and becomes a replay

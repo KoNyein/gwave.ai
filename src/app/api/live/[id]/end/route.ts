@@ -12,6 +12,32 @@ import { createAdminClient } from "@/lib/data/admin";
 const uuid = z.string().uuid();
 
 /**
+ * The stored S3 prefix of this stream's composite recording, read on its own.
+ *
+ * Asked for separately from everything else this route needs, because a column
+ * exists only once the DDL has run and PostgREST has reloaded its schema cache
+ * — and if a deploy arrives first, a select naming this column fails *entirely*.
+ * Bundled with the rest, that would leave the route unable to see
+ * ivs_composition_arn either, so the composition would never be stopped and the
+ * broadcast would keep running after the host ended it.
+ *
+ * Alone, the worst case is a null: `stopIvsComposition` then falls back to
+ * asking AWS (which still answers, because the composition has not stopped
+ * yet), and the replay is saved anyway.
+ */
+async function recordingPrefixOf(
+  admin: ReturnType<typeof createAdminClient>,
+  id: string,
+): Promise<string | null> {
+  const { data } = await admin
+    .from("live_streams")
+    .select("ivs_recording_prefix")
+    .eq("id", id)
+    .maybeSingle<{ ivs_recording_prefix: string | null }>();
+  return data?.ivs_recording_prefix ?? null;
+}
+
+/**
  * POST /api/live/[id]/end — host-only. Signals Mux to finish the broadcast
  * and marks the stream ended immediately (the webhook would eventually do
  * the same, this just makes the UI instant).
@@ -50,16 +76,24 @@ export async function POST(_request: Request, props: { params: Promise<{ id: str
   if (process.env.NEXT_PUBLIC_LIVE_PROVIDER === "ivs") {
     const { data: rec } = await admin
       .from("live_streams")
-      .select("ivs_channel_arn, ivs_composition_arn")
+      .select("ivs_channel_arn, ivs_composition_arn, ivs_stage_arn")
       .eq("id", stream.id)
       .maybeSingle();
     if (rec?.ivs_channel_arn) {
       await stopIvsStream(rec.ivs_channel_arn);
     }
     // Stage stream with a composite recording running: stop it and store the
-    // finished HLS master path as the replay.
+    // finished HLS master path as the replay. The stored prefix says where the
+    // recording is; the stage ARN is the fallback search root for the rows that
+    // predate it.
     if (rec?.ivs_composition_arn) {
-      const { recordingPath } = await stopIvsComposition(rec.ivs_composition_arn);
+      const { recordingPath } = await stopIvsComposition(
+        rec.ivs_composition_arn,
+        {
+          recordingPrefix: await recordingPrefixOf(admin, stream.id),
+          stageArn: rec.ivs_stage_arn,
+        },
+      );
       if (recordingPath) {
         await admin
           .from("live_streams")

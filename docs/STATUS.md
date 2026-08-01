@@ -54,6 +54,21 @@
 
 ## Changelog
 
+- 2026-08-01 (web): **The replays were in S3 the whole time; nothing could
+  name them.** IVS hands back the recording's S3 prefix when a composition
+  starts and then deletes the composition record shortly after it stops — so
+  the sweeper's `GetComposition` answered `Resource: ...composition/tcs3RASP3Asy
+  not found`, four broadcasts running, and every one of them had recorded
+  correctly. The prefix is now written to `live_streams.ivs_recording_prefix`
+  the moment the composition starts, and stop/sweep read the manifest straight
+  from it. Rows that predate the column fall back to `GetComposition` and then
+  to searching the stage's own subtree in S3, so the stranded ones are
+  recoverable too. The prefix is written in its own statement, never bundled
+  with `ivs_composition_arn`: losing the ARN costs the whole broadcast its HLS
+  output, losing the prefix costs one replay.
+  Needs `supabase/migrations/20260801020000_live_ivs_recording_prefix.sql` on
+  RDS + `docker restart postgrest`.
+
 - 2026-07-31 (web): **The live worked; the post announcing it didn't.** Moving
   the status update ahead of the provider call fixed "nobody can see the
   broadcast" and left the feed announcement stranded behind the same abort —

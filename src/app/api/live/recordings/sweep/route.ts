@@ -81,6 +81,13 @@ interface StuckRow {
   ended_at: string | null;
 }
 
+interface CompositionRow {
+  id: string;
+  ivs_composition_arn: string | null;
+  ivs_recording_prefix?: string | null;
+  ivs_stage_arn: string | null;
+}
+
 export async function POST(request: NextRequest) {
   const secret =
     process.env.LIVE_SWEEP_SECRET || process.env.RIDE_DISPATCH_SECRET;
@@ -190,25 +197,41 @@ async function linkCompositionReplays(
   since: string,
   until: string,
 ): Promise<number> {
-  const { data, error } = await admin
-    .from("live_streams")
-    .select("id, ivs_composition_arn")
-    .eq("status", "ended")
-    .eq("record_enabled", true)
-    .is("recording_path", null)
-    .not("ivs_composition_arn", "is", null)
-    .gte("ended_at", since)
-    .lte("ended_at", until)
-    .order("ended_at", { ascending: false })
-    .limit(MAX_PER_SWEEP)
-    .returns<{ id: string; ivs_composition_arn: string | null }[]>();
+  const select = (cols: string) =>
+    admin
+      .from("live_streams")
+      .select(cols)
+      .eq("status", "ended")
+      .eq("record_enabled", true)
+      .is("recording_path", null)
+      .not("ivs_composition_arn", "is", null)
+      .gte("ended_at", since)
+      .lte("ended_at", until)
+      .order("ended_at", { ascending: false })
+      .limit(MAX_PER_SWEEP)
+      .returns<CompositionRow[]>();
+
+  let { data, error } = await select(
+    "id, ivs_composition_arn, ivs_recording_prefix, ivs_stage_arn",
+  );
+  if (error) {
+    // ivs_recording_prefix is the newest column here; on a server whose
+    // migration has not run (or whose PostgREST has not reloaded), naming it
+    // fails the whole select. Ask again without it — the recording can still be
+    // found by searching the stage's subtree in S3, which is exactly the path
+    // the rows from before that column existed have to take anyway.
+    ({ data, error } = await select("id, ivs_composition_arn, ivs_stage_arn"));
+  }
   if (error || !data?.length) return 0;
 
   let linked = 0;
   for (const row of data) {
     const arn = row.ivs_composition_arn;
     if (!arn) continue;
-    const path = await resolveIvsCompositionRecording(arn);
+    const path = await resolveIvsCompositionRecording(arn, {
+      recordingPrefix: row.ivs_recording_prefix ?? null,
+      stageArn: row.ivs_stage_arn,
+    });
     if (!path) continue;
     const { error: upErr } = await admin
       .from("live_streams")
@@ -258,18 +281,29 @@ async function startMissingCompositions(
   for (const row of data) {
     const stage = row.ivs_stage_arn;
     if (!stage) continue;
-    const arn = await startIvsComposition(stage, row.ivs_channel_arn, {
+    const composition = await startIvsComposition(stage, row.ivs_channel_arn, {
       record: row.record_enabled,
     });
-    if (!arn) continue;
+    if (!composition) continue;
     const { error: upErr } = await admin
       .from("live_streams")
-      .update({ ivs_composition_arn: arn })
+      .update({ ivs_composition_arn: composition.arn })
       // Only if still missing — goLive may have finished after all, and its
       // composition is the one that should be stopped later.
       .is("ivs_composition_arn", null)
       .eq("id", row.id);
-    if (!upErr) started += 1;
+    if (upErr) continue;
+    started += 1;
+    // Separately, and tolerating failure: the ARN above is what stops this
+    // composition and what keeps the next sweep from starting a second one, so
+    // it must not be lost to a column that a pending migration has not added
+    // yet. The prefix is only worth a replay.
+    if (composition.recordingPrefix) {
+      await admin
+        .from("live_streams")
+        .update({ ivs_recording_prefix: composition.recordingPrefix })
+        .eq("id", row.id);
+    }
   }
   if (started > 0) {
     console.info(`[live/sweep] started ${started} missing composition(s)`);
