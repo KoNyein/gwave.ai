@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/data/admin";
 import { latestIvsRecordingPath } from "@/lib/ivs";
 import {
+  ivsCompositionState,
   resolveIvsCompositionRecording,
   startIvsComposition,
 } from "@/lib/ivs-realtime";
@@ -167,6 +168,7 @@ export async function POST(request: NextRequest) {
   }
 
   const endedGhosts = await endStaleLives(admin);
+  const revived = await reviveDeadCompositions(admin);
   const composedNow = await startMissingCompositions(admin);
   const compositionReplays = await linkCompositionReplays(admin, since, until);
 
@@ -175,6 +177,7 @@ export async function POST(request: NextRequest) {
     linked,
     stillMissing: still.length,
     endedGhosts,
+    revived,
     composedNow,
     compositionReplays,
     lookbackHours: hours,
@@ -241,6 +244,68 @@ async function linkCompositionReplays(
     if (!upErr) linked += 1;
   }
   return linked;
+}
+
+/**
+ * Put a composition back when the one on the row has died.
+ *
+ * `StartComposition` returning an ARN is not the same as a composition running.
+ * The common failure is starting a second too early: IVS accepts the call,
+ * looks at the stage, finds no video being published yet, and gives up within
+ * a couple of seconds. The row keeps the ARN of something that no longer
+ * exists, so `startMissingCompositions` skips it — the broadcast plays fine and
+ * is recorded nowhere, which is exactly the shape of the bug users reported as
+ * "live က save မလုပ်ဘူး".
+ *
+ * So: for anything still live on a stage, ask IVS what its composition is
+ * actually doing. `FAILED`, or no record at all, means it is gone — clear the
+ * ARN and let the next pass start a fresh one, this time with a host who is
+ * definitely publishing.
+ *
+ * Deliberately does NOT start the replacement here. Clearing the ARN and
+ * letting `startMissingCompositions` do it keeps one code path responsible for
+ * creating compositions, and costs at most one more minute.
+ */
+async function reviveDeadCompositions(
+  admin: ReturnType<typeof createAdminClient>,
+): Promise<number> {
+  const { data, error } = await admin
+    .from("live_streams")
+    .select("id, ivs_composition_arn")
+    .eq("status", "live")
+    .not("ivs_stage_arn", "is", null)
+    .not("ivs_composition_arn", "is", null)
+    .limit(10)
+    .returns<{ id: string; ivs_composition_arn: string | null }[]>();
+  if (error || !data?.length) return 0;
+
+  let revived = 0;
+  for (const row of data) {
+    const arn = row.ivs_composition_arn;
+    if (!arn) continue;
+    const state = await ivsCompositionState(arn);
+    // STARTING and ACTIVE are working. STOPPING is on its way out under its own
+    // steam and does not want a second composition racing it.
+    if (state === "STARTING" || state === "ACTIVE" || state === "STOPPING") {
+      continue;
+    }
+    const { error: upErr } = await admin
+      .from("live_streams")
+      .update({ ivs_composition_arn: null, ivs_recording_prefix: null })
+      .eq("id", row.id)
+      // Only while it is still live: if the host ended the broadcast while we
+      // were talking to AWS, the ARN is the record of what to look for and must
+      // not be thrown away.
+      .eq("status", "live")
+      .eq("ivs_composition_arn", arn);
+    if (upErr) continue;
+    revived += 1;
+    console.info(
+      `[live/sweep] composition ${arn} is ${state ?? "gone"} while the stream ` +
+        `is still live — starting a new one for ${row.id}`,
+    );
+  }
+  return revived;
 }
 
 /**

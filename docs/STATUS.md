@@ -54,6 +54,17 @@
 
 ## Changelog
 
+- 2026-08-01 (web): **A composition ARN is not a composition.** `StartComposition`
+  returning an ARN says only that IVS accepted the call. Start one a second too
+  early — before the host's camera is publishing — and IVS looks at the stage,
+  finds nothing to compose, and gives up within a couple of seconds. The row
+  keeps the ARN of something that no longer exists, so the sweeper's
+  "start compositions for stages that have none" pass skips it forever: the
+  broadcast plays fine and is recorded nowhere. The sweeper now asks IVS what
+  each live stream's composition is actually *doing* and clears the ARN when it
+  is FAILED or gone, so the next pass starts a fresh one — with a host who is
+  by then definitely publishing.
+
 - 2026-08-01 (web): **Two buckets, and only one of them was ever read.** IVS
   writes channel recordings to `IVS_RECORDING_BUCKET` and composite
   (browser-broadcast) recordings to whatever the Real-Time *storage

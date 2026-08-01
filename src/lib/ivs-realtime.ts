@@ -296,6 +296,36 @@ async function resolveRecordingPrefix(
 }
 
 /**
+ * Is this composition still doing its job?
+ *
+ * Returns the IVS state (`STARTING`, `ACTIVE`, `STOPPING`, `FAILED`), or null
+ * when IVS has no record of it at all.
+ *
+ * A composition can die on its own, and quietly. The usual way is being started
+ * a moment too early: `StartComposition` succeeds, IVS looks at the stage,
+ * finds nobody publishing video yet, and gives up within a couple of seconds.
+ * Nothing about that failure reaches us — the call already returned an ARN, the
+ * row already has it, and every later check sees a composition ARN and assumes
+ * the broadcast is being recorded. It is not. It never was.
+ *
+ * Null is *not* a clear answer on its own: IVS deletes the record shortly after
+ * a composition ends normally too. It only means "dead" for a stream that is
+ * still live — a broadcast still running should still have a composition.
+ */
+export async function ivsCompositionState(
+  compositionArn: string,
+): Promise<string | null> {
+  try {
+    const res = await rtClient().send(
+      new GetCompositionCommand({ arn: compositionArn }),
+    );
+    return res.composition?.state ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Stop a composition and resolve where the recording landed.
  *
  * The prefix comes from the row (written down when the composition started);
