@@ -18,19 +18,24 @@
   vibration, speaker toggle, 20-min Realtime auth refresh, ring-socket
   auto-reconnect + resume rejoin, web-push callee notify
   (`/api/mobile/call/notify`). Web ring verification is embed-free.
-- **Live**: browser→LiveKit, app-broadcast→IVS. IVS auto-records to S3;
-  `latestIvsRecordingPath()` links `recording_path` on end/verify, and
-  `/api/live/recordings/sweep` (one-minute cron) links the ones that finalise
-  after the host has already tapped End — without it, long broadcasts silently
-  never got a replay (four out of ten in production), and
-  `/recordings/[...path]` streams replays through the domain (app + web).
-  Media-plane self-heal on `/api/mobile/live/verify`, `/api/mobile/live/token`
-  and the web watch page marks dead lives ended (LiveKit host-absent or IVS
-  channel offline, 3-min grace). Feed + live lists autoplay muted previews
-  (app: video_player HLS; web: hls.js / Safari native). App live viewing is
-  one-page TikTok-style vertical swipe. **LiveKit (browser Go Live) recording
-  still NOT configured** — needs static IAM keys for egress
-  (`LIVEKIT_EGRESS_S3_*` in `/etc/gwave-web.env`).
+- **Live**: both kinds of broadcast now end up on an IVS Low-Latency channel,
+  and **the channel is what gets recorded** — one mechanism, one replay path.
+  A phone pushes RTMPS to its channel directly; a browser publishes to an IVS
+  Real-Time *stage* and a composition restreams that into a channel of its own
+  (which is also the only reason phones can watch a browser live at all).
+  Writing the replay straight from the composition to S3 is **not usable on
+  this account** — the S3 destination is rejected before it starts while the
+  channel destination on the same composition runs fine; don't spend another
+  night on it. `latestIvsRecordingPath()` links `recording_path` on end/verify
+  and `/api/live/recordings/sweep` (one-minute cron) catches the ones that
+  finalise later; it also ends ghost lives and restarts compositions that died
+  (a composition ARN is not a composition — IVS drops the record seconds after
+  it fails). `/recordings/[...path]` streams replays through the domain, picking
+  the bucket from the key (`ivs/…` = channel recordings). Feed + live lists
+  autoplay muted previews. App live viewing is one-page TikTok-style vertical
+  swipe. Viewer count = max(browser presence, `live_heartbeat()`'s count), so a
+  host sees phone viewers. **LiveKit (browser Go Live) recording still NOT
+  configured** and no longer matters for IVS-provider broadcasts.
 - **SOS**: reason/phone/note/photo/video/voice + optional go-live; danger
   banner on the map; tiles dial/view media; SMS+GPS fallback when offline.
   (`sos_alerts` columns applied on RDS.)
