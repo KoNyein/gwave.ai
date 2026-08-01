@@ -164,9 +164,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           live = null;
         }
         if (!mounted) return;
-        if (live != null) {
+        // Copied into a final before the closure: `live` is assigned inside the
+        // try, so it cannot be promoted to non-nullable inside a builder.
+        final found = live;
+        if (found != null) {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => LiveWatchScreen(stream: live)),
+            MaterialPageRoute(builder: (_) => LiveWatchScreen(stream: found)),
           );
           return;
         }
