@@ -11,6 +11,7 @@ const { createBus } = require("./bus");
 const { createWeb3 } = require("./web3");
 const { createWeatherDirector } = require("./weather");
 const { createGameRunner } = require("./games");
+const { createVoiceRegistry } = require("./voice");
 
 const PORT = Number(process.env.PORT || 8080);
 const REQUIRE_AUTH = process.env.REQUIRE_AUTH === "true";
@@ -31,6 +32,9 @@ const EMOTES = new Set(["wave", "dance", "sit"]);
 
 const rooms = new Rooms();
 const weather = createWeatherDirector(ROOMS);
+/// Voice mesh ရဲ့ member စာရင်း (Phase 14) — audio က P2P၊ server က
+/// signal relay နဲ့ ဝင်ခွင့်စစ်တာပဲ လုပ်တယ်။
+const voice = createVoiceRegistry();
 
 /// DATABASE_URL မရှိရင် persistence မရှိတဲ့ mode — လောကက ပုံမှန်အလုပ်လုပ်ပြီး
 /// ထွက်ရင် နေရာ မမှတ်ဘူး။ (Guest တွေက ဘယ်လိုမှ မမှတ်ဘူး — id က session
@@ -364,6 +368,8 @@ wss.on("connection", async (ws, req) => {
     room,
     name: who.name,
     authed: who.authed,
+    /// ၁၈+ လား — voice ဝင်ခွင့် (ticket ရဲ့ claim ကနေ၊ fail-closed)
+    adult: who.adult === true,
     x: 0,
     y: 0,
     z: 12,
@@ -639,6 +645,58 @@ wss.on("connection", async (ws, req) => {
         break;
       }
 
+      // ── Voice chat (Phase 14) ────────────────────────────────────────
+      case "voiceJoin": {
+        const status = voice.join(player.room, player);
+        if (status !== "ok") {
+          // "age" = ၁၈+ မပြည့်/အသက်မသိ၊ "auth" = ဝင်မထား၊ "full" = ပြည့်နေပြီ
+          send(ws, { type: "voiceDenied", reason: status });
+          break;
+        }
+        // ★ Peer စာရင်းက voice ထဲရှိသူတွေဆီပဲ သွားတယ် — voice မဝင်ထားသူကို
+        // ဘယ်သူတွေ စကားပြောနေလဲ ကြေညာနေစရာ မလိုဘူး။
+        const peers = voice.peers(player.room);
+        for (const peer of peers) {
+          const target = rooms.get(player.room).get(peer.id);
+          if (target) send(target.ws, { type: "voicePeers", peers });
+        }
+        break;
+      }
+
+      case "voiceLeave": {
+        if (voice.leave(player.room, player.id)) {
+          for (const peer of voice.peers(player.room)) {
+            const target = rooms.get(player.room).get(peer.id);
+            if (target) send(target.ws, { type: "voicePeers", peers: voice.peers(player.room) });
+          }
+          // ထွက်သွားသူကို peer တွေက ချက်ချင်း ဖြုတ်ဖို့
+          rooms.broadcast(player.room, { type: "voiceLeft", id: player.id });
+        }
+        break;
+      }
+
+      case "voiceSignal": {
+        // ★ SDP/ICE relay — **voice member အချင်းချင်းသာ**။ မစစ်ရင် ဘယ်သူမဆို
+        // ဘယ်သူ့ဆီမဆို arbitrary payload ပို့တဲ့ side channel ဖြစ်သွားမယ်။
+        if (!voice.has(player.room, player.id)) break;
+        const to = String(msg.to || "");
+        if (!voice.has(player.room, to)) break;
+        const target = rooms.get(player.room).get(to);
+        if (!target) break;
+        send(target.ws, { type: "voiceSignal", from: player.id, data: msg.data });
+        break;
+      }
+
+      case "voiceMute": {
+        if (!voice.has(player.room, player.id)) break;
+        const muted = msg.muted === true;
+        voice.setMuted(player.room, player.id, muted);
+        // Mute အခြေအနေက room တစ်ခုလုံး မြင်ရတယ် — "သူ mic ဖွင့်ထားလား"
+        // ဆိုတာ ယုံကြည်မှုအတွက် အရေးကြီးတယ်။
+        rooms.broadcast(player.room, { type: "voiceState", id: player.id, muted });
+        break;
+      }
+
       case "setname": {
         // ★ Auth ရှိရင် နာမည်က token ကလာရမယ် — client ကို ခွင့်ပြုရင်
         // ဘယ်သူမဆို တခြားသူ့နာမည်နဲ့ ဝင်လို့ရသွားမယ်။
@@ -673,6 +731,11 @@ wss.on("connection", async (ws, req) => {
     // ★ ကစားသူတစ်ယောက် ပြတ်သွားလို့ **ပွဲ မဖျက်ဘူး** — ကျန်တဲ့သူတွေရဲ့
     // ပွဲကို တစ်ယောက်ထွက်သွားလို့ ဖျက်လိုက်တာ မတရားဘူး (spec 16.6)。
     games.drop(player.room, player.id);
+    // ★ Voice ကနေလည်း ဖြုတ်ရမယ် — မဖြုတ်ရင် ကျန်တဲ့ peer တွေက သူ့ဆီ
+    // ICE ကြိုးစားနေပြီး slot လည်း အလကား ကုန်နေမယ်။
+    if (voice.leave(player.room, player.id)) {
+      rooms.broadcast(player.room, { type: "voiceLeft", id: player.id });
+    }
     rooms.remove(player.room, player.id);
     emit(player.room, { type: "leave", id: player.id });
     // ★ ထွက်ချိန်မှာ မဖြစ်မနေ သိမ်းရမယ် — ၃၀ စက္ကန့် flush ကို စောင့်ရင်

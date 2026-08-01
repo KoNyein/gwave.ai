@@ -94,6 +94,15 @@ export type NetHandlers = {
   }) => void;
   onGameCancelled?: (reason: string) => void;
   onGameJoinResult?: (gameId: string, status: string) => void;
+  // ── Voice (Phase 14) ──────────────────────────────────────────────────────
+  /// Voice ထဲရှိသူစာရင်း — client က ဒါနဲ့ WebRTC mesh ဆောက်တယ်
+  onVoicePeers?: (peers: { id: string; muted: boolean }[]) => void;
+  /// SDP/ICE relay — voice member အချင်းချင်းသာ
+  onVoiceSignal?: (from: string, data: unknown) => void;
+  onVoiceState?: (id: string, muted: boolean) => void;
+  onVoiceLeft?: (id: string) => void;
+  /// "age" = ၁၈+ မပြည့်/အသက်မသိ · "auth" = ဝင်မထား · "full" = ပြည့်နေပြီ
+  onVoiceDenied?: (reason: string) => void;
 };
 
 export type NetClient = {
@@ -109,6 +118,10 @@ export type NetClient = {
   /// Tab/app က နောက်ပိုင်းရောက်သွားပြီ — server က position update တွေ
   /// ပို့မနေတော့ဘူး (ဖုန်း data + ဘက်ထရီ ချွေတယ်)。
   sendAfk(afk: boolean): void;
+  sendVoiceJoin(): void;
+  sendVoiceLeave(): void;
+  sendVoiceMute(muted: boolean): void;
+  sendVoiceSignal(to: string, data: unknown): void;
   /// ★ `action` က လုပ်ဆောင်ချက်သာ (ပစ်တယ်/စိုက်တယ်)。 ရလဒ်ကို server က
   /// ဆုံးဖြတ်တယ် — score ပါပို့လည်း ဘယ်နေရာမှာမှ မဖတ်ဘူး။
   sendGameAction(action: Record<string, unknown>): void;
@@ -210,6 +223,22 @@ export function connectMetaverse(
     sendAfk(afk) {
       if (ws?.readyState !== WebSocket.OPEN) return;
       ws.send(JSON.stringify({ type: "afk", afk }));
+    },
+    sendVoiceJoin() {
+      if (ws?.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "voiceJoin" }));
+    },
+    sendVoiceLeave() {
+      if (ws?.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "voiceLeave" }));
+    },
+    sendVoiceMute(muted) {
+      if (ws?.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "voiceMute", muted }));
+    },
+    sendVoiceSignal(to, data) {
+      if (ws?.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "voiceSignal", to, data }));
     },
     sendGameAction(action) {
       if (ws?.readyState !== WebSocket.OPEN) return;
@@ -411,6 +440,23 @@ export function connectMetaverse(
           break;
         case "gameJoinResult":
           handlers.onGameJoinResult?.(String(m.gameId), String(m.status));
+          break;
+        case "voicePeers":
+          handlers.onVoicePeers?.(
+            Array.isArray(m.peers) ? (m.peers as { id: string; muted: boolean }[]) : [],
+          );
+          break;
+        case "voiceSignal":
+          handlers.onVoiceSignal?.(String(m.from), m.data);
+          break;
+        case "voiceState":
+          handlers.onVoiceState?.(String(m.id), Boolean(m.muted));
+          break;
+        case "voiceLeft":
+          handlers.onVoiceLeft?.(String(m.id));
+          break;
+        case "voiceDenied":
+          handlers.onVoiceDenied?.(String(m.reason));
           break;
         default:
           break;

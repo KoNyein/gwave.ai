@@ -58,6 +58,9 @@ function verifyTicket(ticket, secret) {
   return {
     userId: String(payload.sub),
     name: String(payload.name || payload.username || "Gwave"),
+    // ★ Voice ရဲ့ ၁၈+ ဂိတ် — Next.js က DOB ကြည့်ပြီး ထည့်ပေးတာ။
+    // မပါရင် **adult မဟုတ်** လို့ ယူဆတယ် (fail-closed)。
+    adult: payload.adult === true,
   };
 }
 
@@ -78,7 +81,7 @@ function identify({ ticket, requireAuth, secret, guestId }) {
   // (setname — guest အတွက်သာ)၊ ဒါပေမယ့် `authed: false` က ဘယ်တော့မှ
   // မပြောင်းလို့ client တွေက အမြဲ "ဧည့်သည်" အဖြစ် ပြပါတယ်။
   const tag = guestId.slice(-4).toUpperCase();
-  return { userId: guestId, name: `Guest ${tag}`, authed: false };
+  return { userId: guestId, name: `Guest ${tag}`, authed: false, adult: false };
 }
 
 module.exports = { identify, verifyTicket, TICKET_TTL_MS };

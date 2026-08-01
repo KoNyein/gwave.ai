@@ -27,6 +27,8 @@ import {
 import { createPostFx } from "./postfx";
 import { createQuality } from "./quality";
 import { createVehicle, type Vehicle } from "./vehicles";
+import { VoicePanel } from "./voice-panel";
+import { createVoiceChat, type VoiceChat } from "./voicechat";
 import { createWeather } from "./weather";
 import { buildWorld, resolveCollision } from "./world";
 import { isInApp, native } from "@/lib/metaverse/native";
@@ -191,6 +193,20 @@ export function MetaverseScene() {
   /// က render loop ထဲမှာ frame တိုင်း ပြောင်းလို့ ref ကနေ ဖတ်ရတယ်။
   const [building, setBuilding] = useState(false);
   const buildRef = useRef<BuildBridge | null>(null);
+
+  // ── Voice chat (Phase 14) ─────────────────────────────────────────────────
+  /// "off" = မဝင်သေး · "on" = ဝင်ထား · "denied-*" = server က ငြင်းတယ်
+  const [voiceState, setVoiceState] = useState<
+    "off" | "joining" | "on" | "denied-age" | "denied-auth" | "denied-full"
+  >("off");
+  const [micOn, setMicOn] = useState(false);
+  /// Voice ထဲရှိသူများ — mute/report ခလုတ်တွေ ပြဖို့
+  const [voicePeers, setVoicePeers] = useState<{ id: string; muted: boolean }[]>([]);
+  const [voiceMutes, setVoiceMutes] = useState<Set<string>>(new Set());
+  const voiceRef = useRef<VoiceChat | null>(null);
+  /// Voice panel မှာ ပြမယ့် နာမည် — remotes map က effect ထဲမှာ ရှိလို့
+  /// lookup function ကို ref နဲ့ ထုတ်ပေးထားတယ်။
+  const nameOfRef = useRef<(id: string) => string>(() => "Gwave");
 
   // Emote ကို ref နဲ့ ကူးထားတယ် — render loop က state ကို closure ထဲ
   // ဖမ်းထားလို့ တိုက်ရိုက်ဖတ်ရင် အဟောင်းပဲ ရမယ်။
@@ -626,6 +642,33 @@ export function MetaverseScene() {
           clearGameFx();
           setPhase({ kind: "idle" });
         },
+
+        // ── Voice (Phase 14) ────────────────────────────────────────────
+        onVoicePeers: (peers) => {
+          voiceChat.onPeers(peers);
+          setVoicePeers(peers);
+          setVoiceState("on");
+        },
+        onVoiceSignal: (from, data) => void voiceChat.onSignal(from, data),
+        onVoiceState: (id, muted) => {
+          setVoicePeers((prev) =>
+            prev.map((p) => (p.id === id ? { ...p, muted } : p)),
+          );
+        },
+        onVoiceLeft: (id) => {
+          voiceChat.onLeft(id);
+          setVoicePeers((prev) => prev.filter((p) => p.id !== id));
+        },
+        onVoiceDenied: (reason) => {
+          voiceChat.leave();
+          setVoiceState(
+            reason === "age"
+              ? "denied-age"
+              : reason === "full"
+                ? "denied-full"
+                : "denied-auth",
+          );
+        },
         onStatus: (connected, detail) => {
           if (connected) setLink("live");
           else if (detail === "auth") setLink("auth");
@@ -637,6 +680,22 @@ export function MetaverseScene() {
       // ဒါက "ဘယ်ကို ကြည့်နေလဲ" ဆိုတဲ့ input သာ ဖြစ်တယ်၊ ရလဒ် မဟုတ်ဘူး။
       gameActionRef.current = (a) => net?.sendGameAction({ ...a, ry: p.ry });
     }
+
+    // ── Voice chat (Phase 14) ────────────────────────────────────────────
+    // ★ Audio က P2P — server က signal relay နဲ့ ၁၈+ ဂိတ်ပဲ။ Spatial က
+    // PannerNode (HRTF) — voicechat.ts ကြည့်ပါ။
+    const voiceChat = createVoiceChat(
+      () => netRef.current,
+      () => myId,
+      async () => {
+        const res = await fetch("/api/webrtc/ice", { cache: "no-store" });
+        if (!res.ok) return [];
+        const json = (await res.json()) as { iceServers?: RTCIceServer[] };
+        return json.iceServers ?? [];
+      },
+    );
+    voiceRef.current = voiceChat;
+    nameOfRef.current = (id) => remotes.get(id)?.name ?? "Gwave";
 
     // ── Panel ↔ 3D ရဲ့ တံတား (Phase 18) ──────────────────────────────────
     buildRef.current = {
@@ -1036,6 +1095,13 @@ export function MetaverseScene() {
 
       // ── ဆောက်လုပ်ရေး: ghost + ကွက် streaming (Phase 18) ────────────────
       plots.update(p.x, p.z);
+
+      // Voice — နားထောင်သူနဲ့ ပြောသူတွေရဲ့ နေရာ sync (spatial audio)
+      if (voiceChat.active) {
+        const positions = new Map<string, { x: number; y: number; z: number }>();
+        for (const [id, r] of remotes) positions.set(id, r.cur);
+        voiceChat.update({ x: p.x, y: p.y, z: p.z, ry: p.ry }, positions);
+      }
       if (ghostType) {
         // ★ Player ရဲ့ ရှေ့ ၃ unit — raycast မလုပ်ဘူး၊ ဖုန်းမှာ
         // "ဘယ်ကို ထောက်ရမလဲ" ဆိုတာ ခက်တယ်။ ရှေ့ကို ကြည့်ပြီး ချတာက
@@ -1185,6 +1251,8 @@ export function MetaverseScene() {
       plots.dispose();
       ghost.dispose();
       buildRef.current = null;
+      voiceChat.dispose();
+      voiceRef.current = null;
       for (const v of vehicles.values()) {
         scene.remove(v.group);
         v.dispose();
@@ -1566,6 +1634,39 @@ export function MetaverseScene() {
       {/* ── 🏗 ဆောက်လုပ်ရေး (Phase 18) ───────────────────────────────────
           ★ ကိုယ်ပိုင်ကွက်ပေါ်မှာသာ ဆောက်လို့ရတယ် — ဒါကို client မှာလည်း
           ပြထားပေမယ့် **အမှန်တရားက server မှာ** (`/plot/[id]/build`)。 */}
+      <VoicePanel
+        state={voiceState}
+        micOn={micOn}
+        peers={voicePeers}
+        mutes={voiceMutes}
+        meId={meId}
+        room={roomId}
+        names={(id) => nameOfRef.current(id)}
+        onJoin={() => {
+          setVoiceState("joining");
+          void voiceRef.current?.join();
+        }}
+        onLeave={() => {
+          voiceRef.current?.leave();
+          setVoiceState("off");
+          setVoicePeers([]);
+          setMicOn(false);
+        }}
+        onMic={(on) => {
+          voiceRef.current?.setMic(on);
+          setMicOn(voiceRef.current?.micOn ?? false);
+        }}
+        onMutePeer={(id, muted) => {
+          voiceRef.current?.mutePeer(id, muted);
+          setVoiceMutes((prev) => {
+            const next = new Set(prev);
+            if (muted) next.add(id);
+            else next.delete(id);
+            return next;
+          });
+        }}
+      />
+
       {!building && (
         <button
           data-hud="1"

@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, isAdultProfile } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +37,10 @@ export async function GET() {
   const payload = {
     sub: profile.id,
     name: profile.username || profile.full_name || "Gwave",
+    // ★ Voice chat ရဲ့ ၁၈+ ဂိတ် (Phase 14)。 WS server က DOB ကို မမြင်ရလို့
+    // အသက်စစ်ဆေးမှုကို **ဒီမှာ** (DOB သိတဲ့နေရာ) လုပ်ပြီး ရလဒ်ကိုပဲ
+    // ticket ထဲ ထည့်ပေးတယ်။ DOB မထည့်ရသေးသူ = adult မဟုတ် (fail-closed)。
+    adult: isAdultProfile(profile),
     iat: now,
     exp: now + 60,
   };
