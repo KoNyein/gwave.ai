@@ -51,6 +51,7 @@ function createStore(databaseUrl) {
       async getPlotsAround() {
         return [];
       },
+      async saveGameScores() {},
       async purgeOldChat() {
         return 0;
       },
@@ -140,6 +141,34 @@ function createStore(databaseUrl) {
         [gx - radius, gx + radius, gz - radius, gz + radius],
       );
       return res?.rows ?? [];
+    },
+
+    /// Mini-game ရဲ့ ရလဒ် (Phase 16.5)。
+    ///
+    /// ★ အမှတ်က **server ကနေသာ** လာတယ် — client က ပို့တဲ့ score ကို
+    ///   ဘယ်တော့မှ မရေးဘူး (games.js မှာ တွက်ပြီးသား ranking ကို ရေးတယ်)。
+    /// ★ Row တစ်ခုချင်း သီးခြား insert မလုပ်ဘူး — player ၂၀ ဆိုရင် round
+    ///   trip ၂၀ ဖြစ်မယ်။ တစ်ခါတည်း multi-row insert လုပ်တယ်။
+    /// ★ ဧည့်သည်လည်း မှတ်တယ် — `user_id` က text၊ profiles ကို FK မချိတ်ဘူး။
+    async saveGameScores(gameId, rankings) {
+      if (!rankings?.length) return;
+      const values = [];
+      const params = [gameId];
+      for (const r of rankings) {
+        const base = params.length;
+        values.push(`($1, $${base + 1}, $${base + 2}, $${base + 3}, $${base + 4})`);
+        params.push(
+          String(r.playerId),
+          r.name ?? null,
+          Math.max(0, Math.round(Number(r.score) || 0)),
+          Math.max(1, Math.round(Number(r.rank) || 1)),
+        );
+      }
+      await q(
+        `insert into public.mv_game_scores (game_id, user_id, name, score, rank)
+         values ${values.join(", ")}`,
+        params,
+      );
     },
 
     /// PII — chat log ကို ၃၀ ရက်ပြီးရင် ဖျက်တယ် (security checklist)။

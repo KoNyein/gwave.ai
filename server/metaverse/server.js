@@ -10,6 +10,7 @@ const { createStore } = require("./store");
 const { createBus } = require("./bus");
 const { createWeb3 } = require("./web3");
 const { createWeatherDirector } = require("./weather");
+const { createGameRunner } = require("./games");
 
 const PORT = Number(process.env.PORT || 8080);
 const REQUIRE_AUTH = process.env.REQUIRE_AUTH === "true";
@@ -114,6 +115,43 @@ const moveFlusher = setInterval(() => {
     emit(roomId, { type: "updates", p });
   }
 }, MOVE_FLUSH_MS);
+
+// ── Mini-games (Phase 16) ───────────────────────────────────────────────────
+/// ★ Game state က room state နဲ့ **သီးခြား** — game ကျရင် လောကက ဆက်လည်တယ်။
+/// ★ `broadcast` က `emit` — task များခုမှာ ဘေးက ကြည့်နေသူတွေဆီပါ ရောက်ရမယ်။
+/// ★ `sendTo` ကတော့ **local သာ** — objectives က ကစားသူဆီပဲ သွားရမယ်ဆိုတော့
+///   ကစားသူတိုင်းက ဒီ task ပေါ်က socket ဖြစ်တယ် (gameJoin က socket ကလာလို့)。
+function playerOrGhost(roomId, playerId) {
+  return (
+    rooms.rooms.get(roomId)?.get(playerId) ??
+    rooms.ghosts.get(roomId)?.get(playerId) ??
+    null
+  );
+}
+
+const games = createGameRunner({
+  broadcast: (roomId, msg) => emit(roomId, msg),
+  sendTo: (playerId, msg) => {
+    for (const roomId of ROOMS) {
+      const p = rooms.rooms.get(roomId)?.get(playerId);
+      if (p) {
+        send(p.ws, msg);
+        return;
+      }
+    }
+  },
+  positionOf: (roomId, playerId) => {
+    const p = playerOrGhost(roomId, playerId);
+    return p ? { x: p.x, y: p.y, z: p.z, ry: p.ry } : null;
+  },
+  nameOf: (roomId, playerId) => playerOrGhost(roomId, playerId)?.name ?? "Gwave",
+  // ★ Leaderboard မှာ ရေးတဲ့ အမှတ်က **server က တွက်ထားတာ** — client ပို့တဲ့
+  // score ကို ဘယ်နေရာမှာမှ မယူဘူး။
+  saveScores: (gameId, rankings) =>
+    store.saveGameScores(gameId, rankings).catch((err) => {
+      console.error("[mv/games] saveScores:", err.message);
+    }),
+});
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 // ★ ALB ရဲ့ health check က ဒီ endpoint ကို ခေါ်တယ်။ မရှိရင် target ကို
@@ -262,6 +300,13 @@ function onBusMessage(roomId, msg, origin) {
     case "vstate":
     case "mounted":
     case "dismounted":
+    // ★ ပွဲက task တစ်ခုပေါ်မှာ run တယ် — ကျန်တဲ့ task ကလူတွေက **ဘေးကနေ
+    // ကြည့်ရုံ**။ State မရှိလို့ ပြရုံပဲ ထပ်ပို့တယ်။
+    case "gameInvite":
+    case "gameStart":
+    case "gameState":
+    case "gameEnd":
+    case "gameCancelled":
       break; // state မရှိဘူး ဒါမှမဟုတ် ယာဉ် lock က room-local — ပြရုံပဲ
     default:
       return; // မသိတဲ့ type ကို client ဆီ ထပ်မပို့ဘူး
@@ -398,6 +443,9 @@ wss.on("connection", async (ws, req) => {
     // ★ ဝင်လာတာနဲ့ မှန်တဲ့ရာသီဥတု — မဟုတ်ရင် ပထမ ၅ မိနစ်လုံး
     // ကျန်တဲ့သူတွေနဲ့ မတူတဲ့ မိုးလေဝသထဲ ရောက်နေမယ်
     weather: weather.get(room),
+    // ★ Game စာရင်းက server ကနေ လာတယ် — client မှာ hardcode လုပ်ရင်
+    // deploy ၂ ခု မတူတဲ့အခါ မရှိတဲ့ပွဲကို နှိပ်လို့ရနေမယ် (spec 16.1)。
+    games: games.list(),
     players: rooms.snapshot(room, player.id),
   });
 
@@ -546,6 +594,24 @@ wss.on("connection", async (ws, req) => {
         break;
       }
 
+      case "gameJoin": {
+        // ★ ကစားသူက ဘာအမှတ်မှ မပို့ဘူး — "ငါဝင်မယ်" ပဲ ပြောလို့ရတယ်။
+        // အမှတ်တွက်တာ အကုန်လုံး server မှာ (games.js)。
+        const gid = String(msg.gameId || "");
+        const status = games.join(player.room, player.id, gid);
+        send(ws, { type: "gameJoinResult", gameId: gid, status });
+        break;
+      }
+
+      case "gameAction": {
+        // ★ `action` က "ဘာလုပ်တယ်" ပဲ ပြောတယ် (ပစ်တယ်/စိုက်တယ်/ရေလောင်းတယ်)。
+        // ရလဒ် (ထိမထိ၊ အမှတ်ဘယ်လောက်) ကို server က ဆုံးဖြတ်တယ် — client က
+        // `score` ပါလာလည်း ဘယ်နေရာမှာမှ မဖတ်ဘူး။
+        if (!msg.action || typeof msg.action !== "object") break;
+        games.action(player.room, player.id, msg.action);
+        break;
+      }
+
       case "setname": {
         // ★ Auth ရှိရင် နာမည်က token ကလာရမယ် — client ကို ခွင့်ပြုရင်
         // ဘယ်သူမဆို တခြားသူ့နာမည်နဲ့ ဝင်လို့ရသွားမယ်။
@@ -577,6 +643,9 @@ wss.on("connection", async (ws, req) => {
       rooms.broadcast(player.room, { type: "dismounted", vehicleId: id, playerId: player.id });
       bus.publish(player.room, { type: "dismounted", vehicleId: id, playerId: player.id });
     }
+    // ★ ကစားသူတစ်ယောက် ပြတ်သွားလို့ **ပွဲ မဖျက်ဘူး** — ကျန်တဲ့သူတွေရဲ့
+    // ပွဲကို တစ်ယောက်ထွက်သွားလို့ ဖျက်လိုက်တာ မတရားဘူး (spec 16.6)。
+    games.drop(player.room, player.id);
     rooms.remove(player.room, player.id);
     emit(player.room, { type: "leave", id: player.id });
     // ★ ထွက်ချိန်မှာ မဖြစ်မနေ သိမ်းရမယ် — ၃၀ စက္ကန့် flush ကို စောင့်ရင်
@@ -623,6 +692,7 @@ async function shutdown(signal) {
   if (syncer) clearInterval(syncer);
   clearInterval(moveFlusher);
   clearInterval(weatherTicker);
+  games.stopAll();
 
   // Client တွေ မထွက်သေးရင်တောင် ၁၀ စက္ကန့်ထက် မစောင့်ဘူး
   const hardStop = setTimeout(() => process.exit(0), 10_000);

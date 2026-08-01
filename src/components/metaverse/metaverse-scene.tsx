@@ -7,13 +7,20 @@ import { createSpatialAudio, type SpatialAudio } from "./audio";
 import { AvatarCustomiser } from "./avatar/customiser";
 import { DEFAULT_AVATAR, sanitizeAvatar, type AvatarConfig } from "./avatar/config";
 import { applyAvatarConfig } from "./avatar/parts";
+import { createGameFx, type GameFx } from "./gamefx";
+import { GamesPanel, type GamePhase } from "./games-panel";
 import { createHuman, type Avatar, type HumanState } from "./human";
 import { buildLandmarks, type Landmark } from "./landmarks";
 import { attachLiveScreen, type LiveScreen } from "./livescreen";
 import { getMap, MAP_LIST } from "./maps";
 import { createMinimap } from "./minimap";
 import { createNametags } from "./nametags";
-import { connectMetaverse, type NetClient, type RemoteState } from "./net";
+import {
+  connectMetaverse,
+  type GameInfo,
+  type NetClient,
+  type RemoteState,
+} from "./net";
 import { createPostFx } from "./postfx";
 import { createQuality } from "./quality";
 import { createVehicle, type Vehicle } from "./vehicles";
@@ -162,6 +169,17 @@ export function MetaverseScene() {
   const [meAuthed, setMeAuthed] = useState(false);
   const netRef = useRef<NetClient | null>(null);
 
+  // ── Mini-game (Phase 16) ─────────────────────────────────────────────────
+  /// ★ Game state အားလုံးက **server ကနေ** လာတယ် — ဒီမှာက ပြဖို့ ကူးထားတာ။
+  /// အမှတ်ကို client မှာ တွက်ရင် devtools ကနေ ပြင်လို့ရသွားမယ်။
+  const [gameList, setGameList] = useState<GameInfo[]>([]);
+  const [phase, setPhase] = useState<GamePhase>({ kind: "idle" });
+  const [meId, setMeId] = useState("");
+  /// ★ `shoot` က ဦးတည်ရာ (`ry`) လိုတယ် — အဲဒါက render loop ထဲက mutable
+  /// object မှာ ရှိလို့ React state ကနေ ဖတ်လို့မရဘူး။ Effect ထဲကနေ
+  /// function တစ်ခု ထုတ်ပေးထားတယ်။
+  const gameActionRef = useRef<((a: Record<string, unknown>) => void) | null>(null);
+
   // Emote ကို ref နဲ့ ကူးထားတယ် — render loop က state ကို closure ထဲ
   // ဖမ်းထားလို့ တိုက်ရိုက်ဖတ်ရင် အဟောင်းပဲ ရမယ်။
   const emoteRef = useRef<HumanState["emote"]>(null);
@@ -300,6 +318,9 @@ export function MetaverseScene() {
     const weather = createWeather(scene, world.ambient);
     weather.set(map.weather.default, 0.8, 0.6, 0.2);
 
+    // ── Mini-game ရဲ့ အမှတ်အသားများ (Phase 16) ────────────────────────────
+    const gameFx: GameFx = createGameFx(scene);
+
     // ── ယာဉ်များ ──────────────────────────────────────────────────────────
     const vehicles = new Map<string, Vehicle>();
     map.vehicles.forEach((v, i) => {
@@ -430,12 +451,24 @@ export function MetaverseScene() {
     const worldTimeNow = () => (((Date.now() + clockOffset) % dayMs) / dayMs);
 
     let net: NetClient | null = null;
+    /// ★ ကိုယ့် id — ကစားသူထဲ ပါလား (ကစားနေတာလား ကြည့်နေတာလား) ခွဲဖို့။
+    /// React state က closure ထဲ အဟောင်း ဖမ်းထားလို့ effect ထဲမှာ ကိုယ်ပိုင်
+    /// ကူးထားတယ်။
+    let myId = "";
+    /// ပွဲပြီးရင် marker တွေ ဖျောက်ဖို့
+    const clearGameFx = () => {
+      gameFx.setObjectives([]);
+      gameFx.setArena(null);
+    };
     if (WS_URL) {
       net = connectMetaverse(WS_URL, roomId, {
-        onInit: ({ players, name, authed, serverTime }) => {
-          for (const [id, s] of Object.entries(players)) addRemote(id, s);
+        onInit: ({ id, players, name, authed, serverTime, games }) => {
+          for (const [rid, s] of Object.entries(players)) addRemote(rid, s);
           setMeName(name);
           setMeAuthed(authed);
+          myId = id;
+          setMeId(id);
+          setGameList(games);
           setLink("live");
           // ဖုန်းရဲ့ နာရီ မမှန်လည်း server နဲ့ တူညီအောင်
           clockOffset = serverTime - Date.now();
@@ -497,6 +530,51 @@ export function MetaverseScene() {
           p.y = y;
           p.z = z;
         },
+
+        // ── Mini-game (Phase 16) ────────────────────────────────────────
+        onGameInvite: ({ gameId, nameMy, arena, startsIn, joined }) => {
+          gameFx.setArena(arena);
+          setPhase({
+            kind: "lobby",
+            gameId,
+            nameMy,
+            startsAt: Date.now() + startsIn * 1000,
+            joined: joined.length,
+          });
+        },
+        onGameStart: ({ gameId, nameMy, arena, players: ids, durationSec }) => {
+          gameFx.setArena(arena);
+          setPhase({
+            kind: "playing",
+            gameId,
+            nameMy,
+            // ★ ကစားသူထဲ မပါရင် **ကြည့်နေသူ** — ဝင်မကစားရပေမယ့်
+            // အမှတ်ပြားကို မြင်ရမယ် (spec 16.6)。
+            playing: ids.includes(myId),
+            // ★ ပထမ tick မရောက်ခင် 0:00 ပြရင် "ပွဲပြီးသွားပြီ" လို့ ထင်မယ်
+            timeLeft: durationSec,
+            scores: [],
+          });
+        },
+        onGameState: ({ timeLeft, scores }) => {
+          setPhase((prev) =>
+            prev.kind === "playing" ? { ...prev, timeLeft, scores } : prev,
+          );
+        },
+        onGameObjectives: (objectives) => gameFx.setObjectives(objectives),
+        onGameEnd: ({ gameId, rankings }) => {
+          clearGameFx();
+          setPhase({
+            kind: "ended",
+            gameId,
+            rankings,
+            won: rankings[0]?.playerId === myId,
+          });
+        },
+        onGameCancelled: () => {
+          clearGameFx();
+          setPhase({ kind: "idle" });
+        },
         onStatus: (connected, detail) => {
           if (connected) setLink("live");
           else if (detail === "auth") setLink("auth");
@@ -504,6 +582,9 @@ export function MetaverseScene() {
         },
       });
       netRef.current = net;
+      // ★ `ry` ကို client က ပို့ပေမယ့် **ထိမထိ ဆုံးဖြတ်တာက server** —
+      // ဒါက "ဘယ်ကို ကြည့်နေလဲ" ဆိုတဲ့ input သာ ဖြစ်တယ်၊ ရလဒ် မဟုတ်ဘူး။
+      gameActionRef.current = (a) => net?.sendGameAction({ ...a, ry: p.ry });
     }
 
     // ── စီး / ဆင်း ────────────────────────────────────────────────────────
@@ -886,6 +967,7 @@ export function MetaverseScene() {
       effectT += dt;
       world.updateEffects(dt, effectT, weather.wetness, p.x, p.z);
       weather.update(dt, p.x, p.y + 6, p.z);
+      gameFx.update(effectT);
       for (const v of vehicles.values()) {
         if (v !== riding) v.follow(dt);
         v.animate(dt);
@@ -973,6 +1055,7 @@ export function MetaverseScene() {
       jumpBtn?.removeEventListener("pointercancel", jumpUp);
       net?.close();
       netRef.current = null;
+      gameActionRef.current = null;
       for (const r of remotes.values()) r.avatar.dispose();
       remotes.clear();
       me.dispose();
@@ -981,6 +1064,7 @@ export function MetaverseScene() {
       minimap?.dispose();
       nametags?.dispose();
       weather.dispose();
+      gameFx.dispose();
       for (const v of vehicles.values()) {
         scene.remove(v.group);
         v.dispose();
@@ -1345,6 +1429,19 @@ export function MetaverseScene() {
           </form>
         </div>
       )}
+
+      {/* ── 🎮 Mini-games (Phase 16) ─────────────────────────────────────
+          ★ ဝင်ကြေး မယူဘူး၊ ဆုက cosmetic သာ — မဟုတ်ရင် ဥပဒေအရ လောင်းကစားနဲ့
+          နီးလာမယ် (spec 16.4)。 */}
+      <GamesPanel
+        games={gameList}
+        phase={phase}
+        meId={meId}
+        connected={link === "live"}
+        onJoin={(gameId) => netRef.current?.sendGameJoin(gameId)}
+        onAction={(a) => gameActionRef.current?.(a)}
+        onDismissEnd={() => setPhase({ kind: "idle" })}
+      />
 
       {/* Emote bar */}
       <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-2">

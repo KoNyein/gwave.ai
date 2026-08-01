@@ -20,6 +20,29 @@ export type RemoteState = {
   authed?: boolean;
 };
 
+/// ── Mini-game (Phase 16) ────────────────────────────────────────────────────
+/// ★ Client မှာ **အမှတ်မတွက်ဘူး** — server ကနေ လာတာကို ပြရုံပဲ။ ဒါကြောင့်
+///   ဒီ type တွေထဲမှာ "ငါ့အမှတ်" ဆိုတာ မရှိဘူး၊ `scores` ပဲ ရှိတယ်။
+export type GameInfo = {
+  id: string;
+  nameMy: string;
+  minPlayers: number;
+  maxPlayers: number;
+  durationSec: number;
+  arena: { x: number; z: number; radius: number };
+};
+
+export type GameObjective = {
+  kind: "checkpoint" | "item" | "target" | "plant";
+  x: number;
+  z: number;
+  index?: number;
+  grown?: number;
+};
+
+export type GameScore = { id: string; name: string; score: number };
+export type GameRanking = { playerId: string; name: string; score: number; rank: number };
+
 export type NetHandlers = {
   onInit?: (p: {
     id: string;
@@ -27,6 +50,7 @@ export type NetHandlers = {
     name: string;
     authed: boolean;
     serverTime: number;
+    games: GameInfo[];
     players: Record<string, RemoteState>;
   }) => void;
   onJoin?: (id: string, state: RemoteState) => void;
@@ -44,6 +68,32 @@ export type NetHandlers = {
   onVehicle?: (id: string, x: number, y: number, z: number, ry: number, speed: number) => void;
   onMounted?: (vehicleId: string, playerId: string) => void;
   onDismounted?: (vehicleId: string, playerId: string) => void;
+  onGameInvite?: (p: {
+    gameId: string;
+    nameMy: string;
+    arena: { x: number; z: number; radius: number };
+    startsIn: number;
+    joined: string[];
+  }) => void;
+  onGameStart?: (p: {
+    instanceId: string;
+    gameId: string;
+    nameMy: string;
+    arena: { x: number; z: number; radius: number };
+    players: string[];
+    durationSec: number;
+  }) => void;
+  /// ★ Room တစ်ခုလုံးဆီ ရောက်တယ် — မကစားသူတွေလည်း ဘေးကနေ ကြည့်လို့ရရမယ်
+  onGameState?: (p: { timeLeft: number; scores: GameScore[] }) => void;
+  /// ★ ကစားသူဆီပဲ ရောက်တယ် — ရှာဖွေပွဲရဲ့ ပစ္စည်းနေရာက ဝှက်ထားရမယ့်အရာ
+  onGameObjectives?: (objectives: GameObjective[]) => void;
+  onGameEnd?: (p: {
+    gameId: string;
+    rankings: GameRanking[];
+    rewards: { playerId: string; sku: string }[];
+  }) => void;
+  onGameCancelled?: (reason: string) => void;
+  onGameJoinResult?: (gameId: string, status: string) => void;
 };
 
 export type NetClient = {
@@ -54,6 +104,11 @@ export type NetClient = {
   sendName(name: string): void;
   sendMount(vehicleId: string): void;
   sendDismount(): void;
+  /// ★ "ငါဝင်မယ်" ပဲ ပြောလို့ရတယ် — အမှတ်တွက်တာ server မှာ (spec 16.3)。
+  sendGameJoin(gameId: string): void;
+  /// ★ `action` က လုပ်ဆောင်ချက်သာ (ပစ်တယ်/စိုက်တယ်)。 ရလဒ်ကို server က
+  /// ဆုံးဖြတ်တယ် — score ပါပို့လည်း ဘယ်နေရာမှာမှ မဖတ်ဘူး။
+  sendGameAction(action: Record<string, unknown>): void;
   /// ★ Driver ရဲ့ client က ယာဉ်ရဲ့ နေရာကို တွက်ပြီး ပို့တယ် (authority)。
   /// Server က relay + speed cap ပဲ လုပ်တယ် — latency အနည်းဆုံးဖြစ်စေဖို့။
   sendVehicleState(
@@ -145,6 +200,14 @@ export function connectMetaverse(
       if (ws?.readyState !== WebSocket.OPEN) return;
       ws.send(JSON.stringify({ type: "dismount" }));
     },
+    sendGameJoin(gameId) {
+      if (ws?.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "gameJoin", gameId }));
+    },
+    sendGameAction(action) {
+      if (ws?.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "gameAction", action }));
+    },
     sendVehicleState(vehicleId, st) {
       if (ws?.readyState !== WebSocket.OPEN) return;
       const now = performance.now();
@@ -218,6 +281,7 @@ export function connectMetaverse(
             name: String(m.name ?? "Guest"),
             authed: Boolean(m.authed),
             serverTime: Number(m.serverTime) || Date.now(),
+            games: Array.isArray(m.games) ? (m.games as GameInfo[]) : [],
             players: (m.players as Record<string, RemoteState>) ?? {},
           });
           break;
@@ -295,6 +359,51 @@ export function connectMetaverse(
           break;
         case "correct":
           handlers.onCorrect?.(Number(m.x), Number(m.y), Number(m.z));
+          break;
+        case "gameInvite":
+          handlers.onGameInvite?.({
+            gameId: String(m.gameId),
+            nameMy: String(m.nameMy ?? ""),
+            arena: m.arena as { x: number; z: number; radius: number },
+            startsIn: Number(m.startsIn) || 0,
+            joined: Array.isArray(m.joined) ? (m.joined as string[]) : [],
+          });
+          break;
+        case "gameStart":
+          handlers.onGameStart?.({
+            instanceId: String(m.instanceId),
+            gameId: String(m.gameId),
+            nameMy: String(m.nameMy ?? ""),
+            arena: m.arena as { x: number; z: number; radius: number },
+            players: Array.isArray(m.players) ? (m.players as string[]) : [],
+            durationSec: Number(m.durationSec) || 0,
+          });
+          break;
+        case "gameState":
+          handlers.onGameState?.({
+            timeLeft: Number(m.timeLeft) || 0,
+            scores: Array.isArray(m.scores) ? (m.scores as GameScore[]) : [],
+          });
+          break;
+        case "gameObjectives":
+          handlers.onGameObjectives?.(
+            Array.isArray(m.objectives) ? (m.objectives as GameObjective[]) : [],
+          );
+          break;
+        case "gameEnd":
+          handlers.onGameEnd?.({
+            gameId: String(m.gameId),
+            rankings: Array.isArray(m.rankings) ? (m.rankings as GameRanking[]) : [],
+            rewards: Array.isArray(m.rewards)
+              ? (m.rewards as { playerId: string; sku: string }[])
+              : [],
+          });
+          break;
+        case "gameCancelled":
+          handlers.onGameCancelled?.(String(m.reason ?? ""));
+          break;
+        case "gameJoinResult":
+          handlers.onGameJoinResult?.(String(m.gameId), String(m.status));
           break;
         default:
           break;
