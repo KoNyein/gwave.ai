@@ -18,6 +18,20 @@ export type HumanState = {
 
 export type Avatar = {
   group: THREE.Group;
+  /// ★ အဝတ်/ဆံပင်/ပစ္စည်းတွေကို ကပ်ရမယ့်နေရာ (Phase 15)။ **အဆစ်မှာပဲ
+  /// ကပ်ရမယ်** — group ပေါ်တင် ကပ်လိုက်ရင် animation လုပ်တဲ့အခါ ဦးထုပ်က
+  /// လေထဲမှာ ကျန်နေပြီး ခေါင်းက ရွေ့သွားမယ်။
+  attach: {
+    head: THREE.Object3D;
+    torso: THREE.Object3D;
+    hips: THREE.Object3D;
+    footL: THREE.Object3D;
+    footR: THREE.Object3D;
+  };
+  /// လက်ရှိ ကပ်ထားတဲ့ အစိတ်အပိုင်းများ — config ပြောင်းရင် ဖယ်ပြီး dispose
+  attachments: THREE.Object3D[];
+  /// အသားရောင်/အဝတ်ရောင် ပြောင်းဖို့ (material ကို မျှသုံးထားတယ်)
+  materials: { skin: THREE.MeshStandardMaterial; cloth: THREE.MeshStandardMaterial; dark: THREE.MeshStandardMaterial };
   update(dt: number, state: HumanState): void;
   dispose(): void;
 };
@@ -280,5 +294,12 @@ export function createHuman(clothColor = 0x3f88c5, skinColor = 0xe8b088): Avatar
     group.removeFromParent();
   }
 
-  return { group, update, dispose };
+  return {
+    group,
+    attach: { head, torso, hips, footL, footR },
+    attachments: [],
+    materials: { skin, cloth, dark },
+    update,
+    dispose,
+  };
 }

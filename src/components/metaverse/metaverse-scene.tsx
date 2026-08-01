@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
 import { createSpatialAudio, type SpatialAudio } from "./audio";
+import { AvatarCustomiser } from "./avatar/customiser";
+import { DEFAULT_AVATAR, sanitizeAvatar, type AvatarConfig } from "./avatar/config";
+import { applyAvatarConfig } from "./avatar/parts";
 import { createHuman, type Avatar, type HumanState } from "./human";
 import { buildLandmarks, type Landmark } from "./landmarks";
 import { attachLiveScreen, type LiveScreen } from "./livescreen";
@@ -132,6 +135,10 @@ export function MetaverseScene() {
   /// — map တစ်ခုချင်းက သီးခြားလောက ဖြစ်လို့ ကြားခံ state ကျန်ခဲ့လို့မရဘူး။
   const [roomId, setRoomId] = useState(DEFAULT_ROOM);
   const [picker, setPicker] = useState(false);
+  const [dressing, setDressing] = useState(false);
+  /// ★ Avatar ပြင်ပြီးရင် scene ကို ပြန်ဆောက်တယ် — ရိုးရှင်းပြီး
+  /// မှားနိုင်ခြေနည်းတယ် (attachment တွေ တစ်ခုချင်း sync လုပ်တာထက်)。
+  const [avatarNonce, setAvatarNonce] = useState(0);
   /// စီးလို့ရတဲ့ ယာဉ် အနားမှာ ရှိလား / စီးနေလား
   const [ride, setRide] = useState<{ label: string; riding: boolean } | null>(null);
   const rideRef = useRef<(() => void) | null>(null);
@@ -349,6 +356,16 @@ export function MetaverseScene() {
     // ── ကိုယ့်လူရုပ် ───────────────────────────────────────────────────────
     const me: Avatar = createHuman(0x44bba4, 0xe8b088);
     scene.add(me.group);
+    // ★ သိမ်းထားတဲ့ avatar ကို ဖတ်ပြီး တင်တယ် — မရရင် default နဲ့ ဆက်သွားတယ်
+    void fetch("/api/metaverse/avatar", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { config?: AvatarConfig } | null) => {
+        if (killed || !d?.config) return;
+        applyAvatarConfig(me, sanitizeAvatar(d.config, new Set()));
+      })
+      .catch(() => {
+        applyAvatarConfig(me, DEFAULT_AVATAR);
+      });
 
     // Player ရဲ့ အခြေအနေ — ★ React state မဟုတ်၊ mutable object
     const p = {
@@ -983,7 +1000,7 @@ export function MetaverseScene() {
     };
     // ★ roomId ပြောင်းရင် အားလုံး ပြန်ဆောက်တယ် — cleanup က renderer,
     // geometry, material, socket အကုန် ရှင်းပြီးမှ အသစ် စတယ်။
-  }, [roomId]);
+  }, [roomId, avatarNonce]);
 
   return (
     <div ref={mountRef} className="relative h-full w-full">
@@ -1086,6 +1103,15 @@ export function MetaverseScene() {
         />
 
         <div className="flex gap-2">
+          <button
+            data-hud="1"
+            onClick={() => setDressing(true)}
+            title="Avatar ပြင်ဆင်ရန်"
+            className="rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-[11px] text-white/70 backdrop-blur transition hover:bg-black/60"
+          >
+            🧑 Avatar
+          </button>
+
           {/* ★ Bloom ကို ပိတ်လို့ရရမယ် — ဖုန်းအဟောင်းမှာ frame ကို ထက်ဝက်
               နီးပါး စားတယ်။ ရွေးချယ်မှုက localStorage မှာ ကျန်တယ်။ */}
           <button
@@ -1233,6 +1259,17 @@ export function MetaverseScene() {
             </button>
           ))}
         </div>
+      )}
+
+      {/* ── Avatar ပြင်ဆင်ရေး ─────────────────────────────────────────── */}
+      {dressing && (
+        <AvatarCustomiser
+          onClose={() => {
+            setDressing(false);
+            // scene ကို ပြန်ဆောက်ပြီး avatar အသစ်နဲ့ စတယ်
+            setAvatarNonce((n) => n + 1);
+          }}
+        />
       )}
 
       {/* ── ယာဉ် — အနားရောက်မှ / စီးနေချိန် ─────────────────────────── */}
