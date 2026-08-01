@@ -32,9 +32,13 @@ import {
  * the realtime APIs — see deploy/aws-ivs-setup.md).
  *
  * Env (beyond Phase 1's IVS_REGION):
- *   IVS_RT_STORAGE_CONFIG_ARN   S3 storage configuration for composite recording
- *   IVS_RT_ENCODER_CONFIG_ARN   encoder configuration (720p portrait works well)
- * Both optional — without them, stages work and recording is simply skipped.
+ *   IVS_RT_STORAGE_CONFIG_ARN     S3 storage configuration for composite recording
+ *   IVS_RT_ENCODER_CONFIG_ARN     encoder configuration (720p portrait works well)
+ *   IVS_RT_S3_ENCODER_CONFIG_ARN  optional second encoder configuration, used
+ *                                 for the recording destination — see
+ *                                 s3EncoderConfig() below
+ * The first two are optional — without them, stages work and recording is
+ * simply skipped.
  */
 
 function rtClient(): IVSRealTimeClient {
@@ -136,6 +140,33 @@ export interface IvsComposition {
   recordingPrefix: string | null;
 }
 
+/**
+ * The encoder configuration the recording destination uses.
+ *
+ * Normally the same one the channel destination uses — one composite frame,
+ * described once. `IVS_RT_S3_ENCODER_CONFIG_ARN` exists to give the recording
+ * its own.
+ *
+ * Why that would ever be needed: in production, a composition with both a
+ * channel and an S3 destination sharing one encoder configuration came back
+ * with the channel `ACTIVE` and the S3 destination `FAILED` — no `startTime` at
+ * all, so it was rejected before it began, while the same encoder worked fine
+ * for the channel a second later. The one composition that ever did record
+ * successfully had a single destination. Pointing the two destinations at
+ * separate encoder configurations is the difference that can be changed without
+ * giving up either the replay or the HLS output that lets phones watch at all.
+ *
+ * An env var rather than a hardcoded rule, because this is an AWS behaviour
+ * nothing here can verify: if sharing turns out to be fine, leaving it unset
+ * costs nothing.
+ */
+function s3EncoderConfig(): string {
+  return (
+    process.env.IVS_RT_S3_ENCODER_CONFIG_ARN ||
+    process.env.IVS_RT_ENCODER_CONFIG_ARN!
+  );
+}
+
 export async function startIvsComposition(
   stageArn: string,
   channelArn?: string | null,
@@ -162,7 +193,7 @@ export async function startIvsComposition(
     destinations.push({
       s3: {
         storageConfigurationArn: process.env.IVS_RT_STORAGE_CONFIG_ARN!,
-        encoderConfigurationArns: [encoder],
+        encoderConfigurationArns: [s3EncoderConfig()],
       },
     });
   }

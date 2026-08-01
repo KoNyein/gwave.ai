@@ -54,6 +54,15 @@
 
 ## Changelog
 
+- 2026-08-01 (web): **The recording destination can have its own encoder.**
+  A composition with a channel destination and an S3 destination sharing one
+  encoder configuration came back with the channel `ACTIVE` and the S3
+  destination `FAILED` — no `startTime`, so rejected before it began, with the
+  same encoder working for the channel a second later. The only composition
+  that ever recorded successfully had a single destination. Optional
+  `IVS_RT_S3_ENCODER_CONFIG_ARN` points the recording at a second encoder
+  configuration; unset, nothing changes.
+
 - 2026-08-01 (web): **Three compositions on one stage.** `goLive` runs every
   time the host's browser joins — a reload, a reconnect, a second tab — and
   each run started another IVS composition on the same stage. IVS composites a
