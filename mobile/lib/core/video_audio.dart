@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
-import '../features/audio/audio_service.dart';
-
 /// The speaker, and who is allowed to use it.
 ///
 /// The app has a dozen things that can make noise — a live broadcast, a reel,
@@ -224,14 +222,6 @@ VideoPlayerController silentVideoController(Uri uri) =>
 /// a video expects the podcast in their other app to stop too.
 VideoPlayerController watchVideoController(Uri uri) =>
     VideoPlayerController.networkUrl(uri);
-
-/// The user just turned a video's sound on.
-///
-/// Kept for callers that only need "quiet the music" without a full claim.
-Future<void> videoTookTheSound() async {
-  final audio = GwAudio.instance;
-  if (audio.playing) await audio.pause();
-}
 
 /// Which feed video, if any, is allowed to make sound — identified by its URL.
 ///
