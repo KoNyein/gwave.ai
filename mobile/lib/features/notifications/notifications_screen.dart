@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -8,6 +10,7 @@ import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../web/web_screen.dart';
+import '../live/live_watch_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -85,7 +88,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       color: n.read ? null : GwColors.primary.withValues(alpha: 0.08),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        onTap: () => _open(n),
+        onTap: () => unawaited(_open(n)),
         leading: Stack(
           children: [
             GwAvatar(
@@ -138,7 +141,44 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   /// Open the thing a notification is about: the post, or the actor's profile.
-  void _open(AppNotification n) {
+  /// A live notification is about a broadcast, so open the broadcast.
+  ///
+  /// It used to open whatever it could find — the announcement post if there
+  /// was one, otherwise the host's profile URL — and for the "is live now"
+  /// notifications from before the announcement post was reliable there was
+  /// neither, so the tap landed on a 404 inside the web view. The one thing
+  /// every one of them knows is who went live, and a host has one broadcast at
+  /// a time; their newest is the one the notification meant.
+  ///
+  /// Still running: the live opens. Already over: the replay opens, which is
+  /// what "I missed it" wants. Neither: say so, rather than showing an error
+  /// page from the website.
+  Future<void> _open(AppNotification n) async {
+    if (n.type == "live_started" || n.type == "live") {
+      final hostId = n.actor?.id;
+      if (hostId != null && hostId.isNotEmpty) {
+        LiveStream? live;
+        try {
+          live = await context.read<AppState>().repo.latestStreamByHost(hostId);
+        } catch (_) {
+          live = null;
+        }
+        if (!mounted) return;
+        if (live != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => LiveWatchScreen(stream: live)),
+          );
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr(context, "That broadcast has ended.",
+                "အဲဒီ live ပြီးသွားပါပြီ")),
+          ),
+        );
+        return;
+      }
+    }
     if (n.postId != null && n.postId!.isNotEmpty) {
       openWeb(context, "/p/${n.postId}");
       return;

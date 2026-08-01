@@ -227,6 +227,36 @@ class Repository {
     return rows.map(LiveStream.fromJson).toList();
   }
 
+  /// The newest broadcast by this host, live or ended.
+  ///
+  /// A "X is live now" notification carries no stream id — the notifications
+  /// table only has room for a post — so tapping one had nothing to open and
+  /// fell through to the host's profile URL, which showed a 404. The host is
+  /// the one thing the notification *does* know, and one host has one broadcast
+  /// at a time, so their newest one is the one the notification meant.
+  ///
+  /// Prefers a broadcast that is still running; otherwise returns the most
+  /// recent, which is the replay the notification now leads to.
+  Future<LiveStream?> latestStreamByHost(String hostId) async {
+    for (final status in ["eq.live", "eq.ended"]) {
+      final rows = await api.select("live_streams", query: {
+        "select": "*",
+        "host_id": "eq.$hostId",
+        "status": status,
+        "order": "created_at.desc",
+        "limit": "1",
+      });
+      if (rows.isNotEmpty) {
+        final r = rows.first;
+        final hosts = await _profilesByIds(["${r["host_id"] ?? ""}"]);
+        final host = hosts["${r["host_id"]}"];
+        if (host != null) r["host"] = host;
+        return LiveStream.fromJson(r);
+      }
+    }
+    return null;
+  }
+
   Future<LiveStream?> stream(String id) async {
     final rows = await api.select("live_streams", query: {
       "select": "*",
