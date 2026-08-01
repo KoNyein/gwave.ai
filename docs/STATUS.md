@@ -54,6 +54,17 @@
 
 ## Changelog
 
+- 2026-08-01 (web): **Two buckets, and only one of them was ever read.** IVS
+  writes channel recordings to `IVS_RECORDING_BUCKET` and composite
+  (browser-broadcast) recordings to whatever the Real-Time *storage
+  configuration* names — a different bucket. Nothing said so, so every browser
+  replay was looked for in the channel bucket, where it had never been. The
+  composite bucket is now resolved by asking `GetStorageConfiguration` (cached;
+  storage configurations are immutable), so there is no second env var to keep
+  in sync and the read always follows whatever `IVS_RT_STORAGE_CONFIG_ARN`
+  points at. `/recordings/[...path]` picks the bucket from the key's own shape:
+  `ivs/…` is a channel recording, anything else is a composite.
+
 - 2026-08-01 (web): **The replays were in S3 the whole time; nothing could
   name them.** IVS hands back the recording's S3 prefix when a composition
   starts and then deletes the composition record shortly after it stops — so
