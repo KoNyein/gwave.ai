@@ -54,6 +54,18 @@
 
 ## Changelog
 
+- 2026-08-01 (web): **Browser lives are recorded on their channel, like every
+  other broadcast.** Writing the replay straight from the composition never
+  worked once on this account: every composition carrying both a channel and an
+  S3 destination came back channel `ACTIVE`, S3 `FAILED` with no `startTime` —
+  rejected before it began, with and without a bucket policy, sharing an
+  encoder configuration and not. Channel recording has been working the whole
+  time (it is where phone broadcasts' replays come from), and the composite
+  already arrives at the watch channel — so that channel is now created with
+  the recording configuration attached when the host asked for a replay, the
+  S3 destination is gone, and the existing sweeper links stage rows exactly
+  like any other. One mechanism, both kinds of live.
+
 - 2026-08-01 (web): **The recording destination can have its own encoder.**
   A composition with a channel destination and an S3 destination sharing one
   encoder configuration came back with the channel `ACTIVE` and the S3
