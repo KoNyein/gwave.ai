@@ -123,12 +123,6 @@ export async function POST(request: NextRequest) {
     .eq("record_enabled", true)
     .is("recording_path", null)
     .not("ivs_channel_arn", "is", null)
-    // Stage broadcasts also carry a channel now (it is what they are watched
-    // on), but their replay is written by the composition to its own S3
-    // prefix — nothing lands under the channel's, so looking there would burn
-    // an S3 listing per sweep to find nothing. stopIvsComposition resolves
-    // those.
-    .is("ivs_stage_arn", null)
     .gte("ended_at", since)
     .lte("ended_at", until)
     .order("ended_at", { ascending: false })
@@ -346,9 +340,7 @@ async function startMissingCompositions(
   for (const row of data) {
     const stage = row.ivs_stage_arn;
     if (!stage) continue;
-    const composition = await startIvsComposition(stage, row.ivs_channel_arn, {
-      record: row.record_enabled,
-    });
+    const composition = await startIvsComposition(stage, row.ivs_channel_arn);
     if (!composition) continue;
     const { error: upErr } = await admin
       .from("live_streams")

@@ -329,7 +329,6 @@ export async function goLive(streamId: string): Promise<ActionResult> {
     const composition = await startIvsComposition(
       stream.ivs_stage_arn,
       stream.ivs_channel_arn,
-      { record: stream.record_enabled },
     );
     if (composition) {
       extra.ivs_composition_arn = composition.arn;

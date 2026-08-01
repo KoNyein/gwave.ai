@@ -103,14 +103,23 @@ export async function POST(request: Request) {
     // feed card and the live rail all already know how to play. Without it a
     // browser broadcast is invisible to everyone not on a browser.
     //
-    // No recording configuration on this channel: the composition writes the
-    // replay to S3 itself, and a second recording would bill twice for one
-    // broadcast.
+    // The channel is also where the replay comes from, when the host asked for
+    // one. The composition can write to S3 directly — in theory. In practice,
+    // on this account, every composition with both a channel destination and an
+    // S3 destination came back with the channel `ACTIVE` and the S3 destination
+    // `FAILED`, with no `startTime` at all: rejected before it began, with or
+    // without a bucket policy, sharing an encoder configuration or not.
+    //
+    // Channel recording, meanwhile, has been working all along — it is what
+    // gives phone broadcasts their replays, and the bucket is full of them. The
+    // composite already arrives at this channel, so recording the channel
+    // records the broadcast. One mechanism, both kinds of live, and the replay
+    // sweeper that already handles channel recordings picks it up unchanged.
     let watchChannel: IvsChannel | null = null;
     try {
       watchChannel = await createIvsChannel(
         `gwave-rt-${profile.id.slice(0, 8)}`,
-        false,
+        parsed.data.record,
       );
     } catch (e) {
       // Not fatal: the host can still broadcast and browser viewers still see

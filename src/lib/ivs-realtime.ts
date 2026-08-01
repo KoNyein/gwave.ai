@@ -23,8 +23,8 @@ import {
  * Amazon IVS Real-Time — the AWS-native provider for phone-browser Live
  * (FB/TikTok-style). Each broadcast gets an IVS *stage*: the host publishes
  * camera/mic over WebRTC from the browser, viewers subscribe (up to 10,000 per
- * stage), and a server-side *composition* records the mixed view to S3 — no
- * media server of ours anywhere.
+ * stage), and a server-side *composition* restreams the mixed view into a
+ * Low-Latency channel — no media server of ours anywhere.
  *
  * Region: same constraint as IVS Low-Latency — control plane in IVS_REGION
  * (Tokyo default); media rides AWS's global edge, so viewer latency in Myanmar
@@ -32,13 +32,9 @@ import {
  * the realtime APIs — see deploy/aws-ivs-setup.md).
  *
  * Env (beyond Phase 1's IVS_REGION):
- *   IVS_RT_STORAGE_CONFIG_ARN     S3 storage configuration for composite recording
- *   IVS_RT_ENCODER_CONFIG_ARN     encoder configuration (720p portrait works well)
- *   IVS_RT_S3_ENCODER_CONFIG_ARN  optional second encoder configuration, used
- *                                 for the recording destination — see
- *                                 s3EncoderConfig() below
- * The first two are optional — without them, stages work and recording is
- * simply skipped.
+ *   IVS_RT_ENCODER_CONFIG_ARN   encoder configuration (720p portrait works well)
+ * Optional — without it, stages work and only the HLS restream is skipped.
+ * Replays come from channel recording, not from here.
  */
 
 function rtClient(): IVSRealTimeClient {
@@ -110,11 +106,16 @@ export async function mintIvsStageToken(opts: {
  *    have and cannot get. Without this the app could list a live broadcast,
  *    show its LIVE badge and its viewer count, and then render a grey
  *    placeholder where the video should be — which is exactly what it did.
- *  - **s3** — the replay, as before.
+ * There used to be a second, `s3` destination that wrote the replay directly.
+ * It never once worked on this account: every composition carrying both came
+ * back with the channel `ACTIVE` and the S3 destination `FAILED` with no
+ * `startTime` — rejected before it began, with or without a bucket policy on
+ * the storage configuration's bucket, sharing an encoder configuration or not.
+ * The replay now comes from recording the channel instead, which is the same
+ * mechanism phone broadcasts have always used and which has never failed. See
+ * the watch-channel comment in api/live/create.
  *
- * Each is optional and independent: no channel and it still records; no
- * storage config and it is still watchable. Passing neither is not an error,
- * it just means there is nothing to compose to, so we don't call AWS at all.
+ * No channel means nothing to compose to, so we don't call AWS at all.
  *
  * Returns the composition ARN **and where its recording is going**. The prefix
  * matters: see `IvsComposition.recordingPrefix` below.
@@ -140,37 +141,9 @@ export interface IvsComposition {
   recordingPrefix: string | null;
 }
 
-/**
- * The encoder configuration the recording destination uses.
- *
- * Normally the same one the channel destination uses — one composite frame,
- * described once. `IVS_RT_S3_ENCODER_CONFIG_ARN` exists to give the recording
- * its own.
- *
- * Why that would ever be needed: in production, a composition with both a
- * channel and an S3 destination sharing one encoder configuration came back
- * with the channel `ACTIVE` and the S3 destination `FAILED` — no `startTime` at
- * all, so it was rejected before it began, while the same encoder worked fine
- * for the channel a second later. The one composition that ever did record
- * successfully had a single destination. Pointing the two destinations at
- * separate encoder configurations is the difference that can be changed without
- * giving up either the replay or the HLS output that lets phones watch at all.
- *
- * An env var rather than a hardcoded rule, because this is an AWS behaviour
- * nothing here can verify: if sharing turns out to be fine, leaving it unset
- * costs nothing.
- */
-function s3EncoderConfig(): string {
-  return (
-    process.env.IVS_RT_S3_ENCODER_CONFIG_ARN ||
-    process.env.IVS_RT_ENCODER_CONFIG_ARN!
-  );
-}
-
 export async function startIvsComposition(
   stageArn: string,
   channelArn?: string | null,
-  { record = true }: { record?: boolean } = {},
 ): Promise<IvsComposition | null> {
   const encoder = process.env.IVS_RT_ENCODER_CONFIG_ARN;
   // The encoder configuration describes the composite frame itself, so it is
@@ -187,14 +160,6 @@ export async function startIvsComposition(
   if (channelArn) {
     destinations.push({
       channel: { channelArn, encoderConfigurationArn: encoder },
-    });
-  }
-  if (record && ivsRtRecordingConfigured()) {
-    destinations.push({
-      s3: {
-        storageConfigurationArn: process.env.IVS_RT_STORAGE_CONFIG_ARN!,
-        encoderConfigurationArns: [s3EncoderConfig()],
-      },
     });
   }
   if (destinations.length === 0) return null;
