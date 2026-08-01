@@ -31,8 +31,13 @@ import {
  * from the app's primary S3 (Singapore) — hence its own client here rather than
  * reusing lib/storage.
  *
- *   IVS_RECORDING_BUCKET   the S3 bucket IVS recordings land in
+ *   IVS_RECORDING_BUCKET   the S3 bucket **channel** recordings land in
  *   IVS_REGION             its region (shared with the rest of IVS; Tokyo default)
+ *
+ * Composite (Real-Time) recordings land somewhere else — wherever the IVS
+ * Real-Time *storage configuration* points. There is no env var for it: see
+ * `compositionRecordingBucket()` in lib/ivs-realtime.ts, which asks AWS. Every
+ * function here that can read either kind takes the bucket as an argument.
  */
 
 export function recordingBucket(): string | undefined {
@@ -70,9 +75,12 @@ interface RecordingEnded {
  */
 export async function readIvsRecordingManifest(
   prefix: string,
-  { attempts = 6, delayMs = 2500 }: { attempts?: number; delayMs?: number } = {},
+  {
+    attempts = 6,
+    delayMs = 2500,
+    bucket = recordingBucket(),
+  }: { attempts?: number; delayMs?: number; bucket?: string } = {},
 ): Promise<string | null> {
-  const bucket = recordingBucket();
   if (!bucket || !prefix) return null;
   const clean = prefix.replace(/^\/+|\/+$/g, "");
   const eventsKey = `${clean}/events/recording-ended.json`;
@@ -114,8 +122,8 @@ const MAX_SEARCH_PAGES = 5;
 export async function findRecordingEndedPrefix(
   searchPrefix: string,
   contains?: string,
+  bucket: string | undefined = recordingBucket(),
 ): Promise<string | null> {
-  const bucket = recordingBucket();
   if (!bucket || !searchPrefix) return null;
   const suffix = "/events/recording-ended.json";
   try {

@@ -6,6 +6,7 @@ import {
   CreateStageCommand,
   DeleteStageCommand,
   GetCompositionCommand,
+  GetStorageConfigurationCommand,
   IVSRealTimeClient,
   ParticipantTokenCapability,
   StartCompositionCommand,
@@ -15,6 +16,7 @@ import {
 import {
   findRecordingEndedPrefix,
   readIvsRecordingManifest,
+  recordingBucket,
 } from "@/lib/ivs-recording";
 
 /**
@@ -183,6 +185,52 @@ export async function startIvsComposition(
   }
 }
 
+/**
+ * The bucket composite recordings are written to — asked of AWS, not configured.
+ *
+ * IVS Real-Time writes a composition's recording to whatever bucket its
+ * *storage configuration* names, and that is a different bucket from the one
+ * Low-Latency channel recordings use. Nothing said so: the manifest reader used
+ * `IVS_RECORDING_BUCKET` for both, so every browser broadcast's replay was
+ * looked for in the channel bucket, where it had never been. The recordings
+ * were sitting in the other bucket the whole time, complete, with their
+ * `recording-ended.json` next to them.
+ *
+ * The obvious fix is a second env var. This asks the storage configuration
+ * instead, because the storage configuration *is* the answer: point
+ * IVS_RT_STORAGE_CONFIG_ARN somewhere else and the read follows it, with
+ * nothing to keep in sync and nothing to get wrong. Answered once and cached —
+ * a storage configuration is immutable, so the reply cannot go stale.
+ *
+ * Falls back to the channel bucket when there is no storage configuration or
+ * AWS cannot be reached, which is also the correct answer for a single-bucket
+ * setup.
+ */
+let rtBucket: string | null | undefined;
+
+export async function compositionRecordingBucket(): Promise<string | undefined> {
+  const arn = process.env.IVS_RT_STORAGE_CONFIG_ARN;
+  if (!arn) return recordingBucket();
+  if (rtBucket === undefined) {
+    try {
+      const res = await rtClient().send(
+        new GetStorageConfigurationCommand({ arn }),
+      );
+      rtBucket = res.storageConfiguration?.s3?.bucketName ?? null;
+    } catch (e) {
+      // Left null rather than undefined on purpose: one failure should not turn
+      // every later read into another AWS round trip.
+      rtBucket = null;
+      console.warn(
+        "[ivs-rt] Could not read the storage configuration's bucket; " +
+          "falling back to IVS_RECORDING_BUCKET:",
+        e instanceof Error ? e.message : e,
+      );
+    }
+  }
+  return rtBucket ?? recordingBucket();
+}
+
 /** The S3 prefix a composition is recording to, if it is recording at all. */
 function compositionRecordingPrefix(
   composition: Composition | undefined,
@@ -243,6 +291,7 @@ async function resolveRecordingPrefix(
   return await findRecordingEndedPrefix(
     `${stageId}/`,
     compositionIdOf(compositionArn) ?? undefined,
+    await compositionRecordingBucket(),
   );
 }
 
@@ -286,7 +335,11 @@ export async function stopIvsComposition(
       ),
     );
   if (!prefix) return { recordingPath: null };
-  return { recordingPath: await readIvsRecordingManifest(prefix) };
+  return {
+    recordingPath: await readIvsRecordingManifest(prefix, {
+      bucket: await compositionRecordingBucket(),
+    }),
+  };
 }
 
 /**
@@ -311,7 +364,11 @@ export async function resolveIvsCompositionRecording(
     opts.stageArn,
   );
   if (!prefix) return null;
-  return await readIvsRecordingManifest(prefix, { attempts: 1, delayMs: 0 });
+  return await readIvsRecordingManifest(prefix, {
+    attempts: 1,
+    delayMs: 0,
+    bucket: await compositionRecordingBucket(),
+  });
 }
 
 /** Public URL a saved IVS recording plays from. Defaults to the app's own
