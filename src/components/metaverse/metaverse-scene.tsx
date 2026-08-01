@@ -3,8 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
+import { createSpatialAudio, type SpatialAudio } from "./audio";
 import { createHuman, type Avatar, type HumanState } from "./human";
+import { buildLandmarks, type Landmark } from "./landmarks";
+import { attachLiveScreen, type LiveScreen } from "./livescreen";
+import { createMinimap } from "./minimap";
 import { connectMetaverse, type NetClient, type RemoteState } from "./net";
+import { createPostFx } from "./postfx";
 import { buildWorld, resolveCollision, WORLD_RADIUS } from "./world";
 
 /// Gwave Metaverse ရဲ့ အဓိက client component။
@@ -30,6 +35,13 @@ const DAY_SECONDS = 180;
 /// ပုံမှန်ဖွင့်ရမယ်။ (Progressive: server ကျနေရင်လည်း အတူတူပဲ။)
 const WS_URL = process.env.NEXT_PUBLIC_MV_WS_URL || "";
 const ROOM = process.env.NEXT_PUBLIC_MV_ROOM || "city";
+/// မြို့လယ် မျက်နှာပြင်ရဲ့ default stream။ တကယ် live ရှိရင် board API က
+/// အဲဒါကို ကျော်ပြီး အသုံးပြုတယ်။
+const IVS_URL = process.env.NEXT_PUBLIC_IVS_PLAYBACK_URL || "";
+
+/// Bloom ကို ဖုန်းအဟောင်းမှာ ပိတ်ထားလို့ရအောင် — ရွေးချယ်မှုက localStorage
+/// မှာ ကျန်ရမယ်၊ ဝင်တိုင်း ပြန်ပိတ်နေရရင် အသုံးမဝင်ဘူး။
+const BLOOM_KEY = "gw.mv.bloom";
 
 /// Player id ကနေ အဝတ်အရောင် — တစ်ယောက်နဲ့တစ်ယောက် ခွဲမြင်ရဖို့။
 /// Server ကနေ အရောင်မပို့ဘဲ id ကနေ တွက်တာက packet မလိုဘဲ တည်ငြိမ်တယ်
@@ -83,9 +95,17 @@ type Input = {
 
 export function MetaverseScene() {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<HTMLCanvasElement | null>(null);
   const [ready, setReady] = useState(false);
   const [fps, setFps] = useState(0);
   const [emote, setEmote] = useState<HumanState["emote"]>(null);
+  const [bloom, setBloom] = useState(true);
+  const [sound, setSound] = useState(false);
+  /// လောကထဲက နာရီ — HUD မှာ ပြဖို့ (player အားလုံး တူညီရမယ်)
+  const [clock, setClock] = useState("");
+  const [nearby, setNearby] = useState<Landmark | null>(null);
+  const audioRef = useRef<SpatialAudio | null>(null);
+  const bloomRef = useRef(true);
   // ဒီ ၃ ခုက မကြာခဏမပြောင်းလို့ React state နဲ့ ရတယ် (position မဟုတ်ဘူး)
   const [online, setOnline] = useState(1);
   const [link, setLink] = useState<"off" | "connecting" | "live" | "auth">(
@@ -106,6 +126,19 @@ export function MetaverseScene() {
     // မကြာခဏ ပို့တဲ့ message မဟုတ်ဘူး။
     netRef.current?.sendEmote(emote);
   }, [emote]);
+
+  // Bloom ရွေးချယ်မှုကို ပြန်ဖတ် — ဖုန်းအဟောင်းမှာ ပိတ်ထားသူက ဝင်တိုင်း
+  // ပြန်ပိတ်နေရရင် အသုံးမဝင်ဘူး။
+  useEffect(() => {
+    const saved = window.localStorage.getItem(BLOOM_KEY);
+    if (saved === "0") setBloom(false);
+  }, []);
+
+  // render loop က ref ကနေ ဖတ်တယ် — state ကို closure ထဲ ဖမ်းထားလို့
+  useEffect(() => {
+    bloomRef.current = bloom;
+    window.localStorage.setItem(BLOOM_KEY, bloom ? "1" : "0");
+  }, [bloom]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -135,6 +168,39 @@ export function MetaverseScene() {
     );
 
     const world = buildWorld(scene);
+
+    // ── Post-processing (bloom) ───────────────────────────────────────────
+    const postfx = createPostFx(
+      renderer,
+      scene,
+      camera,
+      mount.clientWidth,
+      mount.clientHeight,
+      bloomRef.current,
+    );
+
+    // ── Gwave ချိတ်ဆက်မှုများ ─────────────────────────────────────────────
+    // ★ world.colliders ထဲကို တိုက်ရိုက် push လုပ်တယ် — သင်ပုန်းက အစိုင်အခဲ
+    const landmarks = buildLandmarks(scene, world.colliders);
+
+    // ── မြို့လယ် live screen ───────────────────────────────────────────────
+    // ★ mutable holder — board API က တကယ့် live URL ပြန်လာရင် အသစ်နဲ့
+    // အစားထိုးတယ်။ Effect က ပြီးသွားပြီးမှ fetch ပြန်လာနိုင်လို့ cleanup က
+    // ဒီ holder ကနေသာ dispose လုပ်ရမယ်။
+    let screen: LiveScreen = attachLiveScreen(world.screenMesh, IVS_URL);
+    let liveUrl = IVS_URL;
+    let killed = false;
+
+    // ── Minimap ────────────────────────────────────────────────────────────
+    const mapCanvas = mapRef.current;
+    const minimap = mapCanvas
+      ? createMinimap(mapCanvas, world.colliders, WORLD_RADIUS)
+      : null;
+
+    // ── Spatial audio ─────────────────────────────────────────────────────
+    // ★ ဒီမှာ AudioContext မဆောက်ဘူး — ဖွင့်တဲ့ခလုတ် နှိပ်မှသာ ဆောက်တယ်။
+    const audio = createSpatialAudio();
+    audioRef.current = audio;
 
     // ── ကိုယ့်လူရုပ် ───────────────────────────────────────────────────────
     const me: Avatar = createHuman(0x44bba4, 0xe8b088);
@@ -179,17 +245,30 @@ export function MetaverseScene() {
       if (!r) return;
       r.avatar.dispose();
       remotes.delete(id);
+      audio.drop(id);
       setOnline(remotes.size + 1);
     };
+
+    // ── နေ့/ည — server နာရီနဲ့ ချိန် ───────────────────────────────────────
+    // ★ Player တိုင်း **တူညီတဲ့ အချိန်** မြင်ရမယ်။ client တစ်ခုစီက ကိုယ့်
+    // ဘာသာ ရေတွက်ရင် နောက်ကျဝင်လာသူက မနက်ခင်း၊ ရှေ့ကလူက ည — တစ်လောကထဲမှာ
+    // ရှိပြီး မိုးကောင်းကင် ၂ မျိုး ဖြစ်နေမယ်။ epoch ကနေ တွက်လိုက်တော့
+    // ခေါ်ဆိုမှု မလိုဘဲ တူညီသွားတယ်၊ server ရဲ့ နာရီနဲ့ ကွာတာကိုပဲ
+    // offset အဖြစ် သိမ်းထားတယ်။
+    let clockOffset = 0;
+    const dayMs = DAY_SECONDS * 1000;
+    const worldTimeNow = () => (((Date.now() + clockOffset) % dayMs) / dayMs);
 
     let net: NetClient | null = null;
     if (WS_URL) {
       net = connectMetaverse(WS_URL, ROOM, {
-        onInit: ({ players, name, authed }) => {
+        onInit: ({ players, name, authed, serverTime }) => {
           for (const [id, s] of Object.entries(players)) addRemote(id, s);
           setMeName(name);
           setMeAuthed(authed);
           setLink("live");
+          // ဖုန်းရဲ့ နာရီ မမှန်လည်း server နဲ့ တူညီအောင်
+          clockOffset = serverTime - Date.now();
         },
         onJoin: (id, s) => addRemote(id, s),
         onLeave: dropRemote,
@@ -370,30 +449,56 @@ export function MetaverseScene() {
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
+      // ★ composer ကို မချိန်ရင် window ချဲ့လိုက်တာနဲ့ ပုံက ဆန့်နေမယ်
+      postfx.setSize(w, h);
+      minimap?.resize();
     };
     window.addEventListener("resize", onResize);
 
+    // ── ကြော်ငြာသင်ပုန်း + တကယ့် live stream ──────────────────────────────
+    // ★ ဒါက လောကကို စတင်ဖို့ မလိုအပ်ဘူး — မရလည်း သင်ပုန်းက ဗလာနေရုံပဲ။
+    // ဒါကြောင့် await မလုပ်ဘဲ နောက်ကွယ်မှာ ခေါ်တယ်။
+    void fetch("/api/metaverse/board", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { posts?: { author: string; text: string }[]; live?: { url: string } | null } | null) => {
+        if (killed || !data) return;
+        landmarks.setNotices(data.posts ?? []);
+        const url = data.live?.url;
+        if (url && url !== liveUrl) {
+          // တကယ် live ရှိရင် env ထဲက default ကို အစားထိုးတယ်
+          screen.dispose();
+          screen = attachLiveScreen(world.screenMesh, url);
+          liveUrl = url;
+        }
+      })
+      .catch(() => {
+        /* သင်ပုန်း ဗလာနေရုံပဲ — လောကက ဆက်လည်တယ် */
+      });
+
     // ── Render loop ───────────────────────────────────────────────────────
-    const clock = new THREE.Clock();
+    const frameClock = new THREE.Clock();
     let raf = 0;
     let frames = 0;
     let fpsAcc = 0;
-    let worldTime = 0.3; // မနက်ခင်း စတင်
+    let hudAcc = 0;
+    let nearId: string | null = null;
 
     const tick = () => {
       raf = requestAnimationFrame(tick);
       // dt ကို ကန့်သတ် — tab ပြန်ဖွင့်ချိန်မှာ dt ကြီးကြီးဝင်လာရင်
       // player က နံရံဖြတ်ပြီး ခုန်ထွက်သွားမယ်။
-      const dt = Math.min(clock.getDelta(), 0.05);
+      const dt = Math.min(frameClock.getDelta(), 0.05);
 
       // ── input → direction ──────────────────────────────────────────────
       const ix = THREE.MathUtils.clamp(input.r - input.l + input.jx, -1, 1);
       const iz = THREE.MathUtils.clamp(input.f - input.b + input.jz, -1, 1);
 
-      // ★ Camera-relative — `iz` ကို negate မလုပ်ရ။ ကင်မရာက player ရဲ့
-      // နောက်မှာ (yaw ဘက်ဆန့်ကျင်) ရှိလို့ `+iz` က ကင်မရာနဲ့ဝေးရာဘက်။
-      let dirX = Math.sin(cam.yaw) * iz + Math.cos(cam.yaw) * ix;
-      let dirZ = Math.cos(cam.yaw) * iz - Math.sin(cam.yaw) * ix;
+      // ★ Camera-relative။ ရှေ့ဘက် F = (sin yaw, cos yaw) — `iz` ကို negate
+      // မလုပ်ရ (ကင်မရာက player ရဲ့ နောက်မှာ ရှိလို့ +iz က ကင်မရာနဲ့ဝေးရာ)။
+      // ★ ညာဘက်က **F × up = (-cos yaw, sin yaw)** — sign မှားရင် A နဲ့ D
+      // လဲနေမယ်။ W ပဲ စမ်းရင် ဒီအမှားကို ဖမ်းမမိဘူး။
+      let dirX = Math.sin(cam.yaw) * iz - Math.cos(cam.yaw) * ix;
+      let dirZ = Math.cos(cam.yaw) * iz + Math.sin(cam.yaw) * ix;
       const mag = Math.hypot(dirX, dirZ);
       if (mag > 1) {
         dirX /= mag;
@@ -472,6 +577,12 @@ export function MetaverseScene() {
 
       net?.sendUpdate(p.x, p.y, p.z, p.ry);
 
+      // ── ခြေသံ ──────────────────────────────────────────────────────────
+      audio.move("me", p.x, p.y, p.z, speed, dt, p.airborne);
+      for (const [id, r] of remotes) {
+        audio.move(id, r.cur.x, r.cur.y, r.cur.z, r.speed, dt, r.cur.y > 0.15);
+      }
+
       // ── ကင်မရာ ─────────────────────────────────────────────────────────
       const cp = Math.cos(cam.pitch);
       camera.position.set(
@@ -480,12 +591,19 @@ export function MetaverseScene() {
         p.z - Math.cos(cam.yaw) * cp * cam.dist,
       );
       camera.lookAt(p.x, p.y + 1.1, p.z);
+      // နားထောင်သူက ကင်မရာ — လှည့်တာနဲ့ အသံရဲ့ ဘယ်/ညာ ပြောင်းရမယ်
+      audio.syncListener(camera);
 
-      // ── နေ့/ည ──────────────────────────────────────────────────────────
-      worldTime = (worldTime + dt / DAY_SECONDS) % 1;
-      world.updateSky(worldTime);
+      // ── နေ့/ည (server နာရီနဲ့ တူညီ) ────────────────────────────────────
+      const worldTime = worldTimeNow();
+      const daylight = world.updateSky(worldTime);
 
-      renderer.render(scene, camera);
+      // ── Bloom ──────────────────────────────────────────────────────────
+      postfx.enabled = bloomRef.current;
+      postfx.setDaylight(daylight);
+      screen.update(p.x, p.z);
+      minimap?.draw(p, remoteViews());
+      postfx.render();
 
       // FPS — ၂ စက္ကန့်တစ်ခါသာ state ထဲတင် (re-render နည်းအောင်)
       frames++;
@@ -495,13 +613,36 @@ export function MetaverseScene() {
         frames = 0;
         fpsAcc = 0;
       }
+
+      // ── HUD — ၄ ကြိမ်/စက္ကန့် ────────────────────────────────────────────
+      // ★ နာရီနဲ့ landmark ကို frame တိုင်း setState လုပ်ရင် တစ်စက္ကန့်
+      // re-render ၆၀ ခါ ဖြစ်ပြီး performance စည်းမျဉ်းကို ချိုးဖောက်မယ်။
+      hudAcc += dt;
+      if (hudAcc >= 0.25) {
+        hudAcc = 0;
+        const mins = Math.floor(worldTime * 24 * 60);
+        setClock(
+          `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`,
+        );
+        const near = landmarks.nearest(p.x, p.z);
+        if ((near?.id ?? null) !== nearId) {
+          nearId = near?.id ?? null;
+          setNearby(near);
+        }
+      }
     };
+
+    /// Minimap က နေရာပဲ လိုတယ် — avatar object တစ်ခုလုံး ပေးစရာမလိုဘူး
+    function* remoteViews() {
+      for (const r of remotes.values()) yield r.cur;
+    }
 
     setReady(true);
     tick();
 
     // ── Cleanup ───────────────────────────────────────────────────────────
     return () => {
+      killed = true;
       cancelAnimationFrame(raf);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
@@ -523,6 +664,13 @@ export function MetaverseScene() {
       for (const r of remotes.values()) r.avatar.dispose();
       remotes.clear();
       me.dispose();
+      // ★ screen က fetch ပြီးမှ အစားထိုးခံရနိုင်လို့ holder ကနေ dispose လုပ်တယ်
+      screen.dispose();
+      minimap?.dispose();
+      landmarks.dispose();
+      audio.dispose();
+      audioRef.current = null;
+      postfx.dispose();
       world.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
@@ -541,6 +689,13 @@ export function MetaverseScene() {
         {ready && (
           <div className="mt-1 flex items-center gap-2 text-white/50">
             <span>{fps} fps</span>
+            {clock && (
+              <>
+                <span>·</span>
+                {/* Server နာရီကနေ တွက်ထားလို့ player တိုင်း တူညီတယ် */}
+                <span title="လောကထဲက အချိန်">🕐 {clock}</span>
+              </>
+            )}
             <span>·</span>
             <span
               className={
@@ -596,14 +751,76 @@ export function MetaverseScene() {
         )}
       </div>
 
-      {/* Guest ကို sign in ဖိတ်ခေါ်တာ — မဖြစ်မနေမဟုတ်ဘူး၊ ရွေးစရာတစ်ခုပဲ */}
-      {link === "live" && !meAuthed && (
-        <a
-          href="/login"
+      {/* ── ညာဘက်အပေါ်: minimap + ခလုတ်များ ─────────────────────────── */}
+      <div className="absolute right-3 top-3 z-10 flex flex-col items-end gap-2">
+        {/* Guest ကို sign in ဖိတ်ခေါ်တာ — မဖြစ်မနေမဟုတ်ဘူး၊ ရွေးစရာတစ်ခုပဲ */}
+        {link === "live" && !meAuthed && (
+          <a
+            href="/login"
+            data-hud="1"
+            className="rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-[11px] text-white/80 backdrop-blur hover:bg-black/60"
+          >
+            Gwave နဲ့ ဝင်မယ်
+          </a>
+        )}
+
+        <canvas
+          ref={mapRef}
           data-hud="1"
-          className="absolute right-3 top-3 z-10 rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-[11px] text-white/80 backdrop-blur hover:bg-black/60"
+          aria-label="မြေပုံ"
+          className="h-[132px] w-[132px] rounded-full"
+        />
+
+        <div className="flex gap-2">
+          {/* ★ Bloom ကို ပိတ်လို့ရရမယ် — ဖုန်းအဟောင်းမှာ frame ကို ထက်ဝက်
+              နီးပါး စားတယ်။ ရွေးချယ်မှုက localStorage မှာ ကျန်တယ်။ */}
+          <button
+            data-hud="1"
+            onClick={() => setBloom((b) => !b)}
+            title="အလင်းအရောင် (bloom)"
+            className={`rounded-lg border px-2 py-1 text-[11px] backdrop-blur transition ${
+              bloom
+                ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200"
+                : "border-white/15 bg-black/40 text-white/60"
+            }`}
+          >
+            ✨ {bloom ? "ဖွင့်" : "ပိတ်"}
+          </button>
+
+          {/* ★ Browser က user gesture ပြီးမှ audio ခွင့်ပြုတယ် — ဒါကြောင့်
+              default ပိတ်ထားပြီး ဒီခလုတ်ကနေသာ ဖွင့်လို့ရတယ်။ */}
+          <button
+            data-hud="1"
+            onClick={() => {
+              const a = audioRef.current;
+              if (!a) return;
+              if (a.enabled) {
+                a.disable();
+                setSound(false);
+              } else {
+                void a.enable().then(setSound);
+              }
+            }}
+            title="ခြေသံ (spatial audio)"
+            className={`rounded-lg border px-2 py-1 text-[11px] backdrop-blur transition ${
+              sound
+                ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200"
+                : "border-white/15 bg-black/40 text-white/60"
+            }`}
+          >
+            {sound ? "🔊 အသံ" : "🔇 အသံ"}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Landmark — အနားရောက်မှ ပေါ်တယ် ───────────────────────────── */}
+      {nearby && (
+        <a
+          href={nearby.href}
+          data-hud="1"
+          className="absolute left-1/2 top-16 z-10 -translate-x-1/2 rounded-full border border-emerald-400/50 bg-black/60 px-4 py-2 text-xs text-emerald-200 backdrop-blur transition hover:bg-black/80"
         >
-          Gwave နဲ့ ဝင်မယ်
+          {nearby.label} — ဝင်ရန် နှိပ်ပါ
         </a>
       )}
 

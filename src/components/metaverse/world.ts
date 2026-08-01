@@ -14,8 +14,10 @@ export type World = {
   lamps: THREE.Mesh[];
   lampLights: THREE.PointLight[];
   screenMesh: THREE.Mesh;
-  /// timeOfDay 0→1 (0 = သန်းခေါင်, 0.25 = နံနက်, 0.5 = မွန်းတည့်, 0.75 = ညနေ)
-  updateSky(timeOfDay: number): void;
+  /// timeOfDay 0→1 (0 = သန်းခေါင်, 0.25 = နံနက်, 0.5 = မွန်းတည့်, 0.75 = ညနေ)។
+  /// နေရောင်အား 0 (ည) → 1 (နေ့) ကို ပြန်ပေးတယ် — bloom အားနဲ့ HUD က
+  /// အဲဒါကို သုံးတယ်၊ တွက်ပုံကို ၂ နေရာမှာ ထပ်ရေးစရာမလိုအောင်။
+  updateSky(timeOfDay: number): number;
   dispose(): void;
 };
 
@@ -254,7 +256,7 @@ export function buildWorld(scene: THREE.Scene): World {
   const fogColor = new THREE.Color();
   scene.background = skyColor.clone();
 
-  function updateSky(timeOfDay: number) {
+  function updateSky(timeOfDay: number): number {
     const t = ((timeOfDay % 1) + 1) % 1;
     // နေရဲ့ ထောင့် — 0.25 မှာ အရှေ့ကထွက်, 0.75 မှာ အနောက်မှာဝင်
     const sunAngle = (t - 0.25) * Math.PI * 2;
@@ -293,6 +295,8 @@ export function buildWorld(scene: THREE.Scene): World {
       (bulb.material as THREE.MeshStandardMaterial).emissiveIntensity = lampOn;
     }
     for (const w of windowMats) w.emissiveIntensity = lampOn * 0.9;
+
+    return day;
   }
 
   updateSky(0.3);

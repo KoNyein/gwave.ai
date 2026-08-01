@@ -61,6 +61,31 @@
 
 ## Changelog
 
+- 2026-08-02 (web): **Metaverse — phase 5, world features.** The city now has
+  a clock everyone shares, a minimap, footsteps you can hear coming from the
+  left or the right, bloom you can switch off, a live screen, and doors back
+  into Gwave. In-world time is derived from the epoch (corrected by the
+  server's clock on join) rather than counted locally, so two people standing
+  next to each other are never in different halves of the day — two tabs
+  opened nine seconds apart read 09:15 and 09:17, and the two minutes are the
+  HUD's 4 Hz refresh, not drift. Bloom defaults on but is one click away and
+  the choice is remembered; the software-GL test box renders under 1 fps with
+  it on and 20 fps with it off, which is the whole reason it must be
+  switchable. Footsteps are synthesised (filtered noise + envelope through an
+  HRTF panner) rather than downloaded — nobody pays mobile data for four .mp3
+  files — and the audio context is not even constructed until you press the
+  sound button, because browsers refuse audio without a gesture. The centre
+  screen plays the live IVS stream via hls.js, muted (autoplay dies otherwise),
+  only while you are within 34 m, and falls back to a drawn placeholder rather
+  than a black rectangle when nothing is on air. Signposts for Marketplace /
+  Farm / Learn / Live and a notice board showing the five latest public posts
+  (`/api/metaverse/board`, flat queries, no PostgREST embeds) link back out to
+  the real pages. **Two bugs the typechecker could not see**: `A` and `D` were
+  swapped since phase 1 — the strafe vector had the wrong sign, and testing
+  only `W` never revealed it; and the notice board was parked directly in
+  front of the spawn point with its backing panel in front of its own text, so
+  the first thing anyone saw was a black slab covering the city.
+
 - 2026-08-02 (web): **Metaverse — phase 4, RDS persistence.** Sign in, walk
   somewhere, close the tab, come back: you are where you left off. The
   position lives in the task's memory and reaches Postgres only on a 30-second
