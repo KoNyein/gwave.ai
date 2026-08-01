@@ -1,0 +1,385 @@
+<!-- =========================================================== §8 -->
+<h1><span class="num">8</span>Functional process designs</h1>
+<p class="lead">Nine flows carry most of the platform's behaviour. Each is
+described as it actually runs, including the failure that shaped it.</p>
+
+<h2>8.1 Publishing a post</h2>
+<div class="fig">{{fig:post}}<div class="cap">Post publication and fan-out.
+Media never passes through the application server; the browser uploads straight
+to S3 with a presigned PUT whose key the server chose.</div></div>
+<ol>
+  <li>The composer collects text, visibility and media handles.</li>
+  <li>Each file is uploaded directly to S3 with a presigned PUT from
+    <code>/api/storage/presign</code>; the object key is derived from the
+    session user.</li>
+  <li>The server action inserts <code>posts</code> and <code>post_media</code>
+    in one round trip.</li>
+  <li>Triggers maintain counters and write <code>notifications</code> rows for
+    everyone entitled to hear about it.</li>
+  <li>Realtime delivers the notification; web push reaches recipients whose
+    browser is closed but subscribed.</li>
+  <li>Reads go through <code>can_view_post()</code>, so the feed, a permalink
+    and a profile grid can never disagree about who may see a post.</li>
+</ol>
+
+<h2>8.2 Going live</h2>
+<div class="fig">{{fig:live}}<div class="cap">The two broadcast paths and the
+single playback contract they both satisfy.</div></div>
+<p>The two paths exist because they solve different problems. A browser can
+publish WebRTC but not RTMPS; a phone app can publish RTMPS but cannot subscribe
+to an IVS real-time stage, because doing so requires an IVS Real-Time SDK that
+Flutter does not have and cannot get. The bridge is the composition: every stage
+broadcast also gets a low-latency channel, and the composition restreams the
+mixed stage into it, so the same HLS URL that the app, the web player, the feed
+card and the live rail already play works for browser broadcasts too.</p>
+<div class="warn"><b>Three production failures shaped this flow</b>
+<ul style="margin:3pt 0 0">
+  <li><b>Status written last.</b> <code>goLive</code> marked the row live only
+    after awaiting the provider's recording call. The host component fires that
+    action without awaiting it, so a re-render aborted the request mid-flight and
+    Next tore the action down — a host published for nineteen minutes while the
+    row sat at <code>idle</code> and every viewer saw nothing. Status is now
+    written first, on its own; provider work is a second update that may fail
+    without costing anything visible.</li>
+  <li><b>The announcement behind the same abort.</b> The feed post announcing a
+    broadcast was stranded behind the same await, so the broadcast appeared and
+    the post pointing at it never did. Everything a person sees — live status,
+    feed announcement, follower notification — now happens before any AWS call.</li>
+  <li><b>Replays that finalised too late.</b> IVS finishes writing a recording
+    after the broadcast stops, and how long depends on its length, but the end
+    routes looked the file up the instant the host tapped End and never looked
+    again. Six of ten long broadcasts had a file in the bucket and no path in the
+    row. A one-minute sweeper now re-checks ended broadcasts until the file
+    appears or a day has passed.</li>
+</ul></div>
+
+<h2>8.3 Placing and answering a call</h2>
+<div class="fig">{{fig:call}}<div class="cap">Call signaling. Signaling runs
+over Realtime broadcast channels; media is peer-to-peer, with the TURN relay
+used only when a direct path cannot be established.</div></div>
+<ul>
+  <li><strong>Ring inbox</strong>: each user subscribes to
+    <code>calls:{userId}</code> whenever the app is open; per-call traffic moves
+    to <code>call:{callId}</code> once answered.</li>
+  <li><strong>TURN is not optional in practice.</strong> Without a relay,
+    carrier-NAT calls connect and stay silent — the worst possible failure,
+    because both parties believe they are connected.</li>
+  <li><strong>Echo guards.</strong> The server relays a sender's own signal back;
+    <code>decline</code> and <code>hangup</code> handlers were missing the
+    ownership guard every other handler had, so teardown re-entered and wrote two
+    or three call logs for one call. Fixed with an echo guard, a re-entry lock
+    and a last-logged-call check.</li>
+  <li><strong>Permission dead ends.</strong> A permanently denied camera or
+    microphone permission fails silently on Android; both the chat screen and the
+    call screen now offer a Settings action, because the OS will not show the
+    prompt again.</li>
+</ul>
+
+<h2>8.4 Dispatching a ride</h2>
+<div class="fig">{{fig:ride}}<div class="cap">Ride state machine and the
+server-side dispatcher. The UI mirrors the server's state rather than keeping
+one of its own, so the screen cannot reach a state the database disagrees
+with.</div></div>
+<ul>
+  <li><strong>The poll is the clock.</strong> <code>GET /api/ride/{id}</code>
+    every three seconds also drives dispatch server-side, so no separate
+    scheduler is required for the common case; <code>/api/ride/dispatch/tick</code>
+    covers the rest.</li>
+  <li><strong>Position between polls</strong> arrives over
+    <code>ride:{rideId}</code> broadcast, so the car glides instead of
+    jumping.</li>
+  <li><strong>Trips survive an app kill.</strong> <code>/api/ride/active</code>
+    rejoins on open — without it, a rider reopens Gwave to a fresh booking screen
+    while a driver is on the way to them.</li>
+  <li><strong>Driver presence is process-wide.</strong> The heartbeat was
+    originally a screen-local position stream, so a parked driver (distance
+    filter) or a driver who tapped Back (<code>dispose()</code>) stopped beating
+    and was marked offline within three minutes while the switch still read
+    "online". It is now a process-wide service with a 30-second keepalive,
+    stopped only by the switch.</li>
+  <li><strong>Location is a foreground service</strong> with a persistent
+    notification, deliberately not <code>ACCESS_BACKGROUND_LOCATION</code>:
+    background location triggers Play Store prominent-disclosure review, the most
+    common reason ride apps get pulled, and offers reach a sleeping screen over
+    push anyway.</li>
+</ul>
+
+<h2>8.5 Moving money</h2>
+<div class="fig">{{fig:gpay}}<div class="cap">Wallet flows. Every arrow that
+changes a balance is a locked-down database function; nothing on the left or
+right writes <code>balance</code> directly.</div></div>
+<p>Cash trips illustrate why the ledger and the money are separate concerns:
+<code>ride_driver_settle</code> had existed and been tested since the schema was
+written, but nothing called it — so the ledger was correct and the money was not
+moving. Commission owed is now shown to drivers even at zero, because a driver
+who only finds out when offers stop assumes the app is broken.</p>
+
+<h2>8.6 Selling a dropship product</h2>
+<ol>
+  <li>A seller imports a product; <code>merchantDetail()</code> writes the full
+    payload — up to 24 images, video, specs, variants, rating, order count, store
+    name and shipping — on <em>both</em> import and refresh. The first
+    implementation set them only on import, so a refreshed listing silently
+    reverted to a single photo.</li>
+  <li>The product page renders a real gallery (swipe, arrows, counter,
+    full-screen, video first), a specification table, and the merchant's own
+    numbers shown as <em>theirs</em>, separate from Gwave reviews.</li>
+  <li>The seller-only customer pack produces a ready-made sales message, a
+    share-sheet button and a save-every-photo button that fetches blobs — a
+    cross-origin <code>download</code> attribute is ignored by browsers, which is
+    why the obvious implementation opens tabs and saves nothing.</li>
+  <li><code>place_dropship_order</code> / <code>place_dropship_order_gpay</code>
+    create the order atomically and settle from the wallet.</li>
+  <li>Delivery milestones are stamped by <code>stamp_order_milestones</code>,
+    and the buyer receives a push on every status change.</li>
+</ol>
+
+<h2>8.7 Serving a boost</h2>
+<p><code>get_feed_boosts()</code> runs an auction at feed-assembly time: active
+boosts are ranked by bid weighted against remaining budget and prior delivery,
+then injected into the feed at fixed positions. Spend is escrowed at creation,
+<code>record_boost_impression</code> and <code>record_boost_click</code> account
+for delivery, and <code>boost_daily_stats</code> reports it. Cancelling returns
+the unspent escrow. The design document lives at
+<code>docs/BOOST_ALGORITHM.md</code>.</p>
+
+<h2>8.8 Reading a sensor and acting on it</h2>
+<div class="fig">{{fig:iot}}<div class="cap">Smart-farm pipeline. The same
+device layer serves the farm dashboard and the smart-home screen; an automation
+rule is a row, not code.</div></div>
+<p>Rules carry a cooldown so a sensor oscillating around a threshold cannot
+produce an alert storm or cycle a relay. Alerts raise notifications through
+<code>notify_on_alert()</code> and can also fire an HMAC-signed outgoing webhook
+through <code>webhook_on_alert()</code>, which is how the platform integrates
+with equipment it does not control.</p>
+
+<h2>8.9 Raising an SOS</h2>
+<div class="fig">{{fig:sos}}<div class="cap">Safety flow. The alert is one
+concept: a standalone SOS and an in-trip SOS produce the same row, reach the same
+map and the same responders.</div></div>
+<p>The SMS + GPS fallback matters more than any other part of the feature: the
+situations in which someone presses SOS correlate strongly with the situations
+in which they have no data connection. A help request that requires the internet
+is a help request that fails when it is needed.</p>
+
+<!-- =========================================================== §9 -->
+<h1><span class="num">9</span>Mobile application</h1>
+<p class="lead">A native Flutter Android client — not a wrapper — sharing the
+server, the database and the identity system with the web application, and
+reaching them through a dedicated JSON API surface.</p>
+
+<h2>9.1 Structure</h2>
+<table class="tight">
+  <caption>Flutter application structure</caption>
+  <thead><tr><th style="width:26%">Path</th><th>Contents</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">mobile/lib/core</td><td>HTTP client, auth storage, Realtime socket, theming, localisation (<code>GwLang</code> with my/en/th and <code>tr3()</code> fallback), video audio focus policy.</td></tr>
+    <tr><td class="mono">mobile/lib/features</td><td>38 feature modules: feed, messenger, live, ride, gpay, shop, learn, health, audio, books, family, farm, cctv, drone, map, market, dating, reels, stories, talk, pos, jobs, games, tools, settings, shell and more.</td></tr>
+    <tr><td class="mono">mobile/lib/widgets</td><td>Shared design-system widgets, signal meters, media tiles, mini player.</td></tr>
+  </tbody>
+</table>
+
+<h2>9.2 Platform capabilities the app adds</h2>
+<ul>
+  <li><strong>Process-wide audio.</strong> One <code>GwAudio</code> service owns
+    playback; queue, shuffle, repeat, speed, sleep timer and position saving live
+    on the service, so they survive leaving the player screen. A muted feed video
+    no longer stops the music: previews use <code>mixWithOthers</code> and only an
+    unmuted video takes audio focus. What is playing is reachable from every tab
+    through a draggable floating bubble that costs no layout and is hidden over
+    Reels.</li>
+  <li><strong>Offline peer-to-peer chat</strong> over Nearby Connections
+    (Bluetooth / Wi-Fi Direct) with GPS sharing, and explicit Burmese guidance
+    when Play Services Nearby is unavailable.</li>
+  <li><strong>Sensing</strong>: Wi-Fi scanning with frequency, channel, band and
+    raw capabilities; Bluetooth drone detection with RSSI history; NFC read and
+    write.</li>
+  <li><strong>Travel tools</strong>: long-press waypoints stored on device, a
+    trip recorder with animated replay, GPX export, in-app OSRM routing with a
+    straight-line fallback when offline.</li>
+  <li><strong>Theme skins</strong>: four complete visual identities (Gwave, Sky,
+    Liberty, Tactical) switchable at runtime.</li>
+  <li><strong>Live viewing</strong> as a one-page vertical swipe, with muted
+    autoplay previews in the feed and live lists.</li>
+</ul>
+
+<h2>9.3 Mobile API surface</h2>
+<p>The app never speaks to PostgREST for privileged operations; it uses a
+dedicated JSON API under <code>/api/mobile/*</code> — 30 routes covering auth
+(login, register, Google, phone start/verify, refresh), live (create, start,
+end, token, verify), calls (signal, notify), wallet (register, top-up), learning,
+audio publishing, dating, marketplace, uploads, push registration, Wi-Fi and
+drone observation, PTT, text-to-speech and configuration.</p>
+<div class="note"><b>Why a separate surface</b> A mobile client cannot hold a
+browser session cookie, cannot run a server action, and cannot be redeployed to
+fix a query. Giving it explicit endpoints means the contract is versioned in one
+place and a shipped APK keeps working when the web UI changes underneath it.</div>
+
+<!-- =========================================================== §10 -->
+<h1><span class="num">10</span>Public API and integrations</h1>
+
+<h2>10.1 Public REST API</h2>
+<table class="tight">
+  <caption>Public API endpoints</caption>
+  <thead><tr><th style="width:28%">Endpoint</th><th style="width:18%">Scope</th><th>Returns</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">GET /api/v1/strains</td><td class="mono">read:strains</td><td>Strain encyclopedia entries with search and pagination.</td></tr>
+    <tr><td class="mono">GET /api/v1/minerals</td><td class="mono">read:minerals</td><td>Mineral encyclopedia entries.</td></tr>
+    <tr><td class="mono">GET/POST /api/v1/posts</td><td class="mono">read:posts / write:posts</td><td>Public posts; creation on behalf of the key owner.</td></tr>
+    <tr><td class="mono">GET /api/v1/sensors</td><td class="mono">read:sensors</td><td>Latest readings for devices owned by the key owner.</td></tr>
+    <tr><td class="mono">GET /api/v1/pos/products</td><td class="mono">read:pos</td><td>Products for stores the key owner can manage.</td></tr>
+    <tr><td class="mono">GET /api/v1/openapi.json</td><td>—</td><td>OpenAPI 3.1 description of the whole surface.</td></tr>
+  </tbody>
+</table>
+<p>Keys are stored hashed, carry an explicit scope list and a rate limit, and
+every request is written to <code>api_logs</code> with path, status and duration.
+Authorisation is checked in <code>src/lib/api-auth.ts</code> against
+<code>src/lib/api-scopes.ts</code> before any data access.</p>
+
+<h2>10.2 Inbound webhooks</h2>
+<table class="tight">
+  <thead><tr><th style="width:34%">Endpoint</th><th>Purpose and verification</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">/api/webhooks/stripe</td><td>Membership and top-up settlement. Signature-verified against <code>STRIPE_WEBHOOK_SECRET</code>.</td></tr>
+    <tr><td class="mono">/api/live/ivs-stream-webhook</td><td>IVS channel state changes (stream start/stop).</td></tr>
+    <tr><td class="mono">/api/live/ivs-recording-webhook</td><td>Recording finalisation events from EventBridge; idempotent alongside the sweeper.</td></tr>
+    <tr><td class="mono">/api/live/livekit-webhook</td><td>LiveKit room and participant events.</td></tr>
+    <tr><td class="mono">/api/live/webhook</td><td>Legacy Mux path, retained for the RTMP/OBS fallback.</td></tr>
+    <tr><td class="mono">/api/health/[provider]/callback</td><td>OAuth callbacks for connected health providers.</td></tr>
+  </tbody>
+</table>
+
+<h2>10.3 Outgoing webhooks</h2>
+<p>Developers register endpoints with an event filter; deliveries are queued by
+<code>enqueue_webhook()</code>, signed with an HMAC of the payload, and recorded
+in <code>webhook_deliveries</code> with attempt counts and status. Triggers
+<code>webhook_on_post</code>, <code>webhook_on_sale</code> and
+<code>webhook_on_alert</code> are the current event sources.</p>
+
+<h2>10.4 Scheduled work</h2>
+<table class="tight">
+  <thead><tr><th style="width:32%">Job</th><th style="width:14%">Cadence</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">/api/live/recordings/sweep</td><td>1 minute</td><td>Link replay paths that finalise after the host has left; end stale broadcasts; start compositions for live stages missing one. <code>?hours=</code> up to 720 for a one-off catch-up.</td></tr>
+    <tr><td class="mono">/api/ride/dispatch/tick</td><td>On demand</td><td>Advance dispatch when no rider poll is driving it.</td></tr>
+    <tr><td class="mono">/api/heartbeat</td><td>Client-driven</td><td>Presence: <code>profiles.last_seen_at</code>, 60-second timer in the app.</td></tr>
+    <tr><td>Story cleanup</td><td>Daily</td><td>Expire stories past 24 hours.</td></tr>
+  </tbody>
+</table>
+<p>Sweep endpoints authenticate with <code>LIVE_SWEEP_SECRET</code>, falling
+back to <code>RIDE_DISPATCH_SECRET</code>, so adding a scheduled job required no
+new secret.</p>
+
+<!-- =========================================================== §11 -->
+<h1><span class="num">11</span>Operations and observability</h1>
+
+<h2>11.1 Health and dashboards</h2>
+<table class="tight">
+  <thead><tr><th style="width:26%">Surface</th><th>What it answers</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">/api/health</td><td>Liveness probe used by the canary swap and by uptime monitoring.</td></tr>
+    <tr><td class="mono">/api/diag, /api/mobile/diag</td><td>Configuration and connectivity diagnostics for support triage.</td></tr>
+    <tr><td class="mono">/admin/system</td><td>Container and service status.</td></tr>
+    <tr><td class="mono">/admin/data</td><td>Every module's totals, per-table row counts with seven-day growth, log-scale toggle.</td></tr>
+    <tr><td class="mono">/admin/storage</td><td>Per-table size split into data, index and TOAST; S3 bucket size and object count from CloudWatch.</td></tr>
+    <tr><td class="mono">/admin/aws</td><td>Cost by service month-to-date, last-month comparison, 30-day trend, forecast, credit split, and for each service a note on what Gwave runs on it and the one lever that reduces it.</td></tr>
+  </tbody>
+</table>
+<div class="note"><b>A dashboard that hides the truth is worse than none</b>
+Grouping Cost Explorer by service without a record-type filter nets credits into
+each service. On this account that made EC2 read $0.01 against $149 of actual
+usage, and the whole bill read $52 when real consumption was $228.50/month
+against $180/month of credits. The service table and the daily trend are now
+filtered to <code>RECORD_TYPE=Usage</code>, and the page leads with real usage
+and warns about the gap — because the day the credits run out, the invoice jumps
+4.5× with no warning.</div>
+
+<h2>11.2 Symptom-to-cause reference</h2>
+<table class="tight">
+  <caption>Production triage</caption>
+  <thead><tr><th style="width:36%">Symptom</th><th>Likely cause</th></tr></thead>
+  <tbody>
+    <tr><td><code>401 JWSInvalidSignature</code> on <code>/sb/rest</code></td><td>PostgREST's JWKS lacks the current ES256 public key (<code>kid</code> mismatch), or the legacy <code>oct</code> key no longer equals the current secret.</td></tr>
+    <tr><td>Realtime "alg / signature" errors</td><td><code>API_JWT_SECRET</code> on the realtime container has drifted from the web container's secret.</td></tr>
+    <tr><td>Upload fails</td><td><code>/api/storage/presign</code> rejected the request, or the EC2 instance role lost S3 write permission.</td></tr>
+    <tr><td><code>permission denied for table X</code></td><td>Missing GRANT to <code>anon</code>, <code>authenticated</code> or <code>service_role</code> after a new table was created.</td></tr>
+    <tr><td><code>new row violates row-level security</code></td><td>Missing INSERT policy, or a privileged write attempted without the service role.</td></tr>
+    <tr><td>A feature 500s right after a schema change</td><td>PostgREST's schema cache is stale — <code>sudo docker restart postgrest</code>.</td></tr>
+    <tr><td>Images blank immediately after a deploy</td><td>Stale JS chunks (deploy skew). A hard reload fixes the client.</td></tr>
+    <tr><td>Calls connect but stay silent</td><td>TURN relay unreachable — check coturn and the UDP relay range in the security group.</td></tr>
+  </tbody>
+</table>
+
+<h2>11.3 Testing and audits</h2>
+<table class="tight">
+  <thead><tr><th style="width:24%">Check</th><th>Coverage</th></tr></thead>
+  <tbody>
+    <tr><td>Smoke E2E</td><td>Auth guards, public pages, security headers, API authentication, health probe — runs in CI against the production build.</td></tr>
+    <tr><td>Full flows</td><td>Post, react, comment, search, POS sale, API keys. Requires a seeded database: <code>E2E_FULL=1 pnpm e2e</code>.</td></tr>
+    <tr><td>RLS audit</td><td><code>scripts/rls-audit.sql</code> asserts every forbidden cross-user operation is denied, then rolls back.</td></tr>
+    <tr><td>Load test</td><td><code>scripts/load-test-feed.js</code> (k6) — feed keyset pagination, target p95 under 800 ms at 50 virtual users.</td></tr>
+    <tr><td>Merge hygiene</td><td><code>git grep '^&lt;&lt;&lt;&lt;&lt;&lt;&lt; '</code> after every merge; conflict markers must never reach a commit.</td></tr>
+  </tbody>
+</table>
+
+<h2>11.4 Backup and recovery</h2>
+<ul>
+  <li><strong>Database</strong>: RDS automated backups and snapshots are the
+    recovery point for all application data.</li>
+  <li><strong>Media</strong>: S3 holds every uploaded object and every IVS
+    recording; the application stores paths, never bytes.</li>
+  <li><strong>Application</strong>: every deploy is an immutable ECR image tagged
+    with its commit SHA, so any prior version can be re-run.</li>
+  <li><strong>Ad-hoc containers</strong>: <code>realtime</code> and
+    <code>postgrest</code> run as plain <code>docker run</code>, so their
+    configuration lives only in the running containers.
+    <code>deploy/realtime-run.sh</code> recreates the realtime container from a
+    captured env file. <em>PostgREST is not yet scripted</em> — capturing its
+    environment and its JWKS bind mount is an open operational task recorded in
+    §12.</li>
+</ul>
+
+<!-- =========================================================== §12 -->
+<h1><span class="num">12</span>Roadmap, risks and known gaps</h1>
+
+<h2>12.1 Open gaps</h2>
+<table>
+  <caption>Known gaps, in priority order</caption>
+  <thead><tr><th style="width:24%">Gap</th><th style="width:14%">Impact</th><th>What it needs</th></tr></thead>
+  <tbody>
+    <tr><td>FCM background push</td><td><b>High</b></td><td>A Firebase project. Calls and messages do not ring when the app is closed; web push covers open browsers only. This is the difference between a messenger and a messenger people rely on.</td></tr>
+    <tr><td>LiveKit egress recording</td><td><b>Medium</b></td><td><code>LIVEKIT_EGRESS_S3_*</code> plus static IAM keys in <code>/etc/gwave-web.env</code>, so browser Go Live sessions get replays the way app broadcasts already do.</td></tr>
+    <tr><td>PostgREST container not reproducible</td><td><b>Medium</b></td><td>Capture its environment and JWKS mount into a launcher script mirroring <code>deploy/realtime-run.sh</code>. If the box is lost today, that configuration is lost with it.</td></tr>
+    <tr><td>No staging environment</td><td><b>Medium</b></td><td>Accepted trade-off; mitigated by canary, rollback and feature flags. Revisit when a second engineer joins.</td></tr>
+    <tr><td>Native iOS</td><td><b>Medium</b></td><td>Apple Developer Program enrolment. The PWA install guide on <code>/welcome</code> is the interim path.</td></tr>
+    <tr><td>Chime SDK messenger calls</td><td><b>Low</b></td><td>Planned third IVS/AWS phase; the current WebRTC + coturn path works and this would mainly reduce operational surface.</td></tr>
+    <tr><td>Cost headroom</td><td><b>Watch</b></td><td>Real consumption of roughly $228.50/month against $180/month of credits. The lever list per service is on <code>/admin/aws</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2>12.2 Structural risks</h2>
+<ul>
+  <li><strong>Single application host.</strong> The web container, PostgREST,
+    Realtime and coturn share one EC2 instance. It is inexpensive and simple, and
+    it is a single point of failure; the ECS Fargate path documented in
+    <code>docs/AWS_DEPLOY.md</code> is the prepared escape route.</li>
+  <li><strong>Schema breadth.</strong> 159 tables in one database is a large
+    surface for one team. It is held together by uniform conventions — ownership
+    columns, RLS on everything, counters by trigger — and those conventions are
+    the thing to defend when adding the 160th.</li>
+  <li><strong>Provider concentration in the live stack.</strong> Three media
+    providers are supported, which is resilience, but the composition path that
+    makes browser broadcasts playable on phones is IVS-specific.</li>
+  <li><strong>Operational knowledge.</strong> Several procedures exist only as
+    runbook text. The mitigation is that every one of them is written down in
+    <code>docs/</code> rather than held by a person.</li>
+</ul>
+
+<h2>12.3 Sequenced next steps</h2>
+<ol>
+  <li>Stand up the Firebase project and wire FCM end to end — highest user-visible return of anything on this list.</li>
+  <li>Configure LiveKit egress so both broadcast paths produce replays.</li>
+  <li>Script the PostgREST container, closing the last unreproducible piece of infrastructure.</li>
+  <li>Add per-service cost alarms against the credit runway.</li>
+  <li>Enrol in the Apple Developer Program and build the iOS target from the existing Flutter codebase.</li>
+</ol>

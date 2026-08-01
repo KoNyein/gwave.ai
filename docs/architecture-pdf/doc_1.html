@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gwave — System Design &amp; Architecture</title>
+<style>
+  :root {
+    --brand: #0f5132;
+    --brand-2: #157347;
+    --ink: #1e293b;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --soft: #f1f6f3;
+    --amber: #b45309;
+    --amber-soft: #fdf6ec;
+    --blue-soft: #eef3ff;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { margin: 16mm 14mm; }
+  @page :first { margin: 0; }
+  body {
+    font-family: 'DejaVu Sans', 'Liberation Sans', Arial, sans-serif;
+    font-size: 9.3pt; line-height: 1.55; color: var(--ink);
+    margin: 0; counter-reset: fig tbl;
+  }
+  p { margin: 0 0 7pt; text-align: justify; }
+  strong { color: #0b1220; }
+  code, .mono {
+    font-family: 'DejaVu Sans Mono', 'Liberation Mono', monospace;
+    font-size: 8.1pt; background: #f5f7f9; padding: 0 2px;
+    border-radius: 2px; color: #0b3d2c;
+  }
+
+  /* ---------------------------------------------------------- cover ---- */
+  .cover {
+    height: 296mm; background: var(--brand); color: #fff;
+    margin: 0; padding: 38mm 24mm 0; position: relative;
+    page-break-after: always; page-break-before: avoid;
+  }
+  .cover h1 { page-break-before: avoid !important; }
+  .cover .mark {
+    display: inline-block; border: 1.6pt solid #7fc9a4; color: #cdece0;
+    font-size: 8.4pt; letter-spacing: 3pt; padding: 4pt 10pt; border-radius: 3pt;
+  }
+  .cover h1 {
+    font-size: 34pt; line-height: 1.1; margin: 16mm 0 0; font-weight: bold;
+    color: #fff; border: 0; padding: 0;
+  }
+  .cover h1 span { color: #7fc9a4; }
+  .cover .sub { font-size: 13pt; color: #cdece0; margin-top: 6mm; max-width: 130mm; }
+  .cover .rule { height: 2pt; width: 40mm; background: #7fc9a4; margin: 10mm 0; }
+  .cover dl { display: grid; grid-template-columns: 34mm 1fr; gap: 3pt 0;
+              font-size: 9.2pt; margin: 0; color: #d7ece3; max-width: 120mm; }
+  .cover dt { color: #8fd3b1; }
+  .cover .foot { position: absolute; bottom: 22mm; left: 24mm; right: 24mm;
+                 font-size: 8pt; color: #9dcdb6; border-top: 1px solid #2c7250;
+                 padding-top: 4mm; display: flex; justify-content: space-between; }
+  .cover .stats { display: flex; gap: 12mm; margin-top: 14mm; }
+  .cover .stat b { display: block; font-size: 19pt; color: #fff; line-height: 1.1; }
+  .cover .stat span { font-size: 8pt; color: #9dcdb6; letter-spacing: 0.6pt; }
+
+  /* ------------------------------------------------------- headings ---- */
+  h1 {
+    font-size: 17pt; color: var(--brand); margin: 0 0 5mm;
+    padding-bottom: 3mm; border-bottom: 2.4pt solid var(--brand);
+    page-break-before: always; page-break-after: avoid;
+  }
+  h1 .num { color: #9ec7b2; margin-right: 5pt; }
+  h2 {
+    font-size: 11.6pt; color: var(--brand); margin: 7mm 0 2.5mm;
+    page-break-after: avoid;
+  }
+  h3 { font-size: 9.8pt; color: #0b1220; margin: 5mm 0 1.5mm; page-break-after: avoid; }
+  h1 + p.lead { font-size: 10pt; color: #334155; }
+
+  ul, ol { margin: 0 0 7pt; padding-left: 14pt; }
+  li { margin-bottom: 2.5pt; }
+  li > strong:first-child { color: var(--brand); }
+
+  /* --------------------------------------------------------- tables ---- */
+  table { width: 100%; border-collapse: collapse; font-size: 8.2pt;
+          margin: 3mm 0 5mm; page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+  thead { display: table-header-group; }
+  thead th {
+    background: var(--brand); color: #fff; text-align: left; font-weight: bold;
+    padding: 4pt 5pt; font-size: 8pt; letter-spacing: 0.2pt;
+  }
+  td { padding: 3.6pt 5pt; border-bottom: 0.6pt solid var(--line); vertical-align: top; }
+  tbody tr:nth-child(even) td { background: #f8fafc; }
+  td.mono, th.mono { font-family: 'DejaVu Sans Mono', monospace; font-size: 7.6pt; }
+  table.tight td { padding: 2.6pt 5pt; }
+  caption { caption-side: top; text-align: left; font-size: 8pt; color: var(--muted);
+            padding-bottom: 2pt; }
+  caption::before { counter-increment: tbl; content: "Table " counter(tbl) " — "; font-weight: bold; }
+
+  /* -------------------------------------------------------- figures ---- */
+  .fig { page-break-inside: avoid; margin: 4mm 0 6mm; }
+  .fig .dia { width: 100%; height: auto; display: block; border: 0.6pt solid var(--line);
+              border-radius: 4pt; }
+  .cap { font-size: 8pt; color: var(--muted); margin-top: 2mm; }
+  .cap::before { counter-increment: fig; content: "Figure " counter(fig) " — ";
+                 font-weight: bold; color: var(--brand); }
+
+  /* ------------------------------------------------------- callouts ---- */
+  .note, .warn, .ok {
+    border-left: 2.6pt solid var(--amber); background: var(--amber-soft);
+    padding: 4pt 8pt; margin: 3mm 0 5mm; font-size: 8.6pt; page-break-inside: avoid;
+  }
+  .warn { border-color: #b91c1c; background: #fdf1f1; }
+  .ok { border-color: var(--brand-2); background: var(--soft); }
+  .note b, .warn b, .ok b { display: block; margin-bottom: 1pt; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+  .card { border: 0.6pt solid var(--line); border-radius: 4pt; padding: 4pt 7pt;
+          background: #fbfdfc; font-size: 8.4pt; page-break-inside: avoid; }
+  .card h4 { margin: 0 0 2pt; font-size: 9pt; color: var(--brand); }
+  .kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin: 4mm 0 6mm; }
+  .kpi div { border: 0.6pt solid var(--line); border-top: 2.4pt solid var(--brand);
+             border-radius: 3pt; padding: 5pt 7pt; }
+  .kpi b { display: block; font-size: 15pt; color: var(--brand); line-height: 1.2; }
+  .kpi span { font-size: 7.6pt; color: var(--muted); }
+
+  /* ------------------------------------------------------------ toc ---- */
+  .toc { page-break-after: always; }
+  .toc h1 { page-break-before: avoid; }
+  .toc ol { list-style: none; padding: 0; margin: 0; counter-reset: toc; }
+  .toc li { display: flex; align-items: baseline; gap: 4pt; margin: 0;
+            padding: 2.6pt 0; border-bottom: 0.5pt dotted #cbd5e1; font-size: 9.2pt; }
+  .toc li .n { color: var(--brand); font-weight: bold; width: 13pt; flex: none; }
+  .toc li .t { flex: 1; }
+  .toc li .p { color: var(--muted); font-size: 8.4pt; }
+  .toc li.sub { font-size: 8.4pt; color: #475569; border-bottom: 0; padding: 1pt 0 1pt 20pt; }
+  .toc li.sub .n { width: 20pt; color: var(--muted); font-weight: normal; }
+
+  .apx table { font-size: 7.4pt; }
+  .apx td { padding: 2.2pt 4pt; }
+  .cols3 { column-count: 3; column-gap: 6mm; font-size: 7.6pt;
+           font-family: 'DejaVu Sans Mono', monospace; }
+  .cols3 div { break-inside: avoid; padding: 0.6pt 0; }
+  .cols4 { column-count: 4; column-gap: 5mm; font-size: 7.2pt;
+           font-family: 'DejaVu Sans Mono', monospace; }
+  .cols4 div { break-inside: avoid; padding: 0.5pt 0; }
+  .cols2 { column-count: 2; column-gap: 6mm; font-size: 7.8pt;
+           font-family: 'DejaVu Sans Mono', monospace; }
+  .cols2 div { break-inside: avoid; padding: 0.6pt 0; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ COVER -->
+<section class="cover">
+  <span class="mark">SYSTEM DOCUMENTATION</span>
+  <h1>Gwave<br><span>System Design &amp;<br>Architecture</span></h1>
+  <div class="sub">Project plan, functional design, AWS infrastructure and
+    database reference for the gwave.cc super-app and its native Android
+    client.</div>
+  <div class="rule"></div>
+  <dl>
+    <dt>Product</dt><dd>Gwave (GreenWave) — https://gwave.cc</dd>
+    <dt>Repository</dt><dd>KoNyein/gwave.ai</dd>
+    <dt>Document</dt><dd>Revision 1.0 · {{DATE}}</dd>
+    <dt>Status</dt><dd>Live production system</dd>
+    <dt>Audience</dt><dd>Engineering, operations, investors, partners</dd>
+  </dl>
+  <div class="stats">
+    <div class="stat"><b>159</b><span>DATABASE TABLES</span></div>
+    <div class="stat"><b>111</b><span>API ROUTES</span></div>
+    <div class="stat"><b>130+</b><span>WEB PAGES</span></div>
+    <div class="stat"><b>2</b><span>CLIENT APPS</span></div>
+  </div>
+  <div class="foot">
+    <span>Generated from the source repository — every figure reflects code in <code style="color:#cdece0;background:none">main</code>.</span>
+    <span>Confidential</span>
+  </div>
+</section>
+
+<!-- ============================================================== TOC -->
+<section class="toc">
+  <h1><span class="num">·</span>Contents</h1>
+  <ol>
+    <li><span class="n">1</span><span class="t">Executive summary</span><span class="p">{{p1}}</span></li>
+    <li><span class="n">2</span><span class="t">Product scope and feature catalogue</span><span class="p">{{p2}}</span></li>
+    <li><span class="n">3</span><span class="t">Application architecture</span><span class="p">{{p3}}</span></li>
+    <li><span class="n">4</span><span class="t">AWS infrastructure</span><span class="p">{{p4}}</span></li>
+    <li><span class="n">5</span><span class="t">Delivery pipeline and environments</span><span class="p">{{p5}}</span></li>
+    <li><span class="n">6</span><span class="t">Security and access control</span><span class="p">{{p6}}</span></li>
+    <li><span class="n">7</span><span class="t">Data model</span><span class="p">{{p7}}</span></li>
+    <li><span class="n">8</span><span class="t">Functional process designs</span><span class="p">{{p8}}</span></li>
+    <li><span class="n">9</span><span class="t">Mobile application</span><span class="p">{{p9}}</span></li>
+    <li><span class="n">10</span><span class="t">Public API and integrations</span><span class="p">{{p10}}</span></li>
+    <li><span class="n">11</span><span class="t">Operations and observability</span><span class="p">{{p11}}</span></li>
+    <li><span class="n">12</span><span class="t">Roadmap, risks and known gaps</span><span class="p">{{p12}}</span></li>
+    <li><span class="n">A</span><span class="t">Appendix A — Web route inventory</span><span class="p">{{pA}}</span></li>
+    <li><span class="n">B</span><span class="t">Appendix B — API route inventory</span><span class="p">{{pB}}</span></li>
+    <li><span class="n">C</span><span class="t">Appendix C — Table inventory by domain</span><span class="p">{{pC}}</span></li>
+    <li><span class="n">D</span><span class="t">Appendix D — Environment variable reference</span><span class="p">{{pD}}</span></li>
+  </ol>
+  <p style="margin-top:8mm;font-size:8.4pt;color:#64748b">
+    This document was assembled directly from the repository: route counts,
+    table names, foreign keys, workflow steps and environment variables were
+    read out of the code and SQL rather than transcribed from memory. Where a
+    design decision has a non-obvious reason, the reason is recorded next to
+    it — those notes are the part of a system that is normally lost.
+  </p>
+</section>
+
+<!-- =========================================================== §1 -->
+<h1><span class="num">1</span>Executive summary</h1>
+<p class="lead">Gwave is a production social super-app for Myanmar users: a
+single Next.js 14 application and a native Flutter Android client, running on
+an all-AWS backend, serving real users today at <code>https://gwave.cc</code>.</p>
+
+<p>What began as a Facebook-style social network for growers has become a
+multi-domain platform. The social core — feed, groups, pages, messenger,
+stories, reels — is only one of six product families. Alongside it run live
+streaming, a wallet and commerce stack, ride hailing, a nine-track learning
+platform, IoT and CCTV monitoring, and a public safety layer. All of it shares
+one identity system, one database, one deployment pipeline and one release
+channel, which is the single most important architectural property of the
+project: <em>one app, one pipeline, one release</em>.</p>
+
+<div class="kpi">
+  <div><b>159</b><span>TABLES ON RDS, RLS ON EVERY ONE</span></div>
+  <div><b>241</b><span>FOREIGN-KEY RELATIONSHIPS</span></div>
+  <div><b>~200</b><span>SQL FUNCTIONS AND TRIGGERS</span></div>
+  <div><b>93</b><span>MIGRATIONS + 48 PATCH FILES</span></div>
+</div>
+
+<h2>1.1 What the system is</h2>
+<table>
+  <caption>System identity at a glance</caption>
+  <thead><tr><th style="width:26%">Dimension</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><b>Product</b></td><td>Gwave — social super-app combining communication, commerce, learning, mobility, sensing and safety in one account.</td></tr>
+    <tr><td><b>Web client</b></td><td>Next.js 14 App Router, TypeScript strict, Tailwind + shadcn/ui, installable PWA. 130+ pages.</td></tr>
+    <tr><td><b>Mobile client</b></td><td>Native Flutter Android app (<code>mobile/</code>, 141 Dart files, 38 feature modules), distributed as a signed APK from <code>gwave.cc/welcome</code>.</td></tr>
+    <tr><td><b>Backend</b></td><td>PostgreSQL on Amazon RDS, exposed by self-hosted PostgREST and a self-hosted Realtime server; S3 + CloudFront storage; Amazon Cognito identity.</td></tr>
+    <tr><td><b>Hosting</b></td><td>Self-hosted on AWS EC2 (ap-southeast-1). Next.js standalone image → ECR → EC2 via SSM. No Vercel, no managed PaaS.</td></tr>
+    <tr><td><b>Media plane</b></td><td>AWS IVS (low-latency + real-time), LiveKit Cloud SFU, coturn TURN relay, Kinesis Video Streams for CCTV.</td></tr>
+    <tr><td><b>Languages</b></td><td>Burmese, English, Thai (<code>my</code> / <code>en</code> / <code>th</code>) with runtime switching and English fallback.</td></tr>
+  </tbody>
+</table>
+
+<h2>1.2 Design principles</h2>
+<p>Six rules govern how the system is extended. They exist because each was
+learned from a production failure, and they are enforced in code review, in the
+repository's own instructions file, and in the deployment scripts.</p>
+
+<div class="grid2">
+  <div class="card"><h4>One app, one pipeline, one release</h4>
+    The mobile app is <code>mobile/</code>, built only by
+    <code>build-flutter-apk.yml</code>, published only to the rolling
+    <code>mobile-latest</code> release. A second app, workflow or channel is
+    never scaffolded — divergence, not scale, is what kills a small team.</div>
+  <div class="card"><h4>Visible state first, side effects second</h4>
+    A broadcast is marked live <em>before</em> any provider call. Recording and
+    restreaming are follow-up updates that may fail without costing anything a
+    person can see. Being live is not a side effect of recording.</div>
+  <div class="card"><h4>Never guess at identity</h4>
+    <code>custom:profile_id</code> is the authoritative account link. Helpers
+    return <code>undefined</code> for failure and <code>null</code> for absent,
+    and a back-fill is only allowed on <code>null</code>. Violating this once
+    destroyed a user's account.</div>
+  <div class="card"><h4>No embeds on hot paths</h4>
+    PostgREST resource embeds die silently behind a stale schema cache. Hot-path
+    client queries are flat; joins are assembled in application code. Messenger,
+    notifications and call verification were all lost to this once.</div>
+  <div class="card"><h4>Data fixes shipped apps</h4>
+    A shipped APK cannot be patched, but the rows it reads can. Sweepers that
+    correct stale state server-side are treated as first-class features, not
+    cleanup jobs.</div>
+  <div class="card"><h4>Money moves only through RPCs</h4>
+    Balances are trigger-protected columns; every transfer is a
+    <code>SECURITY DEFINER</code> function with <code>EXECUTE</code> granted to
+    the service role alone. No client writes a balance.</div>
+</div>
+
+<h2>1.3 Current status</h2>
+<table class="tight">
+  <caption>Subsystem readiness</caption>
+  <thead><tr><th style="width:22%">Subsystem</th><th style="width:13%">Status</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>Web application</td><td><b>Live</b></td><td>main auto-deploys to gwave.cc through ECR + SSM.</td></tr>
+    <tr><td>Android app</td><td><b>Live</b></td><td>Signed APK on every push to <code>mobile/**</code>; in-app update banner; build number visible in Settings.</td></tr>
+    <tr><td>Calls (WebRTC)</td><td><b>Live</b></td><td>coturn TURN relay on the app host; ring inbox, reconnect, callee push.</td></tr>
+    <tr><td>Live streaming</td><td><b>Live</b></td><td>Browser → LiveKit/IVS stage with restream to a low-latency channel; app → IVS RTMPS; replays linked by a one-minute sweeper.</td></tr>
+    <tr><td>Ride hailing</td><td><b>Live</b></td><td>Passenger and driver modes, dispatcher, in-trip SOS, public trip-share link.</td></tr>
+    <tr><td>G-Pay wallet</td><td><b>Live</b></td><td>Top-up, transfer, POS settlement, ride commission settlement, PIN + phone OTP + face KYC.</td></tr>
+    <tr><td>Smart farm / CCTV</td><td><b>Live</b></td><td>MQTT bridge, automation rules, camera HLS and KVS WebRTC.</td></tr>
+    <tr><td>FCM push</td><td><b>Gap</b></td><td>Calls and messages do not ring when the app is closed; web-push covers open browsers only. Needs a Firebase project.</td></tr>
+    <tr><td>LiveKit egress</td><td><b>Gap</b></td><td>Browser Go Live sessions get no replay until static IAM keys for egress are configured.</td></tr>
+    <tr><td>Native iOS</td><td><b>Blocked</b></td><td>Requires Apple Developer Program enrolment. PWA install guide is the interim path.</td></tr>
+  </tbody>
+</table>
+
+<div class="fig">{{fig:context}}<div class="cap">System context. Four client
+classes reach one application tier, which fans out to platform services that are
+all under the project's own AWS account.</div></div>
