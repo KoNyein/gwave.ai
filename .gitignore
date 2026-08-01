@@ -53,3 +53,6 @@ deploy/.env.realtime
 mobile/.dart_tool/
 mobile/build/
 mobile/.flutter-plugins*
+
+# Metaverse server ရဲ့ dependency (သီးခြား npm project)
+/server/metaverse/node_modules

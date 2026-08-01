@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
 import { createHuman, type Avatar, type HumanState } from "./human";
+import { connectMetaverse, type NetClient, type RemoteState } from "./net";
 import { buildWorld, resolveCollision, WORLD_RADIUS } from "./world";
 
 /// Gwave Metaverse ရဲ့ အဓိက client component။
@@ -24,6 +25,36 @@ const EMOTES = [
 
 /// နေ့တစ်ရက် = ၃ မိနစ် (spec)။
 const DAY_SECONDS = 180;
+
+/// WS URL မရှိရင် networking လုံးဝမလုပ်ဘူး — လောကက single-player အဖြစ်
+/// ပုံမှန်ဖွင့်ရမယ်။ (Progressive: server ကျနေရင်လည်း အတူတူပဲ။)
+const WS_URL = process.env.NEXT_PUBLIC_MV_WS_URL || "";
+const ROOM = process.env.NEXT_PUBLIC_MV_ROOM || "city";
+
+/// Player id ကနေ အဝတ်အရောင် — တစ်ယောက်နဲ့တစ်ယောက် ခွဲမြင်ရဖို့။
+/// Server ကနေ အရောင်မပို့ဘဲ id ကနေ တွက်တာက packet မလိုဘဲ တည်ငြိမ်တယ်
+/// (client တိုင်းမှာ id တူရင် အရောင်တူတယ်)။
+const CLOTH_COLORS = [
+  0xe94f37, 0x3f88c5, 0xf6ae2d, 0x44bba4, 0xa06cd5, 0xff8c42, 0x6cc551,
+];
+function colorFor(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return CLOTH_COLORS[h % CLOTH_COLORS.length] ?? 0x44bba4;
+}
+
+type Remote = {
+  avatar: Avatar;
+  /// မျက်နှာပြင်မှာ ပြနေတဲ့ နေရာ (ချောချောလိုက်တယ်)
+  cur: { x: number; y: number; z: number; ry: number };
+  /// Server ကနေ နောက်ဆုံးရလာတဲ့ နေရာ
+  target: { x: number; y: number; z: number; ry: number };
+  name: string;
+  emote: HumanState["emote"];
+  speed: number;
+};
+
+type ChatLine = { id: string; name: string; text: string; at: number };
 
 const WALK_SPEED = 4.2;
 const RUN_SPEED = 8.4;
@@ -47,12 +78,23 @@ export function MetaverseScene() {
   const [ready, setReady] = useState(false);
   const [fps, setFps] = useState(0);
   const [emote, setEmote] = useState<HumanState["emote"]>(null);
+  // ဒီ ၃ ခုက မကြာခဏမပြောင်းလို့ React state နဲ့ ရတယ် (position မဟုတ်ဘူး)
+  const [online, setOnline] = useState(1);
+  const [link, setLink] = useState<"off" | "connecting" | "live" | "auth">(
+    WS_URL ? "connecting" : "off",
+  );
+  const [chat, setChat] = useState<ChatLine[]>([]);
+  const [draft, setDraft] = useState("");
+  const netRef = useRef<NetClient | null>(null);
 
   // Emote ကို ref နဲ့ ကူးထားတယ် — render loop က state ကို closure ထဲ
   // ဖမ်းထားလို့ တိုက်ရိုက်ဖတ်ရင် အဟောင်းပဲ ရမယ်။
   const emoteRef = useRef<HumanState["emote"]>(null);
   useEffect(() => {
     emoteRef.current = emote;
+    // တခြားသူတွေလည်း မြင်ရအောင် — emote က ငြိမ်နေမှ ပေါ်တာမို့ ဒါက
+    // မကြာခဏ ပို့တဲ့ message မဟုတ်ဘူး။
+    netRef.current?.sendEmote(emote);
   }, [emote]);
 
   useEffect(() => {
@@ -103,6 +145,78 @@ export function MetaverseScene() {
       jz: 0,
     };
 
+    // ── Multiplayer ───────────────────────────────────────────────────────
+    const remotes = new Map<string, Remote>();
+
+    const addRemote = (id: string, s: RemoteState) => {
+      if (remotes.has(id)) return;
+      const avatar = createHuman(colorFor(id));
+      avatar.group.position.set(s.x ?? 0, s.y ?? 0, s.z ?? 0);
+      scene.add(avatar.group);
+      remotes.set(id, {
+        avatar,
+        cur: { x: s.x ?? 0, y: s.y ?? 0, z: s.z ?? 0, ry: s.ry ?? 0 },
+        target: { x: s.x ?? 0, y: s.y ?? 0, z: s.z ?? 0, ry: s.ry ?? 0 },
+        name: s.name ?? "Gwave",
+        emote: (s.emote as HumanState["emote"]) ?? null,
+        speed: 0,
+      });
+      setOnline(remotes.size + 1);
+    };
+
+    const dropRemote = (id: string) => {
+      const r = remotes.get(id);
+      if (!r) return;
+      r.avatar.dispose();
+      remotes.delete(id);
+      setOnline(remotes.size + 1);
+    };
+
+    let net: NetClient | null = null;
+    if (WS_URL) {
+      net = connectMetaverse(WS_URL, ROOM, {
+        onInit: ({ players }) => {
+          for (const [id, s] of Object.entries(players)) addRemote(id, s);
+          setLink("live");
+        },
+        onJoin: (id, s) => addRemote(id, s),
+        onLeave: dropRemote,
+        onUpdate: (id, x, y, z, ry) => {
+          const r = remotes.get(id);
+          if (!r) return;
+          // ★ target ကိုပဲ ချိန်တယ် — cur ကို frame တိုင်း ဆွဲသွားမယ်။
+          // တိုက်ရိုက်ထည့်ရင် 15Hz packet အတိုင်း ခုန်ခုန်သွားမယ်။
+          r.target.x = x;
+          r.target.y = y;
+          r.target.z = z;
+          r.target.ry = ry;
+        },
+        onEmote: (id, e) => {
+          const r = remotes.get(id);
+          if (r) r.emote = (e as HumanState["emote"]) ?? null;
+        },
+        onChat: (id, name, text) => {
+          setChat((prev) => [...prev.slice(-40), { id, name, text, at: Date.now() }]);
+        },
+        onName: (id, name) => {
+          const r = remotes.get(id);
+          if (r) r.name = name;
+        },
+        onCorrect: (x, y, z) => {
+          // Server က ငြင်းလိုက်တယ် — server ရဲ့ နေရာက အမှန်။
+          p.x = x;
+          p.y = y;
+          p.z = z;
+        },
+        onStatus: (connected, detail) => {
+          if (connected) setLink("live");
+          else if (detail === "auth") setLink("auth");
+          else setLink("connecting");
+        },
+      });
+      netRef.current = net;
+    }
+
     // ── Keyboard ──────────────────────────────────────────────────────────
     const keyMap: Record<string, keyof Input> = {
       KeyW: "f",
@@ -115,7 +229,15 @@ export function MetaverseScene() {
       ArrowRight: "r",
     };
 
+    // ★ Chat ရိုက်နေတုန်း WASD က လူရုပ်ကို ရွှေ့သွားလို့မရဘူး — စာရိုက်နေရင်း
+    // လောကထဲမှာ ပြေးနေတာ ဖြစ်မယ်။
+    const typing = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA");
+    };
+
     const onKeyDown = (e: KeyboardEvent) => {
+      if (typing(e)) return;
       const k = keyMap[e.code];
       if (k) {
         (input[k] as number) = 1;
@@ -128,6 +250,7 @@ export function MetaverseScene() {
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
+      if (typing(e)) return;
       const k = keyMap[e.code];
       if (k) (input[k] as number) = 0;
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") input.run = false;
@@ -305,6 +428,35 @@ export function MetaverseScene() {
         emote: emoteRef.current,
       });
 
+      // ── တခြား player တွေ ───────────────────────────────────────────────
+      for (const r of remotes.values()) {
+        const dx = r.target.x - r.cur.x;
+        const dz = r.target.z - r.cur.z;
+        const dist = Math.hypot(dx, dz);
+        // ရွှေ့နှုန်းကနေ လမ်းလျှောက်/ပြေး animation ကို ခန့်မှန်းတယ် —
+        // server က speed မပို့ဘူး၊ ပို့ရင် packet ကြီးလာမယ်။
+        r.speed = dist > 0.02 ? Math.min(RUN_SPEED, dist / Math.max(dt, 0.016)) : 0;
+        const k = Math.min(1, 12 * dt);
+        r.cur.x += dx * k;
+        r.cur.z += dz * k;
+        r.cur.y += (r.target.y - r.cur.y) * k;
+        let dry = r.target.ry - r.cur.ry;
+        while (dry > Math.PI) dry -= Math.PI * 2;
+        while (dry < -Math.PI) dry += Math.PI * 2;
+        r.cur.ry += dry * k;
+
+        r.avatar.group.position.set(r.cur.x, r.cur.y, r.cur.z);
+        r.avatar.group.rotation.y = r.cur.ry;
+        r.avatar.update(dt, {
+          speed: r.speed,
+          running: r.speed > 5,
+          airborne: r.cur.y > 0.15,
+          emote: r.emote,
+        });
+      }
+
+      net?.sendUpdate(p.x, p.y, p.z, p.ry);
+
       // ── ကင်မရာ ─────────────────────────────────────────────────────────
       const cp = Math.cos(cam.pitch);
       camera.position.set(
@@ -351,6 +503,10 @@ export function MetaverseScene() {
       jumpBtn?.removeEventListener("pointerdown", jumpDown);
       jumpBtn?.removeEventListener("pointerup", jumpUp);
       jumpBtn?.removeEventListener("pointercancel", jumpUp);
+      net?.close();
+      netRef.current = null;
+      for (const r of remotes.values()) r.avatar.dispose();
+      remotes.clear();
       me.dispose();
       world.dispose();
       renderer.dispose();
@@ -367,8 +523,67 @@ export function MetaverseScene() {
         <div className="hidden sm:block">WASD ရွှေ့ · Shift ပြေး · Space ခုန်</div>
         <div className="hidden sm:block">မောက်စ်ဆွဲ = ကင်မရာ · scroll = zoom</div>
         <div className="sm:hidden">ဘယ်ဘက် joystick · ညာဘက် ခုန်</div>
-        {ready && <div className="mt-1 text-white/50">{fps} fps</div>}
+        {ready && (
+          <div className="mt-1 flex items-center gap-2 text-white/50">
+            <span>{fps} fps</span>
+            <span>·</span>
+            <span
+              className={
+                link === "live"
+                  ? "text-emerald-400"
+                  : link === "auth"
+                    ? "text-amber-400"
+                    : "text-white/40"
+              }
+            >
+              {link === "live"
+                ? `👥 ${online}`
+                : link === "connecting"
+                  ? "ချိတ်နေသည်…"
+                  : link === "auth"
+                    ? "login လိုသည်"
+                    : "တစ်ယောက်တည်း"}
+            </span>
+          </div>
+        )}
       </div>
+
+      {/* ── Chat ─────────────────────────────────────────────────────── */}
+      {link !== "off" && (
+        <div className="absolute bottom-20 left-3 z-10 w-[min(19rem,60vw)] sm:bottom-3 sm:w-72">
+          <div className="mb-1 max-h-40 space-y-0.5 overflow-hidden">
+            {chat.slice(-6).map((c, i) => (
+              <div
+                key={`${c.at}-${i}`}
+                className="w-fit max-w-full rounded bg-black/45 px-2 py-1 text-[11px] leading-snug text-white/90 backdrop-blur"
+              >
+                <span className="font-semibold text-emerald-300">{c.name}</span>{" "}
+                {/* textContent အဖြစ်သာ ထည့်တယ် — innerHTML သုံးရင် chat ကနေ
+                    script ထည့်လို့ရသွားမယ် */}
+                {c.text}
+              </div>
+            ))}
+          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const t = draft.trim();
+              if (!t) return;
+              netRef.current?.sendChat(t);
+              setDraft("");
+            }}
+          >
+            <input
+              data-hud="1"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              maxLength={200}
+              placeholder="စာရိုက်ရန်…"
+              className="w-full rounded-full border border-white/15 bg-black/45 px-3 py-1.5 text-xs text-white outline-none backdrop-blur placeholder:text-white/35 focus:border-emerald-400/60"
+            />
+          </form>
+        </div>
+      )}
 
       {/* Emote bar */}
       <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-2">
