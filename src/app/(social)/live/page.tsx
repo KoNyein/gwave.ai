@@ -5,7 +5,7 @@ import { LayoutDashboard, Plus, Radio, Users } from "lucide-react";
 import { LiveCards, type LiveCardData } from "@/components/live/live-cards";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
-import { listStreams } from "@/lib/db/live";
+import { isBroadcastingNow, listStreams } from "@/lib/db/live";
 import { displayName, liveStreamTitle, timeAgo } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
 
@@ -25,12 +25,19 @@ export default async function LivePage() {
   if (!profile) redirect("/login");
 
   const streams = await listStreams();
-  const liveNow = streams.filter((s) => s.status === "live");
+  // Not `status === "live"`: a row keeps that status when a broadcast dies
+  // without anyone telling us, and filtering on it alone pinned week-old
+  // ghosts to the top of this page forever.
+  const liveNow = streams.filter(isBroadcastingNow);
   // Same cleanup the app got: an ended broadcast with nothing to play, or a
   // "waiting" row someone abandoned hours ago, is dead weight that makes the
   // page look broken. Show replays (and my own recent drafts) only.
   const staleMs = 2 * 60 * 60 * 1000;
   const rest = streams.filter((s) => {
+    if (isBroadcastingNow(s)) return false;
+    // A stale "live" row is a past broadcast: it belongs here if it left a
+    // replay, and nowhere at all if it didn't. Previously it fell through
+    // both filters and appeared only in Live now.
     if (s.status === "live") return false;
     if (s.status === "ended") return Boolean(s.recording_path);
     const mine = s.host_id === profile.id;

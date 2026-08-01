@@ -87,30 +87,68 @@ export async function mintIvsStageToken(opts: {
 }
 
 /**
- * Start a composite recording of the stage to S3. Returns the composition ARN
- * (needed to stop it), or null when recording isn't configured / fails — a
- * recording failure must never block going live.
+ * Composite the stage, and send that composite where people can actually watch
+ * it. Returns the composition ARN (needed to stop it), or null on failure — a
+ * composition failure must never block going live.
+ *
+ * Two destinations, for two different audiences:
+ *
+ *  - **channel** — the composite is restreamed into an IVS Low-Latency channel,
+ *    which publishes an ordinary HLS URL. This is what makes a browser
+ *    broadcast watchable *at all* outside a browser. A stage is a WebRTC SFU:
+ *    joining one needs the IVS Real-Time SDK, which the Flutter app does not
+ *    have and cannot get. Without this the app could list a live broadcast,
+ *    show its LIVE badge and its viewer count, and then render a grey
+ *    placeholder where the video should be — which is exactly what it did.
+ *  - **s3** — the replay, as before.
+ *
+ * Each is optional and independent: no channel and it still records; no
+ * storage config and it is still watchable. Passing neither is not an error,
+ * it just means there is nothing to compose to, so we don't call AWS at all.
  */
 export async function startIvsComposition(
   stageArn: string,
+  channelArn?: string | null,
+  { record = true }: { record?: boolean } = {},
 ): Promise<string | null> {
-  if (!ivsRtRecordingConfigured()) return null;
+  const encoder = process.env.IVS_RT_ENCODER_CONFIG_ARN;
+  // The encoder configuration describes the composite frame itself, so it is
+  // required by both destinations. Without it there is nothing to compose.
+  if (!encoder) {
+    console.info(
+      "[ivs-rt] Composition skipped: IVS_RT_ENCODER_CONFIG_ARN is not set, " +
+        "so browser broadcasts have no HLS output and no replay.",
+    );
+    return null;
+  }
+
+  const destinations = [];
+  if (channelArn) {
+    destinations.push({
+      channel: { channelArn, encoderConfigurationArn: encoder },
+    });
+  }
+  if (record && ivsRtRecordingConfigured()) {
+    destinations.push({
+      s3: {
+        storageConfigurationArn: process.env.IVS_RT_STORAGE_CONFIG_ARN!,
+        encoderConfigurationArns: [encoder],
+      },
+    });
+  }
+  if (destinations.length === 0) return null;
+
   try {
     const res = await rtClient().send(
-      new StartCompositionCommand({
-        stageArn,
-        destinations: [
-          {
-            s3: {
-              storageConfigurationArn: process.env.IVS_RT_STORAGE_CONFIG_ARN!,
-              encoderConfigurationArns: [process.env.IVS_RT_ENCODER_CONFIG_ARN!],
-            },
-          },
-        ],
-      }),
+      new StartCompositionCommand({ stageArn, destinations }),
     );
     return res.composition?.arn ?? null;
-  } catch {
+  } catch (e) {
+    console.warn(
+      "[ivs-rt] StartComposition failed — this broadcast will have no HLS " +
+        "output and no replay:",
+      e instanceof Error ? e.message : e,
+    );
     return null;
   }
 }
@@ -149,6 +187,42 @@ export async function stopIvsComposition(
     };
   } catch {
     return { recordingPath: null };
+  }
+}
+
+/**
+ * Where a composition's recording landed, without stopping anything.
+ *
+ * `stopIvsComposition` does this too, but it only gets one chance: it runs
+ * when the host ends the broadcast, and IVS writes
+ * `events/recording-ended.json` asynchronously after that. Miss the window and
+ * the row keeps a null `recording_path` with nothing left to look again — the
+ * replay sweeper skips stage broadcasts, because their recording lands at the
+ * composition's prefix rather than the channel's.
+ *
+ * So the sweeper calls this instead. One retry pass only: the cron comes back
+ * in a minute, which is a better place to be patient than inside a request.
+ */
+export async function resolveIvsCompositionRecording(
+  compositionArn: string,
+): Promise<string | null> {
+  try {
+    const res = await rtClient().send(
+      new GetCompositionCommand({ arn: compositionArn }),
+    );
+    const s3 = res.composition?.destinations?.find((d) => d.detail?.s3)?.detail
+      ?.s3 as { recordingPrefix?: string } | undefined;
+    if (!s3?.recordingPrefix) return null;
+    return await readIvsRecordingManifest(s3.recordingPrefix, {
+      attempts: 1,
+      delayMs: 0,
+    });
+  } catch (e) {
+    console.warn(
+      "[ivs-rt] Could not resolve a composition recording:",
+      e instanceof Error ? e.message : e,
+    );
+    return null;
   }
 }
 

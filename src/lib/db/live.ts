@@ -27,6 +27,31 @@ const HOST_SELECT =
  */
 const STALE_LIVE_HOURS = 12;
 
+/**
+ * Is this row a broadcast that is actually happening?
+ *
+ * `status` alone is not enough and never was — the whole point of
+ * STALE_LIVE_HOURS is that a row can say "live" long after the broadcast died.
+ * The queries below applied that cutoff and then the /live page re-split the
+ * combined result on `status === "live"` alone, which put every stale row
+ * straight back at the top of "Live now". A broadcast from a week ago sat
+ * there under a pulsing LIVE badge, and it was excluded from Recent
+ * broadcasts too — visible only in the one place where it was a lie.
+ *
+ * So the rule lives here, once, and every caller uses it.
+ */
+export function isBroadcastingNow(stream: {
+  status: string;
+  started_at?: string | null;
+}): boolean {
+  if (stream.status !== "live") return false;
+  if (!stream.started_at) return false;
+  return (
+    Date.now() - new Date(stream.started_at).getTime() <
+    STALE_LIVE_HOURS * 60 * 60 * 1000
+  );
+}
+
 /** A compact currently-live entry for the feed "Live now" rail. */
 export interface LiveNowEntry {
   id: string;

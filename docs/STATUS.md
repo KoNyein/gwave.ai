@@ -20,6 +20,9 @@
   (`/api/mobile/call/notify`). Web ring verification is embed-free.
 - **Live**: browser→LiveKit, app-broadcast→IVS. IVS auto-records to S3;
   `latestIvsRecordingPath()` links `recording_path` on end/verify, and
+  `/api/live/recordings/sweep` (one-minute cron) links the ones that finalise
+  after the host has already tapped End — without it, long broadcasts silently
+  never got a replay (four out of ten in production), and
   `/recordings/[...path]` streams replays through the domain (app + web).
   Media-plane self-heal on `/api/mobile/live/verify`, `/api/mobile/live/token`
   and the web watch page marks dead lives ended (LiveKit host-absent or IVS
@@ -51,6 +54,66 @@
 
 ## Changelog
 
+- 2026-07-31 (web): **The live worked; the post announcing it didn't.** Moving
+  the status update ahead of the provider call fixed "nobody can see the
+  broadcast" and left the feed announcement stranded behind the same abort —
+  so the broadcast appeared and the post pointing at it never did, and hosts
+  couldn't find their own live afterwards. Everything a person sees (live,
+  in the feed, followers notified) now happens before any AWS call; the
+  replay/restream work is last and may be cut short without costing anything
+  visible.
+
+- 2026-07-31 (web): **Nineteen minutes of broadcasting that nobody could see.**
+  `goLive` marked the row `live` *last*, after awaiting the provider's
+  recording/restream call. The host component fires that action without
+  awaiting it (`void goLive(id)`), so a re-render or navigation aborts the
+  request and Next tears the action down where it stands —
+  `TypeError: Invalid state: Controller is already closed`. A host published to
+  their IVS stage for 19 minutes (AWS: `published: true` for the whole session)
+  while the row sat at `idle` and every viewer saw nothing. It had worked an
+  hour earlier only because the composition ARNs weren't configured yet, so the
+  AWS call returned instantly and beat the abort. Being live is not a side
+  effect of recording: the status is now written first, on its own, and the
+  provider work is a second update that may or may not survive. The sweeper
+  also starts compositions for live stages missing one, so a torn-down action
+  heals within a minute.
+
+- 2026-07-31 (web): **A week-old broadcast pinned to the top of Live now.**
+  `listStreams()` applies a 12-hour staleness cutoff — and then `/live`
+  re-split the combined result on `status === "live"` alone, which put every
+  stale row straight back where the cutoff had removed it. A broadcast from
+  Jul 24 sat under a pulsing LIVE badge with a viewer count, playing nothing,
+  and was filtered *out* of Recent broadcasts — visible only in the one place
+  where it was a lie. The rule is now one exported `isBroadcastingNow()` used
+  by both halves. The sweeper also ends stale rows outright (`ended_at` = the
+  row's own `started_at`, not the moment a cron noticed), which corrects the
+  Flutter app too — it read the same ghost, and data is the only thing that
+  fixes a shipped APK without shipping another.
+
+- 2026-07-31 (web): **Browser broadcasts were unwatchable on phones.** Browser
+  Go Live creates an IVS Real-Time *stage*, and a stage is a WebRTC SFU: only
+  an IVS Real-Time SDK can subscribe to one, which the Flutter app has none of
+  and cannot get. So the app listed the broadcast, showed its LIVE badge and
+  its viewer count, and rendered a grey placeholder where the video should be.
+  Every stage broadcast now also gets a Low-Latency channel, and the
+  composition restreams the mixed stage into it — so the same HLS URL the app,
+  the web player, the feed card and the live rail already play works for
+  browser broadcasts too. The composition also runs when the host turns Record
+  *off*: it is how the broadcast reaches an HLS URL, not only how a replay gets
+  written, and "don't record me" must not mean "hide me from every phone".
+
+- 2026-07-31 (web): **Replays that finalised too late to be caught.** IVS
+  finishes writing a recording to S3 *after* the broadcast stops, and how long
+  depends on the length of the stream, but the end routes looked the file up
+  the instant the host tapped End and never looked again. Short broadcasts got
+  a replay, long ones silently never did — six of the last ten, all with
+  recording on and all genuinely recorded; the files were in the bucket, only
+  the row was missing a path. `/api/live/recordings/sweep` now re-checks ended
+  broadcasts on a one-minute cron until the file appears or a day has passed
+  (`?hours=` up to 720 for a one-off catch-up over history). Idempotent, and
+  harmless alongside the EventBridge webhook that is meant to do this — a row
+  that already has a path is never selected. Uses `LIVE_SWEEP_SECRET`, falling
+  back to `RIDE_DISPATCH_SECRET`, so it needs no new env.
 - 2026-07-31 (app): **Music keeps playing when you leave the player.** The
   `AudioPlayer` lived in `AudioTrackScreen`'s state — and a second one in
   `LocalMusicScreen` — and both `dispose()`d it, so backing out of the player

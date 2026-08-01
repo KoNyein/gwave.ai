@@ -191,7 +191,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
 
   const providerCols =
     process.env.NEXT_PUBLIC_LIVE_PROVIDER === "ivs"
-      ? ", ivs_stage_arn"
+      ? ", ivs_stage_arn, ivs_channel_arn"
       : "";
   const { data: stream } = await db
     .from("live_streams")
@@ -209,6 +209,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
       livekit_room: string | null;
       agora_channel: string | null;
       ivs_stage_arn?: string | null;
+      ivs_channel_arn?: string | null;
     }>();
   if (!stream) return { ok: false, error: "Stream not found" };
   if (stream.host_id !== user.id) return { ok: false, error: "Host only" };
@@ -224,36 +225,33 @@ export async function goLive(streamId: string): Promise<ActionResult> {
   // only read/written when the relevant provider is configured, so a deploy that
   // predates a recording migration leaves go-live untouched.
   // Gated by the host's Record choice (international "record → replay" standard).
-  const extra: Record<string, string | null> = {};
-  if (!stream.record_enabled) {
-    // Host turned Record off — no replay saved.
-  } else if (stream.livekit_room && egressConfigured()) {
-    const rec = await startRoomRecording(stream.livekit_room);
-    if (rec) {
-      extra.recording_egress_id = rec.egressId;
-      extra.recording_path = null;
-    }
-  } else if (stream.agora_channel && agoraRecordingConfigured()) {
-    const rec = await startAgoraRecording(stream.agora_channel);
-    if (rec) {
-      extra.agora_resource_id = rec.resourceId;
-      extra.agora_recording_sid = rec.sid;
-      extra.recording_path = null;
-    }
-  } else if (stream.ivs_stage_arn) {
-    const arn = await startIvsComposition(stream.ivs_stage_arn);
-    if (arn) {
-      extra.ivs_composition_arn = arn;
-      extra.recording_path = null;
-    }
-  }
-
+  // ── Mark it live FIRST, before any provider call ──────────────────────────
+  //
+  // This update used to come last, after awaiting whichever recording/restream
+  // the provider needed. That made the one fact the whole product depends on —
+  // "this broadcast is happening" — conditional on an AWS round trip finishing.
+  //
+  // It doesn't always finish. The host component fires this action and does not
+  // await it (`void goLive(id)`), so a re-render or a navigation aborts the
+  // request mid-flight, and Next tears the action down where it stands:
+  //
+  //     ⨯ uncaughtException: [TypeError: Invalid state: Controller is already
+  //       closed] { code: 'ERR_INVALID_STATE' }
+  //
+  // Which is exactly what happened in production. A host published to their
+  // stage for nineteen minutes — AWS confirms `published: true` for the whole
+  // session — while the row sat at `idle`, so the app and the web listed
+  // nothing and every viewer saw an empty page. It had worked the hour before
+  // only because the composition ARNs weren't configured yet, so the AWS call
+  // returned instantly and the update squeaked in ahead of the abort.
+  //
+  // Being live is not a side effect of recording. Write it first, on its own,
+  // and let everything else be an improvement on top.
   const { error } = await db
     .from("live_streams")
     .update({
       status: "live",
       started_at: stream.started_at ?? new Date().toISOString(),
-      ...extra,
     })
     .eq("id", stream.id)
     .eq("host_id", user.id);
@@ -291,6 +289,68 @@ export async function goLive(streamId: string): Promise<ActionResult> {
         announcementPostId,
       }),
     );
+  }
+
+  // ── Then the provider work, which may or may not survive ──────────────────
+  //
+  // Everything above this line is what a person sees: the broadcast is live,
+  // it is in the feed, followers have been told. Everything below is an
+  // improvement on that — a replay, an HLS restream — and none of it may come
+  // between a host going live and the feed knowing about it.
+  //
+  // Moving the status update up but leaving the announcement down here traded
+  // one missing thing for another: the broadcast appeared, and the post that
+  // points at it did not, so nobody could find it afterwards. An abort in the
+  // AWS call must not be able to swallow a feed post.
+  //
+  // If this half is cut short the broadcast is still live, still in the feed
+  // and still watchable; it just has no replay yet. The sweeper starts
+  // compositions for live stages that are missing one, so even a torn-down
+  // action heals within a minute.
+  const extra: Record<string, string | null> = {};
+  if (stream.ivs_stage_arn) {
+    // Deliberately outside the record_enabled gate. For a stage the
+    // composition is not only how the replay gets written — it is also how the
+    // broadcast reaches an HLS URL, and therefore how anyone not on a browser
+    // watches it at all. A host who turns Record off is asking not to be
+    // recorded, not to be invisible to every phone in the app. record_enabled
+    // decides the S3 destination and nothing else.
+    const arn = await startIvsComposition(
+      stream.ivs_stage_arn,
+      stream.ivs_channel_arn,
+      { record: stream.record_enabled },
+    );
+    if (arn) {
+      extra.ivs_composition_arn = arn;
+      extra.recording_path = null;
+    }
+  } else if (!stream.record_enabled) {
+    // Host turned Record off — no replay saved.
+  } else if (stream.livekit_room && egressConfigured()) {
+    const rec = await startRoomRecording(stream.livekit_room);
+    if (rec) {
+      extra.recording_egress_id = rec.egressId;
+      extra.recording_path = null;
+    }
+  } else if (stream.agora_channel && agoraRecordingConfigured()) {
+    const rec = await startAgoraRecording(stream.agora_channel);
+    if (rec) {
+      extra.agora_resource_id = rec.resourceId;
+      extra.agora_recording_sid = rec.sid;
+      extra.recording_path = null;
+    }
+  }
+
+  if (Object.keys(extra).length > 0) {
+    const { error: recErr } = await db
+      .from("live_streams")
+      .update(extra)
+      .eq("id", stream.id)
+      .eq("host_id", user.id);
+    if (recErr) {
+      // Not fatal: the broadcast is live either way.
+      console.warn("[live/goLive] recording columns not saved:", recErr.message);
+    }
   }
 
   revalidatePath(`/live/${streamId}`);

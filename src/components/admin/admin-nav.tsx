@@ -22,6 +22,7 @@ import {
   type LucideIcon,
   Wifi,
   Search as SearchIcon,
+  Car,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -72,6 +73,7 @@ const SECTIONS: AdminNavSection[] = [
       { href: "/admin/moderation", label: "Moderation", icon: ShieldAlert },
       { href: "/admin/places", label: "Places", icon: MapPin },
       { href: "/admin/mines", label: "Mine sites", icon: Mountain },
+      { href: "/admin/drivers", label: "Drivers", icon: Car },
       { href: "/admin/games", label: "Games", icon: Gamepad2 },
       { href: "/admin/audio", label: "Audio", icon: Music },
     ],
