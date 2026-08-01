@@ -7,12 +7,13 @@ import { createSpatialAudio, type SpatialAudio } from "./audio";
 import { createHuman, type Avatar, type HumanState } from "./human";
 import { buildLandmarks, type Landmark } from "./landmarks";
 import { attachLiveScreen, type LiveScreen } from "./livescreen";
+import { getMap, MAP_LIST } from "./maps";
 import { createMinimap } from "./minimap";
 import { createNametags } from "./nametags";
 import { connectMetaverse, type NetClient, type RemoteState } from "./net";
 import { createPostFx } from "./postfx";
 import { createQuality } from "./quality";
-import { buildWorld, resolveCollision, WORLD_RADIUS } from "./world";
+import { buildWorld, resolveCollision } from "./world";
 
 /// Gwave Metaverse ရဲ့ အဓိက client component။
 ///
@@ -36,7 +37,11 @@ const DAY_SECONDS = 180;
 /// WS URL မရှိရင် networking လုံးဝမလုပ်ဘူး — လောကက single-player အဖြစ်
 /// ပုံမှန်ဖွင့်ရမယ်။ (Progressive: server ကျနေရင်လည်း အတူတူပဲ။)
 const WS_URL = process.env.NEXT_PUBLIC_MV_WS_URL || "";
-const ROOM = process.env.NEXT_PUBLIC_MV_ROOM || "city";
+const DEFAULT_ROOM = process.env.NEXT_PUBLIC_MV_ROOM || "city";
+
+/// ရွေးထားတဲ့ map ကို မှတ်ထားတယ် — ဝင်တိုင်း မြို့ကနေ ပြန်စရရင်
+/// နှစ်သက်ရာ map ရှိသူအတွက် အနှောင့်အယှက်။
+const MAP_KEY = "gw.mv.map";
 /// မြို့လယ် မျက်နှာပြင်ရဲ့ default stream။ တကယ် live ရှိရင် board API က
 /// အဲဒါကို ကျော်ပြီး အသုံးပြုတယ်။
 const IVS_URL = process.env.NEXT_PUBLIC_IVS_PLAYBACK_URL || "";
@@ -121,6 +126,10 @@ export function MetaverseScene() {
   /// လောကထဲက နာရီ — HUD မှာ ပြဖို့ (player အားလုံး တူညီရမယ်)
   const [clock, setClock] = useState("");
   const [nearby, setNearby] = useState<Landmark | null>(null);
+  /// ★ Map ပြောင်းရင် scene တစ်ခုလုံး ပြန်ဆောက်တယ် (effect ရဲ့ dependency)
+  /// — map တစ်ခုချင်းက သီးခြားလောက ဖြစ်လို့ ကြားခံ state ကျန်ခဲ့လို့မရဘူး။
+  const [roomId, setRoomId] = useState(DEFAULT_ROOM);
+  const [picker, setPicker] = useState(false);
   const tagsRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<SpatialAudio | null>(null);
   const bloomRef = useRef(true);
@@ -156,6 +165,8 @@ export function MetaverseScene() {
   useEffect(() => {
     if (window.localStorage.getItem(BLOOM_KEY) === "0") setBloom(false);
     if (window.localStorage.getItem(SHADOW_KEY) === "0") setShadows(false);
+    const saved = window.localStorage.getItem(MAP_KEY);
+    if (saved) setRoomId(saved);
   }, []);
 
   // render loop က ref ကနေ ဖတ်တယ် — state ကို closure ထဲ ဖမ်းထားလို့
@@ -208,9 +219,16 @@ export function MetaverseScene() {
     }
   };
 
+  const chooseMap = (id: string) => {
+    window.localStorage.setItem(MAP_KEY, id);
+    setPicker(false);
+    setRoomId(id);
+  };
+
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
+    const map = getMap(roomId);
 
     // ── Renderer ──────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({
@@ -235,7 +253,7 @@ export function MetaverseScene() {
       500,
     );
 
-    const world = buildWorld(scene);
+    const world = buildWorld(scene, map);
 
     // ── အရိပ် ───────────────────────────────────────────────────────────
     // ★ `renderer.shadowMap.enabled` ကို ပြောင်းပြီး material တွေကို
@@ -272,14 +290,18 @@ export function MetaverseScene() {
     // ★ mutable holder — board API က တကယ့် live URL ပြန်လာရင် အသစ်နဲ့
     // အစားထိုးတယ်။ Effect က ပြီးသွားပြီးမှ fetch ပြန်လာနိုင်လို့ cleanup က
     // ဒီ holder ကနေသာ dispose လုပ်ရမယ်။
-    let screen: LiveScreen = attachLiveScreen(world.screenMesh, IVS_URL);
+    // ★ map မှာ live screen မရှိရင် attach မလုပ်ဘူး — နှင်းတောင်ထိပ်မှာ
+    // ကြော်ငြာဆိုင်းဘုတ်ကြီး မလိုဘူး။
+    let screen: LiveScreen | null = world.screenMesh
+      ? attachLiveScreen(world.screenMesh, IVS_URL)
+      : null;
     let liveUrl = IVS_URL;
     let killed = false;
 
     // ── Minimap ────────────────────────────────────────────────────────────
     const mapCanvas = mapRef.current;
     const minimap = mapCanvas
-      ? createMinimap(mapCanvas, world.colliders, WORLD_RADIUS)
+      ? createMinimap(mapCanvas, world.colliders, world.walkRadius)
       : null;
 
     // ── Spatial audio ─────────────────────────────────────────────────────
@@ -306,8 +328,15 @@ export function MetaverseScene() {
     scene.add(me.group);
 
     // Player ရဲ့ အခြေအနေ — ★ React state မဟုတ်၊ mutable object
-    const p = { x: 0, y: 0, z: 12, ry: Math.PI, vy: 0, airborne: false };
-    const cam = { yaw: Math.PI, pitch: 0.34, dist: 7.5 };
+    const p = {
+      x: map.spawn.x,
+      y: map.spawn.y,
+      z: map.spawn.z,
+      ry: map.spawn.ry,
+      vy: 0,
+      airborne: false,
+    };
+    const cam = { yaw: map.spawn.ry, pitch: 0.34, dist: 7.5 };
 
     const input: Input = {
       f: 0,
@@ -362,7 +391,7 @@ export function MetaverseScene() {
 
     let net: NetClient | null = null;
     if (WS_URL) {
-      net = connectMetaverse(WS_URL, ROOM, {
+      net = connectMetaverse(WS_URL, roomId, {
         onInit: ({ players, name, authed, serverTime }) => {
           for (const [id, s] of Object.entries(players)) addRemote(id, s);
           setMeName(name);
@@ -568,9 +597,9 @@ export function MetaverseScene() {
         if (killed || !data) return;
         landmarks.setNotices(data.posts ?? []);
         const url = data.live?.url;
-        if (url && url !== liveUrl) {
+        if (url && url !== liveUrl && world.screenMesh) {
           // တကယ် live ရှိရင် env ထဲက default ကို အစားထိုးတယ်
-          screen.dispose();
+          screen?.dispose();
           screen = attachLiveScreen(world.screenMesh, url);
           liveUrl = url;
         }
@@ -632,7 +661,7 @@ export function MetaverseScene() {
       if (speed > 0) {
         const nx = p.x + dirX * speed * dt;
         const nz = p.z + dirZ * speed * dt;
-        const solved = resolveCollision(nx, nz, p.x, p.z, world.colliders, WORLD_RADIUS);
+        const solved = resolveCollision(nx, nz, p.x, p.z, world.colliders, world.walkRadius);
         p.x = solved.x;
         p.z = solved.z;
         // မျက်နှာမူရာ — ရုတ်တရက်မလှည့်ဘဲ ချောချောလှည့်
@@ -715,7 +744,10 @@ export function MetaverseScene() {
       // စက်ကောင်းတဲ့ဖုန်းနဲ့ နောက်တစ်ခါဝင်ရင် သူ့ရွေးချယ်မှု ပြန်ရမယ်။
       postfx.enabled = bloomRef.current && !degradedRef.current;
       postfx.setDaylight(daylight);
-      screen.update(p.x, p.z);
+      screen?.update(p.x, p.z);
+      // ★ ဝေးတဲ့အခန်းထဲက ပရိဘောဂတွေကို ဖျောက် — အခန်း ၁၉ ခုစလုံး
+      // အမြဲဆွဲနေရင် ဖုန်းအဟောင်းမှာ မတင်ဘူး
+      world.updateInteriors(p.x, p.z);
       minimap?.draw(p, remoteViews());
       nametags?.update(camera, mount.clientWidth, mount.clientHeight, taggable());
       postfx.render();
@@ -798,7 +830,7 @@ export function MetaverseScene() {
       remotes.clear();
       me.dispose();
       // ★ screen က fetch ပြီးမှ အစားထိုးခံရနိုင်လို့ holder ကနေ dispose လုပ်တယ်
-      screen.dispose();
+      screen?.dispose();
       minimap?.dispose();
       nametags?.dispose();
       shadowRef.current = null;
@@ -812,7 +844,9 @@ export function MetaverseScene() {
       renderer.forceContextLoss();
       if (el.parentNode === mount) mount.removeChild(el);
     };
-  }, []);
+    // ★ roomId ပြောင်းရင် အားလုံး ပြန်ဆောက်တယ် — cleanup က renderer,
+    // geometry, material, socket အကုန် ရှင်းပြီးမှ အသစ် စတယ်။
+  }, [roomId]);
 
   return (
     <div ref={mountRef} className="relative h-full w-full">
@@ -1021,6 +1055,48 @@ export function MetaverseScene() {
           </div>
         )}
       </div>
+
+      {/* ── 🌍 Map ရွေးချယ်မှု ─────────────────────────────────────────
+          Map တစ်ခုချင်းက server ဘက်မှာ သီးခြား room — တစ်ခုထဲက လူတွေက
+          ကျန်တဲ့ map ကလူတွေကို မမြင်ရဘူး။ */}
+      <button
+        data-hud="1"
+        onClick={() => setPicker((v) => !v)}
+        title="လောကရွေးရန်"
+        className="absolute left-3 top-24 z-20 rounded-lg border border-white/15 bg-black/50 px-2.5 py-1.5 text-[11px] text-white/80 backdrop-blur hover:bg-black/70 sm:top-28"
+      >
+        🌍 {getMap(roomId).emoji} {getMap(roomId).name}
+      </button>
+
+      {picker && (
+        <div
+          data-hud="1"
+          className="absolute left-3 top-36 z-20 w-[min(20rem,80vw)] space-y-1.5 rounded-xl border border-white/15 bg-black/70 p-2 backdrop-blur sm:top-40"
+        >
+          {MAP_LIST.map((m) => (
+            <button
+              key={m.id}
+              data-hud="1"
+              onClick={() => chooseMap(m.id)}
+              className={`flex w-full items-start gap-2.5 rounded-lg border px-2.5 py-2 text-left transition ${
+                m.id === roomId
+                  ? "border-emerald-400/60 bg-emerald-500/15"
+                  : "border-white/10 bg-white/5 hover:bg-white/10"
+              }`}
+            >
+              <span className="text-xl leading-none">{m.emoji}</span>
+              <span className="min-w-0">
+                <span className="block text-xs font-semibold text-white/90">
+                  {m.name}
+                </span>
+                <span className="block text-[10px] leading-snug text-white/55">
+                  {m.blurb}
+                </span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Landmark — အနားရောက်မှ ပေါ်တယ် ───────────────────────────── */}
       {nearby && (

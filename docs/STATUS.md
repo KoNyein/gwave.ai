@@ -61,6 +61,28 @@
 
 ## Changelog
 
+- 2026-08-02 (web): **Metaverse — phase 8, four worlds from data files.** The
+  world engine no longer knows anything about Gwave City. `world.ts` reads a
+  `MapDef` and builds it; what is in a map lives only in
+  `src/components/metaverse/maps/*.ts`. Adding a fifth world means writing one
+  data file and registering it — the engine is never touched again.
+  Four maps ship: 🏙️ မြို့တော် (neon city, live screen), 🌾 စိမ်းလန်းချိုင့်ဝှမ်း
+  (rolling farmland, greenhouse wired to the hydroponic dashboard), ❄️
+  နှင်းတောင်ထိပ် (snow peaks, thick fog that is both a mood and a frame-rate
+  saving), and ☁️ ကောင်းကင်ကျွန်းများ (seven islands floating in a pink sky).
+  A 🌍 button switches between them; each is a separate server room, so the
+  people in one cannot see the people in another, and the choice is remembered.
+  Twenty rooms are enterable — walls built as a shell with the doorway left out
+  of the collider, so you walk straight in with no loading screen — and their
+  furniture only renders within 25 m.
+  **Two things the screenshots caught that types could not**: the sky map drew
+  the full ground disc under the islands, so seven floating islands read as
+  rocks on a lawn — the giveaway that the whole point of the map was gone; and
+  the live screen was built into every map, so a 16-metre advertising hoarding
+  stood on the snow peak. Both fixed, plus a walkable radius so you cannot
+  stroll off a floating island into open sky (island-to-island travel is drones,
+  phase 11).
+
 - 2026-08-02 (web): **Metaverse — phase 7, Web3 as a side door.** Wallets are
   an addition, never a requirement: with no wallet, no RPC and no contracts
   the world is exactly as complete as before — verified by walking it with
