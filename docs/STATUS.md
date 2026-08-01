@@ -65,6 +65,12 @@
   the recording configuration attached when the host asked for a replay, the
   S3 destination is gone, and the existing sweeper links stage rows exactly
   like any other. One mechanism, both kinds of live.
+- 2026-08-01 (web): **The host could not see their phone viewers.** The web
+  viewer count came only from a Realtime presence channel, which the Flutter
+  app never joins — so a host broadcasting from a browser read "1 viewer" while
+  two phones watched. `live_heartbeat()` already *returns* the real count (both
+  clients call it; it counts presence rows from the last 25s) and the return
+  value was being discarded. The badge now shows the larger of the two.
 
 - 2026-08-01 (web): **The recording destination can have its own encoder.**
   A composition with a channel destination and an S3 destination sharing one
