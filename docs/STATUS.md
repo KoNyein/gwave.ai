@@ -51,8 +51,39 @@
   Go Live sessions get replays like app broadcasts do.
 - Native iOS app (Apple Developer Program, $99/yr, user-side).
 - Old Vercel project deletion (user-side).
+- Metaverse infrastructure (user-side, console/CLI — this container cannot
+  reach AWS): `db/sql/metaverse.sql` applied to RDS, `MV_TICKET_SECRET` and
+  `DATABASE_URL` in Secrets Manager, ECR repo + ECS service, ALB with
+  `idle_timeout=300` and stickiness, ACM cert and Route 53 record for
+  `mv.gwave.cc`, then `NEXT_PUBLIC_MV_WS_URL` in `/etc/gwave-web.env` and a
+  rebuild (it is baked at build time). Commands in
+  `server/metaverse/README.md`.
 
 ## Changelog
+
+- 2026-08-02 (web): **Metaverse — phase 4, RDS persistence.** Sign in, walk
+  somewhere, close the tab, come back: you are where you left off. The
+  position lives in the task's memory and reaches Postgres only on a 30-second
+  sweep of players who actually moved, on disconnect, and on SIGTERM — **two
+  writes per player per minute**, verified by counting rows from a trigger
+  while a client sent 15Hz updates for 65 seconds (975 updates in, 2 writes
+  out). Writing every update would have been 1 500 writes/second at 100
+  players, which `db.t4g.micro` will not survive. A saved position is only
+  restored when the room matches, or a farm coordinate would drop you inside a
+  city wall. Guests are never written to `mv_players` (their id changes every
+  session and is not in `profiles`) but their **chat is** logged, since that is
+  what moderation actually needs; chat older than 30 days is purged hourly.
+  If the database is down the world still opens — nobody is ever denied entry
+  over a failed query. New tables in `db/sql/metaverse.sql`
+  (`mv_players`, `mv_wallet_nonces`, `mv_plots`, `mv_chat_log`), all sealed:
+  RLS enabled with zero policies, since PostgREST never reads them — the
+  metaverse server holds its own connection. **User-side**: apply that file to
+  RDS and put `DATABASE_URL` in Secrets Manager for the ECS task (the task
+  definition already references it; it must never be plain text). Two bugs
+  found by testing rather than by typechecking: the pool forced TLS on
+  anything that was not literally `localhost`, which breaks a unix-socket or
+  `sslmode=`-carrying URL, and each 30-second flush rounded 0.5 minutes up to
+  1, so an hour in the world would have been recorded as two.
 
 - 2026-08-02 (web): **Metaverse — phases 0-3.** `gwave.cc/metaverse` is a
   three.js world with a procedural avatar (no GLB download: the first person to

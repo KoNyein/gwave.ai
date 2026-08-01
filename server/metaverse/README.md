@@ -33,6 +33,38 @@ Close code — `4001` auth လိုတယ် (client က retry မလုပ်�
 | `PORT` | default 8080 |
 | `REQUIRE_AUTH` | `true` ဆိုရင် ticket မပါတဲ့သူကို `4001` နဲ့ ပိတ် |
 | `MV_TICKET_SECRET` | Next.js ရဲ့ `/api/metaverse/ws-ticket` နဲ့ **တူရမယ်** |
+| `DATABASE_URL` | RDS persistence။ မထည့်ရင် လောကက ပုံမှန်အလုပ်လုပ်ပြီး နေရာ မမှတ်ဘူး |
+
+★ `MV_TICKET_SECRET` နဲ့ `DATABASE_URL` ကို task-definition ရဲ့ `environment`
+ထဲ **plain text မထည့်ရ** — `secrets` field နဲ့ Secrets Manager ARN ကိုသာ
+ညွှန်းရမယ် (`task-definition.json` မှာ အဲဒီအတိုင်း ရေးထားပြီးသား)။
+
+## Persistence (Phase 4)
+
+Table တွေကို အရင် ဆောက်ရမယ် — EC2 ပေါ်ကနေ:
+
+```bash
+DBPASS=$(sudo cat /root/gwaveadmin_newpw.txt)
+sudo docker run --rm -i -e PGPASSWORD="$DBPASS" postgres:16 \
+  psql -h <rds-host> -U gwaveadmin -d postgres -v ON_ERROR_STOP=1 \
+  < db/sql/metaverse.sql
+sudo docker restart postgrest
+```
+
+ဘယ်လိုအလုပ်လုပ်လဲ:
+
+- နေရာက **memory ထဲမှာ** ရှိတယ်၊ DB ကို ၃၀ စက္ကန့်တစ်ခါ + ထွက်ချိန် +
+  SIGTERM ချိန်မှာသာ ရေးတယ် — player တစ်ယောက်လျှင် **တစ်မိနစ် write ၂ ကြိမ်**။
+  15Hz update တိုင်း ရေးရင် player ၁၀၀ မှာ တစ်စက္ကန့် write ၁၅၀၀ ဖြစ်ပြီး
+  `db.t4g.micro` က ခံနိုင်မှာမဟုတ်ဘူး။
+- **ဧည့်သည်ကို မသိမ်းဘူး** — id က session တိုင်း ပြောင်းလို့ ပြန်ဖတ်စရာမရှိဘူး၊
+  ပြီးတော့ `profiles` ထဲမှာလည်း မရှိဘူး (FK ကျမယ်)။ ဒါပေမယ့် ဧည့်သည်တွေရဲ့
+  **chat ကိုတော့ မှတ်တယ်** — moderation အတွက် အဓိကလိုတာက အဲဒါ။
+- **Room တူမှသာ** နေရာဟောင်းကို ပြန်သုံးတယ် — farm က coordinate ကို city ထဲ
+  ချလိုက်ရင် နံရံထဲ ဒါမှမဟုတ် လောကအပြင်ဘက် ရောက်နေမယ်။
+- **DB ကျနေရင် ဝင်ခွင့်ကို ဘယ်တော့မှ မပိတ်ဘူး** — spawn နေရာမှာ စပြီး
+  ဆက်သွားတယ်။
+- Chat log ကို ၁ နာရီတစ်ခါ စစ်ပြီး **၃၀ ရက်ကျော်တာကို ဖျက်တယ်** (PII)။
 
 ## Auth — ဧည့်သည် (guest) ဝင်ခွင့်
 
@@ -115,5 +147,6 @@ aws ecs update-service --cluster gwave-cluster --service metaverse \
 - Player state က **task ရဲ့ memory ထဲမှာ** ရှိတယ်။ Task ၂ လုံးဆိုရင် stickiness
   မဖြစ်မနေ လိုတယ်။ တကယ် scale (player ၁၀၀၀+) ဖြစ်ချင်ရင် Redis pub/sub —
   Phase 6.2။
-- Persistence မရှိသေးဘူး — server restart ရင် နေရာ ပြန်စတယ်။ Phase 4 (RDS)
-  မှာ ထည့်မယ်။
+- နောက်ဆုံး flush ကနေ ပြတ်သွားချိန်အထိ (အများဆုံး ၃၀ စက္ကန့်) ရွှေ့ခဲ့တာက
+  server ကို **တစ်ခါတည်း သတ်လိုက်ရင်** (SIGKILL / task crash) ပျောက်တယ်။
+  ပုံမှန် deploy (SIGTERM) မှာတော့ မပျောက်ဘူး။

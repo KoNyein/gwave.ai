@@ -6,6 +6,7 @@ const { WebSocketServer } = require("ws");
 
 const { Rooms, normalizeRoom } = require("./rooms");
 const { identify } = require("./auth");
+const { createStore } = require("./store");
 
 const PORT = Number(process.env.PORT || 8080);
 const REQUIRE_AUTH = process.env.REQUIRE_AUTH === "true";
@@ -25,6 +26,16 @@ const MAX_CHAT_CHARS = 200;
 const EMOTES = new Set(["wave", "dance", "sit"]);
 
 const rooms = new Rooms();
+
+/// DATABASE_URL မရှိရင် persistence မရှိတဲ့ mode — လောကက ပုံမှန်အလုပ်လုပ်ပြီး
+/// ထွက်ရင် နေရာ မမှတ်ဘူး။ (Guest တွေက ဘယ်လိုမှ မမှတ်ဘူး — id က session
+/// တိုင်း ပြောင်းလို့။)
+const store = createStore(process.env.DATABASE_URL);
+
+/// ၃၀ စက္ကန့်တစ်ခါ — spec ရဲ့ "player တစ်ယောက်လျှင် တစ်မိနစ် ၂ ကြိမ်ထက်
+/// မပို" ဆိုတဲ့ ကန့်သတ်ချက်နဲ့ ကိုက်တယ်။
+const FLUSH_MS = 30_000;
+const PURGE_MS = 60 * 60 * 1000;
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 // ★ ALB ရဲ့ health check က ဒီ endpoint ကို ခေါ်တယ်။ မရှိရင် target ကို
@@ -62,7 +73,71 @@ function send(ws, msg) {
   if (ws.readyState === 1) ws.send(JSON.stringify(msg));
 }
 
-wss.on("connection", (ws, req) => {
+// ── Persistence ──────────────────────────────────────────────────────────────
+/// player တစ်ယောက်ရဲ့ နေရာကို DB ထဲ တစ်ခါ ရေးတယ်။
+///
+/// ★ `minutes` က **ဒီတစ်ခါအတွက်သာ** ပေါင်းထည့်မယ့် အချိန် (flushedAt ကနေ
+///   အခုထိ) — session စုစုပေါင်းကို ပို့ရင် flush ၂ ခါလုပ်တာနဲ့ total_minutes
+///   က ၂ ဆ တက်သွားမယ်။
+/// ★ column က integer ဖြစ်လို့ **အပိုင်းကိန်းကို ကိုယ့်ဘက်မှာ သိမ်းထားရမယ်**
+///   (`minuteDebt`) — ၃၀ စက္ကန့်တစ်ခါ flush မှာ 0.5 ကို round လုပ်ရင် ၁ ဖြစ်ပြီး
+///   တစ်မိနစ်ကို ၂ မိနစ် အဖြစ် ရေတွက်မိမယ်။
+/// ★ Guest ကို မသိမ်းဘူး — id က session တိုင်း ပြောင်းလို့ profiles ထဲမှာ
+///   မရှိဘူး (FK ကျမယ်)၊ ပြီးတော့ ပြန်ဖတ်စရာလည်း ဘယ်တော့မှ မရှိဘူး။
+async function flushPlayer(player) {
+  if (!store.enabled || !player.authed) return;
+
+  const now = Date.now();
+  const elapsed = (now - player.flushedAt) / 60_000;
+  // ရွှေ့လည်း မရွှေ့ဘူး၊ ၁ မိနစ်တောင် မပြည့်သေးဘူးဆိုရင် ရေးစရာ ဘာမှမရှိ
+  if (!player.dirty && player.minuteDebt + elapsed < 1) return;
+
+  // ★ တိုင်းတာပြီးမှ reset — await နောက်မှာ reset လုပ်ရင် အဲဒီအတွင်း ရွှေ့တာ
+  //   ပျောက်မယ်။
+  player.dirty = false;
+  player.flushedAt = now;
+  player.minuteDebt += elapsed;
+  const minutes = Math.floor(player.minuteDebt);
+  player.minuteDebt -= minutes; // ကျန်တဲ့ အပိုင်းကိန်းက နောက်တစ်ခါအတွက်
+
+  try {
+    await store.savePlayer(player.id, {
+      name: player.name,
+      x: player.x,
+      y: player.y,
+      z: player.z,
+      ry: player.ry,
+      room: player.room,
+      minutes,
+    });
+  } catch (err) {
+    console.error("[mv] flush failed:", err.message);
+  }
+}
+
+/// ၃၀ စက္ကန့်တစ်ခါ ရွှေ့ထားသူတွေကိုသာ သိမ်းတယ်။ ဒါက player တစ်ယောက်လျှင်
+/// တစ်မိနစ်မှာ write ၂ ကြိမ် — db.t4g.micro ခံနိုင်တဲ့ နှုန်း။
+const flusher = store.enabled
+  ? setInterval(() => {
+      for (const player of rooms.everyone()) void flushPlayer(player);
+    }, FLUSH_MS)
+  : null;
+
+/// PII — chat log ကို ၃၀ ရက်ပြီးရင် ဖျက်တယ်။ Task ၂ လုံးဆိုရင် ၂ ခါ run
+/// ဖြစ်မယ် ဒါပေမယ့် delete က idempotent ဖြစ်လို့ ပြဿနာမရှိဘူး။
+const purger = store.enabled
+  ? setInterval(() => {
+      void store
+        .purgeOldChat()
+        .then((n) => {
+          if (n) console.log(`[mv] purged ${n} old chat row(s)`);
+        })
+        .catch(() => {});
+    }, PURGE_MS)
+  : null;
+if (purger) purger.unref();
+
+wss.on("connection", async (ws, req) => {
   ws.isAlive = true;
   ws.on("pong", () => {
     ws.isAlive = true;
@@ -99,7 +174,33 @@ wss.on("connection", (ws, req) => {
     emote: null,
     lastMoveAt: Date.now(),
     lastChatAt: 0,
+    // ── persistence ───────────────────────────────────────────────────────
+    joinedAt: Date.now(),
+    flushedAt: Date.now(),
+    /// မိနစ်ရဲ့ အပိုင်းကိန်း — flush ကြားထဲမှာ လက်ကျန်အဖြစ် သယ်သွားတယ်
+    minuteDebt: 0,
+    /// ရွှေ့ပြီးမှ သိမ်းတယ် — ငြိမ်နေတဲ့သူကို ၃၀ စက္ကန့်တိုင်း ထပ်ရေးနေစရာမလို
+    dirty: false,
   };
+
+  // ── နေရာဟောင်း ပြန်ယူ ─────────────────────────────────────────────────
+  // ★ Room တူမှသာ နေရာကို ပြန်သုံးတယ် — farm မှာ ထွက်ခဲ့တဲ့ coordinate ကို
+  // city ထဲ ချလိုက်ရင် နံရံထဲ ဒါမှမဟုတ် လောကအပြင်ဘက် ရောက်နေမယ်။
+  if (player.authed && store.enabled) {
+    try {
+      const saved = await store.loadPlayer(player.id);
+      if (saved && saved.room === room) {
+        player.x = saved.x;
+        player.y = saved.y;
+        player.z = saved.z;
+        player.ry = saved.ry;
+      }
+    } catch {
+      // DB ကျနေရင် spawn မှာ စတယ် — ဝင်ခွင့်ကို ဘယ်တော့မှ မပိတ်ဘူး
+    }
+    // ခဏကြာသွားရင် socket က ပိတ်သွားနိုင်တယ်
+    if (ws.readyState !== 1) return;
+  }
 
   // ★ တစ်ယောက်တည်း tab ၂ ခုဖွင့်ရင် အဟောင်းကို ဖြုတ်တယ် — မဖြုတ်ရင်
   // id တူတဲ့ player ၂ ခု room ထဲရှိပြီး နောက်ဆုံးဝင်တဲ့သူက အရင်သူကို
@@ -188,6 +289,7 @@ wss.on("connection", (ws, req) => {
         player.z = z;
         player.ry = ry;
         player.lastMoveAt = now;
+        player.dirty = true;
 
         rooms.broadcast(player.room, { type: "update", id: player.id, x, y, z, ry }, player.id);
         break;
@@ -208,6 +310,8 @@ wss.on("connection", (ws, req) => {
         };
         send(ws, out); // ကိုယ့်စာကို ကိုယ်လည်း မြင်ရမယ်
         rooms.broadcast(player.room, out, player.id);
+        // Moderation log — best-effort၊ chat က DB ကို ဘယ်တော့မှ မစောင့်ရ
+        void store.logChat(player.id, player.name, player.room, text);
         break;
       }
 
@@ -248,6 +352,9 @@ wss.on("connection", (ws, req) => {
   const drop = () => {
     rooms.remove(player.room, player.id);
     rooms.broadcast(player.room, { type: "leave", id: player.id });
+    // ★ ထွက်ချိန်မှာ မဖြစ်မနေ သိမ်းရမယ် — ၃၀ စက္ကန့် flush ကို စောင့်ရင်
+    // ထွက်သွားတဲ့ ၂၉ စက္ကန့်စာ ရွှေ့ခဲ့တာ ပျောက်မယ်။
+    void flushPlayer(player);
   };
   ws.on("close", drop);
   ws.on("error", drop);
@@ -272,11 +379,27 @@ const heartbeat = setInterval(() => {
 // "connection ပြတ်သွားပြီ" ကို timeout နဲ့မှ သိရမယ် (၃၀ စက္ကန့်လောက်)။
 // 1001 = "going away" — client က ချက်ချင်း ပြန်ချိတ်လို့ရတယ်။
 let shuttingDown = false;
-function shutdown(signal) {
+async function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`[mv] ${signal} — closing ${wss.clients.size} connection(s)`);
   clearInterval(heartbeat);
+  if (flusher) clearInterval(flusher);
+  if (purger) clearInterval(purger);
+
+  // Client တွေ မထွက်သေးရင်တောင် ၁၀ စက္ကန့်ထက် မစောင့်ဘူး
+  const hardStop = setTimeout(() => process.exit(0), 10_000);
+  hardStop.unref();
+
+  // ★ Socket တွေ မပိတ်ခင် သိမ်းရမယ် — deploy တိုင်း (ECS က SIGTERM ပို့တယ်)
+  // player တိုင်းရဲ့ နောက်ဆုံးနေရာ မပျောက်ရ။ ပိတ်ပြီးမှ ဆိုရင် close handler
+  // က async ဖြစ်လို့ process က အရင် ထွက်သွားနိုင်တယ်။
+  try {
+    await Promise.all([...rooms.everyone()].map((p) => flushPlayer(p)));
+  } catch {
+    /* သိမ်းလို့မရလည်း ထွက်ရမယ် — ECS က ၃၀ စက္ကန့်ပဲ စောင့်တယ် */
+  }
+
   for (const ws of wss.clients) {
     try {
       ws.close(1001, "server restarting");
@@ -284,9 +407,8 @@ function shutdown(signal) {
       /* ignore */
     }
   }
+  await store.close().catch(() => {});
   server.close(() => process.exit(0));
-  // Client တွေ မထွက်သေးရင်တောင် ၁၀ စက္ကန့်ထက် မစောင့်ဘူး
-  setTimeout(() => process.exit(0), 10_000).unref();
 }
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));

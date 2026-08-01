@@ -74,6 +74,11 @@ class Rooms {
     return out;
   }
 
+  /// Room အားလုံးက player အားလုံး — periodic flush (Phase 4) အတွက်။
+  *everyone() {
+    for (const room of this.rooms.values()) yield* room.values();
+  }
+
   count(roomId) {
     return this.rooms.get(roomId)?.size ?? 0;
   }
