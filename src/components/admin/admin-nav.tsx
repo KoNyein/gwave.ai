@@ -75,6 +75,7 @@ const SECTIONS: AdminNavSection[] = [
       { href: "/admin/mines", label: "Mine sites", icon: Mountain },
       { href: "/admin/drivers", label: "Drivers", icon: Car },
       { href: "/admin/games", label: "Games", icon: Gamepad2 },
+      { href: "/admin/metaverse", label: "Metaverse", icon: Gamepad2 },
       { href: "/admin/audio", label: "Audio", icon: Music },
     ],
   },

@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test:unit": "node --experimental-strip-types --test src/**/*.test.ts",
     "format": "prettier --write .",
     "e2e": "playwright test"
   },

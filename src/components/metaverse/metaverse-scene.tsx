@@ -7,6 +7,9 @@ import { createSpatialAudio, type SpatialAudio } from "./audio";
 import { AvatarCustomiser } from "./avatar/customiser";
 import { DEFAULT_AVATAR, sanitizeAvatar, type AvatarConfig } from "./avatar/config";
 import { applyAvatarConfig } from "./avatar/parts";
+import { BuildPanel, type BuildBridge } from "./build/panel";
+import { createPlotStream } from "./build/plots";
+import { createBuildRender, createGhost } from "./build/render";
 import { createGameFx, type GameFx } from "./gamefx";
 import { GamesPanel, type GamePhase } from "./games-panel";
 import { createHuman, type Avatar, type HumanState } from "./human";
@@ -27,6 +30,7 @@ import { createVehicle, type Vehicle } from "./vehicles";
 import { createWeather } from "./weather";
 import { buildWorld, resolveCollision } from "./world";
 import { isInApp, native } from "@/lib/metaverse/native";
+import { snap, type BuildType } from "@/lib/metaverse/build";
 
 /// Gwave Metaverse ရဲ့ အဓိက client component။
 ///
@@ -180,6 +184,13 @@ export function MetaverseScene() {
   /// object မှာ ရှိလို့ React state ကနေ ဖတ်လို့မရဘူး။ Effect ထဲကနေ
   /// function တစ်ခု ထုတ်ပေးထားတယ်။
   const gameActionRef = useRef<((a: Record<string, unknown>) => void) | null>(null);
+
+  // ── ဆောက်လုပ်ရေး (Phase 18) ───────────────────────────────────────────────
+  /// ★ Panel က React၊ ghost နဲ့ instance တွေက 3D — ကြားထဲမှာ ref တစ်ခုနဲ့
+  /// ချိတ်တယ်။ Object စာရင်းကို React state ထဲ ထားပေမယ့် **ghost ရဲ့ နေရာ**
+  /// က render loop ထဲမှာ frame တိုင်း ပြောင်းလို့ ref ကနေ ဖတ်ရတယ်။
+  const [building, setBuilding] = useState(false);
+  const buildRef = useRef<BuildBridge | null>(null);
 
   // Emote ကို ref နဲ့ ကူးထားတယ် — render loop က state ကို closure ထဲ
   // ဖမ်းထားလို့ တိုက်ရိုက်ဖတ်ရင် အဟောင်းပဲ ရမယ်။
@@ -342,6 +353,18 @@ export function MetaverseScene() {
 
     // ── Mini-game ရဲ့ အမှတ်အသားများ (Phase 16) ────────────────────────────
     const gameFx: GameFx = createGameFx(scene);
+
+    // ── User ဆောက်ထားတဲ့ အရာများ (Phase 18) ───────────────────────────────
+    // ★ InstancedMesh — type တစ်ခုချင်းကို draw call တစ်ခုစီ။ မဟုတ်ရင်
+    // ကွက် ၄၉ ခု × object ၂၀၀ = draw call ၉,၈၀၀ ဖြစ်ပြီး ဖုန်းက မတင်ဘူး။
+    const buildRender = createBuildRender(scene);
+    const plots = createPlotStream(buildRender);
+    const ghost = createGhost(scene);
+    /// Ghost ရဲ့ လက်ရှိနေရာ — player ရဲ့ ရှေ့ ၃ unit ကို grid ပေါ် အံကိုက်
+    const ghostAt = { x: 0, y: 0, z: 0 };
+    let ghostType: BuildType | null = null;
+    let ghostRy = 0;
+    let ghostValid = false;
 
     // ── ယာဉ်များ ──────────────────────────────────────────────────────────
     const vehicles = new Map<string, Vehicle>();
@@ -614,6 +637,20 @@ export function MetaverseScene() {
       // ဒါက "ဘယ်ကို ကြည့်နေလဲ" ဆိုတဲ့ input သာ ဖြစ်တယ်၊ ရလဒ် မဟုတ်ဘူး။
       gameActionRef.current = (a) => net?.sendGameAction({ ...a, ry: p.ry });
     }
+
+    // ── Panel ↔ 3D ရဲ့ တံတား (Phase 18) ──────────────────────────────────
+    buildRef.current = {
+      ghostPos: () => ({ ...ghostAt }),
+      setGhost: (type, ry, valid) => {
+        ghostType = type;
+        ghostRy = ry;
+        ghostValid = valid;
+        if (!type) ghost.hide();
+      },
+      setDraft: (plotId, objects) => plots.setDraft(plotId, objects),
+      plotHere: () => plots.plotAt(p.x, p.z),
+      invalidate: () => plots.invalidate(),
+    };
 
     // ── စီး / ဆင်း ────────────────────────────────────────────────────────
     const toggleRide = () => {
@@ -996,6 +1033,20 @@ export function MetaverseScene() {
       world.updateEffects(dt, effectT, weather.wetness, p.x, p.z);
       weather.update(dt, p.x, p.y + 6, p.z);
       gameFx.update(effectT);
+
+      // ── ဆောက်လုပ်ရေး: ghost + ကွက် streaming (Phase 18) ────────────────
+      plots.update(p.x, p.z);
+      if (ghostType) {
+        // ★ Player ရဲ့ ရှေ့ ၃ unit — raycast မလုပ်ဘူး၊ ဖုန်းမှာ
+        // "ဘယ်ကို ထောက်ရမလဲ" ဆိုတာ ခက်တယ်။ ရှေ့ကို ကြည့်ပြီး ချတာက
+        // touch မှာလည်း အလုပ်လုပ်တယ်။
+        ghostAt.x = snap(p.x + Math.sin(p.ry) * 3);
+        ghostAt.z = snap(p.z + Math.cos(p.ry) * 3);
+        ghostAt.y = 0;
+        ghost.show(ghostType, ghostAt.x, ghostAt.y, ghostAt.z, ghostRy, ghostValid);
+      } else {
+        ghost.hide();
+      }
       for (const v of vehicles.values()) {
         if (v !== riding) v.follow(dt);
         v.animate(dt);
@@ -1130,6 +1181,10 @@ export function MetaverseScene() {
       nametags?.dispose();
       weather.dispose();
       gameFx.dispose();
+      buildRender.dispose();
+      plots.dispose();
+      ghost.dispose();
+      buildRef.current = null;
       for (const v of vehicles.values()) {
         scene.remove(v.group);
         v.dispose();
@@ -1507,6 +1562,23 @@ export function MetaverseScene() {
         onAction={(a) => gameActionRef.current?.(a)}
         onDismissEnd={() => setPhase({ kind: "idle" })}
       />
+
+      {/* ── 🏗 ဆောက်လုပ်ရေး (Phase 18) ───────────────────────────────────
+          ★ ကိုယ်ပိုင်ကွက်ပေါ်မှာသာ ဆောက်လို့ရတယ် — ဒါကို client မှာလည်း
+          ပြထားပေမယ့် **အမှန်တရားက server မှာ** (`/plot/[id]/build`)。 */}
+      {!building && (
+        <button
+          data-hud="1"
+          onClick={() => setBuilding(true)}
+          title="ဆောက်လုပ်ရန်"
+          className="absolute left-3 top-48 z-20 rounded-lg border border-white/15 bg-black/50 px-2.5 py-1.5 text-[11px] text-white/80 backdrop-blur hover:bg-black/70 sm:top-52"
+        >
+          🏗 ဆောက်မယ်
+        </button>
+      )}
+      {building && (
+        <BuildPanel bridge={buildRef} onClose={() => setBuilding(false)} />
+      )}
 
       {/* Emote bar */}
       <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-2">
