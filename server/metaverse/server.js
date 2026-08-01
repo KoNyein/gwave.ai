@@ -130,7 +130,14 @@ wss.on("connection", (ws, req) => {
     {
       type: "join",
       id: player.id,
-      state: { x: player.x, y: player.y, z: player.z, ry: player.ry, name: player.name },
+      state: {
+        x: player.x,
+        y: player.y,
+        z: player.z,
+        ry: player.ry,
+        name: player.name,
+        authed: player.authed,
+      },
     },
     player.id,
   );
@@ -192,7 +199,13 @@ wss.on("connection", (ws, req) => {
         const text = String(msg.text || "").slice(0, MAX_CHAT_CHARS).trim();
         if (!text) return;
         player.lastChatAt = now;
-        const out = { type: "chat", id: player.id, name: player.name, text };
+        const out = {
+          type: "chat",
+          id: player.id,
+          name: player.name,
+          authed: player.authed,
+          text,
+        };
         send(ws, out); // ကိုယ့်စာကို ကိုယ်လည်း မြင်ရမယ်
         rooms.broadcast(player.room, out, player.id);
         break;
@@ -212,10 +225,18 @@ wss.on("connection", (ws, req) => {
         // ★ Auth ရှိရင် နာမည်က token ကလာရမယ် — client ကို ခွင့်ပြုရင်
         // ဘယ်သူမဆို တခြားသူ့နာမည်နဲ့ ဝင်လို့ရသွားမယ်။
         if (player.authed) return;
-        const name = String(msg.name || "").slice(0, 24).trim();
+        // Control character တွေကို ဖယ် — chat/nametag မှာ layout ဖျက်လို့ရတယ်
+        const name = String(msg.name || "")
+          .replace(/[\u0000-\u001f\u007f-\u009f]/g, "")
+          .slice(0, 24)
+          .trim();
         if (!name) return;
         player.name = name;
-        rooms.broadcast(player.room, { type: "name", id: player.id, name }, player.id);
+        rooms.broadcast(
+          player.room,
+          { type: "name", id: player.id, name, authed: false },
+          player.id,
+        );
         break;
       }
 

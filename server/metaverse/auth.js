@@ -73,7 +73,12 @@ function identify({ ticket, requireAuth, secret, guestId }) {
     return null;
   }
   if (requireAuth) return null;
-  return { userId: guestId, name: "Guest", authed: false };
+  // ★ Guest တွေကို နံပါတ်ခွဲပေးတယ် — "Guest" ချည်းပဲဆိုရင် ၅ ယောက်ဝင်လာတဲ့အခါ
+  // ဘယ်သူဘယ်ဝါလဲ ခွဲလို့မရဘူး။ နာမည်ကို ကိုယ်တိုင် ပြောင်းလို့ရတယ်
+  // (setname — guest အတွက်သာ)၊ ဒါပေမယ့် `authed: false` က ဘယ်တော့မှ
+  // မပြောင်းလို့ client တွေက အမြဲ "ဧည့်သည်" အဖြစ် ပြပါတယ်။
+  const tag = guestId.slice(-4).toUpperCase();
+  return { userId: guestId, name: `Guest ${tag}`, authed: false };
 }
 
 module.exports = { identify, verifyTicket, TICKET_TTL_MS };

@@ -59,7 +59,17 @@ class Rooms {
     if (!room) return out;
     for (const p of room.values()) {
       if (p.id === exceptId) continue;
-      out[p.id] = { x: p.x, y: p.y, z: p.z, ry: p.ry, name: p.name, emote: p.emote };
+      out[p.id] = {
+        x: p.x,
+        y: p.y,
+        z: p.z,
+        ry: p.ry,
+        name: p.name,
+        emote: p.emote,
+        // ★ authed က client ဘက်မှာ "ဧည့်သည်" အမှတ်အသား ပြဖို့ — နာမည်ကို
+        // ကြည့်ပြီး ခွဲလို့မရဘူး၊ guest က ဘယ်နာမည်မဆို ပေးလို့ရလို့။
+        authed: p.authed,
+      };
     }
     return out;
   }

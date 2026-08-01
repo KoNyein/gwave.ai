@@ -29,7 +29,7 @@ export type NetHandlers = {
   onLeave?: (id: string) => void;
   onUpdate?: (id: string, x: number, y: number, z: number, ry: number) => void;
   onEmote?: (id: string, emote: string | null) => void;
-  onChat?: (id: string, name: string, text: string) => void;
+  onChat?: (id: string, name: string, text: string, authed: boolean) => void;
   onName?: (id: string, name: string) => void;
   /// Server က anti-cheat နဲ့ ငြင်းလိုက်တဲ့အခါ — နေရာအမှန်ကို ပြန်ပေးတယ်
   onCorrect?: (x: number, y: number, z: number) => void;
@@ -40,6 +40,8 @@ export type NetClient = {
   sendUpdate(x: number, y: number, z: number, ry: number): void;
   sendChat(text: string): void;
   sendEmote(emote: string | null): void;
+  /// Guest သာ — signed-in user ရဲ့ နာမည်က token ကလာလို့ server က ငြင်းတယ်။
+  sendName(name: string): void;
   close(): void;
   readonly connected: boolean;
 };
@@ -109,6 +111,12 @@ export function connectMetaverse(
     sendEmote(emote) {
       if (ws?.readyState !== WebSocket.OPEN) return;
       ws.send(JSON.stringify({ type: "emote", emote }));
+    },
+    sendName(name) {
+      if (ws?.readyState !== WebSocket.OPEN) return;
+      const n = name.slice(0, 24).trim();
+      if (!n) return;
+      ws.send(JSON.stringify({ type: "setname", name: n }));
     },
     close() {
       closed = true;
@@ -187,7 +195,12 @@ export function connectMetaverse(
           handlers.onEmote?.(String(m.id), (m.emote as string | null) ?? null);
           break;
         case "chat":
-          handlers.onChat?.(String(m.id), String(m.name), String(m.text));
+          handlers.onChat?.(
+            String(m.id),
+            String(m.name),
+            String(m.text),
+            Boolean(m.authed),
+          );
           break;
         case "name":
           handlers.onName?.(String(m.id), String(m.name));

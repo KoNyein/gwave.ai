@@ -54,7 +54,15 @@ type Remote = {
   speed: number;
 };
 
-type ChatLine = { id: string; name: string; text: string; at: number };
+type ChatLine = {
+  id: string;
+  name: string;
+  text: string;
+  at: number;
+  /// Gwave account နဲ့ ဝင်ထားသူလား၊ ဧည့်သည်လား — နာမည်ကို ကြည့်ပြီး
+  /// ခွဲလို့မရဘူး၊ ဧည့်သည်က ဘယ်နာမည်မဆို ပေးလို့ရလို့။
+  authed: boolean;
+};
 
 const WALK_SPEED = 4.2;
 const RUN_SPEED = 8.4;
@@ -85,6 +93,8 @@ export function MetaverseScene() {
   );
   const [chat, setChat] = useState<ChatLine[]>([]);
   const [draft, setDraft] = useState("");
+  const [meName, setMeName] = useState("");
+  const [meAuthed, setMeAuthed] = useState(false);
   const netRef = useRef<NetClient | null>(null);
 
   // Emote ကို ref နဲ့ ကူးထားတယ် — render loop က state ကို closure ထဲ
@@ -175,8 +185,10 @@ export function MetaverseScene() {
     let net: NetClient | null = null;
     if (WS_URL) {
       net = connectMetaverse(WS_URL, ROOM, {
-        onInit: ({ players }) => {
+        onInit: ({ players, name, authed }) => {
           for (const [id, s] of Object.entries(players)) addRemote(id, s);
+          setMeName(name);
+          setMeAuthed(authed);
           setLink("live");
         },
         onJoin: (id, s) => addRemote(id, s),
@@ -195,8 +207,11 @@ export function MetaverseScene() {
           const r = remotes.get(id);
           if (r) r.emote = (e as HumanState["emote"]) ?? null;
         },
-        onChat: (id, name, text) => {
-          setChat((prev) => [...prev.slice(-40), { id, name, text, at: Date.now() }]);
+        onChat: (id, name, text, authed) => {
+          setChat((prev) => [
+            ...prev.slice(-40),
+            { id, name, text, at: Date.now(), authed },
+          ]);
         },
         onName: (id, name) => {
           const r = remotes.get(id);
@@ -546,7 +561,51 @@ export function MetaverseScene() {
             </span>
           </div>
         )}
+
+        {/* ── ကိုယ်ဘယ်သူလဲ ───────────────────────────────────────────── */}
+        {link === "live" && (
+          <div className="pointer-events-auto mt-1 flex items-center gap-1.5">
+            {meAuthed ? (
+              <span className="text-emerald-300">👤 {meName}</span>
+            ) : (
+              <>
+                {/* ဧည့်သည်က နာမည်ကို ကိုယ်တိုင်ပေးလို့ရတယ်။ Server က
+                    authed=false ကို အမြဲတွဲပို့လို့ Gwave အကောင့်ရှိသူတစ်ယောက်
+                    အဖြစ် ဟန်ဆောင်လို့ မရဘူး။ */}
+                <input
+                  data-hud="1"
+                  value={meName}
+                  onChange={(e) => setMeName(e.target.value.slice(0, 24))}
+                  onBlur={() => netRef.current?.sendName(meName)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      netRef.current?.sendName(meName);
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  maxLength={24}
+                  aria-label="ဧည့်သည် နာမည်"
+                  className="w-28 rounded border border-white/15 bg-black/40 px-1.5 py-0.5 text-[11px] text-white outline-none focus:border-emerald-400/60"
+                />
+                <span className="rounded bg-white/15 px-1 text-[9px] text-white/60">
+                  ဧည့်သည်
+                </span>
+              </>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Guest ကို sign in ဖိတ်ခေါ်တာ — မဖြစ်မနေမဟုတ်ဘူး၊ ရွေးစရာတစ်ခုပဲ */}
+      {link === "live" && !meAuthed && (
+        <a
+          href="/login"
+          data-hud="1"
+          className="absolute right-3 top-3 z-10 rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-[11px] text-white/80 backdrop-blur hover:bg-black/60"
+        >
+          Gwave နဲ့ ဝင်မယ်
+        </a>
+      )}
 
       {/* ── Chat ─────────────────────────────────────────────────────── */}
       {link !== "off" && (
@@ -557,7 +616,22 @@ export function MetaverseScene() {
                 key={`${c.at}-${i}`}
                 className="w-fit max-w-full rounded bg-black/45 px-2 py-1 text-[11px] leading-snug text-white/90 backdrop-blur"
               >
-                <span className="font-semibold text-emerald-300">{c.name}</span>{" "}
+                <span
+                  className={
+                    c.authed
+                      ? "font-semibold text-emerald-300"
+                      : "font-semibold text-white/70"
+                  }
+                >
+                  {c.name}
+                </span>
+                {/* ★ ဧည့်သည်ကို အမြဲ အမှတ်အသားပြ — မပြရင် ဧည့်သည်တစ်ယောက်က
+                    တခြားသူ့နာမည်ပေးပြီး အဲဒီလူအဖြစ် ဟန်ဆောင်လို့ရမယ် */}
+                {!c.authed && (
+                  <span className="ml-1 rounded bg-white/15 px-1 text-[9px] text-white/60">
+                    ဧည့်သည်
+                  </span>
+                )}{" "}
                 {/* textContent အဖြစ်သာ ထည့်တယ် — innerHTML သုံးရင် chat ကနေ
                     script ထည့်လို့ရသွားမယ် */}
                 {c.text}

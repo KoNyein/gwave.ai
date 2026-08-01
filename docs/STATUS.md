@@ -54,6 +54,26 @@
 
 ## Changelog
 
+- 2026-08-02 (web): **Metaverse — phases 0-3.** `gwave.cc/metaverse` is a
+  three.js world with a procedural avatar (no GLB download: the first person to
+  open it on phone data would have paid for a 2-5 MB model), wall collision that
+  resolves x and z separately so you slide along walls instead of sticking,
+  a three-minute day/night cycle, desktop and touch controls, and multiplayer
+  over a `ws` server in `server/metaverse/` — rooms scoped to maps, 15Hz
+  position updates interpolated on the client, chat, emotes, server-side speed
+  and bounds validation, 30-second heartbeat and SIGTERM close(1001) so an ECS
+  deploy reconnects instead of hanging. **Guests can enter without an account**
+  and may name themselves, but every message carries a server-set `authed` flag
+  and the client always marks guests, so a guest cannot pass as an account
+  holder; a signed-in user's name comes from a 60-second HMAC ticket
+  (`/api/metaverse/ws-ticket`) and `setname` is refused outright. Fixed along
+  the way: the CSP in `next.config.mjs` did not allow the metaverse origin in
+  `connect-src`, so the browser would have refused the WebSocket in production
+  — the page would have looked fine and nobody would ever have been in the
+  world. **Not deployed**: ECR/ECS/ALB (idle timeout 300s + stickiness), the
+  ACM cert for `mv.gwave.cc` and the security groups are console work —
+  commands in `server/metaverse/README.md`. Persistence is phase 4.
+
 - 2026-08-01 (app): **One owner of the speaker, and it stops when you leave.**
   Every noisy feature started playing on its own and stopped only when its
   widget was disposed, so a Live kept talking behind anything opened on top of
