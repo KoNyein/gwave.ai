@@ -126,8 +126,12 @@ type ChatLine = {
   authed: boolean;
 };
 
-const WALK_SPEED = 4.2;
-const RUN_SPEED = 8.4;
+/// ★ CS-style — **default က ပြေးတာ** (7.5)၊ Shift က လမ်းလျှောက် (နှေး)၊
+/// Ctrl က ကုပ်။ အရင်က default 4.2 နဲ့ လမ်းလျှောက်ရတာ နှေးလွန်းတယ်လို့
+/// user တွေ ညည်းတယ်။
+const WALK_SPEED = 3.4;
+const RUN_SPEED = 7.5;
+const CROUCH_SPEED = 2.6;
 const JUMP_V = 6.2;
 const GRAVITY = 18;
 
@@ -136,7 +140,10 @@ type Input = {
   b: number; // နောက်
   l: number;
   r: number;
+  /// Shift — CS လိုပဲ ဖိထားရင် **နှေးနှေး** လျှောက်တယ် (ယာဉ်မှာတော့ boost)
   run: boolean;
+  /// Ctrl — ကုပ် (နှေး + နိမ့်)
+  crouch: boolean;
   jump: boolean;
   /// Mobile joystick — -1..1
   jx: number;
@@ -504,10 +511,13 @@ export function MetaverseScene() {
       l: 0,
       r: 0,
       run: false,
+      crouch: false,
       jump: false,
       jx: 0,
       jz: 0,
     };
+    /// ကုပ်တာကို ချောချော ကူးပြောင်းဖို့ (0 = မတ်တပ်၊ 1 = ကုပ်)
+    let crouchLerp = 0;
 
     // ── Multiplayer ───────────────────────────────────────────────────────
     const remotes = new Map<string, Remote>();
@@ -784,8 +794,11 @@ export function MetaverseScene() {
       fpvRef.current = on;
       setFpv(on);
       // FP ကနေ ပြန်ထွက်ရင် ကင်မရာကို နီးနီးလေးက စတယ် — ချက်ချင်း
-      // အဝေးကြီး ခုန်သွားရင် မျက်စိလည်တယ်။
-      if (!on) cam.dist = Math.max(cam.dist, 4);
+      // အဝေးကြီး ခုန်သွားရင် မျက်စိလည်တယ်။ Pointer lock လည်း လွှတ်တယ်။
+      if (!on) {
+        cam.dist = Math.max(cam.dist, 4);
+        if (document.pointerLockElement) document.exitPointerLock();
+      }
     };
     fpvSetRef.current = setFpView;
 
@@ -816,6 +829,8 @@ export function MetaverseScene() {
         e.preventDefault();
       }
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") input.run = true;
+      // CS လိုပဲ Ctrl = ကုပ်
+      if (e.code === "ControlLeft" || e.code === "ControlRight") input.crouch = true;
       if (e.code === "Space") {
         input.jump = true;
         e.preventDefault();
@@ -828,6 +843,7 @@ export function MetaverseScene() {
       const k = keyMap[e.code];
       if (k) (input[k] as number) = 0;
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") input.run = false;
+      if (e.code === "ControlLeft" || e.code === "ControlRight") input.crouch = false;
       if (e.code === "Space") input.jump = false;
     };
     window.addEventListener("keydown", onKeyDown);
@@ -840,12 +856,33 @@ export function MetaverseScene() {
     const onPointerDown = (e: PointerEvent) => {
       // Joystick ဧရိယာက touch ကို ကင်မရာ မယူရ
       if ((e.target as HTMLElement).dataset?.hud) return;
+      // ★ First-person + mouse — CS လိုပဲ click တစ်ချက်နဲ့ pointer lock
+      //   ဝင်ပြီး mouse ရွှေ့ရုံနဲ့ ကြည့်လို့ရတယ် (drag မလိုတော့ဘူး)။
+      //   Esc နဲ့ ပြန်လွတ်တယ် — browser ရဲ့ built-in။
+      if (
+        fpvRef.current &&
+        e.pointerType === "mouse" &&
+        document.pointerLockElement !== el
+      ) {
+        el.requestPointerLock?.();
+        return;
+      }
       dragId = e.pointerId;
       dragX = e.clientX;
       dragY = e.clientY;
       renderer.domElement.setPointerCapture(e.pointerId);
     };
     const onPointerMove = (e: PointerEvent) => {
+      // Pointer lock ထဲမှာ — movementX/Y နဲ့ တိုက်ရိုက်လှည့်တယ်
+      if (document.pointerLockElement === el) {
+        cam.yaw -= e.movementX * 0.0028;
+        cam.pitch = THREE.MathUtils.clamp(
+          cam.pitch + e.movementY * 0.0022,
+          fpvRef.current ? -1.2 : -0.25,
+          1.2,
+        );
+        return;
+      }
       if (dragId !== e.pointerId) return;
       cam.yaw -= (e.clientX - dragX) * 0.005;
       // ★ FP မှာ မော့ကြည့်လို့ရအောင် pitch ကို အောက်ဘက် ပိုကျယ်ပေးတယ် —
@@ -998,12 +1035,19 @@ export function MetaverseScene() {
       }
 
       const wants = mag > 0.02;
-      const running = input.run && wants;
+      // ★ CS-style — default ပြေး၊ Shift ဖိရင် လမ်းလျှောက် (နှေး)၊
+      //   Ctrl ဖိရင် ကုပ် (အနှေးဆုံး)။
+      const running = wants && !input.run && !input.crouch;
+      const baseSpeed = input.crouch
+        ? CROUCH_SPEED
+        : input.run
+          ? WALK_SPEED
+          : RUN_SPEED;
       // ★ ရေထဲမှာ နှေးတယ် — ဒါက ရေကို ပန်းချီပုံတစ်ခုအဖြစ်ကနေ တကယ့်
       // အတားအဆီးတစ်ခု ဖြစ်စေတယ်။
       const depth = riding ? 0 : world.water.depthAt(p.x, p.z);
       const wade = depth > 0.15 ? 0.5 : 1;
-      const speed = wants ? (running ? RUN_SPEED : WALK_SPEED) * Math.min(1, mag) * wade : 0;
+      const speed = wants ? baseSpeed * Math.min(1, mag) * wade : 0;
 
       // ── ခုန် ───────────────────────────────────────────────────────────
       if (input.jump && !p.airborne) {
@@ -1050,13 +1094,27 @@ export function MetaverseScene() {
         const solved = resolveCollision(nx, nz, p.x, p.z, world.colliders, world.walkRadius);
         p.x = solved.x;
         p.z = solved.z;
-        // မျက်နှာမူရာ — ရုတ်တရက်မလှည့်ဘဲ ချောချောလှည့်
-        const targetRy = Math.atan2(dirX, dirZ);
+      }
+      // ── မျက်နှာမူရာ — ရုတ်တရက်မလှည့်ဘဲ ချောချောလှည့် ──────────────────
+      // ★ First-person မှာ CS လိုပဲ **ကင်မရာဘက်ကို အမြဲ** မျက်နှာမူတယ် —
+      //   A/D က strafe (ဘေးတိုး) ဖြစ်ပြီး ကိုယ်လုံးက မလှည့်ဘူး။ ဒါမှ
+      //   တခြားသူတွေနဲ့ voice listener က မှန်တဲ့ ဦးတည်ရာ ရတယ်။
+      if (!riding) {
+        const targetRy = fpvRef.current
+          ? cam.yaw
+          : speed > 0
+            ? Math.atan2(dirX, dirZ)
+            : p.ry;
         let diff = targetRy - p.ry;
         while (diff > Math.PI) diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
-        p.ry += diff * Math.min(1, 14 * dt);
+        p.ry += diff * Math.min(1, (fpvRef.current ? 20 : 14) * dt);
       }
+
+      // ── ကုပ် — camera နိမ့် + avatar ပုလိုက် (ချောချော ကူးပြောင်း) ──────
+      const crouchTarget = input.crouch && !riding ? 1 : 0;
+      crouchLerp += (crouchTarget - crouchLerp) * Math.min(1, 10 * dt);
+      me.group.scale.y = 1 - 0.28 * crouchLerp;
 
       me.group.position.set(p.x, p.y, p.z);
       me.group.rotation.y = p.ry;
@@ -1133,7 +1191,7 @@ export function MetaverseScene() {
         // ── First-person — မျက်လုံးအမြင့် (~1.55) ကနေ ရှေ့ကို ကြည့်တယ်။
         // ★ ကိုယ့် avatar ကို ဖျောက်ရတယ် — မဖျောက်ရင် ခေါင်းတွင်းက
         //   geometry တွေ မျက်နှာပြင်ပေါ် ကျလာတယ်။
-        const eyeY = p.y + 1.55;
+        const eyeY = p.y + 1.55 - 0.55 * crouchLerp;
         camera.position.set(p.x, eyeY, p.z);
         camera.lookAt(
           p.x + Math.sin(cam.yaw) * cp,
@@ -1305,6 +1363,8 @@ export function MetaverseScene() {
       el.removeEventListener("pointerup", onPointerUp);
       el.removeEventListener("pointercancel", onPointerUp);
       el.removeEventListener("wheel", onWheel);
+      // Map ပြောင်း/ထွက်ချိန် pointer lock ကျန်မနေစေနဲ့
+      if (document.pointerLockElement === el) document.exitPointerLock();
       stick?.removeEventListener("pointerdown", stickStart);
       stick?.removeEventListener("pointermove", stickMove);
       stick?.removeEventListener("pointerup", stickEnd);
@@ -1372,8 +1432,9 @@ export function MetaverseScene() {
         <div className="font-semibold text-emerald-300">Gwave Metaverse</div>
         {!touch && (
           <>
-            <div>WASD ရွှေ့ · Shift ပြေး · Space ခုန် · V မြင်ကွင်း</div>
-            <div>မောက်စ်ဆွဲ = ကင်မရာ · scroll = zoom</div>
+            <div>WASD ရွှေ့ · Shift လျှောက် · Ctrl ကုပ် · Space ခုန်</div>
+            <div>V မြင်ကွင်း · မောက်စ်ဆွဲ = ကင်မရာ · scroll = zoom</div>
+            {fpv && <div className="text-emerald-300/80">FP: click = ကြည့်ရှုထိန်း · Esc = လွှတ်</div>}
           </>
         )}
         {touch && <div>ဘယ်ဘက် joystick · ညာဘက် ခုန်</div>}
