@@ -130,6 +130,16 @@ export function MetaverseScene() {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<HTMLCanvasElement | null>(null);
   const [ready, setReady] = useState(false);
+  /// ★ ဖုန်းလား desktop လား ကို **screen width နဲ့ မခွဲရ** — အလျားလိုက်ကိုင်တဲ့
+  /// ဖုန်းက width ကျယ်လို့ desktop လို့ ထင်ပြီး joystick ပျောက်သွားတယ်
+  /// (အလျားလိုက် ဆော့လို့မရတဲ့ bug)။ Touch ရှိမရှိနဲ့သာ ခွဲတယ်။
+  const [touch, setTouch] = useState(false);
+  useEffect(() => {
+    setTouch(
+      window.matchMedia("(pointer: coarse)").matches ||
+        navigator.maxTouchPoints > 0,
+    );
+  }, []);
   const [fps, setFps] = useState(0);
   const [emote, setEmote] = useState<HumanState["emote"]>(null);
   const [bloom, setBloom] = useState(true);
@@ -1286,9 +1296,13 @@ export function MetaverseScene() {
       {/* ── HUD ─────────────────────────────────────────────────────── */}
       <div className="pointer-events-none absolute left-3 top-3 z-10 select-none rounded-lg bg-black/40 px-3 py-2 text-[11px] leading-relaxed text-white/80 backdrop-blur">
         <div className="font-semibold text-emerald-300">Gwave Metaverse</div>
-        <div className="hidden sm:block">WASD ရွှေ့ · Shift ပြေး · Space ခုန်</div>
-        <div className="hidden sm:block">မောက်စ်ဆွဲ = ကင်မရာ · scroll = zoom</div>
-        <div className="sm:hidden">ဘယ်ဘက် joystick · ညာဘက် ခုန်</div>
+        {!touch && (
+          <>
+            <div>WASD ရွှေ့ · Shift ပြေး · Space ခုန်</div>
+            <div>မောက်စ်ဆွဲ = ကင်မရာ · scroll = zoom</div>
+          </>
+        )}
+        {touch && <div>ဘယ်ဘက် joystick · ညာဘက် ခုန်</div>}
         {ready && (
           <div className="mt-1 flex items-center gap-2 text-white/50">
             <span>{fps} fps</span>
@@ -1705,7 +1719,7 @@ export function MetaverseScene() {
       <div
         data-stick
         data-hud="1"
-        className="absolute bottom-6 left-6 z-10 h-28 w-28 touch-none rounded-full border border-white/20 bg-black/30 backdrop-blur sm:hidden"
+        className={`absolute bottom-6 left-6 z-10 h-28 w-28 touch-none rounded-full border border-white/20 bg-black/30 backdrop-blur ${touch ? "" : "hidden"}`}
       >
         <div
           data-knob
@@ -1715,7 +1729,7 @@ export function MetaverseScene() {
       <button
         data-jump
         data-hud="1"
-        className="absolute bottom-8 right-6 z-10 h-20 w-20 touch-none rounded-full border border-white/20 bg-black/30 text-sm text-white/80 backdrop-blur sm:hidden"
+        className={`absolute bottom-8 right-6 z-10 h-20 w-20 touch-none rounded-full border border-white/20 bg-black/30 text-sm text-white/80 backdrop-blur ${touch ? "" : "hidden"}`}
       >
         ခုန်
       </button>
