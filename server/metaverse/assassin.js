@@ -34,6 +34,15 @@ const WEAPONS = {
   knife: { my: "ဓား", dmg: 55, range: 2.6, fireMs: 520, ammo: Infinity, headMult: 1.6, splash: 0 },
   sniper: { my: "စနိုက်ပါ", dmg: 85, range: 140, fireMs: 1400, ammo: 5, headMult: 2.0, splash: 0 },
   bomb: { my: "ဗုံး", dmg: 90, range: 18, fireMs: 2600, ammo: 2, headMult: 1.0, splash: 6 },
+  // ── လက်နက်အသစ်များ ─────────────────────────────────────────────────────
+  // ★ တစ်ခုချင်းစီမှာ **သီးသန့် အသုံးဝင်ချက်** ရှိရမယ် — ပစ္စတိုထက် အရာရာ
+  //   ပိုကောင်းတဲ့ လက်နက် ထည့်လိုက်ရင် ရွေးစရာ မကျန်တော့ဘူး။
+  //   smg     — မြန်ပေမယ့် အားနည်း၊ အနီးကပ်တိုက်ပွဲအတွက်
+  //   shotgun — အနီးမှာ ကြောက်စရာ၊ ၈ မီတာကျော်ရင် အလကား
+  //   revolver— နှေးပေမယ့် ခေါင်းထိရင် တစ်ချက်တည်း
+  smg: { my: "အက်စ်အမ်ဂျီ", dmg: 17, range: 30, fireMs: 95, ammo: 30, headMult: 1.6, splash: 0 },
+  shotgun: { my: "သေနတ်ကြီး", dmg: 96, range: 9, fireMs: 900, ammo: 6, headMult: 1.2, splash: 0 },
+  revolver: { my: "ရီဗော်လ်ဗာ", dmg: 62, range: 55, fireMs: 1100, ammo: 6, headMult: 2.1, splash: 0 },
 };
 
 /// ★ `armor`/`helmet` မရှိတော့ဘူး — အပေါ်က မှတ်ချက် ကြည့်ပါ။
@@ -85,13 +94,13 @@ function makePlayer(id, name, index) {
   };
 }
 
+/// ★ WEAPONS ကနေ တွက်တယ် — လက်နက်အသစ် ထည့်တိုင်း ဒီ function ကို
+///   ပြင်ဖို့ မမေ့သွားအောင် (မေ့ရင် ကျည် undefined ဖြစ်ပြီး ဘယ်တော့မှ
+///   မပစ်နိုင်တော့ဘူး)。
 function freshAmmo() {
-  return {
-    pistol: WEAPONS.pistol.ammo,
-    knife: Infinity,
-    sniper: WEAPONS.sniper.ammo,
-    bomb: WEAPONS.bomb.ammo,
-  };
+  const out = {};
+  for (const [id, w] of Object.entries(WEAPONS)) out[id] = w.ammo;
+  return out;
 }
 
 /// Match တစ်ခု — room တစ်ခုစီမှာ တစ်ခုစီ။
@@ -189,13 +198,18 @@ function personalState(match, me) {
   };
 }
 
-/// `Infinity` က JSON မှာ `null` ဖြစ်သွားလို့ ဓားကို −၁ နဲ့ ကိုယ်စားပြုတယ်။
-const serializeAmmo = (a) => ({
-  pistol: a.pistol,
-  knife: -1,
-  sniper: a.sniper,
-  bomb: a.bomb,
-});
+/// `Infinity` က JSON မှာ `null` ဖြစ်သွားလို့ −၁ နဲ့ ကိုယ်စားပြုတယ်။
+///
+/// ★ WEAPONS ကနေ တွက်တယ် — အရင်က လက်နက် ၄ ခုကို လက်နဲ့ စာရင်းရေးထားလို့
+///   အသစ်ထည့်ရင် သူ့ကျည်က client ဆီ လုံးဝ မရောက်ဘဲ HUD မှာ ဗလာ ပြနေမယ်။
+const serializeAmmo = (a) => {
+  const out = {};
+  for (const id of Object.keys(WEAPONS)) {
+    const n = a[id];
+    out[id] = n === Infinity || n === undefined ? -1 : n;
+  }
+  return out;
+};
 
 const round2 = (n) => Math.round(n * 100) / 100;
 

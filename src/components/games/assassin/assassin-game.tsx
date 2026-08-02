@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+
+import { syncBest } from "@/lib/quests";
 
 import { createBloodField, loadBloodPref, saveBloodPref } from "./blood";
 import { createGroundSampler, loadMap, type LoadedMap } from "./map-loader";
+import { createSfx, type Sfx } from "./sfx";
 import { buildArena, createToonFighter, createWeaponModel, type Fighter } from "./toon";
 
 /// Gwave Assassin — ၁၈+ multiplayer mini-game (three.js)。
@@ -73,6 +76,21 @@ export function AssassinGame({ room }: { room: string }) {
     bloodRef.current = v;
   }, []);
   const bloodFieldRef = useRef<ReturnType<typeof createBloodField> | null>(null);
+
+  /// အသံ — SFX နဲ့ နောက်ခံသီချင်း သီးခြားစီ ချိန်လို့ရတယ်။
+  const [sfxVol, setSfxVol] = useState(0.7);
+  const sfxRef = useRef<Sfx | null>(null);
+  const [musicVol, setMusicVol] = useState(0.35);
+  const [tracks, setTracks] = useState<{ id: string; title: string; url: string }[]>([]);
+  const [trackIx, setTrackIx] = useState(0);
+  const [musicOn, setMusicOn] = useState(true);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  /// ပွဲတစ်လျှောက် စုဆောင်းထားတဲ့ စာရင်း — ထွက်တဲ့အခါ တစ်ခါတည်း သိမ်းတယ်။
+  const careerRef = useRef({ kills: 0, wrong: 0, best: 0 });
+  /// ★ `hud` က frame တိုင်း ပြောင်းလို့ scene effect ရဲ့ dep ထဲ မထည့်နိုင်ဘူး —
+  ///   ဒါပေမယ့် ပစ်တဲ့အခါ လက်ရှိလက်နက်ကို သိဖို့ လိုတယ်။ ref က အဲဒီကြားခံ။
+  const youRef = useRef<You | null>(null);
+  const sfxVolRef = useRef(0.7);
   const sendRef = useRef<((m: Record<string, unknown>) => void) | null>(null);
 
   useEffect(() => {
@@ -97,6 +115,11 @@ export function AssassinGame({ room }: { room: string }) {
 
     const bloodField = createBloodField(scene, bloodRef.current);
     bloodFieldRef.current = bloodField;
+    const sfx = createSfx(sfxVolRef.current);
+    sfxRef.current = sfx;
+    // ★ ref object ကို ဒီမှာ ကိုင်ထားတယ် — cleanup မှာ `.current` ကို
+    //   ဖတ်တာက **တမင်** ပါ (ထွက်ချိန်က နောက်ဆုံးရမှတ် လိုချင်တာ)。
+    const career = careerRef;
 
     let loadedMap: LoadedMap | null = null;
     let ground = createGroundSampler(null);
@@ -247,12 +270,16 @@ export function AssassinGame({ room }: { room: string }) {
             break;
           }
           case "aYou":
+            youRef.current = m.you as You;
             setHud((h) => ({ ...h, you: m.you as You }));
             me.alive = (m.you as You).alive;
             break;
           case "aHit": {
             const a = actors.get(String(m.victimId));
             const head = m.hitPart === "head";
+            // ★ ကိုယ်ပစ်လိုက်တာ ထိမှန်ကြောင်း အသံ — အဝေးကနေ ပစ်တဲ့အခါ
+            //   ဒါတစ်ခုတည်းက ထိ/မထိ ပြောပြနိုင်တဲ့ အရာ။
+            if (m.attackerId === meId) sfx.hitMarker(head);
             if (a) {
               a.data.hp = Number(m.hp);
               // ★ ခေါင်းထိရင် ခေါင်းအမြင့်၊ ကိုယ်ထိရင် ရင်အုပ်အမြင့်မှာ —
@@ -261,7 +288,10 @@ export function AssassinGame({ room }: { room: string }) {
               at.y += head ? 1.6 : 1.0;
               bloodField.burst(at, head);
             }
-            if (m.victimId === meId) flash();
+            if (m.victimId === meId) {
+              flash();
+              sfx.hurt();
+            }
             break;
           }
           case "aKill": {
@@ -277,6 +307,17 @@ export function AssassinGame({ room }: { room: string }) {
               v.fighter.group.visible = false;
             }
             if (m.victimId === meId) me.alive = false;
+            if (mine) {
+              sfx.kill(correct);
+              // ★ တစ်ပွဲပြီးမှ မဟုတ်ဘဲ ဒီမှာ ရေတွက်တယ် — ပွဲက အဆုံးမသတ်ဘဲ
+              //   ထွက်သွားတဲ့သူရဲ့ စာရင်းလည်း ကျန်ရမယ်။
+              if (correct) careerRef.current.kills++;
+              else careerRef.current.wrong++;
+              careerRef.current.best = Math.max(
+                careerRef.current.best,
+                Number(m.killerScore) || 0,
+              );
+            }
             if (mine && !correct) pushFeed("လူမှားသတ်မိလို့ အမှတ် လျော့သွားတယ်", false);
             break;
           }
@@ -323,6 +364,11 @@ export function AssassinGame({ room }: { room: string }) {
           case "aNoAmmo":
             pushFeed("ကျည် ကုန်သွားပြီ — R နှိပ်ပြီး ဖြည့်ပါ", false);
             break;
+          // ★ တခြားသူတွေရဲ့ ပစ်သံ — ဘယ်လက်နက်လဲ ကြားရုံနဲ့ သိရတယ်
+          //   (ဘေးမှာ စနိုက်ပါ ရှိလား ဆိုတာ ကစားမှုအချက်အလက်)。
+          case "aShot":
+            if (m.id !== meId) sfx.shot(String(m.weapon));
+            break;
         }
       };
     })();
@@ -337,7 +383,11 @@ export function AssassinGame({ room }: { room: string }) {
     const keys = new Set<string>();
     const onKeyDown = (e: KeyboardEvent) => {
       keys.add(e.code);
-      if (e.code === "KeyR") send({ type: "aReload" });
+      if (e.code === "KeyR") {
+        send({ type: "aReload" });
+        sfx.resume();
+        sfx.reload();
+      }
       if (e.code === "Digit1") send({ type: "aWeapon", weapon: "pistol" });
       if (e.code === "Digit2") send({ type: "aWeapon", weapon: "knife" });
       if (e.code === "Digit3") send({ type: "aWeapon", weapon: "sniper" });
@@ -368,7 +418,11 @@ export function AssassinGame({ room }: { room: string }) {
     const centre = new THREE.Vector2(0, 0);
     const fire = () => {
       if (!me.alive) return;
-      const w = hud.you?.weapon ?? "pistol";
+      // ★ Browser က user gesture ပြီးမှ audio ခွင့်ပြုတယ် — ပထမပစ်ချက်က
+      //   အဲဒီ gesture ပဲ။
+      sfx.resume();
+      const w = youRef.current?.weapon ?? "pistol";
+      sfx.shot(w);
       if (w === "bomb") {
         // ဗုံး — ရှေ့ ၈ မီတာ အကွာကို ပစ်တယ်
         send({ type: "aFire", x: me.x - Math.sin(me.ry) * 8, z: me.z - Math.cos(me.ry) * 8 });
@@ -408,6 +462,7 @@ export function AssassinGame({ room }: { room: string }) {
     let raf = 0;
     let last = performance.now();
     let sendAcc = 0;
+    let stepAcc = 0;
 
     const tick = () => {
       raf = requestAnimationFrame(tick);
@@ -430,6 +485,7 @@ export function AssassinGame({ room }: { room: string }) {
           const cos = Math.cos(me.ry);
           me.x += (fx * cos - fz * sin) * SPEED * dt;
           me.z += (-fx * sin - fz * cos) * SPEED * dt;
+          stepAcc += dt;
           const r = Math.hypot(me.x, me.z);
           if (r > arena) {
             me.x = (me.x / r) * arena;
@@ -466,6 +522,10 @@ export function AssassinGame({ room }: { room: string }) {
       }
 
       bloodField.update(dt);
+      if (stepAcc > 0.42 && me.alive) {
+        stepAcc = 0;
+        sfx.step();
+      }
 
       renderer.render(scene, camera);
       const el = hurtRef.current;
@@ -487,6 +547,14 @@ export function AssassinGame({ room }: { room: string }) {
       ws?.close();
       bloodField.dispose();
       bloodFieldRef.current = null;
+      // ★ ရမှတ်ကို ထွက်ချိန်မှာ တစ်ခါတည်း သိမ်းတယ် — ပစ်ချက်တိုင်း
+      //   ပို့နေရင် ပွဲကြမ်းချိန်မှာ request မိုးရွာမယ်။
+      const c = career.current;
+      if (c.kills > 0 || c.wrong > 0) {
+        syncBest("assassin", c.best, { kills: c.kills, wrongKills: c.wrong });
+      }
+      sfx.dispose();
+      sfxRef.current = null;
       renderer.dispose();
       if (canvas.parentNode === mount) mount.removeChild(canvas);
       sendRef.current = null;
@@ -495,6 +563,45 @@ export function AssassinGame({ room }: { room: string }) {
     //   တစ်ခုလုံး ပြန်ဆောက်နေမယ်။
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started, room]);
+
+  // ── နောက်ခံသီချင်း — Gwave ရဲ့ music library ကနေ ─────────────────────
+  //
+  // ★ ဂိမ်းထဲ သီချင်း bundle မလုပ်ဘူး — app မှာ ရှိပြီးသား စာကြည့်တိုက်ကနေ
+  //   ယူတယ်။ ဒါဆို အသစ်တင်တိုင်း ဂိမ်းက အလိုအလျောက် ရတယ်၊ ပြီးတော့
+  //   အခွင့်အရေး စစ်ဆေးမှုက server မှာ ရှိပြီးသား ဖြစ်နေတယ်။
+  useEffect(() => {
+    if (!started) return;
+    let alive = true;
+    void fetch("/api/games/assassin/music", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { tracks: [] }))
+      .then((j: { tracks?: { id: string; title: string; url: string }[] }) => {
+        if (!alive) return;
+        const list = j.tracks ?? [];
+        // ★ အစဉ်ကို ရောတယ် — ဝင်တိုင်း သီချင်းတစ်ပုဒ်တည်း စရင် ငြီးငွေ့တယ်။
+        for (let i = list.length - 1; i > 0; i--) {
+          const k = Math.floor(Math.random() * (i + 1));
+          [list[i], list[k]] = [list[k]!, list[i]!];
+        }
+        setTracks(list);
+      })
+      .catch(() => setTracks([]));
+    return () => {
+      alive = false;
+    };
+  }, [started]);
+
+  const current = tracks[trackIx] ?? null;
+
+  /// နောက်တစ်ပုဒ် — စာရင်းအဆုံးရောက်ရင် အစကို ပြန်လှည့်တယ်။
+  const nextTrack = useCallback(() => {
+    setTrackIx((i) => (tracks.length === 0 ? 0 : (i + 1) % tracks.length));
+  }, [tracks.length]);
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    el.volume = musicVol;
+  }, [musicVol]);
 
   const hurtRef = useRef<HTMLDivElement | null>(null);
   const you = hud.you;
@@ -633,9 +740,82 @@ export function AssassinGame({ room }: { room: string }) {
         ))}
       </div>
 
-      {/* သွေး ချိန်ခလုတ် — ဂိမ်းထဲကနေတောင် ပြောင်းလို့ရတယ် */}
-      <div className="absolute right-3 top-24 w-28 rounded-lg bg-black/55 px-2 py-1.5 text-white backdrop-blur">
+      {/* ── အသံ ── */}
+      {/* ★ `loop` မထားဘူး — ဆုံးရင် နောက်တစ်ပုဒ် သွားတယ်။ တစ်ပုဒ်တည်း
+          ထပ်ခါထပ်ခါ ဆိုရင် ငါးမိနစ်အကြာမှာ ပိတ်ချင်လာမယ်။ */}
+      <audio
+        ref={audioRef}
+        src={musicOn && current ? current.url : undefined}
+        autoPlay={musicOn}
+        onEnded={nextTrack}
+        // ★ သီချင်းတစ်ပုဒ် ဖွင့်လို့မရရင် ဂိမ်းကို မရပ်ဘဲ ကျော်သွားတယ်။
+        onError={nextTrack}
+        className="hidden"
+      />
+
+      <div className="absolute right-3 top-24 w-40 space-y-1.5 rounded-lg bg-black/55 px-2 py-1.5 text-white backdrop-blur">
         {bloodSlider}
+        <label className="block">
+          <span className="flex items-center justify-between text-[11px]">
+            <span>🔊 အသံ</span>
+            <span className="tabular-nums opacity-70">{Math.round(sfxVol * 100)}%</span>
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={Math.round(sfxVol * 100)}
+            onChange={(e) => {
+              const v = Number(e.target.value) / 100;
+              setSfxVol(v);
+              sfxVolRef.current = v;
+              sfxRef.current?.setVolume(v);
+            }}
+            aria-label="အသံ အကျယ်"
+            className="mt-1 w-full accent-emerald-400"
+          />
+        </label>
+
+        <div className="border-t border-white/15 pt-1.5">
+          <div className="flex items-center justify-between text-[11px]">
+            <span>🎵 သီချင်း</span>
+            <button
+              onClick={() => setMusicOn((v) => !v)}
+              className="rounded px-1 text-[10px] text-white/70 hover:bg-white/15"
+            >
+              {musicOn ? "ပိတ်" : "ဖွင့်"}
+            </button>
+          </div>
+          {tracks.length === 0 ? (
+            <div className="text-[10px] text-white/45">
+              စာကြည့်တိုက်မှာ အခမဲ့သီချင်း မရှိသေးပါ
+            </div>
+          ) : (
+            <>
+              <div className="truncate text-[10px] text-white/60" title={current?.title}>
+                {musicOn ? (current?.title ?? "…") : "ပိတ်ထားသည်"}
+              </div>
+              <div className="mt-1 flex items-center gap-1">
+                <button
+                  onClick={nextTrack}
+                  className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] hover:bg-white/20"
+                  aria-label="နောက်တစ်ပုဒ်"
+                >
+                  ⏭
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={Math.round(musicVol * 100)}
+                  onChange={(e) => setMusicVol(Number(e.target.value) / 100)}
+                  aria-label="သီချင်း အသံအကျယ်"
+                  className="w-full accent-sky-400"
+                />
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* လက်နက် ခလုတ်များ — ဖုန်းအတွက် */}

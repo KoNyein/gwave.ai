@@ -232,3 +232,63 @@ test("★ ပွဲပြန်စရင် အမှတ်တွေ သုည�
   assert.equal(a.alive, true);
   assert.ok(a.targetId, "ပွဲပြန်စပြီးမှ ပစ်မှတ် မရှိဘူး");
 });
+
+// ── လက်နက်များ ───────────────────────────────────────────────────────────
+test("★ လက်နက်တိုင်းအတွက် ကျည် ရှိရမယ်", () => {
+  // ★ freshAmmo() က WEAPONS ကနေ တွက်တယ် — အရင်က လက်နက် ၄ ခုကို လက်နဲ့
+  //   စာရင်းရေးထားလို့ အသစ်ထည့်ရင် ကျည် `undefined` ဖြစ်ပြီး
+  //   `undefined <= 0` က false မို့ အကန့်အသတ်မဲ့ ပစ်လို့ရသွားမယ်။
+  const p = A.makePlayer("x", "X", 0);
+  for (const id of Object.keys(A.WEAPONS)) {
+    assert.notEqual(p.ammo[id], undefined, `${id} မှာ ကျည် မရှိဘူး`);
+  }
+});
+
+test("★ လက်နက်တိုင်းမှာ သီးသန့် အသုံးဝင်ချက် ရှိရမယ်", () => {
+  // အားလုံးထက် သာတဲ့ လက်နက် တစ်ခု ရှိသွားရင် ကျန်တာတွေ ရွေးစရာ မဟုတ်တော့ဘူး။
+  const ids = Object.keys(A.WEAPONS).filter((k) => k !== "knife");
+  for (const a of ids) {
+    const wa = A.WEAPONS[a];
+    const dominated = ids.some((b) => {
+      if (a === b) return false;
+      const wb = A.WEAPONS[b];
+      return (
+        wb.dmg >= wa.dmg &&
+        wb.range >= wa.range &&
+        wb.fireMs <= wa.fireMs &&
+        wb.ammo >= wa.ammo &&
+        (wb.dmg > wa.dmg || wb.range > wa.range || wb.fireMs < wa.fireMs)
+      );
+    });
+    assert.equal(dominated, false, `${a} က တခြားလက်နက်တစ်ခုအောက် လုံးဝ ရှုံးနေတယ်`);
+  }
+});
+
+test("★ သေနတ်ကြီးက အဝေးကနေ မထိရ", () => {
+  const m = matchWith(2);
+  const [me, victim] = [...m.players.values()];
+  me.weapon = "shotgun";
+  me.x = 0; me.z = 0;
+  victim.x = 20; victim.z = 0; // range 9 ထက် ဝေးတယ်
+  const out = A.handleFire(m, me, { targetId: victim.id, hitPart: "body" }, 1000);
+  assert.equal(out.find((e) => e.msg?.type === "aHit"), undefined);
+});
+
+test("★ SMG က မြန်ပေမယ့် တစ်ချက်ချင်း အားနည်းရမယ်", () => {
+  const smg = A.computeDamage("smg", "body", 1);
+  const pistol = A.computeDamage("pistol", "body", 1);
+  assert.ok(smg < pistol, "SMG က ပစ္စတိုထက် အားကြီးနေတယ်");
+  assert.ok(A.WEAPONS.smg.fireMs < A.WEAPONS.pistol.fireMs, "SMG က မမြန်ဘူး");
+});
+
+test("★ လက်နက်တိုင်းရဲ့ ကျည်က client ဆီ ရောက်ရမယ်", () => {
+  // ★ serializeAmmo လည်း လက်နဲ့ စာရင်းရေးထားခဲ့တယ် — အသစ်ထည့်ရင် သူ့ကျည်
+  //   HUD မှာ ဗလာ ပြနေမယ် (ကစားသမားက ဘယ်လောက်ကျန်လဲ မသိရဘူး)。
+  const m = matchWith(1);
+  const [me] = [...m.players.values()];
+  const sent = A.personalState(m, me).ammo;
+  for (const id of Object.keys(A.WEAPONS)) {
+    assert.notEqual(sent[id], undefined, `${id} ရဲ့ ကျည် client ဆီ မရောက်ဘူး`);
+  }
+  assert.equal(sent.knife, -1, "အကန့်အသတ်မဲ့ ကျည်ကို −၁ နဲ့ ပြရမယ်");
+});
