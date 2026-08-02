@@ -510,8 +510,13 @@ jobs:
       - name: Generate launcher icon
         run: dart run flutter_launcher_icons
 
+      # ★ No `|| true`. With infos and warnings non-fatal this only fails on
+      # real analyzer errors — a missing import, a type that does not line up,
+      # a directive in the wrong place. Those are guaranteed build failures
+      # anyway, and catching them here costs 30 seconds instead of three
+      # minutes of Gradle. The ~176 pre-existing infos/warnings still pass.
       - name: Analyze
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings || true
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Build APK
         env:
