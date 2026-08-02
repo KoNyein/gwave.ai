@@ -79,6 +79,7 @@ jobs:
             --build-arg NEXT_PUBLIC_IVS_RECORDING_BASE="${{ vars.NEXT_PUBLIC_IVS_RECORDING_BASE }}" \
             --build-arg NEXT_PUBLIC_VAPID_PUBLIC_KEY="${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}" \
             --build-arg NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="${{ vars.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}" \
+            --build-arg NEXT_PUBLIC_MV_WS_URL="${{ vars.NEXT_PUBLIC_MV_WS_URL }}" \
             -t "$IMAGE:gwave" \
             -t "$IMAGE:${{ github.sha }}" \
             .
