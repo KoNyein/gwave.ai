@@ -11,6 +11,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
+import { fetchBests, questEvent, questsToday, refreshQuests, syncBest, type QuestView } from "@/lib/quests";
+
 import { createArcade, emojiTexture, makeSynth, textTexture, type Synth } from "./engine";
 import { ALL_GAMES, MEMORY_EMOJI, PICK_GAMES, WORDS, type Choice, type PickGame } from "./games";
 
@@ -92,12 +94,40 @@ export function EduArcade() {
   const [totalRounds, setTotalRounds] = useState(0);
   const [score, setScore] = useState(0);
   const [best, setBest] = useState<Record<string, number>>({});
+  const [quests, setQuests] = useState<QuestView[]>([]);
   const synthRef = useRef<Synth | null>(null);
 
   useEffect(() => {
     setBest(loadBest());
+    setQuests(questsToday());
     synthRef.current = makeSynth();
   }, []);
+
+  // Hub ပြန်ရောက်တိုင်း — quest + server best တွေ ဆွဲ merge (signed-in မှသာ
+  // server က ပြန်လာတယ်၊ မဟုတ်ရင် local အတိုင်း ဆက်သွား)
+  useEffect(() => {
+    if (screen !== "hub") return;
+    let alive = true;
+    void refreshQuests().then((q) => {
+      if (alive) setQuests(q);
+    });
+    void fetchBests().then((remote) => {
+      if (!alive) return;
+      setBest((local) => {
+        const merged = { ...local };
+        for (const [k, v] of Object.entries(remote)) {
+          if (k.startsWith("arcade-")) {
+            const id = k.slice(7);
+            merged[id] = Math.max(merged[id] ?? 0, v.best);
+          }
+        }
+        return merged;
+      });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [screen]);
 
   // ── Game scene ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -128,6 +158,10 @@ export function EduArcade() {
       saveBest(game.id, localScore);
       setBest(loadBest());
       setScore(localScore);
+      // Quest + cross-device sync — signed-in ဖြစ်ရင် server မှာပါ မှတ်တယ်
+      questEvent("arcade_play");
+      if (localScore > 0) questEvent("arcade_stars", localScore);
+      syncBest(`arcade-${game.id}`, localScore);
       setTimeout(() => setScreen("end"), 900);
     };
 
@@ -373,6 +407,40 @@ export function EduArcade() {
             <p className="mt-1 text-xs text-white/55">
               three.js နဲ့ ဆောက်ထားတဲ့ ပညာရေး ဂိမ်း ၁၀ ခု — ဖုန်း/iPad/PC အားလုံး tap တစ်ခုတည်း။
             </p>
+
+            {/* ── နေ့စဉ် Quest များ ── */}
+            <div className="mt-4 rounded-2xl border border-amber-400/25 bg-amber-500/[0.07] p-3">
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm font-bold text-amber-200">📜 ဒီနေ့ Quest များ</span>
+                <span className="text-[10px] text-white/40">
+                  Login ဝင်ထားရင် device တိုင်း တူညီတယ်
+                </span>
+              </div>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {quests.map((q) => (
+                  <div
+                    key={q.id}
+                    className={`rounded-xl border p-2.5 ${q.done ? "border-emerald-400/50 bg-emerald-500/10" : "border-white/10 bg-white/5"}`}
+                  >
+                    <div className="flex items-center justify-between gap-2 text-[12px]">
+                      <span className="min-w-0 truncate">
+                        {q.emoji} {q.nameMy}
+                      </span>
+                      <span className={`shrink-0 ${q.done ? "text-emerald-300" : "text-white/50"}`}>
+                        {q.done ? `✓ +${q.stars}⭐` : `${q.progress}/${q.target}`}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className={`h-full rounded-full transition-all ${q.done ? "bg-emerald-400" : "bg-amber-400"}`}
+                        style={{ width: `${Math.round((q.progress / q.target) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {ALL_GAMES.map((g) => (
                 <button

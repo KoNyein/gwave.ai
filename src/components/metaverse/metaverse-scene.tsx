@@ -33,6 +33,7 @@ import { createWeather } from "./weather";
 import { buildWorld, resolveCollision } from "./world";
 import { isInApp, native } from "@/lib/metaverse/native";
 import { snap, type BuildType } from "@/lib/metaverse/build";
+import { questEvent } from "@/lib/quests";
 
 /// Gwave Metaverse ရဲ့ အဓိက client component။
 ///
@@ -256,6 +257,11 @@ export function MetaverseScene() {
   // Emote ကို ref နဲ့ ကူးထားတယ် — render loop က state ကို closure ထဲ
   // ဖမ်းထားလို့ တိုက်ရိုက်ဖတ်ရင် အဟောင်းပဲ ရမယ်။
   const emoteRef = useRef<HumanState["emote"]>(null);
+  // နေ့စဉ် quest — လောကထဲ ဝင်တာကို မှတ်တယ် (Edu Arcade ရဲ့ quest panel မှာ ပြ)
+  useEffect(() => {
+    questEvent("mv_visit");
+  }, []);
+
   useEffect(() => {
     emoteRef.current = emote;
     // တခြားသူတွေလည်း မြင်ရအောင် — emote က ငြိမ်နေမှ ပေါ်တာမို့ ဒါက

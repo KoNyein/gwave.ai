@@ -18,6 +18,7 @@ import { DRONES, getDrone, getMode, MODES, type DroneSpec, type FlightMode } fro
 import { createInput, loadAxisMap, saveAxisMap, type AxisMap, type FpvInput } from "@/lib/fpv/input";
 import { buildFpvMap, FPV_MAPS } from "@/lib/fpv/maps";
 import { createState, respawn, speedKmh, updateDrone, type Sticks } from "@/lib/fpv/physics";
+import { questEvent, syncBest } from "@/lib/quests";
 
 const WS_URL = process.env.NEXT_PUBLIC_MV_WS_URL || "";
 function wsCandidates(): string[] {
@@ -363,6 +364,7 @@ export function FpvSim() {
       /* ignore */
     }
     let score = 0;
+    let flewThisSession = false;
     const explosions: ReturnType<typeof makeExplosion>[] = [];
 
     const doRespawn = () => {
@@ -391,7 +393,14 @@ export function FpvSim() {
       if (input.consumeArmToggle()) {
         if (state.crashed) doRespawn();
         state.armed = !state.armed;
-        if (state.armed) sound.start();
+        if (state.armed) {
+          sound.start();
+          // Quest — session တစ်ခုမှာ တစ်ခါပဲ ရေတွက်တယ်
+          if (!flewThisSession) {
+            flewThisSession = true;
+            questEvent("fpv_fly");
+          }
+        }
       }
       if (input.consumeRespawn()) doRespawn();
 
@@ -418,6 +427,9 @@ export function FpvSim() {
                 } catch {
                   /* ignore */
                 }
+                // Cross-device sync — lap time သေးလေကောင်းလေမို့ data ထဲ ms
+                // အနေနဲ့ သိမ်းတယ် (best column က ကြီးလေကောင်းလေ သဘော)
+                syncBest(`fpv-lap-${map.id}`, 0, { bestLapMs: Math.round(bestLap) });
               }
             }
             lapStart = performance.now();
