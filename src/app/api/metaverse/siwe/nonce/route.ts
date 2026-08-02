@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/data/admin";
+import { SIWE_DOMAIN, siweChainId } from "@/lib/metaverse/siwe";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,9 @@ export async function POST() {
   }
 
   return NextResponse.json(
-    { nonce, issuedAt: new Date().toISOString() },
+    // ★ `chainId` ကို server က ပြောပေးတယ် — client က ကိုယ့်ဘာသာ
+    // ရွေးလို့ရရင် စာထဲက chain နဲ့ server စစ်တဲ့ chain မတူဘဲ ဖြစ်နိုင်တယ်။
+    { nonce, issuedAt: new Date().toISOString(), chainId: siweChainId(), domain: SIWE_DOMAIN },
     // ★ ဘယ်တော့မှ cache မလုပ်ရ — CDN တစ်ခုက nonce ကို သိမ်းပြီး
     // တခြားသူဆီ ပြန်ပေးရင် တစ်ခါသုံးဆိုတာ အဓိပ္ပာယ်မရှိတော့ဘူး။
     { headers: { "cache-control": "no-store, private" } },

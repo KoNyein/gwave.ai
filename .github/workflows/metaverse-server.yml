@@ -96,8 +96,11 @@ jobs:
 
       - name: Health check
         run: |
+          # ★ Production က ECS/mv.gwave.cc မဟုတ်တော့ဘူး — EC2 box ပေါ်က
+          # `metaverse` container ကို Caddy က gwave.cc/mv/* ကနေ ဖြတ်ပေးတယ်။
+          # (ဒီ job က vars.MV_DEPLOY_ECS ဖွင့်မှ ပြေးတယ်၊ ပုံမှန် ပိတ်ထား။)
           for i in $(seq 1 10); do
-            if curl -fsS https://mv.gwave.cc/health; then exit 0; fi
+            if curl -fsS "${MV_HEALTH_URL:-https://gwave.cc/mv/health}"; then exit 0; fi
             sleep 6
           done
           echo "health check never passed"
