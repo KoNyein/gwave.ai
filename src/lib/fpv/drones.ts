@@ -1,9 +1,18 @@
 /// FPV drone catalog (drone အမျိုးအစား ရွေးချယ်စရာ)။
 ///
-/// ★ နာမည်တွေက Gwave ကိုယ်ပိုင် fictional brand တွေ — တကယ့် brand နာမည်
-///   (DJI, iFlight, …) ကို app ထဲ မသုံးဘူး (trademark)။ Class တွေကတော့
+/// ★ နာမည်အများစုက Gwave ကိုယ်ပိုင် fictional brand တွေ။ Class တွေကတော့
 ///   တကယ့် hobby ထဲက အတိုင်း — whoop / toothpick / freestyle / race /
 ///   long-range / cinelifter။
+/// ★ **Reference models** (`reference: true`) ကတော့ ခြွင်းချက် — တကယ်ရှိတဲ့
+///   ကိရိယာတွေရဲ့ ထုတ်လုပ်သူ ကြေညာချက်အတိုင်း ပျံသန်းမှုပုံစံကို
+///   တုပထားတာဖြစ်လို့ အဲဒီနာမည်နဲ့ပဲ ခေါ်ရမယ် — "3 လက်မ ducted quad" လို့
+///   ခေါ်လိုက်ရင် ဘယ်စက်လဲ ဆိုတာ ဘယ်သူမှ မသိတော့ဘူး။ Trademark တွေက
+///   သက်ဆိုင်ရာ ပိုင်ရှင်တွေ့ဆိုင်ရာ ဖြစ်ပြီး Gwave နဲ့ ဆက်စပ်မှု မရှိကြောင်း
+///   UI မှာ ဖော်ပြထားတယ် (nominative use)。
+/// ★ Reference model တွေရဲ့ ဂဏန်းတွေက **ထုတ်လုပ်သူ ကြေညာထားတဲ့ spec**
+///   (အလေးချိန်၊ အမြင့်ဆုံးအရှိန်၊ ပျံသန်းချိန်) ကနေ လာတယ်။ ခန့်မှန်းရတဲ့
+///   ဟာတွေကို comment မှာ အတိအလင်း မှတ်ထားတယ် — မသိတာကို သိသလို
+///   မရေးရ။
 /// ★ Physics param တွေက drone တစ်စီးချင်းရဲ့ **ခံစားချက်** ကို ဆုံးဖြတ်တယ်
 ///   — mass များရင် လေးတယ်၊ thrust-to-weight များရင် ဆတ်တယ်၊ drag များရင်
 ///   အရှိန်သတ်တယ်။ physics.ts က ဒီတန်ဖိုးတွေကိုပဲ ဖတ်တယ်။
@@ -50,6 +59,16 @@ export type DroneSpec = {
   liftK?: number;
   /// Stall speed (m/s) — ဒီအောက် နှေးရင် နှာခေါင်းစိုက်ကျတယ်
   stallSpeed?: number;
+
+  /// ── Reference (real-world) models ──
+  /// တကယ်ရှိတဲ့ ကိရိယာတစ်ခုကို တုပထားတာလား — UI မှာ trademark မှတ်ချက်
+  /// ပြဖို့။
+  reference?: boolean;
+  /// Ducted (cinewhoop / Avata ပုံစံ) — prop ကို duct နဲ့ ဝိုင်းထားတာ။
+  /// ★ Duct က မြေပြင်နားမှာ တွန်းအားပိုပေးပြီး အရှိန်မြင့်ရင် drag ပိုတယ်။
+  ducted?: boolean;
+  /// Spec မှတ်ချက် (source / ခန့်မှန်းချက် ဖော်ပြရန်)
+  specNote?: string;
 };
 
 export const DRONES: DroneSpec[] = [
@@ -222,7 +241,88 @@ export const DRONES: DroneSpec[] = [
     color: 0x555f6e,
   },
 
-  // ── ✈️ Fixed-wing (လေယာဉ်) ────────────────────────────────────────────
+  // ── 📷 Reference models (တကယ်ရှိတဲ့ ကိရိယာများ) ───────────────────────
+  // Published manufacturer figures where they exist; anything inferred is
+  // called out in `specNote` rather than presented as fact.
+  {
+    id: "avata2",
+    name: "DJI Avata 2",
+    craft: "quad",
+    cls: "cine",
+    size: "3\" ducted",
+    blurbMy: "Duct ပါတဲ့ cinewhoop — ၃၇၇g၊ အမြန်ဆုံး ~၂၇ m/s (Manual)။ ပွတ်တိုက်မိလည်း prop မထိလို့ အိမ်တွင်း/လူနားမှာ ပျံရတာ အန္တရာယ်နည်းတယ်။",
+    // Published: 377 g takeoff weight, 27 m/s max (Manual mode), 23 min.
+    mass: 0.377,
+    // Thrust is not published. Derived from the ~3.5:1 thrust-to-weight a
+    // 377 g ducted 3-inch needs to reach its quoted climb and top speed —
+    // marked as derived, not quoted.
+    maxThrust: 13.0,
+    // Ducts add frontal area: noticeably draggier than an open 3-inch.
+    dragLinear: 0.30,
+    dragQuad: 0.055,
+    rcRate: 1.0,
+    superRate: 0.62,
+    expo: 0.30,
+    rateTau: 0.055,
+    maxAngle: 35,
+    camTilt: 20,
+    scale: 0.62,
+    batterySec: 1380, // 23 min published
+    color: 0xdedede,
+    reference: true,
+    ducted: true,
+    specNote: "မော်တာ thrust ကို ကြေညာမထားလို့ အလေးချိန်/အရှိန်ကနေ ခန့်မှန်းထားသည်။",
+  },
+  {
+    id: "o3build",
+    name: "5\" freestyle · O3 Air Unit",
+    craft: "quad",
+    cls: "freestyle",
+    size: "5\"",
+    blurbMy: "O3 Air Unit တင်ထားတဲ့ 5 လက်မ freestyle build — HD ရိုက်ချက်နဲ့ freestyle စွမ်းအား နှစ်ခုလုံး ရတယ်။ VTX က ~၃၆g မို့ analog build ထက် နည်းနည်း လေးတယ်။",
+    // ★ O3 / O4 Air Unit are DJI's *video systems*, not aircraft — they are
+    //   bolted onto a build the pilot makes. So the airframe here is a normal
+    //   5-inch freestyle quad, and what the "O3" changes is 36 g of mass and
+    //   the camera it carries.
+    mass: 0.700,
+    maxThrust: 26.0,
+    dragLinear: 0.22,
+    dragQuad: 0.042,
+    rcRate: 1.15,
+    superRate: 0.72,
+    expo: 0.22,
+    rateTau: 0.040,
+    maxAngle: 55,
+    camTilt: 30,
+    scale: 1,
+    batterySec: 300,
+    color: 0x4fc3f7,
+    reference: true,
+    specNote: "O3 Air Unit ~36g (camera+antenna ပါ)။ Airframe က ပုံမှန် 5\" freestyle build။",
+  },
+  {
+    id: "o4build",
+    name: "5\" freestyle · O4 Air Unit Pro",
+    craft: "quad",
+    cls: "freestyle",
+    size: "5\"",
+    blurbMy: "O4 Air Unit Pro တင်ထားတဲ့ 5 လက်မ build — O3 ထက် ပေါ့ပြီး latency နည်းတယ်၊ ပျံရတာ နည်းနည်း ဆတ်တယ်။",
+    mass: 0.690,
+    maxThrust: 26.0,
+    dragLinear: 0.22,
+    dragQuad: 0.042,
+    rcRate: 1.18,
+    superRate: 0.73,
+    expo: 0.20,
+    rateTau: 0.038,
+    maxAngle: 55,
+    camTilt: 30,
+    scale: 1,
+    batterySec: 300,
+    color: 0x7e57c2,
+    reference: true,
+    specNote: "O4 Air Unit Pro က O3 ထက် ပေါ့တယ် — ခန့်မှန်း ၁၀g ခန့် ကွာသည်။",
+  },
   {
     id: "trainer12",
     name: "GW Trainer 1200",
