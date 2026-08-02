@@ -59,6 +59,12 @@ jobs:
           # closed app. Keeping namespace == applicationId also avoids the
           # google-services Gradle plugin's "no matching client" build error.
           flutter create --org com.green --project-name gwave --platforms=android .
+          # ★ `flutter create` also writes the stock counter test, which
+          # instantiates `MyApp` — a class this app does not have (the root
+          # widget is named differently). It is dead scaffolding that fails
+          # `flutter analyze` with a real error and would fail `flutter test`
+          # too, so drop it rather than analysing around it.
+          rm -f test/widget_test.dart
           for G in android/app/build.gradle android/app/build.gradle.kts; do
             [ -f "$G" ] || continue
             # firebase_messaging requires minSdk >= 23; the template defaults to
