@@ -21,6 +21,7 @@ import '../farm/farm_screen.dart';
 import '../finance/finance_screen.dart';
 import '../friends/friends_screen.dart';
 import '../games/games_screen.dart';
+import '../metaverse/metaverse_screen.dart';
 import '../gpay/gpay_screen.dart';
 import '../groups/groups_screen.dart';
 import '../jobs/jobs_screen.dart';
@@ -214,11 +215,18 @@ class ProfileScreen extends StatelessWidget {
         _MenuEntry(Icons.movie_outlined, "Reels", tab: 1),
         _MenuEntry(Icons.library_music_outlined, tr(context, "Audio", "အသံ"),
             native: _Native.audio),
+        _MenuEntry(Icons.favorite_outline, tr(context, "Dating", "ချိန်းတွေ့"),
+            native: _Native.dating),
+      ]),
+      // Games and the 3D world get their own category — buried at the end
+      // of Social, the two biggest entertainment features were invisible.
+      _MenuSection(tr(context, "Games & Metaverse", "ဂိမ်းနှင့် မက်တာဗာ့စ်"),
+          Icons.sports_esports_outlined, const Color(0xFF8E44AD), [
         _MenuEntry(Icons.sports_esports_outlined,
             tr(context, "Games", "ဂိမ်းများ"),
             native: _Native.games),
-        _MenuEntry(Icons.favorite_outline, tr(context, "Dating", "ချိန်းတွေ့"),
-            native: _Native.dating),
+        _MenuEntry(Icons.public, tr(context, "Metaverse", "မက်တာဗာ့စ်"),
+            native: _Native.metaverse),
       ]),
       _MenuSection(tr(context, "Learning", "ပညာရေး"), Icons.school_outlined,
           const Color(0xFF2E7DB1), [
@@ -484,6 +492,9 @@ class ProfileScreen extends StatelessWidget {
       case _Native.games:
         _push(context, const GamesScreen());
         return;
+      case _Native.metaverse:
+        _push(context, const MetaverseScreen());
+        return;
       case _Native.talk:
         _push(context, const TalkScreen());
         return;
@@ -600,6 +611,7 @@ enum _Native {
   audio,
   wellness,
   myprofile,
+  metaverse,
 }
 
 /// One category of the launcher menu: a titled, color-accented card of tiles.

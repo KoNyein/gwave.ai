@@ -1,5 +1,8 @@
 import {
   BadgeCheck,
+  Car,
+  Globe2,
+  Mountain,
   LayoutDashboard,
   BookOpen,
   Calculator,
@@ -62,7 +65,15 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/talk", labelKey: "talk", icon: Radio },
       { href: "/reels", labelKey: "reels", icon: Clapperboard },
       { href: "/audio", labelKey: "audio", icon: Music },
+    ],
+  },
+  {
+    // ဂိမ်းနဲ့ 3D လောက — Social ထဲ ရောထားရင် feature ကြီးနှစ်ခုက
+    // link ရှည်ကြီးတစ်ခုထဲ မြုပ်နေတယ်။
+    headingKey: "sectionEntertainment",
+    items: [
       { href: "/games", labelKey: "games", icon: Gamepad2 },
+      { href: "/metaverse", labelKey: "metaverse", icon: Globe2 },
     ],
   },
   {
@@ -85,6 +96,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/map", labelKey: "map", icon: Map },
       // Emergency SOS lives on the map; surface it directly for fast access.
       { href: "/map", labelKey: "sos", icon: Siren },
+      { href: "/ride", labelKey: "ride", icon: Car },
     ],
   },
   {
@@ -105,6 +117,7 @@ export const NAV_SECTIONS: NavSection[] = [
       // Strain database covers cannabis → verified adults only.
       { href: "/strains", labelKey: "strains", icon: Leaf, adultOnly: true },
       { href: "/minerals", labelKey: "minerals", icon: Gem },
+      { href: "/metals", labelKey: "metals", icon: Mountain },
       { href: "/tools", labelKey: "tools", icon: Calculator },
     ],
   },
