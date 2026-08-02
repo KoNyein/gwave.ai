@@ -43,6 +43,18 @@
 - **Repo hygiene**: 100 merged branches + old TWA releases deleted
   (`.github/workflows/cleanup-branches.yml` is a reusable manual cleanup).
 
+- **Metaverse (branch `claude/phase-1-implementation-7ysxtj`)**: Phases 0–19
+  all implemented. 4 maps (city/farm/snow/sky), multiplayer WS server
+  (batched fan-out, Redis bus, anti-cheat), persistence (`metaverse.sql` —
+  APPLIED on RDS), Web3 SIWE + token-gated vip room, weather/water/fire/
+  vehicles, avatar customiser (`metaverse-part2.sql` — NOT yet applied),
+  mini-games (server-authoritative, weekly+all-time leaderboard), Android
+  WebView screen with JS bridge + AFK battery handling, UGC plot building
+  (InstancedMesh, server validation, report/admin queue), spatial voice
+  (WebRTC mesh, 18+ ticket claim, mic default off), marketplace
+  (`metaverse-market.sql` — NOT applied; **feature hard-off via
+  MV_MARKET_ENABLED pending legal advice**).
+
 ## Known gaps / next candidates
 
 - FCM push notifications (calls/messages don't ring when the app is closed;
