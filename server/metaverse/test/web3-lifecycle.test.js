@@ -11,7 +11,8 @@
 const test = require("node:test");
 const assert = require("node:assert");
 
-const { CircuitBreaker } = require("../rpc");
+const { CircuitBreaker, rpcUrls } = require("../rpc");
+const { createWeb3 } = require("../web3");
 const { createNonceManager, sendWithGasGuard, RetryLater } = require("../nonce");
 const mintQueue = require("../mint-queue");
 const indexer = require("../indexer");
@@ -90,6 +91,35 @@ test("breaker: တစ်ခါ အောင်မြင်ရင် ကျရှ
   }, null);
   assert.equal(b.isOpen(), false, "ရံဖန်ရံခါ ကျတာတွေ စုပြီး ဖွင့်သွားတယ်");
 });
+
+// ── W5 · Configuration ─────────────────────────────────────────────────────
+test("★ RPC မထည့်ထားရင် Web3 က ပိတ်ထားရမယ် (public endpoint ကို မကူးရ)", () => {
+  // ★ Public backup က configured provider တွေရဲ့ **နောက်ဆုံးအဆင့်** သာ။
+  //   ဘာမှ မထည့်ထားဘဲ public ကို သုံးလိုက်ရင် Web3 မဖွင့်ထားတဲ့
+  //   installation တစ်ခုက ပြင်ပ endpoint ကို ခေါ်နေမယ်၊ ပြီးတော့
+  //   `/health` က "ဖွင့်ထားတယ်" လို့ လိမ်နေမယ်။
+  assert.deepEqual(rpcUrls({}), []);
+
+  const off = createWeb3({});
+  assert.equal(off.enabled, false, "RPC မရှိဘဲ enabled ပြနေတယ်");
+  assert.match(off.why ?? "", /RPC/);
+});
+
+test("RPC ထည့်ရင် public backup ကို နောက်ဆုံးမှာ ထည့်ပေးရမယ်", () => {
+  const urls = rpcUrls({ WEB3_RPC_URL: "https://alchemy.example/x" });
+  assert.equal(urls.length, 2);
+  assert.equal(urls[0], "https://alchemy.example/x");
+  assert.equal(urls[1], "https://mainnet.base.org");
+
+  // testnet မှာ mainnet ကို backup အဖြစ် မထည့်ရ — chain မတူဘူး
+  const t = rpcUrls({ WEB3_RPC_URL: "https://x", WEB3_CHAIN: "baseSepolia" });
+  assert.equal(t[1], "https://sepolia.base.org");
+});
+
+// ★ `createWeb3` ကို RPC URL အစစ်နဲ့ ဒီမှာ **မခေါ်ဘူး** — viem client
+//   တစ်ခု ဆောက်လိုက်ရင် socket/timer တွေက event loop ကို ဖွင့်ထားလို့
+//   `node --test` က ဘယ်တော့မှ မထွက်တော့ဘဲ CI က ငြိသွားမယ်။ ဖွင့်တဲ့
+//   လမ်းကြောင်းကို `rpcUrls()` (client မဆောက်ဘူး) နဲ့ စစ်တယ်။
 
 // ── W3.3 · Nonce ───────────────────────────────────────────────────────────
 test("nonce: tx ၂၀ ဆက်တိုက် ယူရင် မတိုက်ဘူး (RPC တစ်ခါပဲ)", async () => {

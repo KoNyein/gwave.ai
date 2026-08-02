@@ -60,19 +60,27 @@ class CircuitBreaker {
 ///
 /// ★ `WEB3_RPC_URL` က ရှိပြီးသား env — အဲဒါကို ဆက်ထောက်ပံ့ရမယ် (မဟုတ်ရင်
 ///   deploy လုပ်လိုက်တာနဲ့ VIP room က ချက်ချင်း ပိတ်သွားမယ်)။
+/// ★ **တစ်ခုမှ မထည့်ထားရင် ဗလာ ပြန်ပေးရမယ်** — public endpoint ကို
+///   အလိုအလျောက် ထည့်ပေးလိုက်ရင် Web3 ကို လုံးဝ မဖွင့်ထားတဲ့
+///   installation တစ်ခုက `/health` မှာ "ဖွင့်ထားတယ်" လို့ ပြပြီး၊ gated
+///   room ဝင်တိုင်း ပြင်ပ endpoint တစ်ခုကို ခေါ်နေမယ်။ Public က
+///   **backup** သာ ဖြစ်ရမယ်၊ configuration အစား မဟုတ်ဘူး။
 function rpcUrls(env) {
-  const list = [
-    env.WEB3_RPC_URL,
-    env.WEB3_RPC_URL_2,
-    env.WEB3_RPC_URL_3,
-    // ★ Public backup — key မလိုဘူး၊ rate limit ရှိတယ်။ နောက်ဆုံးအဆင့်သာ။
+  const configured = [env.WEB3_RPC_URL, env.WEB3_RPC_URL_2, env.WEB3_RPC_URL_3].filter(
+    Boolean,
+  );
+  if (configured.length === 0) return [];
+
+  // ★ Public backup — key မလိုဘူး၊ rate limit ရှိတယ်။ နောက်ဆုံးအဆင့်သာ။
+  configured.push(
     env.WEB3_CHAIN === "baseSepolia"
       ? "https://sepolia.base.org"
       : "https://mainnet.base.org",
-  ];
+  );
+
   const seen = new Set();
-  return list.filter((u) => {
-    if (!u || seen.has(u)) return false;
+  return configured.filter((u) => {
+    if (seen.has(u)) return false;
     seen.add(u);
     return true;
   });
