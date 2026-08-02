@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
+import { createBloodField, loadBloodPref, saveBloodPref } from "./blood";
 import { createGroundSampler, loadMap, type LoadedMap } from "./map-loader";
 import { buildArena, createToonFighter, createWeaponModel, type Fighter } from "./toon";
 
@@ -63,6 +64,15 @@ export function AssassinGame({ room }: { room: string }) {
   const [weapons, setWeapons] = useState<Record<string, Weapon>>({});
   /// null = ကွင်း မတင်ဘူး/ပြီးပြီ · 0–100 = တင်နေဆဲ · -1 = ကျရှုံး
   const [mapPct, setMapPct] = useState<number | null>(MAP_URL ? 0 : null);
+  /// သွေး အပြင်းအထန် ၀–၁ (၀ = ပိတ်)。 စက္ကူထဲ မှတ်ထားတယ်။
+  const [blood, setBlood] = useState(0.6);
+  const bloodRef = useRef(0.6);
+  useEffect(() => {
+    const v = loadBloodPref();
+    setBlood(v);
+    bloodRef.current = v;
+  }, []);
+  const bloodFieldRef = useRef<ReturnType<typeof createBloodField> | null>(null);
   const sendRef = useRef<((m: Record<string, unknown>) => void) | null>(null);
 
   useEffect(() => {
@@ -84,6 +94,9 @@ export function AssassinGame({ room }: { room: string }) {
     let arena = 30;
     // ★ .glb မရှိရင် procedural ကွင်း — ဂိမ်းက asset မရှိလည်း ကစားလို့ရရမယ်။
     if (!MAP_URL) buildArena(scene, arena);
+
+    const bloodField = createBloodField(scene, bloodRef.current);
+    bloodFieldRef.current = bloodField;
 
     let loadedMap: LoadedMap | null = null;
     let ground = createGroundSampler(null);
@@ -239,7 +252,15 @@ export function AssassinGame({ room }: { room: string }) {
             break;
           case "aHit": {
             const a = actors.get(String(m.victimId));
-            if (a) a.data.hp = Number(m.hp);
+            const head = m.hitPart === "head";
+            if (a) {
+              a.data.hp = Number(m.hp);
+              // ★ ခေါင်းထိရင် ခေါင်းအမြင့်၊ ကိုယ်ထိရင် ရင်အုပ်အမြင့်မှာ —
+              //   ဘယ်နေရာ ထိလဲ မြင်ရဖို့။
+              const at = a.fighter.group.position.clone();
+              at.y += head ? 1.6 : 1.0;
+              bloodField.burst(at, head);
+            }
             if (m.victimId === meId) flash();
             break;
           }
@@ -444,6 +465,8 @@ export function AssassinGame({ room }: { room: string }) {
         send({ type: "aMove", x: me.x, y: me.y, z: me.z, ry: me.ry });
       }
 
+      bloodField.update(dt);
+
       renderer.render(scene, camera);
       const el = hurtRef.current;
       if (el) el.style.opacity = now < hurtUntil ? "1" : "0";
@@ -462,6 +485,8 @@ export function AssassinGame({ room }: { room: string }) {
       canvas.removeEventListener("click", requestLock);
       canvas.removeEventListener("touchstart", onTouch);
       ws?.close();
+      bloodField.dispose();
+      bloodFieldRef.current = null;
       renderer.dispose();
       if (canvas.parentNode === mount) mount.removeChild(canvas);
       sendRef.current = null;
@@ -473,6 +498,36 @@ export function AssassinGame({ room }: { room: string }) {
 
   const hurtRef = useRef<HTMLDivElement | null>(null);
   const you = hud.you;
+
+  /// ★ ချိန်လိုက်တာနဲ့ ချက်ချင်း သက်ရောက်ရမယ် — ဂိမ်းထဲက ထွက်ပြီး ပြန်ဝင်မှ
+  ///   ပြောင်းရရင် ချိန်လို့ရတယ် ဆိုတာ အဓိပ္ပာယ် မရှိဘူး။
+  const applyBlood = (v: number) => {
+    setBlood(v);
+    bloodRef.current = v;
+    bloodFieldRef.current?.setIntensity(v);
+    saveBloodPref(v);
+  };
+
+  const bloodSlider = (
+    <label className="block">
+      <span className="flex items-center justify-between text-[11px]">
+        <span>🩸 သွေး</span>
+        <span className="tabular-nums opacity-70">
+          {blood === 0 ? "ပိတ်" : `${Math.round(blood * 100)}%`}
+        </span>
+      </span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={10}
+        value={Math.round(blood * 100)}
+        onChange={(e) => applyBlood(Number(e.target.value) / 100)}
+        aria-label="သွေး အပြင်းအထန်"
+        className="mt-1 w-full accent-red-500"
+      />
+    </label>
+  );
 
   if (!started) {
     return (
@@ -488,6 +543,9 @@ export function AssassinGame({ room }: { room: string }) {
           <li>📱 ဖုန်းမှာ ညာဘက်ခြမ်း ထိရင် ပစ်တယ်</li>
           <li>🎨 Skin တွေက <b>အလှသာ</b> — ဘယ်ဟာမှ ကာကွယ်မှု အပိုမပေးပါ</li>
         </ul>
+        {/* ★ စမတိုင်ခင် ချိန်လို့ရအောင် — မကြိုက်တဲ့သူက ၀% ထားပြီး
+            လုံးဝ ပိတ်လို့ရတယ်။ */}
+        <div className="mt-3 max-w-[260px] text-muted-foreground">{bloodSlider}</div>
         <button
           onClick={() => setStarted(true)}
           className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
@@ -573,6 +631,11 @@ export function AssassinGame({ room }: { room: string }) {
             {f.text}
           </div>
         ))}
+      </div>
+
+      {/* သွေး ချိန်ခလုတ် — ဂိမ်းထဲကနေတောင် ပြောင်းလို့ရတယ် */}
+      <div className="absolute right-3 top-24 w-28 rounded-lg bg-black/55 px-2 py-1.5 text-white backdrop-blur">
+        {bloodSlider}
       </div>
 
       {/* လက်နက် ခလုတ်များ — ဖုန်းအတွက် */}
