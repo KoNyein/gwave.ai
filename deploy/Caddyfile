@@ -11,6 +11,16 @@
 
 gwave.cc {
 	encode gzip zstd
+
+	# Metaverse multiplayer WebSocket, same-origin path. The client falls
+	# back to wss://gwave.cc/mv/ws automatically, so no extra DNS record
+	# (mv.gwave.cc) or NEXT_PUBLIC_MV_WS_URL build-arg is required.
+	# handle_path strips /mv, so /mv/health -> /health on the container.
+	# On the prod box (systemd Caddy) the upstream is 127.0.0.1:8090.
+	handle_path /mv/* {
+		reverse_proxy 127.0.0.1:8090
+	}
+
 	reverse_proxy web:3000
 }
 

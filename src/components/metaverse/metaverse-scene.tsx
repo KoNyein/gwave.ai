@@ -56,6 +56,23 @@ const DAY_SECONDS = 180;
 /// WS URL မရှိရင် networking လုံးဝမလုပ်ဘူး — လောကက single-player အဖြစ်
 /// ပုံမှန်ဖွင့်ရမယ်။ (Progressive: server ကျနေရင်လည်း အတူတူပဲ။)
 const WS_URL = process.env.NEXT_PUBLIC_MV_WS_URL || "";
+
+/// Multiplayer server ရဲ့ candidate URL များ။
+/// ★ Env override (build-time) အရင်၊ ပြီးရင် **same-origin `/mv/ws`** —
+///   main domain (gwave.cc) ရဲ့ Caddy က metaverse container ကို ဖြတ်ပေးတယ်။
+///   ဒီနည်းနဲ့ DNS record အသစ်ရော build-time variable ရော **မလိုတော့ဘူး** —
+///   တစ်ခုခု ပျက်နေရင်တောင် retry တိုင်း နောက် candidate ကို လှည့်စမ်းတယ်။
+/// ★ https မှသာ same-origin ကို ထည့်တယ် — localhost dev (http) မှာ server
+///   မရှိဘဲ အလကား retry မလုပ်စေချင်လို့ (env နဲ့ အတိအကျ ညွှန်လို့ရတယ်)။
+function wsCandidates(): string[] {
+  const out: string[] = [];
+  if (WS_URL) out.push(WS_URL);
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    const sameOrigin = `wss://${window.location.host}/mv/ws`;
+    if (!out.includes(sameOrigin)) out.push(sameOrigin);
+  }
+  return out;
+}
 const DEFAULT_ROOM = process.env.NEXT_PUBLIC_MV_ROOM || "city";
 
 /// ရွေးထားတဲ့ map ကို မှတ်ထားတယ် — ဝင်တိုင်း မြို့ကနေ ပြန်စရရင်
@@ -187,8 +204,9 @@ export function MetaverseScene() {
   const degradedRef = useRef(false);
   // ဒီ ၃ ခုက မကြာခဏမပြောင်းလို့ React state နဲ့ ရတယ် (position မဟုတ်ဘူး)
   const [online, setOnline] = useState(1);
-  const [link, setLink] = useState<"off" | "connecting" | "live" | "auth">(
-    WS_URL ? "connecting" : "off",
+  // ssr:false မို့ ဒီ initializer က browser မှာပဲ ပြေးတယ် — window သုံးလို့ရတယ်
+  const [link, setLink] = useState<"off" | "connecting" | "live" | "auth">(() =>
+    wsCandidates().length > 0 ? "connecting" : "off",
   );
   const [chat, setChat] = useState<ChatLine[]>([]);
   const [draft, setDraft] = useState("");
@@ -547,8 +565,9 @@ export function MetaverseScene() {
       gameFx.setObjectives([]);
       gameFx.setArena(null);
     };
-    if (WS_URL) {
-      net = connectMetaverse(WS_URL, roomId, {
+    const wsUrls = wsCandidates();
+    if (wsUrls.length > 0) {
+      net = connectMetaverse(wsUrls, roomId, {
         onInit: ({ id, players, name, authed, serverTime, games }) => {
           for (const [rid, s] of Object.entries(players)) addRemote(rid, s);
           setMeName(name);
