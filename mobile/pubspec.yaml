@@ -90,6 +90,20 @@ dependencies:
   # Health: PPG heart-rate — cover the rear camera + torch with a fingertip and
   # read the red-channel pulse to draw a live heart-rhythm ("health wave").
   camera: ^0.11.0
+  # Light meter: the ambient-light sensor beside the earpiece. Exposes
+  # hasSensor(), so phones without one get an explanation instead of a
+  # permanently-zero reading.
+  light_sensor: ^3.0.2
+  # Storage cleaner: MD5 over a file prefix to confirm duplicate photos.
+  # Pure Dart — no platform channel.
+  crypto: ^3.0.6
+  # Storage cleaner: list installed apps and open one's system settings page.
+  # Uninstalling is deliberately left to Android's own screen.
+  installed_apps: ^2.1.1
+  # Storage cleaner: last-opened times, so "unused apps" means something.
+  # Needs the user to grant Usage access manually; absent, the list still
+  # renders without dates.
+  app_usage: ^4.1.0
 
 dev_dependencies:
   flutter_lints: ^4.0.0
