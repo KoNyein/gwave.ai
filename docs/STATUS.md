@@ -138,6 +138,16 @@
 
 ## Changelog
 
+- 2026-08-02 (ship): **PR #451 squash-merged to main (`02aaf31`) and deployed.**
+  FPV drone mesh + chase camera + calibration wizard + aerodynamics + DJI
+  Avata 2/O3/O4, metaverse category settings menu, car wheel hub groups and
+  the steering sign fix, native Help screen, `gw_embed` cookie that hides site
+  chrome inside the app's WebViews, and the `service_role` probe that now
+  gates `/api/health` plus per-stream `/api/live/[id]/diagnose`. Deploy run
+  succeeded (ECR image + `gwave-redeploy` via SSM). APK **v1.0.266**.
+  `db/sql/web3.sql` applied on RDS the same day. **The `metaverse` container
+  still needs a manual rebuild** — the Assassin match server lives in
+  `server/metaverse/**`, and that path only deploys by hand (see above).
 - 2026-08-02 (web+server): **Web3 phases W1–W8 implemented, still dormant.**
   The mint queue used to stop at `sent`, which only means "handed to the
   chain" — a reverted, dropped or reorged transaction looked successful
@@ -150,8 +160,9 @@
   and chain id, nonces expire in five minutes, one wallet links to one
   account, and unlinking is possible. The ownership UI is a gold-on-blue
   layer with a bottom sheet, staged progress and Burmese copy that never
-  says wallet/sign/gas/mint (a test enforces it). `db/sql/web3.sql` still
-  needs applying; nothing mints until contracts and envs exist.
+  says wallet/sign/gas/mint (a test enforces it). `db/sql/web3.sql` is
+  **APPLIED on RDS** (4 tables, RLS sealed, `service_role` grants only);
+  nothing mints until contracts and envs exist.
 - 2026-08-02 (web): **FPV Simulator gets aircraft types + game modes.** Three
   airframes with distinct physics — quads, fixed-wing planes (airspeed² lift,
   airspeed-scaled control authority, stall, low-friction ground roll) and
