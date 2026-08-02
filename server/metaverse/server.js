@@ -23,6 +23,12 @@ const MAX_SPEED = 8.4;
 const SPEED_TOLERANCE = 1.6;
 const WORLD_RADIUS = 90;
 const MAX_Y = 40;
+/// ★ FPV drone room တွေ (fpv-*) — drone က 60+ m/s ပျံနိုင်ပြီး ကောင်းကင်
+/// အမြင့်ကြီး တက်လို့ရလို့ ကန့်သတ်ချက်တွေ သီးခြားထားတယ်။
+const FPV_MAX_SPEED = 70;
+const FPV_WORLD_RADIUS = 320;
+const FPV_MAX_Y = 220;
+const isFpvRoom = (r) => typeof r === "string" && r.startsWith("fpv-");
 
 const HEARTBEAT_MS = 30_000;
 const CHAT_MIN_GAP_MS = 500;
@@ -499,10 +505,16 @@ wss.on("connection", async (ws, req) => {
         if (![x, y, z, ry].every(Number.isFinite)) return;
 
         // ── Anti-cheat ────────────────────────────────────────────────────
+        // FPV room မှာ drone physics မို့ ကန့်သတ်ချက် ကျယ်တယ် — cap တော့
+        // ရှိရမယ် (teleport hack ကိုတော့ ဒီမှာလည်း ဖမ်းတယ်)။
+        const fpv = isFpvRoom(player.room);
+        const maxSpeed = fpv ? FPV_MAX_SPEED : MAX_SPEED;
+        const worldR = fpv ? FPV_WORLD_RADIUS : WORLD_RADIUS;
+        const maxY = fpv ? FPV_MAX_Y : MAX_Y;
         const now = Date.now();
         const dt = Math.max(0.05, (now - player.lastMoveAt) / 1000);
         const dist = Math.hypot(x - player.x, z - player.z);
-        const allowed = MAX_SPEED * SPEED_TOLERANCE * dt + 0.5;
+        const allowed = maxSpeed * SPEED_TOLERANCE * dt + 0.5;
         if (dist > allowed) {
           // ★ ငြင်းတယ် = နေရာအဟောင်းကို ပြန်ပို့တယ်။ တိတ်တိတ်ပစ်လိုက်ရင်
           // cheat client က ကိုယ့်ဘာသာ ရှေ့ဆက်သွားနေပြီး တခြားသူတွေမြင်တဲ့
@@ -511,7 +523,7 @@ wss.on("connection", async (ws, req) => {
           return;
         }
         // လောကအပြင်ဘက် / ကောင်းကင်ထဲ ခုန်တက်တာကိုလည်း ပိတ်
-        if (Math.hypot(x, z) > WORLD_RADIUS || y < -5 || y > MAX_Y) {
+        if (Math.hypot(x, z) > worldR || y < -5 || y > maxY) {
           send(ws, { type: "correct", x: player.x, y: player.y, z: player.z });
           return;
         }
