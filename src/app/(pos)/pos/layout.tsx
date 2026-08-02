@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
-import { Navbar } from "@/components/layout/navbar";
+import { SiteNavbar } from "@/components/layout/site-chrome";
 import { getCurrentProfile, requireUser } from "@/lib/auth";
 import { getMyStore } from "@/lib/db/pos";
 
@@ -35,7 +35,7 @@ export default async function PosLayout({
 
   return (
     <div className="min-h-screen bg-muted">
-      <Navbar profile={profile} />
+      <SiteNavbar profile={profile} />
       <main className="mx-auto w-full max-w-6xl px-3 py-4 sm:px-4">
         {context ? (
           <nav className="mb-4 flex flex-wrap items-center gap-2 px-1">

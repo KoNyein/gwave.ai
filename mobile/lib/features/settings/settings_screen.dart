@@ -11,6 +11,7 @@ import '../../core/skins.dart';
 import '../../core/theme_pref.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
+import '../help/help_screen.dart';
 import '../web/web_screen.dart';
 import '../../widgets/common.dart';
 
@@ -313,7 +314,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _row(Icons.workspace_premium_outlined, "Membership",
                     () => _openWeb("/membership")),
                 const Divider(height: 1, indent: 56),
-                _row(Icons.help_outline, tr(context, "Help", "အကူအညီ"), () => _openWeb("/help")),
+                _row(Icons.help_outline, tr(context, "Help", "အကူအညီ"),
+                    () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => const HelpScreen()))),
               ],
             ),
           ),

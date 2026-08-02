@@ -362,7 +362,7 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
                   context,
                   "No light sensor on this phone — the numbers above are not real readings. The Explain tab still works.",
                   "ဤဖုန်းတွင် အလင်းရောင် sensor မရှိပါ — အပေါ်က ဂဏန်းများသည် တကယ့်တန်ဖိုး မဟုတ်ပါ။ ရှင်းလင်းချက် စာမျက်နှာကတော့ ဆက်သုံးလို့ရပါသည်။"),
-              const Color(0xFFE07A1F))
+              GwColors.meter)
         else if (!_smoother.warm)
           _note(
               context,
@@ -378,7 +378,7 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
                   context,
                   "The sensor looks maxed out at ${_saturation.pinnedAt.round()} lux — the real light is higher. Most phones stop around 10,000 lux.",
                   "Sensor က ${_saturation.pinnedAt.round()} lux မှာ ပြည့်နေပုံရတယ် — အမှန်တကယ် ပိုများပါတယ်။ ဖုန်းအများစုက ~၁၀,၀၀၀ lux မှာ ရပ်တတ်ပါတယ်။"),
-              const Color(0xFFE07A1F)),
+              GwColors.meter),
         if (_source?.lowConfidence == true)
           _note(
               context,
@@ -387,7 +387,7 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
                   context,
                   "Purple LEDs emit almost no green, which is what a lux sensor measures best. Expect a large error here.",
                   "ခရမ်းရောင် LED မှာ အစိမ်းရောင် အလွန်နည်းပြီး lux sensor က အစိမ်းကို အများဆုံးဖတ်တာမို့ ဤအလင်းအမျိုးအစားတွင် အမှားများနိုင်ပါသည်။"),
-              const Color(0xFFE07A1F)),
+              GwColors.meter),
         const SizedBox(height: 10),
         _card(
           context,
@@ -569,7 +569,7 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
       Row(
         children: [
           Icon(dark ? Icons.check_circle_outline : Icons.lightbulb_outline,
-              color: dark ? const Color(0xFF2E9E5B) : const Color(0xFFE07A1F)),
+              color: dark ? GwColors.ok : GwColors.meter),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -634,13 +634,13 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0x22E07A1F),
+                          color: GwColors.meter.withValues(alpha: 0.13),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           tr(context, "phone can't see", "ဖုန်းက မဖတ်နိုင်"),
                           style: const TextStyle(
-                              fontSize: 10, color: Color(0xFFE07A1F)),
+                              fontSize: 10, color: GwColors.meter),
                         ),
                       ),
                   ],
@@ -695,7 +695,7 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
                         fontSize: 12.5, color: GwColors.inkSoftOf(context))),
                 Text("✓ ${tr(context, s.fixEn, s.fixMy)}",
                     style: const TextStyle(
-                        fontSize: 12.5, color: Color(0xFF2E9E5B))),
+                        fontSize: 12.5, color: GwColors.ok)),
               ],
             ),
           ),
@@ -767,7 +767,7 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
             children: [
               Row(children: [
                 const Icon(Icons.warning_amber_rounded,
-                    color: Color(0xFFE07A1F), size: 18),
+                    color: GwColors.meter, size: 18),
                 const SizedBox(width: 6),
                 Text(tr(context, "Safety", "လုံခြုံရေး"),
                     style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -883,7 +883,7 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
                 Text(
                   tr(context, "Choose a light source first.",
                       "အလင်းအမျိုးအစား အရင်ရွေးပါ။"),
-                  style: const TextStyle(color: Color(0xFFE07A1F)),
+                  style: const TextStyle(color: GwColors.meter),
                 ),
               const SizedBox(height: 6),
               Row(
@@ -957,7 +957,7 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
                         context,
                         "That is a big gap. Raise the lamp to spread the light wider, or add reflective walls — plants in the dark cells will finish behind the rest.",
                         "ဒါက ကွာဟမှု ကြီးပါတယ်။ အလင်းပိုပြန့်အောင် မီးကို အမြင့်တိုးပါ ဒါမှမဟုတ် ဘေးမှန် ထည့်ပါ — အမှောင်ကွက်က အပင်တွေ နောက်ကျကျန်ခဲ့ပါလိမ့်မယ်။"),
-                    style: const TextStyle(color: Color(0xFFE07A1F)),
+                    style: const TextStyle(color: GwColors.meter),
                   ),
                 ],
               ],
@@ -1290,7 +1290,7 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
               child: Container(
                 height: 8,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2E9E5B).withValues(alpha: 0.55),
+                  color: GwColors.ok.withValues(alpha: 0.55),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -1355,9 +1355,9 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
       };
 
   Color _verdictColor(Verdict v) => switch (v) {
-        Verdict.optimal => const Color(0xFF2E9E5B),
-        Verdict.low || Verdict.high => const Color(0xFFE0A81F),
-        Verdict.tooLow || Verdict.tooHigh => const Color(0xFFD84343),
+        Verdict.optimal => GwColors.ok,
+        Verdict.low || Verdict.high => GwColors.warn,
+        Verdict.tooLow || Verdict.tooHigh => GwColors.bad,
       };
 
   Widget _mixBar(int blue, int green, int red) => ClipRRect(
@@ -1368,7 +1368,7 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
             children: [
               Expanded(flex: blue, child: Container(color: const Color(0xFF3F88C5))),
               Expanded(flex: green, child: Container(color: const Color(0xFF44BB6A))),
-              Expanded(flex: red, child: Container(color: const Color(0xFFD84343))),
+              Expanded(flex: red, child: Container(color: GwColors.bad)),
             ],
           ),
         ),

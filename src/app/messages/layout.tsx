@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/layout/navbar";
+import { SiteNavbar } from "@/components/layout/site-chrome";
 import { getCurrentProfile } from "@/lib/auth";
 import { requireUser } from "@/lib/auth";
 
@@ -13,7 +13,7 @@ export default async function MessagesLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar profile={profile} />
+      <SiteNavbar profile={profile} />
       <main>{children}</main>
     </div>
   );

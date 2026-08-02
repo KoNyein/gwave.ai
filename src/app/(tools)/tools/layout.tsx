@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/layout/navbar";
+import { SiteNavbar } from "@/components/layout/site-chrome";
 import { getCurrentProfile } from "@/lib/auth";
 import { requireUser } from "@/lib/auth";
 
@@ -13,7 +13,7 @@ export default async function ToolsLayout({
 
   return (
     <div className="min-h-screen bg-muted">
-      <Navbar profile={profile} />
+      <SiteNavbar profile={profile} />
       <main className="mx-auto w-full max-w-4xl px-3 py-6 sm:px-4">
         {children}
       </main>

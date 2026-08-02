@@ -388,7 +388,7 @@ class _CleanerScreenState extends State<CleanerScreen> {
                     Text(formatBytes(_reclaimable),
                         style: const TextStyle(
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF2E9E5B))),
+                            color: GwColors.ok)),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -554,7 +554,7 @@ class _CleanerScreenState extends State<CleanerScreen> {
                           child: Row(
                             children: [
                               const Icon(Icons.lock_outline,
-                                  size: 16, color: Color(0xFF2E9E5B)),
+                                  size: 16, color: GwColors.ok),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -633,7 +633,7 @@ class _CleanerScreenState extends State<CleanerScreen> {
                       "Usage access is off, so last-opened dates are unknown. Turn it on in Settings → Special app access → Usage access.",
                       "အသုံးပြုမှု ခွင့်ပြုချက် ပိတ်ထားလို့ နောက်ဆုံးဖွင့်ခဲ့တဲ့ရက် မသိရပါ။ Settings → Special app access → Usage access မှာ ဖွင့်ပါ။"),
                   style: const TextStyle(
-                      fontSize: 12, color: Color(0xFFE07A1F)),
+                      fontSize: 12, color: GwColors.meter),
                 ),
                 TextButton(
                   onPressed: () {
@@ -659,7 +659,7 @@ class _CleanerScreenState extends State<CleanerScreen> {
               style: TextStyle(
                   fontSize: 11,
                   color: a.daysIdle >= 30
-                      ? const Color(0xFFE07A1F)
+                      ? GwColors.meter
                       : GwColors.inkSoftOf(context)),
             ),
             trailing: const Icon(Icons.open_in_new, size: 18),
@@ -782,7 +782,7 @@ class _CleanerScreenState extends State<CleanerScreen> {
             Text(
               tr(c, "This cannot be undone.", "ဖျက်ပြီးရင် ပြန်မရနိုင်ပါ။"),
               style: const TextStyle(
-                  color: Color(0xFFD84343), fontWeight: FontWeight.w700),
+                  color: GwColors.bad, fontWeight: FontWeight.w700),
             ),
           ],
         ),

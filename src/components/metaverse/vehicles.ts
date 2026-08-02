@@ -285,7 +285,11 @@ export function createVehicle(
       state.speed = THREE.MathUtils.clamp(state.speed, -cap * 0.4, cap);
 
       // ★ ရပ်နေရင် မလှည့်ရ
-      state.ry += input.steer * spec.turnRate * dt * Math.min(1, Math.abs(state.speed) / 4);
+      // ★ အနုတ်လက္ခဏာက မဖြစ်မနေ လိုတယ် — ယာဉ်ရဲ့ ရှေ့က +Z၊ အပေါ်က +Y ဆိုတော့
+      //   မောင်းသူရဲ့ **ညာဘက်က −X** ဖြစ်တယ် (right = forward × up = ẑ × ŷ = −x̂)。
+      //   Heading က (sin ry, 0, cos ry) မို့ ry တိုးတာက +X = ဘယ်ဘက် ဆီ လှည့်တယ်။
+      //   အရင်က ပေါင်းထားလို့ D နှိပ်ရင် ဘယ်ကွေ့၊ A နှိပ်ရင် ညာကွေ့ ဖြစ်နေတယ်။
+      state.ry -= input.steer * spec.turnRate * dt * Math.min(1, Math.abs(state.speed) / 4);
 
       const nx = state.x + Math.sin(state.ry) * state.speed * dt;
       const nz = state.z + Math.cos(state.ry) * state.speed * dt;

@@ -18,6 +18,7 @@ import '../wellness/wellness_hub_screen.dart';
 import 'my_profile_screen.dart';
 import '../family/family_screen.dart';
 import '../farm/farm_screen.dart';
+import '../help/help_screen.dart';
 import '../farm/light_meter/light_meter_screen.dart';
 import '../finance/finance_screen.dart';
 import '../friends/friends_screen.dart';
@@ -322,7 +323,7 @@ class ProfileScreen extends StatelessWidget {
             tr(context, "Storage cleaner", "နေရာရှင်းလင်း"),
             native: _Native.cleaner),
         _MenuEntry(Icons.help_outline, tr(context, "Help & guide", "အကူအညီ"),
-            web: "/help"),
+            native: _Native.help),
       ]),
     ];
 
@@ -495,6 +496,9 @@ class ProfileScreen extends StatelessWidget {
       case _Native.farm:
         _push(context, const FarmScreen());
         return;
+      case _Native.help:
+        _push(context, const HelpScreen());
+        return;
       case _Native.lightMeter:
         _push(context, const LightMeterScreen());
         return;
@@ -615,6 +619,7 @@ class ProfileScreen extends StatelessWidget {
 /// A native screen a menu entry can push directly (no web hand-off).
 enum _Native {
   farm,
+  help,
   lightMeter,
   cleaner,
   fpv,
