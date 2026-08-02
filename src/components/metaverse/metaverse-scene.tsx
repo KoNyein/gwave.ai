@@ -30,6 +30,7 @@ import { createVehicle, type Vehicle } from "./vehicles";
 import { VoicePanel } from "./voice-panel";
 import { createVoiceChat, type VoiceChat } from "./voicechat";
 import { createWeather } from "./weather";
+import { OwnershipControl } from "./web3/ownership";
 import { buildWorld, resolveCollision } from "./world";
 import { isInApp, native } from "@/lib/metaverse/native";
 import { snap, type BuildType } from "@/lib/metaverse/build";
@@ -183,8 +184,6 @@ export function MetaverseScene() {
   /// Web3 — **ဖြည့်စွက်အလွှာသာ**။ wallet မချိတ်ဘဲ လောကက အပြည့်အဝ
   /// အလုပ်လုပ်ရမယ် (spec 7 ရဲ့ စည်းမျဉ်း ၄)။
   const [wallet, setWallet] = useState<string | null>(null);
-  const [walletBusy, setWalletBusy] = useState(false);
-  const [walletNote, setWalletNote] = useState<string | null>(null);
   /// လောကထဲက နာရီ — HUD မှာ ပြဖို့ (player အားလုံး တူညီရမယ်)
   const [clock, setClock] = useState("");
   const [nearby, setNearby] = useState<Landmark | null>(null);
@@ -300,40 +299,27 @@ export function MetaverseScene() {
     degradedRef.current = degraded;
   }, [degraded]);
 
-  // Wallet ရှိပြီးသားလား ကြည့် — ★ dynamic import၊ wallet မသုံးသူတွေ
-  // module ကို ဆွဲစရာမလိုဘူး။
+  // ချိတ်ထားပြီးသားလား **server ကို မေးတယ်** — browser ထဲက wallet ကို
+  // မမေးဘူး။ ★ Passkey နဲ့ ချိတ်ထားသူဆိုရင် ဒီ browser မှာ
+  // `window.ethereum` မရှိလို့ `eth_accounts` က အမြဲ ဗလာ ပြန်ပေးမယ်၊
+  // ပြီးတော့ ဖုန်းပြောင်းသုံးရင်လည်း အတူတူပဲ — အမှန်တရားက
+  // `mv_players.wallet` မှာ ရှိတယ်။
   useEffect(() => {
     let alive = true;
-    void import("./web3/wallet").then(async (m) => {
-      if (!alive || !m.walletAvailable()) return;
-      const w = await m.currentWallet();
-      if (alive) setWallet(w);
-    });
+    void fetch("/api/metaverse/siwe/status", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { wallet?: string | null } | null) => {
+        if (alive && j?.wallet) setWallet(j.wallet);
+      })
+      .catch(() => {
+        /* ★ ချိတ်ထားလားမသိတာက လောကကို မထိခိုက်ရ — chip က
+           "ချိတ်ရန်" ပြနေရုံပဲ။ */
+      });
     return () => {
       alive = false;
     };
   }, []);
 
-  const connectWallet = async () => {
-    setWalletBusy(true);
-    setWalletNote(null);
-    try {
-      const m = await import("./web3/wallet");
-      if (!m.walletAvailable()) {
-        setWalletNote("ဒီ browser မှာ wallet မရှိပါ");
-        return;
-      }
-      const res = await m.linkWallet();
-      if (res.ok) {
-        setWallet(res.wallet);
-        setWalletNote(null);
-      } else {
-        setWalletNote(res.reason);
-      }
-    } finally {
-      setWalletBusy(false);
-    }
-  };
 
   const chooseMap = (id: string) => {
     window.localStorage.setItem(MAP_KEY, id);
@@ -1715,34 +1701,13 @@ export function MetaverseScene() {
           </button>
         </div>
 
-        {/* ── Wallet ─────────────────────────────────────────────────
+        {/* ── ပိုင်ဆိုင်မှု (Phase W8) ────────────────────────────────
             ★ ဒါက **ဖြည့်စွက်သာ** — မချိတ်ဘဲ လောကက အပြည့်အဝ အလုပ်လုပ်တယ်။
-            Sign in ဝင်ထားသူကိုသာ ပြတယ် (wallet က Gwave အကောင့်တစ်ခုနဲ့
-            ချိတ်တာမို့ ဧည့်သည်မှာ ချိတ်စရာ အကောင့်မရှိဘူး)။ */}
-        {meAuthed && (
-          <button
-            data-hud="1"
-            onClick={() => void connectWallet()}
-            disabled={walletBusy || wallet !== null}
-            title="Wallet ချိတ်ဆက်ရန်"
-            className={`rounded-lg border px-2 py-1 text-[11px] backdrop-blur transition disabled:opacity-70 ${
-              wallet
-                ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200"
-                : "border-white/15 bg-black/40 text-white/70 hover:bg-black/60"
-            }`}
-          >
-            {wallet
-              ? `🔗 ${wallet.slice(0, 6)}…${wallet.slice(-4)}`
-              : walletBusy
-                ? "ချိတ်နေသည်…"
-                : "🔗 Wallet ချိတ်မယ်"}
-          </button>
-        )}
-        {walletNote && (
-          <div className="max-w-[14rem] rounded bg-black/60 px-2 py-1 text-right text-[10px] text-amber-200 backdrop-blur">
-            {walletNote}
-          </div>
-        )}
+            Sign in ဝင်ထားသူကိုသာ ပြတယ် (Gwave အကောင့်တစ်ခုနဲ့ ချိတ်တာမို့
+            ဧည့်သည်မှာ ချိတ်စရာ အကောင့်မရှိဘူး)。
+            ★ Chip နှိပ်မှ sheet တက်တယ် — အဝင်မှာ ချက်ချင်း မမေးဘူး
+            (W8.7 ရဲ့ ပထမဆုံး အမှား)。 */}
+        {meAuthed && <OwnershipControl wallet={wallet} onChange={setWallet} />}
 
         {/* ★ လျှော့ချလိုက်တာကို **တိတ်တိတ်မလုပ်ရ** — ဘာလို့ ရုပ်ညံ့သွားလဲ
             မသိရင် "ဒီ site က ချွတ်ယွင်းနေတယ်" လို့ ထင်မယ်။ ပြန်မြှင့်ဖို့

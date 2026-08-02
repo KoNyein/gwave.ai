@@ -81,8 +81,26 @@
   stores per-game bests and quest counters for signed-in users
   (`best = greatest(old, new)`, jsonb merge, sealed RLS + service_role).
   Clients stay offline-first on localStorage; guests get 401 and keep working.
+- **Web3 (code complete, NOT switched on)**: phases W1–W8 of
+  `GWAVE_WEB3_SPEC.md` are implemented but dormant — no contracts are
+  deployed and no envs are set, so `createWeb3()` reports disabled and the
+  ownership chip is the only visible change. Ownership answers come from the
+  `web3_nft_owners` / `web3_balances` mirror when the indexer is fresh,
+  falling back to RPC (viem `fallback()` over up to four endpoints, behind a
+  circuit breaker). The mint queue reaches `confirmed` only after three
+  confirmations. The worker (`WEB3_WORKER=1`, one host, postgres advisory
+  lock) runs the sender, confirmer and indexer. Key handling is in
+  `docs/WEB3_KEYS.md`. **`db/sql/web3.sql` is NOT applied on RDS yet.**
 
 ## Known gaps / next candidates
+
+- **Web3 go-live is a decision, not a task.** Before anything is minted:
+  apply `db/sql/web3.sql`, transfer contract ownership to a Safe, put the
+  minter key in Secrets Manager, and settle the plot-grid mismatch below.
+- **The plot grid does not fit the world.** `GwaveLand.sol` fixes `GRID = 32`
+  (1,024 plots, 512 m across) but the largest map has `worldRadius = 100`.
+  904 plots sit outside the playable world; the metadata generator marks them
+  `Status: Reserved`. Either widen the maps or sell only the in-bounds plots.
 
 - FCM push notifications (calls/messages don't ring when the app is closed;
   web-push covers open-browser cases only). Needs a Firebase project.
@@ -103,6 +121,20 @@
 
 ## Changelog
 
+- 2026-08-02 (web+server): **Web3 phases W1–W8 implemented, still dormant.**
+  The mint queue used to stop at `sent`, which only means "handed to the
+  chain" — a reverted, dropped or reorged transaction looked successful
+  forever; it now waits for three confirmations and retries reverts and
+  mempool drops. `viem` was never a dependency of the metaverse server, so
+  Web3 had been silently disabled in production. Ownership now answers from
+  an RDS mirror built by a `Transfer` indexer (12-block reorg buffer,
+  resumable) with RPC fallback behind a circuit breaker. Onboarding adds
+  Coinbase Smart Wallet passkeys, lazy-imported. SIWE messages carry domain
+  and chain id, nonces expire in five minutes, one wallet links to one
+  account, and unlinking is possible. The ownership UI is a gold-on-blue
+  layer with a bottom sheet, staged progress and Burmese copy that never
+  says wallet/sign/gas/mint (a test enforces it). `db/sql/web3.sql` still
+  needs applying; nothing mints until contracts and envs exist.
 - 2026-08-02 (web): **FPV Simulator gets aircraft types + game modes.** Three
   airframes with distinct physics — quads, fixed-wing planes (airspeed² lift,
   airspeed-scaled control authority, stall, low-friction ground roll) and

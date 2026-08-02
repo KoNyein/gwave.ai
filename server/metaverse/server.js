@@ -6,9 +6,12 @@ const { WebSocketServer } = require("ws");
 
 const { Rooms, normalizeRoom, ROOMS, GATED_ROOMS } = require("./rooms");
 const { identify } = require("./auth");
-const { createStore } = require("./store");
+const { Pool } = require("pg");
+
+const { createStore, chooseSsl } = require("./store");
 const { createBus } = require("./bus");
 const { createWeb3 } = require("./web3");
+const { startWeb3Worker } = require("./web3-worker");
 const { createWeatherDirector } = require("./weather");
 const { createGameRunner } = require("./games");
 const { createVoiceRegistry } = require("./voice");
@@ -50,7 +53,33 @@ const store = createStore(process.env.DATABASE_URL);
 /// Web3 — မထည့်ထားရင် ပိတ်ထားတယ်။ ★ ပိတ်ထားရင် token-gated room ကို
 /// **ဘယ်သူမှ မဝင်ရဘူး** (ဖွင့်ပေးလိုက်တာ မဟုတ်ဘူး) — စစ်လို့မရရင်
 /// ငြင်းရမယ်၊ မဟုတ်ရင် env တစ်ခု ဖျောက်လိုက်ရုံနဲ့ ဂိတ်က ပျောက်သွားမယ်။
-const web3 = createWeb3();
+///
+/// ★ `web3Db` က indexer ရဲ့ mirror table တွေကို ဖတ်ဖို့ (Phase W4) —
+///   `store` ရဲ့ pool နဲ့ မရောဘူး၊ player position flush က ချောမွေ့နေရမယ်၊
+///   indexer ရဲ့ batch query တွေက အဲဒါကို မပိတ်ဆို့စေရ။
+const web3Db = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: chooseSsl(process.env.DATABASE_URL),
+      max: 4,
+      idleTimeoutMillis: 30_000,
+    })
+  : null;
+const web3 = createWeb3(process.env, web3Db);
+
+/// Mint sender + confirmation + indexer (Phase W3/W4)。
+/// ★ `WEB3_WORKER=1` ထည့်မှ run တယ်၊ ပြီးတော့ advisory lock ကြောင့်
+///   container တစ်ခုတည်းသာ တကယ် အလုပ်လုပ်တယ်။ မရလည်း server က
+///   ပုံမှန် တက်ရမယ် — ဒါကြောင့် await မလုပ်ဘူး။
+let web3Worker = { enabled: false, why: "starting", stop: async () => {} };
+startWeb3Worker(process.env, web3Db)
+  .then((w) => {
+    web3Worker = w;
+    if (!w.enabled) console.log("[mv] web3 worker off —", w.why);
+  })
+  .catch((err) => {
+    console.error("[mv] web3 worker start failed:", err?.message ?? err);
+  });
 
 /// ၃၀ စက္ကန့်တစ်ခါ — spec ရဲ့ "player တစ်ယောက်လျှင် တစ်မိနစ် ၂ ကြိမ်ထက်
 /// မပို" ဆိုတဲ့ ကန့်သတ်ချက်နဲ့ ကိုက်တယ်။
@@ -182,6 +211,11 @@ const server = http.createServer((req, res) => {
         snow: rooms.count("snow"),
         sky: rooms.count("sky"),
       },
+      // ★ Web3 က mirror ကနေ ဖြေနေလား RPC ကနေလား၊ circuit ဖွင့်နေလား —
+      //   ဒါမပါရင် "VIP room ဝင်လို့မရဘူး" ဆိုတဲ့ report တစ်ခုကို
+      //   ဘယ်ကစရှာရမှန်း မသိဘူး။
+      web3: web3.stats ? web3.stats() : { enabled: web3.enabled, why: web3.why },
+      web3Worker: { enabled: web3Worker.enabled, why: web3Worker.why },
     });
     res.writeHead(200, {
       "content-type": "application/json",
@@ -816,6 +850,11 @@ async function shutdown(signal) {
       /* ignore */
     }
   }
+  // ★ Worker ကို အရင်ရပ်ရမယ် — advisory lock ကို ကျွတ်စေမှ container
+  //   အသစ်က ချက်ချင်း ဆက်လုပ်နိုင်တယ်။ မဟုတ်ရင် TCP timeout (မိနစ်ပိုင်း)
+  //   အထိ mint queue က ငြိမ်နေမယ်။
+  await web3Worker.stop().catch(() => {});
+  await web3Db?.end().catch(() => {});
   await store.close().catch(() => {});
   await bus.close().catch(() => {});
   server.close(() => process.exit(0));
