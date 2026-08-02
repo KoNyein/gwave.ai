@@ -72,6 +72,7 @@ function rateCurve(x: number, rcRate: number, superRate: number, expo: number): 
 export type Collider = { min: THREE.Vector3; max: THREE.Vector3 };
 
 const _up = new THREE.Vector3();
+const _fwd = new THREE.Vector3();
 const _thrust = new THREE.Vector3();
 const _drag = new THREE.Vector3();
 const _dq = new THREE.Quaternion();
@@ -94,7 +95,18 @@ function step(
   // ── Target body rates (rad/s) ────────────────────────────────────────
   // Body axes: forward = -Z။ +X rotate = nose UP, -Y rotate = yaw right,
   // -Z rotate = roll right — sign တွေက ဒီ convention အတိုင်း တွက်ထားတယ်။
-  const yawRate = rateCurve(st.yaw, drone.rcRate * 0.9, drone.superRate * 0.8, drone.expo) * m.rateScale;
+  // ✈️ Plane: control authority က airspeed နဲ့ လိုက်တယ် — ရပ်နေရင်
+  //   elevator/aileron အလုပ်မလုပ်ဘူး (တကယ့် fixed-wing အတိုင်း)။
+  _fwd.set(0, 0, -1).applyQuaternion(s.quat);
+  const vFwd = s.vel.dot(_fwd);
+  const authority =
+    drone.craft === "plane" ? Math.min(1.3, Math.max(0, vFwd) / 12) : 1;
+  const yawScale = drone.craft === "plane" ? 0.35 : 1; // rudder ညံ့တယ်
+  const yawRate =
+    rateCurve(st.yaw, drone.rcRate * 0.9, drone.superRate * 0.8, drone.expo) *
+    m.rateScale *
+    yawScale *
+    authority;
   let tx: number;
   let ty = -yawRate;
   let tz: number;
@@ -122,8 +134,13 @@ function step(
     // Acro — stick = rate တိုက်ရိုက် (betaflight curve)
     const pitchRate = rateCurve(st.pitch, drone.rcRate, drone.superRate, drone.expo) * m.rateScale;
     const rollRate = rateCurve(st.roll, drone.rcRate, drone.superRate, drone.expo) * m.rateScale;
-    tx = -pitchRate; // stick ရှေ့ = nose down = -X
-    tz = -rollRate; // stick ညာ = roll right = -Z
+    tx = -pitchRate * authority; // stick ရှေ့ = nose down = -X
+    tz = -rollRate * authority; // stick ညာ = roll right = -Z
+  }
+
+  // ✈️ Stall — stall speed အောက် နှေးသွားရင် နှာခေါင်း စိုက်ကျတယ်
+  if (drone.craft === "plane" && s.pos.y > 1 && vFwd < (drone.stallSpeed ?? 8)) {
+    tx -= 1.4;
   }
 
   // ── Rate response (first-order lag — မော်တာ/prop က ချက်ချင်း မလိုက်နိုင်)
@@ -141,7 +158,22 @@ function step(
   const t = Math.max(0, Math.min(1, st.throttle));
   const thr = s.armed ? Math.pow(t, 1.35) : 0;
   _up.set(0, 1, 0).applyQuaternion(s.quat);
-  _thrust.copy(_up).multiplyScalar((thr * drone.maxThrust) / drone.mass);
+
+  if (drone.craft === "plane") {
+    // ✈️ Fixed-wing — thrust က ရှေ့ကို၊ lift က airspeed² ကနေ body-up ကို
+    _thrust.copy(_fwd).multiplyScalar((thr * drone.maxThrust) / drone.mass);
+    const lift = Math.min(
+      GRAVITY * 1.6,
+      (drone.liftK ?? 0.07) * Math.max(0, vFwd) * Math.max(0, vFwd),
+    );
+    s.vel.addScaledVector(_up, lift * dt);
+  } else {
+    // 🛸/🚁 Rotor — thrust က body-up။ Heli (collective-pitch) မှာ throttle
+    // ~50% လောက်ဆို hover ဖြစ်အောင် curve ဖြောင့်ထားတယ် — quad ရဲ့
+    // pow(1.35) curve ဆို hover point မြင့်လွန်းတယ်။
+    const rotorThr = drone.craft === "heli" && s.armed ? t : thr;
+    _thrust.copy(_up).multiplyScalar((rotorThr * drone.maxThrust) / drone.mass);
+  }
 
   // Drag — linear + quadratic
   const sp = s.vel.length();
@@ -161,10 +193,12 @@ function step(
       s.crashSpeed = impact;
       s.armed = false;
     }
-    // မြေပေါ်မှာ ပွတ်ဆွဲ
+    // မြေပေါ်မှာ ပွတ်ဆွဲ — ✈️ လေယာဉ်က ဘီးနဲ့ ပြေးရမှာမို့ ပွတ်အား
+    // အလွန်နည်း (မဟုတ်ရင် ဘယ်တော့မှ takeoff မရဘူး)。
     s.vel.y = Math.max(0, s.vel.y * -0.15);
-    s.vel.x *= 0.92;
-    s.vel.z *= 0.92;
+    const roll = drone.craft === "plane" ? 0.999 : 0.92;
+    s.vel.x *= roll;
+    s.vel.z *= roll;
   }
   for (const c of colliders) {
     if (

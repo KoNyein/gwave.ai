@@ -14,7 +14,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import * as THREE from "three";
 
 import { connectMetaverse, type NetClient } from "@/components/metaverse/net";
-import { DRONES, getDrone, getMode, MODES, type DroneSpec, type FlightMode } from "@/lib/fpv/drones";
+import { CRAFTS, DRONES, getDrone, getMode, MODES, type DroneSpec, type FlightMode } from "@/lib/fpv/drones";
 import { createInput, loadAxisMap, saveAxisMap, type AxisMap, type FpvInput } from "@/lib/fpv/input";
 import { createGameRuntime, FPV_GAMES, gameAllowsMap, type GameHud } from "@/lib/fpv/gamemodes";
 import { buildFpvMap, FPV_MAPS } from "@/lib/fpv/maps";
@@ -43,6 +43,114 @@ function loadPrefs(): Prefs {
     /* default နဲ့ ဆက်သွား */
   }
   return def;
+}
+
+/// ✈️ Fixed-wing model — fuselage + wing + tailplane + fin + nose prop။
+/// Forward = -Z (physics ရဲ့ convention နဲ့ တူညီ)。
+function buildPlaneMesh(spec: DroneSpec): { group: THREE.Group; props: THREE.Mesh[] } {
+  const g = new THREE.Group();
+  const s = spec.scale;
+  const bodyMat = new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.55 });
+  const trimMat = new THREE.MeshStandardMaterial({ color: 0x2b3a4a, roughness: 0.7 });
+  const isWing = spec.cls === "wing";
+
+  if (isWing) {
+    // Flying wing — delta တစ်ခုတည်း (tail မရှိ)
+    const wing = new THREE.Mesh(new THREE.ConeGeometry(0.62 * s, 1.5 * s, 3), bodyMat);
+    wing.rotation.x = -Math.PI / 2;
+    wing.scale.set(1.9, 1, 0.12);
+    g.add(wing);
+    for (const side of [-1, 1]) {
+      const tip = new THREE.Mesh(new THREE.BoxGeometry(0.04 * s, 0.22 * s, 0.3 * s), trimMat);
+      tip.position.set(side * 0.62 * s, 0.09 * s, 0.25 * s);
+      g.add(tip);
+    }
+  } else {
+    // Trainer — fuselage + high wing + tail
+    const fuse = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * s, 0.06 * s, 1.4 * s, 10), bodyMat);
+    fuse.rotation.x = Math.PI / 2;
+    g.add(fuse);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(2.0 * s, 0.045 * s, 0.32 * s), bodyMat);
+    wing.position.set(0, 0.1 * s, -0.1 * s);
+    g.add(wing);
+    const tailPlane = new THREE.Mesh(new THREE.BoxGeometry(0.7 * s, 0.035 * s, 0.2 * s), trimMat);
+    tailPlane.position.set(0, 0.03 * s, 0.62 * s);
+    g.add(tailPlane);
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.035 * s, 0.32 * s, 0.24 * s), trimMat);
+    fin.position.set(0, 0.18 * s, 0.62 * s);
+    g.add(fin);
+    // ခြေထောက် (မြေပြင်ပေါ် ပြေးတက်နိုင်အောင် ပုံစံသာ)
+    for (const [x, z] of [[-0.22, -0.15], [0.22, -0.15], [0, 0.55]] as const) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * s, 0.012 * s, 0.22 * s, 6), trimMat);
+      leg.position.set(x * s, -0.13 * s, z * s);
+      g.add(leg);
+    }
+  }
+
+  // နှာဖျား prop — throttle နဲ့ လည်တယ်
+  const prop = new THREE.Mesh(
+    new THREE.CircleGeometry(0.3 * s, 14),
+    new THREE.MeshStandardMaterial({
+      color: 0xdddddd,
+      transparent: true,
+      opacity: 0.5,
+      side: THREE.DoubleSide,
+    }),
+  );
+  prop.position.set(0, 0, isWing ? 0.42 * s : -0.72 * s);
+  g.add(prop);
+  return { group: g, props: [prop] };
+}
+
+/// 🚁 Helicopter model — fuselage + tail boom + main rotor disc + tail rotor
+function buildHeliMesh(spec: DroneSpec): { group: THREE.Group; props: THREE.Mesh[] } {
+  const g = new THREE.Group();
+  const s = spec.scale;
+  const bodyMat = new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.5 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x2a2f3a, roughness: 0.7 });
+
+  const cabin = new THREE.Mesh(new THREE.SphereGeometry(0.24 * s, 14, 10), bodyMat);
+  cabin.scale.set(1, 0.85, 1.35);
+  cabin.position.z = -0.12 * s;
+  g.add(cabin);
+  const boom = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * s, 0.02 * s, 1.0 * s, 8), darkMat);
+  boom.rotation.x = Math.PI / 2;
+  boom.position.z = 0.55 * s;
+  g.add(boom);
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.02 * s, 0.22 * s, 0.16 * s), bodyMat);
+  fin.position.set(0, 0.12 * s, 0.98 * s);
+  g.add(fin);
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * s, 0.02 * s, 0.24 * s, 6), darkMat);
+  mast.position.y = 0.28 * s;
+  g.add(mast);
+  for (const [x, z] of [[-0.16, 0], [0.16, 0]] as const) {
+    const skid = new THREE.Mesh(new THREE.BoxGeometry(0.025 * s, 0.025 * s, 0.7 * s), darkMat);
+    skid.position.set(x * s, -0.24 * s, z * s - 0.08 * s);
+    g.add(skid);
+  }
+
+  const discMat = new THREE.MeshStandardMaterial({
+    color: 0xcfd6e4,
+    transparent: true,
+    opacity: 0.4,
+    side: THREE.DoubleSide,
+  });
+  const main = new THREE.Mesh(new THREE.CircleGeometry(0.95 * s, 22), discMat);
+  main.rotation.x = -Math.PI / 2;
+  main.position.y = 0.4 * s;
+  g.add(main);
+  const tail = new THREE.Mesh(new THREE.CircleGeometry(0.2 * s, 12), discMat);
+  tail.position.set(0.05 * s, 0.12 * s, 1.0 * s);
+  tail.rotation.y = Math.PI / 2;
+  g.add(tail);
+  return { group: g, props: [main, tail] };
+}
+
+/// Craft အလိုက် model ရွေး — quad / plane / heli
+function buildCraftMesh(spec: DroneSpec): { group: THREE.Group; props: THREE.Mesh[] } {
+  if (spec.craft === "plane") return buildPlaneMesh(spec);
+  if (spec.craft === "heli") return buildHeliMesh(spec);
+  return buildDroneMesh(spec);
 }
 
 /// Drone 3D model — frame X + canopy + prop ၄ လုံး (procedural, asset မလို)
@@ -198,6 +306,8 @@ export function FpvSim() {
   const [started, setStarted] = useState(false);
   const [menu, setMenu] = useState(true);
   const [tab, setTab] = useState<"game" | "mode" | "drone" | "map" | "controller">("game");
+  /// Drone tab ရဲ့ ယာဉ်အမျိုးအစား filter (UI သာ — prefs.drone က အမှန်တရား)
+  const [craft, setCraft] = useState<DroneSpec["craft"]>("quad");
   const [gameHud, setGameHud] = useState<GameHud | null>(null);
   /// ပွဲ ပြန်စချိန် scene ကို အသစ်ဆောက်ဖို့
   const [runNonce, setRunNonce] = useState(0);
@@ -226,7 +336,10 @@ export function FpvSim() {
   const knobR = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    setPrefs(loadPrefs());
+    const p = loadPrefs();
+    setPrefs(p);
+    // ရွေးထားတဲ့ ယာဉ်ရဲ့ အမျိုးအစားကို filter ရဲ့ default အဖြစ် ထား
+    setCraft(getDrone(p.drone).craft);
     setAxisMap(loadAxisMap());
     setTouchDev(window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0);
   }, []);
@@ -289,7 +402,7 @@ export function FpvSim() {
     // ကိုယ့် drone — FPV ကင်မရာက drone ထဲမှာ ရှိလို့ ကိုယ့် mesh ကို
     // မပြဘူး (မဖျောက်ရင် frame/prop တွေက မျက်နှာပြင်ကို ကွယ်နေတယ်)။
     // Remote player တွေကတော့ ကိုယ့် drone ကို သူတို့ဘက်မှာ မြင်ရတယ်။
-    const { group: droneMesh, props } = buildDroneMesh(drone);
+    const { group: droneMesh, props } = buildCraftMesh(drone);
     droneMesh.visible = false;
     scene.add(droneMesh);
     const state = createState(map.spawn, map.spawnYaw);
@@ -308,7 +421,7 @@ export function FpvSim() {
     const addRemote = (id: string, x: number, y: number, z: number, ry: number) => {
       if (remotes.has(id)) return;
       const spec = DRONES[Math.abs([...id].reduce((a, ch) => a + ch.charCodeAt(0), 0)) % DRONES.length]!;
-      const { group } = buildDroneMesh(spec);
+      const { group } = buildCraftMesh(spec);
       scene.add(group);
       remotes.set(id, { mesh: group, cur: new THREE.Vector3(x, y, z), target: new THREE.Vector3(x, y, z), ry, tRy: ry });
     };
@@ -478,7 +591,15 @@ export function FpvSim() {
       // ── Drone mesh + props ───────────────────────────────────────────
       droneMesh.position.copy(state.pos);
       droneMesh.quaternion.copy(state.quat);
-      for (const p of props) p.rotation.z += (0.4 + sticks.throttle * 2.4) * (state.armed ? 1 : 0);
+      // Rotor/prop လှည့်နှုန်း — 🚁 heli က collective မို့ throttle နည်းလည်း
+      // rotor က အမြန်လှည့်နေတယ် (idle head speed)。
+      const spin =
+        drone.craft === "heli"
+          ? state.armed
+            ? 2.6
+            : 0
+          : (0.4 + sticks.throttle * 2.4) * (state.armed ? 1 : 0);
+      for (const p of props) p.rotation.z += spin;
 
       // ── FPV camera — drone body + cam tilt၊ cinematic မှာ smoothing ──
       const m = getMode(modeRef.current);
@@ -831,25 +952,69 @@ export function FpvSim() {
             )}
 
             {tab === "drone" && (
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {DRONES.map((d) => (
-                  <button
-                    key={d.id}
-                    onClick={() => save({ ...prefs, drone: d.id })}
-                    className={`rounded-xl border p-3 text-left transition ${prefs.drone === d.id ? "border-emerald-400/60 bg-emerald-500/15" : "border-white/10 bg-white/5 hover:bg-white/10"}`}
-                  >
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-sm font-bold">{d.name}</span>
-                      <span className="shrink-0 rounded bg-white/10 px-1.5 text-[10px] text-white/60">
-                        {d.cls} · {d.size}
-                      </span>
-                    </div>
-                    <div className="mt-0.5 text-[11px] leading-snug text-white/55">{d.blurbMy}</div>
-                    <div className="mt-1 text-[10px] text-white/40">
-                      {Math.round(d.mass * 1000)}g · T/W {(d.maxThrust / (d.mass * 9.81)).toFixed(1)} · cam {d.camTilt}°
-                    </div>
-                  </button>
-                ))}
+              <div className="mt-3 space-y-4">
+                {/* ယာဉ်အမျိုးအစား filter — FPV drone / လေယာဉ် / ဟယ်လီ */}
+                <div className="flex gap-1 rounded-lg bg-white/5 p-1 text-[12px]">
+                  {CRAFTS.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setCraft(c.id)}
+                      className={`flex-1 rounded-md px-2 py-1.5 transition ${craft === c.id ? "bg-emerald-500/25 text-emerald-200" : "text-white/60 hover:bg-white/10"}`}
+                    >
+                      {c.emoji} {c.nameMy}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {DRONES.filter((d) => d.craft === craft).map((d) => (
+                    <button
+                      key={d.id}
+                      onClick={() => save({ ...prefs, drone: d.id })}
+                      className={`rounded-xl border p-3 text-left transition ${prefs.drone === d.id ? "border-emerald-400/60 bg-emerald-500/15" : "border-white/10 bg-white/5 hover:bg-white/10"}`}
+                    >
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-sm font-bold">{d.name}</span>
+                        <span className="shrink-0 rounded bg-white/10 px-1.5 text-[10px] text-white/60">
+                          {d.cls} · {d.size}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 text-[11px] leading-snug text-white/55">{d.blurbMy}</div>
+                      <div className="mt-1 text-[10px] text-white/40">
+                        {Math.round(d.mass * 1000)}g · T/W {(d.maxThrust / (d.mass * 9.81)).toFixed(1)} · cam {d.camTilt}°
+                        {d.craft === "plane" && ` · stall ${d.stallSpeed} m/s`}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* ယာဉ်အလိုက် မောင်းနည်း — physics မတူလို့ ရှင်းပြရမယ် */}
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-[11px] leading-relaxed text-white/60">
+                  {craft === "quad" && (
+                    <>
+                      <b className="text-white/85">🛸 FPV Drone (multirotor)</b> — Throttle က
+                      တိုက်ရိုက် rotor အား။ Acro mode မှာ stick လွှတ်လည်း မညီပြန်ဘူး၊
+                      ကိုယ်တိုင် ချိန်ရတယ်။ Freestyle/flip/dive အတွက် ဒါပဲ။
+                    </>
+                  )}
+                  {craft === "plane" && (
+                    <>
+                      <b className="text-white/85">✈️ လေယာဉ် (fixed-wing)</b> — Throttle က
+                      ရှေ့တွန်းအား၊ အပေါ်တင်အား (lift) က <b>အရှိန်</b> ကနေ လာတယ်။
+                      မြေပြင်မှာ throttle အပြည့်တင်ပြီး ပြေးထွက်၊ အရှိန်ရမှ pitch ဆွဲတင်ပါ။
+                      Stall speed အောက် ကျရင် နှာခေါင်း စိုက်ကျမယ် — မဆွဲမြှင့်ဘဲ
+                      အရှိန်ပြန်ယူပါ။ Rudder (yaw) က ညံ့တယ်၊ ကွေ့ဖို့ roll + pitch သုံးပါ။
+                    </>
+                  )}
+                  {craft === "heli" && (
+                    <>
+                      <b className="text-white/85">🚁 ဟယ်လီကော်ပတာ</b> — Collective pitch:
+                      throttle <b>တစ်ဝက်ခန့်</b> မှာ hover ဖြစ်တယ် (တက်/ဆင်း ကို throttle နဲ့
+                      ချိန်)။ Cyclic (pitch/roll) နဲ့ တိမ်းရွှေ့၊ tail (yaw) နဲ့ လှည့်ပါ။
+                      Rotor က armed ဖြစ်တာနဲ့ အမြန်လှည့်နေတယ်။
+                    </>
+                  )}
+                </div>
               </div>
             )}
 
@@ -921,6 +1086,60 @@ export function FpvSim() {
                 <p className="text-[11px] leading-snug text-white/45">
                   Keyboard: W/S = throttle · A/D = yaw · Arrow keys = pitch/roll · Space = arm · R = respawn။ ဖုန်း/iPad: ဘယ် stick = throttle+yaw၊ ညာ stick = pitch+roll။
                 </p>
+
+                {/* ── တကယ့် radio / goggles ချိတ်နည်း ─────────────────── */}
+                <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-[12px] font-bold text-white/85">
+                    📻 တကယ့် radio (ELRS · CRSF) နဲ့ ချိတ်နည်း
+                  </div>
+                  <ol className="list-decimal space-y-1.5 pl-4 text-[11px] leading-relaxed text-white/60">
+                    <li>
+                      Radio ကို <b className="text-white/80">USB joystick mode</b> နဲ့ ဖွင့်ပါ —
+                      EdgeTX/OpenTX radio (RadioMaster, Jumper, Radiomaster Pocket …) မှာ USB
+                      ကြိုးထိုးလိုက်ရင် menu ပေါ်လာတယ်၊ <b>USB Joystick (HID)</b> ကို ရွေးပါ။
+                    </li>
+                    <li>
+                      ELRS / Crossfire (TBS) module က <b>radio ↔ လေယာဉ်</b> ကြားက link ဖြစ်လို့
+                      simulator အတွက် <b className="text-white/80">မလိုပါဘူး</b> — USB/Bluetooth က
+                      radio ကနေ တိုက်ရိုက် stick တန်ဖိုးတွေ ယူတယ်။ တကယ့်လေယာဉ်နဲ့ လေ့ကျင့်တဲ့
+                      အခါမှသာ ELRS/CRSF ကို bind လုပ်ပါ (packet rate 250Hz, model match ဖွင့်)။
+                    </li>
+                    <li>
+                      Bluetooth ရှိတဲ့ radio (Pocket/Boxer/TX16S BT) ဆိုရင် phone/PC ရဲ့ Bluetooth
+                      settings မှာ pair လုပ်ပြီး ဒီစာမျက်နှာ ပြန်ဖွင့်၊ stick တစ်ချက် လှုပ်ပါ။
+                    </li>
+                    <li>
+                      အထက်က <b>Axis</b> dropdown တွေနဲ့ roll/pitch/throttle/yaw ကို ကိုက်အောင်
+                      ရွေးပြီး လိုအပ်ရင် <b>ပြောင်းပြန်</b> ကို အမှန်ခြစ်ပါ — Mode 1/2/3/4 အားလုံး
+                      ဒီနည်းနဲ့ ရတယ်။ ရွေးထားတာက device ထဲ မှတ်ထားပါတယ်။
+                    </li>
+                  </ol>
+
+                  <div className="pt-1 text-[12px] font-bold text-white/85">🥽 Goggles နဲ့ ကြည့်နည်း</div>
+                  <ul className="list-disc space-y-1.5 pl-4 text-[11px] leading-relaxed text-white/60">
+                    <li>
+                      Fatshark / Skyzone / Orqa စတဲ့ analog goggles မှာ{" "}
+                      <b className="text-white/80">HDMI-in</b> ရှိရင် — PC ရဲ့ HDMI ကို goggles ထဲ
+                      ထိုးပြီး ဒီ page ကို fullscreen (F11) လုပ်ပါ။ Goggles ရဲ့ HDMI mode ကို
+                      ဖွင့်ရပါမယ်။
+                    </li>
+                    <li>
+                      HDMI-in မရှိတဲ့ goggles ဆိုရင် — module bay ထဲ HDMI receiver module ထည့်ခြင်း၊
+                      ဒါမှမဟုတ် ဖုန်းကို goggles ရဲ့ phone-slot (Fatshark-style) ထဲထည့်ပြီး ဒီ page
+                      ကို ဖုန်းမှာ fullscreen ဖွင့်နိုင်ပါတယ်။
+                    </li>
+                    <li>
+                      Digital system (HD goggles) တွေက sim video ကို တိုက်ရိုက် မလက်ခံပါ —
+                      HDMI-in ရှိတဲ့ model ဖြစ်မှ ရပါမယ်။ မရှိရင် မျက်နှာပြင်နဲ့ပဲ လေ့ကျင့်ပါ၊
+                      stick ခံစားချက်က တူညီပါတယ်။
+                    </li>
+                  </ul>
+                  <p className="text-[10px] leading-snug text-white/35">
+                    ★ ဒီ simulator က browser ထဲမှာ ပြေးလို့ radio ကို <b>USB/Bluetooth HID</b>{" "}
+                    အနေနဲ့သာ ဖတ်နိုင်ပါတယ် — ELRS/CRSF ရဲ့ RF protocol ကို browser ကနေ
+                    တိုက်ရိုက် မဖတ်နိုင်ပါ (hardware receiver လိုတယ်)。
+                  </p>
+                </div>
               </div>
             )}
 

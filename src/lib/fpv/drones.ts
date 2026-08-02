@@ -12,8 +12,11 @@ export type DroneSpec = {
   id: string;
   /// ပြသမယ့် နာမည် (fictional brand + model)
   name: string;
+  /// ✈️ ယာဉ်အမျိုးအစား — physics လမ်းကြောင်း သီးခြားစီ:
+  /// quad = multirotor (FPV drone), plane = fixed-wing, heli = helicopter
+  craft: "quad" | "plane" | "heli";
   /// Class — UI filter အတွက်
-  cls: "whoop" | "toothpick" | "freestyle" | "race" | "longrange" | "cine";
+  cls: "whoop" | "toothpick" | "freestyle" | "race" | "longrange" | "cine" | "trainer" | "wing" | "heli3d" | "scale";
   /// Prop size ။ ဥပမာ 65mm / 3" / 5"
   size: string;
   /// မြန်မာလို အကျဉ်းချုပ်
@@ -42,12 +45,18 @@ export type DroneSpec = {
   batterySec: number;
   /// Frame အရောင်
   color: number;
+  /// ── Fixed-wing (plane) သီးသန့် ──
+  /// Lift coefficient — airspeed² နဲ့ မြှောက်ပြီး အပေါ်တင်အား ရတယ်
+  liftK?: number;
+  /// Stall speed (m/s) — ဒီအောက် နှေးရင် နှာခေါင်းစိုက်ကျတယ်
+  stallSpeed?: number;
 };
 
 export const DRONES: DroneSpec[] = [
   {
     id: "nano65",
     name: "GW Nano 65",
+    craft: "quad",
     cls: "whoop",
     size: "65mm",
     blurbMy: "အိမ်တွင်း လေ့ကျင့်ရေး whoop — နှေးပြီး ခွင့်လွှတ်တတ်တယ်၊ အစပျိုးသူအတွက် အကောင်းဆုံး။",
@@ -68,6 +77,7 @@ export const DRONES: DroneSpec[] = [
   {
     id: "pico75",
     name: "GW Pico 75 HD",
+    craft: "quad",
     cls: "whoop",
     size: "75mm",
     blurbMy: "HD whoop — အိမ်တွင်း/ရုံးတွင်း cinematic ရိုက်ချက်အတွက်၊ တည်ငြိမ်တယ်။",
@@ -88,6 +98,7 @@ export const DRONES: DroneSpec[] = [
   {
     id: "stik25",
     name: "Falcon Stick 2.5",
+    craft: "quad",
     cls: "toothpick",
     size: "2.5\"",
     blurbMy: "Toothpick — ပေါ့ပြီး သွက်တယ်၊ ပန်းခြံသေးသေးမှာ freestyle စမ်းလို့ကောင်းတယ်။",
@@ -108,6 +119,7 @@ export const DRONES: DroneSpec[] = [
   {
     id: "vortex35",
     name: "Vortex 3.5 Lite",
+    craft: "quad",
     cls: "freestyle",
     size: "3.5\"",
     blurbMy: "Sub-250g freestyle — စည်းကမ်းချက်အောက်မှာ freestyle အပြည့်အစုံ။",
@@ -128,6 +140,7 @@ export const DRONES: DroneSpec[] = [
   {
     id: "raptor5",
     name: "Raptor F5",
+    craft: "quad",
     cls: "freestyle",
     size: "5\"",
     blurbMy: "5 လက်မ freestyle အဓိက — power နဲ့ ထိန်းချုပ်မှု မျှတဆုံး၊ acro သင်ဖို့ စံ။",
@@ -148,6 +161,7 @@ export const DRONES: DroneSpec[] = [
   {
     id: "viper5r",
     name: "Viper R5 Race",
+    craft: "quad",
     cls: "race",
     size: "5\"",
     blurbMy: "ပြိုင်ပွဲ spec — thrust အပြင်းဆုံး၊ ခလုတ်ဆတ်ဆတ်၊ ကင်မရာထောင့် မြင့်တယ်။",
@@ -168,6 +182,7 @@ export const DRONES: DroneSpec[] = [
   {
     id: "condor7",
     name: "Condor LR7",
+    craft: "quad",
     cls: "longrange",
     size: "7\"",
     blurbMy: "Long-range — လေထဲ လွင့်တာ ချောတယ်၊ တောင်ကြားခရီး/ရှုခင်းရိုက်ဖို့။",
@@ -188,6 +203,7 @@ export const DRONES: DroneSpec[] = [
   {
     id: "mammoth8",
     name: "Mammoth X8 Cine",
+    craft: "quad",
     cls: "cine",
     size: "8\"",
     blurbMy: "Cinelifter — လေးပြီး တည်ငြိမ်တယ်၊ cinematic mode နဲ့ တွဲရင် ရုပ်ရှင်ရိုက်သလို။",
@@ -205,6 +221,108 @@ export const DRONES: DroneSpec[] = [
     batterySec: 300,
     color: 0x555f6e,
   },
+
+  // ── ✈️ Fixed-wing (လေယာဉ်) ────────────────────────────────────────────
+  {
+    id: "trainer12",
+    name: "GW Trainer 1200",
+    craft: "plane",
+    cls: "trainer",
+    size: "1.2m",
+    blurbMy:
+      "High-wing trainer လေယာဉ် — တည်ငြိမ်ပြီး ခွင့်လွှတ်တတ်တယ်။ Throttle တင်ပြီး မြေပြင်ပေါ် ပြေးတက်၊ stall မဖြစ်အောင် အရှိန်ထိန်း။",
+    mass: 1.1,
+    maxThrust: 9,
+    dragLinear: 0.08,
+    dragQuad: 0.01,
+    rcRate: 0.55,
+    superRate: 0.4,
+    expo: 0.35,
+    rateTau: 0.09,
+    maxAngle: 45,
+    camTilt: 2,
+    scale: 1.6,
+    batterySec: 600,
+    color: 0xf0efe8,
+    liftK: 0.075,
+    stallSpeed: 7,
+  },
+  {
+    id: "wing900",
+    name: "Falcon Wing 900",
+    craft: "plane",
+    cls: "wing",
+    size: "0.9m",
+    blurbMy:
+      "Flying wing — မြန်နှုန်းမြင့် FPV cruiser။ တုံ့ပြန်မှု ဆတ်ပြီး stall speed မြင့်လို့ အတွေ့အကြုံရှိမှ ကောင်းတယ်။",
+    mass: 0.75,
+    maxThrust: 11,
+    dragLinear: 0.05,
+    dragQuad: 0.008,
+    rcRate: 0.85,
+    superRate: 0.55,
+    expo: 0.28,
+    rateTau: 0.06,
+    maxAngle: 60,
+    camTilt: 0,
+    scale: 1.3,
+    batterySec: 480,
+    color: 0x2d2f38,
+    liftK: 0.06,
+    stallSpeed: 10,
+  },
+
+  // ── 🚁 Helicopter (ဟယ်လီကော်ပတာ) ─────────────────────────────────────
+  {
+    id: "heli450",
+    name: "GW Heli 450",
+    craft: "heli",
+    size: "450",
+    cls: "heli3d",
+    blurbMy:
+      "Collective-pitch heli — throttle အလယ် (50%) မှာ ရပ်နေတယ် (hover)။ Cyclic နဲ့ တိမ်းရွှေ့၊ tail နဲ့ လှည့် — heli သီးသန့် လက်တွေ့ခံစားချက်။",
+    mass: 0.9,
+    maxThrust: 24,
+    dragLinear: 0.32,
+    dragQuad: 0.03,
+    rcRate: 0.7,
+    superRate: 0.45,
+    expo: 0.35,
+    rateTau: 0.09,
+    maxAngle: 40,
+    camTilt: 8,
+    scale: 1.35,
+    batterySec: 300,
+    color: 0xe8b33d,
+  },
+  {
+    id: "heli700",
+    name: "Ayeyar Scale 700",
+    craft: "heli",
+    size: "700",
+    cls: "scale",
+    blurbMy:
+      "Scale heli ကြီး — လေးလံတည်ငြိမ်၊ ရုပ်ရှင်ရိုက်/ခရီးပျံသလို ချောချောမောင်းဖို့။",
+    mass: 3.2,
+    maxThrust: 70,
+    dragLinear: 0.4,
+    dragQuad: 0.05,
+    rcRate: 0.5,
+    superRate: 0.35,
+    expo: 0.4,
+    rateTau: 0.13,
+    maxAngle: 30,
+    camTilt: 5,
+    scale: 1.9,
+    batterySec: 420,
+    color: 0xb03a3a,
+  },
+];
+
+export const CRAFTS: { id: DroneSpec["craft"]; emoji: string; nameMy: string }[] = [
+  { id: "quad", emoji: "🛸", nameMy: "FPV Drone" },
+  { id: "plane", emoji: "✈️", nameMy: "လေယာဉ်" },
+  { id: "heli", emoji: "🚁", nameMy: "ဟယ်လီကော်ပတာ" },
 ];
 
 export function getDrone(id: string): DroneSpec {
