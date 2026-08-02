@@ -299,15 +299,22 @@ export function MetaverseScene() {
     degradedRef.current = degraded;
   }, [degraded]);
 
-  // Wallet ရှိပြီးသားလား ကြည့် — ★ dynamic import၊ wallet မသုံးသူတွေ
-  // module ကို ဆွဲစရာမလိုဘူး။
+  // ချိတ်ထားပြီးသားလား **server ကို မေးတယ်** — browser ထဲက wallet ကို
+  // မမေးဘူး။ ★ Passkey နဲ့ ချိတ်ထားသူဆိုရင် ဒီ browser မှာ
+  // `window.ethereum` မရှိလို့ `eth_accounts` က အမြဲ ဗလာ ပြန်ပေးမယ်၊
+  // ပြီးတော့ ဖုန်းပြောင်းသုံးရင်လည်း အတူတူပဲ — အမှန်တရားက
+  // `mv_players.wallet` မှာ ရှိတယ်။
   useEffect(() => {
     let alive = true;
-    void import("./web3/wallet").then(async (m) => {
-      if (!alive || !m.walletAvailable()) return;
-      const w = await m.currentWallet();
-      if (alive) setWallet(w);
-    });
+    void fetch("/api/metaverse/siwe/status", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { wallet?: string | null } | null) => {
+        if (alive && j?.wallet) setWallet(j.wallet);
+      })
+      .catch(() => {
+        /* ★ ချိတ်ထားလားမသိတာက လောကကို မထိခိုက်ရ — chip က
+           "ချိတ်ရန်" ပြနေရုံပဲ။ */
+      });
     return () => {
       alive = false;
     };
