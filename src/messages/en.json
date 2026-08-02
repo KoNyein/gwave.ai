@@ -45,7 +45,12 @@
     "sectionKnowledge": "Knowledge & Tools",
     "dashboard": "My Dashboard",
     "jobs": "Jobs",
-    "audio": "Audio"
+    "audio": "Audio",
+    "metaverse": "Metaverse",
+    "metals": "Mine sites",
+    "ride": "Ride",
+    "menu": "All features",
+    "sectionEntertainment": "Games & Metaverse"
   },
   "auth": {
     "login": "Log in",
@@ -1581,5 +1586,44 @@
     "qrHint": "Scan to open this track",
     "nfcWritten": "Written to NFC tag — tap a phone to open.",
     "nfcFailed": "NFC write failed or was cancelled."
+  },
+  "menuPage": {
+    "title": "All Gwave features",
+    "subtitle": "Everything in one place, organised by category.",
+    "desc": {
+      "home": "News feed, posts, stories and reactions",
+      "dashboard": "Your day at a glance",
+      "friends": "Find friends and manage requests",
+      "groups": "Communities around shared interests",
+      "pages": "Business and creator pages",
+      "live": "Watch and broadcast live video",
+      "talk": "Walkie-talkie voice channels",
+      "reels": "Short vertical videos",
+      "audio": "Music, podcasts and audiobooks",
+      "games": "HTML5 games and community uploads",
+      "metaverse": "3D world — 4 maps, avatars, mini-games, building",
+      "learn": "Coding, STEM and agri courses in Burmese",
+      "leaderboard": "Top learners this week",
+      "wellness": "Meditation and mental wellness",
+      "health": "Health tracking tools",
+      "farm": "IoT grow monitoring and automation",
+      "smartHome": "Switches, scenes and schedules",
+      "cameras": "CCTV live view and recordings",
+      "family": "Family locator and safety circle",
+      "map": "Live map, check-ins and SOS",
+      "sos": "Emergency alert with GPS",
+      "ride": "Ride hailing",
+      "shop": "Marketplace, dropship and affiliate",
+      "jobs": "Find and post jobs",
+      "pos": "Point of sale for shops",
+      "boost": "Promote your posts",
+      "gpay": "G-Pay wallet and transfers",
+      "finance": "Financial tools",
+      "membership": "Member plans and perks",
+      "strains": "Cannabis strain database (18+)",
+      "minerals": "Minerals and gemstones guide",
+      "metals": "Mine sites map and metal prices",
+      "tools": "Calculators and converters"
+    }
   }
 }

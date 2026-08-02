@@ -1,0 +1,241 @@
+<!-- =========================================================== §6 -->
+<h1><span class="num">6</span>Security and access control</h1>
+<p class="lead">Authentication is Cognito's job; authorisation is Postgres's.
+Between them sits a short-lived ES256 token minted by the server, which is the
+only thing PostgREST and Realtime will accept on a user's behalf.</p>
+
+<h2>6.1 Authentication and the data token</h2>
+<div class="fig">{{fig:auth}}<div class="cap">Request lifecycle. The server
+never forwards a Cognito token to the data API; it exchanges identity for a
+narrowly-scoped data token whose subject is the caller's
+<code>profiles.id</code>.</div></div>
+
+<table class="tight">
+  <caption>Token and credential types</caption>
+  <thead><tr><th style="width:24%">Credential</th><th style="width:22%">Issued by</th><th>Trusted by</th></tr></thead>
+  <tbody>
+    <tr><td>Cognito id / access / refresh</td><td>Cognito hosted UI or the mobile JSON auth routes</td><td>The Next.js server only. Stored in the <code>gw_at</code> / <code>gw_it</code> / <code>gw_rt</code> cookies.</td></tr>
+    <tr><td>ES256 data token</td><td>The server, signed with <code>APP_JWT_PRIVATE_KEY</code></td><td>PostgREST and Realtime, verified against the JWKS published from <code>APP_JWT_PUBLIC_JWK</code> by <code>kid</code>. Claims: <code>sub</code> = <code>profiles.id</code>, <code>role</code> = <code>authenticated</code>.</td></tr>
+    <tr><td>Legacy HS256 anon key</td><td>Shared secret</td><td>PostgREST (as an <code>oct</code> key in the same JWKS) and Realtime. Still used for the socket handshake; kept in sync across all three services.</td></tr>
+    <tr><td>Service-role token</td><td>The server, for privileged operations only</td><td>Bypasses RLS. Used exclusively from server actions and route handlers via <code>src/lib/data/admin.ts</code>.</td></tr>
+    <tr><td>Public API key</td><td>Developer console, stored hashed</td><td><code>/api/v1/*</code> only, with per-key scopes (<code>read:*</code>, <code>write:posts</code>, …) and rate limits.</td></tr>
+  </tbody>
+</table>
+
+<div class="warn"><b>The invariant that must always hold</b> The legacy HS256
+secret is verified by three independent services — the web container's
+<code>SUPABASE_JWT_SECRET</code>, the Realtime container's
+<code>API_JWT_SECRET</code>, and PostgREST's <code>oct</code> key inside
+<code>/etc/postgrest/jwks.json</code>. If any one drifts, every anon-key call
+fails with <code>401 JWSInvalidSignature</code> and the Realtime socket refuses
+to handshake. The three fingerprints must match; §11 records how to check
+them.</div>
+
+<h2>6.2 Authorisation model</h2>
+<div class="fig">{{fig:security}}<div class="cap">Access-control model, from
+identity through authorisation to the hardening measures that assume both will
+eventually be wrong.</div></div>
+
+<table class="tight">
+  <caption>Roles</caption>
+  <thead><tr><th style="width:20%">Role</th><th>Grants</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">user</td><td>Baseline: own content, friends' content, public content.</td></tr>
+    <tr><td class="mono">member</td><td>Adds members-only posts, member tools (nutrient mixing, yield estimator) and member badges. Synchronised from an active subscription by <code>sync_membership_role()</code>.</td></tr>
+    <tr><td class="mono">moderator</td><td>Moderation queue, report resolution, content removal.</td></tr>
+    <tr><td class="mono">developer</td><td>Developer console: API keys, logs, webhooks, feature flags.</td></tr>
+    <tr><td class="mono">admin</td><td>All admin consoles, user suspension, membership review, settings.</td></tr>
+    <tr><td class="mono">super_admin</td><td>Everything, including destructive administration and role assignment.</td></tr>
+  </tbody>
+</table>
+
+<p>Roles are stored on <code>profiles.role</code> and enforced in two places:
+<code>requireRole()</code> and <code>requireMembership()</code> in
+<code>src/lib/auth.ts</code> for the application layer, and predicate functions
+— <code>is_admin()</code>, <code>is_moderator()</code>,
+<code>is_developer()</code>, <code>is_member_user()</code>,
+<code>is_suspended()</code> — inside the RLS policies themselves.</p>
+
+<h3>Row level security patterns</h3>
+<ul>
+  <li><strong>Ownership</strong>: <code>owner_id = auth.uid()</code> — devices,
+    cameras, stores, boosts, webhooks.</li>
+  <li><strong>Relationship</strong>: <code>are_friends()</code>,
+    <code>is_group_member()</code>, <code>is_conversation_member()</code>,
+    <code>is_family_member()</code>, <code>is_store_member()</code>.</li>
+  <li><strong>Composite visibility</strong>: <code>can_view_post()</code>
+    resolves author, visibility level, friendship, group membership, block state
+    and suspension in one predicate — every read path uses the same function,
+    so the feed and a direct permalink can never disagree.</li>
+  <li><strong>Age gating</strong>: <code>is_adult()</code>,
+    <code>is_minor()</code>, <code>age_band_of()</code> guard cannabis, dating
+    and market content.</li>
+  <li><strong>Sealed tables</strong>: <code>wifi_scans</code> and similar
+    telemetry have <em>zero</em> policies — nothing but the service role can read
+    them, which is the correct posture for data collected in the background.</li>
+</ul>
+
+<h2>6.3 Data protection</h2>
+<table class="tight">
+  <thead><tr><th style="width:22%">Concern</th><th>Control</th></tr></thead>
+  <tbody>
+    <tr><td>Secrets at rest</td><td>Runtime secrets live only in <code>/etc/gwave-web.env</code> and the running containers; they are never baked into the image and never committed. Operational documentation references them by name or by a truncated SHA-256 fingerprint.</td></tr>
+    <tr><td>Private media</td><td>Chat attachments, KYC photos and payment slips live in private buckets; reads go through <code>/api/media/chat</code> or short-lived signed GET URLs from <code>src/lib/storage/signed-read.ts</code>.</td></tr>
+    <tr><td>Upload integrity</td><td>Object keys are derived from the session user server-side. A client cannot choose where its bytes land.</td></tr>
+    <tr><td>Money operations</td><td><code>gpay_protect_columns()</code> makes <code>balance</code> writable only by triggers; transfer, top-up and settlement functions are <code>SECURITY DEFINER</code> with <code>EXECUTE</code> granted to <code>service_role</code> alone.</td></tr>
+    <tr><td>Stream keys</td><td><code>live_stream_keys</code> is a separate host-only table; a viewer of a broadcast can never read the key that produces it.</td></tr>
+    <tr><td>Rate limiting</td><td>Fixed-window 300 requests per minute per IP in middleware (per container), with Cloudflare in front for volumetric protection, plus per-key limits on the public API.</td></tr>
+    <tr><td>Transport</td><td>TLS terminated by Caddy with automatic certificates; security headers asserted by the smoke E2E suite; any <code>*.vercel.app</code> host is 308-redirected to <code>gwave.cc</code>.</td></tr>
+    <tr><td>Privacy requests</td><td><code>consents</code> and <code>deletion_requests</code> record consent state and erasure requests as first-class rows.</td></tr>
+  </tbody>
+</table>
+
+<h2>6.4 Deliberate privacy decisions</h2>
+<p>Several features withhold data that would be technically easy to include.
+These are product decisions, recorded here because they are invisible in the
+schema.</p>
+<ul>
+  <li><strong>Trip share pages</strong> show the vehicle, plate, driver's first
+    name and live position, and deliberately withhold the rider's identity, both
+    phone numbers, the fare and the payment method. The plate is included
+    because it is what you read out to the police; the rest is not the business
+    of whoever the link gets forwarded to.</li>
+  <li><strong>Only the rider can mint a trip link.</strong> A driver able to
+    publish a passenger's live position would have a stalking tool.</li>
+  <li><strong>Wi-Fi cluster analysis produces leads, not evidence.</strong>
+    Dense access-point clusters are surfaced with an explicit banner — a hotel
+    or a campus looks identical to a scam compound from a scan. The only thing
+    recorded as a judgement is a human admin's flag with an author.</li>
+  <li><strong>Mine and place maps are labelled user-submitted.</strong> Access
+    and hazard notes carry a reported-by-users label, because a map that
+    pretended to know a road was safe would get someone hurt.</li>
+  <li><strong>The police number in a ride is pre-filled, never auto-dialled</strong>
+    — a pocket tap must not call the police.</li>
+</ul>
+
+<!-- =========================================================== §7 -->
+<h1><span class="num">7</span>Data model</h1>
+<p class="lead">One PostgreSQL database on RDS holds 159 tables joined by 241
+foreign keys, with row level security on every table and roughly 200 functions
+and triggers carrying the business rules that must not be re-implemented per
+client.</p>
+
+<h2>7.1 Shape of the schema</h2>
+<p>Two structural facts explain most of the schema. First,
+<code>profiles</code> is the hub: 96 of the 241 foreign keys point at it, so
+almost every table is one join from an identity. Second, counters are
+<em>maintained</em>, not computed — <code>reaction_count</code>,
+<code>comment_count</code>, <code>share_count</code>,
+<code>member_count</code>, <code>follower_count</code> and
+<code>clicks_count</code> are all trigger-updated columns, because the feed
+cannot afford an aggregate per card.</p>
+
+<table class="tight">
+  <caption>Schema by domain</caption>
+  <thead><tr><th style="width:26%">Domain</th><th style="width:12%">Tables</th><th>Anchor tables</th></tr></thead>
+  <tbody>
+    <tr><td>Social core</td><td>~22</td><td class="mono">profiles, posts, comments, reactions, shares, post_media, post_views, stories, reels, follows, friendships, groups, pages, notifications</td></tr>
+    <tr><td>Messaging &amp; presence</td><td>~12</td><td class="mono">conversations, conversation_participants, messages, live_locations, ptt_channels, device_tokens, push_subscriptions</td></tr>
+    <tr><td>Live streaming</td><td>~11</td><td class="mono">live_streams, live_stream_keys, live_chat_messages, live_reactions, live_stream_presence, live_gifts, live_gift_events, live_products, cohost_rooms</td></tr>
+    <tr><td>Commerce &amp; wallet</td><td>~28</td><td class="mono">shop_products, shop_orders, gpay_accounts, gpay_transactions, stores, pos_products, sales, sale_items, shifts, membership_plans, subscriptions, payments, invoices, boosts</td></tr>
+    <tr><td>Mobility</td><td>~9</td><td class="mono">rides, ride_offers, ride_driver_profiles, ride_driver_locations, ride_ledger, ride_driver_balances, ride_vehicle_types, ride_settings</td></tr>
+    <tr><td>Learning &amp; knowledge</td><td>~20</td><td class="mono">strains, minerals, mine_sites, cannabis_places, lesson_progress, member_projects, certificates, lesson_comments, games, game_catalog, typing_scores</td></tr>
+    <tr><td>Sensing &amp; safety</td><td>~24</td><td class="mono">devices, sensor_readings, automation_rules, alerts, scenes, user_cameras, camera_clips, wifi_scans, wifi_networks, drone_detections, sos_alerts, safety_checkins, threat_alerts</td></tr>
+    <tr><td>Health, audio &amp; media</td><td>~20</td><td class="mono">health_vitals, health_daily_summary, health_events, audio_tracks, audio_progress, audio_entitlements, podcast_shows, books, book_progress</td></tr>
+    <tr><td>Platform</td><td>~13</td><td class="mono">api_keys, api_logs, webhooks, webhook_deliveries, feature_flags, site_settings, audit_logs, reports, consents, search_queries</td></tr>
+  </tbody>
+</table>
+
+<h2>7.2 Social core</h2>
+<div class="fig">{{fig:er_social}}<div class="cap">Social core. Every arm
+terminates at <code>profiles</code>; deletion of a profile cascades through the
+whole graph, which is why account deletion is a single transaction rather than a
+job.</div></div>
+
+<table class="tight">
+  <caption>Key columns — social core</caption>
+  <thead><tr><th style="width:20%">Table</th><th>Columns that carry rules</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">profiles</td><td><code>id</code> (PK, references the identity provider), <code>username</code> unique with a 3–30 character constraint, <code>role</code>, <code>last_seen_at</code> (presence: online = seen within two minutes), <code>app_build</code> (installed APK build).</td></tr>
+    <tr><td class="mono">posts</td><td><code>visibility</code> enum, <code>shared_post_id</code> self-reference, three trigger-maintained counters, content capped at 10 000 characters.</td></tr>
+    <tr><td class="mono">comments</td><td><code>parent_id</code> self-reference with <code>enforce_comment_nesting()</code> limiting depth; <code>reply_count</code> maintained by trigger.</td></tr>
+    <tr><td class="mono">reactions</td><td><code>CHECK ((post_id is null) &lt;&gt; (comment_id is null))</code> — exactly one target, enforced by the database rather than by convention.</td></tr>
+    <tr><td class="mono">notifications</td><td><code>recipient_id</code> + <code>actor_id</code> + optional <code>post_id</code>/<code>comment_id</code>; rows are written by triggers, never by clients.</td></tr>
+  </tbody>
+</table>
+
+<h2>7.3 Messaging and presence</h2>
+<div class="fig">{{fig:er_msg}}<div class="cap">Messaging. <code>direct_key</code>
+is a unique deterministic key for a one-to-one conversation, which is what makes
+<code>get_or_create_direct_conversation()</code> idempotent under a double
+tap.</div></div>
+<p>Membership is the authorisation unit: <code>is_conversation_member()</code>
+gates reads and writes on <code>messages</code>, and read receipts are stored as
+<code>last_read_at</code> on the participant row rather than per message, which
+keeps a busy group conversation to one write per reader per visit.</p>
+
+<h2>7.4 Live streaming</h2>
+<div class="fig">{{fig:er_live}}<div class="cap">Live streaming. One
+<code>live_streams</code> row spans every provider path; <code>provider</code>
+and the channel identifier columns decide which media plane a viewer is sent
+to.</div></div>
+<p><code>live_streams</code> is deliberately provider-agnostic. The same row can
+represent an IVS low-latency channel, an IVS real-time stage restreamed into
+one, or a LiveKit room, and <code>recording_path</code> is filled in later by
+whichever mechanism finds the finished file first. Column-level lockdown
+(migration <code>live_streams_column_lockdown</code>) prevents a client from
+writing status or provider fields directly.</p>
+
+<h2>7.5 Commerce, wallet and point of sale</h2>
+<div class="fig">{{fig:er_commerce}}<div class="cap">Commerce. Three separate
+sales surfaces — marketplace, POS and membership — settle into one wallet, which
+is why <code>gpay_accounts</code> sits in the middle rather than beside
+them.</div></div>
+<p>Two constraints in <code>shop_products</code> encode the product rules in
+the schema: an affiliate listing must carry an external URL, and a dropship
+listing must carry a price. The merchant's own list price is deliberately
+<em>not</em> copied into <code>original_price</code> — Gwave's price is the
+merchant's plus a markup, so showing the merchant's "was" beside Gwave's "now"
+would advertise a discount that does not exist.</p>
+
+<h2>7.6 Mobility</h2>
+<div class="fig">{{fig:er_ride}}<div class="cap">Ride hailing. The rider and
+the driver are both <code>profiles</code>; what makes someone a driver is an
+approved <code>ride_driver_profiles</code> row, not a second account or a second
+app.</div></div>
+
+<h2>7.7 Learning and knowledge</h2>
+<div class="fig">{{fig:er_learn}}<div class="cap">Learning and knowledge.
+Progress, projects and certificates are per-user; encyclopedias and community
+maps are publicly readable and community-writable with moderation.</div></div>
+
+<h2>7.8 Sensing, cameras and safety</h2>
+<div class="fig">{{fig:er_iot}}<div class="cap">Sensing. Devices, cameras and
+scans share one ownership model, so a single RLS predicate covers a farm sensor,
+a security camera and a Wi-Fi observation.</div></div>
+
+<h2>7.9 Platform services</h2>
+<div class="fig">{{fig:er_platform}}<div class="cap">Platform. API keys,
+webhooks, flags, audit and moderation — the tables that make the product
+operable rather than the ones that make it useful.</div></div>
+
+<h2>7.10 Business logic in the database</h2>
+<p>Roughly 200 functions carry rules that must hold no matter which client is
+calling. They fall into six groups.</p>
+<table class="tight">
+  <caption>Database function groups</caption>
+  <thead><tr><th style="width:20%">Group</th><th>Representative functions</th></tr></thead>
+  <tbody>
+    <tr><td><b>Predicates</b><br>(used inside RLS)</td><td class="mono">can_view_post, are_friends, is_conversation_member, is_group_admin, is_store_manager, is_camera_owner, is_family_member, is_adult, is_suspended, is_blocked</td></tr>
+    <tr><td><b>Counter triggers</b></td><td class="mono">bump_reaction_count, bump_comment_count, bump_share_count, bump_view_count, bump_group_member_count, bump_page_follower_count</td></tr>
+    <tr><td><b>Notification triggers</b></td><td class="mono">notify_on_reaction, notify_on_comment, notify_on_share, notify_on_follow, notify_on_friendship, notify_on_alert</td></tr>
+    <tr><td><b>Money (locked down)</b></td><td class="mono">gpay_transfer, gpay_admin_topup, gpay_stripe_topup, gpay_convert, gpay_set_pin, gpay_verify_phone_otp, pos_settle_gpay, ride_settle, ride_driver_settle, buy_audio, buy_book, send_live_gift, withdraw_reel_earnings</td></tr>
+    <tr><td><b>Transactional operations</b></td><td class="mono">create_sale, refund_sale, apply_stock_movement, create_group_with_owner, get_or_create_direct_conversation, ride_accept_offer, ride_guard_transition, place_dropship_order</td></tr>
+    <tr><td><b>Analytics &amp; serving</b></td><td class="mono">get_feed_boosts, record_boost_impression, record_boost_click, boost_daily_stats, creator_stats, creator_leaderboard, learn_leaderboard, review_stats, admin_storage_tables, admin_activity_stats, latest_sensor_readings</td></tr>
+  </tbody>
+</table>
+<div class="note"><b>Why so much logic lives in SQL</b> Two clients (web and
+Flutter) and a public API all write to the same tables. A rule implemented in
+TypeScript would hold for one of them. A rule implemented as a constraint,
+trigger or <code>SECURITY DEFINER</code> function holds for all three, including
+the shipped APK that cannot be patched.</div>

@@ -196,13 +196,28 @@ class Repository {
   }
 
   Future<List<LiveStream>> liveStreams({bool onlyLive = false}) async {
-    final rows = await api.select("live_streams", query: {
+    // CRITICAL: fetch *live* and *ended* in separate queries. A single
+    // `status in (live,ended) order by created_at desc limit 40` lets a flood
+    // of recent ended test broadcasts (e.g. an admin testing repeatedly) push
+    // every other user's currently-live stream out of the top 40 — so their
+    // live vanishes for everyone. Querying live on its own guarantees every
+    // ongoing broadcast shows, no matter how many ended rows exist.
+    final liveRows = await api.select("live_streams", query: {
       "select": "*",
-      if (onlyLive) "status": "eq.live",
-      if (!onlyLive) "status": "in.(live,ended)",
+      "status": "eq.live",
       "order": "created_at.desc",
-      "limit": "40",
+      "limit": "100",
     });
+    final rows = <Map<String, dynamic>>[...liveRows];
+    if (!onlyLive) {
+      final endedRows = await api.select("live_streams", query: {
+        "select": "*",
+        "status": "eq.ended",
+        "order": "created_at.desc",
+        "limit": "40",
+      });
+      rows.addAll(endedRows);
+    }
     final hosts =
         await _profilesByIds(rows.map((r) => "${r["host_id"] ?? ""}"));
     for (final r in rows) {
@@ -210,6 +225,36 @@ class Repository {
       if (host != null) r["host"] = host;
     }
     return rows.map(LiveStream.fromJson).toList();
+  }
+
+  /// The newest broadcast by this host, live or ended.
+  ///
+  /// A "X is live now" notification carries no stream id — the notifications
+  /// table only has room for a post — so tapping one had nothing to open and
+  /// fell through to the host's profile URL, which showed a 404. The host is
+  /// the one thing the notification *does* know, and one host has one broadcast
+  /// at a time, so their newest one is the one the notification meant.
+  ///
+  /// Prefers a broadcast that is still running; otherwise returns the most
+  /// recent, which is the replay the notification now leads to.
+  Future<LiveStream?> latestStreamByHost(String hostId) async {
+    for (final status in ["eq.live", "eq.ended"]) {
+      final rows = await api.select("live_streams", query: {
+        "select": "*",
+        "host_id": "eq.$hostId",
+        "status": status,
+        "order": "created_at.desc",
+        "limit": "1",
+      });
+      if (rows.isNotEmpty) {
+        final r = rows.first;
+        final hosts = await _profilesByIds(["${r["host_id"] ?? ""}"]);
+        final host = hosts["${r["host_id"]}"];
+        if (host != null) r["host"] = host;
+        return LiveStream.fromJson(r);
+      }
+    }
+    return null;
   }
 
   Future<LiveStream?> stream(String id) async {
@@ -425,18 +470,329 @@ class Repository {
 
   // ---- Shop -----------------------------------------------------------------
 
-  Future<List<ShopProduct>> products({String? category}) async {
+  Future<List<ShopProduct>> products({String? category, String? query}) async {
     final rows = await api.select("shop_products", query: {
       "select": "*",
       "status": "eq.active",
       if (category != null && category.isNotEmpty) "category": "eq.$category",
+      if (query != null && query.trim().isNotEmpty)
+        "title": "ilike.*${query.trim()}*",
       "order": "created_at.desc",
-      "limit": "40",
+      "limit": "60",
     });
     return rows.map(ShopProduct.fromJson).toList();
   }
 
+  /// One listing by id — used by the feed card that renders a shared product
+  /// in place of its raw link. Null when it's gone or hidden, which is why
+  /// that card falls back to plain text rather than an empty box.
+  Future<ShopProduct?> product(String id) async {
+    final rows = await api.select("shop_products", query: {
+      "select": "*",
+      "id": "eq.$id",
+      "limit": "1",
+    });
+    return rows.isEmpty ? null : ShopProduct.fromJson(rows.first);
+  }
+
+  /// Place a dropship order. Server-side RPC so the price and the seller come
+  /// from the listing rather than the client — there is deliberately no insert
+  /// policy on shop_orders.
+  Future<String> placeDropshipOrder({
+    required String productId,
+    required int quantity,
+    required String name,
+    required String phone,
+    required String address,
+    String? note,
+  }) async {
+    final res = await api.rpc("place_dropship_order", {
+      "p_product_id": productId,
+      "p_quantity": quantity,
+      "p_ship_name": name,
+      "p_ship_phone": phone,
+      "p_ship_address": address,
+      if (note != null && note.trim().isNotEmpty) "p_note": note.trim(),
+    });
+    return res is String ? res : "$res";
+  }
+
+  /// Log an outbound affiliate tap so sellers can see what their listings earn.
+  /// Best-effort — a failed count must never block the user leaving for the
+  /// merchant.
+  Future<void> recordAffiliateClick(String productId) async {
+    try {
+      await api.rpc("record_affiliate_click", {"p_product_id": productId});
+    } catch (_) {}
+  }
+
+  /// The signed-in buyer's orders, newest first, with the product's title and
+  /// photo resolved separately (flat queries only — a PostgREST embed here
+  /// 500s whenever the schema cache goes stale).
+  Future<List<ShopOrder>> myOrders() async {
+    final rows = await api.select("shop_orders", query: {
+      "select": "*",
+      "buyer_id": "eq.${api.session!.profileId}",
+      "order": "created_at.desc",
+      "limit": "40",
+    });
+    if (rows.isEmpty) return [];
+    final ids = rows
+        .map((r) => r["product_id"]?.toString())
+        .whereType<String>()
+        .toSet()
+        .toList();
+    final byId = <String, Map<String, dynamic>>{};
+    if (ids.isNotEmpty) {
+      try {
+        final products = await api.select("shop_products", query: {
+          "select": "id,title,image_url",
+          "id": "in.(${ids.join(",")})",
+          "limit": "60",
+        });
+        for (final p in products) {
+          byId[p["id"].toString()] = p;
+        }
+      } catch (_) {
+        // Titles are cosmetic — the order still renders without them.
+      }
+    }
+    return rows.map((r) {
+      final p = byId[r["product_id"]?.toString() ?? ""];
+      r["product_title"] = p?["title"];
+      r["product_image"] = p?["image_url"];
+      return ShopOrder.fromJson(r);
+    }).toList();
+  }
+
+  /// Where the buyer's last order went, so checkout can offer it instead of
+  /// asking for the same address a second time. Null on the first order or if
+  /// the lookup fails — the form simply starts empty, never wrong.
+  Future<ShopOrder?> lastOrder() async {
+    try {
+      final rows = await api.select("shop_orders", query: {
+        "select": "ship_name,ship_phone,ship_address,created_at",
+        "buyer_id": "eq.${api.session!.profileId}",
+        "order": "created_at.desc",
+        "limit": "1",
+      });
+      if (rows.isEmpty) return null;
+      return ShopOrder.fromJson({
+        ...rows.first,
+        "id": "",
+        "quantity": 1,
+        "unit_price": 0,
+        "currency": "THB",
+        "status": "pending",
+      });
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Publish a listing of my own. Dropship only: an affiliate listing needs a
+  /// merchant link and earns a commission we don't administer from the app.
+  /// [images] are storage paths already uploaded via [ApiClient.uploadBytes];
+  /// the first doubles as the cover so every existing card keeps working.
+  Future<ShopProduct?> createProduct({
+    required String title,
+    required double price,
+    required String currency,
+    String? description,
+    String? category,
+    List<String> images = const [],
+  }) async {
+    final row = await api.insert("shop_products", {
+      "seller_id": api.session!.profileId,
+      "kind": "dropship",
+      "title": title.trim(),
+      "price": price,
+      "currency": currency,
+      if (description != null && description.trim().isNotEmpty)
+        "description": description.trim(),
+      if (category != null && category.trim().isNotEmpty)
+        "category": category.trim(),
+      if (images.isNotEmpty) ...{
+        "image_url": images.first,
+        "images": images,
+      },
+      "status": "active",
+    });
+    return row == null ? null : ShopProduct.fromJson(row);
+  }
+
+  /// My own listings, hidden ones included — this is the seller's view.
+  Future<List<ShopProduct>> myListings() async {
+    final rows = await api.select("shop_products", query: {
+      "select": "*",
+      "seller_id": "eq.${api.session!.profileId}",
+      "order": "created_at.desc",
+      "limit": "100",
+    });
+    return rows.map(ShopProduct.fromJson).toList();
+  }
+
+  /// Take a listing off the shop, or put it back. 'hidden' rather than delete
+  /// so orders that reference it keep their product.
+  Future<void> setProductStatus(String productId, String status) async {
+    await api.update("shop_products", {
+      "status": status,
+      "updated_at": DateTime.now().toUtc().toIso8601String(),
+    }, filter: {
+      "id": "eq.$productId",
+      "seller_id": "eq.${api.session!.profileId}",
+    });
+  }
+
+  /// Edit my own post. The `author_id` filter is belt-and-braces next to RLS:
+  /// a PATCH that matched nothing would otherwise look like success.
+  Future<void> editPost(String postId, String content) async {
+    final me = api.session?.profileId;
+    if (me == null) throw ApiException("Not signed in.");
+    await api.update(
+      "posts",
+      {"content": content},
+      filter: {"id": "eq.$postId", "author_id": "eq.$me"},
+    );
+  }
+
+  /// Delete my own post. Media rows and reactions cascade in the schema.
+  Future<void> deletePost(String postId) async {
+    final me = api.session?.profileId;
+    if (me == null) throw ApiException("Not signed in.");
+    await api.deleteRows(
+      "posts",
+      filter: {"id": "eq.$postId", "author_id": "eq.$me"},
+    );
+  }
+
+  /// Report someone else's post to the moderation queue (same `reports` table
+  /// the web writes to, so one queue serves both).
+  Future<void> reportPost(String postId, String reason) async {
+    final me = api.session?.profileId;
+    if (me == null) throw ApiException("Not signed in.");
+    await api.insert("reports", {
+      "reporter_id": me,
+      "post_id": postId,
+      "reason": reason.trim(),
+    });
+  }
+
+  Future<void> deleteProduct(String productId) async {
+    await api.deleteRows("shop_products", filter: {
+      "id": "eq.$productId",
+      "seller_id": "eq.${api.session!.profileId}",
+    });
+  }
+
+  /// Orders placed on MY listings, newest first — the seller's work queue.
+  /// Flat queries and a second lookup, never an embed (a stale schema cache
+  /// 500s embeds and the screen would just die).
+  Future<List<ShopOrder>> sellerOrders() async {
+    final rows = await api.select("shop_orders", query: {
+      "select": "*",
+      "seller_id": "eq.${api.session!.profileId}",
+      "order": "created_at.desc",
+      "limit": "60",
+    });
+    if (rows.isEmpty) return [];
+    final ids = rows
+        .map((r) => r["product_id"]?.toString())
+        .whereType<String>()
+        .toSet()
+        .toList();
+    final byId = <String, Map<String, dynamic>>{};
+    if (ids.isNotEmpty) {
+      try {
+        final products = await api.select("shop_products", query: {
+          "select": "id,title,image_url",
+          "id": "in.(${ids.join(",")})",
+          "limit": "100",
+        });
+        for (final p in products) {
+          byId[p["id"].toString()] = p;
+        }
+      } catch (_) {
+        // Titles are cosmetic; the order still has to be workable without them.
+      }
+    }
+    return rows.map((r) {
+      final p = byId[r["product_id"]?.toString() ?? ""];
+      r["product_title"] = p?["title"];
+      r["product_image"] = p?["image_url"];
+      return ShopOrder.fromJson(r);
+    }).toList();
+  }
+
+  /// Move an order along its workflow. RLS already restricts this to the
+  /// order's seller; the filter makes that explicit rather than relying on it.
+  Future<void> setOrderStatus(String orderId, String status) async {
+    await api.update("shop_orders", {
+      "status": status,
+      "updated_at": DateTime.now().toUtc().toIso8601String(),
+    }, filter: {
+      "id": "eq.$orderId",
+      "seller_id": "eq.${api.session!.profileId}",
+    });
+  }
+
+  // ---- Live sale ------------------------------------------------------------
+
+  /// Products the host has pinned to a stream, in pin order.
+  ///
+  /// Two flat queries rather than the embed the web uses: this runs on the
+  /// viewer's phone while a stream plays, and a stale schema cache turns an
+  /// embed into a 500 that would silently empty the buy card mid-broadcast.
+  Future<List<ShopProduct>> liveProducts(String streamId) async {
+    final pins = await api.select("live_products", query: {
+      "select": "product_id,created_at",
+      "stream_id": "eq.$streamId",
+      "order": "created_at.asc",
+      "limit": "30",
+    });
+    final ids = pins
+        .map((p) => p["product_id"]?.toString())
+        .whereType<String>()
+        .toList();
+    if (ids.isEmpty) return [];
+    final rows = await api.select("shop_products", query: {
+      "select": "*",
+      "id": "in.(${ids.join(",")})",
+      "limit": "30",
+    });
+    final byId = {for (final r in rows) r["id"].toString(): r};
+    // Keep the host's pin order, and drop anything that has since been
+    // deleted or hidden rather than showing a card that can't be bought.
+    return ids
+        .map((id) => byId[id])
+        .whereType<Map<String, dynamic>>()
+        .map(ShopProduct.fromJson)
+        .where((p) => p.status == "active")
+        .toList();
+  }
+
+  /// Pin one of my products to my stream. RLS enforces both halves of that
+  /// sentence — my stream, my product.
+  Future<void> pinLiveProduct(String streamId, String productId) async {
+    await api.insert("live_products", {
+      "stream_id": streamId,
+      "product_id": productId,
+    });
+  }
+
+  Future<void> unpinLiveProduct(String streamId, String productId) async {
+    await api.deleteRows("live_products", filter: {
+      "stream_id": "eq.$streamId",
+      "product_id": "eq.$productId",
+    });
+  }
+
   // ---- Presence -------------------------------------------------------------
+
+  /// Last presence-heartbeat failure ("" = last attempt succeeded). Reported
+  /// by the diag beacon so a silently-failing heartbeat — which also means the
+  /// data plane this phone talks to is broken — is visible in server logs.
+  static String lastHeartbeatError = "never-ran";
 
   /// Heartbeat: stamp my profiles.last_seen_at so others see me online.
   /// Best-effort — silently a no-op until the column exists in the database.
@@ -447,7 +803,13 @@ class Repository {
       }, filter: {
         "id": "eq.${api.session!.profileId}",
       });
-    } catch (_) {}
+      lastHeartbeatError = "";
+    } catch (e) {
+      lastHeartbeatError = "$e".replaceAll("\n", " ");
+      if (lastHeartbeatError.length > 200) {
+        lastHeartbeatError = lastHeartbeatError.substring(0, 200);
+      }
+    }
     // Report which build this phone runs — separate call so a missing
     // app_build column can never break presence.
     if (AppConfig.appBuild > 0) {
@@ -559,6 +921,60 @@ class Repository {
     );
   }
 
+  /// Start a group chat with [members] (the caller is added automatically).
+  /// Goes through the `create_group_conversation` RPC because the conversation
+  /// and its membership rows are two inserts, and RLS only admits an existing
+  /// participant — a client doing it directly locks itself out halfway.
+  Future<Conversation> createGroupConversation(
+      String title, List<Profile> members) async {
+    final res = await api.rpc("create_group_conversation", {
+      "group_title": title,
+      "members": members.map((m) => m.id).toList(),
+    });
+    final id = res is String
+        ? res
+        : (res is Map ? (res["id"] ?? res.values.first).toString() : "$res");
+    if (id.isEmpty) throw Exception("Couldn't create the group.");
+    return Conversation(
+      id: id,
+      isGroup: true,
+      title: title,
+      lastMessageAt: DateTime.now(),
+      memberCount: members.length + 1,
+    );
+  }
+
+  /// Invite more people into an existing group. Returns how many were added.
+  Future<int> addGroupMembers(
+      String conversationId, List<Profile> members) async {
+    final res = await api.rpc("add_group_members", {
+      "conversation": conversationId,
+      "members": members.map((m) => m.id).toList(),
+    });
+    return res is int ? res : int.tryParse("$res") ?? 0;
+  }
+
+  /// Leave a group; the server deletes it once the last member is gone.
+  Future<void> leaveGroupConversation(String conversationId) =>
+      api.rpc("leave_group_conversation", {"conversation": conversationId});
+
+  /// Everyone in a conversation, for the group header and member sheet.
+  Future<List<Profile>> conversationMembers(String conversationId) async {
+    final parts = await api.select("conversation_participants", query: {
+      "select": "user_id",
+      "conversation_id": "eq.$conversationId",
+      "limit": "200",
+    });
+    final ids = parts.map((p) => p["user_id"].toString()).toSet().toList();
+    if (ids.isEmpty) return [];
+    final rows = await api.select("profiles", query: {
+      "select": _profileCols,
+      "id": "in.(${ids.join(",")})",
+      "limit": "200",
+    });
+    return rows.map(Profile.fromJson).toList();
+  }
+
   Future<List<Message>> messages(String conversationId, {int limit = 50}) async {
     final rows = await api.select("messages", query: {
       "select": "*",
@@ -605,6 +1021,38 @@ class Repository {
       "conversation_id": conversationId,
       "sender_id": api.session!.profileId,
       "image_path": imagePath,
+    });
+    return row == null ? null : Message.fromJson(row);
+  }
+
+  /// Send a video message: an mp4 already uploaded to the media bucket. Stored
+  /// with file_kind 'video' so both the app and the web render it as a player.
+  Future<Message?> sendVideoMessage(
+    String conversationId,
+    String storagePath,
+  ) async {
+    final row = await api.insert("messages", {
+      "conversation_id": conversationId,
+      "sender_id": api.session!.profileId,
+      "file_path": storagePath,
+      "file_kind": "video",
+    });
+    return row == null ? null : Message.fromJson(row);
+  }
+
+  /// Send a document/other file already uploaded to chat-media. `content`
+  /// carries the original filename so the recipient sees a friendly label.
+  Future<Message?> sendFileMessage(
+    String conversationId,
+    String storagePath,
+    String fileName,
+  ) async {
+    final row = await api.insert("messages", {
+      "conversation_id": conversationId,
+      "sender_id": api.session!.profileId,
+      "file_path": storagePath,
+      "file_kind": "file",
+      "content": fileName,
     });
     return row == null ? null : Message.fromJson(row);
   }
@@ -1588,8 +2036,25 @@ class Repository {
     return rows.isEmpty ? null : Profile.fromJson(rows.first);
   }
 
-  Future<Profile?> myProfile() =>
-      api.session == null ? Future.value(null) : profile(api.session!.profileId);
+  Future<Profile?> myProfile() async {
+    if (api.session == null) return null;
+    final p = await profile(api.session!.profileId);
+    if (p == null) return null;
+    // Gender is fetched separately and leniently: the column ships in
+    // db/sql/profiles-gender.sql, and a DB without it
+    // must not 400 every profile query in the app (authors, friends…).
+    try {
+      final rows = await api.select("profiles", query: {
+        "select": "gender",
+        "id": "eq.${p.id}",
+        "limit": "1",
+      });
+      if (rows.isNotEmpty) p.gender = rows.first["gender"] as String?;
+    } catch (_) {
+      // Column not deployed yet — gender-gated features stay hidden.
+    }
+    return p;
+  }
 
   /// Store the signed-in user's date of birth on their profile (drives the
   /// 18+ age gating). `birth_date` is a DATE column, so send `yyyy-MM-dd`.

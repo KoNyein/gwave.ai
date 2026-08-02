@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// The user's colour-mode choice: follow the system, or force light/dark.
-/// Persisted in SharedPreferences; defaults to System.
+import 'skins.dart';
+
+/// The user's appearance choices, persisted in SharedPreferences:
+///  - colour MODE: follow the system, or force light/dark (default System);
+///  - design SKIN: which [GwSkin] the whole app is dressed in
+///    (Gwave / Sky / Liberty / Tactical — default Gwave).
 class GwThemePref extends ChangeNotifier {
   static const _prefKey = "gw_theme_mode";
+  static const _skinKey = "gw_theme_skin";
 
   ThemeMode _mode = ThemeMode.system;
   ThemeMode get mode => _mode;
+
+  GwSkin _skin = GwSkins.gwave;
+  GwSkin get skin => _skin;
 
   GwThemePref() {
     _load();
@@ -19,15 +27,16 @@ class GwThemePref extends ChangeNotifier {
       switch (prefs.getString(_prefKey)) {
         case "light":
           _mode = ThemeMode.light;
-          notifyListeners();
         case "dark":
           _mode = ThemeMode.dark;
-          notifyListeners();
         default:
           break; // keep system
       }
+      final skinId = prefs.getString(_skinKey);
+      if (skinId != null) _skin = GwSkins.byId(skinId);
+      notifyListeners();
     } catch (_) {
-      // Keep the system default.
+      // Keep the defaults.
     }
   }
 
@@ -45,6 +54,16 @@ class GwThemePref extends ChangeNotifier {
           ThemeMode.system => "system",
         },
       );
+    } catch (_) {}
+  }
+
+  Future<void> setSkin(GwSkin skin) async {
+    if (skin.id == _skin.id) return;
+    _skin = skin;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_skinKey, skin.id);
     } catch (_) {}
   }
 }

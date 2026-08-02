@@ -9,8 +9,10 @@ import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
+import '../../widgets/share_sheet.dart';
 import '../../widgets/common.dart';
 import '../create/upload_flow.dart';
+import '../../core/video_audio.dart';
 
 /// Vertical, full-screen TikTok/Reels feed. One video per page; the visible page
 /// plays and loops, the rest pause. Right rail = like/comment/share, bottom-left
@@ -219,21 +221,46 @@ class _ReelPageState extends State<_ReelPage> {
   /// user scrolls the feed.
   static bool _muted = false;
 
+  /// The reel's claim on the speaker, so an unmuted reel pauses the music
+  /// instead of playing over it — and stops when the app is backgrounded
+  /// instead of playing on in the user's pocket.
+  late final SoundClaim _sound = SoundClaim(
+    tag: "reel:${widget.reel.id}",
+    onSilence: () => _controller?.pause(),
+    onRestore: () {
+      if (mounted && widget.active) _controller?.play();
+    },
+  );
+
   @override
   void initState() {
     super.initState();
     _init();
   }
 
+  /// Take or hand back the speaker, and set the volume to match. Returns the
+  /// volume actually applied: a reel that cannot have the sound (a call is in
+  /// progress) keeps playing silently rather than interrupting.
+  double _applySound({required bool wantsSound}) {
+    if (!wantsSound) {
+      GwSound.instance.release(_sound);
+      return 0;
+    }
+    return GwSound.instance.claim(_sound) ? 1 : 0;
+  }
+
   Future<void> _init() async {
     final url = resolveMedia(widget.reel.videoPath, bucket: "media");
     if (url == null) return;
-    final c = VideoPlayerController.networkUrl(Uri.parse(url));
+    // mixWithOthers, then decide about the music ourselves: a muted reel
+    // scrolling past has no claim on the speaker, an unmuted one does.
+    final c = silentVideoController(Uri.parse(url));
     _controller = c;
     try {
       await c.initialize();
       await c.setLooping(true);
-      await c.setVolume(_muted ? 0 : 1);
+      await c.setVolume(
+          _applySound(wantsSound: widget.active && !_muted));
       if (widget.active) await c.play();
       if (mounted) setState(() => _ready = true);
     } catch (_) {
@@ -246,23 +273,26 @@ class _ReelPageState extends State<_ReelPage> {
     super.didUpdateWidget(old);
     if (_controller == null) return;
     if (widget.active && !old.active) {
-      _controller!.setVolume(_muted ? 0 : 1);
+      _controller!.setVolume(_applySound(wantsSound: !_muted));
       _controller!.play();
     } else if (!widget.active && old.active) {
+      // Scrolled away or the tab was left: this reel has no claim on the
+      // speaker any more, so the music it interrupted can come back.
+      _applySound(wantsSound: false);
       _controller!.pause();
       _controller!.seekTo(Duration.zero);
     }
   }
 
   void _toggleMute() {
-    setState(() {
-      _muted = !_muted;
-      _controller?.setVolume(_muted ? 0 : 1);
-    });
+    _muted = !_muted;
+    _controller?.setVolume(_applySound(wantsSound: widget.active && !_muted));
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    GwSound.instance.release(_sound);
     _controller?.dispose();
     super.dispose();
   }
@@ -399,7 +429,13 @@ class _ReelPageState extends State<_ReelPage> {
                 const SizedBox(height: 18),
                 _rail(Icons.remove_red_eye, "${r.viewCount}", Colors.white, null),
                 const SizedBox(height: 18),
-                _rail(Icons.share, "Share", Colors.white, null),
+                _rail(Icons.share, "Share", Colors.white, () {
+                  showShareSheet(
+                    context,
+                    url: "https://gwave.cc/reels/${widget.reel.id}",
+                    title: "Gwave reel",
+                  );
+                }),
               ],
             ),
           ),

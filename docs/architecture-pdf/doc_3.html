@@ -1,0 +1,164 @@
+<!-- =========================================================== §4 -->
+<h1><span class="num">4</span>AWS infrastructure</h1>
+<p class="lead">Production runs entirely inside one AWS account in
+<code>ap-southeast-1</code> (Singapore). There is no managed application
+platform in the path: the Next.js image runs as a container on an EC2 host
+behind Caddy, and every other capability is an AWS service the project owns.</p>
+
+<h2>4.1 Production topology</h2>
+<div class="fig">{{fig:aws}}<div class="cap">Production topology. The app host
+runs five containers; everything else is a managed AWS service reached with the
+instance role. Only LiveKit Cloud and the payment, SMS and sourcing providers
+sit outside the account.</div></div>
+
+<h2>4.2 Service inventory</h2>
+<table>
+  <caption>AWS services and what each one carries</caption>
+  <thead><tr><th style="width:19%">Service</th><th style="width:30%">Role in Gwave</th><th>Configuration notes</th></tr></thead>
+  <tbody>
+    <tr><td><b>EC2</b></td><td>Application host — runs <code>gwave-web</code>, <code>caddy</code>, <code>postgrest</code>, <code>realtime</code> and <code>coturn</code> as Docker containers.</td><td>Managed by SSM (no SSH key in CI). Runtime env lives in <code>/etc/gwave-web.env</code>. Redeploys go through <code>/usr/local/bin/gwave-redeploy</code>.</td></tr>
+    <tr><td><b>RDS PostgreSQL</b></td><td>The single source of truth: 159 tables, row level security on every one, ~200 functions and triggers.</td><td>Reached only from the VPC. DDL is applied by an operator with a dockerised <code>psql</code>; PostgREST is restarted afterwards to refresh its schema cache.</td></tr>
+    <tr><td><b>Amazon Cognito</b></td><td>Identity: hosted UI, OIDC, Google federation, phone auth for the mobile client.</td><td>User pool <code>ap-southeast-1_krSbdHFs9</code>. <code>custom:profile_id</code> is the authoritative link to <code>profiles.id</code>.</td></tr>
+    <tr><td><b>S3 + CloudFront</b></td><td>All file storage: public media, private chat attachments, private KYC and payment slips, IVS recordings.</td><td>Writes are browser→S3 with a presigned PUT whose key is derived from the session, never from the client. Private reads are short-lived signed GETs.</td></tr>
+    <tr><td><b>ECR</b></td><td>Container registry for the app image.</td><td>Two tags per build: <code>:gwave</code> (rolling) and <code>:&lt;sha&gt;</code> (immutable).</td></tr>
+    <tr><td><b>Systems Manager (SSM)</b></td><td>Deployment transport — CI runs the redeploy script on the instance without inbound SSH.</td><td>Requires the SSM agent plus <code>AmazonSSMManagedInstanceCore</code> on the instance role.</td></tr>
+    <tr><td><b>AWS IVS (Low-Latency)</b></td><td>RTMPS ingest for in-app broadcasts and the HLS output every client can play.</td><td>Auto-records to S3 through a recording configuration.</td></tr>
+    <tr><td><b>AWS IVS (Real-Time)</b></td><td>Browser Go Live stage (WebRTC SFU) plus a composition that restreams the mixed stage into a low-latency channel.</td><td>The composition runs even when recording is off — it is how a browser broadcast reaches an HLS URL that phones can play.</td></tr>
+    <tr><td><b>Kinesis Video Streams</b></td><td>WebRTC signaling for CCTV cameras reached through the KVS master service.</td><td>Deployed from <code>deploy/kvs-master/</code> as a systemd unit.</td></tr>
+    <tr><td><b>CloudWatch</b></td><td>Container and host metrics; S3 bucket size and object counts for the storage dashboard.</td><td>Daily storage metrics are read instead of listing objects — listing the media bucket would be hundreds of thousands of API calls per page load.</td></tr>
+    <tr><td><b>Cost Explorer</b></td><td>Powers <code>/admin/aws</code>: month-to-date by service, 30-day trend, forecast, credit split.</td><td>Billed per request, so the report is cached six hours and refreshing is an explicit button that states its cost.</td></tr>
+    <tr><td><b>IAM</b></td><td>Instance role grants S3, IVS, KVS, Cost Explorer and CloudWatch access.</td><td>No static access keys on the box. The one place static keys are still required is LiveKit egress, which is why that feature is not yet enabled.</td></tr>
+  </tbody>
+</table>
+
+<h2>4.3 Non-AWS dependencies</h2>
+<table class="tight">
+  <caption>External services</caption>
+  <thead><tr><th style="width:20%">Provider</th><th style="width:24%">Used for</th><th>Failure behaviour</th></tr></thead>
+  <tbody>
+    <tr><td>Cloudflare</td><td>DNS, edge caching, DDoS and bandwidth protection in front of the origin.</td><td>Origin remains reachable; the in-process rate limiter is the backstop.</td></tr>
+    <tr><td>LiveKit Cloud</td><td>SFU for browser Go Live and co-host rooms.</td><td>Absent configuration falls back to a peer-to-peer mesh (practical up to ~6 publishers).</td></tr>
+    <tr><td>Stripe</td><td>Membership checkout and wallet top-up.</td><td>Signature-verified webhook; a failed charge surfaces on the receipt instead of becoming a silent support ticket.</td></tr>
+    <tr><td>Twilio</td><td>SMS one-time passwords for G-Pay and phone auth.</td><td>OTP start returns a typed error; the flow stops rather than pretending to send.</td></tr>
+    <tr><td>AliExpress open platform</td><td>Dropship product import and refresh.</td><td>Import is a manual action; a failed refresh leaves the previous listing intact.</td></tr>
+    <tr><td>Google Maps / OSRM / Photon</td><td>Map tiles, routing, geocoding for ride and travel tools.</td><td>Ride search falls back to the rider's own destination history, which is both the cheapest source and the most accurate for Myanmar addresses.</td></tr>
+    <tr><td>Firebase Cloud Messaging</td><td>Planned: background push for calls and messages.</td><td>Currently unconfigured — this is the largest known gap.</td></tr>
+  </tbody>
+</table>
+
+<h2>4.4 Network and port matrix</h2>
+<table class="tight">
+  <caption>Inbound ports and their purpose</caption>
+  <thead><tr><th style="width:16%">Port</th><th style="width:14%">Protocol</th><th style="width:24%">Service</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">80 / 443</td><td>TCP</td><td>Caddy</td><td>Public entry; automatic TLS; routes <code>/sb/rest/v1/*</code> → 127.0.0.1:3005 and <code>/sb/realtime/v1/*</code> → 127.0.0.1:4000.</td></tr>
+    <tr><td class="mono">3000</td><td>TCP (local)</td><td>gwave-web</td><td>Next.js standalone server, not exposed publicly.</td></tr>
+    <tr><td class="mono">3001</td><td>TCP (local)</td><td>canary</td><td>New image is health-probed here before the port-3000 swap.</td></tr>
+    <tr><td class="mono">3005 / 4000</td><td>TCP (local)</td><td>PostgREST / Realtime</td><td>Reached only through Caddy under <code>/sb</code>.</td></tr>
+    <tr><td class="mono">3478</td><td>UDP + TCP</td><td>coturn</td><td>TURN/STUN for messenger calls.</td></tr>
+    <tr><td class="mono">49160–49200</td><td>UDP</td><td>coturn relay</td><td>Media relay range. Without it, carrier-NAT calls connect but stay silent.</td></tr>
+  </tbody>
+</table>
+
+<h2>4.5 Configuration model</h2>
+<p>Environment variables fall into two classes, and confusing them is the most
+common deployment mistake in the project.</p>
+<table class="tight">
+  <thead><tr><th style="width:22%">Class</th><th style="width:26%">Where it lives</th><th>Consequences</th></tr></thead>
+  <tbody>
+    <tr><td><b>Build-time</b><br><code>NEXT_PUBLIC_*</code></td><td>Docker build arguments in <code>deploy.yml</code>, sourced from repository variables and one secret.</td><td>Inlined into the client bundle <em>and</em> the Content-Security-Policy. They are public by definition. Changing one requires a rebuild; omitting one silently breaks the feature it powers.</td></tr>
+    <tr><td><b>Runtime</b><br>everything else</td><td><code>/etc/gwave-web.env</code> on the EC2 host, read by the redeploy script as <code>--env-file</code>.</td><td>Never enters the image. An env-only change needs just <code>sudo gwave-redeploy</code> — no rebuild, no CI run.</td></tr>
+  </tbody>
+</table>
+<div class="warn"><b>Legacy file warning</b>
+<code>deploy/gwave.override.env</code> is legacy and is <em>not</em> read by the
+production redeploy script. Editing it has no effect on the running
+application; the live file is <code>/etc/gwave-web.env</code>.</div>
+
+<!-- =========================================================== §5 -->
+<h1><span class="num">5</span>Delivery pipeline and environments</h1>
+<p class="lead">Two pipelines exist and only two: one builds and deploys the web
+application, one builds and publishes the Android APK. Neither has an
+alternative path, and nothing is deployed by hand.</p>
+
+<h2>5.1 Web pipeline</h2>
+<div class="fig">{{fig:cicd}}<div class="cap">Web delivery. CI gates the merge;
+the merge triggers the deploy; the deploy hands off to the same script an
+operator would run on the box, so there is exactly one deployment procedure.</div></div>
+
+<table class="tight">
+  <caption>Web pipeline stages</caption>
+  <thead><tr><th style="width:22%">Stage</th><th style="width:24%">Where</th><th>What must be true</th></tr></thead>
+  <tbody>
+    <tr><td>Quality gate</td><td class="mono">ci.yml / quality</td><td><code>pnpm lint</code>, <code>pnpm typecheck</code> and <code>pnpm build</code> all pass against dummy data-API env.</td></tr>
+    <tr><td>Smoke E2E</td><td class="mono">ci.yml / e2e-smoke</td><td>Playwright checks auth guards, public pages, security headers, API auth and the health probe against the production build.</td></tr>
+    <tr><td>Merge</td><td>GitHub</td><td>Squash merge to <code>main</code> only after both checks are green.</td></tr>
+    <tr><td>Image build</td><td class="mono">deploy.yml</td><td>18 <code>NEXT_PUBLIC_*</code> build args supplied; image tagged <code>:gwave</code> and <code>:&lt;sha&gt;</code> and pushed to ECR.</td></tr>
+    <tr><td>Rollout</td><td>SSM → EC2</td><td><code>sudo /usr/local/bin/gwave-redeploy</code> pulls the new image, canaries it on :3001, swaps :3000 with the runtime env-file, and rolls back automatically on failure.</td></tr>
+  </tbody>
+</table>
+<div class="note"><b>Deployment concurrency</b> The deploy workflow uses a
+concurrency group with <code>cancel-in-progress: false</code>: an in-flight
+production deploy is never interrupted by a newer one. Documentation-only
+changes are excluded through <code>paths-ignore</code>.</div>
+
+<h2>5.2 Mobile pipeline and branch model</h2>
+<div class="fig">{{fig:mobile}}<div class="cap">APK delivery and the branch
+model. The build number is the CI run number, which makes every screenshot a
+user sends traceable to an exact build.</div></div>
+
+<ul>
+  <li><strong>Signing</strong> uses the <code>gwave-upload</code> keystore from
+    <code>ANDROID_KEYSTORE_BASE64</code> / <code>ANDROID_KEYSTORE_PASSWORD</code>;
+    CI falls back to debug signing with a loud warning if they are absent.</li>
+  <li><strong>Versioning</strong>: <code>versionCode</code> is the CI run
+    number, and <code>--dart-define=APP_BUILD=&lt;run&gt;</code> powers the
+    in-app update banner. The Settings footer shows
+    <code>Gwave v1.0.&lt;build&gt;</code> — always the first thing to ask a user
+    who reports a bug.</li>
+  <li><strong>Distribution</strong> is the rolling <code>mobile-latest</code>
+    release; <code>gwave.cc/welcome</code> and
+    <code>/download/apk?abi=…</code> stream the release assets through the
+    domain so users never touch a third-party host.</li>
+  <li><strong>Telemetry</strong>: the <code>profiles.app_build</code> heartbeat
+    column reports each user's installed build, which is how a fleet-wide
+    upgrade is measured.</li>
+</ul>
+
+<h2>5.3 Database change process</h2>
+<p>The application container cannot reach RDS, and neither can CI. This is
+deliberate: schema changes are the one operation where an automated pipeline
+would remove the pause in which mistakes are caught.</p>
+<ol>
+  <li>The change is written as a migration in <code>supabase/migrations/</code>
+    or a self-contained patch in <code>db/sql/</code>.</li>
+  <li>An operator applies it on the EC2 host with a dockerised <code>psql</code>,
+    taking the password from <code>/root/gwaveadmin_newpw.txt</code> at run time
+    — never hard-coded, never pasted into a chat.</li>
+  <li>After any DDL, <code>sudo docker restart postgrest</code> refreshes the
+    schema cache. Skipping this is what turns a new column into a
+    production 500.</li>
+  <li>The corresponding application change is merged only once the schema is in
+    place, so a rollback of the app never leaves the database ahead of it.</li>
+</ol>
+<div class="ok"><b>Validation before production</b> Migrations are validated
+against a scratch PostgreSQL instance, and <code>scripts/rls-audit.sql</code>
+asserts that every forbidden cross-user operation is denied — the assertions run
+inside a transaction that is rolled back, so the audit can be run against any
+database.</div>
+
+<h2>5.4 Environments</h2>
+<table class="tight">
+  <thead><tr><th style="width:18%">Environment</th><th style="width:24%">Data</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td>Local development</td><td>Own Postgres or a scratch instance; seeds from <code>supabase/seed/</code>.</td><td><code>pnpm dev</code>. Optional EMQX and IoT bridge through docker compose, with a device simulator.</td></tr>
+    <tr><td>CI</td><td>Dummy data-API endpoints.</td><td>Lint, typecheck, production build and smoke E2E — no external service is contacted.</td></tr>
+    <tr><td>Production</td><td>RDS.</td><td>gwave.cc. The only environment with real users, real money and real media.</td></tr>
+  </tbody>
+</table>
+<div class="warn"><b>There is no staging environment.</b> This is a deliberate
+trade-off for a small team: the cost of keeping a second full media and payment
+stack honest exceeded its value. It is mitigated by the canary-and-rollback
+step in the redeploy script, by feature flags, and by the rule that
+user-visible state is written before any provider call. It remains the largest
+structural risk in the delivery model and is recorded as such in §12.</div>

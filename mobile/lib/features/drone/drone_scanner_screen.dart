@@ -1,0 +1,1523 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
+import 'package:wifi_scan/wifi_scan.dart';
+
+import '../../core/i18n.dart';
+import '../../core/theme.dart';
+import 'drone_library_screen.dart';
+import 'drone_map_screen.dart';
+import 'drone_signatures.dart';
+
+/// How a detection is classified.
+enum HitClass { remoteId, drone, unusual, unknown }
+
+/// A detected radio device — a drone, a controller, or any nearby BLE/Wi-Fi
+/// signal. The scanner tracks EVERY signal (not just drone matches) so the
+/// radar visibly works and can flag anomalies.
+class DroneHit {
+  DroneHit({
+    required this.key,
+    required this.label,
+    required this.rssi,
+    required this.source,
+    this.vendor,
+    this.kind = DroneKind.unknown,
+    this.protocol,
+    this.band,
+    this.channel,
+    this.ssid,
+    this.mac,
+    this.remoteId,
+    this.sig,
+    this.lat,
+    this.lng,
+    this.confirmed = false,
+  }) {
+    rssiHistory.add(rssi);
+  }
+
+  final String key;
+  String label;
+  int rssi;
+  String source; // "BLE" or "WiFi"
+  String? vendor;
+  DroneKind kind;
+  String? protocol;
+  String? band;
+  int? channel;
+  String? ssid;
+  String? mac;
+  String? remoteId;
+  DroneSignature? sig;
+  double? lat;
+  double? lng;
+  bool confirmed; // parsed Remote ID
+  DateTime seen = DateTime.now();
+  final DateTime firstSeen = DateTime.now();
+  final List<int> rssiHistory = [];
+
+  void pushRssi(int v) {
+    rssi = v;
+    rssiHistory.add(v);
+    if (rssiHistory.length > 20) rssiHistory.removeAt(0);
+    seen = DateTime.now();
+  }
+
+  double get distanceM {
+    const measuredPower = -59;
+    const n = 2.7;
+    return math.pow(10, (measuredPower - rssi) / (10 * n)).toDouble();
+  }
+
+  /// +1 approaching, -1 leaving, 0 steady.
+  int get trend {
+    if (rssiHistory.length < 6) return 0;
+    final n = rssiHistory.length;
+    final recent = rssiHistory.sublist(n - 3);
+    final older = rssiHistory.sublist(n - 6, n - 3);
+    final ra = recent.reduce((a, b) => a + b) / 3;
+    final oa = older.reduce((a, b) => a + b) / 3;
+    if (ra - oa > 3) return 1;
+    if (oa - ra > 3) return -1;
+    return 0;
+  }
+
+  bool get isDroneish => confirmed || vendor != null;
+
+  /// An "unusual" signal worth flagging: any drone-vendor device, or an unknown
+  /// device that is close AND actively approaching (something moving toward you)
+  /// — while ignoring the many stationary Wi-Fi routers / BLE gadgets around.
+  bool get unusual {
+    if (confirmed) return false; // a confirmed drone is a threat, not "unusual"
+    if (vendor != null) return true; // any known drone-maker device
+    return trend > 0 && rssi >= -72; // unknown, close & getting closer
+  }
+
+  HitClass get klass {
+    if (confirmed) return HitClass.remoteId;
+    if (vendor != null) return HitClass.drone;
+    if (unusual) return HitClass.unusual;
+    return HitClass.unknown;
+  }
+}
+
+/// Passive drone-detection radar. Listens (never transmits) on the phone's BLE
+/// and Wi-Fi radios, tracks every nearby signal, matches drones against the
+/// built-in [kDroneSignatures] database, flags anomalies (unknown signals that
+/// approach) and alerts. Proprietary RC links (OcuSync, ELRS, Crossfire, FrSky,
+/// analog FPV) still need an external SDR — see the capability panel. Works
+/// offline. A safety aid, not a guarantee.
+class DroneScannerScreen extends StatefulWidget {
+  const DroneScannerScreen({super.key});
+
+  @override
+  State<DroneScannerScreen> createState() => _DroneScannerScreenState();
+}
+
+class _DroneScannerScreenState extends State<DroneScannerScreen>
+    with SingleTickerProviderStateMixin {
+  final Map<String, DroneHit> _hits = {};
+  final List<_Alert> _alerts = [];
+  final Set<String> _alerted = {}; // keys already alerted (avoid repeat buzz)
+  StreamSubscription<List<ScanResult>>? _bleSub;
+  Timer? _wifiTimer;
+  Timer? _wifiScanTimer;
+  Timer? _alarmTimer;
+  Timer? _pruneTimer;
+  StreamSubscription<BluetoothAdapterState>? _adapterSub;
+  bool _scanning = false;
+  bool _btOff = false; // Bluetooth unavailable — Wi-Fi keeps scanning
+  bool _bleRunning = false;
+  String? _error;
+  String _filter = "priority"; // priority | all | drones | unusual
+  late final AnimationController _sweep = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 3),
+  )..repeat();
+
+  static const _alertDistanceM = 200.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _start();
+  }
+
+  @override
+  void dispose() {
+    _sweep.dispose();
+    _bleSub?.cancel();
+    _adapterSub?.cancel();
+    _wifiTimer?.cancel();
+    _wifiScanTimer?.cancel();
+    _alarmTimer?.cancel();
+    _pruneTimer?.cancel();
+    FlutterBluePlus.stopScan();
+    super.dispose();
+  }
+
+  Future<void> _start() async {
+    try {
+      await [
+        Permission.bluetoothScan,
+        Permission.bluetoothConnect,
+        Permission.locationWhenInUse,
+        Permission.nearbyWifiDevices,
+      ].request();
+
+      // Wi-Fi leg FIRST and independent of Bluetooth: a phone with BT off
+      // used to take the whole radar down with a raw PlatformException while
+      // the Wi-Fi scanner would have worked fine the entire time.
+      _triggerWifiScan();
+      _wifiScanTimer = Timer.periodic(
+          const Duration(seconds: 25), (_) => _triggerWifiScan());
+      _readWifi();
+      _wifiTimer =
+          Timer.periodic(const Duration(seconds: 5), (_) => _readWifi());
+      _pruneTimer = Timer.periodic(const Duration(seconds: 2), (_) => _prune());
+      if (mounted) setState(() => _scanning = true);
+
+      // BLE leg — self-healing: when the user flips Bluetooth on (from our
+      // banner or the system tray), scanning starts by itself.
+      _adapterSub = FlutterBluePlus.adapterState.listen((s) {
+        final off = s != BluetoothAdapterState.on;
+        if (off) _bleRunning = false;
+        if (mounted) setState(() => _btOff = off);
+        if (!off) _startBle();
+      });
+      await _startBle(requestEnable: true);
+    } catch (e) {
+      // Only a total setup failure lands here; BLE/Wi-Fi issues degrade softly.
+      if (mounted) setState(() => _error = "$e");
+    }
+  }
+
+  /// Start (or restart) BLE scanning. With [requestEnable] the system
+  /// "turn on Bluetooth" dialog is shown first when the adapter is off.
+  /// Never throws — a phone without/with disabled Bluetooth just stays on
+  /// Wi-Fi-only scanning with the banner offering the switch.
+  Future<void> _startBle({bool requestEnable = false}) async {
+    if (_bleRunning) return;
+    try {
+      var state = await FlutterBluePlus.adapterState.first;
+      if (state != BluetoothAdapterState.on && requestEnable) {
+        try {
+          await FlutterBluePlus.turnOn();
+          state = await FlutterBluePlus.adapterState.first;
+        } catch (_) {
+          // User declined or the device can't switch it programmatically.
+        }
+      }
+      if (state != BluetoothAdapterState.on) {
+        if (mounted) setState(() => _btOff = true);
+        return;
+      }
+      _bleSub ??= FlutterBluePlus.scanResults.listen(_onBle);
+      await FlutterBluePlus.startScan(
+        continuousUpdates: true,
+        removeIfGone: const Duration(seconds: 15),
+      );
+      _bleRunning = true;
+      if (mounted) setState(() => _btOff = false);
+    } catch (_) {
+      if (mounted) setState(() => _btOff = true);
+    }
+  }
+
+  // ---- Bluetooth LE — track EVERY device -----------------------------------
+
+  void _onBle(List<ScanResult> results) {
+    for (final r in results) {
+      final k = r.device.remoteId.str;
+      final odid = _parseOpenDroneId(r);
+      final name = r.advertisementData.advName.trim();
+      final hit = _hits[k] ??
+          DroneHit(
+            key: k,
+            label: name.isEmpty
+                ? tr(context, "Unknown BLE device", "အမည်မသိ BLE")
+                : name,
+            rssi: r.rssi,
+            source: "BLE",
+            mac: k,
+          );
+      hit.pushRssi(r.rssi);
+
+      if (odid != null) {
+        hit.confirmed = true;
+        hit.protocol = "Remote ID";
+        hit.kind = DroneKind.remoteId;
+        if (odid.$1 != null && odid.$1!.isNotEmpty) {
+          hit.remoteId = odid.$1;
+          hit.label = "${tr(context, "Drone", "ဒရုန်း")} · ${odid.$1}";
+        } else {
+          hit.label = tr(context, "Drone (Remote ID)", "ဒရုန်း (Remote ID)");
+        }
+        if (odid.$2 != null) {
+          hit.lat = odid.$2;
+          hit.lng = odid.$3;
+        }
+      } else if (name.isNotEmpty && hit.sig == null) {
+        final sig = matchSignature(name);
+        if (sig != null) _applySig(hit, sig, name);
+      }
+      _hits[k] = hit;
+    }
+    if (mounted) setState(() {});
+    _evaluate();
+  }
+
+  (String?, double?, double?)? _parseOpenDroneId(ScanResult r) {
+    try {
+      List<int>? payload;
+      for (final entry in r.advertisementData.serviceData.entries) {
+        if (entry.key.str.toLowerCase().contains("fffa")) {
+          payload = entry.value;
+          break;
+        }
+      }
+      if (payload == null || payload.length < 3) return null;
+      if (payload[0] != 0x0D) return null;
+      final msg = payload.sublist(2);
+      final type = (msg[0] >> 4) & 0x0F;
+      String? id;
+      double? lat, lng;
+      if (type == 0 && msg.length >= 22) {
+        final raw = msg.sublist(2, 22);
+        id = String.fromCharCodes(raw.where((b) => b >= 32 && b < 127)).trim();
+      } else if (type == 1 && msg.length >= 17) {
+        lat = _int32le(msg, 5) / 1e7;
+        lng = _int32le(msg, 9) / 1e7;
+        if (lat.abs() > 90 || lng.abs() > 180 || (lat == 0 && lng == 0)) {
+          lat = null;
+          lng = null;
+        }
+      }
+      return (id, lat, lng);
+    } catch (_) {
+      return ("", null, null);
+    }
+  }
+
+  int _int32le(List<int> b, int o) {
+    final v = b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24);
+    return v >= 0x80000000 ? v - 0x100000000 : v;
+  }
+
+  // ---- Wi-Fi — track EVERY access point ------------------------------------
+
+  Future<void> _triggerWifiScan() async {
+    try {
+      final can = await WiFiScan.instance.canStartScan();
+      if (can == CanStartScan.yes) await WiFiScan.instance.startScan();
+    } catch (_) {}
+  }
+
+  Future<void> _readWifi() async {
+    try {
+      final can = await WiFiScan.instance.canGetScannedResults();
+      if (can != CanGetScannedResults.yes) return;
+      final results = await WiFiScan.instance.getScannedResults();
+      for (final a in results) {
+        final ssid = a.ssid.trim();
+        final k = "wifi:${a.bssid}";
+        final hit = _hits[k] ??
+            DroneHit(
+              key: k,
+              label: ssid.isEmpty
+                  ? tr(context, "Hidden Wi-Fi", "ဖုံးထား Wi-Fi")
+                  : ssid,
+              rssi: a.level,
+              source: "WiFi",
+              ssid: ssid.isEmpty ? null : ssid,
+              mac: a.bssid,
+            );
+        hit.pushRssi(a.level);
+        hit.band = _bandFor(a.frequency);
+        hit.channel = _channelFor(a.frequency);
+        if (hit.sig == null) {
+          final sig = ssid.isEmpty ? null : matchSignature(ssid);
+          final ouiVendor = vendorForOui(a.bssid);
+          if (sig != null) {
+            _applySig(hit, sig, ssid.isEmpty ? "(${sig.vendor})" : ssid);
+          } else if (ouiVendor != null) {
+            hit.vendor = ouiVendor;
+            hit.kind = DroneKind.drone;
+            hit.label = "$ouiVendor · ${ssid.isEmpty ? "(hidden)" : ssid}";
+          }
+        }
+        _hits[k] = hit;
+      }
+      if (mounted) setState(() {});
+      _evaluate();
+    } catch (_) {}
+  }
+
+  void _applySig(DroneHit hit, DroneSignature sig, String shownName) {
+    hit.sig = sig;
+    hit.vendor = sig.vendor;
+    hit.kind = sig.kind;
+    hit.protocol = sig.protocol;
+    hit.label = "${sig.vendor} · $shownName";
+  }
+
+  String _bandFor(int mhz) {
+    if (mhz >= 5925) return "6 GHz";
+    if (mhz >= 4900) return "5 GHz";
+    if (mhz >= 2400) return "2.4 GHz";
+    return "$mhz MHz";
+  }
+
+  int? _channelFor(int mhz) {
+    if (mhz == 2484) return 14;
+    if (mhz >= 2412 && mhz <= 2472) return ((mhz - 2412) ~/ 5) + 1;
+    if (mhz >= 5160 && mhz <= 5885) return (mhz - 5000) ~/ 5;
+    return null;
+  }
+
+  // ---- Alerts + housekeeping ------------------------------------------------
+
+  void _prune() {
+    final now = DateTime.now();
+    _hits.removeWhere((_, h) => now.difference(h.seen).inSeconds > 20);
+    if (mounted) setState(() {});
+    _evaluate();
+  }
+
+  bool get _threatActive => _hits.values.any((h) =>
+      (h.confirmed && h.distanceM <= _alertDistanceM) ||
+      (h.vendor != null && h.distanceM <= _alertDistanceM) ||
+      h.unusual);
+
+  /// Raise alerts for newly-noteworthy devices, and drive the buzzing alarm.
+  void _evaluate() {
+    for (final h in _hits.values) {
+      if (_alerted.contains(h.key)) continue;
+      String? reason;
+      if (h.confirmed) {
+        reason =
+            tr(context, "Drone (Remote ID) detected", "ဒရုန်း (Remote ID) တွေ့");
+      } else if (h.vendor != null) {
+        reason = tr(context, "${h.vendor} device nearby", "${h.vendor} စက် အနီး");
+      } else if (h.unusual) {
+        reason = tr(context, "Unusual signal approaching",
+            "ထူးခြား signal ချဉ်းကပ်လာ");
+      }
+      if (reason != null) {
+        _alerted.add(h.key);
+        _alerts.insert(0, _Alert(reason, h.label, DateTime.now()));
+        if (_alerts.length > 40) _alerts.removeLast();
+        HapticFeedback.heavyImpact();
+      }
+    }
+    if (_threatActive) {
+      _alarmTimer ??= Timer.periodic(const Duration(milliseconds: 1100), (_) {
+        HapticFeedback.heavyImpact();
+      });
+    } else {
+      _alarmTimer?.cancel();
+      _alarmTimer = null;
+    }
+  }
+
+  // ---- UI helpers -----------------------------------------------------------
+
+  IconData _kindIcon(DroneHit h) {
+    if (h.confirmed) return Icons.flight;
+    switch (h.kind) {
+      case DroneKind.controller:
+        return Icons.sports_esports;
+      case DroneKind.goggles:
+        return Icons.visibility;
+      case DroneKind.drone:
+        return Icons.airplanemode_active;
+      default:
+        return h.source == "WiFi" ? Icons.wifi : Icons.bluetooth;
+    }
+  }
+
+  Color _classColor(HitClass c) {
+    switch (c) {
+      case HitClass.remoteId:
+        return const Color(0xFFE23B54);
+      case HitClass.drone:
+        return const Color(0xFF44C8FF);
+      case HitClass.unusual:
+        return const Color(0xFFF0B429);
+      case HitClass.unknown:
+        return Colors.white38;
+    }
+  }
+
+  List<DroneHit> _visible() {
+    var list = _hits.values.toList();
+    switch (_filter) {
+      case "drones":
+        list = list.where((h) => h.isDroneish).toList();
+        break;
+      case "unusual":
+        list = list.where((h) => h.unusual || h.confirmed).toList();
+        break;
+      case "all":
+        break;
+      default: // priority: drones + unusual first, unknowns after
+        list.sort((a, b) {
+          int rank(DroneHit h) =>
+              h.confirmed ? 0 : (h.vendor != null ? 1 : (h.unusual ? 2 : 3));
+          final r = rank(a).compareTo(rank(b));
+          return r != 0 ? r : b.rssi.compareTo(a.rssi);
+        });
+        return list;
+    }
+    list.sort((a, b) => b.rssi.compareTo(a.rssi));
+    return list;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hits = _visible();
+    final threat = _threatActive;
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(tr(context, "Radar", "ရေဒါ")),
+        actions: [
+          _langButton(),
+          _alertsButton(),
+          IconButton(
+            tooltip: tr(context, "Signal library", "Signal စာကြည့်တိုက်"),
+            icon: const Icon(Icons.menu_book_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const DroneLibraryScreen())),
+          ),
+          IconButton(
+            tooltip: tr(context, "What can this detect?", "ဘာတွေ ဖမ်းနိုင်လဲ?"),
+            icon: const Icon(Icons.info_outline),
+            onPressed: _showCapabilities,
+          ),
+          IconButton(
+            tooltip: tr(context, "Map", "မြေပုံ"),
+            icon: const Icon(Icons.map_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) =>
+                  DroneMapScreen(liveHits: () => _hits.values.toList()),
+            )),
+          ),
+        ],
+      ),
+      body: _error != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Text(_error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white70)),
+              ),
+            )
+          : Column(
+              children: [
+                if (threat) _threatBanner(context),
+                if (_btOff) _btOffBanner(context),
+                _radar(_hits.values.toList()),
+                _summaryBar(),
+                _filterRow(),
+                Expanded(child: _list(hits)),
+                _disclaimer(context),
+              ],
+            ),
+    );
+  }
+
+  /// Amber strip shown while Bluetooth is off: the radar still works on
+  /// Wi-Fi, but drone Remote ID beacons are BLE — offer the switch inline.
+  Widget _btOffBanner(BuildContext context) {
+    return Material(
+      color: const Color(0xFF3A2F00),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Row(
+          children: [
+            const Icon(Icons.bluetooth_disabled,
+                color: Colors.amber, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                tr(
+                  context,
+                  "Bluetooth is off — scanning Wi-Fi only. Turn it on to also catch drone Remote ID beacons.",
+                  "Bluetooth ပိတ်ထားလို့ Wi-Fi နဲ့ပဲ ရှာနေသည် — ဒရုန်း Remote ID တွေပါ ဖမ်းမိအောင် Bluetooth ဖွင့်ပါ",
+                ),
+                style: const TextStyle(color: Colors.amber, fontSize: 12.5),
+              ),
+            ),
+            TextButton(
+              onPressed: () => _startBle(requestEnable: true),
+              child: Text(tr(context, "Turn on", "ဖွင့်မည်")),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// One-tap app-wide language cycle (EN → မြန်မာ → ไทย). tr() watches
+  /// [GwLang], so every screen in the app re-renders, not just this one.
+  Widget _langButton() {
+    const labels = {"en": "EN", "my": "မြန်မာ", "th": "ไทย"};
+    final code = context.watch<GwLang>().code;
+    final order = GwLang.supported;
+    final next = order[(order.indexOf(code) + 1) % order.length];
+    return TextButton.icon(
+      onPressed: () => context.read<GwLang>().setCode(next),
+      icon: const Icon(Icons.translate, size: 16, color: Colors.white70),
+      label: Text(labels[next] ?? next,
+          style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w800)),
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        minimumSize: const Size(0, 40),
+      ),
+    );
+  }
+
+  Widget _alertsButton() {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          tooltip: tr(context, "Alerts", "သတိပေးချက်များ"),
+          icon: const Icon(Icons.notifications_none),
+          onPressed: _showAlerts,
+        ),
+        if (_alerts.isNotEmpty)
+          Positioned(
+            right: 6,
+            top: 6,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                  color: GwColors.live, shape: BoxShape.circle),
+              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+              child: Text("${_alerts.length}",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900)),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _threatBanner(BuildContext context) => Container(
+        width: double.infinity,
+        color: GwColors.live,
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.warning_amber, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              tr(context, "⚠ Signal alert — check the list",
+                  "⚠ Signal သတိပေးချက် — စာရင်း စစ်ပါ"),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 15),
+            ),
+          ],
+        ),
+      );
+
+  Widget _summaryBar() {
+    final all = _hits.values;
+    final rid = all.where((h) => h.confirmed).length;
+    final drones = all.where((h) => h.vendor != null).length;
+    final unusual = all.where((h) => h.unusual).length;
+    Widget cell(String v, String label, Color c) => Column(
+          children: [
+            Text(v,
+                style: TextStyle(
+                    color: c, fontWeight: FontWeight.w900, fontSize: 18)),
+            Text(label,
+                style: const TextStyle(color: Colors.white38, fontSize: 10.5)),
+          ],
+        );
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: const BoxDecoration(
+        border: Border(
+            bottom: BorderSide(color: Colors.white10),
+            top: BorderSide(color: Colors.white10)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          cell("${all.length}", tr(context, "Signals", "signal"), Colors.white),
+          cell("$rid", "Remote ID", const Color(0xFFE23B54)),
+          cell("$drones", tr(context, "Drone", "ဒရုန်း"),
+              const Color(0xFF44C8FF)),
+          cell("$unusual", tr(context, "Unusual", "ထူးခြား"),
+              const Color(0xFFF0B429)),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterRow() {
+    final chips = <(String, String)>[
+      ("priority", tr(context, "Priority", "ဦးစားပေး")),
+      ("all", tr(context, "All", "အားလုံး")),
+      ("drones", tr(context, "Drones", "ဒရုန်း")),
+      ("unusual", tr(context, "Unusual", "ထူးခြား")),
+    ];
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        children: [
+          for (final c in chips)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text(c.$2),
+                selected: _filter == c.$1,
+                selectedColor: GwColors.primary,
+                backgroundColor: Colors.white.withValues(alpha: 0.06),
+                labelStyle: TextStyle(
+                    color: _filter == c.$1 ? Colors.white : Colors.white70,
+                    fontSize: 12.5),
+                onSelected: (_) => setState(() => _filter = c.$1),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _radar(List<DroneHit> hits) {
+    return SizedBox(
+      height: 210,
+      child: AnimatedBuilder(
+        animation: _sweep,
+        builder: (_, __) => CustomPaint(
+          size: Size.infinite,
+          painter: _RadarPainter(hits, _sweep.value, _classColor),
+        ),
+      ),
+    );
+  }
+
+  Widget _list(List<DroneHit> hits) {
+    if (hits.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _scanning
+                    ? tr(context, "Scanning…", "ရှာဖွေနေသည်…")
+                    : tr(context, "Idle", "ရပ်နားနေသည်"),
+                style: const TextStyle(color: Colors.white38),
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _showCapabilities,
+                icon: const Icon(Icons.help_outline,
+                    size: 16, color: Colors.white38),
+                label: Text(
+                    tr(context, "Why nothing shows?", "ဘာလို့ မပေါ်တာလဲ?"),
+                    style: const TextStyle(color: Colors.white38)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+      itemCount: hits.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (_, i) => _rowTile(hits[i]),
+    );
+  }
+
+  Widget _rowTile(DroneHit h) {
+    final d = h.distanceM;
+    final c = _classColor(h.klass);
+    final near = (h.confirmed || h.vendor != null) && d <= _alertDistanceM;
+    final trend = h.trend;
+    final trendIcon = trend > 0
+        ? Icons.trending_up
+        : (trend < 0 ? Icons.trending_down : Icons.trending_flat);
+    final q = ((h.rssi + 100) / 60).clamp(0.0, 1.0);
+    return InkWell(
+      borderRadius: BorderRadius.circular(GwRadius.md),
+      onTap: () => _showDetail(h),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: h.unusual
+              ? const Color(0xFFF0B429).withValues(alpha: 0.12)
+              : (near
+                  ? GwColors.live.withValues(alpha: 0.14)
+                  : Colors.white.withValues(alpha: 0.05)),
+          borderRadius: BorderRadius.circular(GwRadius.md),
+          border: Border.all(
+              color: h.klass == HitClass.unknown
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : c.withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          children: [
+            Icon(_kindIcon(h), color: c),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(h.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                      if (DateTime.now().difference(h.firstSeen).inSeconds <
+                          12) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF7ED957)
+                                .withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text("NEW",
+                              style: TextStyle(
+                                  color: Color(0xFF7ED957),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900)),
+                        ),
+                      ],
+                      if (h.unusual) ...[
+                        const SizedBox(width: 6),
+                        const Icon(Icons.priority_high,
+                            size: 15, color: Color(0xFFF0B429)),
+                      ],
+                      const SizedBox(width: 4),
+                      Icon(trendIcon,
+                          size: 15,
+                          color: trend > 0
+                              ? GwColors.live
+                              : (trend < 0
+                                  ? const Color(0xFF7ED957)
+                                  : Colors.white30)),
+                    ],
+                  ),
+                  Text(
+                    [
+                      if (h.protocol != null) h.protocol!,
+                      h.source,
+                      if (h.band != null) h.band!,
+                      if (h.channel != null) "ch ${h.channel}",
+                      "${h.rssi} dBm",
+                      "≈ ${d < 1000 ? "${d.round()} m" : "${(d / 1000).toStringAsFixed(1)} km"}",
+                    ].join(" · "),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                  if (h.lat != null)
+                    Text(
+                        "📍 ${h.lat!.toStringAsFixed(5)}, ${h.lng!.toStringAsFixed(5)}",
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 12)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (var b = 0; b < 4; b++)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 2),
+                    child: Container(
+                      width: 4,
+                      height: 6.0 + b * 4,
+                      decoration: BoxDecoration(
+                        color: q * 4 > b ? c : Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _classLabel(HitClass c) {
+    switch (c) {
+      case HitClass.remoteId:
+        return tr(context, "Remote ID drone", "Remote ID ဒရုန်း");
+      case HitClass.drone:
+        return tr(context, "Drone-maker device", "ဒရုန်းထုတ်လုပ်သူ စက်");
+      case HitClass.unusual:
+        return tr(context, "Unusual signal", "ထူးခြား signal");
+      case HitClass.unknown:
+        return tr(context, "Ordinary signal", "သာမန် signal");
+    }
+  }
+
+  String _hhmmss(DateTime t) =>
+      "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:${t.second.toString().padLeft(2, '0')}";
+
+  void _showDetail(DroneHit h) {
+    final d = h.distanceM;
+    final c = _classColor(h.klass);
+    final quality = (((h.rssi + 100) / 60).clamp(0.0, 1.0) * 100).round();
+    final seenFor = DateTime.now().difference(h.firstSeen);
+    Widget chip(String text, Color color) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withValues(alpha: 0.5)),
+          ),
+          child: Text(text,
+              style: TextStyle(
+                  color: color, fontSize: 11, fontWeight: FontWeight.w800)),
+        );
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF161719),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (sheetCtx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.72,
+        maxChildSize: 0.94,
+        builder: (_, controller) => ListView(
+          controller: controller,
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+          children: [
+            Row(
+              children: [
+                Icon(_kindIcon(h), color: c, size: 26),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(h.sig?.title ?? h.label,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 17)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                chip(_classLabel(h.klass), c),
+                chip(h.source,
+                    h.source == "WiFi" ? const Color(0xFF44C8FF) : Colors.white70),
+                if (h.trend != 0)
+                  chip(
+                      h.trend > 0
+                          ? tr(context, "Approaching", "ချဉ်းကပ်လာ")
+                          : tr(context, "Moving away", "ဝေးသွား"),
+                      h.trend > 0 ? GwColors.live : const Color(0xFF7ED957)),
+              ],
+            ),
+            const SizedBox(height: 14),
+            // Signal-strength meter + 20-sample RSSI history: is it stable,
+            // creeping closer, or fading? The row's arrow says the verdict;
+            // this shows the evidence.
+            Row(
+              children: [
+                Text("RSSI ${h.rssi} dBm",
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13)),
+                const Spacer(),
+                Text("${tr(context, "Quality", "အားကောင်းမှု")} $quality%",
+                    style: TextStyle(
+                        color: quality >= 60
+                            ? const Color(0xFF7ED957)
+                            : (quality >= 30
+                                ? const Color(0xFFF0B429)
+                                : Colors.white54),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: quality / 100,
+                minHeight: 6,
+                backgroundColor: Colors.white12,
+                valueColor: AlwaysStoppedAnimation(c),
+              ),
+            ),
+            if (h.rssiHistory.length > 2) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 46,
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: _RssiSparkPainter(List.of(h.rssiHistory), c),
+                ),
+              ),
+              Text(
+                  tr(context, "Signal history (last ~20 samples)",
+                      "Signal မှတ်တမ်း (နောက်ဆုံး ~၂၀ ကြိမ်)"),
+                  style:
+                      const TextStyle(color: Colors.white38, fontSize: 10.5)),
+            ],
+            const SizedBox(height: 12),
+            if (h.vendor != null)
+              _detailRow(tr(context, "Maker", "ထုတ်လုပ်သူ"), h.vendor!),
+            if (h.protocol != null)
+              _detailRow(tr(context, "Radio link", "လှိုင်း link"), h.protocol!),
+            _detailRow(tr(context, "Detected via", "တွေ့ရသည့်လမ်း"),
+                h.confirmed ? "Remote ID (${h.source})" : h.source),
+            if (h.band != null)
+              _detailRow(tr(context, "Band", "လှိုင်း"),
+                  "${h.band}${h.channel != null ? "  ·  ch ${h.channel}" : ""}"),
+            _detailRow(tr(context, "Distance (est.)", "အကွာအဝေး (ခန့်)"),
+                d < 1000
+                    ? "≈ ${d.round()} m"
+                    : "≈ ${(d / 1000).toStringAsFixed(1)} km"),
+            _detailRow(tr(context, "First seen", "စတွေ့ချိန်"),
+                _hhmmss(h.firstSeen)),
+            _detailRow(
+                tr(context, "Tracked for", "စောင့်ကြည့်ချိန်"),
+                seenFor.inMinutes > 0
+                    ? "${seenFor.inMinutes} min ${seenFor.inSeconds % 60} s"
+                    : "${seenFor.inSeconds} s"),
+            _detailRow(tr(context, "Last update", "နောက်ဆုံး update"),
+                _hhmmss(h.seen)),
+            if (h.ssid != null) _detailRow("SSID", h.ssid!),
+            if (h.mac != null) _detailRow("MAC / ID", h.mac!),
+            if (h.remoteId != null && h.remoteId!.isNotEmpty)
+              _detailRow("Remote ID", h.remoteId!),
+            if (h.lat != null)
+              _detailRow(tr(context, "Drone GPS", "ဒရုန်း GPS"),
+                  "${h.lat!.toStringAsFixed(5)}, ${h.lng!.toStringAsFixed(5)}"),
+            const SizedBox(height: 10),
+            Text(
+              h.sig != null
+                  ? tr(context, h.sig!.noteEn, h.sig!.noteMy)
+                  : (h.confirmed
+                      ? tr(context, "Broadcasting Remote ID — high confidence.",
+                          "Remote ID ထုတ်လွှင့် — ယုံကြည်ရမှုမြင့်။")
+                      : (h.unusual
+                          ? tr(context,
+                              "Unknown signal that is close and approaching — worth a look.",
+                              "အနီးရောက်ပြီး ချဉ်းကပ်လာတဲ့ အမည်မသိ signal — ဂရုစိုက်သင့်။")
+                          : tr(context,
+                              "A nearby Wi-Fi/BLE device. Not identified as a drone.",
+                              "အနီးက Wi-Fi/BLE စက်။ ဒရုန်းအဖြစ် မသတ်မှတ်ရသေး။"))),
+              style: const TextStyle(color: Colors.white54, fontSize: 12.5),
+            ),
+            Text(
+              tr(context,
+                  "Distance is estimated from signal strength — walls, pockets and rain skew it. Treat it as near / mid / far, not metres.",
+                  "အကွာအဝေးကို signal အားဖြင့် ခန့်မှန်းတာ — နံရံ/အိတ်ကပ်/မိုးကြောင့် လွဲနိုင်။ မီတာအတိအကျမဟုတ်ဘဲ နီး/လတ်/ဝေး အဆင့်လောက်သာ ယူဆပါ။"),
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                if (h.lat != null) ...[
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(
+                            text:
+                                "${h.lat!.toStringAsFixed(6)},${h.lng!.toStringAsFixed(6)}"));
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(tr(context, "GPS copied",
+                                "GPS ကူးယူပြီး"))));
+                      },
+                      icon: const Icon(Icons.copy, size: 15),
+                      label: Text(tr(context, "Copy GPS", "GPS ကူးမည်")),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(sheetCtx);
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => DroneMapScreen(
+                            liveHits: () => _hits.values.toList()),
+                      ));
+                    },
+                    icon: const Icon(Icons.map_outlined, size: 15),
+                    label: Text(tr(context, "Show on map", "မြေပုံပေါ်ပြ")),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String k, String v) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+                width: 132,
+                child: Text(k,
+                    style:
+                        const TextStyle(color: Colors.white54, fontSize: 13))),
+            Expanded(
+              child: Text(v,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+      );
+
+  void _showAlerts() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF161719),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(tr(context, "Alerts", "သတိပေးချက်များ"),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18)),
+                const Spacer(),
+                if (_alerts.isNotEmpty)
+                  TextButton(
+                      onPressed: () {
+                        setState(_alerts.clear);
+                        Navigator.pop(context);
+                      },
+                      child: Text(tr(context, "Clear", "ရှင်း"))),
+              ],
+            ),
+            const SizedBox(height: 4),
+            if (_alerts.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Text(
+                    tr(context,
+                        "No alerts yet. You'll be buzzed when a drone or an unusual signal appears.",
+                        "သတိပေးချက် မရှိသေး။ ဒရုန်း/ထူးခြား signal ပေါ်ရင် တုန်ခါ သတိပေးပါမယ်။"),
+                    style: const TextStyle(color: Colors.white54)),
+              )
+            else
+              ..._alerts.take(30).map((a) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_amber,
+                            color: Color(0xFFF0B429), size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(a.reason,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700)),
+                              Text(a.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      color: Colors.white54, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                        Text(_hhmm(a.at),
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 12)),
+                      ],
+                    ),
+                  )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _hhmm(DateTime t) =>
+      "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+
+  void _showCapabilities() {
+    Widget line(IconData icon, Color c, String s) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: c, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(s,
+                    style:
+                        const TextStyle(color: Colors.white70, fontSize: 13)),
+              ),
+            ],
+          ),
+        );
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF161719),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.8,
+        maxChildSize: 0.92,
+        builder: (_, controller) => ListView(
+          controller: controller,
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+          children: [
+            Text(
+                tr(context, "How this radar works", "ဒီ ရေဒါ ဘယ်လိုအလုပ်လုပ်လဲ"),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18)),
+            const SizedBox(height: 6),
+            Text(
+              tr(context,
+                  "It now lists EVERY nearby Wi-Fi and Bluetooth signal, highlights drones from the built-in database, and buzzes you for an unusual signal — an unknown device that is close and moving toward you.",
+                  "အခု အနီးက Wi-Fi/Bluetooth signal အားလုံးကို ပြ၊ database ထဲက ဒရုန်းတွေကို မီးမောင်းထိုးပြ၊ ထူးခြား signal (အနီးရောက်ပြီး ချဉ်းကပ်လာတဲ့ အမည်မသိစက်) ဆိုရင် တုန်ခါ သတိပေးတယ်။"),
+              style: const TextStyle(color: Colors.white54, fontSize: 12.5),
+            ),
+            const SizedBox(height: 14),
+            Text(tr(context, "✔ CAN detect", "✔ ဖမ်းနိုင်သည်"),
+                style: const TextStyle(
+                    color: Color(0xFF7ED957), fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            line(Icons.flight, const Color(0xFF7ED957),
+                tr(context,
+                    "Remote-ID drones (BLE/Wi-Fi) — most drones sold since 2023, often with live GPS.",
+                    "Remote-ID ဒရုန်းများ (BLE/Wi-Fi) — GPS ပါတတ်။")),
+            line(Icons.wifi, const Color(0xFF7ED957),
+                tr(context,
+                    "Wi-Fi drones & controllers (DJI Wi-Fi, Tello, Parrot, Autel…) by SSID + maker MAC.",
+                    "Wi-Fi ဒရုန်း/ကွန်ထရိုလာ — SSID + MAC ဖြင့်။")),
+            line(Icons.priority_high, const Color(0xFFF0B429),
+                tr(context,
+                    "Unusual signals — any unknown device that is close and approaching.",
+                    "ထူးခြား signal — အနီးရောက်ပြီး ချဉ်းကပ်လာတဲ့ အမည်မသိစက်။")),
+            const SizedBox(height: 16),
+            Text(
+                tr(context, "✘ CANNOT detect (needs an external SDR)",
+                    "✘ မဖမ်းနိုင် (SDR အပို လိုသည်)"),
+                style: const TextStyle(
+                    color: Color(0xFFE23B54), fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            line(Icons.videocam_off, const Color(0xFFE23B54),
+                tr(context,
+                    "DJI OcuSync (Avata, Mavic, Mini 3/4, DJI FPV) — proprietary link, not Wi-Fi/BLE.",
+                    "DJI OcuSync (Avata, Mavic…) — Wi-Fi/BLE မဟုတ်။")),
+            line(Icons.settings_remote, const Color(0xFFE23B54),
+                tr(context,
+                    "RC links — ELRS, Crossfire, FrSky — 900 MHz/2.4 GHz FHSS a phone can't tune.",
+                    "ELRS, Crossfire, FrSky — ဖုန်းက မဖမ်းနိုင်။")),
+            const SizedBox(height: 12),
+            Text(
+              tr(context,
+                  "Tip: your DJI Avata (O3) and the ELRS/Crossfire quad won't appear — those bands need an SDR. Fly a Remote-ID drone nearby to see the radar light up.",
+                  "မှတ်ချက်— DJI Avata (O3) နဲ့ ELRS/Crossfire quad မပေါ်ပါ (SDR လို)။ Remote-ID ဒရုန်းဆို ပေါ်ပါမယ်။"),
+              style: const TextStyle(color: Colors.white38, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Bottom strip: the honesty note, plus the user-guide button — help has
+  /// to be reachable from the main screen, not buried in an app-bar menu.
+  Widget _disclaimer(BuildContext context) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        color: Colors.white.withValues(alpha: 0.04),
+        child: Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: _showCapabilities,
+                child: Text(
+                  tr(
+                      context,
+                      "Lists all nearby Wi-Fi/BLE signals, flags drones + unusual approaching signals, and buzzes you. DJI OcuSync, ELRS, Crossfire, FrSky & analog FPV need an external SDR — tap ⓘ. A safety aid, not a guarantee.",
+                      "အနီးက Wi-Fi/BLE signal အားလုံး ပြ၊ ဒရုန်း + ချဉ်းကပ်လာ ထူးခြား signal သတိပေး။ DJI OcuSync၊ ELRS၊ Crossfire၊ FrSky၊ analog FPV အတွက် SDR လို — ⓘ ။ အာမခံ မဟုတ်။"),
+                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: _showGuide,
+              icon: const Icon(Icons.menu_book, size: 15),
+              label: Text(tr(context, "Guide", "လမ်းညွှန်")),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF7ED957),
+                side: const BorderSide(color: Color(0xFF2E9E5B)),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                minimumSize: const Size(0, 34),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  /// The full user guide — how to read the radar, the list, filters, alerts,
+  /// the detail view, and what the numbers do and don't mean.
+  void _showGuide() {
+    Widget section(String title, String body) => Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: const TextStyle(
+                      color: Color(0xFF7ED957),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14)),
+              const SizedBox(height: 4),
+              Text(body,
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 12.5, height: 1.45)),
+            ],
+          ),
+        );
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF161719),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.85,
+        maxChildSize: 0.94,
+        builder: (_, controller) => ListView(
+          controller: controller,
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+          children: [
+            Text(tr(context, "User guide", "အသုံးပြုနည်း လမ်းညွှန်"),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18)),
+            const SizedBox(height: 14),
+            section(
+              tr(context, "1. Reading the radar", "၁။ ရေဒါမျက်နှာပြင် ဖတ်နည်း"),
+              tr(
+                  context,
+                  "The white dot is you. Rings are distance zones — inner ring ≈ near, outer ring ≈ far (up to ~600 m). The green sweep is the scan cycle. Every dot is a live signal; big glowing dots need attention.",
+                  "အဖြူစက်က သင်ပါ။ စက်ဝိုင်းတွေက အကွာအဝေးအဆင့်တွေ — အတွင်းဆုံး ≈ အနီး၊ အပြင်ဆုံး ≈ အဝေး (~၆၀၀ မီတာအထိ)။ အစိမ်းရောင်လက်တံက scan လည်ပတ်မှု။ အစက်တိုင်းက live signal — ကြီးပြီး တောက်နေတဲ့အစက်တွေက ဂရုစိုက်ရမယ့်ဟာတွေ။"),
+            ),
+            section(
+              tr(context, "2. Colors & icons", "၂။ အရောင်နှင့် အိုင်ကွန်များ"),
+              tr(
+                  context,
+                  "🔴 Red ✈ = confirmed Remote ID drone (highest confidence). 🔵 Blue = a drone-maker device (DJI, Parrot, Autel…). 🟡 Amber ❗ = unusual — an unknown device that is close AND approaching. Grey = the ordinary Wi-Fi routers and BLE gadgets around everyone.",
+                  "🔴 အနီ ✈ = Remote ID အတည်ပြု ဒရုန်း (ယုံကြည်ရဆုံး)။ 🔵 အပြာ = ဒရုန်းထုတ်လုပ်သူ စက် (DJI, Parrot, Autel…)။ 🟡 လိမ္မော် ❗ = ထူးခြား — အနီးရောက်ပြီး ချဉ်းကပ်လာနေတဲ့ အမည်မသိစက်။ မီးခိုး = ပတ်ဝန်းကျင်က သာမန် Wi-Fi/BLE စက်များ။"),
+            ),
+            section(
+              tr(context, "3. Reading a signal row", "၃။ Signal တစ်ကြောင်း ဖတ်နည်း"),
+              tr(
+                  context,
+                  "Each row shows: name · link type · source (WiFi/BLE) · band · channel · dBm · ≈ distance. dBm closer to 0 = nearer (−40 is very close, −85 is far). The arrow: ↑ approaching (red), ↓ moving away (green), → steady. Bars on the right = signal strength. NEW = first seen in the last 12 seconds.",
+                  "တစ်ကြောင်းချင်းမှာ — အမည် · link အမျိုးအစား · ရင်းမြစ် (WiFi/BLE) · လှိုင်း · channel · dBm · ခန့်မှန်းအကွာအဝေး ပြထားတယ်။ dBm က 0 နဲ့နီးလေ နီးလေ (−40 ဆို အရမ်းနီး၊ −85 ဆို ဝေး)။ မြှား — ↑ ချဉ်းကပ်လာ (အနီ)၊ ↓ ဝေးသွား (အစိမ်း)၊ → တည်ငြိမ်။ ညာဘက်တိုင်တွေက signal အား။ NEW = ၁၂ စက္ကန့်အတွင်း အသစ်တွေ့။"),
+            ),
+            section(
+              tr(context, "4. Filters", "၄။ စစ်ထုတ်ခလုတ်များ"),
+              tr(
+                  context,
+                  "Priority — threats first (Remote ID → drone-maker → unusual → the rest). All — everything by strength. Drones — only drone matches. Unusual — only flagged signals.",
+                  "ဦးစားပေး — အန္တရာယ်အလားအလာ အရင် (Remote ID → ဒရုန်းထုတ်လုပ်သူ → ထူးခြား → ကျန်တာ)။ အားလုံး — signal အားအလိုက် အကုန်။ ဒရုန်း — ဒရုန်းကိုက်ညီမှုသာ။ ထူးခြား — အလံတင်ထားတာသာ။"),
+            ),
+            section(
+              tr(context, "5. Alerts & vibration", "၅။ သတိပေးချက်နှင့် တုန်ခါမှု"),
+              tr(
+                  context,
+                  "The phone buzzes once when a new drone or unusual signal appears, and pulses continuously while a drone is within ~200 m. The bell shows alert history; Clear resets it. Alerts fire even while you're reading another part of the screen.",
+                  "ဒရုန်း/ထူးခြား signal အသစ်ပေါ်ရင် တစ်ကြိမ်တုန်ခါပြီး၊ ဒရုန်းက ~၂၀၀ မီတာအတွင်း ရှိနေသရွေ့ ဆက်တိုက် တုန်ခါနေမယ်။ ခေါင်းလောင်းမှာ သတိပေးချက်မှတ်တမ်း ကြည့်နိုင်ပြီး ရှင်း နဲ့ ဖျက်နိုင်တယ်။"),
+            ),
+            section(
+              tr(context, "6. Detail view", "၆။ အသေးစိတ်ကြည့်ရှုမှု"),
+              tr(
+                  context,
+                  "Tap any row: signal-strength graph (last ~20 samples), quality %, first-seen time, tracking duration, channel, MAC, SSID, Remote ID and live GPS when the drone broadcasts it. Copy GPS puts coordinates on the clipboard; Show on map plots GPS drones around you.",
+                  "ဘယ် row ကိုမဆို နှိပ်ပါ — signal အားဂရပ် (နောက်ဆုံး ~၂၀ ကြိမ်)၊ အားကောင်းမှု %၊ စတွေ့ချိန်၊ စောင့်ကြည့်ကြာချိန်၊ channel၊ MAC၊ SSID၊ Remote ID နဲ့ ဒရုန်းက ထုတ်လွှင့်ရင် GPS တည်နေရာပါ မြင်ရမယ်။ GPS ကူးမည် နဲ့ တည်နေရာကူးယူပြီး မြေပုံပေါ်ပြ နဲ့ မြေပုံပေါ်ကြည့်နိုင်တယ်။"),
+            ),
+            section(
+              tr(context, "7. Library & map", "၇။ စာကြည့်တိုက်နှင့် မြေပုံ"),
+              tr(
+                  context,
+                  "The book icon opens the signal library — every drone signature this radar knows. The map icon plots you and any GPS-broadcasting drones on a live map.",
+                  "စာအုပ်အိုင်ကွန်က signal စာကြည့်တိုက် — ဒီရေဒါသိတဲ့ ဒရုန်း signature အားလုံး။ မြေပုံအိုင်ကွန်က သင်နဲ့ GPS ထုတ်လွှင့်နေတဲ့ ဒရုန်းတွေကို live မြေပုံပေါ် ပြပေးတယ်။"),
+            ),
+            section(
+              tr(context, "8. Limits & accuracy", "၈။ ကန့်သတ်ချက်နှင့် တိကျမှု"),
+              tr(
+                  context,
+                  "Distance is an estimate from signal strength — read it as near/mid/far. DJI OcuSync, ELRS, Crossfire, FrSky and analog FPV use bands a phone cannot tune; they need an external SDR (tap ⓘ). The radar is fully passive: it only listens, never transmits or jams anything. A safety aid, not a guarantee.",
+                  "အကွာအဝေးက signal အားကနေ ခန့်မှန်းတာသာ — နီး/လတ်/ဝေး အဆင့်လောက်ပဲ ယူဆပါ။ DJI OcuSync၊ ELRS၊ Crossfire၊ FrSky နဲ့ analog FPV တွေက ဖုန်းမဖမ်းနိုင်တဲ့ လှိုင်းတွေသုံးလို့ SDR အပိုလိုတယ် (ⓘ နှိပ်ပါ)။ ရေဒါက နားထောင်ရုံသာ — ဘာမှ မထုတ်လွှင့်၊ မနှောင့်ယှက်ပါ။ အာမခံချက်မဟုတ်ဘဲ အကူအညီသာ ဖြစ်ပါတယ်။"),
+            ),
+            section(
+              tr(context, "9. Tips", "၉။ အသုံးဝင်သော အကြံများ"),
+              tr(
+                  context,
+                  "Keep Bluetooth ON (Remote ID beacons are BLE). Grant location + nearby-devices permissions — Android requires them for Wi-Fi/BLE scanning. Keep the screen on while monitoring; Android throttles background scans.",
+                  "Bluetooth ဖွင့်ထားပါ (Remote ID က BLE)။ တည်နေရာ + အနီးစက် ခွင့်ပြုချက်တွေ ပေးပါ — Android မှာ Wi-Fi/BLE scan အတွက် မဖြစ်မနေလိုတယ်။ စောင့်ကြည့်နေချိန် မျက်နှာပြင် ဖွင့်ထားပါ — background မှာ Android က scan ကို လျှော့ချတတ်တယ်။"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Alert {
+  _Alert(this.reason, this.label, this.at);
+  final String reason;
+  final String label;
+  final DateTime at;
+}
+
+/// RSSI history line for the detail sheet — evidence behind the trend arrow.
+class _RssiSparkPainter extends CustomPainter {
+  _RssiSparkPainter(this.points, this.color);
+  final List<int> points;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.length < 2) return;
+    final min = points.reduce(math.min).toDouble();
+    final max = points.reduce(math.max).toDouble();
+    final span = (max - min) == 0 ? 1.0 : (max - min);
+    final path = Path();
+    for (var i = 0; i < points.length; i++) {
+      final x = i / (points.length - 1) * size.width;
+      final y =
+          size.height - ((points[i] - min) / span) * (size.height - 6) - 3;
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(
+        path,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.8
+          ..strokeJoin = StrokeJoin.round);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RssiSparkPainter old) => true;
+}
+
+class _RadarPainter extends CustomPainter {
+  _RadarPainter(this.hits, this.sweep, this.colorOf);
+  final List<DroneHit> hits;
+  final double sweep;
+  final Color Function(HitClass) colorOf;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxR = math.min(size.width, size.height) / 2 - 12;
+    final ring = Paint()
+      ..color = const Color(0xFF2E9E5B).withValues(alpha: 0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    for (var i = 1; i <= 3; i++) {
+      canvas.drawCircle(center, maxR * i / 3, ring);
+    }
+    canvas.drawLine(Offset(center.dx, center.dy - maxR),
+        Offset(center.dx, center.dy + maxR), ring);
+    canvas.drawLine(Offset(center.dx - maxR, center.dy),
+        Offset(center.dx + maxR, center.dy), ring);
+
+    final ang = sweep * 2 * math.pi;
+    canvas.drawLine(
+      center,
+      center + Offset(math.cos(ang), math.sin(ang)) * maxR,
+      Paint()
+        ..color = const Color(0xFF7ED957).withValues(alpha: 0.8)
+        ..strokeWidth = 2,
+    );
+
+    for (final h in hits) {
+      final norm = (h.distanceM / 600).clamp(0.05, 1.0);
+      final a = (h.key.hashCode % 360) * math.pi / 180;
+      final p = center + Offset(math.cos(a), math.sin(a)) * (maxR * norm);
+      final c = colorOf(h.klass);
+      final big = h.confirmed || h.vendor != null || h.unusual;
+      if (big) {
+        canvas.drawCircle(p, 9, Paint()..color = c.withValues(alpha: 0.25));
+      }
+      canvas.drawCircle(p, big ? 6 : 3.5, Paint()..color = c);
+    }
+
+    canvas.drawCircle(center, 5, Paint()..color = Colors.white);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RadarPainter old) => true;
+}

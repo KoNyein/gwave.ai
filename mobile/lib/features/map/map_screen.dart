@@ -1,14 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wifi_scan/wifi_scan.dart';
 
@@ -18,9 +21,18 @@ import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../drone/drone_scanner_screen.dart';
+import 'offline_tiles.dart';
+import 'quake.dart';
+import 'offline_area_sheet.dart';
+import 'trip_tools.dart';
 import '../live/go_live_screen.dart';
 import '../messenger/chat_screen.dart';
 import 'wifi_map_screen.dart';
+import '../web/web_screen.dart';
+
+/// Base-map choices for the AlpineQuest-style layer picker.
+enum _MapBase { streets, topo, satellite }
 
 /// Native GPS Map — one screen. A real map (OpenStreetMap tiles, so it works on
 /// phones without Google Play Services), the user's own location, the live SOS
@@ -53,8 +65,60 @@ class _MapScreenState extends State<MapScreen> {
   bool _loading = true;
   bool _busySos = false;
   bool _myAlertOpen = false;
-  bool _satellite = false; // OSM streets vs Esri world imagery
+  // AlpineQuest-style layering: a base map + optional overlays. All tiles go
+  // through CachingTileProvider, so every layer is offline-capable once seen.
+  _MapBase _base = _MapBase.streets;
+  bool _geology = false; // Macrostrat global geologic map overlay
+  bool _hillshade = false; // Esri world hillshade (terrain relief) overlay
+  bool _minerals = false; // USGS MRDS — known gold/mineral occurrences (WMS)
+  bool _goldHeat = false; // density heatmap built from MRDS points
+  List<LatLng> _heatPoints = [];
+  // Earthquake layer (USGS via gwave.cc): on by default — this map's job is
+  // safety, and hiding the ground moving behind a toggle defeats that.
+  bool _quakesOn = true;
+  List<Quake> _quakes = [];
+  Quake? _quakeAlert;
+  bool _quakeAlertDismissed = false;
+  Timer? _heatDebounce;
+  double _geologyOpacity = 0.55;
+  // AlpineQuest-style "add online map": any XYZ tile URL stacks as an overlay.
+  String? _customUrl; // e.g. a gold/geology favourability {z}/{x}/{y} tileset
+  double _customOpacity = 0.7;
+  final _customCtrl = TextEditingController();
   String? _locError;
+
+  // Travel tools: waypoints, trip recording, in-app routing, trip replay.
+  List<Waypoint> _waypoints = [];
+  List<Trip> _trips = [];
+  final TripRecorder _tripRec = TripRecorder();
+  List<LatLng> _route = [];
+  double? _routeDistM;
+  double? _routeDurS;
+  LatLng? _navTarget;
+  String? _navName;
+  bool _routing = false;
+  Trip? _playTrip;
+  int _playIdx = 0;
+  Timer? _playTimer;
+
+  String get _baseUrl => switch (_base) {
+        _MapBase.streets => "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        _MapBase.topo => "https://tile.opentopomap.org/{z}/{x}/{y}.png",
+        _MapBase.satellite =>
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      };
+  String get _baseKey => switch (_base) {
+        _MapBase.streets => "osm",
+        _MapBase.topo => "topo",
+        _MapBase.satellite => "sat",
+      };
+  // OpenTopoMap tops out lower than the others.
+  double get _baseMaxZoom => _base == _MapBase.topo ? 17 : 19;
+
+  static const _geologyUrl =
+      "https://tiles.macrostrat.org/carto/{z}/{x}/{y}.png";
+  static const _hillshadeUrl =
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}";
 
   // A sensible default view (mainland SE Asia) until we have a fix.
   static const LatLng _fallback = LatLng(16.8, 96.15);
@@ -63,6 +127,15 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _init();
+  }
+
+  @override
+  void dispose() {
+    _heatDebounce?.cancel();
+    _customCtrl.dispose();
+    _tripRec.dispose();
+    _playTimer?.cancel();
+    super.dispose();
   }
 
   LatLng? get _focus => widget.focusLat != null && widget.focusLng != null
@@ -75,7 +148,16 @@ class _MapScreenState extends State<MapScreen> {
     await _locate(recenter: _focus == null);
     if (_focus != null && mounted) _map.move(_focus!, 15);
     await _load();
-    if (mounted) setState(() => _loading = false);
+    // Field notes (waypoints + recorded trips) live on-device.
+    final wps = await WaypointStore.load();
+    final trips = await TripStore.load();
+    if (mounted) {
+      setState(() {
+        _waypoints = wps;
+        _trips = trips;
+        _loading = false;
+      });
+    }
   }
 
   Future<void> _locate({bool recenter = false}) async {
@@ -108,6 +190,9 @@ class _MapScreenState extends State<MapScreen> {
       setState(() {
         _me = me;
         _locError = null;
+        // Distance is half of "does this quake matter to ME" — re-judge the
+        // alert now that we finally know where the user is standing.
+        _quakeAlert = significantQuake(_quakes, me);
       });
       if (recenter) _map.move(me, 15);
       // Share my live location for family circles (best-effort).
@@ -140,6 +225,17 @@ class _MapScreenState extends State<MapScreen> {
     } catch (_) {
       // Non-fatal — the map still shows.
     }
+    unawaited(_loadQuakes());
+  }
+
+  /// Best-effort — a failed feed leaves the layer empty, never the map broken.
+  Future<void> _loadQuakes() async {
+    final rows = await fetchQuakes();
+    if (!mounted) return;
+    setState(() {
+      _quakes = rows;
+      _quakeAlert = significantQuake(rows, _me);
+    });
   }
 
   Future<void> _sendSos() async {
@@ -364,6 +460,373 @@ class _MapScreenState extends State<MapScreen> {
     return "${(m / 1000).toStringAsFixed(1)} km";
   }
 
+  /// Download the currently-visible area for offline use.
+  void _openOfflineSheet() {
+    final cam = _map.camera;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => OfflineAreaSheet(
+        bounds: cam.visibleBounds,
+        centerZoom: cam.zoom,
+        layerKey: _baseKey,
+        urlTemplate: _baseUrl,
+        userAgent: "ai.gwave.app",
+      ),
+    );
+  }
+
+  /// Debounced reload of the gold heatmap points for the current viewport.
+  void _scheduleHeatFetch() {
+    _heatDebounce?.cancel();
+    _heatDebounce =
+        Timer(const Duration(milliseconds: 600), _fetchHeatPoints);
+  }
+
+  /// Pull every known MRDS deposit inside the current map bounds and keep them
+  /// as heatmap points. Free USGS WFS (GeoJSON). Best-effort: on any failure
+  /// the heatmap just stays as-is (or empty) — never disrupts the map.
+  Future<void> _fetchHeatPoints() async {
+    try {
+      final b = _map.camera.visibleBounds;
+      // Guard against a whole-world request (too many features): only fetch
+      // once zoomed in a bit.
+      if (_map.camera.zoom < 5) {
+        if (mounted) setState(() => _heatPoints = []);
+        return;
+      }
+      final bbox =
+          "${b.west},${b.south},${b.east},${b.north}";
+      final url = Uri.parse(
+          "https://mrdata.usgs.gov/wfs/mrds?service=WFS&version=1.1.0&request=GetFeature"
+          "&typeName=mrds&outputFormat=application/json&srsName=EPSG:4326"
+          "&maxFeatures=1500&bbox=$bbox,EPSG:4326");
+      final res = await http.get(url).timeout(const Duration(seconds: 15));
+      if (res.statusCode != 200) return;
+      final j = jsonDecode(res.body);
+      final feats = j?["features"];
+      if (feats is! List) return;
+      final pts = <LatLng>[];
+      for (final f in feats) {
+        final g = f?["geometry"];
+        final c = g?["coordinates"];
+        if (c is List && c.length >= 2) {
+          final lng = (c[0] as num).toDouble();
+          final lat = (c[1] as num).toDouble();
+          pts.add(LatLng(lat, lng));
+        }
+      }
+      if (mounted) setState(() => _heatPoints = pts);
+    } catch (_) {
+      // Offline / endpoint hiccup — leave the current points.
+    }
+  }
+
+  /// Tap-to-identify geology: ask Macrostrat what rock unit sits at [p] and
+  /// show the details (unit name, age, lithology, description) in a sheet.
+  /// This is the "more detail than the tiles" path — the point query returns
+  /// the full unit record at any zoom level.
+  Future<void> _identifyGeology(LatLng p) async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => FutureBuilder<List<Map<String, dynamic>>>(
+        future: _fetchGeology(p),
+        builder: (ctx, snap) {
+          Widget body;
+          if (snap.connectionState != ConnectionState.done) {
+            body = const Padding(
+              padding: EdgeInsets.all(30),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          } else if (snap.hasError ||
+              snap.data == null ||
+              snap.data!.isEmpty) {
+            body = Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(tr(
+                  ctx,
+                  "No geologic data here (or offline).",
+                  "ဒီနေရာအတွက် ဘူမိဗေဒ အချက်အလက် မရှိပါ (သို့) လိုင်းမရှိပါ။")),
+            );
+          } else {
+            body = ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
+              children: [
+                Text(
+                  "🪨 ${tr(ctx, "Geology here", "ဒီနေရာက ဘူမိဗေဒ")}"
+                  "  (${p.latitude.toStringAsFixed(4)}, ${p.longitude.toStringAsFixed(4)})",
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                for (final u in snap.data!) ...[
+                  const Divider(height: 18),
+                  if ((u["name"] ?? "").toString().isNotEmpty)
+                    Text(u["name"].toString(),
+                        style:
+                            const TextStyle(fontWeight: FontWeight.w700)),
+                  if ((u["age"] ?? "").toString().isNotEmpty)
+                    _geoRow(ctx, tr(ctx, "Age", "သက်တမ်း"),
+                        "${u["age"]}  (${u["b_age"]}–${u["t_age"]} Ma)"),
+                  if ((u["lith"] ?? "").toString().isNotEmpty)
+                    _geoRow(ctx, tr(ctx, "Rock types", "ကျောက်အမျိုးအစား"),
+                        u["lith"].toString()),
+                  if ((u["descrip"] ?? "").toString().isNotEmpty)
+                    _geoRow(ctx, tr(ctx, "Description", "ဖော်ပြချက်"),
+                        u["descrip"].toString()),
+                  if ((u["comments"] ?? "").toString().isNotEmpty)
+                    _geoRow(ctx, tr(ctx, "Notes", "မှတ်ချက်"),
+                        u["comments"].toString()),
+                ],
+                const SizedBox(height: 8),
+                Text("Source: Macrostrat",
+                    style: TextStyle(
+                        fontSize: 10.5, color: GwColors.inkSoftOf(ctx))),
+              ],
+            );
+          }
+          return SafeArea(child: body);
+        },
+      ),
+    );
+  }
+
+  Widget _geoRow(BuildContext ctx, String k, String v) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+                width: 110,
+                child: Text(k,
+                    style: TextStyle(
+                        fontSize: 12.5, color: GwColors.inkSoftOf(ctx)))),
+            Expanded(child: Text(v, style: const TextStyle(fontSize: 13))),
+          ],
+        ),
+      );
+
+  Future<List<Map<String, dynamic>>> _fetchGeology(LatLng p) async {
+    final res = await http
+        .get(Uri.parse(
+            "https://macrostrat.org/api/v2/geologic_units/map?lat=${p.latitude}&lng=${p.longitude}"))
+        .timeout(const Duration(seconds: 12));
+    if (res.statusCode != 200) return [];
+    final j = jsonDecode(res.body);
+    final data = j?["success"]?["data"];
+    if (data is! List) return [];
+    return data
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
+  /// AlpineQuest-style layer picker: choose the base map and stack the
+  /// geology / hillshade overlays with adjustable geology opacity.
+  void _openLayersSheet() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          void apply(VoidCallback fn) {
+            setSheet(fn);
+            setState(() {});
+          }
+
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(tr(ctx, "Base map", "အခြေခံ မြေပုံ"),
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final (b, en, my) in [
+                        (_MapBase.streets, "Streets", "လမ်းမြေပုံ"),
+                        (_MapBase.topo, "Topo", "တောင်ကုန်း/contour"),
+                        (_MapBase.satellite, "Satellite", "ဂြိုဟ်တုပုံ"),
+                      ])
+                        ChoiceChip(
+                          selected: _base == b,
+                          onSelected: (_) => apply(() => _base = b),
+                          label: Text(tr(ctx, en, my)),
+                        ),
+                    ],
+                  ),
+                  const Divider(height: 22),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(tr(ctx, "Geology overlay (Macrostrat)",
+                        "ဘူမိဗေဒ မြေပုံလွှာ (Macrostrat)")),
+                    subtitle: Text(tr(
+                        ctx,
+                        "Rock units & ages as coloured areas",
+                        "ကျောက်လွှာ/သက်တမ်းအလိုက် အရောင်ပြ")),
+                    value: _geology,
+                    onChanged: (v) => apply(() => _geology = v),
+                  ),
+                  if (_geology)
+                    Row(
+                      children: [
+                        Text(tr(ctx, "Opacity", "အလင်းပိတ်နှုန်း"),
+                            style: const TextStyle(fontSize: 12.5)),
+                        Expanded(
+                          child: Slider(
+                            value: _geologyOpacity,
+                            min: 0.2,
+                            max: 0.9,
+                            onChanged: (v) =>
+                                apply(() => _geologyOpacity = v),
+                          ),
+                        ),
+                      ],
+                    ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(tr(ctx, "Earthquakes (USGS, 3 days)",
+                        "ငလျင်များ (USGS၊ ၃ ရက်)")),
+                    subtitle: Text(tr(ctx, "Magnitude circles; tap one for details",
+                        "ပြင်းအားအလိုက် စက်ဝိုင်း — နှိပ်၍ အသေးစိတ်ကြည့်ပါ")),
+                    value: _quakesOn,
+                    onChanged: (v) => apply(() {
+                      _quakesOn = v;
+                      if (v && _quakes.isEmpty) unawaited(_loadQuakes());
+                    }),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(tr(ctx, "Hillshade (terrain relief)",
+                        "တောင်ရိပ် (မြေမျက်နှာသွင်ပြင်)")),
+                    value: _hillshade,
+                    onChanged: (v) => apply(() => _hillshade = v),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(tr(ctx, "Gold & minerals (USGS)",
+                        "ရွှေ & သတ္တုတွင်း (USGS)")),
+                    subtitle: Text(tr(
+                        ctx,
+                        "Known deposits & occurrences worldwide",
+                        "ကမ္ဘာတစ်ဝန်း သိထားပြီး တွင်း/တည်နေရာများ")),
+                    value: _minerals,
+                    onChanged: (v) => apply(() => _minerals = v),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(tr(ctx, "Gold heatmap",
+                        "ရွှေ heatmap")),
+                    subtitle: Text(tr(
+                        ctx,
+                        "Deposit density glow — hotter where more gold is recorded",
+                        "တွင်း သိပ်သည်းရာ တောက်ပ — ရွှေ များရာ ပိုနီ")),
+                    value: _goldHeat,
+                    onChanged: (v) => apply(() {
+                      _goldHeat = v;
+                      if (v) {
+                        _fetchHeatPoints();
+                      } else {
+                        _heatPoints = [];
+                      }
+                    }),
+                  ),
+                  const Divider(height: 22),
+                  // AlpineQuest-style "add online map": paste any XYZ tile URL
+                  // (e.g. a gold / mineral favourability heatmap tileset) and
+                  // it stacks over the base map with adjustable opacity.
+                  Text(tr(ctx, "Custom overlay (online map URL)",
+                      "Custom overlay (online map URL)"),
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _customCtrl,
+                    style: const TextStyle(fontSize: 12.5),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      border: const OutlineInputBorder(),
+                      hintText: "https://…/{z}/{x}/{y}.png",
+                      hintStyle: const TextStyle(fontSize: 12),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: tr(ctx, "Apply", "သုံးမည်"),
+                            icon: const Icon(Icons.check, size: 20),
+                            onPressed: () => apply(() =>
+                                _customUrl = _customCtrl.text.trim().isEmpty
+                                    ? null
+                                    : _customCtrl.text.trim()),
+                          ),
+                          IconButton(
+                            tooltip: tr(ctx, "Clear", "ဖျက်မည်"),
+                            icon: const Icon(Icons.close, size: 20),
+                            onPressed: () => apply(() {
+                              _customCtrl.clear();
+                              _customUrl = null;
+                            }),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_customUrl != null && _customUrl!.isNotEmpty)
+                    Row(
+                      children: [
+                        Text(tr(ctx, "Opacity", "အလင်းပိတ်နှုန်း"),
+                            style: const TextStyle(fontSize: 12.5)),
+                        Expanded(
+                          child: Slider(
+                            value: _customOpacity,
+                            min: 0.2,
+                            max: 1.0,
+                            onChanged: (v) => apply(() => _customOpacity = v),
+                          ),
+                        ),
+                      ],
+                    ),
+                  Text(
+                    tr(
+                        ctx,
+                        "Paste any {z}/{x}/{y} tile link — a geology / gold-favourability heatmap, a country topo map, etc. — to overlay it like AlpineQuest.",
+                        "{z}/{x}/{y} tile link တစ်ခုခု (ဘူမိဗေဒ/ရွှေ heatmap၊ topo မြေပုံ စသဖြင့်) ကူးထည့်ရင် AlpineQuest လိုမျိုး ထပ်တင်လို့ရသည်။"),
+                    style: TextStyle(
+                        fontSize: 11, color: GwColors.inkSoftOf(ctx)),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "© OpenStreetMap · OpenTopoMap (CC-BY-SA) · Esri · Macrostrat · USGS MRDS",
+                    style: TextStyle(
+                        fontSize: 10.5,
+                        color: GwColors.inkSoftOf(ctx)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    tr(
+                        ctx,
+                        "Tiles you view are cached on-device and keep working offline.",
+                        "ကြည့်ပြီးသား မြေပုံကွက်တွေ ဖုန်းထဲ သိမ်းထားပြီး offline မှာလည်း ဆက်သုံးလို့ရသည်။"),
+                    style: TextStyle(
+                        fontSize: 11, color: GwColors.inkSoftOf(ctx)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -371,11 +834,31 @@ class _MapScreenState extends State<MapScreen> {
         title: const Text("GPS Map"),
         actions: [
           IconButton(
+            tooltip: tr(context, "Drone radar", "ဒရုန်း ရေဒါ"),
+            icon: const Icon(Icons.radar),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const DroneScannerScreen()),
+            ),
+          ),
+          IconButton(
             tooltip: tr(context, "WiFi map", "WiFi မြေပုံ"),
             icon: const Icon(Icons.wifi_find),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const WifiMapScreen()),
             ),
+          ),
+          IconButton(
+            tooltip:
+                tr(context, "Earthquake safety", "ငလျင် ဘေးကင်းရေး"),
+            icon: const Icon(Icons.health_and_safety_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const QuakeSafetyScreen()),
+            ),
+          ),
+          IconButton(
+            tooltip: tr(context, "User guide", "အသုံးပြုနည်း"),
+            icon: const Icon(Icons.help_outline),
+            onPressed: _showMapGuide,
           ),
           IconButton(
             tooltip: tr(context, "Refresh", "ပြန်ဆွဲ"),
@@ -396,15 +879,143 @@ class _MapScreenState extends State<MapScreen> {
               initialZoom: _focus != null || _me != null ? 15 : 6,
               minZoom: 2,
               maxZoom: 18,
+              // Long-press = the travel menu for that spot: mark a waypoint,
+              // route to it, or (with the overlay on) identify the geology.
+              onLongPress: (_, latlng) => _onMapLongPress(latlng),
+              // Reload the gold heatmap for the new viewport as the user pans.
+              onPositionChanged: (_, __) {
+                if (_goldHeat) _scheduleHeatFetch();
+              },
             ),
             children: [
               TileLayer(
-                urlTemplate: _satellite
-                    ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                    : "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                urlTemplate: _baseUrl,
                 userAgentPackageName: "ai.gwave.app",
-                maxZoom: 19,
+                maxZoom: _baseMaxZoom,
+                // Offline-first: every tile is cached to disk, then served from
+                // disk (works with no connection). Namespaced per layer.
+                tileProvider: CachingTileProvider(
+                  layerKey: _baseKey,
+                  userAgent: "ai.gwave.app",
+                ),
               ),
+              // Terrain relief under the geology colours, AlpineQuest-style.
+              if (_hillshade)
+                Opacity(
+                  opacity: 0.45,
+                  child: TileLayer(
+                    urlTemplate: _hillshadeUrl,
+                    userAgentPackageName: "ai.gwave.app",
+                    maxZoom: 16,
+                    tileProvider: CachingTileProvider(
+                      layerKey: "hill",
+                      userAgent: "ai.gwave.app",
+                    ),
+                  ),
+                ),
+              // Macrostrat global geologic map — rock units as coloured
+              // polygons; opacity is user-adjustable so the base shows through.
+              if (_geology)
+                Opacity(
+                  opacity: _geologyOpacity,
+                  child: TileLayer(
+                    urlTemplate: _geologyUrl,
+                    userAgentPackageName: "ai.gwave.app",
+                    // Macrostrat serves up to z14; overzoom (upscale) those
+                    // tiles beyond it so the overlay never vanishes while
+                    // zooming in close — AlpineQuest behaves the same way.
+                    maxNativeZoom: 14,
+                    maxZoom: 18,
+                    tileProvider: CachingTileProvider(
+                      layerKey: "geo",
+                      userAgent: "ai.gwave.app",
+                    ),
+                  ),
+                ),
+              // Gold density heatmap — overlapping translucent orange/red
+              // discs at every known MRDS deposit; clusters glow hotter,
+              // giving the AlpineQuest-style favourability look from real data.
+              if (_goldHeat && _heatPoints.isNotEmpty) ...[
+                CircleLayer(
+                  circles: [
+                    for (final p in _heatPoints)
+                      CircleMarker(
+                        point: p,
+                        radius: 22,
+                        color: const Color(0x33FFB300), // amber glow
+                      ),
+                  ],
+                ),
+                CircleLayer(
+                  circles: [
+                    for (final p in _heatPoints)
+                      CircleMarker(
+                        point: p,
+                        radius: 9,
+                        color: const Color(0x55FF3D00), // hot red core
+                      ),
+                  ],
+                ),
+              ],
+              // USGS MRDS — every KNOWN gold & mineral occurrence worldwide
+              // (free WMS). Point data, not a predictive favourability
+              // heatmap, but it shows where deposits are actually recorded.
+              if (_minerals)
+                Opacity(
+                  opacity: 0.9,
+                  child: TileLayer(
+                    wmsOptions: WMSTileLayerOptions(
+                      baseUrl: "https://mrdata.usgs.gov/services/mrds?",
+                      layers: const ["mrds"],
+                      format: "image/png",
+                      transparent: true,
+                    ),
+                    userAgentPackageName: "ai.gwave.app",
+                    tileProvider: NetworkTileProvider(),
+                    errorTileCallback: (_, __, ___) {},
+                  ),
+                ),
+              // Custom user overlay (AlpineQuest "online map" URL) — any XYZ
+              // raster, e.g. a gold/mineral favourability heatmap, stacked
+              // over the base with its own opacity.
+              if (_customUrl != null && _customUrl!.isNotEmpty)
+                Opacity(
+                  opacity: _customOpacity,
+                  child: TileLayer(
+                    urlTemplate: _customUrl,
+                    userAgentPackageName: "ai.gwave.app",
+                    maxNativeZoom: 17,
+                    maxZoom: 19,
+                    tileProvider: CachingTileProvider(
+                      layerKey: "custom",
+                      userAgent: "ai.gwave.app",
+                    ),
+                    errorTileCallback: (_, __, ___) {},
+                  ),
+                ),
+              // In-app road route (blue), the live recording trail (orange)
+              // and a replayed trip (green) — drawn under the pins.
+              if (_route.length > 1)
+                PolylineLayer(polylines: [
+                  Polyline(
+                      points: _route,
+                      strokeWidth: 5,
+                      color: const Color(0xCC1E88E5)),
+                ]),
+              if (_tripRec.running && _tripRec.points.length > 1)
+                PolylineLayer(polylines: [
+                  Polyline(
+                      points: [for (final p in _tripRec.points) p.point],
+                      strokeWidth: 4,
+                      color: const Color(0xCCFF8F00)),
+                ]),
+              if (_playTrip != null && _playTrip!.points.length > 1)
+                PolylineLayer(polylines: [
+                  Polyline(
+                      points: [for (final p in _playTrip!.points) p.point],
+                      strokeWidth: 4,
+                      color: const Color(0xCC2E7D32)),
+                ]),
               MarkerLayer(markers: _markers()),
             ],
           ),
@@ -412,18 +1023,60 @@ class _MapScreenState extends State<MapScreen> {
           // Top: emergency actions.
           Positioned(top: 10, left: 12, right: 12, child: _topControls()),
 
-          // Map / Satellite layer toggle.
+          // Travel tools: waypoints, trip recorder, routes, GPX.
+          Positioned(
+            right: 16,
+            bottom: 428,
+            child: FloatingActionButton.small(
+              heroTag: "travel",
+              backgroundColor:
+                  _tripRec.running ? GwColors.live : Colors.white,
+              foregroundColor:
+                  _tripRec.running ? Colors.white : GwColors.primary,
+              onPressed: _openTravelSheet,
+              child: Icon(_tripRec.running
+                  ? Icons.fiber_manual_record
+                  : Icons.route_outlined),
+            ),
+          ),
+
+          // Offline area download.
+          Positioned(
+            right: 16,
+            bottom: 372,
+            child: FloatingActionButton.small(
+              heroTag: "offline",
+              backgroundColor: Colors.white,
+              foregroundColor: GwColors.primary,
+              onPressed: _openOfflineSheet,
+              child: const Icon(Icons.download_for_offline_outlined),
+            ),
+          ),
+
+          // Navigation HUD while a route target is set.
+          if (_navTarget != null)
+            Positioned(top: 64, left: 12, right: 12, child: _navBanner()),
+
+          // Live recording chip: elapsed time + distance so far.
+          if (_tripRec.running)
+            Positioned(left: 12, bottom: 264, child: _recChip()),
+
+          // Layer picker: base map + geology/hillshade overlays.
           Positioned(
             right: 16,
             bottom: 316,
             child: FloatingActionButton.small(
               heroTag: "layers",
               backgroundColor: Colors.white,
-              foregroundColor:
-                  _satellite ? GwColors.primary : GwColors.inkSoft,
-              onPressed: () => setState(() => _satellite = !_satellite),
-              child: Icon(
-                  _satellite ? Icons.satellite_alt : Icons.layers_outlined),
+              foregroundColor: (_geology ||
+                      _hillshade ||
+                      _minerals ||
+                      _customUrl != null ||
+                      _base != _MapBase.streets)
+                  ? GwColors.primary
+                  : GwColors.inkSoftOf(context),
+              onPressed: _openLayersSheet,
+              child: const Icon(Icons.layers_outlined),
             ),
           ),
 
@@ -447,6 +1100,700 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  // ---- Travel tools ---------------------------------------------------------
+
+  void _onMapLongPress(LatLng latlng) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.add_location_alt_outlined),
+              title: Text(tr(ctx, "Mark this place", "ဒီနေရာကို မှတ်မည်")),
+              subtitle: Text(
+                  "${latlng.latitude.toStringAsFixed(5)}, ${latlng.longitude.toStringAsFixed(5)}",
+                  style: const TextStyle(fontSize: 12)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _addWaypointDialog(latlng);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.directions, color: Color(0xFF1E88E5)),
+              title: Text(tr(ctx, "Route here (in-app)", "ဒီကို လမ်းကြောင်းရှာ")),
+              onTap: () {
+                Navigator.pop(ctx);
+                _startNavTo(latlng, tr(context, "Dropped pin", "ရွေးထားသောနေရာ"));
+              },
+            ),
+            if (_geology)
+              ListTile(
+                leading: const Icon(Icons.terrain),
+                title: Text(
+                    tr(ctx, "What rock is here?", "ဒီနေရာက ကျောက်အမျိုးအစား")),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _identifyGeology(latlng);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _addWaypointDialog(LatLng latlng) {
+    final nameCtrl = TextEditingController();
+    var icon = "📍";
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: Text(tr(ctx, "Mark this place", "နေရာမှတ်မည်")),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final k in kWaypointKinds)
+                    ChoiceChip(
+                      label: Text("${k.$1} ${tr(ctx, k.$2, k.$3)}",
+                          style: const TextStyle(fontSize: 12)),
+                      selected: icon == k.$1,
+                      onSelected: (_) => setLocal(() {
+                        icon = k.$1;
+                        if (nameCtrl.text.trim().isEmpty) {
+                          nameCtrl.text = tr(ctx, k.$2, k.$3);
+                        }
+                      }),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: nameCtrl,
+                decoration: InputDecoration(
+                  hintText: tr(ctx, "Name (e.g. fuel stop)",
+                      "အမည် (ဥပမာ — စက်ဆီဆိုင်)"),
+                ),
+                maxLength: 60,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(tr(ctx, "Cancel", "မလုပ်တော့ပါ"))),
+            FilledButton(
+              onPressed: () async {
+                final w = Waypoint(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  name: nameCtrl.text.trim().isEmpty
+                      ? tr(ctx, "Marked place", "မှတ်ထားသောနေရာ")
+                      : nameCtrl.text.trim(),
+                  icon: icon,
+                  lat: latlng.latitude,
+                  lng: latlng.longitude,
+                );
+                Navigator.pop(ctx);
+                setState(() => _waypoints = [..._waypoints, w]);
+                await WaypointStore.save(_waypoints);
+              },
+              child: Text(tr(ctx, "Save", "သိမ်းမည်")),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openWaypoint(Waypoint w) {
+    final dist = _me == null
+        ? null
+        : Geolocator.distanceBetween(
+            _me!.latitude, _me!.longitude, w.lat, w.lng);
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(w.icon, style: const TextStyle(fontSize: 24)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(w.name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 17)),
+                  ),
+                  IconButton(
+                    tooltip: tr(ctx, "Delete", "ဖျက်မည်"),
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      setState(() => _waypoints =
+                          _waypoints.where((x) => x.id != w.id).toList());
+                      await WaypointStore.save(_waypoints);
+                    },
+                  ),
+                ],
+              ),
+              Text(
+                "${w.lat.toStringAsFixed(5)}, ${w.lng.toStringAsFixed(5)}"
+                "${dist != null ? "  ·  ${fmtDistance(dist)} ${tr(ctx, "away", "အကွာ")}" : ""}",
+                style: TextStyle(
+                    fontSize: 12.5, color: GwColors.inkSoftOf(ctx)),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _startNavTo(w.point, w.name);
+                      },
+                      icon: const Icon(Icons.directions, size: 17),
+                      label: Text(tr(ctx, "Navigate", "လမ်းညွှန်မည်")),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _directions(w.lat, w.lng);
+                      },
+                      icon: const Icon(Icons.map, size: 17),
+                      label: const Text("Google Maps"),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: tr(ctx, "Share", "မျှဝေမည်"),
+                    onPressed: () => Share.share(
+                        "${w.icon} ${w.name}\nhttps://maps.google.com/?q=${w.lat},${w.lng}"),
+                    icon: const Icon(Icons.ios_share),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _startNavTo(LatLng target, String name) async {
+    setState(() {
+      _navTarget = target;
+      _navName = name;
+      _route = [];
+      _routeDistM = null;
+      _routeDurS = null;
+      _routing = true;
+    });
+    final from = _me;
+    RouteResult? r;
+    if (from != null) r = await fetchOsrmRoute(from, target);
+    if (!mounted) return;
+    setState(() {
+      _routing = false;
+      if (r != null) {
+        _route = r.points;
+        _routeDistM = r.distanceM;
+        _routeDurS = r.durationS;
+      } else if (from != null) {
+        // Offline / router unreachable: a straight line still gives bearing
+        // and distance — better than nothing in the field.
+        _route = [from, target];
+        _routeDistM = Geolocator.distanceBetween(from.latitude,
+            from.longitude, target.latitude, target.longitude);
+      }
+    });
+    if (_route.isNotEmpty) {
+      _map.move(_route[_route.length ~/ 2], 13);
+    }
+  }
+
+  void _stopNav() => setState(() {
+        _navTarget = null;
+        _navName = null;
+        _route = [];
+        _routeDistM = null;
+        _routeDurS = null;
+      });
+
+  Widget _navBanner() {
+    final straight = (_me != null && _navTarget != null)
+        ? Geolocator.distanceBetween(_me!.latitude, _me!.longitude,
+            _navTarget!.latitude, _navTarget!.longitude)
+        : null;
+    return Material(
+      elevation: 3,
+      borderRadius: BorderRadius.circular(GwRadius.md),
+      color: const Color(0xFF1E88E5),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            const Icon(Icons.navigation, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_navName ?? "",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13.5)),
+                  Text(
+                    _routing
+                        ? tr(context, "Finding route…", "လမ်းကြောင်း ရှာနေသည်…")
+                        : [
+                            if (_routeDistM != null)
+                              fmtDistance(_routeDistM!),
+                            if (_routeDurS != null)
+                              "≈ ${fmtDuration(Duration(seconds: _routeDurS!.round()))}",
+                            if (_routeDurS == null && straight != null)
+                              "${tr(context, "straight line", "ဖြောင့်တန်း")} ${fmtDistance(straight)}",
+                          ].join("  ·  "),
+                    style: const TextStyle(
+                        color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: tr(context, "Stop", "ရပ်မည်"),
+              onPressed: _stopNav,
+              icon: const Icon(Icons.close, color: Colors.white, size: 20),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _recChip() {
+    final trip =
+        Trip(id: "live", name: "", points: List.of(_tripRec.points));
+    return Material(
+      elevation: 3,
+      borderRadius: BorderRadius.circular(20),
+      color: GwColors.live,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.fiber_manual_record,
+                color: Colors.white, size: 14),
+            const SizedBox(width: 6),
+            Text(
+              "${fmtDuration(trip.duration)} · ${fmtDistance(trip.distanceM)}",
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _toggleRecording() async {
+    if (_tripRec.running) {
+      await _tripRec.stop();
+      if (_tripRec.points.length >= 2) {
+        final trip = Trip(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          name:
+              "${tr(context, "Trip", "ခရီး")} ${DateTime.now().toString().substring(0, 16)}",
+          points: List.of(_tripRec.points),
+        );
+        setState(() => _trips = [..._trips, trip]);
+        await TripStore.save(_trips);
+      } else {
+        setState(() {});
+      }
+    } else {
+      final ok = await _tripRec.start(() {
+        if (mounted) setState(() {});
+      });
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(tr(context, "Couldn't start GPS recording.",
+                "GPS မှတ်တမ်း စတင်၍မရပါ။"))));
+      }
+      setState(() {});
+    }
+  }
+
+  void _playTripStart(Trip t) {
+    _playTimer?.cancel();
+    setState(() {
+      _playTrip = t;
+      _playIdx = 0;
+    });
+    if (t.points.isNotEmpty) _map.move(t.points.first.point, 15);
+    // ~40 points/second-of-screen-time: a several-km ride replays in a few
+    // seconds, camera chasing the dot — the in-app "travel video".
+    _playTimer = Timer.periodic(const Duration(milliseconds: 120), (timer) {
+      if (!mounted || _playTrip == null) {
+        timer.cancel();
+        return;
+      }
+      if (_playIdx >= _playTrip!.points.length - 1) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _playIdx++);
+      if (_playIdx % 5 == 0) {
+        _map.move(_playTrip!.points[_playIdx].point, 15);
+      }
+    });
+  }
+
+  void _stopPlayback() {
+    _playTimer?.cancel();
+    setState(() {
+      _playTrip = null;
+      _playIdx = 0;
+    });
+  }
+
+  void _openTravelSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.6,
+          maxChildSize: 0.92,
+          builder: (_, controller) => ListView(
+            controller: controller,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            children: [
+              Text(tr(ctx, "Travel tools", "ခရီးသွား ကိရိယာများ"),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w900, fontSize: 18)),
+              const SizedBox(height: 12),
+              // Trip recorder — the "travel log" the trip replay feeds on.
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _tripRec.running
+                      ? GwColors.live.withValues(alpha: 0.08)
+                      : GwColors.primary.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(GwRadius.md),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                              _tripRec.running
+                                  ? tr(ctx, "Recording your trip…",
+                                      "ခရီးမှတ်တမ်း တင်နေသည်…")
+                                  : tr(ctx, "Trip recorder",
+                                      "ခရီးမှတ်တမ်း စနစ်"),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w800)),
+                          Text(
+                              tr(
+                                  ctx,
+                                  "Records your GPS track — distance, time, speed. Replay it on the map or export GPX.",
+                                  "GPS လမ်းကြောင်း၊ အကွာအဝေး၊ အချိန်၊ အမြန်နှုန်း မှတ်တမ်းတင်ပြီး မြေပုံပေါ် ပြန်ဖွင့်ကြည့်နိုင်၊ GPX ထုတ်နိုင်သည်။"),
+                              style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: GwColors.inkSoftOf(ctx))),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                          backgroundColor: _tripRec.running
+                              ? GwColors.live
+                              : GwColors.primary),
+                      onPressed: () async {
+                        await _toggleRecording();
+                        setLocal(() {});
+                      },
+                      child: Text(_tripRec.running
+                          ? tr(ctx, "Stop & save", "ရပ်ပြီး သိမ်းမည်")
+                          : tr(ctx, "Start", "စတင်မည်")),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: _me == null
+                    ? null
+                    : () => Share.share(
+                        "${tr(ctx, "My location", "ကျွန်ုပ်တည်နေရာ")}: "
+                        "https://maps.google.com/?q=${_me!.latitude},${_me!.longitude}"),
+                icon: const Icon(Icons.share_location, size: 18),
+                label: Text(tr(ctx, "Share my location",
+                    "ကျွန်ုပ်တည်နေရာ မျှဝေမည်")),
+              ),
+              Text(
+                tr(
+                    ctx,
+                    "Family members with location sharing on already see you live on this map — manage it in Family.",
+                    "Family ထဲမှာ တည်နေရာမျှဝေမှု ဖွင့်ထားသူများက သင့်ကို ဒီမြေပုံပေါ်မှာ live မြင်နေပြီးသား — Family ထဲမှာ စီမံနိုင်သည်။"),
+                style: TextStyle(
+                    fontSize: 11, color: GwColors.inkSoftOf(ctx)),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                  "${tr(ctx, "Marked places", "မှတ်ထားသောနေရာများ")} (${_waypoints.length})",
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
+              Text(
+                  tr(ctx, "Long-press the map to mark a place.",
+                      "မြေပုံပေါ် ဖိနှိပ်ပြီး နေရာမှတ်နိုင်သည်။"),
+                  style: TextStyle(
+                      fontSize: 11.5, color: GwColors.inkSoftOf(ctx))),
+              const SizedBox(height: 6),
+              if (_waypoints.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(tr(ctx, "None yet.", "မရှိသေးပါ။"),
+                      style: TextStyle(color: GwColors.inkSoftOf(ctx))),
+                )
+              else
+                ...(_waypoints.reversed.take(30)).map((w) => ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading:
+                          Text(w.icon, style: const TextStyle(fontSize: 20)),
+                      title: Text(w.name,
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      subtitle: Text(
+                          "${w.lat.toStringAsFixed(4)}, ${w.lng.toStringAsFixed(4)}",
+                          style: const TextStyle(fontSize: 11)),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.center_focus_strong, size: 18),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _map.move(w.point, 16);
+                        },
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _openWaypoint(w);
+                      },
+                    )),
+              const SizedBox(height: 10),
+              Text(
+                  "${tr(ctx, "Recorded trips", "ခရီးမှတ်တမ်းများ")} (${_trips.length})",
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              if (_trips.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(tr(ctx, "None yet.", "မရှိသေးပါ။"),
+                      style: TextStyle(color: GwColors.inkSoftOf(ctx))),
+                )
+              else
+                ...(_trips.reversed.take(20)).map((t) => Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                            color: GwColors.inkSoftOf(ctx)
+                                .withValues(alpha: 0.25)),
+                        borderRadius: BorderRadius.circular(GwRadius.md),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(t.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w700)),
+                          Text(
+                            "${fmtDistance(t.distanceM)} · ${fmtDuration(t.duration)} · "
+                            "${tr(ctx, "avg", "ပျမ်းမျှ")} ${t.avgSpeedKmh.toStringAsFixed(1)} km/h · "
+                            "${tr(ctx, "max", "အမြင့်ဆုံး")} ${t.maxSpeedKmh.toStringAsFixed(0)} km/h",
+                            style: TextStyle(
+                                fontSize: 11.5,
+                                color: GwColors.inkSoftOf(ctx)),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              TextButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  _playTripStart(t);
+                                },
+                                icon: const Icon(Icons.play_arrow, size: 16),
+                                label: Text(
+                                    tr(ctx, "Replay", "ပြန်ဖွင့်ကြည့်")),
+                              ),
+                              TextButton.icon(
+                                onPressed: () async {
+                                  final f = await t.writeGpxFile();
+                                  await Share.shareXFiles([XFile(f.path)],
+                                      text: t.name);
+                                },
+                                icon: const Icon(Icons.file_download_outlined,
+                                    size: 16),
+                                label: const Text("GPX"),
+                              ),
+                              TextButton.icon(
+                                onPressed: () => Share.share(
+                                    "🛵 ${t.name}\n${fmtDistance(t.distanceM)} · ${fmtDuration(t.duration)} · ${t.avgSpeedKmh.toStringAsFixed(1)} km/h"),
+                                icon: const Icon(Icons.ios_share, size: 16),
+                                label: Text(tr(ctx, "Share", "မျှဝေ")),
+                              ),
+                              const Spacer(),
+                              IconButton(
+                                icon:
+                                    const Icon(Icons.delete_outline, size: 18),
+                                onPressed: () async {
+                                  setState(() => _trips = _trips
+                                      .where((x) => x.id != t.id)
+                                      .toList());
+                                  await TripStore.save(_trips);
+                                  setLocal(() {});
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    )),
+              if (_playTrip != null)
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _stopPlayback();
+                  },
+                  icon: const Icon(Icons.stop, size: 16),
+                  label: Text(
+                      tr(ctx, "Stop replay", "ပြန်ဖွင့်မှု ရပ်မည်")),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMapGuide() {
+    Widget section(String title, String body) => Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: const TextStyle(
+                      color: GwColors.primary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14)),
+              const SizedBox(height: 4),
+              Text(body,
+                  style: const TextStyle(fontSize: 12.5, height: 1.45)),
+            ],
+          ),
+        );
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.85,
+        maxChildSize: 0.94,
+        builder: (_, controller) => ListView(
+          controller: controller,
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          children: [
+            Text(tr(ctx, "Map user guide", "မြေပုံ အသုံးပြုနည်း လမ်းညွှန်"),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w900, fontSize: 18)),
+            const SizedBox(height: 14),
+            section(
+              tr(ctx, "1. Map layers", "၁။ မြေပုံအလွှာများ"),
+              tr(
+                  ctx,
+                  "Layers button: choose Streets / Topo / Satellite as the base, then stack overlays — hillshade terrain, geology colours, known mineral deposits, a gold heatmap, or any custom {z}/{x}/{y} tile URL, AlpineQuest-style. Opacity sliders keep the base visible.",
+                  "အလွှာခလုတ်မှာ — လမ်းပုံ / တောင်တန်း (Topo) / ဂြိုဟ်တုပုံ ကို အခြေခံရွေးပြီး အပေါ်က hillshade၊ ဘူမိဗေဒအရောင်၊ သတ္တုသိုက်မှတ်တမ်း၊ ရွှေ heatmap သို့မဟုတ် ကိုယ်ပိုင် tile URL တွေကို AlpineQuest လိုမျိုး ထပ်တင်နိုင်သည်။ Opacity slider နဲ့ အောက်ခံမြေပုံ မြင်နိုင်အောင် ချိန်နိုင်သည်။"),
+            ),
+            section(
+              tr(ctx, "2. Offline maps", "၂။ Offline မြေပုံ"),
+              tr(
+                  ctx,
+                  "Every tile you view is cached automatically. The download button saves a whole area in advance — pick the rectangle and zoom levels before a trip with no signal.",
+                  "ကြည့်သမျှ မြေပုံကွက်တွေ အလိုအလျောက် သိမ်းထားသည်။ Download ခလုတ်နဲ့ ဧရိယာတစ်ခုလုံးကို ကြိုသိမ်းနိုင်လို့ လိုင်းမမိတဲ့ ခရီးမသွားခင် ကြိုဆွဲထားပါ။"),
+            ),
+            section(
+              tr(ctx, "3. Marking places", "၃။ နေရာမှတ်ခြင်း"),
+              tr(
+                  ctx,
+                  "Long-press anywhere → Mark this place. Pick a type (⛽ fuel, 🏕 camp, ⛏ mine site…) and a name. Marks are saved on your phone, shown on the map, and each one can navigate, open Google Maps, or share its link.",
+                  "မြေပုံပေါ် ဘယ်နေရာမဆို ဖိနှိပ်ပြီး「ဒီနေရာကို မှတ်မည်」ကို ရွေးပါ။ အမျိုးအစား (⛽ စက်ဆီဆိုင်၊ 🏕 စခန်း၊ ⛏ သတ္တုတွင်း…) နဲ့ အမည်ရွေးပါ။ မှတ်ထားတာတွေ ဖုန်းထဲသိမ်းပြီး မြေပုံပေါ်ပြမယ် — တစ်ခုချင်းကနေ လမ်းညွှန်၊ Google Maps ဖွင့်၊ link မျှဝေ လုပ်နိုင်သည်။"),
+            ),
+            section(
+              tr(ctx, "4. Routes & navigation", "၄။ လမ်းကြောင်းနှင့် လမ်းညွှန်"),
+              tr(
+                  ctx,
+                  "Long-press → Route here, or tap a marked place → Navigate. The blue line is a real road route with distance and time. With no internet you still get a straight line + distance. Google Maps handoff gives turn-by-turn voice navigation.",
+                  "ဖိနှိပ်ပြီး「ဒီကို လမ်းကြောင်းရှာ」ဒါမှမဟုတ် မှတ်ထားတဲ့နေရာက「လမ်းညွှန်မည်」ကို နှိပ်ပါ။ အပြာရောင်မျဉ်းက တကယ့်ကားလမ်းကြောင်း — အကွာအဝေးနဲ့ ကြာချိန်ပြမယ်။ အင်တာနက်မရှိရင်လည်း ဖြောင့်တန်းမျဉ်းနဲ့ အကွာအဝေး ရမယ်။ အသံနဲ့ လမ်းညွှန်ချင်ရင် Google Maps ခလုတ်သုံးပါ။"),
+            ),
+            section(
+              tr(ctx, "5. Trip recorder (travel log)", "၅။ ခရီးမှတ်တမ်း"),
+              tr(
+                  ctx,
+                  "The route button (right side) opens Travel tools. Start recording before you set off — it logs your GPS track with distance, duration and speed. Stop & save, then: Replay animates your journey on the map (the in-app travel video), GPX exports the track for AlpineQuest/OsmAnd/Google Earth, Share posts the stats.",
+                  "ညာဘက်က route ခလုတ်နဲ့ ခရီးသွားကိရိယာများ ဖွင့်ပါ။ မထွက်ခင် Start နှိပ်ရင် GPS လမ်းကြောင်း၊ အကွာအဝေး၊ ကြာချိန်၊ အမြန်နှုန်း မှတ်တမ်းတင်မယ်။ ရပ်ပြီးသိမ်းပြီးရင် —「ပြန်ဖွင့်ကြည့်」က ခရီးကို မြေပုံပေါ် ဗီဒီယိုလို ပြန်ပြမယ်၊「GPX」က AlpineQuest/OsmAnd/Google Earth အတွက် ဖိုင်ထုတ်ပေးမယ်၊「မျှဝေ」က စာရင်းအချက်အလက် မျှဝေပေးမယ်။"),
+            ),
+            section(
+              tr(ctx, "6. Live location sharing", "၆။ တည်နေရာ Live မျှဝေမှု"),
+              tr(
+                  ctx,
+                  "Family circle members with sharing on appear live on this map, and they see you. One-off: Travel tools → Share my location sends a maps link to any app. In Messenger you can also attach your location to a chat.",
+                  "Family ထဲမှာ မျှဝေမှုဖွင့်ထားသူတွေ ဒီမြေပုံပေါ် live ပေါ်ပြီး သူတို့လည်း သင့်ကိုမြင်တယ်။ တစ်ခါတည်းမျှဝေချင်ရင် — ခရီးသွားကိရိယာထဲက「ကျွန်ုပ်တည်နေရာ မျှဝေမည်」နဲ့ ဘယ် app ကိုမဆို maps link ပို့နိုင်တယ်။ Messenger ထဲမှာလည်း တည်နေရာ ပူးတွဲပို့နိုင်သည်။"),
+            ),
+            section(
+              tr(ctx, "7. Safety layers", "၇။ ဘေးကင်းရေးအလွှာများ"),
+              tr(
+                  ctx,
+                  "Earthquakes show as coloured circles (tap for detail + safety guide). SOS alerts from nearby users appear as pins — tap to respond. The SOS button sends your own alert with GPS, reason, photo and voice note.",
+                  "ငလျင်တွေက အရောင်စက်ဝိုင်းတွေအဖြစ်ပြမယ် (နှိပ်ရင် အသေးစိတ်နဲ့ ဘေးကင်းရေးလမ်းညွှန်)။ အနီးက SOS အချက်ပေးချက်တွေ pin အဖြစ်ပေါ်ပြီး နှိပ်ပြီး ကူညီနိုင်တယ်။ SOS ခလုတ်နဲ့ ကိုယ့် GPS၊ အကြောင်းရင်း၊ ဓာတ်ပုံ၊ အသံမှတ်ချက်ပါ အချက်ပေးပို့နိုင်သည်။"),
+            ),
+            section(
+              tr(ctx, "8. Accuracy notes", "၈။ တိကျမှု မှတ်ချက်"),
+              tr(
+                  ctx,
+                  "GPS is ±5–20 m outdoors, worse indoors or in gorges. Road routes come from OpenStreetMap data — remote tracks may be missing. Distances and ETAs are estimates; check conditions locally. Prices of map data: all layers used here are free/open sources.",
+                  "GPS က လွင်ပြင်မှာ ±၅–၂၀ မီတာ၊ အဆောက်အအုံထဲ/ချောက်ထဲမှာ ပိုလွဲနိုင်တယ်။ ကားလမ်းကြောင်းတွေက OpenStreetMap အချက်အလက် — ဝေးလံဒေသလမ်းတချို့ မပါနိုင်ပါ။ အကွာအဝေးနဲ့ ကြာချိန်က ခန့်မှန်းချက်သာဖြစ်လို့ ဒေသအခြေအနေကို ကိုယ်တိုင်စစ်ပါ။"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Turn-by-turn directions in the Google Maps app (falls back to the
   /// browser when Maps isn't installed).
   Future<void> _directions(double lat, double lng) async {
@@ -459,6 +1806,36 @@ class _MapScreenState extends State<MapScreen> {
 
   List<Marker> _markers() {
     final markers = <Marker>[];
+    // Earthquakes first so SOS and people pins draw on top of them.
+    if (_quakesOn) {
+      for (final q in _quakes) {
+        final r = q.radius;
+        markers.add(Marker(
+          point: q.point,
+          width: r * 2,
+          height: r * 2,
+          child: GestureDetector(
+            onTap: () => _openQuake(q),
+            child: Container(
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: q.color.withValues(alpha: 0.35),
+                shape: BoxShape.circle,
+                border: Border.all(color: q.color, width: 2),
+              ),
+              child: Text(
+                q.mag.toStringAsFixed(1),
+                style: TextStyle(
+                  color: q.mag >= 5 ? Colors.white : Colors.black87,
+                  fontSize: (r * 0.55).clamp(9, 13).toDouble(),
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+        ));
+      }
+    }
     // The tagged place this map was opened for (post/reel/live check-in).
     if (_focus != null) {
       markers.add(Marker(
@@ -487,6 +1864,56 @@ class _MapScreenState extends State<MapScreen> {
               ),
             const Icon(Icons.place, color: GwColors.live, size: 34),
           ],
+        ),
+      ));
+    }
+    // Waypoints — the traveller's own marks (fuel, camp, mine…).
+    for (final w in _waypoints) {
+      markers.add(Marker(
+        point: w.point,
+        width: 44,
+        height: 44,
+        child: GestureDetector(
+          onTap: () => _openWaypoint(w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: GwShadow.card,
+                ),
+                child: Text(w.icon, style: const TextStyle(fontSize: 16)),
+              ),
+            ],
+          ),
+        ),
+      ));
+    }
+    // The active navigation target.
+    if (_navTarget != null) {
+      markers.add(Marker(
+        point: _navTarget!,
+        width: 44,
+        height: 44,
+        child: const Icon(Icons.sports_score,
+            color: Color(0xFF1E88E5), size: 38),
+      ));
+    }
+    // Trip replay: the moving dot along the recorded track.
+    if (_playTrip != null && _playIdx < _playTrip!.points.length) {
+      markers.add(Marker(
+        point: _playTrip!.points[_playIdx].point,
+        width: 26,
+        height: 26,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF2E7D32),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 3),
+          ),
         ),
       ));
     }
@@ -580,6 +2007,7 @@ class _MapScreenState extends State<MapScreen> {
               ],
             ),
           ),
+        _quakeBanner(),
         _dangerBanner(),
         Row(
           children: [
@@ -630,7 +2058,7 @@ class _MapScreenState extends State<MapScreen> {
                   onPressed: () => _closeSos("resolved"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
-                    foregroundColor: GwColors.ink,
+                    foregroundColor: GwColors.inkOf(context),
                   ),
                   child: Text(tr(context, "Close", "ပိတ်မယ်")),
                 ),
@@ -643,6 +2071,192 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   /// Red warning strip whenever someone nearby has an active SOS.
+  /// One quake: what, where, how far, and the actions that matter — the
+  /// safety guide, sharing it to the feed, and USGS for the science.
+  void _openQuake(Quake q) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: GwColors.surfaceOf(context),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheet) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: q.color,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text("M ${q.mag.toStringAsFixed(1)}",
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16)),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      q.place.isEmpty
+                          ? tr(context, "Earthquake", "ငလျင်")
+                          : q.place,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 14.5),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                [
+                  quakeTimeAgo(context, q.time),
+                  if (q.depthKm != null)
+                    tr(context, "depth ${q.depthKm!.round()} km",
+                        "အနက် ${q.depthKm!.round()} ကီလိုမီတာ"),
+                  if (_me != null) quakeDistanceLabel(context, q, _me),
+                ].join(" · "),
+                style: TextStyle(
+                    color: GwColors.inkSoftOf(context), fontSize: 13),
+              ),
+              if (q.tsunami) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD32F2F).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    tr(context,
+                        "🌊 Tsunami advisory issued — coastal areas move to high ground.",
+                        "🌊 ဆူနာမီ သတိပေးချက် ထုတ်ထားသည် — ကမ်းရိုးတန်းများ ကုန်းမြင့်သို့ တက်ပါ။"),
+                    style: const TextStyle(
+                        color: Color(0xFFD32F2F),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(sheet).pop();
+                        Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => const QuakeSafetyScreen()));
+                      },
+                      icon: const Icon(Icons.health_and_safety, size: 18),
+                      label: Text(
+                          tr(context, "Safety guide", "ဘေးကင်းရေး လမ်းညွှန်")),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      // No time-ago in the text: it freezes wrong the moment
+                      // it's posted, and the post's own timestamp does that
+                      // job. The feed parses this line into an alert card.
+                      final text =
+                          "🫨 M ${q.mag.toStringAsFixed(1)} ${q.place}"
+                          "${q.url != null ? "\n${q.url}" : ""}";
+                      try {
+                        await context.read<AppState>().repo.createPost(text);
+                        if (context.mounted) {
+                          Navigator.of(sheet).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(tr(context, "Shared to feed.",
+                                  "Feed တွင် မျှဝေပြီးပါပြီ။"))));
+                        }
+                      } catch (_) {}
+                    },
+                    icon: const Icon(Icons.ios_share, size: 18),
+                    label: Text(tr(context, "Share", "မျှဝေ")),
+                  ),
+                ],
+              ),
+              if (q.url != null)
+                TextButton(
+                  onPressed: () => openWeb(context, q.url!, title: "USGS"),
+                  child: const Text("USGS →",
+                      style: TextStyle(fontSize: 12.5)),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The interrupt: a strong recent quake near the user (or a major one in
+  /// the region). Tap centres the epicentre; the X dismisses for this visit.
+  Widget _quakeBanner() {
+    final q = _quakeAlert;
+    if (q == null || _quakeAlertDismissed) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: q.color,
+        borderRadius: BorderRadius.circular(GwRadius.md),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(GwRadius.md),
+          onTap: () {
+            _map.move(q.point, 7);
+            _openQuake(q);
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+            child: Row(
+              children: [
+                const Text("🫨", style: TextStyle(fontSize: 22)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tr(context,
+                            "M ${q.mag.toStringAsFixed(1)} earthquake",
+                            "ငလျင် M ${q.mag.toStringAsFixed(1)} လှုပ်ခဲ့သည်"),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14),
+                      ),
+                      Text(
+                        "${q.place} · ${quakeTimeAgo(context, q.time)}",
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close,
+                      color: Colors.white70, size: 18),
+                  onPressed: () =>
+                      setState(() => _quakeAlertDismissed = true),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _dangerBanner() {
     final me = context.read<AppState>().api.session?.profileId;
     final active = _sos
@@ -688,8 +2302,8 @@ class _MapScreenState extends State<MapScreen> {
       maxChildSize: 0.82,
       builder: (context, controller) {
         return Container(
-          decoration: const BoxDecoration(
-            color: GwColors.surface,
+          decoration: BoxDecoration(
+            color: GwColors.surfaceOf(context),
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 16)],
           ),
@@ -700,7 +2314,7 @@ class _MapScreenState extends State<MapScreen> {
                 width: 42,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: GwColors.line,
+                  color: GwColors.lineOf(context),
                   borderRadius: BorderRadius.circular(3),
                 ),
               ),
@@ -742,8 +2356,8 @@ class _MapScreenState extends State<MapScreen> {
                             controller: controller,
                             padding: const EdgeInsets.only(bottom: 20),
                             itemCount: _sos.length,
-                            separatorBuilder: (_, __) => const Divider(
-                                height: 1, indent: 72, color: GwColors.line),
+                            separatorBuilder: (_, __) => Divider(
+                                height: 1, indent: 72, color: GwColors.lineOf(context)),
                             itemBuilder: (_, i) => _sosTile(_sos[i]),
                           ),
               ),
@@ -776,6 +2390,7 @@ class _MapScreenState extends State<MapScreen> {
     "accident": "🚗 မတော်တဆမှု",
     "danger": "⚠️ အန္တရာယ်",
     "flood": "🌊 ရေဘေး",
+    "quake": "🫨 ငလျင်",
     "other": "🆘 အခြား",
   };
 
@@ -825,8 +2440,8 @@ class _MapScreenState extends State<MapScreen> {
                     .join(" — "),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    color: GwColors.ink,
+                style: TextStyle(
+                    color: GwColors.inkOf(context),
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600),
               ),
@@ -902,8 +2517,8 @@ class _MapScreenState extends State<MapScreen> {
                 if (person is Map)
                   IconButton(
                     tooltip: tr(context, "Chat", "Chat"),
-                    icon: const Icon(Icons.chat_bubble_outline,
-                        color: GwColors.inkSoft),
+                    icon: Icon(Icons.chat_bubble_outline,
+                        color: GwColors.inkSoftOf(context)),
                     onPressed: () => _chat(Map<String, dynamic>.from(person)),
                   ),
               ],
@@ -953,6 +2568,7 @@ class _SosSheetState extends State<_SosSheet> {
     ("accident", "🚗", "မတော်တဆ"),
     ("danger", "⚠️", "အန္တရာယ်"),
     ("flood", "🌊", "ရေဘေး"),
+    ("quake", "🫨", "ငလျင်"),
     ("other", "🆘", "အခြား"),
   ];
 
@@ -1019,8 +2635,8 @@ class _SosSheetState extends State<_SosSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: inset),
       child: Container(
-        decoration: const BoxDecoration(
-          color: GwColors.surface,
+        decoration: BoxDecoration(
+          color: GwColors.surfaceOf(context),
           borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
         ),
         padding: const EdgeInsets.fromLTRB(18, 14, 18, 22),
@@ -1034,7 +2650,7 @@ class _SosSheetState extends State<_SosSheet> {
                   width: 42,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: GwColors.line,
+                    color: GwColors.lineOf(context),
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),
@@ -1050,9 +2666,9 @@ class _SosSheetState extends State<_SosSheet> {
                 ],
               ),
               const SizedBox(height: 4),
-              const Text("ဘာဖြစ်နေလဲ ရွေးပါ — ကူညီမယ့်သူတွေ သိရအောင်",
+              Text("ဘာဖြစ်နေလဲ ရွေးပါ — ကူညီမယ့်သူတွေ သိရအောင်",
                   style:
-                      TextStyle(color: GwColors.inkSoft, fontSize: 12.5)),
+                      TextStyle(color: GwColors.inkSoftOf(context), fontSize: 12.5)),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,

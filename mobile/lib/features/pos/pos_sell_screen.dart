@@ -124,7 +124,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
     // 1) Pick the tender.
     final method = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: GwColors.bg,
+      backgroundColor: GwColors.bgOf(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
@@ -320,7 +320,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
                   "Customer: open Gwave → G-Pay → Scan, send the amount, then show you the confirmation.",
                   "ဝယ်သူ — Gwave app ထဲ G-Pay → Scan ဖွင့်ပြီး ပမာဏ ပေးပို့ပါ။ ပို့ပြီးကြောင်း အတည်ပြုချက်ကို ပြပါစေ။"),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12.5, color: GwColors.inkSoft),
+              style: TextStyle(fontSize: 12.5, color: GwColors.inkSoftOf(context)),
             ),
           ],
         ),
@@ -722,7 +722,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
       onTap: () => _add(p),
       child: Container(
         decoration: BoxDecoration(
-          color: GwColors.surface,
+          color: GwColors.surfaceOf(context),
           borderRadius: BorderRadius.circular(GwRadius.md),
           boxShadow: GwShadow.card,
           border: qty > 0
@@ -827,10 +827,10 @@ class _PosSellScreenState extends State<PosSellScreen> {
       );
 
   Widget _ph() => Container(
-        color: GwColors.surfaceMuted,
-        child: const Center(
+        color: GwColors.surfaceMutedOf(context),
+        child: Center(
           child: Icon(Icons.inventory_2_outlined,
-              color: GwColors.inkSoft, size: 26),
+              color: GwColors.inkSoftOf(context), size: 26),
         ),
       );
 
@@ -855,7 +855,7 @@ class _PosSellScreenState extends State<PosSellScreen> {
                   "POS သုံးဖို့ ဆိုင်တစ်ခု အရင်ဖွင့်ပါ — ဆိုင်ဖွင့်ခြင်း၊ "
                       "ပစ္စည်း ထည့်ခြင်းကို web POS မှာ လုပ်နိုင်ပါတယ်။"),
               textAlign: TextAlign.center,
-              style: const TextStyle(color: GwColors.inkSoft, fontSize: 13.5),
+              style: TextStyle(color: GwColors.inkSoftOf(context), fontSize: 13.5),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(

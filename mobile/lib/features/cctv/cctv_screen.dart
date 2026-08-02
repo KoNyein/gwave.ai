@@ -5,6 +5,7 @@ import 'package:video_player/video_player.dart';
 import '../../core/app_state.dart';
 import '../../core/models.dart';
 import '../../core/theme.dart';
+import '../../core/video_audio.dart';
 import '../../widgets/common.dart';
 
 /// Native CCTV: the user's cameras from `user_cameras`. Tapping a camera with a
@@ -154,10 +155,25 @@ class _CameraViewer extends StatefulWidget {
   State<_CameraViewer> createState() => _CameraViewerState();
 }
 
-class _CameraViewerState extends State<_CameraViewer> {
+class _CameraViewerState extends State<_CameraViewer>
+    with SoundScreen<_CameraViewer> {
   VideoPlayerController? _controller;
   bool _ready = false;
   String? _error;
+
+  /// A camera feed is live audio from a place — it must stop when this screen
+  /// stops being what the user is looking at, not when the widget happens to
+  /// be disposed.
+  late final SoundClaim _sound = SoundClaim(
+    tag: "cctv:${widget.camera.id}",
+    onSilence: () => _controller?.pause(),
+    onRestore: () {
+      if (mounted) _controller?.play();
+    },
+  );
+
+  @override
+  SoundClaim? get soundClaim => _sound;
 
   @override
   void initState() {
@@ -172,9 +188,10 @@ class _CameraViewerState extends State<_CameraViewer> {
       return;
     }
     try {
-      final c = VideoPlayerController.networkUrl(Uri.parse(url));
+      final c = watchVideoController(Uri.parse(url));
       _controller = c;
       await c.initialize();
+      await c.setVolume(GwSound.instance.claim(_sound) ? 1 : 0);
       await c.play();
       if (mounted) setState(() => _ready = true);
     } catch (_) {
@@ -184,6 +201,7 @@ class _CameraViewerState extends State<_CameraViewer> {
 
   @override
   void dispose() {
+    GwSound.instance.release(_sound);
     _controller?.dispose();
     super.dispose();
   }

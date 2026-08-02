@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, LayoutGrid } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { NAV_SECTIONS, visibleNav } from "@/components/layout/nav-items";
@@ -37,6 +37,21 @@ export function LeftSidebar({ profile }: { profile: Profile | null }) {
           <span className="truncate">
             {profile?.full_name ?? profile?.username ?? t("profile")}
           </span>
+        </Link>
+
+        {/* Category-organised feature directory — the discoverable version
+            of this sidebar, with a description card per feature. */}
+        <Link
+          href="/menu"
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-2 py-2 font-medium transition-colors hover:bg-muted",
+            pathname === "/menu" && "bg-secondary text-primary",
+          )}
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-primary">
+            <LayoutGrid className="h-5 w-5" />
+          </span>
+          {t("menu")}
         </Link>
 
         {sections.map((section) => (

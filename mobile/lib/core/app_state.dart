@@ -1,10 +1,14 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
+import '../features/health/health_store.dart';
+import '../features/metaverse/metaverse_screen.dart';
 import 'api_client.dart';
+import 'config.dart';
 import 'models.dart';
+import 'navigation.dart';
 import 'repository.dart';
 import 'session.dart';
 
@@ -47,6 +51,33 @@ class AppState extends ChangeNotifier {
         Timer.periodic(const Duration(seconds: 60), (_) => repo.heartbeat());
   }
 
+  /// The data-plane URL decides which PostgREST/Realtime the WHOLE app talks
+  /// to. A single missed fetch used to strand the session on the build-time
+  /// fallback: the Realtime socket then joined a stale gateway — Settings
+  /// still said "calls: ready" — while every ring broadcast went to a server
+  /// nobody else was on, and the presence heartbeat silently stopped landing.
+  /// So: retry hard up front, then keep retrying in the background until the
+  /// live config is in.
+  Future<void> _loadRuntimeConfigWithRetry() async {
+    const delays = [Duration.zero, Duration(seconds: 2), Duration(seconds: 5)];
+    for (final delay in delays) {
+      await Future<void>.delayed(delay);
+      if (await api.loadRuntimeConfig()) return;
+    }
+    Timer.periodic(const Duration(seconds: 30), (t) async {
+      if (AppConfig.runtimeLoaded || await api.loadRuntimeConfig()) t.cancel();
+    });
+  }
+
+  /// Run after every successful sign-in: wire the Health store to the cloud and
+  /// restore this user's health data (vitals, oximeter, activity journal, etc.)
+  /// so nothing is lost across logout/login, reinstall, or a new phone.
+  /// Best-effort and fire-and-forget — never blocks the UI.
+  void _afterSignIn() {
+    HealthStore.attachCloud(api);
+    HealthStore.restoreFromCloud(api);
+  }
+
   /// Google sign-in progress + error, surfaced to the login screen. The flow
   /// completes asynchronously via the `gwave://auth` deep link, so it can't be
   /// awaited from the button press.
@@ -56,13 +87,19 @@ class AppState extends ChangeNotifier {
   Future<void> bootstrap() async {
     // Adopt the web app's exact data-plane URL + anon key first, so every
     // subsequent PostgREST call hits the same gateway/JWKS as the browser.
-    await api.loadRuntimeConfig();
+    await _loadRuntimeConfigWithRetry();
     await api.loadSession();
-    if (api.session != null && !api.session!.isExpired) {
+    // An expired data token is NOT a signed-out user: the stored 30-day Cognito
+    // refresh token silently re-mints it. Try that before ever showing sign-in,
+    // and stay signed in through a network blip — ensureSession only returns
+    // false on a genuine 401 (revoked/expired refresh token). This is the fix
+    // for "the app makes me log in again every time I open it".
+    if (await api.ensureSession()) {
       status = AuthStatus.signedIn;
       notifyListeners();
       _loadMe();
       _startPresence();
+      _afterSignIn();
     } else {
       status = AuthStatus.signedOut;
       notifyListeners();
@@ -86,6 +123,7 @@ class AppState extends ChangeNotifier {
     status = AuthStatus.signedIn;
     notifyListeners();
     _startPresence();
+    _afterSignIn();
     await _loadMe();
   }
 
@@ -112,6 +150,7 @@ class AppState extends ChangeNotifier {
     }
     status = AuthStatus.signedIn;
     notifyListeners();
+    _afterSignIn();
     await _loadMe();
   }
 
@@ -129,6 +168,22 @@ class AppState extends ChangeNotifier {
 
   void _handleLink(Uri uri) {
     if (uri.scheme != "gwave") return;
+
+    // gwave://metaverse?room=city — open the 3D world straight from a link.
+    // ★ Sign in ဝင်ထားမှ ဖွင့်တယ် — မဝင်ရသေးရင် Navigator က login screen
+    // ပေါ်မှာ ဖွင့်ပြီး ဘာမှမမြင်ရဘဲ ဖြစ်မယ်။
+    if (uri.host == "metaverse") {
+      if (status != AuthStatus.signedIn) return;
+      final room = uri.queryParameters["room"] ?? "city";
+      final nav = gwNavigatorKey.currentState;
+      if (nav != null) {
+        nav.push(
+          MaterialPageRoute(builder: (_) => MetaverseScreen(room: room)),
+        );
+      }
+      return;
+    }
+
     final code = uri.queryParameters["code"];
     if (code != null && code.isNotEmpty) completeGoogleSignIn(code);
   }
@@ -141,6 +196,7 @@ class AppState extends ChangeNotifier {
       await api.googleExchange(code);
       status = AuthStatus.signedIn;
       notifyListeners();
+      _afterSignIn();
       await _loadMe();
     } catch (e) {
       googleError = e.toString();
@@ -178,6 +234,7 @@ class AppState extends ChangeNotifier {
     if (signedIn) {
       status = AuthStatus.signedIn;
       notifyListeners();
+      _afterSignIn();
       await _loadMe();
     }
     return signedIn;
@@ -187,12 +244,14 @@ class AppState extends ChangeNotifier {
     await api.phoneVerify(phone, code);
     status = AuthStatus.signedIn;
     notifyListeners();
+    _afterSignIn();
     await _loadMe();
   }
 
   Future<void> logout() async {
     _presence?.cancel();
     _presence = null;
+    HealthStore.detachCloud();
     await api.logout();
     me = null;
     status = AuthStatus.signedOut;

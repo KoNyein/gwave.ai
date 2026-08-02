@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,10 +9,13 @@ import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../create/upload_flow.dart';
+import '../live/live_now_rail.dart';
 import 'story_viewer.dart';
 
-/// Horizontal stories rail at the top of the feed. Grouped by author; tapping an
-/// author opens their stories in the full-screen viewer.
+/// The feed's single compact highlights rail: the "create story" tile, then
+/// every CURRENT live broadcast (LIVE badge + autoplay preview), then story
+/// groups — one strip instead of two stacked blocks, Facebook-style. Live
+/// cards refresh on a timer so new broadcasts appear and ended ones drop off.
 class StoriesBar extends StatefulWidget {
   const StoriesBar({super.key});
 
@@ -20,19 +25,68 @@ class StoriesBar extends StatefulWidget {
 
 class _StoriesBarState extends State<StoriesBar> {
   List<Story> _stories = [];
+  List<LiveStream> _live = [];
+  Timer? _refresh;
+
+  // Per-stream throttle for the media-plane verify below, so a genuinely
+  // live broadcast isn't re-checked on every 25s refresh.
+  final Map<String, DateTime> _verifiedAt = {};
 
   @override
   void initState() {
     super.initState();
     _load();
+    _refresh = Timer.periodic(const Duration(seconds: 25), (_) => _loadLive());
+  }
+
+  @override
+  void dispose() {
+    _refresh?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
+    _loadLive();
     try {
       final s = await context.read<AppState>().repo.stories();
       if (mounted) setState(() => _stories = s);
     } catch (_) {
       // Non-fatal — the bar still shows the "your story" create tile.
+    }
+  }
+
+  Future<void> _loadLive() async {
+    try {
+      final state = context.read<AppState>();
+      var s = await state.repo.liveStreams(onlyLive: true);
+      // Self-heal: a broadcast that died without calling the end API stays
+      // "live" forever and its card never leaves this rail. Ask the server to
+      // check the real media plane (LiveKit room / IVS channel) for
+      // stale-looking lives — that also links the saved replay — then
+      // re-fetch so dead cards drop off. Throttled per stream.
+      final now = DateTime.now();
+      final stale = s
+          .where((x) =>
+              x.isLive &&
+              x.createdAt != null &&
+              now.difference(x.createdAt!).inMinutes >= 4 &&
+              now
+                      .difference(
+                          _verifiedAt[x.id] ?? DateTime.fromMillisecondsSinceEpoch(0))
+                      .inMinutes >=
+                  3)
+          .toList();
+      if (stale.isNotEmpty) {
+        for (final x in stale) {
+          _verifiedAt[x.id] = now;
+        }
+        await Future.wait(stale.map(
+            (x) => state.api.liveVerify(x.id).then((_) {}).catchError((_) {})));
+        s = await state.repo.liveStreams(onlyLive: true);
+      }
+      if (mounted) setState(() => _live = s.where((e) => e.isLive).toList());
+    } catch (_) {
+      // Non-fatal — live cards just stay unchanged.
     }
   }
 
@@ -101,18 +155,21 @@ class _StoriesBarState extends State<StoriesBar> {
     // Facebook-style stories: tall rounded cards with the story photo as the
     // card face, the author's ringed avatar in the corner, name at the bottom.
     return Container(
-      height: 176,
+      height: 168,
       color: GwColors.surfaceOf(context),
       margin: const EdgeInsets.only(bottom: 6),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        // Index 0 is always the "create story" card; groups follow.
-        itemCount: 1 + groups.length,
+        // One compact strip: create tile → live broadcasts → story groups.
+        itemCount: 1 + _live.length + groups.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (_, index) {
           if (index == 0) return _createCard();
-          final i = index - 1;
+          if (index <= _live.length) {
+            return LiveRailCard(stream: _live[index - 1], width: 100);
+          }
+          final i = index - 1 - _live.length;
           final g = groups[i];
           final author = g.first.author?.displayName ?? "Story";
           final face = g.first.mediaType == "image"

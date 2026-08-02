@@ -113,7 +113,7 @@ ${_html.text}
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: GwColors.surface,
+        color: GwColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(GwRadius.lg),
         boxShadow: GwShadow.card,
       ),
@@ -139,7 +139,7 @@ ${_html.text}
           TabBar(
             controller: _tabs,
             labelColor: widget.accent,
-            unselectedLabelColor: GwColors.inkSoft,
+            unselectedLabelColor: GwColors.inkSoftOf(context),
             indicatorColor: widget.accent,
             labelStyle:
                 const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
@@ -180,10 +180,10 @@ ${_html.text}
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
               child: Text(tr(context, "Result", "ရလဒ်"),
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 12.5,
-                      color: GwColors.inkSoft)),
+                      color: GwColors.inkSoftOf(context))),
             ),
             ClipRRect(
               borderRadius: const BorderRadius.vertical(

@@ -12,7 +12,6 @@ import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
-import '../live/live_now_rail.dart';
 import '../messenger/conversations_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../stories/stories_bar.dart';
@@ -250,9 +249,8 @@ class _FeedScreenState extends State<FeedScreen> {
             children: [
               _composerRow(),
               const SizedBox(height: 8),
-              // Every current broadcast, shown to every user (not just people
-              // you follow). Hidden when nobody is live.
-              const LiveNowRail(),
+              // One compact highlights rail: create-story tile, every current
+              // live broadcast (all users), then stories — no stacked blocks.
               const StoriesBar(),
             ],
           );
@@ -268,7 +266,7 @@ class _FeedScreenState extends State<FeedScreen> {
         }
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: PostCard(post: _posts[idx]),
+          child: PostCard(post: _posts[idx], onChanged: () => _load(reset: true)),
         );
       },
     );

@@ -258,7 +258,7 @@ class _LearnScreenState extends State<LearnScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: GwColors.surface,
+                    color: GwColors.surfaceOf(context),
                     borderRadius: BorderRadius.circular(GwRadius.lg),
                     border: Border.all(
                         color: cont.meta.color.withValues(alpha: 0.45),
@@ -343,7 +343,7 @@ class _LearnScreenState extends State<LearnScreen> {
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: GwColors.surface,
+                  color: GwColors.surfaceOf(context),
                   borderRadius: BorderRadius.circular(GwRadius.lg),
                   boxShadow: GwShadow.card,
                 ),
@@ -353,7 +353,7 @@ class _LearnScreenState extends State<LearnScreen> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: GwColors.ink,
+                        color: GwColors.inkOf(context),
                         borderRadius: BorderRadius.circular(13),
                       ),
                       child: const Icon(Icons.code,
@@ -372,13 +372,13 @@ class _LearnScreenState extends State<LearnScreen> {
                                   context,
                                   "Write and run HTML / JS / Python live",
                                   "HTML / JS / Python ကို တိုက်ရိုက် ရေးစမ်း"),
-                              style: const TextStyle(
-                                  color: GwColors.inkSoft, fontSize: 12.5)),
+                              style: TextStyle(
+                                  color: GwColors.inkSoftOf(context), fontSize: 12.5)),
                         ],
                       ),
                     ),
-                    const Icon(Icons.open_in_new,
-                        color: GwColors.inkSoft, size: 18),
+                    Icon(Icons.open_in_new,
+                        color: GwColors.inkSoftOf(context), size: 18),
                   ],
                 ),
               ),
@@ -395,8 +395,8 @@ class _LearnScreenState extends State<LearnScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 40),
                 child: Column(
                   children: [
-                    const Icon(Icons.cloud_off,
-                        size: 48, color: GwColors.inkSoft),
+                    Icon(Icons.cloud_off,
+                        size: 48, color: GwColors.inkSoftOf(context)),
                     const SizedBox(height: 10),
                     Text(
                         tr(context, "Couldn't load the courses",
@@ -406,8 +406,8 @@ class _LearnScreenState extends State<LearnScreen> {
                     const SizedBox(height: 4),
                     Text(_error!,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            color: GwColors.inkSoft, fontSize: 12)),
+                        style: TextStyle(
+                            color: GwColors.inkSoftOf(context), fontSize: 12)),
                   ],
                 ),
               )
@@ -440,7 +440,7 @@ class _LearnScreenState extends State<LearnScreen> {
       child: Container(
         padding: const EdgeInsets.all(13),
         decoration: BoxDecoration(
-          color: GwColors.surface,
+          color: GwColors.surfaceOf(context),
           borderRadius: BorderRadius.circular(GwRadius.lg),
           boxShadow: GwShadow.card,
         ),
@@ -458,8 +458,8 @@ class _LearnScreenState extends State<LearnScreen> {
             Text(subtitle,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    color: GwColors.inkSoft, fontSize: 11, height: 1.3)),
+                style: TextStyle(
+                    color: GwColors.inkSoftOf(context), fontSize: 11, height: 1.3)),
           ],
         ),
       ),
@@ -506,7 +506,7 @@ class _LearnScreenState extends State<LearnScreen> {
       child: LinearProgressIndicator(
         value: pct,
         minHeight: height,
-        backgroundColor: GwColors.surfaceMuted,
+        backgroundColor: GwColors.surfaceMutedOf(context),
         valueColor: AlwaysStoppedAnimation(t.meta.color),
       ),
     );
@@ -523,7 +523,7 @@ class _LearnScreenState extends State<LearnScreen> {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: GwColors.surface,
+            color: GwColors.surfaceOf(context),
             borderRadius: BorderRadius.circular(GwRadius.lg),
             boxShadow: GwShadow.card,
           ),
@@ -562,8 +562,8 @@ class _LearnScreenState extends State<LearnScreen> {
                           : "${t.total} ${tr(context, "lessons", "သင်ခန်းစာ")}",
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: GwColors.inkSoft, fontSize: 12.5),
+                      style: TextStyle(
+                          color: GwColors.inkSoftOf(context), fontSize: 12.5),
                     ),
                     const SizedBox(height: 7),
                     Row(
@@ -572,8 +572,8 @@ class _LearnScreenState extends State<LearnScreen> {
                         const SizedBox(width: 8),
                         Text(
                           "${t.total} ${tr(context, "lessons", "ခန်း")}",
-                          style: const TextStyle(
-                              color: GwColors.inkSoft, fontSize: 10.5),
+                          style: TextStyle(
+                              color: GwColors.inkSoftOf(context), fontSize: 10.5),
                         ),
                       ],
                     ),
@@ -581,7 +581,7 @@ class _LearnScreenState extends State<LearnScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+              Icon(Icons.chevron_right, color: GwColors.inkSoftOf(context)),
             ],
           ),
         ),

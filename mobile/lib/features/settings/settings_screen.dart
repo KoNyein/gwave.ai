@@ -7,6 +7,7 @@ import '../../core/app_state.dart';
 import '../../core/call_service.dart';
 import '../../core/config.dart';
 import '../../core/i18n.dart';
+import '../../core/skins.dart';
 import '../../core/theme_pref.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
@@ -151,7 +152,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: GwColors.surface,
+              color: GwColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(GwRadius.lg),
               boxShadow: GwShadow.card,
             ),
@@ -198,7 +199,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         fontWeight: FontWeight.w900, fontSize: 17)),
                 if (me?.username != null)
                   Text("@${me!.username}",
-                      style: const TextStyle(color: GwColors.inkSoft)),
+                      style: TextStyle(color: GwColors.inkSoftOf(context))),
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
                   onPressed: _uploadingCover
@@ -214,7 +215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   label: Text(tr(context, "Change cover photo", "Cover ဓာတ်ပုံ ပြောင်းရန်")),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: GwColors.primary,
-                    side: const BorderSide(color: GwColors.line),
+                    side: BorderSide(color: GwColors.lineOf(context)),
                   ),
                 ),
               ],
@@ -226,7 +227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: GwColors.surface,
+              color: GwColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(GwRadius.lg),
               boxShadow: GwShadow.card,
             ),
@@ -295,7 +296,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Account rows → web
           Container(
             decoration: BoxDecoration(
-              color: GwColors.surface,
+              color: GwColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(GwRadius.lg),
               boxShadow: GwShadow.card,
             ),
@@ -306,6 +307,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1, indent: 56),
                 _languageRow(context),
                 _themeRow(context),
+                _skinRow(context),
+                _genderRow(context),
                 const Divider(height: 1, indent: 56),
                 _row(Icons.workspace_premium_outlined, "Membership",
                     () => _openWeb("/membership")),
@@ -319,7 +322,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Log out
           Container(
             decoration: BoxDecoration(
-              color: GwColors.surface,
+              color: GwColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(GwRadius.lg),
               boxShadow: GwShadow.card,
             ),
@@ -358,8 +361,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 "${AppConfig.appBuild > 0 ? "Gwave v1.0.${AppConfig.appBuild}" : "Gwave (dev build)"}"
                 " · calls: ${context.watch<CallService>().ringStatus}",
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: GwColors.inkSoft,
+                style: TextStyle(
+                    color: GwColors.inkSoftOf(context),
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600),
               ),
@@ -370,7 +373,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// App language — English is the default; Burmese is the opt-in choice.
+  /// App language — English is the default; Burmese and Thai are opt-in.
+  /// Screens without Thai copy fall back to English (see tr3 in core/i18n).
   Widget _languageRow(BuildContext context) {
     final lang = context.watch<GwLang>();
     return ListTile(
@@ -390,6 +394,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         segments: const [
           ButtonSegment(value: "en", label: Text("EN")),
           ButtonSegment(value: "my", label: Text("မြန်မာ")),
+          ButtonSegment(value: "th", label: Text("ไทย")),
         ],
         selected: {lang.code},
         showSelectedIcon: false,
@@ -442,6 +447,151 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// Design skin — the whole app's look: Gwave (green), Sky (Twitter/X
+  /// style), Liberty (Truth style), Tactical (military). Each card previews
+  /// the skin's canvas, card and accent colours; the active one gets an
+  /// accent ring + check.
+  Widget _skinRow(BuildContext context) {
+    final pref = context.watch<GwThemePref>();
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 8),
+            child: Text(
+              tr(context, "Design theme", "ဒီဇိုင်း Theme"),
+              style: const TextStyle(
+                  fontWeight: FontWeight.w700, fontSize: 14.5),
+            ),
+          ),
+          SizedBox(
+            height: 96,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final s in GwSkins.all)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => pref.setSkin(s),
+                      child: Container(
+                        width: 118,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: dark ? s.dSurface : s.bg,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: pref.skin.id == s.id
+                                ? (dark ? s.primaryOnDark : s.primary)
+                                : GwColors.lineOf(context),
+                            width: pref.skin.id == s.id ? 2.2 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                _swatch(dark ? s.dBg : s.bg,
+                                    GwColors.lineOf(context)),
+                                const SizedBox(width: 4),
+                                _swatch(dark ? s.dSurfaceMuted : s.surface,
+                                    GwColors.lineOf(context)),
+                                const SizedBox(width: 4),
+                                _swatch(dark ? s.primaryOnDark : s.primary,
+                                    Colors.transparent),
+                                const Spacer(),
+                                if (pref.skin.id == s.id)
+                                  Icon(Icons.check_circle,
+                                      size: 17,
+                                      color: dark
+                                          ? s.primaryOnDark
+                                          : s.primary),
+                              ],
+                            ),
+                            const Spacer(),
+                            Text(
+                              tr(context, s.nameEn, s.nameMy),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                height: 1.2,
+                                fontWeight: FontWeight.w700,
+                                color: dark ? s.dInk : s.ink,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Gender — collected at sign-up for new accounts; this row lets accounts
+  /// created before that set it (it gates female-only features like the
+  /// cycle tracker).
+  Widget _genderRow(BuildContext context) {
+    final me = context.watch<AppState>().me;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: GwColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.wc, color: GwColors.primary, size: 20),
+      ),
+      title: Text(tr(context, "Gender", "ကျား/မ"),
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
+      trailing: SegmentedButton<String>(
+        segments: [
+          ButtonSegment(value: "male", label: Text(tr(context, "M", "ကျား"))),
+          ButtonSegment(value: "female", label: Text(tr(context, "F", "မ"))),
+          ButtonSegment(value: "other", label: Text(tr(context, "Other", "အခြား"))),
+        ],
+        selected: {me?.gender ?? ""},
+        emptySelectionAllowed: true,
+        showSelectedIcon: false,
+        style: SegmentedButton.styleFrom(
+          selectedBackgroundColor: GwColors.primary.withValues(alpha: 0.15),
+          selectedForegroundColor: GwColors.primary,
+          visualDensity: VisualDensity.compact,
+        ),
+        onSelectionChanged: (v) async {
+          if (v.isEmpty) return;
+          final state = context.read<AppState>();
+          try {
+            await state.repo.setProfileBasics(gender: v.first);
+            await state.refreshMe();
+          } catch (_) {}
+        },
+      ),
+    );
+  }
+
+  Widget _swatch(Color fill, Color border) => Container(
+        width: 18,
+        height: 18,
+        decoration: BoxDecoration(
+          color: fill,
+          shape: BoxShape.circle,
+          border: Border.all(color: border),
+        ),
+      );
+
   Widget _row(IconData icon, String label, VoidCallback onTap) => ListTile(
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
@@ -457,7 +607,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: Text(label,
             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
         trailing:
-            const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+            Icon(Icons.chevron_right, color: GwColors.inkSoftOf(context)),
         onTap: onTap,
       );
 }

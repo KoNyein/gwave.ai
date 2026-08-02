@@ -13,9 +13,13 @@ on:
         default: release
         options: [release, debug]
   push:
+    # ONLY the canonical mobile dev branch builds & publishes the APK. Web
+    # branches (claude/** off main) and main itself do NOT carry the mobile-only
+    # features (native audio store / health hub / call fixes live only here), so
+    # building from them produced a feature-stripped APK that clobbered the
+    # rolling mobile-latest release. Restricting the trigger prevents that.
     branches:
-      - main
-      - "claude/**"
+      - claude/phase-1-implementation-7ysxtj
     paths:
       - "mobile/**"
       - ".github/workflows/build-flutter-apk.yml"
@@ -48,11 +52,21 @@ jobs:
       # network (every request fails "Failed host lookup ... errno = 7") without it.
       - name: Scaffold Android platform
         run: |
-          flutter create --org ai.gwave --project-name gwave --platforms=android .
+          # applicationId + namespace both resolve to com.green.gwave (from
+          # --org com.green + project-name gwave). This MUST match the registered
+          # Android app in mobile/google-services.json, or on-device FCM
+          # (Firebase.initializeApp / getToken) fails and calls can't ring a
+          # closed app. Keeping namespace == applicationId also avoids the
+          # google-services Gradle plugin's "no matching client" build error.
+          flutter create --org com.green --project-name gwave --platforms=android .
           for G in android/app/build.gradle android/app/build.gradle.kts; do
             [ -f "$G" ] || continue
-            sed -i 's/applicationId "ai.gwave.gwave"/applicationId "ai.gwave.app"/' "$G"
-            sed -i 's/applicationId = "ai.gwave.gwave"/applicationId = "ai.gwave.app"/' "$G"
+            # firebase_messaging requires minSdk >= 23; the template defaults to
+            # flutter.minSdkVersion (21), which would fail the manifest merger.
+            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' "$G"
+            sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' "$G"
+            sed -i -E 's/minSdk = 2[012]([^0-9]|$)/minSdk = 23\1/' "$G"
+            sed -i -E 's/minSdkVersion 2[012]([^0-9]|$)/minSdkVersion 23\1/' "$G"
           done
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           python3 - "$MANIFEST" <<'PY'
@@ -121,6 +135,66 @@ jobs:
                   '    <application',
                   1,
               )
+          # Driver Mode's location foreground service (geolocator's
+          # GeolocatorLocationService, declared by the plugin's own manifest).
+          # Android 14+ requires the per-type permission beside
+          # FOREGROUND_SERVICE or the service throws on start.
+          #
+          # This is deliberately a foreground service and NOT
+          # ACCESS_BACKGROUND_LOCATION: a driver's position is only collected
+          # while Driver Mode is on and a persistent notification is showing,
+          # which keeps the app out of Play Store's background-location review
+          # — the review that most often rejects ride apps. Do not add the
+          # background permission to "make it more reliable".
+          if 'android.permission.FOREGROUND_SERVICE_LOCATION' not in s:
+              s = s.replace(
+                  '<application',
+                  '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n'
+                  '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />\n'
+                  '    <application',
+                  1,
+              )
+          # Android 13+ runtime notification permission — needed for FCM push
+          # (incoming-call wake) to show anything. Harmless on older versions.
+          if 'android.permission.POST_NOTIFICATIONS' not in s:
+              s = s.replace(
+                  '<application',
+                  '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n'
+                  '    <application',
+                  1,
+              )
+          # Background audio (just_audio_background / audio_service): the media
+          # session runs as a foreground service so music keeps playing when
+          # the app is minimised or the screen is off, and the notification /
+          # lock screen show play-pause-next-prev. Without the service +
+          # MEDIA_BUTTON receiver declarations playback dies on background.
+          if 'com.ryanheise.audioservice.AudioService' not in s:
+              s = s.replace(
+                  '<application',
+                  '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n'
+                  '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />\n'
+                  '    <uses-permission android:name="android.permission.WAKE_LOCK" />\n'
+                  '    <application',
+                  1,
+              )
+              s = s.replace(
+                  '</application>',
+                  '    <service android:name="com.ryanheise.audioservice.AudioService"\n'
+                  '            android:foregroundServiceType="mediaPlayback"\n'
+                  '            android:exported="true">\n'
+                  '            <intent-filter>\n'
+                  '                <action android:name="android.media.browse.MediaBrowserService" />\n'
+                  '            </intent-filter>\n'
+                  '        </service>\n'
+                  '        <receiver android:name="com.ryanheise.audioservice.MediaButtonReceiver"\n'
+                  '            android:exported="true">\n'
+                  '            <intent-filter>\n'
+                  '                <action android:name="android.intent.action.MEDIA_BUTTON" />\n'
+                  '            </intent-filter>\n'
+                  '        </receiver>\n'
+                  '    </application>',
+                  1,
+              )
           # Android 11+ package visibility: without declaring the TTS_SERVICE
           # intent, flutter_tts cannot bind the device speech engine and the
           # language courses play no audio (speak() silently no-ops).
@@ -172,6 +246,24 @@ jobs:
           PY
           grep -q 'android.permission.INTERNET' "$MANIFEST" || (echo "INTERNET permission injection failed" && exit 1)
           grep -q 'android:scheme="gwave"' "$MANIFEST" || (echo "deep link injection failed" && exit 1)
+          grep -q 'com.ryanheise.audioservice.AudioService' "$MANIFEST" || (echo "audio service injection failed" && exit 1)
+
+          # The media session needs the host Activity to be an
+          # AudioServiceActivity, otherwise tapping the media notification
+          # can't bring the app back and Android 13 media resumption misses it.
+          python3 - <<'PY'
+          import glob, re
+          for p in glob.glob('android/app/src/main/kotlin/**/MainActivity.kt', recursive=True):
+              s = open(p).read()
+              if 'AudioServiceActivity' in s:
+                  continue
+              s = s.replace('import io.flutter.embedding.android.FlutterActivity',
+                            'import com.ryanheise.audioservice.AudioServiceActivity')
+              s = re.sub(r'class\s+MainActivity\s*:\s*FlutterActivity\(\)',
+                         'class MainActivity : AudioServiceActivity()', s)
+              open(p, 'w').write(s)
+              print(f"Patched {p} -> AudioServiceActivity")
+          PY
 
           # Some pub plugins (native_device_orientation, pulled in by
           # apivideo_live_stream) still pin compileSdk 31, which AGP hard-fails
@@ -215,6 +307,72 @@ jobs:
           GROOVY
           fi
           echo "Patched root gradle: subproject compileSdk floor 36"
+
+      # Optional Firebase (FCM) native config for incoming-call push. Runs ONLY
+      # when a google-services.json is available — either committed at
+      # mobile/google-services.json or supplied as the GOOGLE_SERVICES_JSON_BASE64
+      # secret. When neither is present the step is a clean no-op, so the APK
+      # build stays green and every other feature is completely unaffected; the
+      # app's Firebase init just fails gracefully and push stays off.
+      - name: Configure Firebase (FCM) if provided
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          set -e
+          # Prefer the GOOGLE_SERVICES_JSON_BASE64 secret over any committed file,
+          # so the real Firebase config (set once as a repo secret) always wins and
+          # can never be shadowed by a stale/placeholder mobile/google-services.json.
+          SRC=""
+          if [ -n "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > /tmp/google-services.json
+            SRC=/tmp/google-services.json
+          elif [ -f google-services.json ]; then
+            SRC=google-services.json
+          fi
+          if [ -z "$SRC" ]; then
+            echo "No google-services.json — skipping Firebase/FCM native config (push stays off)."
+            exit 0
+          fi
+          cp "$SRC" android/app/google-services.json
+          echo "Placed android/app/google-services.json"
+          python3 - <<'PY'
+          import os, re
+          def read(p): return open(p).read()
+          def write(p, s): open(p, 'w').write(s)
+          # Modern Flutter uses the declarative plugins {} DSL.
+          sp = 'android/settings.gradle.kts'
+          if os.path.exists(sp):
+              s = read(sp)
+              if 'com.google.gms.google-services' not in s and re.search(r'plugins\s*\{', s):
+                  s = re.sub(r'(plugins\s*\{)',
+                             r'\1\n    id("com.google.gms.google-services") version "4.4.2" apply false',
+                             s, count=1)
+                  write(sp, s); print("Patched settings.gradle.kts")
+          ap = 'android/app/build.gradle.kts'
+          if os.path.exists(ap):
+              s = read(ap)
+              if 'com.google.gms.google-services' not in s and re.search(r'plugins\s*\{', s):
+                  s = re.sub(r'(plugins\s*\{)',
+                             r'\1\n    id("com.google.gms.google-services")',
+                             s, count=1)
+                  write(ap, s); print("Patched app/build.gradle.kts")
+          # Legacy Groovy fallback.
+          rg = 'android/build.gradle'
+          if os.path.exists(rg):
+              s = read(rg)
+              if 'com.google.gms:google-services' not in s and 'buildscript' in s:
+                  s = re.sub(r'(buildscript\s*\{.*?dependencies\s*\{)',
+                             r'\1\n        classpath("com.google.gms:google-services:4.4.2")',
+                             s, count=1, flags=re.S)
+                  write(rg, s); print("Patched root build.gradle classpath")
+          ag = 'android/app/build.gradle'
+          if os.path.exists(ag) and not os.path.exists(ap):
+              s = read(ag)
+              if 'com.google.gms.google-services' not in s:
+                  write(ag, s + '\napply plugin: "com.google.gms.google-services"\n')
+                  print("Appended apply plugin to app/build.gradle")
+          PY
+          echo "Firebase/FCM native config applied."
 
       # Release signing with the same upload keystore the main-branch signed CI
       # uses, so APKs from either workflow carry the SAME signature and users
@@ -315,7 +473,10 @@ jobs:
       - name: Build APK
         env:
           API_BASE: ${{ vars.MOBILE_API_BASE || 'https://gwave.cc' }}
-          SUPABASE_URL: ${{ secrets.MOBILE_SUPABASE_URL }}
+          # Fallback data-plane URL if /api/mobile/config is unreachable at app
+          # start. Default to the live gateway so an unset/stale secret can
+          # never quietly point fresh installs at a dead Supabase project.
+          SUPABASE_URL: ${{ secrets.MOBILE_SUPABASE_URL || 'https://gwave.cc/sb' }}
           SUPABASE_ANON_KEY: ${{ secrets.MOBILE_SUPABASE_ANON_KEY }}
           IVS_RECORDING_BASE: ${{ vars.MOBILE_IVS_RECORDING_BASE }}
         run: |

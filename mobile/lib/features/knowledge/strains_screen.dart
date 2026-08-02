@@ -9,6 +9,9 @@ import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import 'cannabis_market_screen.dart';
+import 'cannabis_places_screen.dart';
+import 'knowledge_i18n.dart';
 import 'subject_comments_sheet.dart';
 
 const _typeColors = <String, Color>{
@@ -18,7 +21,9 @@ const _typeColors = <String, Color>{
 };
 
 /// Native Strains — Leafly-style browse over the public `strains` table:
-/// search, type filter, THC/CBD at a glance, and a full detail screen.
+/// search, type filter, THC/CBD at a glance, and a full detail screen. When
+/// the app language is Burmese every label, chip and summary renders in
+/// Burmese (see knowledge_i18n.dart).
 class StrainsScreen extends StatefulWidget {
   const StrainsScreen({super.key});
 
@@ -73,7 +78,32 @@ class _StrainsScreenState extends State<StrainsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Strains")),
+      appBar: AppBar(
+        title: Text(tr(context, "Strains", "မျိုးကွဲများ")),
+        actions: [
+          // Both were web pages in a webview, which put the site's own header
+          // inside the app. Native now, over the same routes — and the map
+          // needs the camera and GPS, which a webview handles badly.
+          IconButton(
+            tooltip: tr(context, "Shops / farms / clinics map",
+                "ဆိုင် / စိုက်ခင်း / ကလင်းနစ် မြေပုံ"),
+            icon: const Icon(Icons.map_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const CannabisPlacesScreen()),
+            ),
+          ),
+          IconButton(
+            tooltip: tr(context, "Markets (18+, educational)",
+                "ဈေးကွက် (၁၈+၊ ပညာပေး)"),
+            icon: const Icon(Icons.trending_up),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const CannabisMarketScreen()),
+            ),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
@@ -102,7 +132,7 @@ class _StrainsScreenState extends State<StrainsScreen> {
                       setState(() => _type = null);
                       _load();
                     },
-                    label: const Text("All"),
+                    label: Text(tr(context, "All", "အားလုံး")),
                     selectedColor: GwColors.primary.withValues(alpha: 0.15),
                   ),
                 ),
@@ -115,7 +145,8 @@ class _StrainsScreenState extends State<StrainsScreen> {
                         setState(() => _type = _type == t ? null : t);
                         _load();
                       },
-                      label: Text(t[0].toUpperCase() + t.substring(1)),
+                      label: Text(kTerm(
+                          context, t[0].toUpperCase() + t.substring(1))),
                       selectedColor:
                           (_typeColors[t] ?? GwColors.primary).withValues(alpha: 0.18),
                     ),
@@ -128,15 +159,14 @@ class _StrainsScreenState extends State<StrainsScreen> {
               color: GwColors.primary,
               onRefresh: _load,
               child: _loading && _strains.isEmpty
-                  ? const Center(
-                      child:
-                          CircularProgressIndicator(color: GwColors.primary))
+                  ? const GwSkeletonList(count: 6, hasAvatar: false)
                   : _error != null && _strains.isEmpty
                       ? ListView(children: [
                           const SizedBox(height: 80),
                           GwEmpty(
                               icon: Icons.cloud_off,
-                              title: "Couldn't load strains",
+                              title: tr(context, "Couldn't load strains",
+                                  "မျိုးကွဲများ မဖွင့်နိုင်ပါ"),
                               subtitle: _error),
                         ])
                       : _strains.isEmpty
@@ -171,7 +201,7 @@ class _StrainsScreenState extends State<StrainsScreen> {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: GwColors.surface,
+            color: GwColors.surfaceOf(context),
             borderRadius: BorderRadius.circular(GwRadius.lg),
             boxShadow: GwShadow.card,
           ),
@@ -186,41 +216,52 @@ class _StrainsScreenState extends State<StrainsScreen> {
                     Text(s.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 15.5)),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15.5,
+                            color: GwColors.inkOf(context))),
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        GwPill(label: s.type.toUpperCase(), color: color),
+                        GwPill(
+                            label: isMy(context)
+                                ? kTerm(context, s.type)
+                                : s.type.toUpperCase(),
+                            color: color),
                         const SizedBox(width: 8),
                         if (s.thc != null)
                           Text("THC ${s.thc}%",
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
-                                  color: GwColors.inkSoft)),
+                                  color: GwColors.inkSoftOf(context))),
                         if (s.cbd != null) ...[
                           const SizedBox(width: 8),
                           Text("CBD ${s.cbd}%",
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
-                                  color: GwColors.inkSoft)),
+                                  color: GwColors.inkSoftOf(context))),
                         ],
                       ],
                     ),
                     if (s.effects.isNotEmpty) ...[
                       const SizedBox(height: 4),
-                      Text(s.effects.take(3).join(" · "),
+                      Text(
+                          s.effects
+                              .take(3)
+                              .map((e) => kTerm(context, e))
+                              .join(" · "),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 12, color: GwColors.inkSoft)),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: GwColors.inkSoftOf(context))),
                     ],
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: GwColors.inkSoft),
+              Icon(Icons.chevron_right, color: GwColors.inkSoftOf(context)),
             ],
           ),
         ),
@@ -258,6 +299,7 @@ class StrainDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = strain;
     final color = _typeColors[s.type] ?? GwColors.primary;
+    final my = isMy(context);
     return Scaffold(
       appBar: AppBar(title: Text(s.name)),
       body: ListView(
@@ -267,7 +309,7 @@ class StrainDetailScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: GwColors.surface,
+              color: GwColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(GwRadius.lg),
               boxShadow: GwShadow.card,
             ),
@@ -276,148 +318,193 @@ class StrainDetailScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    GwPill(label: s.type.toUpperCase(), color: color),
+                    GwPill(
+                        label: my ? kTerm(context, s.type) : s.type.toUpperCase(),
+                        color: color),
                     const Spacer(),
                     if (s.growDifficulty != null)
                       GwPill(
-                          label: "Grow: ${s.growDifficulty}",
+                          label:
+                              "${tr(context, "Grow", "စိုက်ရ")}: ${kTerm(context, s.growDifficulty!)}",
                           color: GwColors.inkSoft),
                   ],
                 ),
+                const SizedBox(height: 8),
+                // What this type means, in plain words.
+                Text(strainTypeInfo(context, s.type),
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        height: 1.4,
+                        color: GwColors.inkSoftOf(context))),
                 const SizedBox(height: 14),
-                if (s.thc != null) _bar("THC", s.thc!, 30, GwColors.live),
-                if (s.cbd != null) _bar("CBD", s.cbd!, 20, GwColors.primary),
+                if (s.thc != null) _bar(context, "THC", s.thc!, 30, GwColors.live),
+                if (s.cbd != null)
+                  _bar(context, "CBD", s.cbd!, 20, GwColors.primary),
+                if (s.thc != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text("⚡ ${potencyClass(context, s.thc!)}",
+                        style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: GwColors.inkSoftOf(context))),
+                  ),
                 if (s.floweringWeeks != null ||
                     s.yieldIndoor != null ||
                     s.yieldOutdoor != null) ...[
                   const Divider(height: 24),
                   if (s.floweringWeeks != null)
-                    _fact("🌸 ပန်းပွင့်ချိန်", "${s.floweringWeeks} ပတ်"),
+                    _fact(context, "🌸 ပန်းပွင့်ချိန်", "${s.floweringWeeks} ပတ်"),
                   if (s.yieldIndoor != null)
-                    _fact("🏠 အထွက် (အတွင်း)", s.yieldIndoor!),
+                    _fact(context, "🏠 အထွက် (အတွင်း)", s.yieldIndoor!),
                   if (s.yieldOutdoor != null)
-                    _fact("🌤 အထွက် (အပြင်)", s.yieldOutdoor!),
+                    _fact(context, "🌤 အထွက် (အပြင်)", s.yieldOutdoor!),
                 ],
               ],
             ),
           ),
-          if (s.description != null && s.description!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _section("အကြောင်းအရာ",
-                Text(s.description!, style: const TextStyle(height: 1.5))),
-          ],
+          const SizedBox(height: 12),
+          _section(
+            context,
+            tr(context, "About", "အကြောင်းအရာ"),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // In Burmese: a summary generated from the structured fields
+                // (the seeded description is English-only), with the original
+                // English kept below in smaller type.
+                if (my) ...[
+                  Text(strainSummaryMy(s),
+                      style: TextStyle(
+                          height: 1.6, color: GwColors.inkOf(context))),
+                  if (s.description != null && s.description!.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(s.description!,
+                        style: TextStyle(
+                            height: 1.45,
+                            fontSize: 12.5,
+                            color: GwColors.inkSoftOf(context))),
+                  ],
+                ] else if (s.description != null && s.description!.isNotEmpty)
+                  Text(s.description!,
+                      style: TextStyle(
+                          height: 1.5, color: GwColors.inkOf(context)))
+                else
+                  Text(strainTypeInfo(context, s.type),
+                      style: TextStyle(
+                          height: 1.5, color: GwColors.inkOf(context))),
+              ],
+            ),
+          ),
           if (s.effects.isNotEmpty) ...[
             const SizedBox(height: 12),
-            _section("Effects", _chips(s.effects, color)),
+            _section(context, tr(context, "Effects", "အာနိသင်များ"),
+                _chips(context, s.effects, color)),
           ],
           if (s.flavors.isNotEmpty) ...[
             const SizedBox(height: 12),
-            _section("Flavors", _chips(s.flavors, GwColors.gold)),
+            _section(context, tr(context, "Flavors", "အနံ့အရသာများ"),
+                _chips(context, s.flavors, GwColors.gold)),
           ],
           if (s.terpenes.isNotEmpty) ...[
             const SizedBox(height: 12),
-            _section("Terpenes", _chips(s.terpenes, GwColors.primary)),
+            _section(
+              context,
+              tr(context, "Terpenes", "တာပင်းများ"),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _chips(context, s.terpenes, GwColors.primary),
+                  // Terpene explainers (Burmese) — what each aroma compound
+                  // tends to do.
+                  if (my) ...[
+                    const SizedBox(height: 10),
+                    for (final t in s.terpenes)
+                      if (terpeneInfoMy[t.toLowerCase()] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 5),
+                          child: Text(
+                              "• ${t[0].toUpperCase()}${t.substring(1)} — ${terpeneInfoMy[t.toLowerCase()]}",
+                              style: TextStyle(
+                                  fontSize: 12.5,
+                                  height: 1.45,
+                                  color: GwColors.inkSoftOf(context))),
+                        ),
+                  ],
+                ],
+              ),
+            ),
           ],
           const SizedBox(height: 12),
-          _commentsButton(context, "strain", s.id, s.name),
+          // Comments + photos shown right on the page.
+          SubjectCommentsPanel(
+            subjectType: "strain",
+            subjectId: s.id,
+            title: s.name,
+            embedded: true,
+          ),
         ],
       ),
     );
   }
 
-  Widget _commentsButton(
-          BuildContext context, String type, String id, String title) =>
-      GestureDetector(
-        onTap: () => SubjectCommentsSheet.show(context,
-            subjectType: type, subjectId: id, title: title),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: GwColors.surface,
-            borderRadius: BorderRadius.circular(GwRadius.lg),
-            boxShadow: GwShadow.card,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: GwColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.forum_outlined,
-                    color: GwColors.primary, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(tr(context, "Comments & experience", "မှတ်ချက် နှင့် အတွေ့အကြုံ"),
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 14.5)),
-                    const SizedBox(height: 2),
-                    Text(
-                        tr(context, "Share a photo, voice note or video",
-                            "ဓာတ်ပုံ၊ အသံ သို့မဟုတ် ဗီဒီယို မျှဝေရန်"),
-                        style: const TextStyle(
-                            color: GwColors.inkSoft, fontSize: 12)),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: GwColors.inkSoft),
-            ],
-          ),
-        ),
-      );
-
-  Widget _bar(String label, double v, double max, Color color) => Padding(
+  Widget _bar(BuildContext context, String label, double v, double max,
+          Color color) =>
+      Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Row(
           children: [
             SizedBox(
                 width: 44,
                 child: Text(label,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 13))),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: GwColors.inkOf(context)))),
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: LinearProgressIndicator(
                   value: (v / max).clamp(0, 1),
                   minHeight: 9,
-                  backgroundColor: GwColors.surfaceMuted,
+                  backgroundColor: GwColors.surfaceMutedOf(context),
                   valueColor: AlwaysStoppedAnimation(color),
                 ),
               ),
             ),
             const SizedBox(width: 10),
             Text("$v%",
-                style:
-                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    color: GwColors.inkOf(context))),
           ],
         ),
       );
 
-  Widget _fact(String k, String v) => Padding(
+  Widget _fact(BuildContext context, String k, String v) => Padding(
         padding: const EdgeInsets.only(bottom: 6),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(k, style: const TextStyle(color: GwColors.inkSoft, fontSize: 13)),
+            Text(k,
+                style: TextStyle(
+                    color: GwColors.inkSoftOf(context), fontSize: 13)),
             Text(v,
-                style:
-                    const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: GwColors.inkOf(context))),
           ],
         ),
       );
 
-  Widget _section(String title, Widget child) => Container(
+  Widget _section(BuildContext context, String title, Widget child) =>
+      Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: GwColors.surface,
+          color: GwColors.surfaceOf(context),
           borderRadius: BorderRadius.circular(GwRadius.lg),
           boxShadow: GwShadow.card,
         ),
@@ -425,15 +512,17 @@ class StrainDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w800, fontSize: 14.5)),
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14.5,
+                    color: GwColors.inkOf(context))),
             const SizedBox(height: 10),
             child,
           ],
         ),
       );
 
-  Widget _chips(List<String> items, Color color) => Wrap(
+  Widget _chips(BuildContext context, List<String> items, Color color) => Wrap(
         spacing: 8,
         runSpacing: 8,
         children: [
@@ -445,7 +534,7 @@ class StrainDetailScreen extends StatelessWidget {
                 color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(it,
+              child: Text(kTerm(context, it),
                   style: TextStyle(
                       color: color,
                       fontWeight: FontWeight.w700,

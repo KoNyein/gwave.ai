@@ -1,0 +1,53 @@
+{
+  "family": "gwave-metaverse",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT>:role/gwaveEcsExecutionRole",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT>:role/gwaveMetaverseTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "metaverse",
+      "image": "<ACCOUNT>.dkr.ecr.ap-southeast-1.amazonaws.com/gwave-metaverse:latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 8080, "protocol": "tcp" }],
+      "environment": [
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "PORT", "value": "8080" },
+        { "name": "REQUIRE_AUTH", "value": "false" }
+      ],
+      "secrets": [
+        {
+          "name": "MV_TICKET_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<ACCOUNT>:secret:gwave/MV_TICKET_SECRET"
+        },
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<ACCOUNT>:secret:gwave/MV_DATABASE_URL"
+        },
+        {
+          "name": "REDIS_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<ACCOUNT>:secret:gwave/MV_REDIS_URL"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/gwave-metaverse",
+          "awslogs-region": "ap-southeast-1",
+          "awslogs-stream-prefix": "mv",
+          "awslogs-create-group": "true"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 15
+      },
+      "stopTimeout": 20
+    }
+  ]
+}

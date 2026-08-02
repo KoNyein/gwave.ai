@@ -21,6 +21,13 @@ dependencies:
   intl: ^0.19.0
   shared_preferences: ^2.2.3
   image_picker: ^1.1.2
+  # Attach any document/file to a chat message.
+  file_picker: ^8.1.2
+  # Push notifications (FCM) so incoming calls can wake a closed app. Ships a
+  # bundled google-services.json; if that ever went missing, Firebase init is
+  # caught and the app runs exactly as before (push simply off).
+  firebase_core: ^3.6.0
+  firebase_messaging: ^15.1.3
   mobile_scanner: ^5.2.3
   qr_flutter: ^4.1.0
   # POS receipts: build an 80mm receipt PDF and hand it to the Android print
@@ -35,6 +42,13 @@ dependencies:
   # against record_platform_interface 1.6, breaking even Android builds.)
   record: ^6.0.0
   audioplayers: ^6.1.0
+  # Music/podcast/audiobook playback that keeps going when the app is
+  # minimised, the screen is off or another app is in front — with a media
+  # notification + lock-screen controls (play/pause/next/prev/seek).
+  just_audio: ^0.9.42
+  just_audio_background: ^0.0.1-beta.15
+  # In-app ebook reader for the Books store (paged PDF viewer).
+  flutter_pdfview: ^1.3.2
   path_provider: ^2.1.4
   # Language courses: speak phrases with the device TTS engine.
   flutter_tts: ^4.0.2
@@ -69,6 +83,13 @@ dependencies:
   share_plus: ^10.0.0
   # Scan nearby WiFi access points for the crowdsourced WiFi map (WiGLE-style).
   wifi_scan: ^0.4.1
+  # Metaverse: keep the screen on while the 3D world is open. Standing still
+  # in a world looks like "doing nothing" to Android, which then blanks the
+  # screen mid-session. WAKE_LOCK is already in the manifest.
+  wakelock_plus: ^1.2.8
+  # Health: PPG heart-rate — cover the rear camera + torch with a fingertip and
+  # read the red-channel pulse to draw a live heart-rhythm ("health wave").
+  camera: ^0.11.0
 
 dev_dependencies:
   flutter_lints: ^4.0.0

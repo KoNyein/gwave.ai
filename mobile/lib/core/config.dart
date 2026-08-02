@@ -108,10 +108,22 @@ class AppConfig {
     String? cognitoClientId,
     String? mediaCdn,
   }) {
-    if (url != null && url.isNotEmpty) _supabaseUrl = url;
+    if (url != null && url.isNotEmpty) {
+      _supabaseUrl = url;
+      _runtimeLoaded = true;
+    }
     if (anonKey != null && anonKey.isNotEmpty) _supabaseAnonKey = anonKey;
     if (cognitoDomain != null) _cognitoDomain = cognitoDomain;
     if (cognitoClientId != null) _cognitoClientId = cognitoClientId;
     if (mediaCdn != null) _mediaCdn = mediaCdn;
   }
+
+  /// True once `/api/mobile/config` has been applied. While false the app is
+  /// running on the baked --dart-define fallback, which may point at a stale
+  /// data plane: PostgREST writes (presence heartbeat) silently miss, and the
+  /// Realtime socket joins the WRONG server — it still reports "ready" there,
+  /// but rings broadcast into a room nobody is in. Callers that depend on the
+  /// data plane should retry the config fetch until this flips.
+  static bool _runtimeLoaded = false;
+  static bool get runtimeLoaded => _runtimeLoaded;
 }

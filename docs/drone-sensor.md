@@ -12,7 +12,7 @@ awareness — the sensor does the RF heavy lifting, the cloud fans it out.
 
 ## 1. Create the table (once)
 
-Run `supabase/sql-editor-bundles/drone-detections.sql` on RDS, then
+Run `db/sql/drone-detections.sql` on RDS, then
 `sudo docker restart postgrest`.
 
 ## 2. Set the sensor key (once)

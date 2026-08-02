@@ -15,6 +15,7 @@ class Profile {
     this.coverUrl,
     this.bio,
     this.role,
+    this.gender,
     this.isTeacher = false,
     this.lastSeenAt,
   });
@@ -26,6 +27,11 @@ class Profile {
   final String? coverUrl;
   final String? bio;
   final String? role;
+
+  /// male | female | other — collected at sign-up; gates gender-specific
+  /// features (the cycle tracker shows only for female profiles). Mutable:
+  /// fetched leniently after the main profile row (see Repository.myProfile).
+  String? gender;
   final bool isTeacher;
 
   /// Presence heartbeat (profiles.last_seen_at). Filled only where a screen
@@ -56,6 +62,7 @@ class Profile {
         coverUrl: _s(j["cover_url"]),
         bio: _s(j["bio"]),
         role: _s(j["role"]),
+        gender: _s(j["gender"]),
         isTeacher: j["is_teacher"] == true,
         lastSeenAt: DateTime.tryParse("${j["last_seen_at"]}")?.toLocal(),
       );
@@ -285,34 +292,132 @@ class ShopProduct {
     required this.id,
     required this.title,
     required this.currency,
+    required this.kind,
     this.description,
     this.imageUrl,
     this.price,
     this.category,
     this.externalUrl,
     this.merchant,
+    this.sellerId,
+    this.images = const [],
+    this.status = "active",
   });
 
   final String id;
   final String title;
   final String currency;
+
+  /// "dropship" — we take the order and ship it, so the price is ours and
+  /// checkout happens in-app. "affiliate" — the listing points at a merchant
+  /// who owns the price, the stock and the checkout.
+  final String kind;
   final String? description;
   final String? imageUrl;
   final double? price;
   final String? category;
   final String? externalUrl;
   final String? merchant;
+  final String? sellerId;
+
+  /// The listing's gallery, in the seller's order. [imageUrl] stays the cover
+  /// so every card and order row keeps working; this is what the product page
+  /// swipes through.
+  final List<String> images;
+  final String status;
+
+  /// Cover first, then the rest — and never an empty gallery when the row has
+  /// a cover, so the detail page can always page through *something*.
+  List<String> get gallery {
+    final all = <String>[
+      if (imageUrl != null && imageUrl!.isNotEmpty) imageUrl!,
+      ...images.where((i) => i.isNotEmpty && i != imageUrl),
+    ];
+    return all;
+  }
+
+  bool get isAffiliate => kind == "affiliate";
+
+  /// An affiliate price was copied from the merchant when the listing was
+  /// imported and drifts from that day on — showing it as though it were the
+  /// price to pay is how a listing ends up advertising 13 THB for an 89 THB
+  /// item. Only a dropship price is one we actually honour.
+  bool get hasOwnPrice => !isAffiliate && price != null;
 
   factory ShopProduct.fromJson(Map<String, dynamic> j) => ShopProduct(
         id: j["id"].toString(),
         title: (j["title"] ?? "").toString(),
         currency: (j["currency"] ?? "Ks").toString(),
+        kind: (j["kind"] ?? "dropship").toString(),
         description: _s(j["description"]),
         imageUrl: _s(j["image_url"]),
         price: _d(j["price"]),
         category: _s(j["category"]),
         externalUrl: _s(j["external_url"]),
         merchant: _s(j["merchant"]),
+        sellerId: _s(j["seller_id"]),
+        images: (j["images"] as List?)
+                ?.map((i) => "$i")
+                .where((i) => i.isNotEmpty)
+                .toList() ??
+            const [],
+        status: (j["status"] ?? "active").toString(),
+      );
+}
+
+/// A buyer's own order row (Shop → My orders).
+class ShopOrder {
+  ShopOrder({
+    required this.id,
+    required this.quantity,
+    required this.unitPrice,
+    required this.currency,
+    required this.status,
+    required this.createdAt,
+    this.productTitle,
+    this.productImage,
+    this.productId,
+    this.shipName,
+    this.shipPhone,
+    this.shipAddress,
+    this.note,
+  });
+
+  final String id;
+  final int quantity;
+  final double unitPrice;
+  final String currency;
+  final String status;
+  final DateTime createdAt;
+  final String? productTitle;
+  final String? productImage;
+  final String? productId;
+
+  /// Where it goes and who to ring. Read by the seller's order screen; the
+  /// buyer's own screen reuses them to prefill the next checkout, which is the
+  /// difference between a two-tap re-order and typing an address again.
+  final String? shipName;
+  final String? shipPhone;
+  final String? shipAddress;
+  final String? note;
+
+  double get total => unitPrice * quantity;
+
+  factory ShopOrder.fromJson(Map<String, dynamic> j) => ShopOrder(
+        id: j["id"].toString(),
+        quantity: (j["quantity"] as num?)?.toInt() ?? 1,
+        unitPrice: _d(j["unit_price"]) ?? 0,
+        currency: (j["currency"] ?? "THB").toString(),
+        status: (j["status"] ?? "pending").toString(),
+        createdAt:
+            DateTime.tryParse("${j["created_at"]}")?.toLocal() ?? DateTime.now(),
+        productTitle: _s(j["product_title"]),
+        productImage: _s(j["product_image"]),
+        productId: _s(j["product_id"]),
+        shipName: _s(j["ship_name"]),
+        shipPhone: _s(j["ship_phone"]),
+        shipAddress: _s(j["ship_address"]),
+        note: _s(j["note"]),
       );
 }
 
@@ -503,6 +608,8 @@ class Conversation {
     this.title,
     this.other,
     this.lastMessage,
+    this.memberCount = 0,
+    this.members = const [],
   });
 
   final String id;
@@ -512,24 +619,41 @@ class Conversation {
   final Profile? other;
   final String? lastMessage;
 
+  /// Group size including us, and the other members' profiles (for the stacked
+  /// avatars on the list row). Empty for a 1-1 thread, which shows [other].
+  final int memberCount;
+  final List<Profile> members;
+
   String get displayTitle => title?.trim().isNotEmpty == true
       ? title!
-      : (other?.displayName ?? (isGroup ? "Group chat" : "Chat"));
+      : (other?.displayName ??
+          (isGroup
+              ? (members.isEmpty
+                  ? "Group chat"
+                  : members.map((m) => m.displayName).take(3).join(", "))
+              : "Chat"));
+
+  /// "4 members" under a group's name; empty for a 1-1 thread.
+  String get subtitle => isGroup && memberCount > 0 ? "$memberCount members" : "";
 
   /// [myId] identifies the current user so a 1-1 chat resolves to the *other*
   /// participant's profile (name + avatar), which PostgREST returns embedded as
   /// `participants:conversation_participants(user_id, profile:profiles(...))`.
   factory Conversation.fromJson(Map<String, dynamic> j, {String? myId}) {
     Profile? other;
+    final others = <Profile>[];
+    var count = 0;
     final parts = j["participants"];
     if (parts is List) {
       for (final p in parts) {
         if (p is! Map<String, dynamic>) continue;
+        count++;
         final uid = p["user_id"]?.toString();
         final prof = p["profile"] ?? p["profiles"];
         if (uid != null && uid != myId && prof is Map<String, dynamic>) {
-          other = Profile.fromJson(prof);
-          break;
+          final profile = Profile.fromJson(prof);
+          others.add(profile);
+          other ??= profile;
         }
       }
     }
@@ -540,6 +664,8 @@ class Conversation {
           DateTime.tryParse("${j["last_message_at"]}")?.toLocal() ?? DateTime.now(),
       title: _s(j["title"]),
       other: other,
+      memberCount: count,
+      members: others,
     );
   }
 }
@@ -1016,6 +1142,21 @@ class Message {
   final int? durationSeconds;
 
   bool get isVoice => fileKind == "audio" && (filePath?.isNotEmpty ?? false);
+  bool get isVideo => fileKind == "video" && (filePath?.isNotEmpty ?? false);
+  bool get isFile => fileKind == "file" && (filePath?.isNotEmpty ?? false);
+  bool get isImage => imagePath != null && imagePath!.isNotEmpty;
+
+  /// A human-friendly attachment name: the caption if present, else the stored
+  /// file's basename, else a generic label.
+  String get fileName {
+    if (content.trim().isNotEmpty) return content.trim();
+    final p = filePath;
+    if (p != null && p.isNotEmpty) {
+      final base = p.split("/").last;
+      return base.isEmpty ? "Attachment" : base;
+    }
+    return "Attachment";
+  }
 
   factory Message.fromJson(Map<String, dynamic> j) => Message(
         id: j["id"].toString(),

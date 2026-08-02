@@ -1,0 +1,186 @@
+<!-- =========================================================== §2 -->
+<h1><span class="num">2</span>Product scope and feature catalogue</h1>
+<p class="lead">Gwave is organised into six product families. Each family owns
+its own routes, its own database tables and its own screens in both clients, but
+shares the platform's identity, wallet, notification and media services.</p>
+
+<div class="fig">{{fig:modules}}<div class="cap">Product families and the
+capability groups inside them. Nothing in the platform exists twice: the wallet
+that pays for a shop order is the wallet that settles a driver's commission.</div></div>
+
+<h2>2.1 Social core</h2>
+<table>
+  <caption>Social core — routes and capabilities</caption>
+  <thead><tr><th style="width:24%">Capability</th><th style="width:24%">Routes</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>News feed</td><td class="mono">/feed, /p/[id]</td><td>Keyset-paginated feed, text and media posts, four visibility levels, boost injection, live and story rail, muted autoplay previews.</td></tr>
+    <tr><td>Reactions &amp; comments</td><td class="mono">/p/[id]</td><td>Multi-type reactions on posts and comments, nested comments with enforced depth, photo comments, counters maintained by triggers.</td></tr>
+    <tr><td>Sharing</td><td class="mono">/feed</td><td>Share creates a second post referencing the original; counters and notifications fire through <code>handle_shared_post()</code>.</td></tr>
+    <tr><td>Profiles</td><td class="mono">/u/[username], /profile</td><td>Cover and avatar, bio, status, photos tab, reviews, demographics, presence dot from <code>last_seen_at</code>.</td></tr>
+    <tr><td>Graph</td><td class="mono">/friends</td><td>Friend requests (requester/addressee) and asymmetric follows, both enforced in RLS via <code>are_friends()</code>.</td></tr>
+    <tr><td>Groups &amp; pages</td><td class="mono">/groups, /pages</td><td>Group roles and member counts, business pages with followers, group-scoped posts and camera shares.</td></tr>
+    <tr><td>Stories</td><td class="mono">/feed</td><td>24-hour stories with view tracking and a cleanup job.</td></tr>
+    <tr><td>Reels</td><td class="mono">/reels, /reels/analytics</td><td>Vertical video, watch-time accounting, likes and views, creator earnings and withdrawal.</td></tr>
+    <tr><td>Notifications</td><td class="mono">/notifications</td><td>Trigger-generated rows for reactions, comments, shares, follows, friendships and alerts; realtime bell plus web push.</td></tr>
+    <tr><td>Moderation</td><td class="mono">/admin/moderation</td><td>Reports on posts, comments and profiles; blocks; suspension; audit log of every admin action.</td></tr>
+  </tbody>
+</table>
+
+<h2>2.2 Communication</h2>
+<table>
+  <caption>Communication — routes and capabilities</caption>
+  <thead><tr><th style="width:24%">Capability</th><th style="width:24%">Routes</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>Messenger</td><td class="mono">/messages</td><td>Direct and group conversations, typing indicators, read receipts, image and voice messages, attachments through a private bucket, link previews.</td></tr>
+    <tr><td>Audio / video calls</td><td class="mono">/messages, /api/webrtc/ice</td><td>WebRTC with Realtime broadcast signaling: <code>calls:{userId}</code> ring inbox and <code>call:{callId}</code> per-call channel; TURN relay for carrier NAT; every call logged once.</td></tr>
+    <tr><td>Push-to-talk</td><td class="mono">/talk, /talk/[id]</td><td>Channel-based PTT with membership control and message history.</td></tr>
+    <tr><td>Live streaming</td><td class="mono">/live, /live/[id], /live/new</td><td>Browser Go Live and in-app RTMPS broadcast, HLS playback everywhere, chat, floating reactions, gifts, presence viewer count, replays.</td></tr>
+    <tr><td>Co-host</td><td class="mono">/live/cohost, /live/cohost/[code]</td><td>Invite guests into a LiveKit room; mesh fallback when no SFU is configured.</td></tr>
+    <tr><td>Meetings</td><td class="mono">/meet, /meet/[room]</td><td>Ad-hoc rooms for classroom and group use.</td></tr>
+    <tr><td>Offline chat</td><td class="mono">app only</td><td>Nearby Connections peer-to-peer messaging over Bluetooth/Wi-Fi with GPS sharing, for use with no internet at all.</td></tr>
+  </tbody>
+</table>
+
+<h2>2.3 Commerce and money</h2>
+<table>
+  <caption>Commerce — routes and capabilities</caption>
+  <thead><tr><th style="width:24%">Capability</th><th style="width:24%">Routes</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>G-Pay wallet</td><td class="mono">/gpay, /finance</td><td>KYC-gated accounts, balance, transfers, Stripe top-up, admin slip top-up, currency conversion, PIN and phone OTP, face KYC in a private bucket.</td></tr>
+    <tr><td>Shop</td><td class="mono">/shop, /shop/[id], /shop/sell</td><td>Dropship and affiliate listings, AliExpress import with full galleries, specs, variants and merchant ratings; seller customer-pack for resale.</td></tr>
+    <tr><td>Orders</td><td class="mono">/shop/orders, /shop/sales</td><td>Order lifecycle with delivery milestones, buyer push on status change, seller dashboard.</td></tr>
+    <tr><td>Point of sale</td><td class="mono">/pos/*</td><td>Multi-store POS: products, categories, inventory and stock movements, shifts, atomic sale and refund RPCs, 80&nbsp;mm receipts, reports, CSV export, G-Pay settlement.</td></tr>
+    <tr><td>Membership</td><td class="mono">/membership</td><td>Stripe Checkout and PromptPay QR with slip review, role synchronisation, members-only content and tools.</td></tr>
+    <tr><td>Boosts (ads)</td><td class="mono">/boost, /boost/new</td><td>Escrowed ad spend, auction-based feed injection, impression and click accounting, daily statistics.</td></tr>
+    <tr><td>Jobs</td><td class="mono">/jobs/*</td><td>Employer postings, applications, management console.</td></tr>
+    <tr><td>Marketplace &amp; dating</td><td class="mono">app + /api/mobile/*</td><td>Classified listings and a swipe/match dating module sharing the same profile identity.</td></tr>
+  </tbody>
+</table>
+
+<h2>2.4 Knowledge and learning</h2>
+<table>
+  <caption>Knowledge — routes and capabilities</caption>
+  <thead><tr><th style="width:24%">Capability</th><th style="width:24%">Routes</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>Strain encyclopedia</td><td class="mono">/strains, /strains/[slug]</td><td>200 seeded strains, full-text plus trigram search, inline comments with photos, adult gate.</td></tr>
+    <tr><td>Mineral encyclopedia</td><td class="mono">/minerals, /minerals/[slug]</td><td>100 minerals with Myanmar-specific regional and legal notes.</td></tr>
+    <tr><td>Mine site map</td><td class="mono">/minerals/mines</td><td>Community-submitted pins for 16 minerals, complete-or-rejected validation in both zod and CHECK constraints, report and admin moderation.</td></tr>
+    <tr><td>Metal &amp; cannabis markets</td><td class="mono">/metals, /strains/market</td><td>Live LME/COMEX reference prices, hand-recorded border and local quotes per gate, Thai equity board with a compliance panel.</td></tr>
+    <tr><td>Cannabis place map</td><td class="mono">/strains/places</td><td>Community listings with photo requirements, reports and an admin queue.</td></tr>
+    <tr><td>Learn platform</td><td class="mono">/learn/*</td><td>Nine tracks of 60 lessons (Python, JavaScript, HTML, CSS, SQL, AI, Electronics/IoT, Robotics, Applied Agri Science), runnable playgrounds (Pyodide, sql.js, CodeMirror), quizzes, progress, projects, certificates and a leaderboard.</td></tr>
+    <tr><td>Live classrooms</td><td class="mono">/learn/live, /learn/teach</td><td>Teacher applications and admin approval; approved teachers stream lessons on the live stack.</td></tr>
+    <tr><td>Languages &amp; typing</td><td class="mono">/learn/languages, /learn/languages/typing</td><td>Language units and a typing tutor with recorded scores.</td></tr>
+    <tr><td>Games</td><td class="mono">/games/*</td><td>Curated game catalogue, community uploads in a sandboxed frame, reactions and comments, drone simulator, grow game.</td></tr>
+    <tr><td>Grower tools</td><td class="mono">/tools/*</td><td>EC/PPM, VPD, unit and currency converters, profit calculator, QR tool; member-only nutrient mixing and yield estimator; results shareable as posts.</td></tr>
+  </tbody>
+</table>
+
+<h2>2.5 Life services</h2>
+<table>
+  <caption>Life services — routes and capabilities</caption>
+  <thead><tr><th style="width:24%">Capability</th><th style="width:24%">Routes</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>Ride hailing (rider)</td><td class="mono">/api/ride/*, app</td><td>One map screen with a state-driven bottom sheet, quote with labelled surge, 3-second poll that doubles as the dispatcher clock, live driver position, trip resumption after an app kill.</td></tr>
+    <tr><td>Ride hailing (driver)</td><td class="mono">/api/ride/driver/*</td><td>Application with three documents, online switch backed by a process-wide 30-second heartbeat, offer countdown, one-button trip progression, earnings and commission owed, G-Pay settlement.</td></tr>
+    <tr><td>Trip safety</td><td class="mono">/ride/track/[token]</td><td>In-trip SOS carrying plate, vehicle, driver and destination; unguessable public trip-share page that deliberately withholds rider identity, phone numbers, fare and payment method; <code>noindex</code>; expires 30 minutes after arrival.</td></tr>
+    <tr><td>Family</td><td class="mono">/family, /family/trackers</td><td>Circles with GPS sharing, Bluetooth tracker finder, NFC invite.</td></tr>
+    <tr><td>Health</td><td class="mono">/health</td><td>Vitals, daily summaries, screen time, provider connections (e.g. Fitbit), gender-gated cycle tracking.</td></tr>
+    <tr><td>Wellness</td><td class="mono">/wellness</td><td>Breathing sessions and wellbeing items.</td></tr>
+    <tr><td>Audio &amp; books</td><td class="mono">/audio, /audio/[trackId]</td><td>Music, audiobooks and podcasts with chapters, lyrics, ratings, entitlements and subscriptions; RSS import; a process-wide player with queue, shuffle, sleep timer and a draggable mini-player in the app; ebook store with an in-app reader.</td></tr>
+    <tr><td>Maps &amp; travel</td><td class="mono">/map</td><td>Waypoints, trip recorder with animated replay, GPX export, OSRM routing with an offline fallback, one-off location share.</td></tr>
+  </tbody>
+</table>
+
+<h2>2.6 Sensing and safety</h2>
+<table>
+  <caption>Sensing and safety — routes and capabilities</caption>
+  <thead><tr><th style="width:24%">Capability</th><th style="width:24%">Routes</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>Smart farm</td><td class="mono">/farm, /farm/devices, /farm/rules</td><td>MQTT devices through EMQX and a Node bridge, realtime sensor dashboard, automation rules with cooldowns, alerts, share-as-post.</td></tr>
+    <tr><td>Smart home</td><td class="mono">/home</td><td>Switch toggles, scenes and schedules over the same device layer.</td></tr>
+    <tr><td>CCTV</td><td class="mono">/cameras, /cameras/wall</td><td>RTSP→HLS cameras and KVS WebRTC, zones and PTZ, clips, alerts, group sharing.</td></tr>
+    <tr><td>SOS</td><td class="mono">/map, app</td><td>Reason, phone, note, photo, video and voice, optional Go Live, map danger banner, responder list, SMS + GPS fallback when offline.</td></tr>
+    <tr><td>Safety check-ins</td><td class="mono">app</td><td>Scheduled "I am fine" confirmations with escalation.</td></tr>
+    <tr><td>Drone radar</td><td class="mono">/games/drone-sim, app</td><td>Bluetooth and Wi-Fi based drone detection with RSSI history, quality meter and GPS copy-out.</td></tr>
+    <tr><td>Wi-Fi mapping</td><td class="mono">/admin/wifi</td><td>One row per access point per scan with GPS and RSSI; vendor from OUI; encryption, band, channel congestion, browser and OS analytics; dense-cluster leads explicitly labelled as leads, not evidence.</td></tr>
+    <tr><td>Threat alerts</td><td class="mono">app</td><td>User-reported area alerts with an admin watchlist.</td></tr>
+  </tbody>
+</table>
+
+<h2>2.7 Platform and administration</h2>
+<table>
+  <caption>Platform — routes and capabilities</caption>
+  <thead><tr><th style="width:24%">Capability</th><th style="width:24%">Routes</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>Admin console</td><td class="mono">/admin/*</td><td>Twenty consoles: users, moderation, membership, modules, settings, system, teachers, drivers, games, audio, G-Pay, maps, mines, places, search, storage, AWS cost, Wi-Fi, data.</td></tr>
+    <tr><td>Developer console</td><td class="mono">/dev/*</td><td>Hashed API keys with scopes and rate limits, request logs, HMAC-signed outgoing webhooks, feature flags, OpenAPI 3.1 documentation.</td></tr>
+    <tr><td>Cost &amp; storage dashboards</td><td class="mono">/admin/aws, /admin/storage</td><td>Cost Explorer filtered to <code>RECORD_TYPE=Usage</code> so credits cannot mask real consumption; per-table size split into data, index and TOAST; S3 size from CloudWatch daily metrics rather than object listing.</td></tr>
+    <tr><td>Search analytics</td><td class="mono">/admin/search</td><td>Keyword, user, source and result count — zero-result keywords are given equal billing, because that list is the content users wanted and the platform does not have.</td></tr>
+    <tr><td>Public REST API</td><td class="mono">/api/v1/*</td><td>Strains, minerals, posts, sensors and POS products behind scoped keys with per-key rate limits and an OpenAPI document.</td></tr>
+  </tbody>
+</table>
+
+<!-- =========================================================== §3 -->
+<h1><span class="num">3</span>Application architecture</h1>
+<p class="lead">A single Next.js 14 codebase serves server-rendered pages,
+server actions, JSON APIs for the mobile client, webhooks for external
+providers and the public REST API. It holds no session state of its own: every
+request is authenticated from cookies or a bearer token and authorised in the
+database.</p>
+
+<h2>3.1 Layering</h2>
+<div class="fig">{{fig:layers}}<div class="cap">Application layers. Each layer
+may call only the one below it; presentation never touches PostgREST directly,
+and the database is the last line of authorisation rather than the first.</div></div>
+
+<p>The rule that keeps the codebase navigable is that <em>authorisation happens
+twice</em>: once in the route handler or server action, where a failed check
+produces a useful error, and once in the database, where row level security
+produces a correct one. The first exists for the user, the second for
+correctness — and only the second is trusted.</p>
+
+<h2>3.2 Directory map</h2>
+<table class="tight">
+  <caption>Repository structure and responsibilities</caption>
+  <thead><tr><th style="width:30%">Path</th><th>Responsibility</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">src/app/(social|admin|pos|iot|dev|billing|knowledge|tools|auth)</td><td>Route groups; each group owns its layout, navigation and access gate.</td></tr>
+    <tr><td class="mono">src/app/api/**</td><td>111 route handlers: mobile JSON API, webhooks, media proxies, cron endpoints, public v1 API.</td></tr>
+    <tr><td class="mono">src/components/**</td><td>34 domain component folders plus <code>ui/</code> primitives (shadcn) and <code>layout/</code>.</td></tr>
+    <tr><td class="mono">src/lib/db/**</td><td>44 query modules — one per domain. All PostgREST access is funnelled here.</td></tr>
+    <tr><td class="mono">src/lib/data/**</td><td>Client factories: browser client, server client, service-role admin client, anonymous client, middleware session refresh.</td></tr>
+    <tr><td class="mono">src/lib/actions/**</td><td>Server actions: validation, authorisation, orchestration, revalidation.</td></tr>
+    <tr><td class="mono">src/lib/auth/**</td><td>Cognito integration, session cookies, ES256 data-token minting, profile provisioning, phone auth.</td></tr>
+    <tr><td class="mono">src/lib/{ivs,ivs-realtime,livekit,mux,agora,chime}.ts</td><td>Media provider adapters — the live stack can switch provider per stream.</td></tr>
+    <tr><td class="mono">src/lib/{gpay,stripe,ride,boost,push,fcm,sms}.ts</td><td>Money, mobility, advertising and notification services.</td></tr>
+    <tr><td class="mono">supabase/migrations/**</td><td>93 ordered SQL migrations (directory name is historical; they are applied to RDS).</td></tr>
+    <tr><td class="mono">db/sql/**</td><td>48 patch files applied to production between migrations, each self-contained and idempotent.</td></tr>
+    <tr><td class="mono">mobile/**</td><td>Flutter application: 38 feature modules, shared core, design system, theme skins.</td></tr>
+    <tr><td class="mono">deploy/**</td><td>Infrastructure scripts: Caddy, coturn, MediaMTX, LiveKit, KVS master, ECR redeploy, CloudFormation.</td></tr>
+    <tr><td class="mono">e2e/**, scripts/**</td><td>Playwright smoke and flow suites; RLS audit; k6 load test; seed generators.</td></tr>
+  </tbody>
+</table>
+
+<h2>3.3 Rendering and data access strategy</h2>
+<ul>
+  <li><strong>Server components by default.</strong> Pages fetch through
+    <code>src/lib/db/*</code> on the server with the caller's data token, so a
+    page cannot render a row the caller may not read.</li>
+  <li><strong>Client components for interaction only</strong> — composer,
+    player, map, chat, call surface — subscribing to Realtime channels
+    directly.</li>
+  <li><strong>Server actions for writes.</strong> Validation with zod, then a
+    single call into a db module or an RPC, then targeted revalidation.</li>
+  <li><strong>Flat queries on hot paths.</strong> Resource embeds are banned in
+    client-facing queries; related rows are fetched separately and assembled in
+    TypeScript. A stale PostgREST schema cache turns an embed into a 500 and
+    takes a whole feature down silently.</li>
+  <li><strong>Keyset pagination</strong> on the feed and every long list;
+    offset pagination is not used at scale.</li>
+</ul>
+
+<div class="note"><b>Why <code>@supabase/supabase-js</code> is still a dependency</b>
+It is a PostgREST and Realtime client, and PostgREST and Realtime are exactly
+what the self-hosted AWS endpoints speak. The package name is historical; there
+is no Supabase project, no Supabase dashboard and no hosted service behind any
+of it. The same applies to every <code>SUPABASE_*</code> environment name.</div>

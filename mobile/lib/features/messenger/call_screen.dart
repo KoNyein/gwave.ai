@@ -4,9 +4,11 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/call_service.dart';
+import '../../core/i18n.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
@@ -40,13 +42,19 @@ class CallScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF0B1F0B),
         body: Stack(
           children: [
-            // Remote video fills the screen when it's a connected video call.
+            // Remote video fills the screen when it's a connected video call —
+            // you always see the OTHER person as the main view. Until the
+            // remote arrives (ringing / connecting), we show a calm gradient
+            // with their avatar + status, not our own face full-screen (which
+            // looked like "I'm seeing myself"). Our own camera stays in the
+            // small self-preview at the top-right instead.
             if (call.video && call.remoteReady)
               Positioned.fill(
                 child: RTCVideoView(
                   call.remoteRenderer,
                   objectFit:
                       RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                  filterQuality: FilterQuality.medium,
                 ),
               )
             else
@@ -136,6 +144,40 @@ class CallScreen extends StatelessWidget {
                             color: Colors.white70, fontSize: 14)),
                   ],
                 ),
+              ),
+            ),
+
+            // Volume — the loudspeaker plus the mic's automatic gain makes a
+            // video call painfully loud, and Android's hardware keys move the
+            // whole voice-call stream rather than this call alone.
+            Positioned(
+              left: 32,
+              right: 32,
+              bottom: 108,
+              child: Row(
+                children: [
+                  const Icon(Icons.volume_down,
+                      color: Colors.white70, size: 20),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 3,
+                        activeTrackColor: Colors.white,
+                        inactiveTrackColor: Colors.white24,
+                        thumbColor: Colors.white,
+                        overlayShape:
+                            const RoundSliderOverlayShape(overlayRadius: 14),
+                        thumbShape:
+                            const RoundSliderThumbShape(enabledThumbRadius: 7),
+                      ),
+                      child: Slider(
+                        value: call.volume,
+                        onChanged: call.setVolume,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.volume_up, color: Colors.white70, size: 20),
+                ],
               ),
             ),
 
@@ -332,6 +374,7 @@ class _CallOverlayState extends State<CallOverlay>
     with WidgetsBindingObserver {
   CallPhase _last = CallPhase.idle;
   bool _routeOpen = false;
+  String? _shownError;
 
   @override
   void initState() {
@@ -344,7 +387,9 @@ class _CallOverlayState extends State<CallOverlay>
     // Android kills the Realtime socket in background; rebuild the ring inbox
     // the moment the app comes back so calls ring again.
     if (state == AppLifecycleState.resumed) {
-      context.read<CallService>().ensureConnected();
+      // Force a rebuild: a socket silently dropped in the background can still
+      // read "ready", so trust nothing and re-establish the ring inbox.
+      context.read<CallService>().ensureConnected(force: true);
     }
   }
 
@@ -395,6 +440,32 @@ class _CallOverlayState extends State<CallOverlay>
       if (!_inCall(phase)) _minimized = false;
       _updateRing(phase);
       WidgetsBinding.instance.addPostFrameCallback((_) => _sync(phase));
+    }
+    // Surface a call-setup failure (denied camera, camera open error) so a
+    // broken video call shows *why* instead of a silent missed call.
+    final err = call.lastError;
+    if (err != null && err != _shownError) {
+      _shownError = err;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(
+          content: Text(err),
+          duration: const Duration(seconds: 8),
+          backgroundColor: GwColors.live,
+          // Once Android marks the permission permanently denied it stops
+          // showing the dialog, so telling the user to allow it is useless
+          // without a way to get to the switch.
+          action: call.permissionPermanentlyDenied
+              ? SnackBarAction(
+                  label: tr(context, "Settings", "ဆက်တင်"),
+                  textColor: Colors.white,
+                  onPressed: () => openAppSettings(),
+                )
+              : null,
+        ));
+      });
+    } else if (err == null) {
+      _shownError = null;
     }
     return Stack(
       children: [

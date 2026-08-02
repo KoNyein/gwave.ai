@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -8,8 +9,11 @@ import 'package:provider/provider.dart';
 import 'package:wifi_scan/wifi_scan.dart';
 
 import '../../core/app_state.dart';
+import '../../core/config.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
+import '../../widgets/signal_meter.dart';
+import 'offline_tiles.dart';
 
 /// WiGLE-style crowdsourced WiFi map. Scanning nearby access points at your GPS
 /// location contributes them to a shared map everyone can browse — the more
@@ -32,6 +36,10 @@ class _WifiMapScreenState extends State<WifiMapScreen> {
   Timer? _autoTimer;
   int _contributed = 0;
   String? _status;
+  // The last local scan's access points, strongest first — shown live with
+  // signal strength so the scan visibly does something, not just a counter.
+  List<WiFiAccessPoint> _scanned = [];
+  bool _showList = true;
 
   @override
   void initState() {
@@ -100,6 +108,11 @@ class _WifiMapScreenState extends State<WifiMapScreen> {
       // Give the OS a moment to populate results.
       await Future.delayed(const Duration(seconds: 2));
       final results = await WiFiScan.instance.getScannedResults();
+      // Show every AP found, strongest signal first — the live scan panel.
+      if (mounted) {
+        setState(() => _scanned = results.toList()
+          ..sort((a, b) => b.level.compareTo(a.level)));
+      }
 
       // Refresh the GPS fix so the upload is tagged where we actually are.
       await _locate();
@@ -116,6 +129,10 @@ class _WifiMapScreenState extends State<WifiMapScreen> {
                 "ssid": a.ssid,
                 "signal": a.level,
                 "security": _security(a.capabilities),
+                // Radio detail: the server derives band/channel from this and
+                // parses the raw capability string for the exact encryption.
+                "frequency": a.frequency,
+                "capabilities": a.capabilities,
               })
           .toList();
       if (networks.isEmpty) {
@@ -127,6 +144,11 @@ class _WifiMapScreenState extends State<WifiMapScreen> {
             latitude: at.latitude,
             longitude: at.longitude,
             networks: networks,
+            client: {
+              "platform": Platform.isAndroid ? "android" : "ios",
+              "osVersion": Platform.operatingSystemVersion,
+              "appBuild": "${AppConfig.appBuild}",
+            },
           );
       _contributed += networks.length;
       await _loadNearby();
@@ -198,6 +220,104 @@ class _WifiMapScreenState extends State<WifiMapScreen> {
     return markers;
   }
 
+  String _band(int mhz) {
+    if (mhz >= 5925) return "6 GHz";
+    if (mhz >= 4900) return "5 GHz";
+    if (mhz >= 2400) return "2.4 GHz";
+    return "$mhz MHz";
+  }
+
+  /// The live scan panel: a collapsible card listing every access point the
+  /// last scan saw, sorted by signal, each with a strength bar.
+  Widget _scanPanel() {
+    return Material(
+      elevation: 4,
+      borderRadius: BorderRadius.circular(GwRadius.lg),
+      color: GwColors.surfaceOf(context),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _showList = !_showList),
+            borderRadius: BorderRadius.circular(GwRadius.lg),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+              child: Row(
+                children: [
+                  const Icon(Icons.wifi, size: 18, color: GwColors.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    "${tr(context, "Signals found", "တွေ့ရှိ signal")}: ${_scanned.length}",
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const Spacer(),
+                  Icon(_showList ? Icons.expand_more : Icons.expand_less,
+                      color: GwColors.inkSoftOf(context)),
+                ],
+              ),
+            ),
+          ),
+          if (_showList)
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.34),
+              child: ListView.separated(
+                shrinkWrap: true,
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                itemCount: _scanned.length,
+                separatorBuilder: (_, __) => Divider(
+                    height: 12, color: GwColors.line.withValues(alpha: 0.5)),
+                itemBuilder: (_, i) {
+                  final a = _scanned[i];
+                  final open = _security(a.capabilities) == "OPEN";
+                  return Row(
+                    children: [
+                      SignalBars(rssi: a.level, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              a.ssid.isEmpty
+                                  ? tr(context, "(hidden)", "(ဖုံးထား)")
+                                  : a.ssid,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w700, fontSize: 13.5),
+                            ),
+                            Text(
+                              "${_band(a.frequency)} · ${_security(a.capabilities)}"
+                              "${open ? " ⚠" : ""} · ${a.level} dBm",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: GwColors.inkSoftOf(context)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "${(signalQuality(a.level) * 100).round()}%",
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: signalColor(
+                                signalQuality(a.level), context)),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   void _showPoint(Map<String, dynamic> p) {
     showModalBottomSheet(
       context: context,
@@ -215,9 +335,17 @@ class _WifiMapScreenState extends State<WifiMapScreen> {
                 style: const TextStyle(color: GwColors.inkSoft, fontSize: 13)),
             Text(
                 "${tr(context, "Security", "လုံခြုံရေး")}: ${p["security"] ?? "?"}  ·  "
-                "${p["best_signal"] ?? "?"} dBm  ·  "
                 "${p["observations"] ?? 1} ${tr(context, "reports", "စစ်ချက်")}",
                 style: const TextStyle(color: GwColors.inkSoft, fontSize: 13)),
+            if ((p["best_signal"] as num?) != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                  tr(context, "Best signal reported", "အကောင်းဆုံး signal မှတ်တမ်း"),
+                  style: TextStyle(
+                      fontSize: 11.5, color: GwColors.inkSoftOf(context))),
+              const SizedBox(height: 4),
+              SignalStrengthBar(rssi: (p["best_signal"] as num).round()),
+            ],
           ],
         ),
       ),
@@ -254,6 +382,8 @@ class _WifiMapScreenState extends State<WifiMapScreen> {
                 urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 userAgentPackageName: "ai.gwave.app",
                 maxZoom: 19,
+                tileProvider:
+                    CachingTileProvider(layerKey: "osm", userAgent: "ai.gwave.app"),
               ),
               MarkerLayer(markers: _markers()),
             ],
@@ -273,6 +403,15 @@ class _WifiMapScreenState extends State<WifiMapScreen> {
                 child: Text(_status!,
                     style: const TextStyle(color: Colors.white, fontSize: 13)),
               ),
+            ),
+          // Live scan panel — every AP found this scan, strongest first,
+          // each with a signal-strength bar and band/security.
+          if (_scanned.isNotEmpty)
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 76,
+              child: _scanPanel(),
             ),
           Positioned(
             left: 12,

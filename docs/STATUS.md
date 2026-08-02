@@ -43,6 +43,18 @@
 - **Repo hygiene**: 100 merged branches + old TWA releases deleted
   (`.github/workflows/cleanup-branches.yml` is a reusable manual cleanup).
 
+- **Metaverse (branch `claude/phase-1-implementation-7ysxtj`)**: Phases 0–19
+  all implemented. 4 maps (city/farm/snow/sky), multiplayer WS server
+  (batched fan-out, Redis bus, anti-cheat), persistence (`metaverse.sql` —
+  APPLIED on RDS), Web3 SIWE + token-gated vip room, weather/water/fire/
+  vehicles, avatar customiser (`metaverse-part2.sql` — NOT yet applied),
+  mini-games (server-authoritative, weekly+all-time leaderboard), Android
+  WebView screen with JS bridge + AFK battery handling, UGC plot building
+  (InstancedMesh, server validation, report/admin queue), spatial voice
+  (WebRTC mesh, 18+ ticket claim, mic default off), marketplace
+  (`metaverse-market.sql` — NOT applied; **feature hard-off via
+  MV_MARKET_ENABLED pending legal advice**).
+
 ## Known gaps / next candidates
 
 - FCM push notifications (calls/messages don't ring when the app is closed;
@@ -51,9 +63,215 @@
   Go Live sessions get replays like app broadcasts do.
 - Native iOS app (Apple Developer Program, $99/yr, user-side).
 - Old Vercel project deletion (user-side).
+- Metaverse infrastructure (user-side, console/CLI — this container cannot
+  reach AWS): `db/sql/metaverse.sql` applied to RDS, `MV_TICKET_SECRET` and
+  `DATABASE_URL` in Secrets Manager, ECR repo + ECS service, ALB with
+  `idle_timeout=300` and stickiness, ACM cert and Route 53 record for
+  `mv.gwave.cc`, then `NEXT_PUBLIC_MV_WS_URL` in `/etc/gwave-web.env` and a
+  rebuild (it is baked at build time). Commands in
+  `server/metaverse/README.md`.
 
 ## Changelog
 
+- 2026-08-02 (web): **Metaverse — phases 9-13, weather, water, fire, vehicles,
+  CI.** Rain and snow follow you inside a 30×20×30 box that recycles particles
+  out the bottom and back in the top, so 4 000 points cover a 200-metre world
+  instead of the millions real coverage would need; storms flash the ambient
+  light every 5-15 seconds; the sky islands get an aurora. **The weather is the
+  server's**, sent in `init` and re-rolled every 5-15 minutes per room from
+  that map's allowed list — a client rolling its own would put two people
+  standing together in different weather. Water is a real obstacle (wading
+  halves your speed, boats will not climb ashore, cars will not drive in) and
+  fire flickers its light on two sine waves plus noise, because a steady glow
+  reads as a torch, not a fire; rain halves it. Six vehicles — car, boat,
+  horse, drone, snowmobile, balloon — built from primitives, no physics engine,
+  arcade numbers, and **no turning while stopped**. The driver's own client
+  computes the position and the server relays it with a speed cap and a
+  one-driver lock; losing your connection frees the vehicle.
+  **A 40% frame-rate cliff, found by measuring**: adding this phase took two of
+  the four maps from 20 fps to **0**. Three causes, all real on phones —
+  `computeVertexNormals()` on every water vertex every frame; six fire
+  PointLights lighting every pixel at once (now the nearest two); and PBR
+  `MeshStandardMaterial` on map-spanning transparent rivers and on a hills
+  mesh drawn *on top of* the ground disc it was supposed to replace. All four
+  maps are back at 20 fps in software GL.
+  `.github/workflows/metaverse-server.yml` builds, pushes and deploys on
+  changes under `server/metaverse/**` using **OIDC, not access keys**, waits
+  for the service to stabilise and then curls `/health` — a green tick that
+  did not check would be worse than none. `docs/METAVERSE-TESTING.md` is the
+  pre-deploy checklist. 35 server tests pass.
+
+- 2026-08-02 (web): **Metaverse — phase 8, four worlds from data files.** The
+  world engine no longer knows anything about Gwave City. `world.ts` reads a
+  `MapDef` and builds it; what is in a map lives only in
+  `src/components/metaverse/maps/*.ts`. Adding a fifth world means writing one
+  data file and registering it — the engine is never touched again.
+  Four maps ship: 🏙️ မြို့တော် (neon city, live screen), 🌾 စိမ်းလန်းချိုင့်ဝှမ်း
+  (rolling farmland, greenhouse wired to the hydroponic dashboard), ❄️
+  နှင်းတောင်ထိပ် (snow peaks, thick fog that is both a mood and a frame-rate
+  saving), and ☁️ ကောင်းကင်ကျွန်းများ (seven islands floating in a pink sky).
+  A 🌍 button switches between them; each is a separate server room, so the
+  people in one cannot see the people in another, and the choice is remembered.
+  Twenty rooms are enterable — walls built as a shell with the doorway left out
+  of the collider, so you walk straight in with no loading screen — and their
+  furniture only renders within 25 m.
+  **Two things the screenshots caught that types could not**: the sky map drew
+  the full ground disc under the islands, so seven floating islands read as
+  rocks on a lawn — the giveaway that the whole point of the map was gone; and
+  the live screen was built into every map, so a 16-metre advertising hoarding
+  stood on the snow peak. Both fixed, plus a walkable radius so you cannot
+  stroll off a floating island into open sky (island-to-island travel is drones,
+  phase 11).
+
+- 2026-08-02 (web): **Metaverse — phase 7, Web3 as a side door.** Wallets are
+  an addition, never a requirement: with no wallet, no RPC and no contracts
+  the world is exactly as complete as before — verified by walking it with
+  none of them configured. Signed-in users get a "Wallet ချိတ်မယ်" button that
+  runs the four-step SIWE flow: the server mints a single-use nonce, the wallet
+  signs a **readable Burmese sentence** (not an opaque hex blob — teaching
+  people to sign things they can't read is how they get drained), the server
+  recovers the address with viem and compares it, then closes the nonce with
+  `update … where used_at is null` so two simultaneous requests can't both win.
+  Gwave never sees a private key or seed phrase.
+  Token-gated rooms are decided **only on the server**: `room=vip` looks up the
+  wallet linked to the account in the database — never one the client sends,
+  or anyone could claim someone else's NFT — and asks the chain. No wallet is
+  4003, no NFT is 4004, and if the RPC is missing or down it refuses rather
+  than admits, because a gate that opens when the check fails is not a gate.
+  Five new tests connect straight to the WebSocket with `room=vip`, which is
+  what an attacker would do rather than pressing a hidden button.
+  `GwaveLand.sol` (ERC-721, `tokenId = gx*32 + gz`, so a plot can never be
+  minted twice) and `GwaveItems.sol` (ERC-1155) are in `contracts/`, undeployed.
+  **Deviation from the spec, deliberate**: it specifies wagmi + @web3modal;
+  this uses the injected EIP-1193 provider instead. WalletConnect needs a cloud
+  project id nobody has yet and could not be tested here, the three packages
+  add ~300 KB for a feature most people won't touch, and the wallets actually
+  used around Mae Sot are MetaMask/Trust/Coinbase in-app browsers, which inject
+  `window.ethereum` already. Only `connect()` would change if WalletConnect is
+  added later — the nonce → sign → verify flow is untouched.
+  Verified with real secp256k1 keys: a valid signature passes, another
+  wallet's signature for the same address fails, a one-character change to the
+  nonce invalidates it, and claiming the same nonce twice returns nothing the
+  second time. **Not deployed**: no contracts on chain, no `WEB3_*` env set —
+  `contracts/README.md` has the Foundry commands, testnet first.
+
+- 2026-08-02 (web): **Metaverse — phase 6, performance and scale.** The old
+  phone in Mae Sot is the target, not the desktop. Distant avatars stop
+  animating past 45 m and stop drawing past 90 m; nametags are DOM elements
+  moved with `transform` (never `left`/`top`, which would reflow the page 500
+  times a second) and fade out between 28 m and 40 m; shadows have a switch;
+  and if the frame rate stays under 25 for three consecutive seconds the world
+  turns bloom and shadows off and drops to pixel ratio 1 by itself, says so,
+  and offers a button to undo it. The automatic downgrade never overwrites the
+  player's own saved preference — a better phone next time gets their choice
+  back.
+  **The measurement that mattered**: a 200-bot load test pinned a whole core
+  at 98%. Every player's move was its own message to every other player —
+  n², 562 629 sends per second. Batching positions into one `updates` array
+  per room per 15 Hz tick took the same 200 bots to **9.4% CPU and 4 059
+  messages/s**, and 800 bots now sit at 70%. One task holds roughly 600
+  players, not the 200 the spec assumed. `node server/metaverse/loadtest.js`
+  reproduces it.
+  Beyond one task, `REDIS_URL` (ElastiCache) shares room state: each task
+  subscribes to `mv:{room}`, republishes its own player list every 5 seconds —
+  without that a task starting fresh would never see anyone standing still —
+  and drops players it has not heard about for 15 seconds, so a task dying
+  does not leave ghosts. Redis being down degrades to single-task, never to a
+  dead world. Five new tests run two servers against a real Redis and check
+  they see each other, chat across, and still keep rooms apart.
+  **User-side**: create the ElastiCache cluster and put `REDIS_URL` in Secrets
+  Manager (`gwave/MV_REDIS_URL`) — the task definition already references it —
+  then register the autoscaling target and the 65% CPU policy. Commands in
+  `server/metaverse/README.md`.
+
+- 2026-08-02 (web): **Metaverse — phase 5, world features.** The city now has
+  a clock everyone shares, a minimap, footsteps you can hear coming from the
+  left or the right, bloom you can switch off, a live screen, and doors back
+  into Gwave. In-world time is derived from the epoch (corrected by the
+  server's clock on join) rather than counted locally, so two people standing
+  next to each other are never in different halves of the day — two tabs
+  opened nine seconds apart read 09:15 and 09:17, and the two minutes are the
+  HUD's 4 Hz refresh, not drift. Bloom defaults on but is one click away and
+  the choice is remembered; the software-GL test box renders under 1 fps with
+  it on and 20 fps with it off, which is the whole reason it must be
+  switchable. Footsteps are synthesised (filtered noise + envelope through an
+  HRTF panner) rather than downloaded — nobody pays mobile data for four .mp3
+  files — and the audio context is not even constructed until you press the
+  sound button, because browsers refuse audio without a gesture. The centre
+  screen plays the live IVS stream via hls.js, muted (autoplay dies otherwise),
+  only while you are within 34 m, and falls back to a drawn placeholder rather
+  than a black rectangle when nothing is on air. Signposts for Marketplace /
+  Farm / Learn / Live and a notice board showing the five latest public posts
+  (`/api/metaverse/board`, flat queries, no PostgREST embeds) link back out to
+  the real pages. **Two bugs the typechecker could not see**: `A` and `D` were
+  swapped since phase 1 — the strafe vector had the wrong sign, and testing
+  only `W` never revealed it; and the notice board was parked directly in
+  front of the spawn point with its backing panel in front of its own text, so
+  the first thing anyone saw was a black slab covering the city.
+
+- 2026-08-02 (web): **Metaverse — phase 4, RDS persistence.** Sign in, walk
+  somewhere, close the tab, come back: you are where you left off. The
+  position lives in the task's memory and reaches Postgres only on a 30-second
+  sweep of players who actually moved, on disconnect, and on SIGTERM — **two
+  writes per player per minute**, verified by counting rows from a trigger
+  while a client sent 15Hz updates for 65 seconds (975 updates in, 2 writes
+  out). Writing every update would have been 1 500 writes/second at 100
+  players, which `db.t4g.micro` will not survive. A saved position is only
+  restored when the room matches, or a farm coordinate would drop you inside a
+  city wall. Guests are never written to `mv_players` (their id changes every
+  session and is not in `profiles`) but their **chat is** logged, since that is
+  what moderation actually needs; chat older than 30 days is purged hourly.
+  If the database is down the world still opens — nobody is ever denied entry
+  over a failed query. New tables in `db/sql/metaverse.sql`
+  (`mv_players`, `mv_wallet_nonces`, `mv_plots`, `mv_chat_log`), all sealed:
+  RLS enabled with zero policies, since PostgREST never reads them — the
+  metaverse server holds its own connection. **User-side**: apply that file to
+  RDS and put `DATABASE_URL` in Secrets Manager for the ECS task (the task
+  definition already references it; it must never be plain text). Two bugs
+  found by testing rather than by typechecking: the pool forced TLS on
+  anything that was not literally `localhost`, which breaks a unix-socket or
+  `sslmode=`-carrying URL, and each 30-second flush rounded 0.5 minutes up to
+  1, so an hour in the world would have been recorded as two.
+
+- 2026-08-02 (web): **Metaverse — phases 0-3.** `gwave.cc/metaverse` is a
+  three.js world with a procedural avatar (no GLB download: the first person to
+  open it on phone data would have paid for a 2-5 MB model), wall collision that
+  resolves x and z separately so you slide along walls instead of sticking,
+  a three-minute day/night cycle, desktop and touch controls, and multiplayer
+  over a `ws` server in `server/metaverse/` — rooms scoped to maps, 15Hz
+  position updates interpolated on the client, chat, emotes, server-side speed
+  and bounds validation, 30-second heartbeat and SIGTERM close(1001) so an ECS
+  deploy reconnects instead of hanging. **Guests can enter without an account**
+  and may name themselves, but every message carries a server-set `authed` flag
+  and the client always marks guests, so a guest cannot pass as an account
+  holder; a signed-in user's name comes from a 60-second HMAC ticket
+  (`/api/metaverse/ws-ticket`) and `setname` is refused outright. Fixed along
+  the way: the CSP in `next.config.mjs` did not allow the metaverse origin in
+  `connect-src`, so the browser would have refused the WebSocket in production
+  — the page would have looked fine and nobody would ever have been in the
+  world. **Not deployed**: ECR/ECS/ALB (idle timeout 300s + stickiness), the
+  ACM cert for `mv.gwave.cc` and the security groups are console work —
+  commands in `server/metaverse/README.md`. Persistence is phase 4.
+
+- 2026-08-01 (app): **One owner of the speaker, and it stops when you leave.**
+  Every noisy feature started playing on its own and stopped only when its
+  widget was disposed, so a Live kept talking behind anything opened on top of
+  it and kept talking after the app was backgrounded — a broadcast playing in
+  the user's pocket with nothing on screen to stop it. Audio focus cannot
+  express the rule we want, because the rule is a product one: *one feature
+  owns the speaker at a time, and it stops the moment its screen stops being
+  what you are looking at.* `core/video_audio.dart` now holds that ownership
+  explicitly (`GwSound` + `SoundClaim`), with three priorities — background
+  listening (the audio player), media (live, reels, feed video, CCTV, chat
+  clips, lesson speech) and conversation (calls, PTT), which nothing may
+  interrupt. A claim is dropped by all four things that end it: someone else
+  claiming, a screen pushed on top (`gwRouteObserver` + the `SoundScreen`
+  mixin), a bottom-nav tab switch (`silenceMedia()`, which routes never see),
+  and the app going to the background. Music and calls are the only two that
+  survive backgrounding, because that is what they are for. Live also claims on
+  play — it never did, so a podcast played *underneath* a broadcast — and
+  browser (LiveKit) lives disable the remote audio publication rather than only
+  pausing a controller they don't have.
 - 2026-08-01 (web): **Browser lives are recorded on their channel, like every
   other broadcast.** Writing the replay straight from the composition never
   worked once on this account: every composition carrying both a channel and an
@@ -185,6 +403,115 @@
   harmless alongside the EventBridge webhook that is meant to do this — a row
   that already has a path is never selected. Uses `LIVE_SWEEP_SECRET`, falling
   back to `RIDE_DISPATCH_SECRET`, so it needs no new env.
+- 2026-07-31 (app): **Music keeps playing when you leave the player.** The
+  `AudioPlayer` lived in `AudioTrackScreen`'s state — and a second one in
+  `LocalMusicScreen` — and both `dispose()`d it, so backing out of the player
+  stopped the song, and device music and catalogue music could play over each
+  other. Both now run on one process-wide `GwAudio` (`mobile/lib/features/
+  audio/audio_service.dart`); playback ends only on the explicit ✕, and a mini
+  player above the bottom nav keeps whatever is playing reachable from every
+  tab. Queue, shuffle, repeat, speed, sleep timer and position-saving all moved
+  onto the service, so they survive the screen too. Silent video no longer
+  stops it either: `video_player` requested audio focus even for a muted
+  autoplaying feed clip, so a video nobody could hear paused the music —
+  previews now use `mixWithOthers` (`mobile/lib/core/video_audio.dart`) and
+  only an *unmuted* video takes the sound. The bar itself is gone: what is
+  playing is now a **draggable floating bubble** that costs no layout, opens
+  into transport controls on a tap and closes itself again, and is stopped by
+  dragging it onto a ✕ — hidden over Reels, where even a bubble is chrome.
+- 2026-07-31 (app): **Driver Mode stayed online only while its screen was
+  open.** The ride heartbeat was a screen-local position stream: a distance
+  filter meant a parked driver stopped beating, and `dispose()` meant a driver
+  who tapped Back stopped beating. Either way the sweeper marked them offline
+  within 3 minutes while the switch still read "online", and no ride offer was
+  ever created. Now a process-wide `DriverPresence` with a 30s keepalive,
+  stopped only by the switch.
+- 2026-07-31 (app + web): **Ride: destination search and driver settlement.**
+  Typing a destination now searches the rider's **own past destinations first**
+  — most trips are somewhere they have already been, no geocoder answers a
+  label somebody wrote for themselves, and every geocoder mangles Myanmar
+  addresses, so history is both the cheapest source and the best one. Opening
+  the screen shows recents. A geocoder (`RIDE_GEOCODER_URL`, Photon or
+  Nominatim, told apart by response shape) or Google Places is appended when
+  configured, skipped below 3 characters; with neither, history-only search
+  still works and the map is still tappable. Drivers can now pay down the
+  commission owed on cash trips from their G-Pay wallet — `ride_driver_settle`
+  had existed and been tested since the schema, but nothing called it, so the
+  ledger was right and the money was not moving.
+
+- 2026-07-31 (app + web): **In-trip safety — SOS and "share my trip".**
+  Both sides of a ride get an SOS button that raises the *existing* Gwave SOS
+  (same table, same map board, same responders) with the trip attached: plate,
+  vehicle, driver name, destination. A "help me" with no vehicle in it is the
+  version nobody can act on. There is also a pre-filled — never auto-dialled —
+  police number, because a pocket tap must not call the police. **Share my
+  trip** mints an unguessable token and a public `/ride/track/<token>` page, so
+  the person a rider sends it to at 11pm needs no Gwave account. That page
+  shows the vehicle, plate, driver's first name and live position and
+  deliberately withholds the rider's identity, both phone numbers, the fare and
+  the payment method — the plate is in because it is what you read out to the
+  police; the rest is not the business of whoever the link gets forwarded to.
+  Position publishing stops when the trip ends, the link answers for 30 more
+  minutes (so a late follower reads "Arrived safely", not a 404) and the page
+  is `noindex`. Only the rider can mint the link — a driver who could publish
+  their passenger's live position would have a stalking tool.
+
+- 2026-07-31 (app): **Driver Mode.** Apply to drive (three documents,
+  resubmittable after a rejection), go online, take offers with a countdown,
+  run the trip with one button at a time, see today's earnings and what is
+  owed. Not a second APK — a mode behind an approved `ride_driver_profiles`
+  row, which costs no second signing key, release channel or pipeline.
+  **Location is a foreground service with a persistent notification, NOT
+  `ACCESS_BACKGROUND_LOCATION`**: background location triggers Play Store's
+  prominent-disclosure review, the most common reason ride apps get pulled, and
+  offers reach a sleeping screen over FCM anyway. The heartbeat is
+  distance-filtered rather than timed — a driver parked at a rank does not need
+  to resend the same coordinates, and battery is what ends a shift early.
+  Commission owed is shown even at zero, because a driver who only finds out
+  when offers stop assumes the app is broken. Navigation hands off to the maps
+  app the driver already uses.
+
+- 2026-07-31 (app): **Ride hailing, passenger side.** One screen, a full-bleed
+  map, and a bottom sheet whose contents follow the trip's state — not a page
+  per step, because pushing a route for "choose vehicle" and another for
+  "searching" rebuilds the map each time and throws the camera away, so the
+  pickup pin jumps around underneath the rider while they are confirming where
+  it is. The screen mirrors the server's state machine rather than keeping one
+  of its own, so the UI cannot reach a state the database disagrees with.
+  While a ride is live it polls `/api/ride/{id}` every 3s — that poll is also
+  the dispatcher's clock server-side — and subscribes to `ride:{rideId}` for
+  the driver's position between polls, so the car glides instead of jumping.
+  A trip survives the app being killed: `/api/ride/active` on open rejoins it,
+  without which a rider reopens Gwave to a fresh booking screen while a driver
+  is on the way to them. Surge is labelled on the vehicle row rather than
+  folded into the number, and a failed wallet charge is shown on the receipt
+  instead of becoming a silent support ticket. Reached from Menu → Places &
+  Safety → Ride. **Needs `db/sql/ride-hailing.sql` + the `feat/ride-hailing`
+  server branch merged before it does anything.**
+
+- 2026-07-31 (app, v1.0.236): **The post "…" button now actually does
+  something.** It was a `const Icon` — no handler at all — so the app had never
+  had a way to edit or delete a post; the menu simply did not exist. It is now
+  an `IconButton` opening a bottom sheet: edit / delete / copy / share for the
+  author, copy / share / report for everyone else. `PostCard` keeps its own
+  `_content` and `_deleted` state so an edit shows immediately and a deleted
+  card disappears without a refetch (optimistic, rolled back if the write
+  fails), and `onChanged` re-loads feed / profile / groups. The three new
+  repository writes (`editPost`, `deletePost`, `reportPost`) filter on
+  `author_id` as well as `id` — a PATCH or DELETE that matches nothing returns
+  success, so the id alone would make a failed edit look like it worked.
+
+- 2026-07-31 (app, v1.0.235): **Calls stop logging themselves two or three
+  times, and the permission prompt is no longer a dead end.** The `decline` and
+  `hangup` signal handlers were missing the `_ownSignal` guard every other
+  handler has, so the server's relay echo re-entered `_teardown` and wrote a
+  second call log; `_teardown` also awaits before writing, so two overlapping
+  runs both read a live `_conversationId`. Fixed with the echo guard plus a
+  `_tearingDown` re-entry lock and a `_lastLoggedCallId` check. Separately, a
+  permanently-denied camera/mic permission failed silently — `_grantPermissions`
+  now records `permissionPermanentlyDenied` and both the chat screen and the
+  call screen offer a **Settings** action that opens the OS app settings, since
+  Android will not show the system prompt again.
 
 - 2026-07-31: **Dropship listings carry the whole product, and a kit for
   selling it.** The AliExpress import was pulling one photo out of a feed that

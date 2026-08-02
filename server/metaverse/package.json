@@ -1,0 +1,19 @@
+{
+  "name": "gwave-metaverse-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gwave Metaverse WebSocket server (ECS Fargate)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "pg": "^8.22.0",
+    "redis": "^6.2.0",
+    "ws": "^8.18.0"
+  }
+}

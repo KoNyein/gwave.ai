@@ -12,6 +12,7 @@ import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import 'go_live_screen.dart';
 import 'live_watch_screen.dart';
+import '../../core/video_audio.dart';
 
 class LiveListScreen extends StatefulWidget {
   const LiveListScreen({super.key});
@@ -188,7 +189,7 @@ class _LiveListScreenState extends State<LiveListScreen> {
 /// Full-screen vertical pager over every watchable broadcast — the TikTok
 /// pattern: swipe up for the next live/replay, swipe down for the previous,
 /// chat/reactions stay overlaid on the video. One page, no list round-trips.
-class LiveSwipeScreen extends StatelessWidget {
+class LiveSwipeScreen extends StatefulWidget {
   const LiveSwipeScreen({
     super.key,
     required this.streams,
@@ -198,15 +199,40 @@ class LiveSwipeScreen extends StatelessWidget {
   final int initialIndex;
 
   @override
+  State<LiveSwipeScreen> createState() => _LiveSwipeScreenState();
+}
+
+class _LiveSwipeScreenState extends State<LiveSwipeScreen> {
+  late final PageController _pc =
+      PageController(initialPage: widget.initialIndex);
+
+  @override
+  void dispose() {
+    _pc.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: PageView.builder(
         scrollDirection: Axis.vertical,
-        controller: PageController(initialPage: initialIndex),
-        itemCount: streams.length,
-        itemBuilder: (_, i) =>
-            LiveWatchScreen(key: ValueKey(streams[i].id), stream: streams[i]),
+        controller: _pc,
+        itemCount: widget.streams.length,
+        itemBuilder: (_, i) => LiveWatchScreen(
+          key: ValueKey(widget.streams[i].id),
+          stream: widget.streams[i],
+          // TikTok autoplay: a finished replay slides up to the next video by
+          // itself (lives never "end" mid-watch, so they don't auto-advance).
+          onEnded: i + 1 < widget.streams.length
+              ? () => _pc.animateToPage(
+                    i + 1,
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeOutCubic,
+                  )
+              : null,
+        ),
       ),
     );
   }
@@ -256,7 +282,8 @@ class _LiveCardState extends State<_LiveCard> {
     }
     if (url == null) return;
     try {
-      final c = VideoPlayerController.networkUrl(Uri.parse(url!));
+      // Silent list preview — leaves the user's music alone.
+      final c = silentVideoController(Uri.parse(url!));
       _vc = c;
       await c.initialize();
       await c.setVolume(0);

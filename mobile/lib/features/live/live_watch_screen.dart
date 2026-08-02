@@ -10,11 +10,16 @@ import 'package:video_player/video_player.dart';
 import '../../core/api_client.dart';
 import '../../core/app_state.dart';
 import '../../core/config.dart';
+import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
+import '../../core/video_audio.dart';
+import 'reaction_channel.dart';
+import '../../widgets/share_sheet.dart';
 import '../../widgets/common.dart';
 import '../web/web_screen.dart';
+import 'live_sale.dart';
 
 /// Full-screen, one-screen TikTok-style Live watch. The video fills the screen;
 /// host/title, LIVE + viewer badge, the right action rail, and the overlay chat
@@ -25,19 +30,77 @@ import '../web/web_screen.dart';
 ///   • real chat — send + poll every few seconds so viewers see each other
 ///   • emoji reactions — tap to send, and everyone's reactions float up
 ///   • live viewer count that refreshes while you watch
+///   • live sale — the host pins shop products, viewers buy from a card over
+///     the video without leaving the broadcast
 class LiveWatchScreen extends StatefulWidget {
-  const LiveWatchScreen({super.key, required this.stream});
+  const LiveWatchScreen({super.key, required this.stream, this.onEnded});
   final LiveStream stream;
+
+  /// Fired once when a REPLAY finishes playing (never for live broadcasts).
+  /// The vertical swipe pager passes this to auto-advance to the next video;
+  /// without it (standalone open) the replay loops like before.
+  final VoidCallback? onEnded;
 
   @override
   State<LiveWatchScreen> createState() => _LiveWatchScreenState();
 }
 
-class _LiveWatchScreenState extends State<LiveWatchScreen> {
+class _LiveWatchScreenState extends State<LiveWatchScreen>
+    with SoundScreen<LiveWatchScreen> {
   VideoPlayerController? _controller;
   bool _ready = false;
   bool _muted = false; // viewers can mute; audio is on by default
   String? _error;
+
+  /// A Live owns the speaker while it is the screen you are looking at — and
+  /// only while. Watching one used to keep playing behind whatever was opened
+  /// on top of it, and kept playing when the app went to the background, so a
+  /// broadcast carried on talking in the user's pocket with nothing on screen
+  /// to stop it. [SoundScreen] and [GwSound] deliver both events; this claim is
+  /// what they act on.
+  late final SoundClaim _sound = SoundClaim(
+    tag: "live:${widget.stream.id}",
+    onSilence: _silenceSound,
+    onRestore: _restoreSound,
+  );
+
+  @override
+  SoundClaim? get soundClaim => _sound;
+
+  /// Stop making noise — the screen is covered, the app is in the background,
+  /// or something more important is speaking. Playback pauses rather than
+  /// stopping so returning picks the broadcast back up.
+  void _silenceSound() {
+    _controller?.pause();
+    unawaited(_setRoomAudio(false));
+  }
+
+  void _restoreSound() {
+    if (!mounted || _muted) return;
+    _controller?.play();
+    unawaited(_setRoomAudio(true));
+  }
+
+  /// Browser broadcasts arrive over the LiveKit SFU, where the audio is played
+  /// by the SDK rather than by a controller we hold — disabling the remote
+  /// publication is how a subscriber stops receiving it.
+  Future<void> _setRoomAudio(bool on) async {
+    final room = _room;
+    if (room == null) return;
+    for (final p in room.remoteParticipants.values) {
+      for (final pub in p.audioTrackPublications) {
+        try {
+          // `enabled` is read-only; enable()/disable() tell the server to stop
+          // sending this track, which stops the sound and the bandwidth.
+          if (on) {
+            await pub.enable();
+          } else {
+            await pub.disable();
+          }
+        } catch (_) {}
+      }
+    }
+  }
 
   // Browser Go Live broadcasts publish over the LiveKit SFU (WebRTC) and have
   // no HLS URL — the app joins the room as a subscriber like the web viewer.
@@ -57,10 +120,33 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
 
   Timer? _poll;
   Timer? _heartbeat;
+  late final LiveReactions _reactions;
   String? _lastChatAt;
-  String? _lastReactAt;
+  bool _endedFired = false;
+
+  /// Auto-advance hook: a replay that reached its end fires [LiveWatchScreen.
+  /// onEnded] exactly once, so the swipe pager can move to the next video.
+  void _maybeFireEnded() {
+    if (_endedFired) return;
+    final v = _controller?.value;
+    if (v == null || !v.isInitialized) return;
+    if (v.duration > Duration.zero &&
+        !v.isPlaying &&
+        v.position >= v.duration) {
+      _endedFired = true;
+      widget.onEnded?.call();
+    }
+  }
   int _viewers = 0;
   bool _sending = false;
+
+  /// Products the host has pinned to this stream. Refreshed on the same poll
+  /// as chat so a product pinned mid-broadcast appears without a reload.
+  List<ShopProduct> _forSale = [];
+
+  /// Resolved once: the rail is rebuilt on every poll tick and provider's
+  /// read() doesn't belong in build.
+  late final bool _isHost;
 
   static const _emojis = ["❤️", "👍", "😂", "😮", "👏", "🔥"];
 
@@ -68,13 +154,22 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
   void initState() {
     super.initState();
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+    _isHost = context.read<AppState>().me?.id == widget.stream.hostId;
     _viewers = widget.stream.viewerCount;
+    // Everyone watching this broadcast — phone or browser — is in the same
+    // reaction channel, so a heart tapped on either side floats on both.
+    _reactions = LiveReactions(context.read<AppState>().api)
+      ..onEmoji = (emoji) {
+        if (mounted) _spawnHeart(emoji);
+      };
+    unawaited(_reactions.join(widget.stream.id));
     if (_useLivekit) {
       _initLivekit();
     } else {
       _initVideo();
     }
     _loadChat();
+    _loadProducts();
     // Poll chat, reactions and viewer count while the stream is live.
     if (widget.stream.isLive) {
       _poll = Timer.periodic(const Duration(seconds: 3), (_) => _tick());
@@ -147,6 +242,10 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
           if (track is lk.VideoTrack) _lkVideo = track;
         }
       }
+      // Same rule as the HLS path: the broadcast owns the speaker while it is
+      // on screen, and receives no audio at all when it is not.
+      final gotSound = GwSound.instance.claim(_sound);
+      await _setRoomAudio(gotSound && !_muted);
       if (mounted) setState(() => _lkConnected = true);
     } catch (e) {
       if (mounted) {
@@ -186,10 +285,17 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
       final c = VideoPlayerController.networkUrl(Uri.parse(url));
       _controller = c;
       await c.initialize();
-      await c.setLooping(!widget.stream.isLive);
-      // Watching a Live is a listening experience — force full media volume so
-      // muted feed/rail previews or leftover call-audio state can't silence it.
-      await c.setVolume(1.0);
+      // Inside the swipe pager a finished replay advances instead of looping.
+      await c.setLooping(!widget.stream.isLive && widget.onEnded == null);
+      if (widget.onEnded != null && !widget.stream.isLive) {
+        c.addListener(_maybeFireEnded);
+      }
+      // Watching a Live is a listening experience, so it takes the speaker:
+      // whatever was playing — a podcast, a reel left running, an unmuted feed
+      // video — is paused rather than talked over. A call outranks a broadcast,
+      // and then the Live plays silently until the call ends.
+      final gotSound = GwSound.instance.claim(_sound);
+      await c.setVolume(gotSound && !_muted ? 1.0 : 0);
       await c.play();
       if (mounted) setState(() => _ready = true);
     } catch (e) {
@@ -232,8 +338,34 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
   }
 
   /// One polling cycle: pull new chat, count fresh reactions, refresh viewers.
+  /// Best-effort — a stream with no products, or a failed lookup, simply
+  /// shows no buy card rather than an error over the video.
+  Future<void> _loadProducts() async {
+    try {
+      final rows =
+          await context.read<AppState>().repo.liveProducts(widget.stream.id);
+      if (mounted) setState(() => _forSale = rows);
+    } catch (_) {}
+  }
+
+  /// Host-only: pick which listings are on sale in this broadcast.
+  Future<void> _manageProducts() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LiveProductPicker(
+          streamId: widget.stream.id,
+          pinned: _forSale,
+        ),
+      ),
+    );
+    await _loadProducts();
+  }
+
   Future<void> _tick() async {
     final repo = context.read<AppState>().repo;
+    // A product pinned mid-broadcast should appear without a reload; this
+    // rides the existing poll rather than adding a timer of its own.
+    unawaited(_loadProducts());
     try {
       final msgs = await repo.liveChat(widget.stream.id, sinceIso: _lastChatAt);
       if (mounted && msgs.isNotEmpty) {
@@ -242,16 +374,6 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
           _lastChatAt = msgs.last.createdAt.toUtc().toIso8601String();
         });
         _scrollChat();
-      }
-    } catch (_) {}
-    try {
-      final n = await repo.liveReactionCount(widget.stream.id,
-          sinceIso: _lastReactAt);
-      _lastReactAt = DateTime.now().toUtc().toIso8601String();
-      if (mounted && n > 0) {
-        for (var i = 0; i < min(n, 8); i++) {
-          _spawnHeart(_emojis[Random().nextInt(_emojis.length)]);
-        }
       }
     } catch (_) {}
     try {
@@ -274,8 +396,10 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
 
   @override
   void dispose() {
+    GwSound.instance.release(_sound);
     _poll?.cancel();
     _heartbeat?.cancel();
+    unawaited(_reactions.dispose());
     _lkListener?.dispose();
     final room = _room;
     if (room != null) {
@@ -317,11 +441,19 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
   }
 
   Future<void> _react(String emoji) async {
-    _spawnHeart(emoji);
+    // Out over the channel first, and let the float come back with everyone
+    // else's — one tap, one heart, whichever way round it arrives. Spawning
+    // locally as well would show the sender two.
+    _reactions.send(emoji);
+    if (_reactions.connected) {
+      // Nothing to do: the echo will spawn it.
+    } else {
+      _spawnHeart(emoji);
+    }
     try {
       await context.read<AppState>().repo.sendLiveReaction(widget.stream.id, emoji);
     } catch (_) {
-      // Reaction send is best-effort — the local float already gave feedback.
+      // Reaction send is best-effort — the float already gave feedback.
     }
   }
 
@@ -542,6 +674,9 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // The buy card sits directly above the chat, where Shopee and TikTok
+          // put it: closest to the thumb, furthest from the host's face.
+          LiveSaleCard(products: _forSale, onChanged: _loadProducts),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -682,8 +817,19 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
           _muted ? "Muted" : "Sound",
           _muted ? Colors.white54 : Colors.white,
           onTap: () {
-            setState(() => _muted = !_muted);
-            _controller?.setVolume(_muted ? 0 : 1);
+            final muting = !_muted;
+            setState(() => _muted = muting);
+            if (muting) {
+              // Muting a Live hands the speaker back, so a podcast paused when
+              // the broadcast opened is free to be resumed.
+              _controller?.setVolume(0);
+              unawaited(_setRoomAudio(false));
+              GwSound.instance.release(_sound);
+            } else {
+              final gotSound = GwSound.instance.claim(_sound);
+              _controller?.setVolume(gotSound ? 1 : 0);
+              unawaited(_setRoomAudio(gotSound));
+            }
           },
         ),
         const SizedBox(height: 16),
@@ -693,7 +839,25 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
         _railButton(Icons.card_giftcard, "Gift", GwColors.gold,
             onTap: () => _react("🔥")),
         const SizedBox(height: 16),
-        _railButton(Icons.share, "Share", Colors.white, onTap: () {}),
+        _railButton(Icons.share, "Share", Colors.white, onTap: () {
+          showShareSheet(
+            context,
+            url: "https://gwave.cc/live/${widget.stream.id}",
+            title: widget.stream.title,
+          );
+        }),
+        // The host manages what's on sale; viewers get the same button only
+        // when there's more than one product, to reach the full list.
+        if (_isHost) ...[
+          const SizedBox(height: 16),
+          _railButton(Icons.sell, tr(context, "Sell", "ရောင်း"), GwColors.gold,
+              onTap: _manageProducts),
+        ] else if (_forSale.length > 1) ...[
+          const SizedBox(height: 16),
+          _railButton(Icons.shopping_bag, tr(context, "Shop", "ဈေးဝယ်"),
+              Colors.white,
+              onTap: () => showLiveSaleSheet(context, _forSale, _loadProducts)),
+        ],
       ],
     );
   }

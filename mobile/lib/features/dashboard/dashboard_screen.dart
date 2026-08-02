@@ -7,6 +7,7 @@ import '../../core/config.dart';
 import '../../core/i18n.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
+import '../health/health_hub_screen.dart';
 import '../web/web_screen.dart';
 import '../../widgets/common.dart';
 
@@ -66,7 +67,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: GwColors.surface,
+                color: GwColors.surfaceOf(context),
                 borderRadius: BorderRadius.circular(GwRadius.lg),
                 boxShadow: GwShadow.card,
               ),
@@ -86,8 +87,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 fontWeight: FontWeight.w900, fontSize: 16)),
                         if (me?.username != null)
                           Text("@${me!.username}",
-                              style: const TextStyle(
-                                  color: GwColors.inkSoft, fontSize: 13)),
+                              style: TextStyle(
+                                  color: GwColors.inkSoftOf(context), fontSize: 13)),
                       ],
                     ),
                   ),
@@ -95,7 +96,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onPressed: () => _openWeb("/settings"),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: GwColors.primary,
-                      side: const BorderSide(color: GwColors.line),
+                      side: BorderSide(color: GwColors.lineOf(context)),
                     ),
                     child: const Text("Settings"),
                   ),
@@ -120,6 +121,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (_stats!.walletBalance != null)
                 _walletBanner(_stats!.walletBalance!),
               if (_stats!.walletBalance != null) const SizedBox(height: 14),
+
+              // Health hub — native, on-device health tracking.
+              _healthCard(),
+              const SizedBox(height: 14),
 
               // Stat grid
               GridView.count(
@@ -206,6 +211,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _healthCard() {
+    return InkWell(
+      borderRadius: BorderRadius.circular(GwRadius.lg),
+      onTap: () => Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const HealthHubScreen())),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFE23B54), Color(0xFFF0768A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(GwRadius.lg),
+          boxShadow: GwShadow.card,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: const Icon(Icons.favorite, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(tr(context, "Health", "ကျန်းမာရေး"),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900)),
+                  Text(
+                      // Cycle tracking is female-only, so the teaser line
+                      // mentions it only for female profiles.
+                      context.watch<AppState>().me?.gender == "female"
+                          ? tr(context, "Pulse, vitals, cycle, report",
+                              "Pulse၊ vitals၊ ရာသီ၊ report")
+                          : tr(context, "Pulse, vitals, report",
+                              "Pulse၊ vitals၊ report"),
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 13)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.white),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _stat(IconData icon, String value, String label, Color color,
       {VoidCallback? onTap}) {
     return InkWell(
@@ -214,7 +277,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: GwColors.surface,
+          color: GwColors.surfaceOf(context),
           borderRadius: BorderRadius.circular(GwRadius.lg),
           boxShadow: GwShadow.card,
         ),
@@ -236,8 +299,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: const TextStyle(
                     fontSize: 24, fontWeight: FontWeight.w900)),
             Text(label,
-                style: const TextStyle(
-                    color: GwColors.inkSoft, fontSize: 12)),
+                style: TextStyle(
+                    color: GwColors.inkSoftOf(context), fontSize: 12)),
           ],
         ),
       ),
@@ -254,7 +317,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: GwColors.surface,
+        color: GwColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(GwRadius.lg),
         boxShadow: GwShadow.card,
       ),
@@ -272,10 +335,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ActionChip(
                   avatar: Icon(a.$1, size: 18, color: GwColors.primary),
                   label: Text(a.$2),
-                  labelStyle: const TextStyle(
-                      color: GwColors.ink, fontWeight: FontWeight.w600),
-                  backgroundColor: GwColors.surfaceMuted,
-                  side: const BorderSide(color: GwColors.line),
+                  labelStyle: TextStyle(
+                      color: GwColors.inkOf(context), fontWeight: FontWeight.w600),
+                  backgroundColor: GwColors.surfaceMutedOf(context),
+                  side: BorderSide(color: GwColors.lineOf(context)),
                   onPressed: () => _openWeb(a.$3),
                 ),
             ],

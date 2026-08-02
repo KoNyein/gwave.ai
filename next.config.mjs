@@ -89,6 +89,27 @@ const livekitConnectSrc = (() => {
   }
 })();
 
+// The metaverse opens a WebSocket to its own server (NEXT_PUBLIC_MV_WS_URL,
+// e.g. wss://mv.gwave.cc). Without this the browser refuses the connection and
+// the world silently stays single-player — the page looks fine, nobody else is
+// ever in it, and the only clue is a CSP line in the console. Both wss:// and
+// https:// forms are allowed because the ticket fetch and the socket share the
+// host. Empty by default.
+const mvWsUrl = process.env.NEXT_PUBLIC_MV_WS_URL?.trim() ?? "";
+const mvConnectSrc = (() => {
+  if (!mvWsUrl) return "";
+  try {
+    const { host, protocol } = new URL(mvWsUrl);
+    // ws:// (local development) ကို production မှာ ဘယ်တော့မှ မသုံးရဘူး —
+    // HTTPS စာမျက်နှာက ဘာလုပ်လုပ် ပိတ်ခံရမယ်။ ဒါပေမယ့် localhost မှာ စမ်းတဲ့
+    // အခါ လိုတယ်။
+    const secure = protocol === "wss:" || protocol === "https:";
+    return secure ? ` wss://${host} https://${host}` : ` ws://${host} http://${host}`;
+  } catch {
+    return "";
+  }
+})();
+
 // Content-Security-Policy: 'unsafe-inline'/'unsafe-eval' are required by
 // Next.js hydration + dev tooling; everything else is locked to self and
 // the Supabase project (REST, storage, realtime websockets).
@@ -125,7 +146,7 @@ const csp = [
   // times out ([JOIN_ERROR]) because the browser silently blocks the socket.
   // *.chime.aws is the Amazon Chime SDK's meeting signaling/media control for
   // messenger calls (flagged; harmless to allow ahead of the client wiring).
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com https://gwave-media-8acd2816.s3.ap-southeast-1.amazonaws.com https://d10t7bibe827e7.cloudfront.net https://d2fvsrmhrcdf.cloudfront.net https://*.tile.openstreetmap.org https://*.live-video.net wss://*.live-video.net https://*.chime.aws wss://*.chime.aws${cctvHlsSrc}${livekitConnectSrc}${googleMapsConnectSrc}${kvsConnectSrc}${audioMediaSrc}`,
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com https://gwave-media-8acd2816.s3.ap-southeast-1.amazonaws.com https://d10t7bibe827e7.cloudfront.net https://d2fvsrmhrcdf.cloudfront.net https://*.tile.openstreetmap.org https://*.live-video.net wss://*.live-video.net https://*.chime.aws wss://*.chime.aws${cctvHlsSrc}${livekitConnectSrc}${googleMapsConnectSrc}${kvsConnectSrc}${audioMediaSrc}${mvConnectSrc}`,
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
   `frame-src 'self' https://www.youtube-nocookie.com https://accounts.google.com${cctvFrameSrc}${gameFrameSrc}${googleMapsSrc}`,

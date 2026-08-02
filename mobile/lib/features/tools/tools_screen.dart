@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/theme.dart';
+import 'nfc_tool_screen.dart';
+import 'qr_tool.dart';
 
 /// Native agriculture calculators — pure on-device math, so they work offline.
 /// A chip selector switches between calculators; each renders its own inputs
@@ -15,7 +17,7 @@ class ToolsScreen extends StatefulWidget {
   State<ToolsScreen> createState() => _ToolsScreenState();
 }
 
-enum _Calc { ecPpm, vpd, units, currency, profit }
+enum _Calc { ecPpm, vpd, units, currency, profit, qr, nfc }
 
 class _ToolsScreenState extends State<ToolsScreen> {
   _Calc _calc = _Calc.ecPpm;
@@ -26,6 +28,8 @@ class _ToolsScreenState extends State<ToolsScreen> {
     _Calc.units: "Units",
     _Calc.currency: "Currency",
     _Calc.profit: "Profit",
+    _Calc.qr: "QR",
+    _Calc.nfc: "NFC",
   };
   static const _icons = {
     _Calc.ecPpm: Icons.bolt_outlined,
@@ -33,6 +37,8 @@ class _ToolsScreenState extends State<ToolsScreen> {
     _Calc.units: Icons.straighten_outlined,
     _Calc.currency: Icons.payments_outlined,
     _Calc.profit: Icons.trending_up,
+    _Calc.qr: Icons.qr_code_2,
+    _Calc.nfc: Icons.nfc,
   };
 
   @override
@@ -58,14 +64,14 @@ class _ToolsScreenState extends State<ToolsScreen> {
                           color: _calc == c ? Colors.white : GwColors.primary),
                       label: Text(_labels[c]!),
                       labelStyle: TextStyle(
-                        color: _calc == c ? Colors.white : GwColors.ink,
+                        color: _calc == c ? Colors.white : GwColors.inkOf(context),
                         fontWeight: FontWeight.w600,
                       ),
                       selectedColor: GwColors.primary,
-                      backgroundColor: GwColors.surface,
+                      backgroundColor: GwColors.surfaceOf(context),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
-                        side: const BorderSide(color: GwColors.line),
+                        side: BorderSide(color: GwColors.lineOf(context)),
                       ),
                     ),
                   ),
@@ -73,16 +79,22 @@ class _ToolsScreenState extends State<ToolsScreen> {
             ),
           ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 30),
-              child: switch (_calc) {
-                _Calc.ecPpm => const _EcPpmCalc(),
-                _Calc.vpd => const _VpdCalc(),
-                _Calc.units => const _UnitCalc(),
-                _Calc.currency => const _CurrencyCalc(),
-                _Calc.profit => const _ProfitCalc(),
-              },
-            ),
+            // The NFC tool scrolls itself (ListView + live tag sessions), so it
+            // skips the shared SingleChildScrollView wrapper the calculators use.
+            child: _calc == _Calc.nfc
+                ? const NfcToolBody()
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 30),
+                    child: switch (_calc) {
+                      _Calc.ecPpm => const _EcPpmCalc(),
+                      _Calc.vpd => const _VpdCalc(),
+                      _Calc.units => const _UnitCalc(),
+                      _Calc.currency => const _CurrencyCalc(),
+                      _Calc.profit => const _ProfitCalc(),
+                      _Calc.qr => const QrTool(),
+                      _Calc.nfc => const SizedBox.shrink(),
+                    },
+                  ),
           ),
         ],
       ),
@@ -115,11 +127,31 @@ class _Field extends StatelessWidget {
           FilteringTextInputFormatter.allow(RegExp(r"[0-9.]")),
         ],
         onChanged: onChanged,
+        style: TextStyle(
+            color: GwColors.inkOf(context),
+            fontSize: 18,
+            fontWeight: FontWeight.w700),
         decoration: InputDecoration(
           labelText: label,
+          labelStyle: const TextStyle(
+              color: GwColors.primary, fontWeight: FontWeight.w700),
           suffixText: suffix,
+          suffixStyle: TextStyle(
+              color: GwColors.inkSoftOf(context),
+              fontWeight: FontWeight.w600),
           filled: true,
-          fillColor: GwColors.surface,
+          // Theme-aware: a stark white box used to clash hard in dark mode.
+          fillColor: GwColors.surfaceMutedOf(context),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: GwColors.lineOf(context)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: GwColors.primary, width: 1.6),
+          ),
         ),
       ),
     );
@@ -410,6 +442,7 @@ class _Hint extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(top: 6, bottom: 14),
         child: Text(text,
-            style: const TextStyle(color: GwColors.inkSoft, fontSize: 13)),
+            style:
+                TextStyle(color: GwColors.inkSoftOf(context), fontSize: 13)),
       );
 }

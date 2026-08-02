@@ -9,6 +9,7 @@ import '../../core/models.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import 'live_watch_screen.dart';
+import '../../core/video_audio.dart';
 
 /// Horizontal "Live now" rail for the top of the feed. Shows every stream that
 /// is broadcasting right now — regardless of who you follow — so a live
@@ -24,6 +25,9 @@ class LiveNowRail extends StatefulWidget {
 class _LiveNowRailState extends State<LiveNowRail> {
   List<LiveStream> _live = [];
   Timer? _refresh;
+
+  // Per-stream throttle for the media-plane verify below.
+  final Map<String, DateTime> _verifiedAt = {};
 
   @override
   void initState() {
@@ -41,8 +45,31 @@ class _LiveNowRailState extends State<LiveNowRail> {
 
   Future<void> _load() async {
     try {
-      final s =
-          await context.read<AppState>().repo.liveStreams(onlyLive: true);
+      final state = context.read<AppState>();
+      var s = await state.repo.liveStreams(onlyLive: true);
+      // Self-heal stale "live" rows (broadcast died without ending): the
+      // server checks the real media plane and marks dead ones ended — which
+      // also links their saved replay — so this rail stops showing ghosts.
+      final now = DateTime.now();
+      final stale = s
+          .where((x) =>
+              x.isLive &&
+              x.createdAt != null &&
+              now.difference(x.createdAt!).inMinutes >= 4 &&
+              now
+                      .difference(
+                          _verifiedAt[x.id] ?? DateTime.fromMillisecondsSinceEpoch(0))
+                      .inMinutes >=
+                  3)
+          .toList();
+      if (stale.isNotEmpty) {
+        for (final x in stale) {
+          _verifiedAt[x.id] = now;
+        }
+        await Future.wait(stale.map(
+            (x) => state.api.liveVerify(x.id).then((_) {}).catchError((_) {})));
+        s = await state.repo.liveStreams(onlyLive: true);
+      }
       if (mounted) setState(() => _live = s.where((e) => e.isLive).toList());
     } catch (_) {
       // Non-fatal — the rail just stays hidden/unchanged.
@@ -78,7 +105,7 @@ class _LiveNowRailState extends State<LiveNowRail> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               itemCount: _live.length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (_, i) => _LiveRailCard(stream: _live[i]),
+              itemBuilder: (_, i) => LiveRailCard(stream: _live[i]),
             ),
           ),
         ],
@@ -87,15 +114,19 @@ class _LiveNowRailState extends State<LiveNowRail> {
   }
 }
 
-class _LiveRailCard extends StatefulWidget {
-  const _LiveRailCard({required this.stream});
+/// A single live-broadcast card (muted autoplay preview, LIVE badge, viewer
+/// count, tap → watch). Public so the combined story+live rail on the feed
+/// can render live cards inside ONE compact strip.
+class LiveRailCard extends StatefulWidget {
+  const LiveRailCard({super.key, required this.stream, this.width = 118});
   final LiveStream stream;
+  final double width;
 
   @override
-  State<_LiveRailCard> createState() => _LiveRailCardState();
+  State<LiveRailCard> createState() => _LiveRailCardState();
 }
 
-class _LiveRailCardState extends State<_LiveRailCard> {
+class _LiveRailCardState extends State<LiveRailCard> {
   VideoPlayerController? _vc;
 
   @override
@@ -114,7 +145,8 @@ class _LiveRailCardState extends State<_LiveRailCard> {
     final url = widget.stream.ivsPlaybackUrl;
     if (url == null || url.isEmpty) return;
     try {
-      final c = VideoPlayerController.networkUrl(Uri.parse(url));
+      // Silent rail preview — leaves the user's music alone.
+      final c = silentVideoController(Uri.parse(url));
       _vc = c;
       await c.initialize();
       await c.setVolume(0);
@@ -132,7 +164,7 @@ class _LiveRailCardState extends State<_LiveRailCard> {
         MaterialPageRoute(builder: (_) => LiveWatchScreen(stream: s)),
       ),
       child: SizedBox(
-        width: 118,
+        width: widget.width,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(GwRadius.md),
           child: Stack(

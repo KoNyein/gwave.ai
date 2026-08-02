@@ -1,0 +1,99 @@
+name: Metaverse server
+
+# ★ `server/metaverse/**` ပြောင်းမှသာ run တယ် — Next.js app ကို ထိတိုင်း
+# container build လုပ်နေရင် CI က နှေးပြီး ECR မှာ တူတူပဲ image တွေ စုပုံမယ်။
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/metaverse/**"
+      - ".github/workflows/metaverse-server.yml"
+  pull_request:
+    paths:
+      - "server/metaverse/**"
+  workflow_dispatch:
+
+concurrency:
+  group: metaverse-server-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ap-southeast-1
+  ECR_REPO: gwave-metaverse
+  ECS_CLUSTER: gwave-cluster
+  ECS_SERVICE: metaverse
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server/metaverse
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci || npm install
+      # protocol + auth + anti-cheat + room isolation + persistence +
+      # multi-task + token gate + vehicles
+      - run: npm test
+
+  deploy:
+    # ★ PR မှာ deploy မလုပ်ရ — fork ကနေလာတဲ့ PR တစ်ခုက production ကို
+    # ပြောင်းလို့ရသွားမယ်။ main ကို push မှသာ။
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      # ★ OIDC — **access key မသုံးရ**။ Long-lived key က repo secret ထဲမှာ
+      # ထာဝရနေပြီး ပေါက်သွားရင် ဘယ်တော့ ပေါက်သွားလဲ မသိဘူး။ OIDC token က
+      # တစ်ခါသုံးဖြစ်ပြီး ဒီ repo ကနေသာ ထုတ်လို့ရတယ်။
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_METAVERSE_DEPLOY_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        working-directory: server/metaverse
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          # ★ tag ကို commit sha နဲ့ ထားတယ် — `latest` တစ်ခုတည်းဆိုရင်
+          # rollback လုပ်ဖို့ ဘယ် image ကို ပြန်သုံးရမလဲ မသိဘူး။
+          docker build --platform linux/amd64 \
+            -t "$REGISTRY/$ECR_REPO:${{ github.sha }}" \
+            -t "$REGISTRY/$ECR_REPO:latest" .
+          docker push "$REGISTRY/$ECR_REPO:${{ github.sha }}"
+          docker push "$REGISTRY/$ECR_REPO:latest"
+
+      - name: Deploy
+        run: |
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" \
+            --force-new-deployment --region "$AWS_REGION"
+
+      - name: Wait for the service to settle
+        run: |
+          # ★ စောင့်မှ deploy က တကယ်အောင်မြင်လားဆိုတာ သိရမယ်။ မစောင့်ရင်
+          # workflow က အစိမ်းရောင်ပြပြီး တကယ်က task တွေ crash loop
+          # ဖြစ်နေတာမျိုး ဖြစ်တတ်တယ်။
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" --region "$AWS_REGION"
+
+      - name: Health check
+        run: |
+          for i in $(seq 1 10); do
+            if curl -fsS https://mv.gwave.cc/health; then exit 0; fi
+            sleep 6
+          done
+          echo "health check never passed"
+          exit 1
