@@ -43,17 +43,44 @@
 - **Repo hygiene**: 100 merged branches + old TWA releases deleted
   (`.github/workflows/cleanup-branches.yml` is a reusable manual cleanup).
 
-- **Metaverse (branch `claude/phase-1-implementation-7ysxtj`)**: Phases 0–19
-  all implemented. 4 maps (city/farm/snow/sky), multiplayer WS server
-  (batched fan-out, Redis bus, anti-cheat), persistence (`metaverse.sql` —
-  APPLIED on RDS), Web3 SIWE + token-gated vip room, weather/water/fire/
-  vehicles, avatar customiser (`metaverse-part2.sql` — NOT yet applied),
-  mini-games (server-authoritative, weekly+all-time leaderboard), Android
-  WebView screen with JS bridge + AFK battery handling, UGC plot building
-  (InstancedMesh, server validation, report/admin queue), spatial voice
-  (WebRTC mesh, 18+ ticket claim, mic default off), marketplace
-  (`metaverse-market.sql` — NOT applied; **feature hard-off via
-  MV_MARKET_ENABLED pending legal advice**).
+- **Metaverse (`/metaverse`, on main, LIVE)**: Phases 0–19 shipped. 4 maps
+  (city/farm/snow/sky), multiplayer WS server (batched fan-out, Redis bus,
+  anti-cheat), persistence (`metaverse.sql`, `metaverse-part2.sql`,
+  `metaverse-market.sql` — **all APPLIED on RDS**), Web3 SIWE + token-gated
+  vip room, weather/water/fire/vehicles, avatar customiser, mini-games
+  (server-authoritative, weekly+all-time leaderboard), Android WebView screen
+  with JS bridge + AFK battery handling, UGC plot building, spatial voice
+  (WebRTC mesh, 18+ ticket claim, mic default off), marketplace (**feature
+  hard-off via MV_MARKET_ENABLED pending legal advice** — the tables exist but
+  the feature must stay off in production).
+  Controls are CS-style: default speed is running, Shift walks, Ctrl crouches,
+  V (or the 👁 button) toggles first-person, and clicking in first person takes
+  pointer lock. The left HUD is a flow-layout accordion — one panel open at a
+  time — so nothing overlaps on short landscape viewports.
+- **Multiplayer transport**: the client connects to
+  **`wss://<current-host>/mv/ws`** (same origin) after any
+  `NEXT_PUBLIC_MV_WS_URL` override, rotating candidates on each reconnect.
+  Caddy on the EC2 box routes `handle_path /mv/*` → `127.0.0.1:8090`
+  (the `metaverse` container). **No `mv.gwave.cc` DNS record is needed** —
+  that approach was abandoned. `deploy/Caddyfile` documents the route.
+- **FPV Simulator (`/fpv`, LIVE)**: three.js flight sim. Three aircraft types
+  with separate physics — 8 FPV quads, 2 fixed-wing planes (airspeed² lift,
+  stall, ground roll), 2 helicopters (collective, ~half throttle hovers);
+  4 flight modes (acro/freestyle/sport/cinematic, betaflight rate curves at a
+  240 Hz fixed substep); 6 maps; 6 game modes (free fly, 3-lap race,
+  checkpoint rush, balloon hunt, strike mission, landing challenge); keyboard,
+  touch dual-stick and Gamepad-API radios (EdgeTX USB/BT HID) with remappable
+  axes. Multiplayer reuses the metaverse WS server via `fpv-*` rooms (own
+  anti-cheat envelope: 70 m/s, 220 m ceiling, 320 m radius) and falls back to
+  solo against an older server. Strike targets are derelict vehicles and
+  balloons only — never human figures.
+- **Edu Arcade (`/arcade`, LIVE)**: 10 three.js educational games (math,
+  counting, odd/even, animals, fruit, flags, colour names, hex colour, word
+  builder, memory match) on a shared engine, plus a daily quest panel.
+- **Game progress (`game_progress` — APPLIED on RDS)**: `/api/games/progress`
+  stores per-game bests and quest counters for signed-in users
+  (`best = greatest(old, new)`, jsonb merge, sealed RLS + service_role).
+  Clients stay offline-first on localStorage; guests get 401 and keep working.
 
 ## Known gaps / next candidates
 
@@ -63,16 +90,55 @@
   Go Live sessions get replays like app broadcasts do.
 - Native iOS app (Apple Developer Program, $99/yr, user-side).
 - Old Vercel project deletion (user-side).
-- Metaverse infrastructure (user-side, console/CLI — this container cannot
-  reach AWS): `db/sql/metaverse.sql` applied to RDS, `MV_TICKET_SECRET` and
-  `DATABASE_URL` in Secrets Manager, ECR repo + ECS service, ALB with
-  `idle_timeout=300` and stickiness, ACM cert and Route 53 record for
-  `mv.gwave.cc`, then `NEXT_PUBLIC_MV_WS_URL` in `/etc/gwave-web.env` and a
-  rebuild (it is baked at build time). Commands in
-  `server/metaverse/README.md`.
+- Metaverse/FPV multiplayer runs as the **`metaverse` container on the app
+  EC2 box** (127.0.0.1:8090, behind Caddy at `/mv/*`), not ECS. Rebuild it by
+  hand after changing `server/metaverse/**`:
+  `cd ~/gwave.ai && git pull origin main && cd server/metaverse &&
+  sudo docker build -t gwave-metaverse . && sudo docker rm -f metaverse &&
+  sudo docker run -d --name metaverse --restart unless-stopped
+  -p 127.0.0.1:8090:8090 --env-file /etc/gwave-web.env -e PORT=8090
+  gwave-metaverse`. Verify with `curl -s https://gwave.cc/mv/health`.
+  The ECS path in `.github/workflows/metaverse-server.yml` stays gated off
+  behind `vars.MV_DEPLOY_ECS`.
 
 ## Changelog
 
+- 2026-08-02 (web): **FPV Simulator gets aircraft types + game modes.** Three
+  airframes with distinct physics — quads, fixed-wing planes (airspeed² lift,
+  airspeed-scaled control authority, stall, low-friction ground roll) and
+  helicopters (linear collective so ~half throttle hovers) — each with its own
+  procedural model. Six game modes: free fly, 3-lap race with gate markers,
+  checkpoint rush, balloon hunt, timed strike mission, landing challenge; each
+  drives a mission bar and a results overlay, and final scores sync via
+  `/api/games/progress`. The Controller tab documents binding an EdgeTX radio
+  over USB/BT HID, why ELRS/Crossfire are RF links a browser cannot read, and
+  HDMI-in goggle options. (#446, #447)
+- 2026-08-02 (web+db): **Cross-device game progress + daily quests.** New
+  `game_progress` table (sealed RLS, service_role only — **APPLIED on RDS**)
+  behind `/api/games/progress`, upserting `best = greatest(old, new)` with a
+  jsonb merge so a stale device can never lower a score. Four daily quests
+  span Edu Arcade, FPV and the metaverse, counters merged by max, offline-first
+  on localStorage with guests unaffected. (#445)
+- 2026-08-02 (web): **Edu Arcade — 10 three.js educational games at
+  `/arcade`.** One engine (emoji/text canvas textures, tap raycast for mouse
+  and touch, confetti, shake, WebAudio synth) hosts math, counting, odd/even,
+  animal/fruit/flag matching, colour names, hex colour, word builder and
+  memory match. Replaces the dated HTML learning games. (#444)
+- 2026-08-02 (web): **FPV Simulator shipped at `/fpv`.** 240 Hz fixed-substep
+  quad physics with betaflight rate curves, 8 drones, 4 flight modes, 6 maps,
+  keyboard/touch/Gamepad input, and multiplayer over `fpv-*` rooms on the
+  metaverse WS server. (#442)
+- 2026-08-02 (web+infra): **Metaverse multiplayer works without a new DNS
+  record.** The client now falls back to `wss://<host>/mv/ws` and Caddy routes
+  `/mv/*` to the metaverse container on the same box, so `mv.gwave.cc` is no
+  longer needed. Landscape phones regained the joystick (touch detection, not
+  width), the left HUD became a non-overlapping accordion, first-person view
+  and CS-style movement (default run, Shift walk, Ctrl crouch, pointer-lock
+  aim) landed. (#441)
+- 2026-08-02 (ci): **Deploys stopped reporting false failures.** The redeploy
+  step used `aws ssm wait`, which gives up after ~100 s while a fresh image
+  pull is still running; it now polls the invocation for up to 12 minutes and
+  exits on any terminal status. (#443)
 - 2026-08-02 (web): **Metaverse — phases 9-13, weather, water, fire, vehicles,
   CI.** Rain and snow follow you inside a 30×20×30 box that recycles particles
   out the bottom and back in the top, so 4 000 points cover a 200-metre world
