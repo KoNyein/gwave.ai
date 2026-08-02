@@ -16,6 +16,7 @@ import * as THREE from "three";
 import { connectMetaverse, type NetClient } from "@/components/metaverse/net";
 import { DRONES, getDrone, getMode, MODES, type DroneSpec, type FlightMode } from "@/lib/fpv/drones";
 import { createInput, loadAxisMap, saveAxisMap, type AxisMap, type FpvInput } from "@/lib/fpv/input";
+import { createGameRuntime, FPV_GAMES, gameAllowsMap, type GameHud } from "@/lib/fpv/gamemodes";
 import { buildFpvMap, FPV_MAPS } from "@/lib/fpv/maps";
 import { createState, respawn, speedKmh, updateDrone, type Sticks } from "@/lib/fpv/physics";
 import { questEvent, syncBest } from "@/lib/quests";
@@ -32,15 +33,16 @@ function wsCandidates(): string[] {
 }
 
 const PREF_KEY = "gw-fpv-prefs";
-type Prefs = { drone: string; mode: FlightMode; map: string; sound: boolean };
+type Prefs = { drone: string; mode: FlightMode; map: string; sound: boolean; game: string };
 function loadPrefs(): Prefs {
+  const def: Prefs = { drone: "raptor5", mode: "sport", map: "race", sound: true, game: "free" };
   try {
     const raw = window.localStorage.getItem(PREF_KEY);
-    if (raw) return { drone: "raptor5", mode: "sport", map: "race", sound: true, ...(JSON.parse(raw) as Partial<Prefs>) };
+    if (raw) return { ...def, ...(JSON.parse(raw) as Partial<Prefs>) };
   } catch {
     /* default နဲ့ ဆက်သွား */
   }
-  return { drone: "raptor5", mode: "sport", map: "race", sound: true };
+  return def;
 }
 
 /// Drone 3D model — frame X + canopy + prop ၄ လုံး (procedural, asset မလို)
@@ -195,7 +197,10 @@ export function FpvSim() {
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [started, setStarted] = useState(false);
   const [menu, setMenu] = useState(true);
-  const [tab, setTab] = useState<"mode" | "drone" | "map" | "controller">("mode");
+  const [tab, setTab] = useState<"game" | "mode" | "drone" | "map" | "controller">("game");
+  const [gameHud, setGameHud] = useState<GameHud | null>(null);
+  /// ပွဲ ပြန်စချိန် scene ကို အသစ်ဆောက်ဖို့
+  const [runNonce, setRunNonce] = useState(0);
   const [axisMap, setAxisMap] = useState<AxisMap | null>(null);
   const [padName, setPadName] = useState<string | null>(null);
   const [hud, setHud] = useState<Hud>({
@@ -373,6 +378,13 @@ export function FpvSim() {
       lapStart = 0;
     };
 
+    // ── ပွဲစဉ် runtime (Race / Rush / Balloon / Strike / Landing) ────────
+    const game = createGameRuntime(prefs.game, scene, map, (at) =>
+      explosions.push(makeExplosion(scene, at)),
+    );
+    let gameDone = false;
+    setGameHud(null);
+
     // ── Loop ─────────────────────────────────────────────────────────────
     const clock = new THREE.Clock();
     let raf = 0;
@@ -495,6 +507,15 @@ export function FpvSim() {
 
       sound.update(sticks.throttle, state.armed, !prefs.sound);
 
+      // ── ပွဲစဉ် update ────────────────────────────────────────────────
+      const gh = game.update(dt, state.pos, state.vel, state.armed);
+      if (gh.done && !gameDone) {
+        gameDone = true;
+        // Cross-device best + quest — ပွဲပြီးမှ တစ်ခါတည်း
+        syncBest(`fpv-${prefs.game}-${map.id}`, gh.done.score);
+        setGameHud(gh);
+      }
+
       // Touch stick knob တွေ ရွှေ့ (DOM direct — re-render မလို)
       const ts = input.touchState();
       if (knobL.current) knobL.current.style.transform = `translate(${ts.lx * 34}px, ${ts.ly * 34}px)`;
@@ -504,6 +525,7 @@ export function FpvSim() {
       hudAcc += dt;
       if (hudAcc > 0.2) {
         hudAcc = 0;
+        if (!gameDone) setGameHud(gh.mission ? gh : null);
         setHud({
           armed: state.armed,
           crashed: state.crashed,
@@ -526,6 +548,7 @@ export function FpvSim() {
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
+      game.dispose();
       input.dispose();
       inputRef.current = null;
       sound.dispose();
@@ -541,7 +564,7 @@ export function FpvSim() {
       renderer.forceContextLoss();
       if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
     };
-  }, [started, prefs, axisMap]);
+  }, [started, prefs, axisMap, runNonce]);
 
   // ── Touch stick pointer handlers ─────────────────────────────────────
   const bindStick = (
@@ -627,6 +650,49 @@ export function FpvSim() {
             </div>
           </div>
 
+          {/* ── ပွဲစဉ် mission bar ── */}
+          {gameHud?.mission && !gameHud.done && (
+            <div className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-[70vw] -translate-x-1/2 truncate rounded-full bg-black/55 px-4 py-1.5 text-[12px] text-amber-200 backdrop-blur">
+              {gameHud.mission}
+              {gameHud.timeLeft !== undefined && ` · ⏱ ${Math.ceil(gameHud.timeLeft)}s`}
+              {gameHud.score !== undefined && ` · 🏆 ${gameHud.score}`}
+            </div>
+          )}
+
+          {/* ── ပွဲပြီး results ── */}
+          {gameHud?.done && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+              <div className="w-[min(20rem,90vw)] rounded-3xl border border-white/15 bg-[#101a33] p-6 text-center">
+                <div className="text-lg font-extrabold">{gameHud.done.title}</div>
+                <div className="mt-1 text-sm text-white/70">{gameHud.done.detail}</div>
+                <div className="mt-2 text-2xl font-extrabold text-emerald-300">
+                  🏆 {gameHud.done.score}
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={() => {
+                      setGameHud(null);
+                      setRunNonce((n) => n + 1);
+                    }}
+                    className="flex-1 rounded-xl border border-emerald-400/60 bg-emerald-500/25 px-3 py-2 text-sm font-bold text-emerald-100 hover:bg-emerald-500/40"
+                  >
+                    🔁 ထပ်ကစား
+                  </button>
+                  <button
+                    onClick={() => {
+                      setGameHud(null);
+                      setStarted(false);
+                      setMenu(true);
+                    }}
+                    className="flex-1 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+                  >
+                    ⚙ Menu
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Center notices */}
           {!hud.armed && !hud.crashed && (
             <div className="pointer-events-none absolute left-1/2 top-1/3 z-10 -translate-x-1/2 rounded-full bg-black/55 px-4 py-2 text-xs text-white/85 backdrop-blur">
@@ -704,10 +770,11 @@ export function FpvSim() {
             <div className="mt-3 flex gap-1 rounded-lg bg-white/5 p-1 text-[12px]">
               {(
                 [
+                  ["game", "🎯 ပွဲ"],
                   ["mode", "🎚 Mode"],
                   ["drone", "🛸 Drone"],
                   ["map", "🗺 Map"],
-                  ["controller", "🎮 Controller"],
+                  ["controller", "🎮"],
                 ] as const
               ).map(([id, label]) => (
                 <button
@@ -719,6 +786,34 @@ export function FpvSim() {
                 </button>
               ))}
             </div>
+
+            {tab === "game" && (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {FPV_GAMES.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => {
+                      // ပွဲက လက်ရှိ map မှာ မကစားလို့ရရင် ပထမ allowed map
+                      // ကို အလိုအလျောက် ပြောင်းပေးတယ်
+                      const mapOk = gameAllowsMap(g, prefs.map);
+                      const nextMap = mapOk || g.maps === "all" ? prefs.map : g.maps[0]!;
+                      save({ ...prefs, game: g.id, map: nextMap });
+                    }}
+                    className={`rounded-xl border p-3 text-left transition ${prefs.game === g.id ? "border-emerald-400/60 bg-emerald-500/15" : "border-white/10 bg-white/5 hover:bg-white/10"}`}
+                  >
+                    <div className="text-sm font-bold">
+                      {g.emoji} {g.nameMy}
+                    </div>
+                    <div className="mt-0.5 text-[11px] leading-snug text-white/55">{g.blurbMy}</div>
+                    {g.maps !== "all" && (
+                      <div className="mt-1 text-[10px] text-white/40">
+                        Map: {g.maps.map((m) => FPV_MAPS.find((x) => x.id === m)?.nameMy ?? m).join(" · ")}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {tab === "mode" && (
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -763,7 +858,12 @@ export function FpvSim() {
                 {FPV_MAPS.map((m) => (
                   <button
                     key={m.id}
-                    onClick={() => save({ ...prefs, map: m.id })}
+                    onClick={() => {
+                      // Map အသစ်မှာ လက်ရှိပွဲ ကစားလို့မရရင် Free Fly ပြန်ထား
+                      const g = FPV_GAMES.find((x) => x.id === prefs.game);
+                      const game = g && gameAllowsMap(g, m.id) ? prefs.game : "free";
+                      save({ ...prefs, map: m.id, game });
+                    }}
                     className={`rounded-xl border p-3 text-left transition ${prefs.map === m.id ? "border-emerald-400/60 bg-emerald-500/15" : "border-white/10 bg-white/5 hover:bg-white/10"}`}
                   >
                     <div className="text-sm font-bold">
