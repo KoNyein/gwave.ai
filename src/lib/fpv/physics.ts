@@ -74,6 +74,72 @@ function rateCurve(x: number, rcRate: number, superRate: number, expo: number): 
 
 export type Collider = { min: THREE.Vector3; max: THREE.Vector3 };
 
+// ── လေအားပညာ / ဘက်ထရီ သဘောတရားများ ──────────────────────────────────────
+//
+// ★ အောက်က function တွေအားလုံးက **thrust ကို မြှောက်တဲ့ ကိန်း** တွေ ဖြစ်တယ်
+//   (1 = ဘာမှ မပြောင်း)。 သီးခြားခွဲထားတာက စမ်းသပ်လို့ရအောင် — ဒါတွေဟာ
+//   ပျံရတဲ့ ခံစားချက်ကို ဆုံးဖြတ်ပေမယ့် ဖန်သားပြင်ပေါ်မှာ တိုက်ရိုက် မမြင်ရဘူး။
+
+/// 🔋 Battery sag — LiPo pack က အားကုန်လာလေ voltage နိမ့်လေ၊ throttle
+/// ဖိထားချိန်မှာလည်း ချက်ချင်း voltage ကျတယ် (internal resistance)。
+///
+/// ★ ဒါက တကယ့် FPV မှာ အထင်ရှားဆုံး ခံစားချက်တစ်ခု — pack အသစ်နဲ့ punch
+///   ကောင်းပေမယ့် နောက်ဆုံး တစ်မိနစ်မှာ တူညီတဲ့ stick နဲ့ မတက်တော့ဘူး။
+export function batterySag(flightSec: number, drone: DroneSpec, thr: number): number {
+  const used = Math.min(1, flightSec / Math.max(1, drone.batterySec));
+  // အစပိုင်းမှာ ဖြောင့်ပြီး နောက်ပိုင်းမှာ ပိုကျတယ် (LiPo discharge curve)
+  const depletion = 1 - 0.16 * used * used;
+  // Load sag — ဖိလေ ကျလေ
+  return depletion * (1 - 0.08 * Math.max(0, Math.min(1, thr)));
+}
+
+/// 🛬 Ground effect — မြေပြင်နားမှာ rotor ရဲ့ လေက ပြန်ခုန်တင်လို့ တွန်းအား
+/// ပိုရတယ်။ တကယ့် IGE ratio: `T/T∞ = 1 / (1 - (R/4z)²)`。
+///
+/// ★ ဒါကြောင့် ဆင်းသက်ချိန် မြေနားရောက်ရင် "မွေ့ရာပေါ် ဆင်းသလို" ဖြစ်တယ် —
+///   အဲဒါ မရှိရင် landing က ခက်လွန်းပြီး ဘာလို့လဲ ဆိုတာလည်း မသိရဘူး။
+/// ★ Ducted (cinewhoop) မှာ ပိုသိသာတယ် — duct က လေကို ဘေးမထွက်အောင်
+///   ပိတ်ထားလို့။
+export function groundEffect(y: number, drone: DroneSpec): number {
+  if (drone.craft === "plane") {
+    // ✈️ Wing ground effect — အတောင်တစ်ခုစာ အမြင့်အောက်မှာ induced drag
+    // ကျပြီး အပေါ်တင်အား တက်တယ် (landing မှာ "မျောနေတယ်" လို့ ခံစားရ)。
+    const span = 2 * drone.scale;
+    return y < span ? 1 + 0.1 * (1 - y / span) : 1;
+  }
+  const R = 0.3 * drone.scale;
+  const z = Math.max(y, 0.02);
+  if (z > 2 * R) return 1;
+  const r = R / (4 * z);
+  const cap = drone.ducted ? 1.24 : 1.18;
+  return Math.min(cap, 1 / Math.max(0.2, 1 - r * r));
+}
+
+/// 🌀 Vortex ring state (settling with power) — ဒေါင်လိုက် ဆင်းနေရင်း
+/// throttle ဖိထားရင် ကိုယ့် downwash ထဲ ကိုယ်ပြန်ဝင်ပြီး တွန်းအား ပျောက်တယ်။
+///
+/// ★ ရှေ့/ဘေးကို ရွေ့နေရင် အဲဒီ လေဝဲထဲက ထွက်သွားလို့ မဖြစ်ဘူး — ဒါကြောင့်
+///   "ဆင်းနေရင် ရှေ့တိုးပါ" ဆိုတဲ့ တကယ့် နည်းလမ်းက ဒီမှာလည်း အလုပ်လုပ်တယ်။
+export function vortexRing(vel: THREE.Vector3, drone: DroneSpec, thr: number): number {
+  if (drone.craft === "plane" || thr < 0.2) return 1;
+  const descent = -vel.y;
+  const horiz = Math.hypot(vel.x, vel.z);
+  if (descent < 2 || horiz > 4) return 1;
+  const band = Math.min(1, (descent - 2) / 4); // 2..6 m/s ကြားမှာ ဆိုးဆိုးလာ
+  return 1 - 0.22 * band * (1 - horiz / 4);
+}
+
+/// 💨 Translational lift + duct — ရှေ့ကို ရွေ့နေရင် rotor က လေစိမ်း ရလို့
+/// ပိုထိရောက်တယ်။ Duct ကတော့ ရပ်နေချိန်မှာ တွန်းအား ပိုပေးပြီး အရှိန်မြင့်ရင်
+/// အကျိုးမရှိတော့ဘူး (drag က spec ထဲမှာ ပိုများပြီးသား)。
+export function airspeedFactor(vel: THREE.Vector3, drone: DroneSpec): number {
+  if (drone.craft === "plane") return 1;
+  const horiz = Math.hypot(vel.x, vel.z);
+  let f = 1 + Math.min(0.09, horiz * 0.012);
+  if (drone.ducted) f *= 1 + 0.1 * Math.max(0, 1 - vel.length() / 12);
+  return f;
+}
+
 const _up = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
 const _thrust = new THREE.Vector3();
@@ -164,12 +230,24 @@ function step(
   const thr = s.armed ? Math.pow(t, 1.35) : 0;
   _up.set(0, 1, 0).applyQuaternion(s.quat);
 
+  // ★ Thrust ကို ပြောင်းလဲစေတဲ့ သဘောတရား ၄ ခု — pack အားကုန်မှု၊ မြေပြင်
+  //   အနီး၊ ကိုယ့် downwash ထဲ ပြန်ဆင်းမှု၊ လေစီးမှု။ တစ်ခုချင်းကို အပေါ်မှာ
+  //   သီးခြား export လုပ်ထားတယ် (test လုပ်လို့ရအောင်)。
+  const envFactor =
+    batterySag(s.flightSec, drone, t) *
+    groundEffect(s.pos.y, drone) *
+    vortexRing(s.vel, drone, thr) *
+    airspeedFactor(s.vel, drone);
+
   if (drone.craft === "plane") {
     // ✈️ Fixed-wing — thrust က ရှေ့ကို၊ lift က airspeed² ကနေ body-up ကို
-    _thrust.copy(_fwd).multiplyScalar((thr * drone.maxThrust) / drone.mass);
+    // (ground effect က lift ဘက်မှာသာ သက်ရောက်တယ်၊ prop ဘက်မှာ မဟုတ်ဘူး)
+    _thrust
+      .copy(_fwd)
+      .multiplyScalar((thr * drone.maxThrust * batterySag(s.flightSec, drone, t)) / drone.mass);
     const lift = Math.min(
       GRAVITY * 1.6,
-      (drone.liftK ?? 0.07) * Math.max(0, vFwd) * Math.max(0, vFwd),
+      (drone.liftK ?? 0.07) * Math.max(0, vFwd) * Math.max(0, vFwd) * groundEffect(s.pos.y, drone),
     );
     s.vel.addScaledVector(_up, lift * dt);
   } else {
@@ -177,7 +255,7 @@ function step(
     // ~50% လောက်ဆို hover ဖြစ်အောင် curve ဖြောင့်ထားတယ် — quad ရဲ့
     // pow(1.35) curve ဆို hover point မြင့်လွန်းတယ်။
     const rotorThr = drone.craft === "heli" && s.armed ? t : thr;
-    _thrust.copy(_up).multiplyScalar((rotorThr * drone.maxThrust) / drone.mass);
+    _thrust.copy(_up).multiplyScalar((rotorThr * drone.maxThrust * envFactor) / drone.mass);
   }
 
   // Drag — linear + quadratic

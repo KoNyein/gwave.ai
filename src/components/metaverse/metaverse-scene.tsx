@@ -5,6 +5,7 @@ import * as THREE from "three";
 
 import { createSpatialAudio, type SpatialAudio } from "./audio";
 import { AvatarCustomiser } from "./avatar/customiser";
+import { HudMenu } from "./hud-menu";
 import { DEFAULT_AVATAR, sanitizeAvatar, type AvatarConfig } from "./avatar/config";
 import { applyAvatarConfig } from "./avatar/parts";
 import { BuildPanel, type BuildBridge } from "./build/panel";
@@ -192,7 +193,7 @@ export function MetaverseScene() {
   const [roomId, setRoomId] = useState(DEFAULT_ROOM);
   /// ဘယ်ဘက်တန်း (accordion) မှာ ဖွင့်ထားတဲ့ panel — တစ်ခုတည်းသာ
   /// တစ်ပြိုင်နက် ပွင့်တယ်၊ ဒါမှ panel ချင်း ဘယ်တော့မှ မထပ်ဘူး။
-  const [menu, setMenu] = useState<"map" | "games" | "voice" | null>(null);
+  const [menu, setMenu] = useState<"map" | "games" | "voice" | "settings" | null>(null);
   const [dressing, setDressing] = useState(false);
   /// ★ Avatar ပြင်ပြီးရင် scene ကို ပြန်ဆောက်တယ် — ရိုးရှင်းပြီး
   /// မှားနိုင်ခြေနည်းတယ် (attachment တွေ တစ်ခုချင်း sync လုပ်တာထက်)。
@@ -1550,20 +1551,14 @@ export function MetaverseScene() {
           onJoin={(gameId) => netRef.current?.sendGameJoin(gameId)}
         />
 
-        {/* ── 🏗 ဆောက်လုပ်ရေး (Phase 18) — ကိုယ်ပိုင်ကွက်ပေါ်မှာသာ
-            ဆောက်လို့ရတယ်၊ **အမှန်တရားက server မှာ** (`/plot/[id]/build`)။ */}
-        {!building && (
-          <button
-            data-hud="1"
-            onClick={() => setBuilding(true)}
-            title="ဆောက်လုပ်ရန်"
-            className="rounded-lg border border-white/15 bg-black/50 px-2.5 py-1.5 text-[11px] text-white/80 backdrop-blur hover:bg-black/70"
-          >
-            🏗 ဆောက်မယ်
-          </button>
-        )}
+        {/* 🏗 ဆောက်လုပ်ရေး (Phase 18) ကို ☰ Menu → 🌍 လောက ထဲ ရွှေ့လိုက်ပြီ
+            — ဖန်သားပြင်ပေါ် ခလုပ်တွေ လျှော့ဖို့။ ဆောက်ခွင့်ရှိ/မရှိ ဆိုတဲ့
+            **အမှန်တရားက server မှာပဲ** ရှိတယ် (`/plot/[id]/build`)。 */}
 
-        {/* ── 🎙 Voice chat (Phase 14) ── */}
+        {/* ── 🎙 Voice chat (Phase 14) — ဖွင့်/ပိတ်က ☰ Menu → 🔊 အသံ မှာ။
+            ဒီ panel က **ဝင်ပြီးမှ** ပေါ်တယ် (ဘယ်သူတွေ ရှိလဲ၊ mute၊ report
+            လိုတဲ့အခါ) — မဝင်ရသေးဘဲ mic ခလုတ် ချိတ်လွဲနေတာ ရှင်းလိုက်တယ်။ */}
+        {voiceState !== "off" && (
         <VoicePanel
           state={voiceState}
           micOn={micOn}
@@ -1598,6 +1593,7 @@ export function MetaverseScene() {
             });
           }}
         />
+        )}
       </div>
       </div>
 
@@ -1621,85 +1617,59 @@ export function MetaverseScene() {
           className="h-[132px] w-[132px] rounded-full"
         />
 
-        <div className="flex gap-2">
-          <button
-            data-hud="1"
-            onClick={() => setDressing(true)}
-            title="Avatar ပြင်ဆင်ရန်"
-            className="rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-[11px] text-white/70 backdrop-blur transition hover:bg-black/60"
-          >
-            🧑 Avatar
-          </button>
-
-          {/* ★ Bloom ကို ပိတ်လို့ရရမယ် — ဖုန်းအဟောင်းမှာ frame ကို ထက်ဝက်
-              နီးပါး စားတယ်။ ရွေးချယ်မှုက localStorage မှာ ကျန်တယ်။ */}
-          <button
-            data-hud="1"
-            onClick={() => setBloom((b) => !b)}
-            title="အလင်းအရောင် (bloom)"
-            className={`rounded-lg border px-2 py-1 text-[11px] backdrop-blur transition ${
-              bloom && !degraded
-                ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200"
-                : "border-white/15 bg-black/40 text-white/60"
-            }`}
-          >
-            ✨ {bloom && !degraded ? "ဖွင့်" : "ပိတ်"}
-          </button>
-
-          {/* အရိပ်က shadow map တစ်ခုလုံး ပြန်ဆွဲရတာမို့ ဖုန်းအဟောင်းမှာ
-              အကြီးမားဆုံး ကုန်ကျစရိတ်တစ်ခု */}
-          <button
-            data-hud="1"
-            onClick={() => setShadows((s) => !s)}
-            title="အရိပ် (shadows)"
-            className={`rounded-lg border px-2 py-1 text-[11px] backdrop-blur transition ${
-              shadows
-                ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200"
-                : "border-white/15 bg-black/40 text-white/60"
-            }`}
-          >
-            🌒 {shadows ? "ဖွင့်" : "ပိတ်"}
-          </button>
-
-          {/* ★ Browser က user gesture ပြီးမှ audio ခွင့်ပြုတယ် — ဒါကြောင့်
-              default ပိတ်ထားပြီး ဒီခလုတ်ကနေသာ ဖွင့်လို့ရတယ်။ */}
-          <button
-            data-hud="1"
-            onClick={() => {
-              const a = audioRef.current;
-              if (!a) return;
-              if (a.enabled) {
-                a.disable();
-                setSound(false);
-              } else {
-                void a.enable().then(setSound);
-              }
-            }}
-            title="ခြေသံ (spatial audio)"
-            className={`rounded-lg border px-2 py-1 text-[11px] backdrop-blur transition ${
-              sound
-                ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200"
-                : "border-white/15 bg-black/40 text-white/60"
-            }`}
-          >
-            {sound ? "🔊 အသံ" : "🔇 အသံ"}
-          </button>
-
-          {/* ★ First-person / third-person ပြောင်းခလုတ် (V) — ဖုန်းမှာ
-              scroll မရှိလို့ ဒီခလုတ်က တစ်ခုတည်းသော လမ်း။ */}
-          <button
-            data-hud="1"
-            onClick={() => fpvSetRef.current?.(!fpv)}
-            title="မြင်ကွင်းပြောင်း (V) — ဇာတ်ကောင်မျက်စိထဲက / နောက်ကနေ"
-            className={`rounded-lg border px-2 py-1 text-[11px] backdrop-blur transition ${
-              fpv
-                ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200"
-                : "border-white/15 bg-black/40 text-white/60"
-            }`}
-          >
-            👁 {fpv ? "1st" : "3rd"}
-          </button>
-        </div>
+        {/* ── ☰ Menu — ခလုပ်တွေအားလုံး category အလိုက် (hud-menu.tsx) ──
+            ★ အရင်က Avatar · bloom · အရိပ် · အသံ · 1st/3rd ဆိုပြီး ခလုပ်
+              ၅ ခု တန်းလျား ထားတယ် — ဖုန်းမှာ မြင်ကွင်းကို ကွယ်တယ်။
+              အခု switch တွေနဲ့ menu တစ်ခုထဲ စုလိုက်တယ်။ */}
+        <HudMenu
+          open={menu === "settings"}
+          onToggle={() => setMenu((m) => (m === "settings" ? null : "settings"))}
+          sound={sound}
+          onSound={(on) => {
+            const a = audioRef.current;
+            if (!a) return;
+            if (on) void a.enable().then(setSound);
+            else {
+              a.disable();
+              setSound(false);
+            }
+          }}
+          voiceState={voiceState}
+          micOn={micOn}
+          onVoice={(on) => {
+            if (on) {
+              setVoiceState("joining");
+              void voiceRef.current?.join();
+            } else {
+              voiceRef.current?.leave();
+              setVoiceState("off");
+              setVoicePeers([]);
+              setMicOn(false);
+            }
+          }}
+          onMic={(on) => {
+            voiceRef.current?.setMic(on);
+            setMicOn(voiceRef.current?.micOn ?? false);
+          }}
+          fpv={fpv}
+          onFpv={(on) => fpvSetRef.current?.(on)}
+          bloom={bloom}
+          bloomLocked={degraded}
+          onBloom={setBloom}
+          shadows={shadows}
+          onShadows={setShadows}
+          onAvatar={() => {
+            setMenu(null);
+            setDressing(true);
+          }}
+          onMap={() => setMenu("map")}
+          onGames={() => setMenu("games")}
+          onBuild={() => {
+            setMenu(null);
+            setBuilding(true);
+          }}
+          mapLabel={`${getMap(roomId).emoji} ${getMap(roomId).name}`}
+        />
 
         {/* ── ပိုင်ဆိုင်မှု (Phase W8) ────────────────────────────────
             ★ ဒါက **ဖြည့်စွက်သာ** — မချိတ်ဘဲ လောကက အပြည့်အဝ အလုပ်လုပ်တယ်။

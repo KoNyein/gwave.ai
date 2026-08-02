@@ -15,6 +15,15 @@ import * as THREE from "three";
 
 import { connectMetaverse, type NetClient } from "@/components/metaverse/net";
 import { CRAFTS, DRONES, getDrone, getMode, MODES, type DroneSpec, type FlightMode } from "@/lib/fpv/drones";
+import {
+  CAL_PROMPT,
+  CHANNEL_ORDERS,
+  STICK_MODES,
+  createCalibrator,
+  presetMap,
+  type CalProgress,
+  type ChannelOrder,
+} from "@/lib/fpv/calibration";
 import { createInput, loadAxisMap, saveAxisMap, type AxisMap, type FpvInput } from "@/lib/fpv/input";
 import { createGameRuntime, FPV_GAMES, gameAllowsMap, type GameHud } from "@/lib/fpv/gamemodes";
 import { buildFpvMap, FPV_MAPS } from "@/lib/fpv/maps";
@@ -437,6 +446,11 @@ export function FpvSim() {
   /// ပွဲ ပြန်စချိန် scene ကို အသစ်ဆောက်ဖို့
   const [runNonce, setRunNonce] = useState(0);
   const [axisMap, setAxisMap] = useState<AxisMap | null>(null);
+  /// Auto-calibration wizard — `null` = မဖွင့်ထားဘူး
+  const [cal, setCal] = useState<CalProgress | null>(null);
+  const [calRunning, setCalRunning] = useState(false);
+  const [calWarn, setCalWarn] = useState<string | null>(null);
+  const calRef = useRef<ReturnType<typeof createCalibrator> | null>(null);
   const [padName, setPadName] = useState<string | null>(null);
   const [hud, setHud] = useState<Hud>({
     armed: false,
@@ -498,6 +512,55 @@ export function FpvSim() {
     }, 800);
     return () => clearInterval(t);
   }, [menu]);
+
+  // ── 🎛 Auto-calibration wizard ──────────────────────────────────────────
+  //
+  // ★ Radio ကို ဒီမှာ ချိတ်ပြီး တကယ် လှုပ်ကြည့်မှ ဘယ် axis က ဘာလဲ သိတယ် —
+  //   preset ၄ မျိုးက radio အားလုံးကို မခြုံဘူး (firmware/Bluetooth stack
+  //   အလိုက် axis တွေ နေရာပြောင်းတတ်တယ်)。
+  // ★ Loop က `calRunning` boolean ပေါ်မှာသာ မှီတယ် — progress state ပေါ်
+  //   မှီရင် frame တိုင်း effect ပြန်စလို့ rAF က အမြဲ ပြန်ဖျက်ခံရမယ်။
+  useEffect(() => {
+    if (!calRunning) return;
+    const pad = () => {
+      const list = navigator.getGamepads?.() ?? [];
+      return Array.from(list).find((g) => g && g.axes.length >= 4) ?? null;
+    };
+    if (!pad()) {
+      setCalWarn("Controller မတွေ့ပါ — radio ကို ချိတ်ပြီး stick တစ်ချက် လှုပ်ပါ။");
+      setCalRunning(false);
+      return;
+    }
+    const c = calRef.current;
+    if (!c) return;
+    let raf = 0;
+    const tick = () => {
+      const g = pad();
+      if (g) {
+        const p = c.sample(g.axes);
+        setCal(p);
+        if (p.step === "done") {
+          if (!c.complete()) {
+            setCalWarn(
+              "Stick တစ်ချို့ လှုပ်တာ မတွေ့ပါ — မတွေ့တဲ့ function တွေက အရင်အတိုင်း ကျန်ပါမယ်။",
+            );
+          } else {
+            const bad = c.conflicts();
+            setCalWarn(
+              bad.length
+                ? `Stick တစ်ခုတည်းကို နှစ်ခါ လှုပ်မိပုံရတယ် (${bad.join(", ")}) — ပြန်ချိန်ပါ။`
+                : null,
+            );
+          }
+          setCalRunning(false);
+          return;
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [calRunning]);
 
   // ── Scene ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1242,6 +1305,160 @@ export function FpvSim() {
                 <div className={`rounded-lg px-3 py-2 ${padName ? "bg-emerald-500/15 text-emerald-200" : "bg-white/5 text-white/55"}`}>
                   {padName ? `🎮 ${padName}` : "Controller မတွေ့သေးပါ — radio ကို USB (joystick mode) / Bluetooth နဲ့ ချိတ်ပြီး stick တစ်ချက် လှုပ်ပါ။"}
                 </div>
+                {/* ── 🎛 Auto calibration ────────────────────────────────
+                    ★ Preset က radio အားလုံးကို မခြုံဘူး — firmware/Bluetooth
+                      stack အလိုက် axis နေရာ ပြောင်းတတ်တယ်။ တကယ် လှုပ်ကြည့်တာက
+                      ဟာ့ဒ်ဝဲကို မမှားနိုင်တဲ့ တစ်ခုတည်းသော နည်းလမ်း။ */}
+                <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[12px] font-bold text-white/85">
+                      🎛 အလိုအလျောက် ချိန်ညှိခြင်း
+                    </span>
+                    {!calRunning && (
+                      <button
+                        onClick={() => {
+                          const pads = navigator.getGamepads?.() ?? [];
+                          const g = Array.from(pads).find((x) => x && x.axes.length >= 4);
+                          const c = createCalibrator(g?.axes.length ?? 4);
+                          c.start();
+                          calRef.current = c;
+                          setCal({ step: "center", progress: 0, detectedAxis: null, detectedInvert: false });
+                          setCalWarn(null);
+                          setCalRunning(true);
+                        }}
+                        className="rounded-lg bg-emerald-500/20 px-2.5 py-1 text-[11px] font-semibold text-emerald-200 transition hover:bg-emerald-500/30"
+                      >
+                        စတင်မယ်
+                      </button>
+                    )}
+                  </div>
+
+                  {cal && cal.step !== "idle" ? (
+                    <>
+                      <div className="text-[12px] leading-snug text-white/85">
+                        {CAL_PROMPT[cal.step].my}
+                      </div>
+                      <div className="text-[10px] text-white/40">{CAL_PROMPT[cal.step].en}</div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-emerald-400 transition-[width]"
+                          style={{ width: `${Math.round(cal.progress * 100)}%` }}
+                        />
+                      </div>
+                      {cal.detectedAxis !== null && (
+                        <div className="text-[10px] text-emerald-300/70">
+                          Axis {cal.detectedAxis} လှုပ်နေတယ်
+                          {cal.detectedInvert && " (ပြောင်းပြန်)"}
+                        </div>
+                      )}
+                      {cal.step === "done" && (
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={() => {
+                              const c = calRef.current;
+                              if (!c) return;
+                              const next = c.result(axisMap);
+                              setAxisMap(next);
+                              saveAxisMap(next);
+                              setCal(null);
+                            }}
+                            className="rounded-lg bg-emerald-500/25 px-2.5 py-1 text-[11px] font-semibold text-emerald-100 transition hover:bg-emerald-500/35"
+                          >
+                            ✓ သိမ်းမယ်
+                          </button>
+                          <button
+                            onClick={() => {
+                              setCal(null);
+                              setCalWarn(null);
+                            }}
+                            className="rounded-lg bg-white/10 px-2.5 py-1 text-[11px] text-white/70 transition hover:bg-white/20"
+                          >
+                            မသိမ်းဘူး
+                          </button>
+                        </div>
+                      )}
+                      {calRunning && (
+                        <button
+                          onClick={() => {
+                            calRef.current?.cancel();
+                            setCalRunning(false);
+                            setCal(null);
+                          }}
+                          className="text-[10px] text-white/40 underline underline-offset-2 hover:text-white/70"
+                        >
+                          ရပ်မယ်
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-[11px] leading-snug text-white/50">
+                      Radio ချိတ်ပြီး ခလုပ်နှိပ်ပါ — stick တွေကို အဆုံးထိ လှုပ်ခိုင်းပြီး ဘယ်
+                      axis က ဘာလဲ၊ ပြောင်းပြန်လား၊ အဆုံးထိ ဘယ်လောက်ရောက်လဲ ဆိုတာ
+                      တိုင်းပါမယ်။ Stick အလယ်မှာ မငြိမ်တဲ့ radio ဆိုရင် deadband ကို
+                      အလိုအလျောက် ချဲ့ပေးပါတယ်။
+                    </p>
+                  )}
+
+                  {calWarn && (
+                    <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-[10px] leading-snug text-amber-100">
+                      ⚠️ {calWarn}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Channel order preset ──────────────────────────────
+                    ★ ချိန်ညှိလို့ မရတဲ့အခါ (radio မချိတ်ရသေးဘူး) အတွက်
+                      စံ ၄ မျိုး — EdgeTX က AETR၊ Spektrum က TAER。 */}
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-[12px] font-bold text-white/85">📻 Channel order</div>
+                  <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                    {(Object.keys(CHANNEL_ORDERS) as ChannelOrder[]).map((o) => (
+                      <button
+                        key={o}
+                        onClick={() => {
+                          // ★ Preset က axis နေရာပဲ ပြောင်းတယ် — ချိန်ညှိထားတဲ့
+                          //   endpoint/deadband ကို မဖျက်ဘူး။
+                          const next = { ...presetMap(o), cal: axisMap.cal };
+                          setAxisMap(next);
+                          saveAxisMap(next);
+                        }}
+                        className={`rounded-lg px-2 py-1.5 text-[11px] transition ${
+                          axisMap.preset === o
+                            ? "bg-emerald-500/25 text-emerald-200"
+                            : "bg-white/5 text-white/60 hover:bg-white/10"
+                        }`}
+                      >
+                        {o}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-1.5 text-[10px] leading-snug text-white/45">
+                    {
+                      CHANNEL_ORDERS[
+                        (axisMap.preset === "custom" ? "AETR" : axisMap.preset) as ChannelOrder
+                      ].radios
+                    }
+                    {axisMap.preset === "custom" && " · လက်ရှိက ကိုယ်တိုင်ချိန်ထားတာ"}
+                  </div>
+                </div>
+
+                {/* ── Stick mode — radio ဘက်က setting၊ sim က ပြောင်းလို့မရဘူး */}
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-[12px] font-bold text-white/85">🕹 Stick mode</div>
+                  <div className="mt-1.5 space-y-1 text-[10px] leading-snug text-white/50">
+                    {Object.entries(STICK_MODES).map(([n, m]) => (
+                      <div key={n}>
+                        <b className="text-white/70">Mode {n}</b> — ဘယ်: {m.left} · ညာ: {m.right}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-1.5 text-[10px] leading-snug text-white/40">
+                    ★ Stick mode က <b>radio ထဲက setting</b> ပါ — sim ကနေ ပြောင်းလို့ မရပါ။
+                    ကိုယ့် radio က ဘယ် mode လဲ ဆိုတာ အထက်က ချိန်ညှိမှုက အလိုအလျောက်
+                    လိုက်ပါမယ်။
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {(["roll", "pitch", "throttle", "yaw"] as const).map((k) => (
                     <label key={k} className="rounded-lg bg-white/5 p-2">
