@@ -527,3 +527,152 @@
     margin: 1.5cm;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Web3 ownership layer — Phase W8 design system.
+
+   These live apart from the metaverse's green because money and ownership
+   should not look like the rest of the world: a mistaken tap on a green
+   button costs nothing, a mistaken tap here can cost a plot. Gold reads as
+   "value", and the surface is a colder blue-black than --mv-surface.
+
+   Every status is carried by an icon AND a colour — a colour alone is
+   invisible to a colour-blind player, and roughly one man in twelve here
+   cannot separate the pending gold from the success green.
+   ───────────────────────────────────────────────────────────────────────── */
+.w3 {
+  --w3-surface: #12181f;
+  --w3-surface-2: #18202a;
+  --w3-border: #24303c;
+  --w3-accent: #d8a94a;
+  --w3-accent-dim: #8a6d2e;
+  --w3-text: #e8f0e8;
+  --w3-muted: #8ba0b4;
+
+  --st-pending: #d8a94a;
+  --st-success: #5cc98a;
+  --st-error: #e5735f;
+  --st-info: #6b9fd4;
+
+  --w3-touch: 44px;
+
+  color: var(--w3-text);
+  font-family: system-ui, "Padauk", "Noto Sans Myanmar", sans-serif;
+}
+
+/* Addresses, token ids and amounts only — never Burmese prose. Digits line
+   up in mono, which is what makes a 42-character address scannable. */
+.w3-mono {
+  font-family: "SF Mono", ui-monospace, "Roboto Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Touch target floor. Anything the finger hits gets this, including the
+   little "skip" links — a 30px skip button is how people end up connecting
+   something they meant to dismiss. */
+.w3-tap {
+  min-height: var(--w3-touch);
+  min-width: var(--w3-touch);
+}
+
+.w3-sheet {
+  background: var(--w3-surface);
+  border-top: 1px solid var(--w3-border);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -12px 40px rgb(0 0 0 / 0.5);
+  animation: w3-slide-up 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.w3-card {
+  background: var(--w3-surface);
+  border: 1px solid var(--w3-border);
+  border-radius: 12px;
+}
+
+.w3-btn-primary {
+  background: var(--w3-accent);
+  color: #1a1206;
+  border-radius: 12px;
+  font-weight: 600;
+}
+.w3-btn-primary:disabled {
+  opacity: 0.55;
+}
+
+.w3-btn-ghost {
+  background: transparent;
+  border: 1px solid var(--w3-border);
+  color: var(--w3-text);
+  border-radius: 12px;
+}
+
+.w3-chip {
+  background: rgb(18 24 31 / 0.75);
+  border: 1px solid var(--w3-border);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+}
+
+/* The skeleton says what is coming; a spinner says only "wait". */
+.w3-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--w3-surface-2) 25%,
+    #22303e 50%,
+    var(--w3-surface-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: w3-shimmer 1.4s linear infinite;
+  border-radius: 8px;
+}
+
+.w3-pulse {
+  animation: w3-pulse 1.6s ease-in-out infinite;
+}
+
+.w3 :focus-visible {
+  outline: 2px solid var(--w3-accent);
+  outline-offset: 2px;
+}
+
+@keyframes w3-slide-up {
+  from {
+    transform: translateY(12%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes w3-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes w3-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.75;
+  }
+}
+
+/* Required, not a nicety: vestibular disorders make the sheet slide and the
+   pulse genuinely unpleasant, and this is a full-screen 3D app already. */
+@media (prefers-reduced-motion: reduce) {
+  .w3-sheet,
+  .w3-skeleton,
+  .w3-pulse {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
