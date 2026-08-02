@@ -191,7 +191,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
 
   const providerCols =
     process.env.NEXT_PUBLIC_LIVE_PROVIDER === "ivs"
-      ? ", ivs_stage_arn, ivs_channel_arn"
+      ? ", ivs_stage_arn, ivs_channel_arn, ivs_composition_arn"
       : "";
   const { data: stream } = await db
     .from("live_streams")
@@ -210,6 +210,7 @@ export async function goLive(streamId: string): Promise<ActionResult> {
       agora_channel: string | null;
       ivs_stage_arn?: string | null;
       ivs_channel_arn?: string | null;
+      ivs_composition_arn?: string | null;
     }>();
   if (!stream) return { ok: false, error: "Stream not found" };
   if (stream.host_id !== user.id) return { ok: false, error: "Host only" };
@@ -308,21 +309,31 @@ export async function goLive(streamId: string): Promise<ActionResult> {
   // compositions for live stages that are missing one, so even a torn-down
   // action heals within a minute.
   const extra: Record<string, string | null> = {};
-  if (stream.ivs_stage_arn) {
+  // Where the composition is writing the replay. Kept out of `extra` and
+  // written separately below — see the write itself for why.
+  let recordingPrefix: string | null = null;
+  if (stream.ivs_stage_arn && !stream.ivs_composition_arn) {
+    // Only when the row has no composition yet. goLive runs every time the
+    // host's browser joins the stage — a reload, a reconnect, a second tab —
+    // and each run used to start another composition on the same stage. IVS
+    // composites a stage once: the first one keeps working and every later one
+    // fails outright. Production had three on one stage inside a minute, two of
+    // them FAILED, all from one broadcast.
+    //
     // Deliberately outside the record_enabled gate. For a stage the
     // composition is not only how the replay gets written — it is also how the
     // broadcast reaches an HLS URL, and therefore how anyone not on a browser
     // watches it at all. A host who turns Record off is asking not to be
     // recorded, not to be invisible to every phone in the app. record_enabled
     // decides the S3 destination and nothing else.
-    const arn = await startIvsComposition(
+    const composition = await startIvsComposition(
       stream.ivs_stage_arn,
       stream.ivs_channel_arn,
-      { record: stream.record_enabled },
     );
-    if (arn) {
-      extra.ivs_composition_arn = arn;
+    if (composition) {
+      extra.ivs_composition_arn = composition.arn;
       extra.recording_path = null;
+      recordingPrefix = composition.recordingPrefix;
     }
   } else if (!stream.record_enabled) {
     // Host turned Record off — no replay saved.
@@ -350,6 +361,32 @@ export async function goLive(streamId: string): Promise<ActionResult> {
     if (recErr) {
       // Not fatal: the broadcast is live either way.
       console.warn("[live/goLive] recording columns not saved:", recErr.message);
+    }
+  }
+
+  // The recording prefix goes in its own statement, on purpose.
+  //
+  // It is the newest column here, and a column is only present once the DDL has
+  // been applied and PostgREST has reloaded its schema cache — two steps that
+  // happen on the server, not in this deploy. Folded into the update above, a
+  // deploy that got there first would fail the *whole* statement and lose
+  // ivs_composition_arn with it: no ARN means no HLS restream, which means
+  // nobody outside a browser can watch the broadcast at all. Losing the replay
+  // prefix costs a replay; losing the composition ARN costs the broadcast.
+  //
+  // So it is written alone, and its failure is logged and survived.
+  if (recordingPrefix) {
+    const { error: prefixErr } = await db
+      .from("live_streams")
+      .update({ ivs_recording_prefix: recordingPrefix })
+      .eq("id", stream.id)
+      .eq("host_id", user.id);
+    if (prefixErr) {
+      console.warn(
+        "[live/goLive] recording prefix not saved — this broadcast's replay " +
+          "will have to be found by searching S3:",
+        prefixErr.message,
+      );
     }
   }
 

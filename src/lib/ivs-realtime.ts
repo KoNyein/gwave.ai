@@ -1,24 +1,30 @@
 import "server-only";
 
 import {
+  type Composition,
   CreateParticipantTokenCommand,
   CreateStageCommand,
   DeleteStageCommand,
   GetCompositionCommand,
+  GetStorageConfigurationCommand,
   IVSRealTimeClient,
   ParticipantTokenCapability,
   StartCompositionCommand,
   StopCompositionCommand,
 } from "@aws-sdk/client-ivs-realtime";
 
-import { readIvsRecordingManifest } from "@/lib/ivs-recording";
+import {
+  findRecordingEndedPrefix,
+  readIvsRecordingManifest,
+  recordingBucket,
+} from "@/lib/ivs-recording";
 
 /**
  * Amazon IVS Real-Time — the AWS-native provider for phone-browser Live
  * (FB/TikTok-style). Each broadcast gets an IVS *stage*: the host publishes
  * camera/mic over WebRTC from the browser, viewers subscribe (up to 10,000 per
- * stage), and a server-side *composition* records the mixed view to S3 — no
- * media server of ours anywhere.
+ * stage), and a server-side *composition* restreams the mixed view into a
+ * Low-Latency channel — no media server of ours anywhere.
  *
  * Region: same constraint as IVS Low-Latency — control plane in IVS_REGION
  * (Tokyo default); media rides AWS's global edge, so viewer latency in Myanmar
@@ -26,9 +32,9 @@ import { readIvsRecordingManifest } from "@/lib/ivs-recording";
  * the realtime APIs — see deploy/aws-ivs-setup.md).
  *
  * Env (beyond Phase 1's IVS_REGION):
- *   IVS_RT_STORAGE_CONFIG_ARN   S3 storage configuration for composite recording
  *   IVS_RT_ENCODER_CONFIG_ARN   encoder configuration (720p portrait works well)
- * Both optional — without them, stages work and recording is simply skipped.
+ * Optional — without it, stages work and only the HLS restream is skipped.
+ * Replays come from channel recording, not from here.
  */
 
 function rtClient(): IVSRealTimeClient {
@@ -100,17 +106,45 @@ export async function mintIvsStageToken(opts: {
  *    have and cannot get. Without this the app could list a live broadcast,
  *    show its LIVE badge and its viewer count, and then render a grey
  *    placeholder where the video should be — which is exactly what it did.
- *  - **s3** — the replay, as before.
+ * There used to be a second, `s3` destination that wrote the replay directly.
+ * It never once worked on this account: every composition carrying both came
+ * back with the channel `ACTIVE` and the S3 destination `FAILED` with no
+ * `startTime` — rejected before it began, with or without a bucket policy on
+ * the storage configuration's bucket, sharing an encoder configuration or not.
+ * The replay now comes from recording the channel instead, which is the same
+ * mechanism phone broadcasts have always used and which has never failed. See
+ * the watch-channel comment in api/live/create.
  *
- * Each is optional and independent: no channel and it still records; no
- * storage config and it is still watchable. Passing neither is not an error,
- * it just means there is nothing to compose to, so we don't call AWS at all.
+ * No channel means nothing to compose to, so we don't call AWS at all.
+ *
+ * Returns the composition ARN **and where its recording is going**. The prefix
+ * matters: see `IvsComposition.recordingPrefix` below.
  */
+export interface IvsComposition {
+  /** Needed to stop the composition when the broadcast ends. */
+  arn: string;
+  /**
+   * The S3 prefix the replay is being written to, or null if this composition
+   * has no recording destination.
+   *
+   * **Store this on the row.** It is the only durable record of where the
+   * replay lands. The obvious alternative — ask `GetComposition` for it after
+   * the broadcast ends — does not work: IVS deletes the composition record
+   * shortly after it stops, so by the time anything looks, the ARN 404s:
+   *
+   *   Resource: arn:aws:ivs:...:composition/tcs3RASP3Asy not found
+   *
+   * Four broadcasts in a row were recorded correctly and then had no replay
+   * because of exactly that. The prefix is handed to us here, while the
+   * composition is alive, and it never changes — so write it down now.
+   */
+  recordingPrefix: string | null;
+}
+
 export async function startIvsComposition(
   stageArn: string,
   channelArn?: string | null,
-  { record = true }: { record?: boolean } = {},
-): Promise<string | null> {
+): Promise<IvsComposition | null> {
   const encoder = process.env.IVS_RT_ENCODER_CONFIG_ARN;
   // The encoder configuration describes the composite frame itself, so it is
   // required by both destinations. Without it there is nothing to compose.
@@ -128,21 +162,15 @@ export async function startIvsComposition(
       channel: { channelArn, encoderConfigurationArn: encoder },
     });
   }
-  if (record && ivsRtRecordingConfigured()) {
-    destinations.push({
-      s3: {
-        storageConfigurationArn: process.env.IVS_RT_STORAGE_CONFIG_ARN!,
-        encoderConfigurationArns: [encoder],
-      },
-    });
-  }
   if (destinations.length === 0) return null;
 
   try {
     const res = await rtClient().send(
       new StartCompositionCommand({ stageArn, destinations }),
     );
-    return res.composition?.arn ?? null;
+    const arn = res.composition?.arn;
+    if (!arn) return null;
+    return { arn, recordingPrefix: compositionRecordingPrefix(res.composition) };
   } catch (e) {
     console.warn(
       "[ivs-rt] StartComposition failed — this broadcast will have no HLS " +
@@ -154,76 +182,219 @@ export async function startIvsComposition(
 }
 
 /**
- * Stop a composition and resolve where the recording landed.
+ * The bucket composite recordings are written to — asked of AWS, not configured.
  *
- * The composition detail gives us the S3 *prefix*; the exact playlist filename
- * comes from the recording's own `events/recording-ended.json`, read by
- * `readIvsRecordingManifest` — we do NOT hardcode the manifest name. (A previous
- * version guessed `<prefix>/media/hls/master.m3u8`; the real file is
- * `multivariant.m3u8`, so every Real-Time replay stored a 404.)
+ * IVS Real-Time writes a composition's recording to whatever bucket its
+ * *storage configuration* names, and that is a different bucket from the one
+ * Low-Latency channel recordings use. Nothing said so: the manifest reader used
+ * `IVS_RECORDING_BUCKET` for both, so every browser broadcast's replay was
+ * looked for in the channel bucket, where it had never been. The recordings
+ * were sitting in the other bucket the whole time, complete, with their
+ * `recording-ended.json` next to them.
  *
- * The events file is written asynchronously after stop, so the resolve retries
- * briefly. If it never appears we return null and the caller leaves
- * `recording_path` null — a missing replay shows the "no replay yet"
- * placeholder; a wrong one shows a dead player.
+ * The obvious fix is a second env var. This asks the storage configuration
+ * instead, because the storage configuration *is* the answer: point
+ * IVS_RT_STORAGE_CONFIG_ARN somewhere else and the read follows it, with
+ * nothing to keep in sync and nothing to get wrong. Answered once and cached —
+ * a storage configuration is immutable, so the reply cannot go stale.
+ *
+ * Falls back to the channel bucket when there is no storage configuration or
+ * AWS cannot be reached, which is also the correct answer for a single-bucket
+ * setup.
  */
-export async function stopIvsComposition(
-  compositionArn: string,
-): Promise<{ recordingPath: string | null }> {
-  const client = rtClient();
-  await client
-    .send(new StopCompositionCommand({ arn: compositionArn }))
-    .catch(() => undefined);
-  try {
-    // Read the prefix before the composition record is garbage-collected.
-    const res = await client.send(
-      new GetCompositionCommand({ arn: compositionArn }),
-    );
-    const s3 = res.composition?.destinations?.find((d) => d.detail?.s3)?.detail
-      ?.s3 as { recordingPrefix?: string } | undefined;
-    if (!s3?.recordingPrefix) return { recordingPath: null };
-    return {
-      recordingPath: await readIvsRecordingManifest(s3.recordingPrefix),
-    };
-  } catch {
-    return { recordingPath: null };
+let rtBucket: string | null | undefined;
+
+export async function compositionRecordingBucket(): Promise<string | undefined> {
+  const arn = process.env.IVS_RT_STORAGE_CONFIG_ARN;
+  if (!arn) return recordingBucket();
+  if (rtBucket === undefined) {
+    try {
+      const res = await rtClient().send(
+        new GetStorageConfigurationCommand({ arn }),
+      );
+      rtBucket = res.storageConfiguration?.s3?.bucketName ?? null;
+    } catch (e) {
+      // Left null rather than undefined on purpose: one failure should not turn
+      // every later read into another AWS round trip.
+      rtBucket = null;
+      console.warn(
+        "[ivs-rt] Could not read the storage configuration's bucket; " +
+          "falling back to IVS_RECORDING_BUCKET:",
+        e instanceof Error ? e.message : e,
+      );
+    }
   }
+  return rtBucket ?? recordingBucket();
+}
+
+/** The S3 prefix a composition is recording to, if it is recording at all. */
+function compositionRecordingPrefix(
+  composition: Composition | undefined,
+): string | null {
+  const s3 = composition?.destinations?.find((d) => d.detail?.s3)?.detail?.s3;
+  return s3?.recordingPrefix ?? null;
+}
+
+/** The stage id out of a stage ARN — the top-level folder its recordings are
+ * written under in the bucket. */
+function stageIdOf(stageArn: string | null | undefined): string | null {
+  const m = stageArn?.match(/:stage\/(.+)$/);
+  return m?.[1] ?? null;
+}
+
+/** The composition id out of a composition ARN. */
+function compositionIdOf(compositionArn: string): string | null {
+  const m = compositionArn.match(/:composition\/(.+)$/);
+  return m?.[1] ?? null;
 }
 
 /**
- * Where a composition's recording landed, without stopping anything.
+ * Where a composition's recording is being written.
  *
- * `stopIvsComposition` does this too, but it only gets one chance: it runs
- * when the host ends the broadcast, and IVS writes
- * `events/recording-ended.json` asynchronously after that. Miss the window and
- * the row keeps a null `recording_path` with nothing left to look again — the
- * replay sweeper skips stage broadcasts, because their recording lands at the
- * composition's prefix rather than the channel's.
+ * Three sources, in descending order of trust:
  *
- * So the sweeper calls this instead. One retry pass only: the cron comes back
- * in a minute, which is a better place to be patient than inside a request.
+ *  1. **The prefix stored on the row** when the composition started. Free,
+ *     exact, and always right. Everything below is a fallback for the rows
+ *     written before it was stored.
+ *  2. **`GetComposition`.** Works only while the composition still exists —
+ *     which in practice means while the broadcast is still running.
+ *  3. **Looking in the bucket.** Slower, and it can only search the stage's own
+ *     subtree, but the recording is still sitting there long after the
+ *     composition record that described it has gone.
  */
-export async function resolveIvsCompositionRecording(
+async function resolveRecordingPrefix(
+  compositionArn: string,
+  storedPrefix?: string | null,
+  stageArn?: string | null,
+): Promise<string | null> {
+  if (storedPrefix) return storedPrefix;
+  try {
+    const res = await rtClient().send(
+      new GetCompositionCommand({ arn: compositionArn }),
+    );
+    const prefix = compositionRecordingPrefix(res.composition);
+    if (prefix) return prefix;
+  } catch (e) {
+    // Expected once the composition has been garbage-collected. Not an error —
+    // the S3 search below is the answer.
+    console.info(
+      "[ivs-rt] GetComposition did not answer; searching S3 instead:",
+      e instanceof Error ? e.message : e,
+    );
+  }
+  const stageId = stageIdOf(stageArn);
+  if (!stageId) return null;
+  return await findRecordingEndedPrefix(
+    `${stageId}/`,
+    compositionIdOf(compositionArn) ?? undefined,
+    await compositionRecordingBucket(),
+  );
+}
+
+/**
+ * Is this composition still doing its job?
+ *
+ * Returns the IVS state (`STARTING`, `ACTIVE`, `STOPPING`, `FAILED`), or null
+ * when IVS has no record of it at all.
+ *
+ * A composition can die on its own, and quietly. The usual way is being started
+ * a moment too early: `StartComposition` succeeds, IVS looks at the stage,
+ * finds nobody publishing video yet, and gives up within a couple of seconds.
+ * Nothing about that failure reaches us — the call already returned an ARN, the
+ * row already has it, and every later check sees a composition ARN and assumes
+ * the broadcast is being recorded. It is not. It never was.
+ *
+ * Null is *not* a clear answer on its own: IVS deletes the record shortly after
+ * a composition ends normally too. It only means "dead" for a stream that is
+ * still live — a broadcast still running should still have a composition.
+ */
+export async function ivsCompositionState(
   compositionArn: string,
 ): Promise<string | null> {
   try {
     const res = await rtClient().send(
       new GetCompositionCommand({ arn: compositionArn }),
     );
-    const s3 = res.composition?.destinations?.find((d) => d.detail?.s3)?.detail
-      ?.s3 as { recordingPrefix?: string } | undefined;
-    if (!s3?.recordingPrefix) return null;
-    return await readIvsRecordingManifest(s3.recordingPrefix, {
-      attempts: 1,
-      delayMs: 0,
-    });
-  } catch (e) {
-    console.warn(
-      "[ivs-rt] Could not resolve a composition recording:",
-      e instanceof Error ? e.message : e,
-    );
+    return res.composition?.state ?? null;
+  } catch {
     return null;
   }
+}
+
+/**
+ * Stop a composition and resolve where the recording landed.
+ *
+ * The prefix comes from the row (written down when the composition started);
+ * the exact playlist filename comes from the recording's own
+ * `events/recording-ended.json`, read by `readIvsRecordingManifest` — we do NOT
+ * hardcode the manifest name. (A previous version guessed
+ * `<prefix>/media/hls/master.m3u8`; the real file is `multivariant.m3u8`, so
+ * every Real-Time replay stored a 404.)
+ *
+ * The events file is written asynchronously after stop, so the read retries
+ * briefly. If it never appears we return null and the caller leaves
+ * `recording_path` null — the sweeper looks again later, and a missing replay
+ * shows the "no replay yet" placeholder where a wrong one shows a dead player.
+ */
+export async function stopIvsComposition(
+  compositionArn: string,
+  opts: { recordingPrefix?: string | null; stageArn?: string | null } = {},
+): Promise<{ recordingPath: string | null }> {
+  // Resolve *before* stopping. While the composition is still running its
+  // record certainly exists, so even a row with nothing stored can still ask
+  // AWS; a moment later that chance is gone for good.
+  const prefix = await resolveRecordingPrefix(
+    compositionArn,
+    opts.recordingPrefix,
+    opts.stageArn,
+  );
+  await rtClient()
+    .send(new StopCompositionCommand({ arn: compositionArn }))
+    // A composition that already stopped on its own is fine and common — the
+    // host's broadcast ending takes the stage with it. Anything else means the
+    // recording may be incomplete, and an empty catch is not the place to find
+    // that out.
+    .catch((e: unknown) =>
+      console.warn(
+        "[ivs-rt] StopComposition failed:",
+        e instanceof Error ? e.message : e,
+      ),
+    );
+  if (!prefix) return { recordingPath: null };
+  return {
+    recordingPath: await readIvsRecordingManifest(prefix, {
+      bucket: await compositionRecordingBucket(),
+    }),
+  };
+}
+
+/**
+ * Where a composition's recording landed, without stopping anything.
+ *
+ * `stopIvsComposition` does this too, but it only gets one chance: it runs when
+ * the host ends the broadcast, and IVS writes `events/recording-ended.json`
+ * asynchronously after that. Miss the window and the row keeps a null
+ * `recording_path` — the replay sweeper skips stage broadcasts, because their
+ * recording lands at the composition's prefix rather than the channel's.
+ *
+ * So the sweeper calls this instead. One read attempt only: the cron comes back
+ * in a minute, which is a better place to be patient than inside a request.
+ */
+export async function resolveIvsCompositionRecording(
+  compositionArn: string,
+  opts: { recordingPrefix?: string | null; stageArn?: string | null } = {},
+): Promise<string | null> {
+  const prefix = await resolveRecordingPrefix(
+    compositionArn,
+    opts.recordingPrefix,
+    opts.stageArn,
+  );
+  if (!prefix) return null;
+  return await readIvsRecordingManifest(prefix, {
+    attempts: 1,
+    delayMs: 0,
+    bucket: await compositionRecordingBucket(),
+  });
 }
 
 /** Public URL a saved IVS recording plays from. Defaults to the app's own

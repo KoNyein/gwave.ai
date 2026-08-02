@@ -1,6 +1,10 @@
 import "server-only";
 
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  GetObjectCommand,
+  ListObjectsV2Command,
+  S3Client,
+} from "@aws-sdk/client-s3";
 
 /**
  * Reads the authoritative manifest path out of an IVS recording's own metadata,
@@ -27,8 +31,13 @@ import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
  * from the app's primary S3 (Singapore) — hence its own client here rather than
  * reusing lib/storage.
  *
- *   IVS_RECORDING_BUCKET   the S3 bucket IVS recordings land in
+ *   IVS_RECORDING_BUCKET   the S3 bucket **channel** recordings land in
  *   IVS_REGION             its region (shared with the rest of IVS; Tokyo default)
+ *
+ * Composite (Real-Time) recordings land somewhere else — wherever the IVS
+ * Real-Time *storage configuration* points. There is no env var for it: see
+ * `compositionRecordingBucket()` in lib/ivs-realtime.ts, which asks AWS. Every
+ * function here that can read either kind takes the bucket as an argument.
  */
 
 export function recordingBucket(): string | undefined {
@@ -66,9 +75,12 @@ interface RecordingEnded {
  */
 export async function readIvsRecordingManifest(
   prefix: string,
-  { attempts = 6, delayMs = 2500 }: { attempts?: number; delayMs?: number } = {},
+  {
+    attempts = 6,
+    delayMs = 2500,
+    bucket = recordingBucket(),
+  }: { attempts?: number; delayMs?: number; bucket?: string } = {},
 ): Promise<string | null> {
-  const bucket = recordingBucket();
   if (!bucket || !prefix) return null;
   const clean = prefix.replace(/^\/+|\/+$/g, "");
   const eventsKey = `${clean}/events/recording-ended.json`;
@@ -85,4 +97,61 @@ export async function readIvsRecordingManifest(
     }
   }
   return null;
+}
+
+/** How many 1000-key pages a search will read before giving up. The bucket also
+ * holds every channel recording ever made, so an unbounded scan would grow
+ * without limit; a stage's own subtree is a handful of keys. */
+const MAX_SEARCH_PAGES = 5;
+
+/**
+ * Find a recording's prefix in S3 when nobody wrote it down.
+ *
+ * This is the recovery path, not the normal one. A composition's prefix is
+ * known the moment it starts and is stored on the row; this exists for the
+ * broadcasts that ended before it was, and for the case where the stored value
+ * is somehow missing. It looks for the recording's own
+ * `events/recording-ended.json` under `searchPrefix` and returns the prefix
+ * that contains it.
+ *
+ * `contains` (the composition id) picks the right one when a stage somehow has
+ * several recordings. When nothing matches it, the newest is returned instead:
+ * a stage belongs to exactly one broadcast, so anything recorded under it is
+ * that broadcast's.
+ */
+export async function findRecordingEndedPrefix(
+  searchPrefix: string,
+  contains?: string,
+  bucket: string | undefined = recordingBucket(),
+): Promise<string | null> {
+  if (!bucket || !searchPrefix) return null;
+  const suffix = "/events/recording-ended.json";
+  try {
+    const s3 = recordingS3();
+    let token: string | undefined;
+    let newest: string | null = null;
+    let matched: string | null = null;
+    for (let page = 0; page < MAX_SEARCH_PAGES; page++) {
+      const res = await s3.send(
+        new ListObjectsV2Command({
+          Bucket: bucket,
+          Prefix: searchPrefix,
+          ContinuationToken: token,
+        }),
+      );
+      for (const obj of res.Contents ?? []) {
+        const key = obj.Key ?? "";
+        if (!key.endsWith(suffix)) continue;
+        const prefix = key.slice(0, -suffix.length);
+        if (contains && prefix.includes(contains)) matched = prefix;
+        if (!newest || prefix > newest) newest = prefix;
+      }
+      if (matched) return matched;
+      token = res.IsTruncated ? res.NextContinuationToken : undefined;
+      if (!token) break;
+    }
+    return matched ?? newest;
+  } catch {
+    return null;
+  }
 }

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/data/admin";
 import { latestIvsRecordingPath } from "@/lib/ivs";
 import {
+  ivsCompositionState,
   resolveIvsCompositionRecording,
   startIvsComposition,
 } from "@/lib/ivs-realtime";
@@ -81,6 +82,13 @@ interface StuckRow {
   ended_at: string | null;
 }
 
+interface CompositionRow {
+  id: string;
+  ivs_composition_arn: string | null;
+  ivs_recording_prefix?: string | null;
+  ivs_stage_arn: string | null;
+}
+
 export async function POST(request: NextRequest) {
   const secret =
     process.env.LIVE_SWEEP_SECRET || process.env.RIDE_DISPATCH_SECRET;
@@ -115,12 +123,6 @@ export async function POST(request: NextRequest) {
     .eq("record_enabled", true)
     .is("recording_path", null)
     .not("ivs_channel_arn", "is", null)
-    // Stage broadcasts also carry a channel now (it is what they are watched
-    // on), but their replay is written by the composition to its own S3
-    // prefix — nothing lands under the channel's, so looking there would burn
-    // an S3 listing per sweep to find nothing. stopIvsComposition resolves
-    // those.
-    .is("ivs_stage_arn", null)
     .gte("ended_at", since)
     .lte("ended_at", until)
     .order("ended_at", { ascending: false })
@@ -160,6 +162,7 @@ export async function POST(request: NextRequest) {
   }
 
   const endedGhosts = await endStaleLives(admin);
+  const revived = await reviveDeadCompositions(admin);
   const composedNow = await startMissingCompositions(admin);
   const compositionReplays = await linkCompositionReplays(admin, since, until);
 
@@ -168,6 +171,7 @@ export async function POST(request: NextRequest) {
     linked,
     stillMissing: still.length,
     endedGhosts,
+    revived,
     composedNow,
     compositionReplays,
     lookbackHours: hours,
@@ -190,25 +194,41 @@ async function linkCompositionReplays(
   since: string,
   until: string,
 ): Promise<number> {
-  const { data, error } = await admin
-    .from("live_streams")
-    .select("id, ivs_composition_arn")
-    .eq("status", "ended")
-    .eq("record_enabled", true)
-    .is("recording_path", null)
-    .not("ivs_composition_arn", "is", null)
-    .gte("ended_at", since)
-    .lte("ended_at", until)
-    .order("ended_at", { ascending: false })
-    .limit(MAX_PER_SWEEP)
-    .returns<{ id: string; ivs_composition_arn: string | null }[]>();
+  const select = (cols: string) =>
+    admin
+      .from("live_streams")
+      .select(cols)
+      .eq("status", "ended")
+      .eq("record_enabled", true)
+      .is("recording_path", null)
+      .not("ivs_composition_arn", "is", null)
+      .gte("ended_at", since)
+      .lte("ended_at", until)
+      .order("ended_at", { ascending: false })
+      .limit(MAX_PER_SWEEP)
+      .returns<CompositionRow[]>();
+
+  let { data, error } = await select(
+    "id, ivs_composition_arn, ivs_recording_prefix, ivs_stage_arn",
+  );
+  if (error) {
+    // ivs_recording_prefix is the newest column here; on a server whose
+    // migration has not run (or whose PostgREST has not reloaded), naming it
+    // fails the whole select. Ask again without it — the recording can still be
+    // found by searching the stage's subtree in S3, which is exactly the path
+    // the rows from before that column existed have to take anyway.
+    ({ data, error } = await select("id, ivs_composition_arn, ivs_stage_arn"));
+  }
   if (error || !data?.length) return 0;
 
   let linked = 0;
   for (const row of data) {
     const arn = row.ivs_composition_arn;
     if (!arn) continue;
-    const path = await resolveIvsCompositionRecording(arn);
+    const path = await resolveIvsCompositionRecording(arn, {
+      recordingPrefix: row.ivs_recording_prefix ?? null,
+      stageArn: row.ivs_stage_arn,
+    });
     if (!path) continue;
     const { error: upErr } = await admin
       .from("live_streams")
@@ -218,6 +238,68 @@ async function linkCompositionReplays(
     if (!upErr) linked += 1;
   }
   return linked;
+}
+
+/**
+ * Put a composition back when the one on the row has died.
+ *
+ * `StartComposition` returning an ARN is not the same as a composition running.
+ * The common failure is starting a second too early: IVS accepts the call,
+ * looks at the stage, finds no video being published yet, and gives up within
+ * a couple of seconds. The row keeps the ARN of something that no longer
+ * exists, so `startMissingCompositions` skips it — the broadcast plays fine and
+ * is recorded nowhere, which is exactly the shape of the bug users reported as
+ * "live က save မလုပ်ဘူး".
+ *
+ * So: for anything still live on a stage, ask IVS what its composition is
+ * actually doing. `FAILED`, or no record at all, means it is gone — clear the
+ * ARN and let the next pass start a fresh one, this time with a host who is
+ * definitely publishing.
+ *
+ * Deliberately does NOT start the replacement here. Clearing the ARN and
+ * letting `startMissingCompositions` do it keeps one code path responsible for
+ * creating compositions, and costs at most one more minute.
+ */
+async function reviveDeadCompositions(
+  admin: ReturnType<typeof createAdminClient>,
+): Promise<number> {
+  const { data, error } = await admin
+    .from("live_streams")
+    .select("id, ivs_composition_arn")
+    .eq("status", "live")
+    .not("ivs_stage_arn", "is", null)
+    .not("ivs_composition_arn", "is", null)
+    .limit(10)
+    .returns<{ id: string; ivs_composition_arn: string | null }[]>();
+  if (error || !data?.length) return 0;
+
+  let revived = 0;
+  for (const row of data) {
+    const arn = row.ivs_composition_arn;
+    if (!arn) continue;
+    const state = await ivsCompositionState(arn);
+    // STARTING and ACTIVE are working. STOPPING is on its way out under its own
+    // steam and does not want a second composition racing it.
+    if (state === "STARTING" || state === "ACTIVE" || state === "STOPPING") {
+      continue;
+    }
+    const { error: upErr } = await admin
+      .from("live_streams")
+      .update({ ivs_composition_arn: null, ivs_recording_prefix: null })
+      .eq("id", row.id)
+      // Only while it is still live: if the host ended the broadcast while we
+      // were talking to AWS, the ARN is the record of what to look for and must
+      // not be thrown away.
+      .eq("status", "live")
+      .eq("ivs_composition_arn", arn);
+    if (upErr) continue;
+    revived += 1;
+    console.info(
+      `[live/sweep] composition ${arn} is ${state ?? "gone"} while the stream ` +
+        `is still live — starting a new one for ${row.id}`,
+    );
+  }
+  return revived;
 }
 
 /**
@@ -258,18 +340,27 @@ async function startMissingCompositions(
   for (const row of data) {
     const stage = row.ivs_stage_arn;
     if (!stage) continue;
-    const arn = await startIvsComposition(stage, row.ivs_channel_arn, {
-      record: row.record_enabled,
-    });
-    if (!arn) continue;
+    const composition = await startIvsComposition(stage, row.ivs_channel_arn);
+    if (!composition) continue;
     const { error: upErr } = await admin
       .from("live_streams")
-      .update({ ivs_composition_arn: arn })
+      .update({ ivs_composition_arn: composition.arn })
       // Only if still missing — goLive may have finished after all, and its
       // composition is the one that should be stopped later.
       .is("ivs_composition_arn", null)
       .eq("id", row.id);
-    if (!upErr) started += 1;
+    if (upErr) continue;
+    started += 1;
+    // Separately, and tolerating failure: the ARN above is what stops this
+    // composition and what keeps the next sweep from starting a second one, so
+    // it must not be lost to a column that a pending migration has not added
+    // yet. The prefix is only worth a replay.
+    if (composition.recordingPrefix) {
+      await admin
+        .from("live_streams")
+        .update({ ivs_recording_prefix: composition.recordingPrefix })
+        .eq("id", row.id);
+    }
   }
   if (started > 0) {
     console.info(`[live/sweep] started ${started} missing composition(s)`);

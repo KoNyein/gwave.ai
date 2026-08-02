@@ -272,6 +272,76 @@
   play — it never did, so a podcast played *underneath* a broadcast — and
   browser (LiveKit) lives disable the remote audio publication rather than only
   pausing a controller they don't have.
+- 2026-08-01 (web): **Browser lives are recorded on their channel, like every
+  other broadcast.** Writing the replay straight from the composition never
+  worked once on this account: every composition carrying both a channel and an
+  S3 destination came back channel `ACTIVE`, S3 `FAILED` with no `startTime` —
+  rejected before it began, with and without a bucket policy, sharing an
+  encoder configuration and not. Channel recording has been working the whole
+  time (it is where phone broadcasts' replays come from), and the composite
+  already arrives at the watch channel — so that channel is now created with
+  the recording configuration attached when the host asked for a replay, the
+  S3 destination is gone, and the existing sweeper links stage rows exactly
+  like any other. One mechanism, both kinds of live.
+- 2026-08-01 (web): **The host could not see their phone viewers.** The web
+  viewer count came only from a Realtime presence channel, which the Flutter
+  app never joins — so a host broadcasting from a browser read "1 viewer" while
+  two phones watched. `live_heartbeat()` already *returns* the real count (both
+  clients call it; it counts presence rows from the last 25s) and the return
+  value was being discarded. The badge now shows the larger of the two.
+
+- 2026-08-01 (web): **The recording destination can have its own encoder.**
+  A composition with a channel destination and an S3 destination sharing one
+  encoder configuration came back with the channel `ACTIVE` and the S3
+  destination `FAILED` — no `startTime`, so rejected before it began, with the
+  same encoder working for the channel a second later. The only composition
+  that ever recorded successfully had a single destination. Optional
+  `IVS_RT_S3_ENCODER_CONFIG_ARN` points the recording at a second encoder
+  configuration; unset, nothing changes.
+
+- 2026-08-01 (web): **Three compositions on one stage.** `goLive` runs every
+  time the host's browser joins — a reload, a reconnect, a second tab — and
+  each run started another IVS composition on the same stage. IVS composites a
+  stage once: the first keeps working, every later one FAILS outright.
+  Production had three inside a minute from a single broadcast. goLive now
+  starts one only when the row has none.
+
+- 2026-08-01 (web): **A composition ARN is not a composition.** `StartComposition`
+  returning an ARN says only that IVS accepted the call. Start one a second too
+  early — before the host's camera is publishing — and IVS looks at the stage,
+  finds nothing to compose, and gives up within a couple of seconds. The row
+  keeps the ARN of something that no longer exists, so the sweeper's
+  "start compositions for stages that have none" pass skips it forever: the
+  broadcast plays fine and is recorded nowhere. The sweeper now asks IVS what
+  each live stream's composition is actually *doing* and clears the ARN when it
+  is FAILED or gone, so the next pass starts a fresh one — with a host who is
+  by then definitely publishing.
+
+- 2026-08-01 (web): **Two buckets, and only one of them was ever read.** IVS
+  writes channel recordings to `IVS_RECORDING_BUCKET` and composite
+  (browser-broadcast) recordings to whatever the Real-Time *storage
+  configuration* names — a different bucket. Nothing said so, so every browser
+  replay was looked for in the channel bucket, where it had never been. The
+  composite bucket is now resolved by asking `GetStorageConfiguration` (cached;
+  storage configurations are immutable), so there is no second env var to keep
+  in sync and the read always follows whatever `IVS_RT_STORAGE_CONFIG_ARN`
+  points at. `/recordings/[...path]` picks the bucket from the key's own shape:
+  `ivs/…` is a channel recording, anything else is a composite.
+
+- 2026-08-01 (web): **The replays were in S3 the whole time; nothing could
+  name them.** IVS hands back the recording's S3 prefix when a composition
+  starts and then deletes the composition record shortly after it stops — so
+  the sweeper's `GetComposition` answered `Resource: ...composition/tcs3RASP3Asy
+  not found`, four broadcasts running, and every one of them had recorded
+  correctly. The prefix is now written to `live_streams.ivs_recording_prefix`
+  the moment the composition starts, and stop/sweep read the manifest straight
+  from it. Rows that predate the column fall back to `GetComposition` and then
+  to searching the stage's own subtree in S3, so the stranded ones are
+  recoverable too. The prefix is written in its own statement, never bundled
+  with `ivs_composition_arn`: losing the ARN costs the whole broadcast its HLS
+  output, losing the prefix costs one replay.
+  Needs `supabase/migrations/20260801020000_live_ivs_recording_prefix.sql` on
+  RDS + `docker restart postgrest`.
 
 - 2026-07-31 (web): **The live worked; the post announcing it didn't.** Moving
   the status update ahead of the provider call fixed "nobody can see the
