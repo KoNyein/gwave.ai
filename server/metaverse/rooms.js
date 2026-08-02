@@ -19,7 +19,18 @@ const ROOMS = new Set([
   "fpv-canyon",
   "fpv-warehouse",
   "fpv-range",
+  // ★ Assassin mini-game arenas (၁၈+)。 Room ကို ခွဲထားတာက ပွဲတွေ
+  //   သီးခြားဖြစ်ဖို့ — တစ်ခုတည်းဆိုရင် ကမ္ဘာပေါ်က လူအားလုံး တစ်ပွဲထဲ
+  //   ရောနေမယ်။
+  "assassin-1",
+  "assassin-2",
+  "assassin-3",
 ]);
+
+/// ★ ၁၈+ သာ ဝင်ခွင့်ရှိတဲ့ room။ Voice ရဲ့ ဂိတ်နဲ့ တူညီတဲ့ `adult` claim ကို
+///   သုံးတယ် — client မှာ ခလုတ်ဖျောက်ရုံနဲ့ ဘာမှ မကာကွယ်ဘူး၊ စစ်တာက
+///   server.js မှာ။
+const ADULT_ROOMS = new Set(["assassin-1", "assassin-2", "assassin-3"]);
 
 /// ★ NFT ပိုင်မှ ဝင်လို့ရတဲ့ room။ စစ်ဆေးမှုက **server မှာသာ** ဖြစ်တယ် —
 /// client မှာ ခလုတ်ဖျောက်ထားရုံနဲ့ ဘာမှမကာကွယ်ဘူး (server.js ကြည့်ပါ)။
@@ -232,4 +243,4 @@ class Rooms {
   }
 }
 
-module.exports = { Rooms, normalizeRoom, ROOMS, GATED_ROOMS };
+module.exports = { Rooms, normalizeRoom, ROOMS, GATED_ROOMS, ADULT_ROOMS };

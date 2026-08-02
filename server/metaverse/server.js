@@ -4,7 +4,8 @@ const http = require("http");
 const crypto = require("crypto");
 const { WebSocketServer } = require("ws");
 
-const { Rooms, normalizeRoom, ROOMS, GATED_ROOMS } = require("./rooms");
+const { Rooms, normalizeRoom, ROOMS, GATED_ROOMS, ADULT_ROOMS } = require("./rooms");
+const assassin = require("./assassin.js");
 const { identify } = require("./auth");
 const { Pool } = require("pg");
 
@@ -40,6 +41,38 @@ const MAX_CHAT_CHARS = 200;
 const EMOTES = new Set(["wave", "dance", "sit"]);
 
 const rooms = new Rooms();
+
+// ── Assassin (၁၈+ mini-game) ─────────────────────────────────────────────
+/// roomId -> match。 Room ထဲမှာ ကစားနေသူ မရှိတော့ရင် ဖျက်တယ် — မဖျက်ရင်
+/// ဝင်ပြီး ထွက်သွားတဲ့ room တိုင်းအတွက် state ကျန်နေမယ်။
+const matches = new Map();
+function matchOf(roomId) {
+  let m = matches.get(roomId);
+  if (!m) {
+    m = assassin.createMatch();
+    matches.set(roomId, m);
+  }
+  return m;
+}
+/// Assassin room ထဲက socket တွေဆီ ပို့တယ်။
+/// ★ `bus` ကို မသုံးဘူး — ပွဲက task တစ်ခုတည်းပေါ်မှာ ရှိတယ် (match state က
+///   memory ထဲ)。 Task များများပေါ် ဖြန့်ရင် state ကွဲသွားမယ်။
+function aSend(roomId, payload) {
+  for (const { all, to, msg } of payload) {
+    if (all) {
+      rooms.broadcast(roomId, msg);
+    } else if (to) {
+      const t = rooms.rooms.get(roomId)?.get(to);
+      if (t) send(t.ws, msg);
+    }
+  }
+}
+function aPushPersonal(roomId, match) {
+  for (const p of match.players.values()) {
+    const sock = rooms.rooms.get(roomId)?.get(p.id);
+    if (sock) send(sock.ws, { type: "aYou", you: assassin.personalState(match, p) });
+  }
+}
 const weather = createWeatherDirector(ROOMS);
 /// Voice mesh ရဲ့ member စာရင်း (Phase 14) — audio က P2P၊ server က
 /// signal relay နဲ့ ဝင်ခွင့်စစ်တာပဲ လုပ်တယ်။
@@ -426,6 +459,22 @@ wss.on("connection", async (ws, req) => {
     dirty: false,
   };
 
+  // ── ၁၈+ room (Assassin) ───────────────────────────────────────────────
+  // ★ Voice နဲ့ တူညီတဲ့ `adult` claim ကို သုံးတယ် — ticket ထဲက၊ Next.js က
+  //   DOB ကြည့်ပြီး ထည့်ပေးတာ။ **fail-closed**: claim မပါရင် လူကြီး မဟုတ်ဘူး။
+  // ★ Client မှာ ခလုတ်ဖျောက်ရုံနဲ့ ဘာမှ မကာကွယ်ဘူး — WebSocket URL ကို
+  //   လက်နဲ့ရိုက်ပြီး ချိတ်လို့ရတယ်။ ဒါကြောင့် ဒီမှာ စစ်ရတာ။
+  if (ADULT_ROOMS.has(room)) {
+    if (!player.authed) {
+      ws.close(4005, "login required");
+      return;
+    }
+    if (player.adult !== true) {
+      ws.close(4006, "18+ only");
+      return;
+    }
+  }
+
   // ── Token-gated room (Phase 7.6) ──────────────────────────────────────
   // ★ ဒီစစ်ဆေးမှုက **server မှာသာ** ဖြစ်ရမယ်။ Client မှာ ခလုတ်ဖျောက်ထားရုံ
   // ဒါမှမဟုတ် `room=vip` ကို URL မှာ မပြရုံနဲ့ ဘာမှ မကာကွယ်ဘူး —
@@ -692,6 +741,109 @@ wss.on("connection", async (ws, req) => {
       }
 
       // ── Voice chat (Phase 14) ────────────────────────────────────────
+      // ── Assassin (၁၈+ mini-game) ──────────────────────────────────────
+      // ★ Case တိုင်းမှာ room ကို ပြန်စစ်တယ် — connection အခါက ဂိတ်ဖြတ်ပြီး
+      //   room ပြောင်းလို့ရရင် ဂိတ်က အလကားဖြစ်မယ်။
+      case "aJoin": {
+        if (!ADULT_ROOMS.has(player.room)) break;
+        const match = matchOf(player.room);
+        if (!match.players.has(player.id)) {
+          match.players.set(
+            player.id,
+            assassin.makePlayer(player.id, player.name, match.seq++),
+          );
+          assassin.assignTargets(match);
+        }
+        send(ws, {
+          type: "aInit",
+          id: player.id,
+          weapons: assassin.WEAPONS,
+          skins: assassin.SKINS,
+          killsToWin: assassin.KILLS_TO_WIN,
+          arena: assassin.ARENA,
+          players: [...match.players.values()].map(assassin.publicPlayer),
+        });
+        rooms.broadcast(player.room, {
+          type: "aEnter",
+          player: assassin.publicPlayer(match.players.get(player.id)),
+        }, player.id);
+        aPushPersonal(player.room, match);
+        break;
+      }
+
+      case "aMove": {
+        if (!ADULT_ROOMS.has(player.room)) break;
+        const match = matches.get(player.room);
+        const me = match?.players.get(player.id);
+        if (!me) break;
+        // ★ applyMove က အမြန်နှုန်းနဲ့ ကွင်းအကျယ်ကို ကန့်သတ်တယ် —
+        //   client ပြောတာအတိုင်း တန်းမယူဘူး (assassin.js မှာ ရှင်းပြထားတယ်)。
+        if (!assassin.applyMove(match, me, msg)) break;
+        rooms.broadcast(player.room, {
+          type: "aMove", id: me.id, x: me.x, y: me.y, z: me.z, ry: me.ry,
+        }, player.id);
+        break;
+      }
+
+      case "aFire": {
+        if (!ADULT_ROOMS.has(player.room)) break;
+        const match = matches.get(player.room);
+        const me = match?.players.get(player.id);
+        if (!me) break;
+        const events = assassin.handleFire(match, me, msg);
+        if (events.length === 0) break;
+        aSend(player.room, events);
+        aPushPersonal(player.room, match);
+        // ★ တစ်ယောက် နိုင်သွားရင် ခဏနေပြီး ပွဲပြန်စတယ်။
+        if (events.some((e) => e.msg?.type === "aWin")) {
+          const roomId = player.room;
+          setTimeout(() => {
+            const m2 = matches.get(roomId);
+            if (!m2) return;
+            assassin.resetRound(m2);
+            rooms.broadcast(roomId, {
+              type: "aReset",
+              players: [...m2.players.values()].map(assassin.publicPlayer),
+            });
+            aPushPersonal(roomId, m2);
+          }, assassin.ROUND_RESET_MS).unref?.();
+        }
+        break;
+      }
+
+      case "aWeapon": {
+        if (!ADULT_ROOMS.has(player.room)) break;
+        const match = matches.get(player.room);
+        const me = match?.players.get(player.id);
+        if (!me || !assassin.WEAPONS[msg.weapon]) break;
+        me.weapon = msg.weapon;
+        rooms.broadcast(player.room, { type: "aWeaponOf", id: me.id, weapon: me.weapon });
+        send(ws, { type: "aYou", you: assassin.personalState(match, me) });
+        break;
+      }
+
+      case "aSkin": {
+        if (!ADULT_ROOMS.has(player.room)) break;
+        const match = matches.get(player.room);
+        const me = match?.players.get(player.id);
+        if (!me || !assassin.SKINS[msg.skin]) break;
+        // ★ Skin က အလှသာ — ကစားမှုအပေါ် လုံးဝ သက်ရောက်မှု မရှိဘူး။
+        me.skin = msg.skin;
+        rooms.broadcast(player.room, { type: "aSkinOf", id: me.id, skin: me.skin });
+        break;
+      }
+
+      case "aReload": {
+        if (!ADULT_ROOMS.has(player.room)) break;
+        const match = matches.get(player.room);
+        const me = match?.players.get(player.id);
+        if (!me) break;
+        const w = assassin.WEAPONS[me.weapon];
+        if (w && w.ammo !== Infinity) me.ammo[me.weapon] = w.ammo;
+        send(ws, { type: "aYou", you: assassin.personalState(match, me) });
+        break;
+      }
+
       case "voiceJoin": {
         const status = voice.join(player.room, player);
         if (status !== "ok") {
@@ -782,6 +934,21 @@ wss.on("connection", async (ws, req) => {
     if (voice.leave(player.room, player.id)) {
       rooms.broadcast(player.room, { type: "voiceLeft", id: player.id });
     }
+    // ★ Assassin — ထွက်သွားသူကို သံသရာကနေ ဖြုတ်ပြီး ချိတ်ဆက်ပြန်ရမယ်။
+    //   မလုပ်ရင် ကျန်တဲ့သူတစ်ယောက်က ရှိတော့တာမဟုတ်တဲ့သူကို ထာဝရ
+    //   လိုက်ရှာနေမယ် — ပွဲက ဘယ်တော့မှ မပြီးတော့ဘူး။
+    const aMatch = matches.get(player.room);
+    if (aMatch) {
+      const gone = aMatch.players.get(player.id);
+      if (gone) {
+        assassin.relinkAfterRemoval(aMatch, gone);
+        aMatch.players.delete(player.id);
+        rooms.broadcast(player.room, { type: "aLeave", id: player.id });
+        aPushPersonal(player.room, aMatch);
+      }
+      // ကစားသူ မကျန်တော့ရင် state ကို မထားခဲ့ဘူး
+      if (aMatch.players.size === 0) matches.delete(player.room);
+    }
     rooms.remove(player.room, player.id);
     emit(player.room, { type: "leave", id: player.id });
     // ★ ထွက်ချိန်မှာ မဖြစ်မနေ သိမ်းရမယ် — ၃၀ စက္ကန့် flush ကို စောင့်ရင်
@@ -796,6 +963,19 @@ wss.on("connection", async (ws, req) => {
 // ★ TCP က ဖုန်းရဲ့ WiFi ပြတ်သွားတာကို ချက်ချင်းမသိဘူး — socket က "ဖွင့်နေတယ်"
 // လို့ပဲ ပြနေမယ်။ Ping မပြန်တဲ့သူကို ဖြုတ်မှ ghost player တွေ မကျန်တော့ဘူး။
 /// ရာသီဥတု ပြောင်းရင် room တစ်ခုလုံးကို ပြောတယ်
+/// Assassin — ပြန်ရှင်ချိန် ရောက်သူတွေကို ပြန်ရှင်စေတယ်။
+/// ★ Match ရှိတဲ့ room အတွက်သာ အလုပ်လုပ်တယ် — ပွဲမရှိရင် ဘာမှ မလုပ်ဘူး။
+const assassinTicker = setInterval(() => {
+  for (const [roomId, match] of matches) {
+    const back = assassin.respawnDue(match);
+    if (back.length === 0) continue;
+    for (const p of back) {
+      rooms.broadcast(roomId, { type: "aRespawn", id: p.id, x: p.x, y: p.y, z: p.z, hp: p.hp });
+    }
+    aPushPersonal(roomId, match);
+  }
+}, 500);
+
 const weatherTicker = setInterval(() => {
   for (const roomId of weather.due()) {
     emit(roomId, { type: "weather", ...weather.get(roomId) });
@@ -828,6 +1008,7 @@ async function shutdown(signal) {
   if (syncer) clearInterval(syncer);
   clearInterval(moveFlusher);
   clearInterval(weatherTicker);
+  clearInterval(assassinTicker);
   games.stopAll();
 
   // Client တွေ မထွက်သေးရင်တောင် ၁၀ စက္ကန့်ထက် မစောင့်ဘူး
