@@ -11,7 +11,10 @@
 import * as THREE from "three";
 
 import type { DroneSpec, FlightMode } from "./drones";
-import { getMode } from "./drones";
+// ★ `.ts` extension က မဖြစ်မနေ — physics.test.ts က node ရဲ့ strip-types နဲ့
+//   တိုက်ရိုက် ပြေးလို့ extensionless relative import ကို resolve မလုပ်နိုင်ဘူး။
+//   (tsconfig မှာ allowImportingTsExtensions ဖွင့်ထားပြီးသား။)
+import { getMode } from "./drones.ts";
 
 const GRAVITY = 9.81;
 const SUBSTEP = 1 / 240;
@@ -126,7 +129,9 @@ function step(
       _qe.y = -_qe.y;
       _qe.z = -_qe.z;
     }
-    const P = 7;
+    // ✈️ Angle mode မှာလည်း control authority က airspeed နဲ့ လိုက်ရမယ် —
+    // မဟုတ်ရင် stall ဖြစ်နေတဲ့ လေယာဉ်က ထိန်းချုပ်မှု အပြည့် ရနေဦးမယ်။
+    const P = 7 * authority;
     tx = 2 * _qe.x * P;
     ty += 2 * _qe.y * P;
     tz = 2 * _qe.z * P;
@@ -186,7 +191,18 @@ function step(
 
   // ── မြေ / အဆောက်အအုံ တိုက်မိ ────────────────────────────────────────
   if (s.pos.y <= 0.06) {
-    const impact = Math.max(-s.vel.y, Math.hypot(s.vel.x, s.vel.z) * 0.5);
+    // ★ ✈️ လေယာဉ်က **ဘီးနဲ့ ပြေးတယ်** — ရှေ့အရှိန်က တိုက်မိမှု မဟုတ်ဘူး၊
+    // ဒေါင်လိုက် အရှိန်ကိုသာ ယူတယ်။
+    // (လက်ရှိ လေယာဉ် ၂ စီးမှာတော့ lift က 11-13 m/s မှာ မြေကနေ ခွာပေးလို့
+    //  ရှေ့အရှိန် threshold ကို မြေပေါ်မှာ ဘယ်တော့မှ မမီဘူး — ဒါကြောင့် ဒါက
+    //  ဖြစ်နေတဲ့ bug ကို ပြင်တာ မဟုတ်ဘဲ **liftK နိမ့်တဲ့ လေယာဉ် နောက်ထပ်
+    //  ထည့်ရင် ဖြစ်လာမယ့်အရာကို ကြိုကာတာ**。 နှာစိုက်/စောင်းပြီး မြေကို
+    //  တိုက်မိရင် ကျဆင်းအရှိန်ကြောင့် ဒေါင်လိုက်အရှိန် တက်လာလို့ crash က
+    //  ဆက်ဖြစ်နေဆဲ — test မှာ ချည်ထားတယ်။)
+    const impact =
+      drone.craft === "plane"
+        ? -s.vel.y
+        : Math.max(-s.vel.y, Math.hypot(s.vel.x, s.vel.z) * 0.5);
     s.pos.y = 0.06;
     if (impact > CRASH_SPEED && s.armed) {
       s.crashed = true;
