@@ -152,35 +152,57 @@ async function syncContract(db, client, spec) {
   });
 
   // ★ Transaction — log တွေ ထည့်ပြီး last_block မှတ်တာက **အတူတကွ**
-  //   ဖြစ်ရမယ်။ ကြားထဲ crash ဖြစ်ရင် ထပ်ဖတ်တာက ဘာမှမဖြစ်ဘူး
-  //   (idempotent)၊ ဒါပေမယ့် last_block အရင်တက်သွားရင် log တွေ
-  //   ထာဝရ ပျောက်မယ်။
-  await db.query("BEGIN");
+  //   ဖြစ်ရမယ်။ last_block အရင်တက်သွားရင် log တွေ ထာဝရ ပျောက်မယ်၊
+  //   log တွေ အရင်ဝင်ပြီး cursor မတက်ရင် နောက်တစ်ခေါက် **ထပ်ရေမယ်** —
+  //   ERC-721 က upsert မို့ ဘာမှမဖြစ်ပေမယ့် ERC-1155 က
+  //   `balance + amount` မို့ လက်ကျန် ဖောင်းသွားမယ်။
+  //
+  // ★★ Transaction ကို **connection တစ်ခုတည်း** ပေါ်မှာ ပြေးရမယ်။ pg ရဲ့
+  //    Pool.query() က query တစ်ခုချင်းစီအတွက် connection ကို ယူ/ပြန်အပ်လုပ်
+  //    တာမို့ pool ပေါ်မှာ BEGIN ခေါ်ရင် — BEGIN က connection တစ်ခုပေါ်၊
+  //    INSERT တွေက တခြားတစ်ခုပေါ် (auto-commit)၊ COMMIT က နောက်တစ်ခုပေါ်
+  //    ("no transaction in progress") ရောက်သွားတယ်။ atomicity လုံးဝ မရဘဲ
+  //    BEGIN ခံထားတဲ့ connection က idle-in-transaction အဖြစ် pool ထဲ
+  //    ပြန်ရောက်နေတယ်။ ဒီ file ရဲ့ ခေါ်သူက Pool ကို ပေးတာမို့ ဒါ တကယ်
+  //    ဖြစ်နေတာ။ (Advisory lock မှာ ဒီစည်းမျဉ်းကို လိုက်နာထားပြီးသား —
+  //    web3-worker.js ရဲ့ lockClient ကို ကြည့်ပါ။)
+  // (`client` က viem ရဲ့ RPC client အတွက် သုံးပြီးသားမို့ `tx` လို့ ခေါ်တယ်)
+  const tx = typeof db.connect === "function" ? await db.connect() : db;
+  const release = tx === db ? () => {} : () => tx.release();
   try {
-    for (const log of logs) {
-      const a = log.args ?? {};
-      if (log.eventName === "Transfer") {
-        await applyErc721(db, contract, a.tokenId, a.to, log.blockNumber);
-      } else if (log.eventName === "TransferSingle") {
-        await applyErc1155(db, contract, a.id, a.from, a.to, a.value, log.blockNumber);
-      } else if (log.eventName === "TransferBatch") {
-        const ids = a.ids ?? [];
-        const values = a.values ?? [];
-        for (let i = 0; i < ids.length; i++) {
-          await applyErc1155(db, contract, ids[i], a.from, a.to, values[i] ?? 0n, log.blockNumber);
+    await tx.query("BEGIN");
+    try {
+      for (const log of logs) {
+        const a = log.args ?? {};
+        if (log.eventName === "Transfer") {
+          await applyErc721(tx, contract, a.tokenId, a.to, log.blockNumber);
+        } else if (log.eventName === "TransferSingle") {
+          await applyErc1155(tx, contract, a.id, a.from, a.to, a.value, log.blockNumber);
+        } else if (log.eventName === "TransferBatch") {
+          const ids = a.ids ?? [];
+          const values = a.values ?? [];
+          for (let i = 0; i < ids.length; i++) {
+            await applyErc1155(
+              tx, contract, ids[i], a.from, a.to, values[i] ?? 0n, log.blockNumber,
+            );
+          }
         }
       }
+      await tx.query(
+        `INSERT INTO web3_sync_state (contract, last_block) VALUES ($1, $2)
+         ON CONFLICT (contract) DO UPDATE
+            SET last_block = EXCLUDED.last_block, updated_at = now()`,
+        [contract, String(to)],
+      );
+      await tx.query("COMMIT");
+    } catch (err) {
+      // ROLLBACK ကိုယ်တိုင် ကျရှုံးရင်လည်း မူရင်း error ကို မဖုံးရဘူး —
+      // အဲဒါက ဘာကြောင့် ကျိုးလဲ ဆိုတာ ပြောပြနိုင်တဲ့ တစ်ခုတည်းသော အရာ။
+      await tx.query("ROLLBACK").catch(() => {});
+      throw err;
     }
-    await db.query(
-      `INSERT INTO web3_sync_state (contract, last_block) VALUES ($1, $2)
-       ON CONFLICT (contract) DO UPDATE
-          SET last_block = EXCLUDED.last_block, updated_at = now()`,
-      [contract, String(to)],
-    );
-    await db.query("COMMIT");
-  } catch (err) {
-    await db.query("ROLLBACK");
-    throw err;
+  } finally {
+    release();
   }
 
   return { from, to, logs: logs.length };

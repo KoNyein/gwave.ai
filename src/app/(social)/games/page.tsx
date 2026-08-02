@@ -47,6 +47,16 @@ export default async function GamesPage() {
       show: isAdult, // cannabis-themed → verified adults only
     },
     {
+      href: "/games/assassin",
+      emoji: "🎯",
+      title: "Gwave Assassin",
+      description:
+        "လျှို့ဝှက်ပစ်မှတ် ရှာဖွေရေး — မှန်တဲ့သူရရင် +၁၊ လူမှားရင် −၁",
+      // ★ ၁၈+ သာ။ ဒီ `show` က စာရင်းထဲမှာ မပြတာပဲ — အမှန်တရားက
+      //   requireAdult() (စာမျက်နှာ) နဲ့ server ရဲ့ WS ဂိတ် ၂ ခုမှာ။
+      show: isAdult,
+    },
+    {
       href: "/learn/game",
       emoji: "🌻",
       title: "Grow-a-Garden",

@@ -283,7 +283,7 @@ class _LiveCardState extends State<_LiveCard> {
     if (url == null) return;
     try {
       // Silent list preview — leaves the user's music alone.
-      final c = silentVideoController(Uri.parse(url!));
+      final c = silentVideoController(Uri.parse(url));
       _vc = c;
       await c.initialize();
       await c.setVolume(0);

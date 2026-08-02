@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/layout/navbar";
+import { SiteNavbar } from "@/components/layout/site-chrome";
 import { getCurrentProfile, requireUser } from "@/lib/auth";
 
 /** Smart-home layout. Login enforced by middleware. */
@@ -12,7 +12,7 @@ export default async function HomeLayout({
 
   return (
     <div className="min-h-screen bg-muted">
-      <Navbar profile={profile} />
+      <SiteNavbar profile={profile} />
       <main className="mx-auto w-full max-w-5xl px-3 py-6 sm:px-4">
         {children}
       </main>

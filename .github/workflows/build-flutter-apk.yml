@@ -59,6 +59,12 @@ jobs:
           # closed app. Keeping namespace == applicationId also avoids the
           # google-services Gradle plugin's "no matching client" build error.
           flutter create --org com.green --project-name gwave --platforms=android .
+          # ★ `flutter create` also writes the stock counter test, which
+          # instantiates `MyApp` — a class this app does not have (the root
+          # widget is named differently). It is dead scaffolding that fails
+          # `flutter analyze` with a real error and would fail `flutter test`
+          # too, so drop it rather than analysing around it.
+          rm -f test/widget_test.dart
           for G in android/app/build.gradle android/app/build.gradle.kts; do
             [ -f "$G" ] || continue
             # firebase_messaging requires minSdk >= 23; the template defaults to
@@ -151,6 +157,49 @@ jobs:
                   '<application',
                   '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n'
                   '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />\n'
+                  '    <application',
+                  1,
+              )
+          # Light meter reads the ambient-light sensor. Marked not-required so
+          # the APK still installs on phones without one — the app detects the
+          # missing sensor and explains instead of showing a permanent zero.
+          if 'android.hardware.sensor.light' not in s:
+              s = s.replace(
+                  '<application',
+                  '<uses-feature android:name="android.hardware.sensor.light" android:required="false" />\n'
+                  '    <application',
+                  1,
+              )
+          # Storage cleaner. MANAGE_EXTERNAL_STORAGE is what lets it see the
+          # WhatsApp/Telegram media folders and the .thumbnails caches that are
+          # actually filling the phone; scoped storage shows none of it.
+          #
+          # ★ READ/WRITE_EXTERNAL_STORAGE are deliberately NOT declared here.
+          # permission_handler, file_picker and image_picker already merge
+          # them, and adding a second copy with a different maxSdkVersion is a
+          # manifest-merger conflict that fails the build.
+          #
+          # Play Store note: this permission needs the "File manager"
+          # declaration if the app is ever submitted there. Distributing the
+          # APK from gwave.cc, as we do, needs no declaration.
+          if 'MANAGE_EXTERNAL_STORAGE' not in s:
+              s = s.replace(
+                  '<application',
+                  '<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />\n'
+                  '    <application',
+                  1,
+              )
+          # "Unused apps" needs the last-opened time (Usage access, which the
+          # user grants by hand in system settings) and the ability to see the
+          # installed list at all on Android 11+.
+          #
+          # No tools:ignore attributes: the generated manifest does not bind
+          # the tools namespace, and an unbound prefix fails the merge.
+          if 'PACKAGE_USAGE_STATS' not in s:
+              s = s.replace(
+                  '<application',
+                  '<uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />\n'
+                  '    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />\n'
                   '    <application',
                   1,
               )
@@ -467,8 +516,13 @@ jobs:
       - name: Generate launcher icon
         run: dart run flutter_launcher_icons
 
+      # ★ No `|| true`. With infos and warnings non-fatal this only fails on
+      # real analyzer errors — a missing import, a type that does not line up,
+      # a directive in the wrong place. Those are guaranteed build failures
+      # anyway, and catching them here costs 30 seconds instead of three
+      # minutes of Gradle. The ~176 pre-existing infos/warnings still pass.
       - name: Analyze
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings || true
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Build APK
         env:

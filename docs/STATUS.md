@@ -92,6 +92,23 @@
   lock) runs the sender, confirmer and indexer. Key handling is in
   `docs/WEB3_KEYS.md`. **`db/sql/web3.sql` is NOT applied on RDS yet.**
 
+- **Light meter (app, Farm & Home)**: reads the ambient-light sensor and
+  converts to PPFD/DLI for four crops × growth stage. Refuses to show PPFD
+  until a lamp type is chosen (the factor varies 2×), infers a saturated
+  sensor from a run of bit-identical readings, has a canopy grid map, CSV
+  export, calibration against a real meter, and a red night mode. Phones with
+  no sensor get the reference pages instead of a dead screen.
+- **Storage cleaner (app, Knowledge & Tools)**: storage breakdown, junk rules,
+  duplicate photos (size bucket → MD5 prefix), chat-media folders, unused
+  apps. No "RAM boost" — the Help tab explains why. Nothing is deleted that
+  was not listed and ticked first; `DCIM/Camera` and `Android/obb` are never
+  auto-selected.
+- **FPV sim + Edu Arcade in the app**: both open through the metaverse WebView
+  shell (signed-in cookie, native bridge, immersive, wake-lock), so there is
+  still one implementation of each world. Live class, Replays and Help are
+  reachable from the menu too — they existed on the web with no way in from
+  the app.
+
 ## Known gaps / next candidates
 
 - **Web3 go-live is a decision, not a task.** Before anything is minted:

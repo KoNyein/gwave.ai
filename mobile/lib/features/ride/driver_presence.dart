@@ -141,9 +141,13 @@ class DriverPresence {
         // A dropped heartbeat is normal on a bad connection and the next one is
         // seconds away — never interrupt a shift with it. But do keep the
         // reason, so the driver screen can say why it has gone quiet.
+        // ★ Return nothing. `catchError` type-checks the handler's result
+        // against the future's type and throws a TypeError when it does not
+        // match — so returning a Map here turned every dropped heartbeat into
+        // an unhandled async error, on top of the failure it was meant to
+        // swallow.
         .catchError((Object e) {
           _lastBeatError = e.toString();
-          return <String, dynamic>{};
         });
   }
 }

@@ -25,6 +25,19 @@ class GwColors {
   static const Color inkSoft = Color(0xFF65676B);
   static const Color line = Color(0xFFE4E6EB);
   static const Color live = Color(0xFFE23B3B);
+
+  // ── Semantic status colours ────────────────────────────────────────────
+  // ★ These carry MEANING, not brand — "too high" has to read as danger in
+  //   every skin, so they deliberately do not follow the accent. They live
+  //   here so the same green/amber/red is used everywhere instead of each
+  //   screen inventing its own hex.
+  static const Color ok = Color(0xFF2E9E5B);
+  static const Color warn = Color(0xFFE0A81F);
+  static const Color bad = Color(0xFFD84343);
+
+  /// Instrument readouts (light meter, storage scan) — an amber that stays
+  /// legible in the dark-adapted night mode as well as on white.
+  static const Color meter = Color(0xFFE07A1F);
   static const Color gold = Color(0xFFF4B740);
   static const Color heart = Color(0xFFFF5C8A);
 

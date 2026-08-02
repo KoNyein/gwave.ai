@@ -15,6 +15,15 @@ import * as THREE from "three";
 
 import { connectMetaverse, type NetClient } from "@/components/metaverse/net";
 import { CRAFTS, DRONES, getDrone, getMode, MODES, type DroneSpec, type FlightMode } from "@/lib/fpv/drones";
+import {
+  CAL_PROMPT,
+  CHANNEL_ORDERS,
+  STICK_MODES,
+  createCalibrator,
+  presetMap,
+  type CalProgress,
+  type ChannelOrder,
+} from "@/lib/fpv/calibration";
 import { createInput, loadAxisMap, saveAxisMap, type AxisMap, type FpvInput } from "@/lib/fpv/input";
 import { createGameRuntime, FPV_GAMES, gameAllowsMap, type GameHud } from "@/lib/fpv/gamemodes";
 import { buildFpvMap, FPV_MAPS } from "@/lib/fpv/maps";
@@ -33,9 +42,10 @@ function wsCandidates(): string[] {
 }
 
 const PREF_KEY = "gw-fpv-prefs";
-type Prefs = { drone: string; mode: FlightMode; map: string; sound: boolean; game: string };
+/// `view` — fpv = ကင်မရာက drone ထဲမှာ၊ chase = အပြင်ကနေ drone ကို မြင်ရတယ်
+type Prefs = { drone: string; mode: FlightMode; map: string; sound: boolean; game: string; view: "fpv" | "chase" };
 function loadPrefs(): Prefs {
-  const def: Prefs = { drone: "raptor5", mode: "sport", map: "race", sound: true, game: "free" };
+  const def: Prefs = { drone: "raptor5", mode: "sport", map: "race", sound: true, game: "free", view: "fpv" };
   try {
     const raw = window.localStorage.getItem(PREF_KEY);
     if (raw) return { ...def, ...(JSON.parse(raw) as Partial<Prefs>) };
@@ -47,7 +57,7 @@ function loadPrefs(): Prefs {
 
 /// ✈️ Fixed-wing model — fuselage + wing + tailplane + fin + nose prop။
 /// Forward = -Z (physics ရဲ့ convention နဲ့ တူညီ)。
-function buildPlaneMesh(spec: DroneSpec): { group: THREE.Group; props: THREE.Mesh[] } {
+function buildPlaneMesh(spec: DroneSpec): { group: THREE.Group; props: THREE.Object3D[] } {
   const g = new THREE.Group();
   const s = spec.scale;
   const bodyMat = new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.55 });
@@ -103,7 +113,7 @@ function buildPlaneMesh(spec: DroneSpec): { group: THREE.Group; props: THREE.Mes
 }
 
 /// 🚁 Helicopter model — fuselage + tail boom + main rotor disc + tail rotor
-function buildHeliMesh(spec: DroneSpec): { group: THREE.Group; props: THREE.Mesh[] } {
+function buildHeliMesh(spec: DroneSpec): { group: THREE.Group; props: THREE.Object3D[] } {
   const g = new THREE.Group();
   const s = spec.scale;
   const bodyMat = new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.5 });
@@ -147,54 +157,178 @@ function buildHeliMesh(spec: DroneSpec): { group: THREE.Group; props: THREE.Mesh
 }
 
 /// Craft အလိုက် model ရွေး — quad / plane / heli
-function buildCraftMesh(spec: DroneSpec): { group: THREE.Group; props: THREE.Mesh[] } {
+function buildCraftMesh(spec: DroneSpec): { group: THREE.Group; props: THREE.Object3D[] } {
   if (spec.craft === "plane") return buildPlaneMesh(spec);
   if (spec.craft === "heli") return buildHeliMesh(spec);
   return buildDroneMesh(spec);
 }
 
-/// Drone 3D model — frame X + canopy + prop ၄ လုံး (procedural, asset မလို)
-function buildDroneMesh(spec: DroneSpec): { group: THREE.Group; props: THREE.Mesh[] } {
+/// 🛸 Drone 3D model — တကယ့် FPV quad တစ်စီးရဲ့ အစိတ်အပိုင်းတွေအတိုင်း
+/// procedural ဆွဲထားတယ် (asset file မလို)။
+///
+/// ★ ဖွဲ့စည်းပုံက တကယ့် build တစ်ခုအတိုင်း — carbon plate၊ standoff၊ FC stack၊
+///   arm ၄ ချောင်း၊ motor bell + stator၊ tri-blade prop၊ LiPo + strap၊
+///   ရှေ့မှာ cam ကို `camTilt` ထောင့်အတိုင်း စောင်းတပ်၊ နောက်မှာ VTX antenna၊
+///   အောက်မှာ LED strip။
+/// ★ `ducted` drone (Avata ပုံစံ) ဆိုရင် prop တိုင်းကို duct ring နဲ့ ဝိုင်းတယ်
+///   — ကြည့်ရုံနဲ့ ဘယ်ဟာက ducted လဲ သိစေဖို့။
+function buildDroneMesh(spec: DroneSpec): { group: THREE.Group; props: THREE.Object3D[] } {
   const g = new THREE.Group();
   const s = spec.scale;
-  const frameMat = new THREE.MeshStandardMaterial({ color: 0x222831, roughness: 0.6 });
-  const bodyMat = new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.5 });
-  // arms (X frame)
-  for (const a of [Math.PI / 4, -Math.PI / 4]) {
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.5 * s, 0.028 * s, 0.05 * s), frameMat);
-    arm.rotation.y = a;
+  const carbon = new THREE.MeshStandardMaterial({ color: 0x1b1f27, roughness: 0.45, metalness: 0.25 });
+  const bodyMat = new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.4, metalness: 0.35 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x0e1116, roughness: 0.7 });
+
+  // ── Frame — carbon plate နှစ်ချပ်ကို standoff နဲ့ ခံထား ─────────────────
+  const bottom = new THREE.Mesh(new THREE.BoxGeometry(0.17 * s, 0.012 * s, 0.3 * s), carbon);
+  g.add(bottom);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(0.15 * s, 0.01 * s, 0.24 * s), carbon);
+  top.position.y = 0.075 * s;
+  g.add(top);
+  for (const [x, z] of [[-0.06, -0.1], [0.06, -0.1], [-0.06, 0.1], [0.06, 0.1]] as const) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.007 * s, 0.007 * s, 0.075 * s, 6), bodyMat);
+    post.position.set(x * s, 0.038 * s, z * s);
+    g.add(post);
+  }
+  // FC / ESC stack — plate နှစ်ချပ်ကြားက အစိမ်းရောင် PCB
+  const stack = new THREE.Mesh(
+    new THREE.BoxGeometry(0.07 * s, 0.035 * s, 0.07 * s),
+    new THREE.MeshStandardMaterial({ color: 0x1d5c3a, roughness: 0.6 }),
+  );
+  stack.position.y = 0.035 * s;
+  g.add(stack);
+
+  // ── Arm ၄ ချောင်း — motor ဆီ ထောင့်ဖြတ် ထွက်သွားတယ် ────────────────────
+  const armLen = 0.2 * s;
+  for (const [ax, az] of [[1, 1], [1, -1], [-1, 1], [-1, -1]] as const) {
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(armLen, 0.014 * s, 0.036 * s), carbon);
+    arm.position.set((ax * armLen) / 2, 0.004 * s, (az * armLen) / 2);
+    arm.rotation.y = -Math.atan2(az, ax);
     g.add(arm);
   }
-  // stack + canopy
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.16 * s, 0.07 * s, 0.22 * s), bodyMat);
-  body.position.y = 0.045 * s;
-  g.add(body);
-  const canopy = new THREE.Mesh(new THREE.ConeGeometry(0.07 * s, 0.12 * s, 4), bodyMat);
-  canopy.rotation.x = -Math.PI / 2;
-  canopy.position.set(0, 0.07 * s, -0.1 * s);
-  g.add(canopy);
-  // battery
-  const batt = new THREE.Mesh(
-    new THREE.BoxGeometry(0.1 * s, 0.05 * s, 0.16 * s),
-    new THREE.MeshStandardMaterial({ color: 0x394150, roughness: 0.8 }),
-  );
-  batt.position.y = -0.03 * s;
-  g.add(batt);
-  // props — throttle နဲ့ လည်တယ်
-  const props: THREE.Mesh[] = [];
-  const propMat = new THREE.MeshStandardMaterial({
-    color: 0xdddddd,
-    transparent: true,
-    opacity: 0.55,
+
+  // ── Motor + prop ၄ လုံး ────────────────────────────────────────────────
+  const props: THREE.Object3D[] = [];
+  const bladeMat = new THREE.MeshStandardMaterial({
+    color: 0xe8ecf2,
+    roughness: 0.35,
     side: THREE.DoubleSide,
   });
+  // မြန်မြန်လှည့်ရင် blade တစ်ခုချင်း မမြင်ရတော့ဘဲ ဝိုင်းလုံးလို ဖြစ်တယ် —
+  // အဲဒါကို ဖော်ဖို့ ဖျော့ဖျော့ disc တစ်ခု ထပ်ထားတယ်။
+  const discMat = new THREE.MeshStandardMaterial({
+    color: 0xc8d2e0,
+    transparent: true,
+    opacity: 0.18,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const propR = (spec.ducted ? 0.115 : 0.125) * s;
   for (const [px, pz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]] as const) {
-    const p = new THREE.Mesh(new THREE.CircleGeometry(0.11 * s, 12), propMat);
-    p.rotation.x = -Math.PI / 2;
-    p.position.set(px * 0.18 * s, 0.035 * s, pz * 0.18 * s);
-    g.add(p);
-    props.push(p);
+    const mx = px * 0.145 * s;
+    const mz = pz * 0.145 * s;
+    // Motor bell (အပြင်လှည့်တဲ့အပိုင်း) + အောက်က stator
+    const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * s, 0.032 * s, 0.03 * s, 12), bodyMat);
+    bell.position.set(mx, 0.028 * s, mz);
+    g.add(bell);
+    const stator = new THREE.Mesh(new THREE.CylinderGeometry(0.028 * s, 0.028 * s, 0.016 * s, 10), darkMat);
+    stator.position.set(mx, 0.012 * s, mz);
+    g.add(stator);
+
+    // Prop — hub + tri-blade။ Group ကို x=-90° လှည့်ထားလို့ local z က
+    // အပေါ်ဘက် — animate loop က `rotation.z` တိုးရုံနဲ့ လှည့်တယ်။
+    const prop = new THREE.Group();
+    prop.rotation.x = -Math.PI / 2;
+    prop.position.set(mx, 0.05 * s, mz);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * s, 0.012 * s, 0.012 * s, 8), darkMat);
+    hub.rotation.x = Math.PI / 2;
+    prop.add(hub);
+    for (let b = 0; b < 3; b++) {
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(propR, propR * 0.34, 0.004 * s), bladeMat);
+      blade.position.set(propR / 2, 0, 0);
+      // Blade pitch — prop က ပြားနေတာ မဟုတ်ဘူး၊ စောင်းထားလို့ လေတွန်းတယ်
+      blade.rotation.x = 0.28;
+      const hold = new THREE.Group();
+      hold.rotation.z = (b / 3) * Math.PI * 2;
+      hold.add(blade);
+      prop.add(hold);
+    }
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(propR, 18), discMat);
+    prop.add(disc);
+    g.add(prop);
+    props.push(prop);
+
+    if (spec.ducted) {
+      const duct = new THREE.Mesh(
+        new THREE.TorusGeometry(propR * 1.06, 0.012 * s, 6, 20),
+        new THREE.MeshStandardMaterial({ color: 0xf2f4f7, roughness: 0.5 }),
+      );
+      duct.rotation.x = -Math.PI / 2;
+      duct.position.set(mx, 0.05 * s, mz);
+      g.add(duct);
+    }
   }
+
+  // ── LiPo battery — အပေါ်ပြားပေါ်တင်ပြီး strap နဲ့ ချည် ──────────────────
+  const batt = new THREE.Mesh(
+    new THREE.BoxGeometry(0.1 * s, 0.05 * s, 0.17 * s),
+    new THREE.MeshStandardMaterial({ color: 0x2a3140, roughness: 0.85 }),
+  );
+  batt.position.set(0, 0.105 * s, 0.02 * s);
+  g.add(batt);
+  const strap = new THREE.Mesh(
+    new THREE.BoxGeometry(0.115 * s, 0.058 * s, 0.02 * s),
+    new THREE.MeshStandardMaterial({ color: 0xd94f4f, roughness: 0.9 }),
+  );
+  strap.position.set(0, 0.105 * s, 0.02 * s);
+  g.add(strap);
+
+  // ── FPV camera — `camTilt` ထောင့်အတိုင်း စောင်းတပ် ─────────────────────
+  const cam = new THREE.Group();
+  cam.position.set(0, 0.055 * s, -0.115 * s);
+  cam.rotation.x = THREE.MathUtils.degToRad(spec.camTilt);
+  cam.add(new THREE.Mesh(new THREE.BoxGeometry(0.05 * s, 0.05 * s, 0.045 * s), darkMat));
+  const lens = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018 * s, 0.02 * s, 0.022 * s, 10),
+    new THREE.MeshStandardMaterial({ color: 0x11151c, roughness: 0.15, metalness: 0.6 }),
+  );
+  lens.rotation.x = Math.PI / 2;
+  lens.position.z = -0.032 * s;
+  cam.add(lens);
+  g.add(cam);
+  // Canopy — cam ကို ဖုံးထားတဲ့ 3D-print အဖုံး
+  const canopy = new THREE.Mesh(new THREE.BoxGeometry(0.062 * s, 0.045 * s, 0.075 * s), bodyMat);
+  canopy.position.set(0, 0.058 * s, -0.09 * s);
+  g.add(canopy);
+
+  // ── VTX antenna — နောက်ဘက် စောင်းထောင် (pagoda cap နဲ့) ────────────────
+  const ant = new THREE.Group();
+  ant.position.set(0, 0.085 * s, 0.14 * s);
+  ant.rotation.x = -0.5;
+  const antRod = new THREE.Mesh(new THREE.CylinderGeometry(0.005 * s, 0.005 * s, 0.09 * s, 6), darkMat);
+  antRod.position.y = 0.045 * s;
+  ant.add(antRod);
+  const antCap = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.017 * s, 0.017 * s, 0.03 * s, 8),
+    new THREE.MeshStandardMaterial({ color: 0xf2b23a, roughness: 0.5 }),
+  );
+  antCap.position.y = 0.105 * s;
+  ant.add(antCap);
+  g.add(ant);
+
+  // ── LED strip — arm အောက်မှာ။ အမှောင်ထဲ drone ကို မြင်ရစေတယ် ──────────
+  const ledMat = new THREE.MeshStandardMaterial({
+    color: 0x35f0a0,
+    emissive: 0x35f0a0,
+    emissiveIntensity: 1.4,
+    roughness: 1,
+  });
+  for (const lx of [-1, 1]) {
+    const led = new THREE.Mesh(new THREE.BoxGeometry(0.012 * s, 0.006 * s, 0.13 * s), ledMat);
+    led.position.set(lx * 0.075 * s, -0.008 * s, 0.05 * s);
+    g.add(led);
+  }
+
   return { group: g, props };
 }
 
@@ -312,6 +446,11 @@ export function FpvSim() {
   /// ပွဲ ပြန်စချိန် scene ကို အသစ်ဆောက်ဖို့
   const [runNonce, setRunNonce] = useState(0);
   const [axisMap, setAxisMap] = useState<AxisMap | null>(null);
+  /// Auto-calibration wizard — `null` = မဖွင့်ထားဘူး
+  const [cal, setCal] = useState<CalProgress | null>(null);
+  const [calRunning, setCalRunning] = useState(false);
+  const [calWarn, setCalWarn] = useState<string | null>(null);
+  const calRef = useRef<ReturnType<typeof createCalibrator> | null>(null);
   const [padName, setPadName] = useState<string | null>(null);
   const [hud, setHud] = useState<Hud>({
     armed: false,
@@ -329,6 +468,8 @@ export function FpvSim() {
   const [touchDev, setTouchDev] = useState(false);
 
   const modeRef = useRef<FlightMode>("sport");
+  const viewRef = useRef<Prefs["view"]>("fpv");
+  const soundRef = useRef(true);
   const inputRef = useRef<FpvInput | null>(null);
   const stickL = useRef<HTMLDivElement | null>(null);
   const stickR = useRef<HTMLDivElement | null>(null);
@@ -343,6 +484,14 @@ export function FpvSim() {
     setAxisMap(loadAxisMap());
     setTouchDev(window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0);
   }, []);
+
+  // ★ `view` နဲ့ `sound` က ပျံနေတုန်း ပြောင်းလို့ရရမယ့် setting တွေ —
+  //   scene effect ရဲ့ dependency ထဲ မထည့်ဘူး။ ထည့်ရင် ခလုပ်နှိပ်တိုင်း
+  //   sim တစ်ခုလုံး rebuild ဖြစ်ပြီး ပျံနေတဲ့ drone က spawn ကို ပြန်ရောက်တယ်။
+  if (prefs) {
+    viewRef.current = prefs.view;
+    soundRef.current = prefs.sound;
+  }
 
   const save = (p: Prefs) => {
     setPrefs(p);
@@ -363,6 +512,55 @@ export function FpvSim() {
     }, 800);
     return () => clearInterval(t);
   }, [menu]);
+
+  // ── 🎛 Auto-calibration wizard ──────────────────────────────────────────
+  //
+  // ★ Radio ကို ဒီမှာ ချိတ်ပြီး တကယ် လှုပ်ကြည့်မှ ဘယ် axis က ဘာလဲ သိတယ် —
+  //   preset ၄ မျိုးက radio အားလုံးကို မခြုံဘူး (firmware/Bluetooth stack
+  //   အလိုက် axis တွေ နေရာပြောင်းတတ်တယ်)。
+  // ★ Loop က `calRunning` boolean ပေါ်မှာသာ မှီတယ် — progress state ပေါ်
+  //   မှီရင် frame တိုင်း effect ပြန်စလို့ rAF က အမြဲ ပြန်ဖျက်ခံရမယ်။
+  useEffect(() => {
+    if (!calRunning) return;
+    const pad = () => {
+      const list = navigator.getGamepads?.() ?? [];
+      return Array.from(list).find((g) => g && g.axes.length >= 4) ?? null;
+    };
+    if (!pad()) {
+      setCalWarn("Controller မတွေ့ပါ — radio ကို ချိတ်ပြီး stick တစ်ချက် လှုပ်ပါ။");
+      setCalRunning(false);
+      return;
+    }
+    const c = calRef.current;
+    if (!c) return;
+    let raf = 0;
+    const tick = () => {
+      const g = pad();
+      if (g) {
+        const p = c.sample(g.axes);
+        setCal(p);
+        if (p.step === "done") {
+          if (!c.complete()) {
+            setCalWarn(
+              "Stick တစ်ချို့ လှုပ်တာ မတွေ့ပါ — မတွေ့တဲ့ function တွေက အရင်အတိုင်း ကျန်ပါမယ်။",
+            );
+          } else {
+            const bad = c.conflicts();
+            setCalWarn(
+              bad.length
+                ? `Stick တစ်ခုတည်းကို နှစ်ခါ လှုပ်မိပုံရတယ် (${bad.join(", ")}) — ပြန်ချိန်ပါ။`
+                : null,
+            );
+          }
+          setCalRunning(false);
+          return;
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [calRunning]);
 
   // ── Scene ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -403,7 +601,13 @@ export function FpvSim() {
     // မပြဘူး (မဖျောက်ရင် frame/prop တွေက မျက်နှာပြင်ကို ကွယ်နေတယ်)။
     // Remote player တွေကတော့ ကိုယ့် drone ကို သူတို့ဘက်မှာ မြင်ရတယ်။
     const { group: droneMesh, props } = buildCraftMesh(drone);
-    droneMesh.visible = false;
+    // FPV view မှာ ဖျောက်ထား၊ chase view မှာ ပြန်ပြ — animate loop က
+    // frame တိုင်း `viewRef` အလိုက် ပြန်သတ်မှတ်တယ်။
+    droneMesh.visible = viewRef.current === "chase";
+    // Chase camera — yaw လိုက်တဲ့ တန်ဖိုးနဲ့ offset vector
+    let chaseYaw = map.spawnYaw;
+    const chaseOff = new THREE.Vector3();
+    const UP = new THREE.Vector3(0, 1, 0);
     scene.add(droneMesh);
     const state = createState(map.spawn, map.spawnYaw);
 
@@ -601,12 +805,31 @@ export function FpvSim() {
           : (0.4 + sticks.throttle * 2.4) * (state.armed ? 1 : 0);
       for (const p of props) p.rotation.z += spin;
 
-      // ── FPV camera — drone body + cam tilt၊ cinematic မှာ smoothing ──
+      // ── ကင်မရာ ─────────────────────────────────────────────────────────
       const m = getMode(modeRef.current);
-      camQ.copy(state.quat).multiply(camTiltQ);
-      if (m.camSmooth > 0) camera.quaternion.slerp(camQ, 1 - Math.pow(m.camSmooth, dt * 60));
-      else camera.quaternion.copy(camQ);
-      camera.position.copy(state.pos);
+      if (viewRef.current === "chase") {
+        // 🎥 Chase (3rd person) — drone ကို အပြင်ကနေ မြင်ရတယ်။
+        // ★ Drone ရဲ့ quaternion အပြည့် လိုက်ရင် flip/roll လုပ်တိုင်း ကင်မရာ
+        //   လိုက်လှည့်လို့ ခေါင်းမူးတယ် — ဒါကြောင့် **yaw တစ်ခုတည်း** ကိုပဲ
+        //   လိုက်ပြီး အဲဒါကိုတောင် နှေးနှေး lerp လုပ်တယ်။
+        droneMesh.visible = true;
+        const e = new THREE.Euler().setFromQuaternion(state.quat, "YXZ");
+        let dy = e.y - chaseYaw;
+        while (dy > Math.PI) dy -= Math.PI * 2;
+        while (dy < -Math.PI) dy += Math.PI * 2;
+        chaseYaw += dy * Math.min(1, 5 * dt);
+        chaseOff.set(0, 0.5 + 0.35 * drone.scale, 1.5 + 1.5 * drone.scale);
+        chaseOff.applyAxisAngle(UP, chaseYaw);
+        camera.position.copy(state.pos).add(chaseOff);
+        camera.lookAt(state.pos.x, state.pos.y + 0.15 * drone.scale, state.pos.z);
+      } else {
+        // FPV — ကင်မရာက drone ထဲမှာ၊ cam tilt ထောင့်အတိုင်း
+        droneMesh.visible = false;
+        camQ.copy(state.quat).multiply(camTiltQ);
+        if (m.camSmooth > 0) camera.quaternion.slerp(camQ, 1 - Math.pow(m.camSmooth, dt * 60));
+        else camera.quaternion.copy(camQ);
+        camera.position.copy(state.pos);
+      }
 
       // ── Remotes ──────────────────────────────────────────────────────
       for (const r of remotes.values()) {
@@ -626,7 +849,7 @@ export function FpvSim() {
         net.sendUpdate(state.pos.x, state.pos.y, state.pos.z, e.y);
       }
 
-      sound.update(sticks.throttle, state.armed, !prefs.sound);
+      sound.update(sticks.throttle, state.armed, !soundRef.current);
 
       // ── ပွဲစဉ် update ────────────────────────────────────────────────
       const gh = game.update(dt, state.pos, state.vel, state.armed);
@@ -685,7 +908,11 @@ export function FpvSim() {
       renderer.forceContextLoss();
       if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
     };
-  }, [started, prefs, axisMap, runNonce]);
+    // ★ `prefs` အပြည့်ကို dep မထည့်ဘူး — sound/view ခလုပ်နှိပ်တိုင်း scene
+    //   တစ်ခုလုံး rebuild ဖြစ်ပြီး ပျံနေတဲ့ drone က spawn ကို ပြန်ရောက်တယ်။
+    //   အဲဒီနှစ်ခုကို ref ကနေ ဖတ်ထားပြီး ကျန် field တွေကိုပဲ dep ထားတယ်။
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started, prefs?.drone, prefs?.mode, prefs?.map, prefs?.game, axisMap, runNonce]);
 
   // ── Touch stick pointer handlers ─────────────────────────────────────
   const bindStick = (
@@ -833,6 +1060,17 @@ export function FpvSim() {
             </button>
             <button
               className={btn}
+              onClick={() => {
+                const view = prefs.view === "fpv" ? "chase" : "fpv";
+                viewRef.current = view;
+                save({ ...prefs, view });
+              }}
+              title="ကင်မရာ — FPV / အပြင်ကနေ"
+            >
+              {prefs.view === "fpv" ? "🥽 FPV" : "🎥 3rd"}
+            </button>
+            <button
+              className={btn}
               onClick={() => save({ ...prefs, sound: !prefs.sound })}
               title="မော်တာသံ"
             >
@@ -974,7 +1212,10 @@ export function FpvSim() {
                       className={`rounded-xl border p-3 text-left transition ${prefs.drone === d.id ? "border-emerald-400/60 bg-emerald-500/15" : "border-white/10 bg-white/5 hover:bg-white/10"}`}
                     >
                       <div className="flex items-baseline justify-between gap-2">
-                        <span className="text-sm font-bold">{d.name}</span>
+                        <span className="text-sm font-bold">
+                          {d.name}
+                          {d.ducted && <span className="ml-1 text-[10px] text-sky-300">◎ ducted</span>}
+                        </span>
                         <span className="shrink-0 rounded bg-white/10 px-1.5 text-[10px] text-white/60">
                           {d.cls} · {d.size}
                         </span>
@@ -984,9 +1225,25 @@ export function FpvSim() {
                         {Math.round(d.mass * 1000)}g · T/W {(d.maxThrust / (d.mass * 9.81)).toFixed(1)} · cam {d.camTilt}°
                         {d.craft === "plane" && ` · stall ${d.stallSpeed} m/s`}
                       </div>
+                      {d.specNote && (
+                        <div className="mt-1 text-[10px] leading-snug text-amber-200/60">ℹ️ {d.specNote}</div>
+                      )}
                     </button>
                   ))}
                 </div>
+
+                {/* ★ တကယ်ရှိတဲ့ ကိရိယာနာမည် သုံးထားတဲ့ model တွေအတွက် —
+                    ဘယ်သူပိုင်တာလဲ ရှင်းရှင်းပြောဖို့ လိုတယ် (nominative use)။ */}
+                {DRONES.some((d) => d.craft === craft && d.reference) && (
+                  <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-[10px] leading-relaxed text-amber-100/60">
+                    📷 <b>Reference model</b> — အထက်က တကယ်ရှိတဲ့ ကိရိယာနာမည်တွေက
+                    သက်ဆိုင်ရာ ပိုင်ရှင်တွေရဲ့ trademark တွေ ဖြစ်ပြီး Gwave နဲ့
+                    ဆက်စပ်မှု၊ ထောက်ခံမှု မရှိပါဘူး။ ဘယ်ပျံသန်းမှုပုံစံကို
+                    တုပထားလဲ ဖော်ပြဖို့သာ သုံးထားတာပါ။ ဂဏန်းတွေက ထုတ်လုပ်သူ
+                    ကြေညာချက်အတိုင်း — ခန့်မှန်းထားတာဆိုရင် အထက်မှာ ℹ️ နဲ့
+                    မှတ်ထားပါတယ်။
+                  </div>
+                )}
 
                 {/* ယာဉ်အလိုက် မောင်းနည်း — physics မတူလို့ ရှင်းပြရမယ် */}
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-[11px] leading-relaxed text-white/60">
@@ -1048,6 +1305,160 @@ export function FpvSim() {
                 <div className={`rounded-lg px-3 py-2 ${padName ? "bg-emerald-500/15 text-emerald-200" : "bg-white/5 text-white/55"}`}>
                   {padName ? `🎮 ${padName}` : "Controller မတွေ့သေးပါ — radio ကို USB (joystick mode) / Bluetooth နဲ့ ချိတ်ပြီး stick တစ်ချက် လှုပ်ပါ။"}
                 </div>
+                {/* ── 🎛 Auto calibration ────────────────────────────────
+                    ★ Preset က radio အားလုံးကို မခြုံဘူး — firmware/Bluetooth
+                      stack အလိုက် axis နေရာ ပြောင်းတတ်တယ်။ တကယ် လှုပ်ကြည့်တာက
+                      ဟာ့ဒ်ဝဲကို မမှားနိုင်တဲ့ တစ်ခုတည်းသော နည်းလမ်း။ */}
+                <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[12px] font-bold text-white/85">
+                      🎛 အလိုအလျောက် ချိန်ညှိခြင်း
+                    </span>
+                    {!calRunning && (
+                      <button
+                        onClick={() => {
+                          const pads = navigator.getGamepads?.() ?? [];
+                          const g = Array.from(pads).find((x) => x && x.axes.length >= 4);
+                          const c = createCalibrator(g?.axes.length ?? 4);
+                          c.start();
+                          calRef.current = c;
+                          setCal({ step: "center", progress: 0, detectedAxis: null, detectedInvert: false });
+                          setCalWarn(null);
+                          setCalRunning(true);
+                        }}
+                        className="rounded-lg bg-emerald-500/20 px-2.5 py-1 text-[11px] font-semibold text-emerald-200 transition hover:bg-emerald-500/30"
+                      >
+                        စတင်မယ်
+                      </button>
+                    )}
+                  </div>
+
+                  {cal && cal.step !== "idle" ? (
+                    <>
+                      <div className="text-[12px] leading-snug text-white/85">
+                        {CAL_PROMPT[cal.step].my}
+                      </div>
+                      <div className="text-[10px] text-white/40">{CAL_PROMPT[cal.step].en}</div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-emerald-400 transition-[width]"
+                          style={{ width: `${Math.round(cal.progress * 100)}%` }}
+                        />
+                      </div>
+                      {cal.detectedAxis !== null && (
+                        <div className="text-[10px] text-emerald-300/70">
+                          Axis {cal.detectedAxis} လှုပ်နေတယ်
+                          {cal.detectedInvert && " (ပြောင်းပြန်)"}
+                        </div>
+                      )}
+                      {cal.step === "done" && (
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={() => {
+                              const c = calRef.current;
+                              if (!c) return;
+                              const next = c.result(axisMap);
+                              setAxisMap(next);
+                              saveAxisMap(next);
+                              setCal(null);
+                            }}
+                            className="rounded-lg bg-emerald-500/25 px-2.5 py-1 text-[11px] font-semibold text-emerald-100 transition hover:bg-emerald-500/35"
+                          >
+                            ✓ သိမ်းမယ်
+                          </button>
+                          <button
+                            onClick={() => {
+                              setCal(null);
+                              setCalWarn(null);
+                            }}
+                            className="rounded-lg bg-white/10 px-2.5 py-1 text-[11px] text-white/70 transition hover:bg-white/20"
+                          >
+                            မသိမ်းဘူး
+                          </button>
+                        </div>
+                      )}
+                      {calRunning && (
+                        <button
+                          onClick={() => {
+                            calRef.current?.cancel();
+                            setCalRunning(false);
+                            setCal(null);
+                          }}
+                          className="text-[10px] text-white/40 underline underline-offset-2 hover:text-white/70"
+                        >
+                          ရပ်မယ်
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-[11px] leading-snug text-white/50">
+                      Radio ချိတ်ပြီး ခလုပ်နှိပ်ပါ — stick တွေကို အဆုံးထိ လှုပ်ခိုင်းပြီး ဘယ်
+                      axis က ဘာလဲ၊ ပြောင်းပြန်လား၊ အဆုံးထိ ဘယ်လောက်ရောက်လဲ ဆိုတာ
+                      တိုင်းပါမယ်။ Stick အလယ်မှာ မငြိမ်တဲ့ radio ဆိုရင် deadband ကို
+                      အလိုအလျောက် ချဲ့ပေးပါတယ်။
+                    </p>
+                  )}
+
+                  {calWarn && (
+                    <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-[10px] leading-snug text-amber-100">
+                      ⚠️ {calWarn}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Channel order preset ──────────────────────────────
+                    ★ ချိန်ညှိလို့ မရတဲ့အခါ (radio မချိတ်ရသေးဘူး) အတွက်
+                      စံ ၄ မျိုး — EdgeTX က AETR၊ Spektrum က TAER。 */}
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-[12px] font-bold text-white/85">📻 Channel order</div>
+                  <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                    {(Object.keys(CHANNEL_ORDERS) as ChannelOrder[]).map((o) => (
+                      <button
+                        key={o}
+                        onClick={() => {
+                          // ★ Preset က axis နေရာပဲ ပြောင်းတယ် — ချိန်ညှိထားတဲ့
+                          //   endpoint/deadband ကို မဖျက်ဘူး။
+                          const next = { ...presetMap(o), cal: axisMap.cal };
+                          setAxisMap(next);
+                          saveAxisMap(next);
+                        }}
+                        className={`rounded-lg px-2 py-1.5 text-[11px] transition ${
+                          axisMap.preset === o
+                            ? "bg-emerald-500/25 text-emerald-200"
+                            : "bg-white/5 text-white/60 hover:bg-white/10"
+                        }`}
+                      >
+                        {o}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-1.5 text-[10px] leading-snug text-white/45">
+                    {
+                      CHANNEL_ORDERS[
+                        (axisMap.preset === "custom" ? "AETR" : axisMap.preset) as ChannelOrder
+                      ].radios
+                    }
+                    {axisMap.preset === "custom" && " · လက်ရှိက ကိုယ်တိုင်ချိန်ထားတာ"}
+                  </div>
+                </div>
+
+                {/* ── Stick mode — radio ဘက်က setting၊ sim က ပြောင်းလို့မရဘူး */}
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-[12px] font-bold text-white/85">🕹 Stick mode</div>
+                  <div className="mt-1.5 space-y-1 text-[10px] leading-snug text-white/50">
+                    {Object.entries(STICK_MODES).map(([n, m]) => (
+                      <div key={n}>
+                        <b className="text-white/70">Mode {n}</b> — ဘယ်: {m.left} · ညာ: {m.right}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-1.5 text-[10px] leading-snug text-white/40">
+                    ★ Stick mode က <b>radio ထဲက setting</b> ပါ — sim ကနေ ပြောင်းလို့ မရပါ။
+                    ကိုယ့် radio က ဘယ် mode လဲ ဆိုတာ အထက်က ချိန်ညှိမှုက အလိုအလျောက်
+                    လိုက်ပါမယ်။
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {(["roll", "pitch", "throttle", "yaw"] as const).map((k) => (
                     <label key={k} className="rounded-lg bg-white/5 p-2">

@@ -18,6 +18,8 @@ import '../wellness/wellness_hub_screen.dart';
 import 'my_profile_screen.dart';
 import '../family/family_screen.dart';
 import '../farm/farm_screen.dart';
+import '../help/help_screen.dart';
+import '../farm/light_meter/light_meter_screen.dart';
 import '../finance/finance_screen.dart';
 import '../friends/friends_screen.dart';
 import '../games/games_screen.dart';
@@ -38,6 +40,7 @@ import '../ride/ride_screen.dart';
 import '../pos/pos_sell_screen.dart';
 import '../settings/settings_screen.dart';
 import '../talk/talk_screen.dart';
+import '../tools/cleaner/cleaner_screen.dart';
 import '../tools/tools_screen.dart';
 
 /// The Me tab = the app's **Main Menu**: a compact identity header that opens
@@ -227,6 +230,11 @@ class ProfileScreen extends StatelessWidget {
             native: _Native.games),
         _MenuEntry(Icons.public, tr(context, "Metaverse", "မက်တာဗာ့စ်"),
             native: _Native.metaverse),
+        _MenuEntry(Icons.flight_takeoff, tr(context, "FPV drone", "FPV ဒရုန်း"),
+            native: _Native.fpv),
+        _MenuEntry(Icons.extension_outlined,
+            tr(context, "Edu Arcade", "ပညာရေးဂိမ်း"),
+            native: _Native.arcade),
       ]),
       _MenuSection(tr(context, "Learning", "ပညာရေး"), Icons.school_outlined,
           const Color(0xFF2E7DB1), [
@@ -241,11 +249,20 @@ class ProfileScreen extends StatelessWidget {
         _MenuEntry(Icons.self_improvement_outlined,
             tr(context, "Wellness", "စိတ်ကျန်းမာ"),
             native: _Native.wellness),
+        _MenuEntry(Icons.cast_for_education_outlined,
+            tr(context, "Live class", "တိုက်ရိုက်အတန်း"),
+            web: "/meet"),
+        _MenuEntry(Icons.play_circle_outline,
+            tr(context, "Replays", "ပြန်ကြည့်ရန်"),
+            web: "/recordings"),
       ]),
       _MenuSection(tr(context, "Farm & Home", "စိုက်ပျိုးရေးနှင့် အိမ်"),
           Icons.eco_outlined, const Color(0xFF2E9E5B), [
         _MenuEntry(Icons.agriculture_outlined, tr(context, "Farm", "ခြံ"),
             native: _Native.farm),
+        _MenuEntry(Icons.wb_sunny_outlined,
+            tr(context, "Light meter", "အလင်းရောင်တိုင်း"),
+            native: _Native.lightMeter),
         _MenuEntry(Icons.lightbulb_outline,
             tr(context, "Smart Home", "စမတ်အိမ်"),
             web: "/home"),
@@ -302,6 +319,11 @@ class ProfileScreen extends StatelessWidget {
             native: _Native.metalPrices),
         _MenuEntry(Icons.calculate_outlined, tr(context, "Tools", "ကိရိယာများ"),
             native: _Native.tools),
+        _MenuEntry(Icons.cleaning_services_outlined,
+            tr(context, "Storage cleaner", "နေရာရှင်းလင်း"),
+            native: _Native.cleaner),
+        _MenuEntry(Icons.help_outline, tr(context, "Help & guide", "အကူအညီ"),
+            native: _Native.help),
       ]),
     ];
 
@@ -474,6 +496,21 @@ class ProfileScreen extends StatelessWidget {
       case _Native.farm:
         _push(context, const FarmScreen());
         return;
+      case _Native.help:
+        _push(context, const HelpScreen());
+        return;
+      case _Native.lightMeter:
+        _push(context, const LightMeterScreen());
+        return;
+      case _Native.cleaner:
+        _push(context, const CleanerScreen());
+        return;
+      case _Native.fpv:
+        openFpv(context);
+        return;
+      case _Native.arcade:
+        openArcade(context);
+        return;
       case _Native.cctv:
         _push(context, const CctvScreen());
         return;
@@ -582,6 +619,11 @@ class ProfileScreen extends StatelessWidget {
 /// A native screen a menu entry can push directly (no web hand-off).
 enum _Native {
   farm,
+  help,
+  lightMeter,
+  cleaner,
+  fpv,
+  arcade,
   cctv,
   tools,
   dashboard,

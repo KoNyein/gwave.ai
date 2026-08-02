@@ -105,25 +105,39 @@ function createPublicClient(env = process.env) {
   const urls = rpcUrls(env);
   if (urls.length === 0) return { client: null, why: "RPC URL မထည့်ထားဘူး", chain };
 
-  // ★ ရှေ့က ၂ ခု (paid) ကို retry ၂ ခါ၊ public backup ကို ၁ ခါပဲ —
-  //   public က rate limit ခံရရင် ထပ်ခေါ်တာ ပိုဆိုးတယ်။
-  const transports = urls.map((url, i) =>
-    viem.http(url, {
-      batch: true,
-      retryCount: i < urls.length - 1 ? 2 : 1,
-      timeout: i < urls.length - 1 ? 8000 : 10000,
-    }),
-  );
-
   const client = viem.createPublicClient({
     chain,
-    // ★ `rank: true` — viem က provider တွေကို latency/အောင်မြင်နှုန်း
-    //   အလိုက် အလိုအလျောက် အစဉ်ချတယ်။ ကျနေတဲ့ provider ကို ကိုယ်တိုင်
-    //   ဖယ်စရာ မလိုတော့ဘူး။
-    transport: viem.fallback(transports, { rank: true, retryCount: 0 }),
+    transport: rpcTransport(env, viem, urls),
   });
 
   return { client, why: null, chain, urls };
 }
 
-module.exports = { CircuitBreaker, createPublicClient, rpcUrls };
+/// Fallback transport တစ်ခု ဆောက်တယ် — ဖတ်တာရော ပို့တာရော အတူတူ သုံးဖို့။
+///
+/// ★★ ဒါကို သီးခြား ထုတ်ထားရတဲ့ အကြောင်းရင်း — mint ပို့တဲ့ wallet client က
+///    `viem.http(env.WEB3_RPC_URL)` တစ်ခုတည်းနဲ့ ဆောက်ထားခဲ့တယ်။ ဆိုလိုတာက
+///    ဖတ်တာက provider ၄ ခုကြား failover ရှိပြီး **ပို့တာမှာ လုံးဝ မရှိဘူး** —
+///    အဓိက provider ကျရင် ကျန် ၃ ခု ကောင်းနေပါလျက် mint အားလုံး ရပ်သွားမယ်။
+///    ပိုဆိုးတာက `WEB3_RPC_URL` မထည့်ဘဲ `_2` ပဲ ထည့်ထားရင် `viem.http(undefined)`
+///    က chain ရဲ့ public endpoint ကို **တိတ်တိတ်** သုံးပြီး mint transaction
+///    တွေကို အဲဒီကနေ ပို့နေမယ်။
+/// ★ Transaction ကို provider ၂ ခုဆီ ရောက်သွားလည်း အန္တရာယ် မရှိဘူး —
+///   လက်မှတ်ထိုးပြီးသား tx က hash တူတူမို့ ဒုတိယတစ်ခါက no-op ဖြစ်တယ်။
+function rpcTransport(env = process.env, viem = require("viem"), urls = null) {
+  const list = urls ?? rpcUrls(env);
+  // ★ ရှေ့က paid provider တွေကို retry ၂ ခါ၊ public backup ကို ၁ ခါပဲ —
+  //   public က rate limit ခံရရင် ထပ်ခေါ်တာ ပိုဆိုးတယ်။
+  const transports = list.map((url, i) =>
+    viem.http(url, {
+      batch: true,
+      retryCount: i < list.length - 1 ? 2 : 1,
+      timeout: i < list.length - 1 ? 8000 : 10000,
+    }),
+  );
+  // ★ `rank: true` — viem က provider တွေကို latency/အောင်မြင်နှုန်း အလိုက်
+  //   အလိုအလျောက် အစဉ်ချတယ်။ ကျနေတဲ့ provider ကို ကိုယ်တိုင် ဖယ်စရာ မလိုဘူး။
+  return viem.fallback(transports, { rank: true, retryCount: 0 });
+}
+
+module.exports = { CircuitBreaker, createPublicClient, rpcTransport, rpcUrls };

@@ -23,7 +23,13 @@ class _GamesScreenState extends State<GamesScreen> {
   List<Game> _community = [];
   bool _loading = true;
 
+  /// ★ ဒါတွေက web ဂိမ်းတွေမို့ WebView နဲ့ ဖွင့်တယ်။ အသက်/အခွင့်အရေး
+  ///   ဂိတ်တွေက **server မှာ** ရှိတယ် (`requireAdult()`) — app က ဂိတ်ကို
+  ///   မကိုင်ဘူး၊ ကိုင်ရင်လည်း WebView ကို တိုက်ရိုက်ဖွင့်လို့ ကျော်လို့ရမယ်။
+  ///   ၁၈+ မဟုတ်သူက အဲဒီစာမျက်နှာကနေ `/restricted` ကို ရောက်သွားမယ်။
   static const _builtins = <(String, String, String, String)>[
+    ("🎯", "Assassin", "လျှို့ဝှက်ပစ်မှတ် · ၁၈+", "/games/assassin"),
+    ("🚁", "Drone Champions", "FPV drone ပြိုင်ပွဲ", "/games/drone-sim"),
     ("🌻", "Grow-a-Garden", "စိုက်ပျိုးရေး ဂိမ်း", "/learn/game"),
     ("🤖", "Learn Games", "STEM သင်ခန်းစာ ဂိမ်းများ", "/learn"),
     ("🧩", "Edu Games", "ပညာပေး HTML5 ဂိမ်းများ", "/games"),

@@ -31,6 +31,23 @@ jobs:
     defaults:
       run:
         working-directory: server/metaverse
+    # ★ Web3 ရဲ့ schema test တွေက တကယ့် PostgreSQL လိုတယ်။ မရှိရင် အဲဒီ
+    #   test တွေက တိတ်တိတ် skip ဖြစ်ပြီး — db/sql/web3.sql နဲ့ query တွေ
+    #   ကွဲသွားတာမျိုးကို ဘယ်တော့မှ မဖမ်းမိတော့ဘူး (fake db က SQL ကို
+    #   parse မလုပ်ဘူး)。
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gwave
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,6 +57,8 @@ jobs:
       # protocol + auth + anti-cheat + room isolation + persistence +
       # multi-task + token gate + vehicles
       - run: npm test
+        env:
+          TEST_PG_URL: postgres://postgres:postgres@localhost:5432/gwave
 
   deploy:
     # ★ PR မှာ deploy မလုပ်ရ — fork ကနေလာတဲ့ PR တစ်ခုက production ကို

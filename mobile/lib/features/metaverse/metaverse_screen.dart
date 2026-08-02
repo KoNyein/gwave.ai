@@ -22,10 +22,25 @@ import '../../core/theme.dart';
 ///   **အရင်ပြရမယ်**၊ ရမှ grant လုပ်ရမယ်။ တန်းပြီး grant လုပ်လိုက်ရင်
 ///   Android က ငြင်းပြီး voice chat က တိတ်တိတ်ကြီး အလုပ်မလုပ်ဘဲ ဖြစ်မယ်။
 class MetaverseScreen extends StatefulWidget {
-  const MetaverseScreen({super.key, this.room = "city"});
+  const MetaverseScreen({
+    super.key,
+    this.room = "city",
+    this.path,
+    this.loadingLabel,
+    this.errorLabel,
+  });
 
   /// city / farm / snow / sky / vip
   final String room;
+
+  /// Any other full-screen three.js experience on the same site — the FPV
+  /// simulator and the Edu Arcade run through this identical shell so the
+  /// signed-in cookie, the native bridge, immersive mode, the mic prompt and
+  /// the wake-lock are written once instead of three times.
+  final String? path;
+
+  final String? loadingLabel;
+  final String? errorLabel;
 
   @override
   State<MetaverseScreen> createState() => _MetaverseScreenState();
@@ -36,6 +51,28 @@ Future<void> openMetaverse(BuildContext context, {String room = "city"}) {
   return Navigator.of(context).push(
     MaterialPageRoute(builder: (_) => MetaverseScreen(room: room)),
   );
+}
+
+/// FPV drone simulator (`/fpv`) — same shell, different world.
+Future<void> openFpv(BuildContext context) {
+  return Navigator.of(context).push(MaterialPageRoute(
+    builder: (_) => const MetaverseScreen(
+      path: "/fpv?app=1",
+      loadingLabel: "စက်ကို ပြင်ဆင်နေသည်…",
+      errorLabel: "FPV simulator ကို ဖွင့်လို့ မရသေးပါ။",
+    ),
+  ));
+}
+
+/// Edu Arcade (`/arcade`) — the three.js learning games.
+Future<void> openArcade(BuildContext context) {
+  return Navigator.of(context).push(MaterialPageRoute(
+    builder: (_) => const MetaverseScreen(
+      path: "/arcade?app=1",
+      loadingLabel: "ဂိမ်းများ ပြင်ဆင်နေသည်…",
+      errorLabel: "Arcade ကို ဖွင့်လို့ မရသေးပါ။",
+    ),
+  ));
 }
 
 const _allowedRooms = {"city", "farm", "snow", "sky", "vip"};
@@ -64,6 +101,8 @@ class _MetaverseScreenState extends State<MetaverseScreen> {
   }
 
   String get _url {
+    final custom = widget.path;
+    if (custom != null) return "${AppConfig.apiBase}$custom";
     final room = _allowedRooms.contains(widget.room) ? widget.room : "city";
     // ★ `app=1` က web client ကို "app ထဲမှာ ဖွင့်နေတယ်" လို့ ပြောတယ် —
     // bridge မရောက်သေးခင်ကတည်းက အရည်အသွေးကို လျှော့ချလို့ရအောင်။
@@ -102,7 +141,18 @@ class _MetaverseScreenState extends State<MetaverseScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) => _injectBridge(),
-          onPageFinished: (_) => _injectBridge(),
+          onPageFinished: (_) {
+            _injectBridge();
+            // ★ `onMetaverseReady` ကို metaverse ကသာ ခေါ်တယ် — FPV/Arcade က
+            // မခေါ်ဘူး၊ ဒါကြောင့် အဲဒီနှစ်ခုအတွက် page ပြီးတာနဲ့ loader ကို
+            // ဖျောက်ရမယ် (မဟုတ်ရင် အလုပ်လုပ်နေတဲ့ စာမျက်နှာပေါ် spinner
+            // ထာဝရ တင်နေမယ်)。
+            // ★ Metaverse မှာတော့ **မဖျောက်ရ** — HTML ရောက်တာနဲ့ လောကက
+            // ဆောက်ပြီးတာ မဟုတ်ဘူး၊ three.js က နောက်ထပ် စက္ကန့်ပိုင်း
+            // ယူတယ်။ ဒီမှာ ဖျောက်လိုက်ရင် "ဆောက်နေသည်" ကနေ မဲနေတဲ့
+            // ဖန်သားပြင်ကို ကူးသွားပြီး ပျက်နေသလို ထင်ရမယ်။
+            if (widget.path != null && mounted) setState(() => _ready = true);
+          },
           onWebResourceError: (err) {
             // ★ အဓိက document ကျမှ ပြရမယ် — ပုံတစ်ပုံ မရလို့ error
             // စာမျက်နှာ ပြလိုက်ရင် လောကက ဘယ်တော့မှ မပေါ်တော့ဘူး။
@@ -243,10 +293,10 @@ class _MetaverseScreenState extends State<MetaverseScreen> {
                     children: [
                       const Icon(Icons.wifi_off, color: Colors.white54, size: 40),
                       const SizedBox(height: 12),
-                      const Text(
-                        "Metaverse ကို ဖွင့်လို့ မရသေးပါ။\nအင်တာနက် ပြန်စစ်ပြီး ထပ်ကြိုးစားပါ။",
+                      Text(
+                        "${widget.errorLabel ?? "Metaverse ကို ဖွင့်လို့ မရသေးပါ။"}\nအင်တာနက် ပြန်စစ်ပြီး ထပ်ကြိုးစားပါ။",
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white70),
+                        style: const TextStyle(color: Colors.white70),
                       ),
                       const SizedBox(height: 16),
                       FilledButton(
@@ -261,15 +311,15 @@ class _MetaverseScreenState extends State<MetaverseScreen> {
                 ),
               )
             else if (!_ready)
-              const Center(
+              Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(color: GwColors.primary),
-                    SizedBox(height: 14),
+                    const CircularProgressIndicator(color: GwColors.primary),
+                    const SizedBox(height: 14),
                     Text(
-                      "လောကကို ဆောက်နေသည်…",
-                      style: TextStyle(color: Colors.white60, fontSize: 13),
+                      widget.loadingLabel ?? "လောကကို ဆောက်နေသည်…",
+                      style: const TextStyle(color: Colors.white60, fontSize: 13),
                     ),
                   ],
                 ),

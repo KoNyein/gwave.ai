@@ -13,7 +13,16 @@ import assert from "node:assert";
 import * as THREE from "three";
 
 import { getDrone, type FlightMode } from "./drones.ts";
-import { createState, speedKmh, updateDrone, type Sticks } from "./physics.ts";
+import {
+  airspeedFactor,
+  batterySag,
+  createState,
+  groundEffect,
+  speedKmh,
+  updateDrone,
+  vortexRing,
+  type Sticks,
+} from "./physics.ts";
 
 const NO_COLLIDERS: { min: THREE.Vector3; max: THREE.Vector3 }[] = [];
 const sticks = (over: Partial<Sticks> = {}): Sticks => ({
@@ -147,4 +156,91 @@ test("အဆောက်အအုံကို ဖြတ်မသွားရ", (
     updateDrone(s, drone, "acro", sticks({ throttle: 0.55, pitch: -0.6 }), 1 / 60, wall);
   }
   assert.ok(s.pos.z > -1.5, `နံရံကို ဖြတ်သွားတယ် — z=${s.pos.z.toFixed(2)}`);
+});
+
+// ── လေအားပညာ / ဘက်ထရီ ─────────────────────────────────────────────────
+//
+// ★ ဒါတွေက ဖန်သားပြင်ပေါ်မှာ **တိုက်ရိုက် မမြင်ရဘူး** — ခံစားချက်ကိုသာ
+//   ပြောင်းတယ်။ ဒါကြောင့် ဂဏန်းအဆင့်မှာ ချည်ထားမှ ကျိုးသွားရင် သိမယ်။
+
+test("🔋 pack အားကုန်လာရင် တွန်းအား ကျတယ်", () => {
+  const d = getDrone("raptor5");
+  const fresh = batterySag(0, d, 0.5);
+  const empty = batterySag(d.batterySec, d, 0.5);
+  assert.ok(fresh > empty, `${fresh} က ${empty} ထက် များရမယ်`);
+  // အစပိုင်းမှာ သိသိသာသာ မကျရဘူး — အဲဒါ ခံစားလို့ ဆိုးတယ်
+  assert.ok(batterySag(d.batterySec * 0.25, d, 0.5) > fresh * 0.985);
+  // ဒါပေမယ့် နောက်ဆုံးမှာ ခံစားရလောက်အောင် ကျရမယ်
+  assert.ok(empty < fresh * 0.9, `နောက်ဆုံးမှာ ${empty / fresh} ပဲ ကျတယ်`);
+});
+
+test("🔋 throttle ဖိထားရင် ချက်ချင်း voltage ကျတယ် (load sag)", () => {
+  const d = getDrone("raptor5");
+  assert.ok(batterySag(0, d, 1) < batterySag(0, d, 0));
+});
+
+test("🛬 မြေပြင်နားမှာ တွန်းအား ပိုရတယ် — အမြင့်မှာ မရ", () => {
+  const d = getDrone("raptor5");
+  assert.ok(groundEffect(0.08, d) > 1.02, `${groundEffect(0.08, d)}`);
+  assert.equal(groundEffect(20, d), 1, "အမြင့်မှာ ground effect မရှိရ");
+  // နီးလေ များလေ ဖြစ်ရမယ် (တစ်ခုတည်းသော ဦးတည်ချက်)
+  assert.ok(groundEffect(0.1, d) > groundEffect(0.3, d));
+});
+
+test("★ 🛬 duct ပါရင် ground effect ပိုသိသာတယ်", () => {
+  // Duct က လေကို ဘေးမထွက်အောင် ပိတ်ထားလို့ မြေပြင်နားမှာ ပိုတွန်းတယ် —
+  // Avata စတိုင် drone က မြေနားပျံရတာ ပိုလွယ်ရမယ်။
+  const open = getDrone("raptor5");
+  const duct = getDrone("avata2");
+  assert.ok(duct.ducted, "avata2 က ducted ဖြစ်ရမယ်");
+  assert.ok(groundEffect(0.02, duct) > groundEffect(0.02, open));
+});
+
+test("★ 🌀 ဒေါင်လိုက် ဆင်းနေရင် တွန်းအား ပျောက်တယ် (vortex ring)", () => {
+  const d = getDrone("raptor5");
+  const straightDown = new THREE.Vector3(0, -5, 0);
+  assert.ok(vortexRing(straightDown, d, 0.6) < 0.95, "settling with power ဖြစ်ရမယ်");
+  // နှေးနှေး ဆင်းရင် မဖြစ်ဘူး
+  assert.equal(vortexRing(new THREE.Vector3(0, -1, 0), d, 0.6), 1);
+});
+
+test("★ 🌀 ရှေ့တိုးလိုက်ရင် လေဝဲထဲက ထွက်တယ်", () => {
+  // တကယ့် ပျံသန်းရေးမှာ settling with power ကနေ ထွက်နည်းက "ရှေ့တိုးပါ" —
+  // sim မှာလည်း အဲဒီအတိုင်း အလုပ်လုပ်ရမယ်။
+  const d = getDrone("raptor5");
+  const stuck = vortexRing(new THREE.Vector3(0, -5, 0), d, 0.6);
+  const moving = vortexRing(new THREE.Vector3(0, -5, 6), d, 0.6);
+  assert.ok(moving > stuck, `ရှေ့တိုးရင် ပြန်ကောင်းရမယ် — ${moving} vs ${stuck}`);
+  assert.equal(moving, 1);
+});
+
+test("💨 ရှေ့ကို ရွေ့နေရင် rotor က ပိုထိရောက်တယ်", () => {
+  const d = getDrone("raptor5");
+  assert.ok(airspeedFactor(new THREE.Vector3(8, 0, 0), d) > airspeedFactor(new THREE.Vector3(), d));
+});
+
+test("★ ဒီအချက်တွေ ပေါင်းလိုက်လည်း quad က hover လုပ်နိုင်ရမယ်", () => {
+  // ★ သဘောတရား ၄ ခု ထပ်ထည့်ပြီးနောက် drone က မတက်နိုင်တော့ဘူး ဒါမှမဟုတ်
+  //   ထိန်းလို့ မရတော့ဘူး ဖြစ်သွားရင် sim တစ်ခုလုံး အသုံးမဝင်တော့ဘူး —
+  //   ဒါကြောင့် hover ရနိုင်တဲ့ throttle တစ်ခု ရှိသေးလား စစ်တယ်။
+  const low = fly("raptor5", sticks({ throttle: 0.3 }), 3, { spawnY: 30 });
+  const high = fly("raptor5", sticks({ throttle: 0.9 }), 3, { spawnY: 30 });
+  assert.ok(low.pos.y < 30, `0.3 မှာ ကျရမယ် — ${low.pos.y.toFixed(1)}`);
+  assert.ok(high.pos.y > 30, `0.9 မှာ တက်ရမယ် — ${high.pos.y.toFixed(1)}`);
+});
+
+test("★ pack ကုန်ခါနီးမှာ တူညီတဲ့ stick နဲ့ ပိုနှေးရမယ်", () => {
+  // ဒါက battery sag ကို **တကယ် ခံစားရလား** ဆိုတာ — function တစ်ခုတည်း
+  // မဟုတ်ဘဲ ပျံသန်းမှုအဆင့်မှာ စစ်တာ။
+  const d = getDrone("raptor5");
+  const climb = (startSec: number) => {
+    const s = createState(new THREE.Vector3(0, 30, 0), 0);
+    s.armed = true;
+    s.flightSec = startSec;
+    for (let i = 0; i < 120; i++) {
+      updateDrone(s, d, "acro", sticks({ throttle: 0.8 }), 1 / 60, NO_COLLIDERS);
+    }
+    return s.pos.y - 30;
+  };
+  assert.ok(climb(0) > climb(d.batterySec), "pack အသစ်က ပိုမြန်တက်ရမယ်");
 });

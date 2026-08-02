@@ -49,13 +49,33 @@ class _WebScreenState extends State<WebScreen> {
   Future<void> _boot() async {
     final api = context.read<AppState>().api;
 
+    final host = Uri.parse(AppConfig.apiBase).host;
+    final domains = {host, "www.$host"};
+    final mgr = WebViewCookieManager();
+
+    // ★ App ထဲမှာ ဖွင့်နေတာလို့ site ကို အသိပေးတယ် — site က ကိုယ့် header နဲ့
+    //   အောက်က tab တန်းကို မပြတော့ဘူး (app မှာ ရှိပြီးသားမို့ ထပ်နေတယ်၊
+    //   အောက်ကဟာက ဖန်သားပြင်အောက် ပြတ်ကျန်နေတယ်)。
+    // ★ Query param မသုံးဘူး — စာမျက်နှာထဲက link တစ်ချက်နှိပ်တာနဲ့ ပျောက်ပြီး
+    //   chrome တွေ ပြန်ပေါ်လာမယ်။ Cookie က navigation တိုင်း ကျန်တယ်။
+    try {
+      for (final domain in domains) {
+        await mgr.setCookie(WebViewCookie(
+          name: "gw_embed",
+          value: "1",
+          domain: domain,
+          path: "/",
+        ));
+      }
+    } catch (_) {
+      // Cookie မရရင်လည်း စာမျက်နှာက အလုပ်လုပ်တယ် — chrome ပဲ ထပ်နေမယ်။
+    }
+
     // Sign the web view in: same token, same cookie the web session uses.
     try {
       final token = await api.freshToken();
-      final host = Uri.parse(AppConfig.apiBase).host;
       if (token != null) {
-        final mgr = WebViewCookieManager();
-        for (final domain in {host, "www.$host"}) {
+        for (final domain in domains) {
           await mgr.setCookie(WebViewCookie(
             name: "gw_at",
             value: token,

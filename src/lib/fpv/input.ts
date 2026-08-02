@@ -8,31 +8,18 @@
 ///   touch / keyboard — device မခွဲဘဲ အကုန် နားထောင်ထားတယ် (PC/iPad/
 ///   Android/iOS အားလုံး အလုပ်လုပ်စေဖို့)။
 
+import {
+  DEFAULT_MAP,
+  NEUTRAL_CAL,
+  normalize,
+  normalizeThrottle,
+  type AxisCal,
+  type AxisMap,
+} from "./calibration";
 import type { Sticks } from "./physics";
 
-export type AxisMap = {
-  /// Gamepad axis index → stick (ële invert)
-  roll: number;
-  pitch: number;
-  throttle: number;
-  yaw: number;
-  invRoll: boolean;
-  invPitch: boolean;
-  invThrottle: boolean;
-  invYaw: boolean;
-};
-
-/// Mode 2 radio (USB joystick) အများစုရဲ့ default axis order
-export const DEFAULT_MAP: AxisMap = {
-  roll: 0,
-  pitch: 1,
-  throttle: 2,
-  yaw: 3,
-  invRoll: false,
-  invPitch: true, // radio pitch က browser မှာ ပုံမှန် ပြောင်းပြန်လာတတ်တယ်
-  invThrottle: true,
-  invYaw: false,
-};
+export { DEFAULT_MAP };
+export type { AxisMap };
 
 const MAP_KEY = "gw-fpv-axismap";
 
@@ -54,12 +41,15 @@ export function saveAxisMap(map: AxisMap) {
   }
 }
 
-const dead = (v: number, d = 0.04) => (Math.abs(v) < d ? 0 : v);
 
 export type FpvInput = {
   read(dt: number): Sticks;
   /// controller တစ်လုံး ချိတ်ထားလား (UI ပြဖို့)
   gamepadName(): string | null;
+  /// ★ Raw, uncalibrated axes — the calibration wizard has to see what the
+  ///   hardware actually sends, not the mapped-and-normalised result it is
+  ///   trying to produce.
+  rawAxes(): readonly number[] | null;
   /// arm/disarm + respawn ခလုတ်တွေ (keyboard R / gamepad button)
   consumeArmToggle(): boolean;
   consumeRespawn(): boolean;
@@ -122,16 +112,22 @@ export function createInput(map: AxisMap): FpvInput {
     return null;
   };
 
+  /// ★ Calibration is applied here, not in the physics. Measured endpoints,
+  ///   resting centre and per-axis deadband all belong to the hardware, and
+  ///   the flight model should never see anything but a clean −1..1.
+  ///   Uncalibrated radios fall back to the ideal ±1 range, which is what the
+  ///   simulator assumed before the wizard existed.
+  const calOf = (fn: "roll" | "pitch" | "throttle" | "yaw"): AxisCal =>
+    map.cal?.[fn] ?? NEUTRAL_CAL;
+
   const readPad = (g: Gamepad): Sticks => {
     const ax = (i: number) => g.axes[i] ?? 0;
     const sign = (v: number, inv: boolean) => (inv ? -v : v);
-    // Throttle: axis -1..1 → 0..1
-    const thrRaw = sign(ax(map.throttle), map.invThrottle);
     return {
-      throttle: Math.max(0, Math.min(1, (thrRaw + 1) / 2)),
-      roll: dead(sign(ax(map.roll), map.invRoll)),
-      pitch: dead(sign(ax(map.pitch), map.invPitch)),
-      yaw: dead(sign(ax(map.yaw), map.invYaw)),
+      throttle: normalizeThrottle(ax(map.throttle), calOf("throttle"), map.invThrottle),
+      roll: sign(normalize(ax(map.roll), calOf("roll")), map.invRoll),
+      pitch: sign(normalize(ax(map.pitch), calOf("pitch")), map.invPitch),
+      yaw: sign(normalize(ax(map.yaw), calOf("yaw")), map.invYaw),
     };
   };
 
@@ -156,11 +152,14 @@ export function createInput(map: AxisMap): FpvInput {
 
       // 2) Touch sticks
       if (touch.active) {
+        // A small deadband on touch too — a thumb resting on the stick pad
+        // is never exactly centred.
+        const t = (v: number) => (Math.abs(v) < 0.04 ? 0 : v);
         return {
           throttle: Math.max(0, Math.min(1, (-touch.ly + 1) / 2)),
-          yaw: dead(touch.lx),
-          roll: dead(touch.rx),
-          pitch: dead(-touch.ry),
+          yaw: t(touch.lx),
+          roll: t(touch.rx),
+          pitch: t(-touch.ry),
         };
       }
 
@@ -176,6 +175,10 @@ export function createInput(map: AxisMap): FpvInput {
     },
     gamepadName() {
       return pad()?.id ?? null;
+    },
+    rawAxes() {
+      const g = pad();
+      return g ? g.axes : null;
     },
     consumeArmToggle() {
       const v = armQueued;

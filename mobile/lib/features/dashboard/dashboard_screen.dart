@@ -8,6 +8,7 @@ import '../../core/i18n.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../health/health_hub_screen.dart';
+import '../help/help_screen.dart';
 import '../web/web_screen.dart';
 import '../../widgets/common.dart';
 
@@ -339,7 +340,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       color: GwColors.inkOf(context), fontWeight: FontWeight.w600),
                   backgroundColor: GwColors.surfaceMutedOf(context),
                   side: BorderSide(color: GwColors.lineOf(context)),
-                  onPressed: () => _openWeb(a.$3),
+                  // ★ /help က native screen ရှိပြီ — WebView နဲ့ ဖွင့်ရင်
+                  //   site ရဲ့ header/bottom bar က app ရဲ့ဟာနဲ့ ထပ်နေတယ်။
+                  onPressed: () => a.$3 == "/help"
+                      ? Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const HelpScreen()))
+                      : _openWeb(a.$3),
                 ),
             ],
           ),

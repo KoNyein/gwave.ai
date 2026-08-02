@@ -210,7 +210,10 @@ async function startWeb3Worker(env = process.env, sharedPool = null) {
     ctx.walletClient = viem.createWalletClient({
       account,
       chain,
-      transport: viem.http(env.WEB3_RPC_URL),
+      // ★ ဖတ်တဲ့ client နဲ့ **တူညီတဲ့** fallback transport — အရင်က
+      //   `viem.http(env.WEB3_RPC_URL)` တစ်ခုတည်းမို့ ပို့တာမှာ failover
+      //   မရှိခဲ့ဘူး (rpc.js ရဲ့ rpcTransport မှာ အသေးစိတ် ရေးထားတယ်)。
+      transport: rpcTransport(env, viem),
     });
     ctx.nonces = createNonceManager(publicClient, account.address, {});
     timers.push(safeLoop("send", SEND_MS, () => sendPending(ctx)));
