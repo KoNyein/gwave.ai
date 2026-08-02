@@ -20,6 +20,8 @@ export function VoicePanel({
   meId,
   room,
   names,
+  open,
+  onToggle,
   onJoin,
   onLeave,
   onMic,
@@ -32,12 +34,15 @@ export function VoicePanel({
   meId: string;
   room: string;
   names: (id: string) => string;
+  /// ဖွင့်/ပိတ်ကို scene က ကိုင်တယ် — ဘယ်ဘက်တန်းမှာ panel တစ်ခုတည်းသာ
+  /// တစ်ပြိုင်နက် ပွင့်စေချင်လို့ (accordion)。
+  open: boolean;
+  onToggle: () => void;
   onJoin: () => void;
   onLeave: () => void;
   onMic: (on: boolean) => void;
   onMutePeer: (id: string, muted: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [reported, setReported] = useState<Set<string>>(new Set());
 
   const report = async (id: string) => {
@@ -55,10 +60,10 @@ export function VoicePanel({
     <>
       <button
         data-hud="1"
-        onClick={() => setOpen((v) => !v)}
+        onClick={onToggle}
         title="အသံစကားပြော"
-        className={`absolute left-3 top-60 z-20 ${btn} sm:top-64 ${
-          state === "on" ? "border-emerald-400/60" : ""
+        className={`${btn} ${
+          state === "on" || open ? "border-emerald-400/60" : ""
         }`}
       >
         🎙 အသံ{state === "on" ? ` (${peers.length})` : ""}
@@ -67,7 +72,7 @@ export function VoicePanel({
       {open && (
         <div
           data-hud="1"
-          className="absolute left-3 top-72 z-20 w-[min(15rem,72vw)] rounded-xl border border-white/15 bg-black/70 p-2 text-white backdrop-blur sm:top-[19rem]"
+          className="w-[min(15rem,72vw)] rounded-xl border border-white/15 bg-black/70 p-2 text-white backdrop-blur"
         >
           {state === "denied-age" && (
             // ★ ၁၈+ ဂိတ် — ကလေးသူငယ် ကာကွယ်ရေး (spec 14.0)。 ဒီစစ်ဆေးမှုက
