@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
+import { createGroundSampler, loadMap, type LoadedMap } from "./map-loader";
 import { buildArena, createToonFighter, createWeaponModel, type Fighter } from "./toon";
 
 /// Gwave Assassin — ၁၈+ multiplayer mini-game (three.js)。
@@ -44,6 +45,10 @@ function wsCandidates(): string[] {
 const EYE = 1.6;
 const SPEED = 8;
 
+/// ★ ကွင်းကို .glb နဲ့ လဲချင်ရင် ဒီ env ကို ထည့်ပါ (ကိုယ့် origin/S3 သာ —
+///   CSP က ပြင်ပ host ကို ပိတ်ထားတယ်)。 မထည့်ရင် procedural ကွင်း သုံးတယ်။
+const MAP_URL = process.env.NEXT_PUBLIC_ASSASSIN_MAP_URL || "";
+
 export function AssassinGame({ room }: { room: string }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [started, setStarted] = useState(false);
@@ -56,6 +61,8 @@ export function AssassinGame({ room }: { room: string }) {
   }>({ you: null, board: [], online: 0, link: "connecting", killsToWin: 3 });
   const [feed, setFeed] = useState<Feed[]>([]);
   const [weapons, setWeapons] = useState<Record<string, Weapon>>({});
+  /// null = ကွင်း မတင်ဘူး/ပြီးပြီ · 0–100 = တင်နေဆဲ · -1 = ကျရှုံး
+  const [mapPct, setMapPct] = useState<number | null>(MAP_URL ? 0 : null);
   const sendRef = useRef<((m: Record<string, unknown>) => void) | null>(null);
 
   useEffect(() => {
@@ -75,7 +82,33 @@ export function AssassinGame({ room }: { room: string }) {
     mount.appendChild(renderer.domElement);
 
     let arena = 30;
-    buildArena(scene, arena);
+    // ★ .glb မရှိရင် procedural ကွင်း — ဂိမ်းက asset မရှိလည်း ကစားလို့ရရမယ်။
+    if (!MAP_URL) buildArena(scene, arena);
+
+    let loadedMap: LoadedMap | null = null;
+    let ground = createGroundSampler(null);
+    if (MAP_URL) {
+      void loadMap(MAP_URL, (pct) => setMapPct(pct))
+        .then((m) => {
+          if (closed) return;
+          loadedMap = m;
+          ground = createGroundSampler(m);
+          scene.add(m.root);
+          scene.add(new THREE.HemisphereLight(0xdcefff, 0x8a7d5e, 0.9));
+          const sun = new THREE.DirectionalLight(0xfff2d6, 1.4);
+          sun.position.set(100, 200, 50);
+          sun.castShadow = true;
+          scene.add(sun);
+          setMapPct(null);
+        })
+        .catch(() => {
+          if (closed) return;
+          // ★ ကွင်း မတင်နိုင်ရင် ဂိမ်းကို မရပ်ဘူး — procedural ကွင်းနဲ့
+          //   ဆက်ကစားလို့ရအောင် ပြန်ဆောက်ပေးတယ်။
+          buildArena(scene, arena);
+          setMapPct(-1);
+        });
+    }
 
     const resize = () => {
       const w = mount.clientWidth || window.innerWidth;
@@ -384,11 +417,15 @@ export function AssassinGame({ room }: { room: string }) {
         }
       }
 
-      camera.position.set(me.x, EYE, me.z);
+      // ★ မြေပြင်ပေါ် လိုက်တယ် — ကုန်း/ချောက်ပေါ်မှာ မျက်လုံးအမြင့်က
+      //   မြေကနေ အမြဲ တူညီရမယ် (ကွင်းက ပြားချပ်ချပ်ဆိုရင် ၀ ပဲ)。
+      me.y = ground.heightAt(me.x, me.z);
+      camera.position.set(me.x, me.y + EYE, me.z);
       camera.rotation.set(me.pitch, me.ry, 0, "YXZ");
 
       // တခြားသူတွေကို ချောချောရွှေ့ + လမ်းလျှောက်ပုံစံ
       for (const a of actors.values()) {
+        a.target.y = ground.heightAt(a.target.x, a.target.z);
         a.fighter.group.position.lerp(a.target, Math.min(1, 12 * dt));
         let d = a.data.ry - a.fighter.group.rotation.y;
         while (d > Math.PI) d -= Math.PI * 2;
@@ -404,7 +441,7 @@ export function AssassinGame({ room }: { room: string }) {
       sendAcc += dt;
       if (sendAcc > 1 / 15) {
         sendAcc = 0;
-        send({ type: "aMove", x: me.x, y: 0, z: me.z, ry: me.ry });
+        send({ type: "aMove", x: me.x, y: me.y, z: me.z, ry: me.ry });
       }
 
       renderer.render(scene, camera);
@@ -416,6 +453,7 @@ export function AssassinGame({ room }: { room: string }) {
     return () => {
       closed = true;
       cancelAnimationFrame(raf);
+      if (loadedMap) scene.remove(loadedMap.root);
       window.removeEventListener("resize", resize);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
@@ -467,6 +505,15 @@ export function AssassinGame({ room }: { room: string }) {
         ref={hurtRef}
         className="pointer-events-none absolute inset-0 bg-red-600/25 opacity-0 transition-opacity duration-150"
       />
+
+      {/* ကွင်း တင်နေချိန် — ဘယ်လောက်ကျန်လဲ မပြရင် ပျက်နေတယ်လို့ ထင်မယ် */}
+      {mapPct !== null && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="rounded-lg bg-black/70 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
+            {mapPct < 0 ? "ကွင်း မတင်နိုင်ပါ — ရိုးရိုးကွင်းနဲ့ ဆက်ကစားပါမယ်" : `ကွင်း တင်နေသည်… ${mapPct}%`}
+          </div>
+        </div>
+      )}
 
       {/* ကြက်ခြေခတ် */}
       <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white/70">
