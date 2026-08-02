@@ -11,6 +11,7 @@ import {
   Flower2,
   Gamepad2,
   Gem,
+  Joystick,
   HeartPulse,
   Briefcase,
   Home,
@@ -74,6 +75,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/games", labelKey: "games", icon: Gamepad2 },
       { href: "/metaverse", labelKey: "metaverse", icon: Globe2 },
+      { href: "/fpv", labelKey: "fpv", icon: Joystick },
     ],
   },
   {

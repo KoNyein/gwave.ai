@@ -5,7 +5,21 @@
 /// Phase 8 မှာ map ၄ ခု ဖြစ်လာမယ် (city/farm/snow/sky) — အဲဒီအခါ room က
 /// map id ဖြစ်သွားတယ်။ အခုကတည်းက ခွဲထားတာက နောက်မှ ပြန်မွမ်းစရာမလိုအောင်။
 
-const ROOMS = new Set(["city", "farm", "snow", "sky", "main", "vip"]);
+const ROOMS = new Set([
+  "city",
+  "farm",
+  "snow",
+  "sky",
+  "main",
+  "vip",
+  // FPV drone simulator maps (client: src/lib/fpv/maps.ts)
+  "fpv-race",
+  "fpv-park",
+  "fpv-city",
+  "fpv-canyon",
+  "fpv-warehouse",
+  "fpv-range",
+]);
 
 /// ★ NFT ပိုင်မှ ဝင်လို့ရတဲ့ room။ စစ်ဆေးမှုက **server မှာသာ** ဖြစ်တယ် —
 /// client မှာ ခလုတ်ဖျောက်ထားရုံနဲ့ ဘာမှမကာကွယ်ဘူး (server.js ကြည့်ပါ)။
