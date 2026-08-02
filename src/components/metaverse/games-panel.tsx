@@ -12,6 +12,10 @@ import type { GameInfo, GameRanking, GameScore } from "./net";
 /// ★ Sub-component တွေကို **module scope မှာ ကြေညာရမယ်** — component ထဲမှာ
 ///   ကြေညာရင် render တိုင်း type အသစ်ဖြစ်ပြီး React က panel တစ်ခုလုံးကို
 ///   ဖျက်ပြီး ပြန်ဆောက်တယ် (Phase 15 မှာ ဒါနဲ့ ကြုံခဲ့တယ်)。
+/// ★ နှစ်ပိုင်း ခွဲထားတယ် — `GamesOverlays` (scoreboard/lobby/ရလဒ်၊ scene
+///   root မှာ absolute) နဲ့ `GamesMenu` (ခလုတ် + panel၊ ဘယ်ဘက်တန်းထဲ flow)。
+///   အရင်က တစ်ခုတည်းမှာ absolute top offset တွေနဲ့ ချထားလို့ ခလုတ်တွေနဲ့
+///   panel တွေ ထပ်နေတယ် (landscape မှာ ဆိုးတယ်)。
 
 export type GamePhase =
   | { kind: "idle" }
@@ -108,28 +112,22 @@ function Scoreboard({
   );
 }
 
-export function GamesPanel({
-  games,
+/// Scene root မှာ ချထားရမယ့် အပိုင်း — scoreboard / lobby / ရလဒ် /
+/// ကစားနေစဉ် လုပ်ဆောင်ချက်ခလုတ်။ Screen center / ညာအောက်ကို absolute
+/// နဲ့ ကပ်လို့ ဘယ်ဘက်တန်း (containing block) ထဲ ထည့်လို့မရဘူး။
+export function GamesOverlays({
   phase,
   meId,
-  connected,
   onJoin,
   onAction,
   onDismissEnd,
 }: {
-  games: GameInfo[];
   phase: GamePhase;
   meId: string;
-  connected: boolean;
   onJoin: (gameId: string) => void;
   onAction: (action: Record<string, unknown>) => void;
   onDismissEnd: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<"play" | "board">("play");
-  const [boardGame, setBoardGame] = useState("race");
-  const [board, setBoard] = useState<Board | null>(null);
-  const [boardBusy, setBoardBusy] = useState(false);
   /// Lobby ရဲ့ ရေတွက်ချိန် — 1Hz မှာ ပြန်ဆွဲတယ်
   const [now, setNow] = useState(() => Date.now());
 
@@ -138,27 +136,6 @@ export function GamesPanel({
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [phase.kind]);
-
-  useEffect(() => {
-    if (!open || tab !== "board") return;
-    let alive = true;
-    setBoardBusy(true);
-    void fetch(`/api/metaverse/leaderboard?game=${encodeURIComponent(boardGame)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j: Board | null) => {
-        if (alive) setBoard(j);
-      })
-      .catch(() => {
-        // Leaderboard ဆွဲမရလည်း ပွဲက ဆက်ကစားလို့ရရမယ်
-        if (alive) setBoard(null);
-      })
-      .finally(() => {
-        if (alive) setBoardBusy(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [open, tab, boardGame]);
 
   const playing = phase.kind === "playing" && phase.playing;
 
@@ -260,13 +237,60 @@ export function GamesPanel({
           </button>
         </div>
       )}
+    </>
+  );
+}
 
-      {/* ── ခလုတ် + panel ───────────────────────────────────────────────── */}
+/// ဘယ်ဘက်တန်းထဲက ခလုတ် + panel — flow layout (absolute မဟုတ်ဘူး) မို့
+/// ဘယ်တော့မှ တခြား HUD နဲ့ မထပ်ဘူး။ ဖွင့်/ပိတ်ကို scene က ကိုင်တယ် —
+/// panel တစ်ခုတည်းသာ တစ်ပြိုင်နက် ပွင့်စေချင်လို့။
+export function GamesMenu({
+  games,
+  connected,
+  open,
+  onToggle,
+  onJoin,
+}: {
+  games: GameInfo[];
+  connected: boolean;
+  open: boolean;
+  onToggle: () => void;
+  onJoin: (gameId: string) => void;
+}) {
+  const [tab, setTab] = useState<"play" | "board">("play");
+  const [boardGame, setBoardGame] = useState("race");
+  const [board, setBoard] = useState<Board | null>(null);
+  const [boardBusy, setBoardBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open || tab !== "board") return;
+    let alive = true;
+    setBoardBusy(true);
+    void fetch(`/api/metaverse/leaderboard?game=${encodeURIComponent(boardGame)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: Board | null) => {
+        if (alive) setBoard(j);
+      })
+      .catch(() => {
+        // Leaderboard ဆွဲမရလည်း ပွဲက ဆက်ကစားလို့ရရမယ်
+        if (alive) setBoard(null);
+      })
+      .finally(() => {
+        if (alive) setBoardBusy(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [open, tab, boardGame]);
+
+  return (
+    <>
+      {/* ── ခလုတ် + panel (accordion) ──────────────────────────────────── */}
       <button
         data-hud="1"
-        onClick={() => setOpen((v) => !v)}
+        onClick={onToggle}
         title="ကစားပွဲများ"
-        className={`absolute left-3 top-36 z-20 ${btn} sm:top-40`}
+        className={`${btn} ${open ? "border-emerald-400/60" : ""}`}
       >
         🎮 ပွဲများ
       </button>
@@ -274,7 +298,7 @@ export function GamesPanel({
       {open && (
         <div
           data-hud="1"
-          className="absolute left-3 top-48 z-20 w-[min(15rem,72vw)] rounded-xl border border-white/15 bg-black/70 p-2 text-white backdrop-blur sm:top-52"
+          className="w-[min(15rem,72vw)] rounded-xl border border-white/15 bg-black/70 p-2 text-white backdrop-blur"
         >
           <div className="mb-2 flex gap-1">
             <button

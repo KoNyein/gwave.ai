@@ -154,10 +154,14 @@ async function fetchTicket(): Promise<string | null> {
 }
 
 export function connectMetaverse(
-  url: string,
+  url: string | string[],
   room: string,
   handlers: NetHandlers,
 ): NetClient {
+  /// ★ URL တစ်ခုထက်ပိုပေးလို့ရတယ် — ပထမတစ်ခု (env override) မအောင်မြင်ရင်
+  /// retry တိုင်း နောက်တစ်ခု (same-origin `/mv/ws`) ကို လှည့်စမ်းတယ်။
+  /// mv.gwave.cc DNS မရှိသေးချိန်မှာလည်း main domain ကနေ ချိတ်လို့ရစေဖို့။
+  const urls = (Array.isArray(url) ? url : [url]).filter(Boolean);
   let ws: WebSocket | null = null;
   let closed = false;
   let attempt = 0;
@@ -281,16 +285,19 @@ export function connectMetaverse(
   };
 
   async function open() {
-    if (closed) return;
+    if (closed || urls.length === 0) return;
     const ticket = await fetchTicket();
     if (closed) return;
 
     const qs = new URLSearchParams({ room });
     if (ticket) qs.set("ticket", ticket);
 
+    // Candidate rotation — attempt က socket ပွင့်တာနဲ့ 0 ပြန်ဖြစ်လို့
+    // အလုပ်လုပ်တဲ့ URL ပေါ်မှာပဲ ဆက်နေတယ်။
+    const target = urls[attempt % urls.length];
     let socket: WebSocket;
     try {
-      socket = new WebSocket(`${url}?${qs.toString()}`);
+      socket = new WebSocket(`${target}?${qs.toString()}`);
     } catch {
       scheduleRetry("bad url");
       return;

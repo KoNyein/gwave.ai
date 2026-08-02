@@ -26,6 +26,8 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # ★ Safety net — test တစ်ခုခု hang ရင် ၆ နာရီ မလောင်စေနဲ့
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: server/metaverse
@@ -42,7 +44,10 @@ jobs:
   deploy:
     # ★ PR မှာ deploy မလုပ်ရ — fork ကနေလာတဲ့ PR တစ်ခုက production ကို
     # ပြောင်းလို့ရသွားမယ်။ main ကို push မှသာ။
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # ★ ECS service မဆောက်ရသေးသရွေ့ deploy ကို ကျော်တယ် — repo variable
+    # MV_DEPLOY_ECS=true ထည့်မှသာ run မယ်။ မဟုတ်ရင် main က deploy step
+    # ကြောင့် အမြဲ နီနေမယ် (server က အခု EC2 docker နဲ့ run နေတယ်)။
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.MV_DEPLOY_ECS == 'true'
     needs: test
     runs-on: ubuntu-latest
     permissions:

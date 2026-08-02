@@ -11,7 +11,7 @@ import { BuildPanel, type BuildBridge } from "./build/panel";
 import { createPlotStream } from "./build/plots";
 import { createBuildRender, createGhost } from "./build/render";
 import { createGameFx, type GameFx } from "./gamefx";
-import { GamesPanel, type GamePhase } from "./games-panel";
+import { GamesMenu, GamesOverlays, type GamePhase } from "./games-panel";
 import { createHuman, type Avatar, type HumanState } from "./human";
 import { buildLandmarks, type Landmark } from "./landmarks";
 import { attachLiveScreen, type LiveScreen } from "./livescreen";
@@ -33,6 +33,7 @@ import { createWeather } from "./weather";
 import { buildWorld, resolveCollision } from "./world";
 import { isInApp, native } from "@/lib/metaverse/native";
 import { snap, type BuildType } from "@/lib/metaverse/build";
+import { questEvent } from "@/lib/quests";
 
 /// Gwave Metaverse ရဲ့ အဓိက client component။
 ///
@@ -56,6 +57,23 @@ const DAY_SECONDS = 180;
 /// WS URL မရှိရင် networking လုံးဝမလုပ်ဘူး — လောကက single-player အဖြစ်
 /// ပုံမှန်ဖွင့်ရမယ်။ (Progressive: server ကျနေရင်လည်း အတူတူပဲ။)
 const WS_URL = process.env.NEXT_PUBLIC_MV_WS_URL || "";
+
+/// Multiplayer server ရဲ့ candidate URL များ။
+/// ★ Env override (build-time) အရင်၊ ပြီးရင် **same-origin `/mv/ws`** —
+///   main domain (gwave.cc) ရဲ့ Caddy က metaverse container ကို ဖြတ်ပေးတယ်။
+///   ဒီနည်းနဲ့ DNS record အသစ်ရော build-time variable ရော **မလိုတော့ဘူး** —
+///   တစ်ခုခု ပျက်နေရင်တောင် retry တိုင်း နောက် candidate ကို လှည့်စမ်းတယ်။
+/// ★ https မှသာ same-origin ကို ထည့်တယ် — localhost dev (http) မှာ server
+///   မရှိဘဲ အလကား retry မလုပ်စေချင်လို့ (env နဲ့ အတိအကျ ညွှန်လို့ရတယ်)။
+function wsCandidates(): string[] {
+  const out: string[] = [];
+  if (WS_URL) out.push(WS_URL);
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    const sameOrigin = `wss://${window.location.host}/mv/ws`;
+    if (!out.includes(sameOrigin)) out.push(sameOrigin);
+  }
+  return out;
+}
 const DEFAULT_ROOM = process.env.NEXT_PUBLIC_MV_ROOM || "city";
 
 /// ရွေးထားတဲ့ map ကို မှတ်ထားတယ် — ဝင်တိုင်း မြို့ကနေ ပြန်စရရင်
@@ -109,8 +127,12 @@ type ChatLine = {
   authed: boolean;
 };
 
-const WALK_SPEED = 4.2;
-const RUN_SPEED = 8.4;
+/// ★ CS-style — **default က ပြေးတာ** (7.5)၊ Shift က လမ်းလျှောက် (နှေး)၊
+/// Ctrl က ကုပ်။ အရင်က default 4.2 နဲ့ လမ်းလျှောက်ရတာ နှေးလွန်းတယ်လို့
+/// user တွေ ညည်းတယ်။
+const WALK_SPEED = 3.4;
+const RUN_SPEED = 7.5;
+const CROUCH_SPEED = 2.6;
 const JUMP_V = 6.2;
 const GRAVITY = 18;
 
@@ -119,7 +141,10 @@ type Input = {
   b: number; // နောက်
   l: number;
   r: number;
+  /// Shift — CS လိုပဲ ဖိထားရင် **နှေးနှေး** လျှောက်တယ် (ယာဉ်မှာတော့ boost)
   run: boolean;
+  /// Ctrl — ကုပ် (နှေး + နိမ့်)
+  crouch: boolean;
   jump: boolean;
   /// Mobile joystick — -1..1
   jx: number;
@@ -130,11 +155,29 @@ export function MetaverseScene() {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<HTMLCanvasElement | null>(null);
   const [ready, setReady] = useState(false);
+  /// ★ ဖုန်းလား desktop လား ကို **screen width နဲ့ မခွဲရ** — အလျားလိုက်ကိုင်တဲ့
+  /// ဖုန်းက width ကျယ်လို့ desktop လို့ ထင်ပြီး joystick ပျောက်သွားတယ်
+  /// (အလျားလိုက် ဆော့လို့မရတဲ့ bug)။ Touch ရှိမရှိနဲ့သာ ခွဲတယ်။
+  const [touch, setTouch] = useState(false);
+  useEffect(() => {
+    setTouch(
+      window.matchMedia("(pointer: coarse)").matches ||
+        navigator.maxTouchPoints > 0,
+    );
+  }, []);
   const [fps, setFps] = useState(0);
   const [emote, setEmote] = useState<HumanState["emote"]>(null);
   const [bloom, setBloom] = useState(true);
   const [shadows, setShadows] = useState(true);
   const [sound, setSound] = useState(false);
+  /// ★ First-person မြင်ကွင်း — ခလုတ် (👁) / V key / zoom အဆုံးထိ ဆွဲရင်
+  /// ဝင်တယ်။ Render loop က frame တိုင်း ဖတ်လို့ ref နဲ့ တွဲထားတယ်
+  /// (bloomRef ပုံစံအတိုင်း — state က ခလုတ် UI အတွက်ပဲ)။
+  const [fpv, setFpv] = useState(false);
+  const fpvRef = useRef(false);
+  /// HUD ခလုတ်ကနေ effect ထဲက setFpView ကို ခေါ်ဖို့ (cam.dist ကိုပါ
+  /// ပြင်ရလို့ effect ထဲမှာပဲ ကြေညာလို့ရတယ်)
+  const fpvSetRef = useRef<((on: boolean) => void) | null>(null);
   /// စက်နှေးလို့ အလိုအလျောက် လျှော့ချထားလား
   const [degraded, setDegraded] = useState(false);
   /// Web3 — **ဖြည့်စွက်အလွှာသာ**။ wallet မချိတ်ဘဲ လောကက အပြည့်အဝ
@@ -148,7 +191,9 @@ export function MetaverseScene() {
   /// ★ Map ပြောင်းရင် scene တစ်ခုလုံး ပြန်ဆောက်တယ် (effect ရဲ့ dependency)
   /// — map တစ်ခုချင်းက သီးခြားလောက ဖြစ်လို့ ကြားခံ state ကျန်ခဲ့လို့မရဘူး။
   const [roomId, setRoomId] = useState(DEFAULT_ROOM);
-  const [picker, setPicker] = useState(false);
+  /// ဘယ်ဘက်တန်း (accordion) မှာ ဖွင့်ထားတဲ့ panel — တစ်ခုတည်းသာ
+  /// တစ်ပြိုင်နက် ပွင့်တယ်၊ ဒါမှ panel ချင်း ဘယ်တော့မှ မထပ်ဘူး။
+  const [menu, setMenu] = useState<"map" | "games" | "voice" | null>(null);
   const [dressing, setDressing] = useState(false);
   /// ★ Avatar ပြင်ပြီးရင် scene ကို ပြန်ဆောက်တယ် — ရိုးရှင်းပြီး
   /// မှားနိုင်ခြေနည်းတယ် (attachment တွေ တစ်ခုချင်း sync လုပ်တာထက်)。
@@ -167,8 +212,9 @@ export function MetaverseScene() {
   const degradedRef = useRef(false);
   // ဒီ ၃ ခုက မကြာခဏမပြောင်းလို့ React state နဲ့ ရတယ် (position မဟုတ်ဘူး)
   const [online, setOnline] = useState(1);
-  const [link, setLink] = useState<"off" | "connecting" | "live" | "auth">(
-    WS_URL ? "connecting" : "off",
+  // ssr:false မို့ ဒီ initializer က browser မှာပဲ ပြေးတယ် — window သုံးလို့ရတယ်
+  const [link, setLink] = useState<"off" | "connecting" | "live" | "auth">(() =>
+    wsCandidates().length > 0 ? "connecting" : "off",
   );
   const [chat, setChat] = useState<ChatLine[]>([]);
   const [draft, setDraft] = useState("");
@@ -211,6 +257,11 @@ export function MetaverseScene() {
   // Emote ကို ref နဲ့ ကူးထားတယ် — render loop က state ကို closure ထဲ
   // ဖမ်းထားလို့ တိုက်ရိုက်ဖတ်ရင် အဟောင်းပဲ ရမယ်။
   const emoteRef = useRef<HumanState["emote"]>(null);
+  // နေ့စဉ် quest — လောကထဲ ဝင်တာကို မှတ်တယ် (Edu Arcade ရဲ့ quest panel မှာ ပြ)
+  useEffect(() => {
+    questEvent("mv_visit");
+  }, []);
+
   useEffect(() => {
     emoteRef.current = emote;
     // တခြားသူတွေလည်း မြင်ရအောင် — emote က ငြိမ်နေမှ ပေါ်တာမို့ ဒါက
@@ -286,7 +337,7 @@ export function MetaverseScene() {
 
   const chooseMap = (id: string) => {
     window.localStorage.setItem(MAP_KEY, id);
-    setPicker(false);
+    setMenu(null);
     setRoomId(id);
   };
 
@@ -466,10 +517,13 @@ export function MetaverseScene() {
       l: 0,
       r: 0,
       run: false,
+      crouch: false,
       jump: false,
       jx: 0,
       jz: 0,
     };
+    /// ကုပ်တာကို ချောချော ကူးပြောင်းဖို့ (0 = မတ်တပ်၊ 1 = ကုပ်)
+    let crouchLerp = 0;
 
     // ── Multiplayer ───────────────────────────────────────────────────────
     const remotes = new Map<string, Remote>();
@@ -527,8 +581,9 @@ export function MetaverseScene() {
       gameFx.setObjectives([]);
       gameFx.setArena(null);
     };
-    if (WS_URL) {
-      net = connectMetaverse(WS_URL, roomId, {
+    const wsUrls = wsCandidates();
+    if (wsUrls.length > 0) {
+      net = connectMetaverse(wsUrls, roomId, {
         onInit: ({ id, players, name, authed, serverTime, games }) => {
           for (const [rid, s] of Object.entries(players)) addRemote(rid, s);
           setMeName(name);
@@ -738,6 +793,21 @@ export function MetaverseScene() {
     };
     rideRef.current = toggleRide;
 
+    // ── First-person / third-person ပြောင်း ──────────────────────────────
+    // ★ ref (render loop အတွက်) နဲ့ state (ခလုတ် UI အတွက်) နှစ်ခုလုံး
+    // တစ်ပြိုင်နက် ပြောင်းရတယ် — မဟုတ်ရင် ခလုတ်က မမီဘူး။
+    const setFpView = (on: boolean) => {
+      fpvRef.current = on;
+      setFpv(on);
+      // FP ကနေ ပြန်ထွက်ရင် ကင်မရာကို နီးနီးလေးက စတယ် — ချက်ချင်း
+      // အဝေးကြီး ခုန်သွားရင် မျက်စိလည်တယ်။ Pointer lock လည်း လွှတ်တယ်။
+      if (!on) {
+        cam.dist = Math.max(cam.dist, 4);
+        if (document.pointerLockElement) document.exitPointerLock();
+      }
+    };
+    fpvSetRef.current = setFpView;
+
     // ── Keyboard ──────────────────────────────────────────────────────────
     const keyMap: Record<string, keyof Input> = {
       KeyW: "f",
@@ -765,17 +835,21 @@ export function MetaverseScene() {
         e.preventDefault();
       }
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") input.run = true;
+      // CS လိုပဲ Ctrl = ကုပ်
+      if (e.code === "ControlLeft" || e.code === "ControlRight") input.crouch = true;
       if (e.code === "Space") {
         input.jump = true;
         e.preventDefault();
       }
       if (e.code === "KeyE") toggleRide();
+      if (e.code === "KeyV") setFpView(!fpvRef.current);
     };
     const onKeyUp = (e: KeyboardEvent) => {
       if (typing(e)) return;
       const k = keyMap[e.code];
       if (k) (input[k] as number) = 0;
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") input.run = false;
+      if (e.code === "ControlLeft" || e.code === "ControlRight") input.crouch = false;
       if (e.code === "Space") input.jump = false;
     };
     window.addEventListener("keydown", onKeyDown);
@@ -788,17 +862,40 @@ export function MetaverseScene() {
     const onPointerDown = (e: PointerEvent) => {
       // Joystick ဧရိယာက touch ကို ကင်မရာ မယူရ
       if ((e.target as HTMLElement).dataset?.hud) return;
+      // ★ First-person + mouse — CS လိုပဲ click တစ်ချက်နဲ့ pointer lock
+      //   ဝင်ပြီး mouse ရွှေ့ရုံနဲ့ ကြည့်လို့ရတယ် (drag မလိုတော့ဘူး)။
+      //   Esc နဲ့ ပြန်လွတ်တယ် — browser ရဲ့ built-in။
+      if (
+        fpvRef.current &&
+        e.pointerType === "mouse" &&
+        document.pointerLockElement !== el
+      ) {
+        el.requestPointerLock?.();
+        return;
+      }
       dragId = e.pointerId;
       dragX = e.clientX;
       dragY = e.clientY;
       renderer.domElement.setPointerCapture(e.pointerId);
     };
     const onPointerMove = (e: PointerEvent) => {
+      // Pointer lock ထဲမှာ — movementX/Y နဲ့ တိုက်ရိုက်လှည့်တယ်
+      if (document.pointerLockElement === el) {
+        cam.yaw -= e.movementX * 0.0028;
+        cam.pitch = THREE.MathUtils.clamp(
+          cam.pitch + e.movementY * 0.0022,
+          fpvRef.current ? -1.2 : -0.25,
+          1.2,
+        );
+        return;
+      }
       if (dragId !== e.pointerId) return;
       cam.yaw -= (e.clientX - dragX) * 0.005;
+      // ★ FP မှာ မော့ကြည့်လို့ရအောင် pitch ကို အောက်ဘက် ပိုကျယ်ပေးတယ် —
+      // third-person မှာတော့ မြေအောက် မြင်သွားမှာမို့ -0.25 ပဲ။
       cam.pitch = THREE.MathUtils.clamp(
         cam.pitch + (e.clientY - dragY) * 0.004,
-        -0.25,
+        fpvRef.current ? -1.2 : -0.25,
         1.2,
       );
       dragX = e.clientX;
@@ -808,7 +905,15 @@ export function MetaverseScene() {
       if (dragId === e.pointerId) dragId = null;
     };
     const onWheel = (e: WheelEvent) => {
-      cam.dist = THREE.MathUtils.clamp(cam.dist + e.deltaY * 0.01, 3, 18);
+      if (fpvRef.current) {
+        // FP ထဲမှာ zoom ထုတ်ရင် third-person ပြန်ထွက်တယ် (game convention)
+        if (e.deltaY > 0) setFpView(false);
+      } else {
+        const next = cam.dist + e.deltaY * 0.01;
+        // Zoom အဆုံးကျော်အောင် ဆက်ဆွဲရင် first-person ဝင်တယ်
+        if (next < 2.2) setFpView(true);
+        cam.dist = THREE.MathUtils.clamp(next, 3, 18);
+      }
       e.preventDefault();
     };
     const el = renderer.domElement;
@@ -936,12 +1041,19 @@ export function MetaverseScene() {
       }
 
       const wants = mag > 0.02;
-      const running = input.run && wants;
+      // ★ CS-style — default ပြေး၊ Shift ဖိရင် လမ်းလျှောက် (နှေး)၊
+      //   Ctrl ဖိရင် ကုပ် (အနှေးဆုံး)။
+      const running = wants && !input.run && !input.crouch;
+      const baseSpeed = input.crouch
+        ? CROUCH_SPEED
+        : input.run
+          ? WALK_SPEED
+          : RUN_SPEED;
       // ★ ရေထဲမှာ နှေးတယ် — ဒါက ရေကို ပန်းချီပုံတစ်ခုအဖြစ်ကနေ တကယ့်
       // အတားအဆီးတစ်ခု ဖြစ်စေတယ်။
       const depth = riding ? 0 : world.water.depthAt(p.x, p.z);
       const wade = depth > 0.15 ? 0.5 : 1;
-      const speed = wants ? (running ? RUN_SPEED : WALK_SPEED) * Math.min(1, mag) * wade : 0;
+      const speed = wants ? baseSpeed * Math.min(1, mag) * wade : 0;
 
       // ── ခုန် ───────────────────────────────────────────────────────────
       if (input.jump && !p.airborne) {
@@ -988,13 +1100,27 @@ export function MetaverseScene() {
         const solved = resolveCollision(nx, nz, p.x, p.z, world.colliders, world.walkRadius);
         p.x = solved.x;
         p.z = solved.z;
-        // မျက်နှာမူရာ — ရုတ်တရက်မလှည့်ဘဲ ချောချောလှည့်
-        const targetRy = Math.atan2(dirX, dirZ);
+      }
+      // ── မျက်နှာမူရာ — ရုတ်တရက်မလှည့်ဘဲ ချောချောလှည့် ──────────────────
+      // ★ First-person မှာ CS လိုပဲ **ကင်မရာဘက်ကို အမြဲ** မျက်နှာမူတယ် —
+      //   A/D က strafe (ဘေးတိုး) ဖြစ်ပြီး ကိုယ်လုံးက မလှည့်ဘူး။ ဒါမှ
+      //   တခြားသူတွေနဲ့ voice listener က မှန်တဲ့ ဦးတည်ရာ ရတယ်။
+      if (!riding) {
+        const targetRy = fpvRef.current
+          ? cam.yaw
+          : speed > 0
+            ? Math.atan2(dirX, dirZ)
+            : p.ry;
         let diff = targetRy - p.ry;
         while (diff > Math.PI) diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
-        p.ry += diff * Math.min(1, 14 * dt);
+        p.ry += diff * Math.min(1, (fpvRef.current ? 20 : 14) * dt);
       }
+
+      // ── ကုပ် — camera နိမ့် + avatar ပုလိုက် (ချောချော ကူးပြောင်း) ──────
+      const crouchTarget = input.crouch && !riding ? 1 : 0;
+      crouchLerp += (crouchTarget - crouchLerp) * Math.min(1, 10 * dt);
+      me.group.scale.y = 1 - 0.28 * crouchLerp;
 
       me.group.position.set(p.x, p.y, p.z);
       me.group.rotation.y = p.ry;
@@ -1067,14 +1193,29 @@ export function MetaverseScene() {
 
       // ── ကင်မရာ ─────────────────────────────────────────────────────────
       const cp = Math.cos(cam.pitch);
-      // ယာဉ်ကြီးလေ ကင်မရာ ဝေးလေ — မဟုတ်ရင် ယာဉ်က မျက်နှာပြင် ဖုံးမယ်
-      const dist = riding ? riding.spec.camDist : cam.dist;
-      camera.position.set(
-        p.x - Math.sin(cam.yaw) * cp * dist,
-        p.y + 1.5 + Math.sin(cam.pitch) * dist,
-        p.z - Math.cos(cam.yaw) * cp * dist,
-      );
-      camera.lookAt(p.x, p.y + 1.1, p.z);
+      if (fpvRef.current && !riding) {
+        // ── First-person — မျက်လုံးအမြင့် (~1.55) ကနေ ရှေ့ကို ကြည့်တယ်။
+        // ★ ကိုယ့် avatar ကို ဖျောက်ရတယ် — မဖျောက်ရင် ခေါင်းတွင်းက
+        //   geometry တွေ မျက်နှာပြင်ပေါ် ကျလာတယ်။
+        const eyeY = p.y + 1.55 - 0.55 * crouchLerp;
+        camera.position.set(p.x, eyeY, p.z);
+        camera.lookAt(
+          p.x + Math.sin(cam.yaw) * cp,
+          eyeY - Math.sin(cam.pitch),
+          p.z + Math.cos(cam.yaw) * cp,
+        );
+      } else {
+        // ယာဉ်ကြီးလေ ကင်မရာ ဝေးလေ — မဟုတ်ရင် ယာဉ်က မျက်နှာပြင် ဖုံးမယ်
+        const dist = riding ? riding.spec.camDist : cam.dist;
+        camera.position.set(
+          p.x - Math.sin(cam.yaw) * cp * dist,
+          p.y + 1.5 + Math.sin(cam.pitch) * dist,
+          p.z - Math.cos(cam.yaw) * cp * dist,
+        );
+        camera.lookAt(p.x, p.y + 1.1, p.z);
+      }
+      // Frame တိုင်း တွက်တယ် — စီးနေရင်လည်း ဖျောက် (toggleRide နဲ့ တူညီ)
+      me.group.visible = !riding && !fpvRef.current;
       // နားထောင်သူက ကင်မရာ — လှည့်တာနဲ့ အသံရဲ့ ဘယ်/ညာ ပြောင်းရမယ်
       audio.syncListener(camera);
 
@@ -1228,6 +1369,8 @@ export function MetaverseScene() {
       el.removeEventListener("pointerup", onPointerUp);
       el.removeEventListener("pointercancel", onPointerUp);
       el.removeEventListener("wheel", onWheel);
+      // Map ပြောင်း/ထွက်ချိန် pointer lock ကျန်မနေစေနဲ့
+      if (document.pointerLockElement === el) document.exitPointerLock();
       stick?.removeEventListener("pointerdown", stickStart);
       stick?.removeEventListener("pointermove", stickMove);
       stick?.removeEventListener("pointerup", stickEnd);
@@ -1283,12 +1426,24 @@ export function MetaverseScene() {
         className="pointer-events-none absolute inset-0 z-[5] overflow-hidden"
       />
 
-      {/* ── HUD ─────────────────────────────────────────────────────── */}
-      <div className="pointer-events-none absolute left-3 top-3 z-10 select-none rounded-lg bg-black/40 px-3 py-2 text-[11px] leading-relaxed text-white/80 backdrop-blur">
+      {/* ── HUD ဘယ်ဘက်တန်း ──────────────────────────────────────────────
+          ★ Flow layout — အရင်က ခလုတ်တွေကို absolute top-24/36/48/60 နဲ့
+            တစ်ခုချင်း ချထားလို့ panel ဖွင့်တိုင်း အောက်က ခလုတ်တွေနဲ့
+            ထပ်နေတယ် (landscape viewport နိမ့်ရင် ပိုဆိုးတယ်)။ အခုက
+            accordion — panel က ကိုယ့်ခလုတ်အောက်မှာ ပွင့်ပြီး ကျန်တာတွေ
+            အောက်ရွေ့တယ်၊ မဆံ့ရင် တန်းက scroll ဖြစ်တယ် (bottom-40 က
+            joystick/chat ဧရိယာ မထိအောင်)။ */}
+      <div className="pointer-events-none absolute bottom-40 left-3 top-3 z-20 flex flex-col items-start gap-2">
+      <div className="shrink-0 select-none rounded-lg bg-black/40 px-3 py-2 text-[11px] leading-relaxed text-white/80 backdrop-blur">
         <div className="font-semibold text-emerald-300">Gwave Metaverse</div>
-        <div className="hidden sm:block">WASD ရွှေ့ · Shift ပြေး · Space ခုန်</div>
-        <div className="hidden sm:block">မောက်စ်ဆွဲ = ကင်မရာ · scroll = zoom</div>
-        <div className="sm:hidden">ဘယ်ဘက် joystick · ညာဘက် ခုန်</div>
+        {!touch && (
+          <>
+            <div>WASD ရွှေ့ · Shift လျှောက် · Ctrl ကုပ် · Space ခုန်</div>
+            <div>V မြင်ကွင်း · မောက်စ်ဆွဲ = ကင်မရာ · scroll = zoom</div>
+            {fpv && <div className="text-emerald-300/80">FP: click = ကြည့်ရှုထိန်း · Esc = လွှတ်</div>}
+          </>
+        )}
+        {touch && <div>ဘယ်ဘက် joystick · ညာဘက် ခုန်</div>}
         {ready && (
           <div className="mt-1 flex items-center gap-2 text-white/50">
             <span>{fps} fps</span>
@@ -1352,6 +1507,112 @@ export function MetaverseScene() {
             )}
           </div>
         )}
+      </div>
+
+      {/* ── Accordion — 🌍 / 🎮 / 🏗 / 🎙 ခလုတ်တန်း။ Panel က ကိုယ့်ခလုတ်
+          အောက်မှာ ပွင့်တယ်၊ တစ်ခုတည်းသာ ပွင့်ခွင့်ရှိတယ် (menu state)။ */}
+      <div className="pointer-events-auto flex min-h-0 flex-col items-start gap-1.5 overflow-y-auto overscroll-contain pr-1">
+        {/* ── 🌍 Map ရွေးချယ်မှု — map တစ်ခုချင်းက server ဘက်မှာ သီးခြား
+            room မို့ တစ်ခုထဲက လူတွေက ကျန်တဲ့ map ကလူတွေကို မမြင်ရဘူး။ */}
+        <button
+          data-hud="1"
+          onClick={() => setMenu((m) => (m === "map" ? null : "map"))}
+          title="လောကရွေးရန်"
+          className={`rounded-lg border bg-black/50 px-2.5 py-1.5 text-[11px] text-white/80 backdrop-blur hover:bg-black/70 ${
+            menu === "map" ? "border-emerald-400/60" : "border-white/15"
+          }`}
+        >
+          🌍 {getMap(roomId).emoji} {getMap(roomId).name}
+        </button>
+        {menu === "map" && (
+          <div
+            data-hud="1"
+            className="w-[min(20rem,80vw)] space-y-1.5 rounded-xl border border-white/15 bg-black/70 p-2 backdrop-blur"
+          >
+            {MAP_LIST.map((m) => (
+              <button
+                key={m.id}
+                data-hud="1"
+                onClick={() => chooseMap(m.id)}
+                className={`flex w-full items-start gap-2.5 rounded-lg border px-2.5 py-2 text-left transition ${
+                  m.id === roomId
+                    ? "border-emerald-400/60 bg-emerald-500/15"
+                    : "border-white/10 bg-white/5 hover:bg-white/10"
+                }`}
+              >
+                <span className="text-xl leading-none">{m.emoji}</span>
+                <span className="min-w-0">
+                  <span className="block text-xs font-semibold text-white/90">
+                    {m.name}
+                  </span>
+                  <span className="block text-[10px] leading-snug text-white/55">
+                    {m.blurb}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ── 🎮 Mini-games (Phase 16) — ဝင်ကြေး မယူဘူး၊ ဆုက cosmetic သာ
+            (spec 16.4)။ Scoreboard/lobby/ရလဒ်က GamesOverlays (အောက်မှာ)။ */}
+        <GamesMenu
+          games={gameList}
+          connected={link === "live"}
+          open={menu === "games"}
+          onToggle={() => setMenu((m) => (m === "games" ? null : "games"))}
+          onJoin={(gameId) => netRef.current?.sendGameJoin(gameId)}
+        />
+
+        {/* ── 🏗 ဆောက်လုပ်ရေး (Phase 18) — ကိုယ်ပိုင်ကွက်ပေါ်မှာသာ
+            ဆောက်လို့ရတယ်၊ **အမှန်တရားက server မှာ** (`/plot/[id]/build`)။ */}
+        {!building && (
+          <button
+            data-hud="1"
+            onClick={() => setBuilding(true)}
+            title="ဆောက်လုပ်ရန်"
+            className="rounded-lg border border-white/15 bg-black/50 px-2.5 py-1.5 text-[11px] text-white/80 backdrop-blur hover:bg-black/70"
+          >
+            🏗 ဆောက်မယ်
+          </button>
+        )}
+
+        {/* ── 🎙 Voice chat (Phase 14) ── */}
+        <VoicePanel
+          state={voiceState}
+          micOn={micOn}
+          peers={voicePeers}
+          mutes={voiceMutes}
+          meId={meId}
+          room={roomId}
+          names={(id) => nameOfRef.current(id)}
+          open={menu === "voice"}
+          onToggle={() => setMenu((m) => (m === "voice" ? null : "voice"))}
+          onJoin={() => {
+            setVoiceState("joining");
+            void voiceRef.current?.join();
+          }}
+          onLeave={() => {
+            voiceRef.current?.leave();
+            setVoiceState("off");
+            setVoicePeers([]);
+            setMicOn(false);
+          }}
+          onMic={(on) => {
+            voiceRef.current?.setMic(on);
+            setMicOn(voiceRef.current?.micOn ?? false);
+          }}
+          onMutePeer={(id, muted) => {
+            voiceRef.current?.mutePeer(id, muted);
+            setVoiceMutes((prev) => {
+              const next = new Set(prev);
+              if (muted) next.add(id);
+              else next.delete(id);
+              return next;
+            });
+          }}
+        />
+      </div>
       </div>
 
       {/* ── ညာဘက်အပေါ်: minimap + ခလုတ်များ ─────────────────────────── */}
@@ -1437,6 +1698,21 @@ export function MetaverseScene() {
           >
             {sound ? "🔊 အသံ" : "🔇 အသံ"}
           </button>
+
+          {/* ★ First-person / third-person ပြောင်းခလုတ် (V) — ဖုန်းမှာ
+              scroll မရှိလို့ ဒီခလုတ်က တစ်ခုတည်းသော လမ်း။ */}
+          <button
+            data-hud="1"
+            onClick={() => fpvSetRef.current?.(!fpv)}
+            title="မြင်ကွင်းပြောင်း (V) — ဇာတ်ကောင်မျက်စိထဲက / နောက်ကနေ"
+            className={`rounded-lg border px-2 py-1 text-[11px] backdrop-blur transition ${
+              fpv
+                ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200"
+                : "border-white/15 bg-black/40 text-white/60"
+            }`}
+          >
+            👁 {fpv ? "1st" : "3rd"}
+          </button>
         </div>
 
         {/* ── Wallet ─────────────────────────────────────────────────
@@ -1490,48 +1766,6 @@ export function MetaverseScene() {
           </div>
         )}
       </div>
-
-      {/* ── 🌍 Map ရွေးချယ်မှု ─────────────────────────────────────────
-          Map တစ်ခုချင်းက server ဘက်မှာ သီးခြား room — တစ်ခုထဲက လူတွေက
-          ကျန်တဲ့ map ကလူတွေကို မမြင်ရဘူး။ */}
-      <button
-        data-hud="1"
-        onClick={() => setPicker((v) => !v)}
-        title="လောကရွေးရန်"
-        className="absolute left-3 top-24 z-20 rounded-lg border border-white/15 bg-black/50 px-2.5 py-1.5 text-[11px] text-white/80 backdrop-blur hover:bg-black/70 sm:top-28"
-      >
-        🌍 {getMap(roomId).emoji} {getMap(roomId).name}
-      </button>
-
-      {picker && (
-        <div
-          data-hud="1"
-          className="absolute left-3 top-36 z-20 w-[min(20rem,80vw)] space-y-1.5 rounded-xl border border-white/15 bg-black/70 p-2 backdrop-blur sm:top-40"
-        >
-          {MAP_LIST.map((m) => (
-            <button
-              key={m.id}
-              data-hud="1"
-              onClick={() => chooseMap(m.id)}
-              className={`flex w-full items-start gap-2.5 rounded-lg border px-2.5 py-2 text-left transition ${
-                m.id === roomId
-                  ? "border-emerald-400/60 bg-emerald-500/15"
-                  : "border-white/10 bg-white/5 hover:bg-white/10"
-              }`}
-            >
-              <span className="text-xl leading-none">{m.emoji}</span>
-              <span className="min-w-0">
-                <span className="block text-xs font-semibold text-white/90">
-                  {m.name}
-                </span>
-                <span className="block text-[10px] leading-snug text-white/55">
-                  {m.blurb}
-                </span>
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* ── Avatar ပြင်ဆင်ရေး ─────────────────────────────────────────── */}
       {dressing && (
@@ -1618,65 +1852,17 @@ export function MetaverseScene() {
         </div>
       )}
 
-      {/* ── 🎮 Mini-games (Phase 16) ─────────────────────────────────────
-          ★ ဝင်ကြေး မယူဘူး၊ ဆုက cosmetic သာ — မဟုတ်ရင် ဥပဒေအရ လောင်းကစားနဲ့
-          နီးလာမယ် (spec 16.4)。 */}
-      <GamesPanel
-        games={gameList}
+      {/* ── 🎮 Game overlays — scoreboard / lobby / ရလဒ် / လုပ်ဆောင်ချက်
+          ခလုတ်။ Screen center / ညာအောက်ကို absolute နဲ့ ကပ်လို့ ဘယ်ဘက်တန်း
+          (containing block) ထဲ ထည့်လို့မရဘူး — ဒီမှာပဲ ထားတယ်။ */}
+      <GamesOverlays
         phase={phase}
         meId={meId}
-        connected={link === "live"}
         onJoin={(gameId) => netRef.current?.sendGameJoin(gameId)}
         onAction={(a) => gameActionRef.current?.(a)}
         onDismissEnd={() => setPhase({ kind: "idle" })}
       />
 
-      {/* ── 🏗 ဆောက်လုပ်ရေး (Phase 18) ───────────────────────────────────
-          ★ ကိုယ်ပိုင်ကွက်ပေါ်မှာသာ ဆောက်လို့ရတယ် — ဒါကို client မှာလည်း
-          ပြထားပေမယ့် **အမှန်တရားက server မှာ** (`/plot/[id]/build`)。 */}
-      <VoicePanel
-        state={voiceState}
-        micOn={micOn}
-        peers={voicePeers}
-        mutes={voiceMutes}
-        meId={meId}
-        room={roomId}
-        names={(id) => nameOfRef.current(id)}
-        onJoin={() => {
-          setVoiceState("joining");
-          void voiceRef.current?.join();
-        }}
-        onLeave={() => {
-          voiceRef.current?.leave();
-          setVoiceState("off");
-          setVoicePeers([]);
-          setMicOn(false);
-        }}
-        onMic={(on) => {
-          voiceRef.current?.setMic(on);
-          setMicOn(voiceRef.current?.micOn ?? false);
-        }}
-        onMutePeer={(id, muted) => {
-          voiceRef.current?.mutePeer(id, muted);
-          setVoiceMutes((prev) => {
-            const next = new Set(prev);
-            if (muted) next.add(id);
-            else next.delete(id);
-            return next;
-          });
-        }}
-      />
-
-      {!building && (
-        <button
-          data-hud="1"
-          onClick={() => setBuilding(true)}
-          title="ဆောက်လုပ်ရန်"
-          className="absolute left-3 top-48 z-20 rounded-lg border border-white/15 bg-black/50 px-2.5 py-1.5 text-[11px] text-white/80 backdrop-blur hover:bg-black/70 sm:top-52"
-        >
-          🏗 ဆောက်မယ်
-        </button>
-      )}
       {building && (
         <BuildPanel bridge={buildRef} onClose={() => setBuilding(false)} />
       )}
@@ -1705,7 +1891,7 @@ export function MetaverseScene() {
       <div
         data-stick
         data-hud="1"
-        className="absolute bottom-6 left-6 z-10 h-28 w-28 touch-none rounded-full border border-white/20 bg-black/30 backdrop-blur sm:hidden"
+        className={`absolute bottom-6 left-6 z-10 h-28 w-28 touch-none rounded-full border border-white/20 bg-black/30 backdrop-blur ${touch ? "" : "hidden"}`}
       >
         <div
           data-knob
@@ -1715,7 +1901,7 @@ export function MetaverseScene() {
       <button
         data-jump
         data-hud="1"
-        className="absolute bottom-8 right-6 z-10 h-20 w-20 touch-none rounded-full border border-white/20 bg-black/30 text-sm text-white/80 backdrop-blur sm:hidden"
+        className={`absolute bottom-8 right-6 z-10 h-20 w-20 touch-none rounded-full border border-white/20 bg-black/30 text-sm text-white/80 backdrop-blur ${touch ? "" : "hidden"}`}
       >
         ခုန်
       </button>

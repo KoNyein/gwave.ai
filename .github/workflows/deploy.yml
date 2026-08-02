@@ -79,6 +79,7 @@ jobs:
             --build-arg NEXT_PUBLIC_IVS_RECORDING_BASE="${{ vars.NEXT_PUBLIC_IVS_RECORDING_BASE }}" \
             --build-arg NEXT_PUBLIC_VAPID_PUBLIC_KEY="${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}" \
             --build-arg NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="${{ vars.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}" \
+            --build-arg NEXT_PUBLIC_MV_WS_URL="${{ vars.NEXT_PUBLIC_MV_WS_URL }}" \
             -t "$IMAGE:gwave" \
             -t "$IMAGE:${{ github.sha }}" \
             .
@@ -101,8 +102,19 @@ jobs:
             --parameters commands='["sudo /usr/local/bin/gwave-redeploy"]' \
             --query 'Command.CommandId' --output text)
           echo "SSM CommandId: $CMD_ID — waiting for completion..."
-          aws ssm wait command-executed --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" || true
-          STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query Status --output text)
+          # `aws ssm wait` gives up after ~100s, but a redeploy that pulls
+          # fresh image layers can take several minutes — that marked good
+          # deploys as failed while the box was still mid-pull. Poll the
+          # invocation ourselves with a 12-minute budget instead.
+          STATUS=InProgress
+          for i in $(seq 1 72); do
+            sleep 10
+            STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in
+              Success|Failed|Cancelled|TimedOut) break ;;
+            esac
+            echo "  still $STATUS (${i}0s)"
+          done
           echo "----- redeploy output -----"
           aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query StandardOutputContent --output text
           aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query StandardErrorContent --output text
