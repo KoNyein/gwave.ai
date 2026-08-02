@@ -117,6 +117,11 @@ class _CleanerScreenState extends State<CleanerScreen> {
       await walk(
         root,
         cancelled: () => _cancel,
+        onProgress: (seen) {
+          if (!mounted) return;
+          setState(() => _progress = tr(context, "Scanning… $seen files",
+              "စစ်ဆေးနေသည်… ဖိုင် $seen ခု"));
+        },
         onFile: (file, bytes) {
           final path = file.path;
           _totalScanned++;

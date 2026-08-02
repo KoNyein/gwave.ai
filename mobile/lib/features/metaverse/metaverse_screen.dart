@@ -143,11 +143,15 @@ class _MetaverseScreenState extends State<MetaverseScreen> {
           onPageStarted: (_) => _injectBridge(),
           onPageFinished: (_) {
             _injectBridge();
-            // ★ `onMetaverseReady` က metaverse ကသာ ခေါ်တယ် — FPV/Arcade က
-            // မခေါ်ဘူး။ ဒါကြောင့် page ပြီးတာနဲ့လည်း loader ကို ဖျောက်ရမယ်၊
-            // မဟုတ်ရင် အလုပ်လုပ်နေတဲ့ စာမျက်နှာပေါ်မှာ spinner က ထာဝရ
-            // တင်နေမယ်။
-            if (mounted) setState(() => _ready = true);
+            // ★ `onMetaverseReady` ကို metaverse ကသာ ခေါ်တယ် — FPV/Arcade က
+            // မခေါ်ဘူး၊ ဒါကြောင့် အဲဒီနှစ်ခုအတွက် page ပြီးတာနဲ့ loader ကို
+            // ဖျောက်ရမယ် (မဟုတ်ရင် အလုပ်လုပ်နေတဲ့ စာမျက်နှာပေါ် spinner
+            // ထာဝရ တင်နေမယ်)。
+            // ★ Metaverse မှာတော့ **မဖျောက်ရ** — HTML ရောက်တာနဲ့ လောကက
+            // ဆောက်ပြီးတာ မဟုတ်ဘူး၊ three.js က နောက်ထပ် စက္ကန့်ပိုင်း
+            // ယူတယ်။ ဒီမှာ ဖျောက်လိုက်ရင် "ဆောက်နေသည်" ကနေ မဲနေတဲ့
+            // ဖန်သားပြင်ကို ကူးသွားပြီး ပျက်နေသလို ထင်ရမယ်။
+            if (widget.path != null && mounted) setState(() => _ready = true);
           },
           onWebResourceError: (err) {
             // ★ အဓိက document ကျမှ ပြရမယ် — ပုံတစ်ပုံ မရလို့ error

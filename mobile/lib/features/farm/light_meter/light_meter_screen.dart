@@ -354,7 +354,16 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
             ],
           ),
         ),
-        if (!_smoother.warm)
+        if (_hasSensor == false)
+          _note(
+              context,
+              Icons.sensors_off,
+              tr(
+                  context,
+                  "No light sensor on this phone — the numbers above are not real readings. The Explain tab still works.",
+                  "ဤဖုန်းတွင် အလင်းရောင် sensor မရှိပါ — အပေါ်က ဂဏန်းများသည် တကယ့်တန်ဖိုး မဟုတ်ပါ။ ရှင်းလင်းချက် စာမျက်နှာကတော့ ဆက်သုံးလို့ရပါသည်။"),
+              const Color(0xFFE07A1F))
+        else if (!_smoother.warm)
           _note(
               context,
               Icons.hourglass_empty,

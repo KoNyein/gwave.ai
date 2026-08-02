@@ -172,12 +172,21 @@ String formatBytes(int bytes) {
 /// should slow the scan, not hang the phone. [maxFiles] and [maxDepth] cap
 /// both, and every filesystem error is swallowed — a single unreadable
 /// folder must not abort the whole scan.
+///
+/// ★ Yields to the event loop every [yieldEvery] files. `listSync` and
+///   `lengthSync` are blocking, so a straight loop over 60,000 files holds
+///   the UI thread for the whole scan — the app freezes, the progress bar
+///   stops animating, the Stop button does nothing, and Android may put up
+///   an ANR dialog. The yield costs a few milliseconds and keeps the screen
+///   alive and cancellable.
 Future<void> walk(
   Directory root, {
   required void Function(File file, int bytes) onFile,
   int maxFiles = 60000,
   int maxDepth = 12,
+  int yieldEvery = 200,
   bool Function()? cancelled,
+  void Function(int seen)? onProgress,
 }) async {
   var seen = 0;
   Future<void> step(Directory dir, int depth) async {
@@ -197,6 +206,10 @@ Future<void> walk(
           final len = e.lengthSync();
           seen++;
           onFile(e, len);
+          if (seen % yieldEvery == 0) {
+            onProgress?.call(seen);
+            await Future<void>.delayed(Duration.zero);
+          }
         } catch (_) {}
       } else if (e is Directory) {
         await step(e, depth + 1);
@@ -205,6 +218,7 @@ Future<void> walk(
   }
 
   await step(root, 0);
+  onProgress?.call(seen);
 }
 
 /// Two-pass duplicate detection.
@@ -226,9 +240,13 @@ Future<List<DuplicateGroup>> findDuplicates(
   }
 
   final groups = <DuplicateGroup>[];
+  var buckets = 0;
   for (final bucket in bySize.values) {
     if (bucket.length < 2) continue;
     if (cancelled?.call() == true) break;
+    // ★ Same reason as `walk`: hashing is blocking work, and without a yield
+    //   between buckets the screen freezes for the whole comparison.
+    if (++buckets % 20 == 0) await Future<void>.delayed(Duration.zero);
     final byHash = <String, List<FoundFile>>{};
     for (final f in bucket) {
       final h = await _hashPrefix(f.path, maxHashBytes);
