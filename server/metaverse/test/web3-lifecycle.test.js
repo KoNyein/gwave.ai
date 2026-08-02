@@ -448,3 +448,51 @@ test("indexer: နောက်ကျနေရင် fresh မဟုတ်ဘူ�
   );
   assert.equal(await indexer.isFresh(none, "0xL"), false, "sync state မရှိရင် မယုံရ");
 });
+
+// ── RPC transport ────────────────────────────────────────────────────────
+//
+// ★ The wallet client that sends mints was built with a bare
+//   `viem.http(env.WEB3_RPC_URL)`, so reads had failover across every
+//   configured provider and **writes had none**: the primary going down
+//   stopped every mint while three healthy providers sat unused. And with
+//   WEB3_RPC_URL unset but _2 set, `viem.http(undefined)` silently sent
+//   mint transactions through the chain's public endpoint.
+test("★ the send path uses every configured provider, not just the first", () => {
+  const { rpcUrls } = require("../rpc.js");
+  const urls = rpcUrls({
+    WEB3_RPC_URL: "https://a.example",
+    WEB3_RPC_URL_2: "https://b.example",
+    WEB3_CHAIN: "base",
+  });
+  assert.ok(urls.includes("https://a.example"));
+  assert.ok(urls.includes("https://b.example"), "the second provider was dropped");
+  assert.ok(
+    urls.includes("https://mainnet.base.org"),
+    "no public backup behind the paid providers",
+  );
+});
+
+test("★ a secondary-only configuration does not fall through to the public endpoint alone", () => {
+  const { rpcUrls } = require("../rpc.js");
+  const urls = rpcUrls({ WEB3_RPC_URL_2: "https://b.example", WEB3_CHAIN: "base" });
+  assert.equal(urls[0], "https://b.example", "the configured provider must come first");
+});
+
+test("rpcTransport builds one fallback over all of them", () => {
+  const { rpcTransport } = require("../rpc.js");
+  const seen = [];
+  const fakeViem = {
+    http: (url, opts) => {
+      seen.push(url);
+      return { url, opts };
+    },
+    fallback: (transports, opts) => ({ transports, opts }),
+  };
+  const t = rpcTransport(
+    { WEB3_RPC_URL: "https://a.example", WEB3_CHAIN: "base" },
+    fakeViem,
+  );
+  assert.equal(t.transports.length, seen.length);
+  assert.ok(seen.length >= 2, "the public backup was not included");
+  assert.equal(t.opts.rank, true, "providers are not ranked by health");
+});
