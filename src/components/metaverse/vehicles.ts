@@ -108,10 +108,18 @@ function buildModel(kind: VehicleKind): {
       const wheelGeo = keep(new THREE.CylinderGeometry(0.42, 0.42, 0.3, 10));
       const wheelMat = keep(mat(0x1a1d22));
       for (const [wx, wz] of [[-0.95, 1.2], [0.95, 1.2], [-0.95, -1.2], [0.95, -1.2]] as const) {
+        // ★ ဘီးကို hub group ထဲ ထည့်ပြီး **hub ကိုသာ** စောင်းတယ် (ဝင်ရိုးက
+        //   ဘေးဘက် X ဆီ)。 လှည့်တာကတော့ ဘီး mesh ရဲ့ ကိုယ်ပိုင် Y —
+        //   အဲဒါက cylinder ရဲ့ ဝင်ရိုးအတိုင်းမို့ ဘယ်လို တပ်တပ် မှန်နေတယ်။
+        //   အရင်က mesh ကို တိုက်ရိုက် စောင်းပြီး Y ပတ် လှည့်ခဲ့တာ —
+        //   Euler "XYZ" မှာ Y က မှတ်တိုင်စောင်းပြီးမှ လာလို့ ဝင်ရိုးပတ်
+        //   လိမ့်တာ မဟုတ်ဘဲ ဘီးတစ်ခုလုံး ဘေးလှည့်သွားတယ်။
+        const hub = new THREE.Group();
+        hub.rotation.z = Math.PI / 2;
+        hub.position.set(wx, 0.42, wz);
         const w = new THREE.Mesh(wheelGeo, wheelMat);
-        w.rotation.z = Math.PI / 2;
-        w.position.set(wx, 0.42, wz);
-        group.add(w);
+        hub.add(w);
+        group.add(hub);
         spin.push(w);
       }
       const lampGeo = keep(new THREE.SphereGeometry(0.16, 8, 6));
@@ -348,8 +356,12 @@ export function createVehicle(
       animT += dt;
       const v = Math.abs(state.speed);
       for (const s of model.spin) {
-        // ★ Drone ရဲ့ ပန်ကာက ရပ်နေတောင် လည်ရမယ် (hover) — ကားဘီးက မလည်ရ
-        s.rotation.y += (kind === "drone" ? 30 : v * 2.2) * dt;
+        // ★ Drone ရဲ့ ပန်ကာက ရပ်နေတောင် လည်ရမယ် (hover) — ကားဘီးက မလည်ရ။
+        // ★ ကားဘီးမှာ **အမှတ်အသား ပါတဲ့ speed** သုံးတယ် — နောက်ပြန်ဆုတ်ရင်
+        //   ဘီးက ရှေ့ဆက်လိမ့်နေတာ မဖြစ်စေဖို့။ ဘီးအချင်းဝက် 0.42m မို့
+        //   လိမ့်နှုန်း = speed / 0.42 (မလိမ့်ဘဲ ပွတ်ဆွဲသွားတာ မဖြစ်စေဘူး)。
+        //   အနုတ်လက္ခဏာက ရှေ့တိုးရင် ဘီးအပေါ်ပိုင်း ရှေ့ကို လိမ့်စေတယ်။
+        s.rotation.y += kind === "drone" ? 30 * dt : (-state.speed / 0.42) * dt;
       }
       for (let i = 0; i < model.legs.length; i++) {
         const leg = model.legs[i];
