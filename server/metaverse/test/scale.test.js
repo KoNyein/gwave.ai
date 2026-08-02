@@ -74,7 +74,13 @@ test.before(async () => {
   // Redis တကယ် ရှိလား စစ်တယ်
   try {
     const redis = require("redis");
-    const c = redis.createClient({ url: REDIS_URL });
+    // ★ reconnectStrategy: false — default က အဆုံးမရှိ ပြန်ကြိုးစားလို့
+    // Redis မရှိတဲ့ CI မှာ connect() က ဘယ်တော့မှ မပြီးဘဲ job တစ်ခုလုံး
+    // နာရီပေါင်းများစွာ hang နေတယ်။ ချက်ချင်း fail → skip ဖြစ်ရမယ်။
+    const c = redis.createClient({
+      url: REDIS_URL,
+      socket: { connectTimeout: 1500, reconnectStrategy: false },
+    });
     c.on("error", () => {});
     await c.connect();
     await c.ping();
