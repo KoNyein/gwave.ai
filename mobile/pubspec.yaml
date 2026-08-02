@@ -90,10 +90,11 @@ dependencies:
   # Health: PPG heart-rate — cover the rear camera + torch with a fingertip and
   # read the red-channel pulse to draw a live heart-rhythm ("health wave").
   camera: ^0.11.0
-  # Light meter: the ambient-light sensor beside the earpiece. Exposes
-  # hasSensor(), so phones without one get an explanation instead of a
-  # permanently-zero reading.
-  light_sensor: ^3.0.2
+  # Light meter: the ambient-light sensor beside the earpiece.
+  # ★ NOT `light_sensor` — that package pins AGP 4.1 and jcenter(), which no
+  # longer resolves, so the Gradle build fails on its subproject. `light`
+  # tracks AGP 8.x and declares a namespace.
+  light: ^5.0.0
   # Storage cleaner: MD5 over a file prefix to confirm duplicate photos.
   # Pure Dart — no platform channel.
   crypto: ^3.0.6

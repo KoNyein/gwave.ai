@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:light_sensor/light_sensor.dart';
+import 'package:light/light.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -39,6 +39,9 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
   static const _prefNight = "gw_light_night";
 
   StreamSubscription<int>? _sub;
+
+  /// Fires if no reading ever arrives — see [_start].
+  Timer? _probe;
   bool? _hasSensor; // null = still checking
   final _smoother = LuxSmoother();
   final _saturation = SaturationDetector();
@@ -85,6 +88,7 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
   @override
   void dispose() {
     _sub?.cancel();
+    _probe?.cancel();
     _refCtrl.dispose();
     WakelockPlus.disable().catchError((_) {});
     super.dispose();
@@ -136,30 +140,45 @@ class _LightMeterScreenState extends State<LightMeterScreen> {
     } catch (_) {}
   }
 
+  /// Subscribe and decide availability from what actually arrives.
+  ///
+  /// ★ The plugin has no "does this phone have the sensor" call, and a boolean
+  ///   from one would not be worth much anyway — phones exist that report a
+  ///   light sensor and then never deliver an event. So: an event means yes,
+  ///   an error means no, and silence for four seconds means no. Android
+  ///   delivers the first reading almost immediately on registration, so the
+  ///   timeout is generous rather than tight.
   Future<void> _start() async {
-    bool has = false;
     try {
-      has = await LightSensor.hasSensor();
-    } catch (_) {
-      has = false;
-    }
-    if (!mounted) return;
-    setState(() => _hasSensor = has);
-    if (!has) return;
-    try {
-      _sub = LightSensor.luxStream().listen((v) {
-        final raw = v.toDouble();
-        _saturation.add(raw);
-        final smooth = _smoother.add(raw);
-        if (!mounted) return;
-        setState(() {
-          _rawLux = raw;
-          _lux = smooth * _calibration;
-        });
-      }, onError: (_) {});
+      _sub = Light().lightSensorStream.listen(
+        (v) {
+          // -1 is the plugin's "could not parse" value; treating it as a
+          // reading would show a negative PPFD.
+          if (v < 0) return;
+          _probe?.cancel();
+          final raw = v.toDouble();
+          _saturation.add(raw);
+          final smooth = _smoother.add(raw);
+          if (!mounted) return;
+          setState(() {
+            _hasSensor = true;
+            _rawLux = raw;
+            _lux = smooth * _calibration;
+          });
+        },
+        onError: (Object _) {
+          _probe?.cancel();
+          if (mounted) setState(() => _hasSensor = false);
+        },
+      );
     } catch (_) {
       if (mounted) setState(() => _hasSensor = false);
+      return;
     }
+
+    _probe = Timer(const Duration(seconds: 4), () {
+      if (mounted && _hasSensor == null) setState(() => _hasSensor = false);
+    });
   }
 
   CropProfile get _crop =>
