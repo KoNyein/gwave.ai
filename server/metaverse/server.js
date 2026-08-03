@@ -4,7 +4,14 @@ const http = require("http");
 const crypto = require("crypto");
 const { WebSocketServer } = require("ws");
 
-const { Rooms, normalizeRoom, ROOMS, GATED_ROOMS, ADULT_ROOMS } = require("./rooms");
+const {
+  Rooms,
+  normalizeRoom,
+  isGameRoom,
+  ROOMS,
+  GATED_ROOMS,
+  ADULT_ROOMS,
+} = require("./rooms");
 const assassin = require("./assassin.js");
 const { identify } = require("./auth");
 const { Pool } = require("pg");
@@ -39,6 +46,31 @@ const CHAT_MIN_GAP_MS = 500;
 const MAX_MESSAGE_BYTES = 16 * 1024;
 const MAX_CHAT_CHARS = 200;
 const EMOTES = new Set(["wave", "dance", "sit"]);
+
+/// ★ ထိခိုက်မှုနဲ့ ပတ်သက်တဲ့ message အားလုံး (Arena spec A1.2)。
+///   ဒီစာရင်းထဲ ရှိတာက **game room မှာသာ** ခွင့်ပြုတယ်။ Combat message
+///   အသစ်ထည့်ရင် ဒီထဲ ထည့်ဖို့ မမေ့ပါနဲ့ — မထည့်ရင် social room ကနေ
+///   ခေါ်လို့ရသွားမယ်။ (`rooms.test.js` က ဒါကို စစ်ပေးတယ်။)
+const COMBAT_TYPES = new Set([
+  "aJoin",
+  "aMove",
+  "aFire",
+  "aWeapon",
+  "aSkin",
+  "aReload",
+]);
+
+/// ★ Player တစ်ယောက်ကို တစ်ခါပဲ သတိပေး — flood တိုက်ခံရရင် log က
+///   အသုံးမဝင်တဲ့ စာကြောင်း သန်းချီ ဖြစ်သွားမယ်။
+const warned = new Set();
+function warnOnce(playerId, message) {
+  const key = `${playerId}:${message}`;
+  if (warned.has(key)) return;
+  // ★ အကန့်အသတ်မဲ့ မကြီးလာစေရ — memory leak ဖြစ်မယ်။
+  if (warned.size > 5000) warned.clear();
+  warned.add(key);
+  console.warn(`[mv] ${message}`);
+}
 
 const rooms = new Rooms();
 
@@ -238,12 +270,10 @@ const server = http.createServer((req, res) => {
       status: "ok",
       uptime: Math.round(process.uptime()),
       players: rooms.total(),
-      rooms: {
-        city: rooms.count("city"),
-        farm: rooms.count("farm"),
-        snow: rooms.count("snow"),
-        sky: rooms.count("sky"),
-      },
+      // ★ Room အလိုက် အရေအတွက် — အရင်က city/farm/snow/sky ၄ ခုပဲ hardcode
+      //   လုပ်ထားလို့ arena/fpv room တွေမှာ ဘယ်နှစ်ယောက် ရှိလဲ ဘယ်တော့မှ
+      //   မမြင်ရဘူး။ "ပွဲ ဘာလို့ မစတာလဲ" ဆိုတာ စစ်တဲ့အခါ ဒါက ပထမမေးခွန်း။
+      rooms: rooms.byRoom(),
       // ★ Web3 က mirror ကနေ ဖြေနေလား RPC ကနေလား၊ circuit ဖွင့်နေလား —
       //   ဒါမပါရင် "VIP room ဝင်လို့မရဘူး" ဆိုတဲ့ report တစ်ခုကို
       //   ဘယ်ကစရှာရမှန်း မသိဘူး။
@@ -578,6 +608,18 @@ wss.on("connection", async (ws, req) => {
       return; // JSON မဟုတ်တာ တိတ်တိတ်ပစ် — ပြန်ဖြေရင် flood တိုက်ဖို့ လမ်းပေးရာ
     }
     if (!msg || typeof msg.type !== "string") return;
+
+    // ★ **Combat ဂိတ် — တစ်နေရာတည်း** (Arena spec A1.2)。
+    //   Social room မှာ လက်နက်/ထိခိုက်မှု လုံးဝ မဖြစ်ရ။ Case တစ်ခုချင်းစီမှာ
+    //   စစ်ရင် message အသစ်ထည့်တဲ့အခါ တစ်ခုလောက် မေ့ကျန်တတ်တယ် — အဲဒါက
+    //   စကားပြောခန်းထဲမှာ လူပစ်လို့ရသွားတာ။ ဒါကြောင့် dispatch မဝင်ခင်
+    //   ဒီတစ်ချက်နဲ့ ဖြတ်တယ်။
+    if (COMBAT_TYPES.has(msg.type) && !isGameRoom(player.room)) {
+      // ★ တိတ်တိတ်မပစ်ဘဲ မှတ်တယ် — ဒါက ဖြစ်သင့်တာမဟုတ်လို့ ဖြစ်နေရင်
+      //   client bug ဒါမှမဟုတ် တစ်ယောက်ယောက် စမ်းနေတာ။ ၂ ခုလုံး သိချင်တယ်။
+      warnOnce(player.id, `combat message ${msg.type} in social room ${player.room}`);
+      return;
+    }
 
     switch (msg.type) {
       case "update": {
