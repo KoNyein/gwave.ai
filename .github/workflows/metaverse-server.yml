@@ -132,6 +132,10 @@ jobs:
           #   ၃။ file ထဲ ရေးပြီး jq နဲ့ JSON ပြောင်းတယ် — script ထဲက
           #      quote တွေက shell expansion နှစ်ဆင့် ဖြတ်စရာ မလိုတော့ဘူး。
           #      (SSM က Linux မှာ root အနေနဲ့ ပြေးတယ်၊ sudo မလို။)
+          #   ★ AWS-RunShellScript က /bin/sh (Ubuntu မှာ dash) နဲ့ ပြေးတယ် —
+          #     `set -o pipefail` က bash အတွက်ပဲ ရှိလို့ ပထမဆုံးစာကြောင်းမှာ
+          #     "Illegal option" နဲ့ ရပ်သွားတယ်။ ဒါကြောင့် bash ကို heredoc နဲ့
+          #     အတိအလင်း ခေါ်တယ် — အောက်က jq က ဒါကို ထုပ်ပေးတယ်။
           cat > /tmp/mv-deploy.sh <<EOF
           set -euo pipefail
           IMAGE="$IMAGE"
@@ -179,7 +183,11 @@ jobs:
           docker image prune -f >/dev/null 2>&1 || true
           EOF
 
-          jq -Rs '{commands: [.]}' /tmp/mv-deploy.sh > /tmp/mv-params.json
+          # \u0027 is jq's escape for a single quote — writing it literally
+          # would close the shell's own quoting. The marker ends up quoted
+          # ('MVEOF'), so sh expands nothing inside the script.
+          jq -Rs '{commands: ["bash <<\u0027MVEOF\u0027\n" + . + "MVEOF\n"]}' \
+            /tmp/mv-deploy.sh > /tmp/mv-params.json
           CMD_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
