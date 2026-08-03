@@ -5,36 +5,111 @@
 /// Phase 8 မှာ map ၄ ခု ဖြစ်လာမယ် (city/farm/snow/sky) — အဲဒီအခါ room က
 /// map id ဖြစ်သွားတယ်။ အခုကတည်းက ခွဲထားတာက နောက်မှ ပြန်မွမ်းစရာမလိုအောင်။
 
-const ROOMS = new Set([
-  "city",
-  "farm",
-  "snow",
-  "sky",
-  "main",
-  "vip",
-  // FPV drone simulator maps (client: src/lib/fpv/maps.ts)
-  "fpv-race",
-  "fpv-park",
-  "fpv-city",
-  "fpv-canyon",
-  "fpv-warehouse",
-  "fpv-range",
+/// ★ Room က စာသားတစ်လုံးမဟုတ်တော့ဘဲ **သတ်မှတ်ချက် record** ဖြစ်တယ်
+///   (Arena spec A1.1)。 ဘာလို့လဲ — "ဒီ room မှာ လက်နက်ရလား" ဆိုတာကို
+///   room name နဲ့ ခန့်မှန်းနေရင် (`id.startsWith("assassin")` မျိုး)
+///   room အသစ်ထည့်တိုင်း ခန့်မှန်းချက်တွေ တစ်နေရာစီ ကျန်ခဲ့တတ်တယ်။
+///   `type` ကို data ထဲ ထည့်လိုက်တော့ စစ်စရာ တစ်ခုတည်း ဖြစ်သွားတယ်။
+///
+/// - `social` — ကမ္ဘာလှည့်၊ စကားပြော၊ ယာဉ်စီး၊ ဆောက်လုပ်။ ★ လက်နက် လုံးဝမရှိ
+/// - `game`   — ပွဲစဉ် (lobby → live → ended)。 ယာဉ်/ဆောက်လုပ် မရှိ
+const ROOM_DEFS = [
+  { id: "city", type: "social", mapId: "city", maxPlayers: 200 },
+  { id: "farm", type: "social", mapId: "farm", maxPlayers: 200 },
+  { id: "snow", type: "social", mapId: "snow", maxPlayers: 200 },
+  { id: "sky", type: "social", mapId: "sky", maxPlayers: 200 },
+  { id: "main", type: "social", mapId: "city", maxPlayers: 200 },
+  { id: "vip", type: "social", mapId: "city", maxPlayers: 200, gate: "token" },
+
+  // FPV drone simulator maps (client: src/lib/fpv/maps.ts)。 ဒါတွေက
+  // ပွဲစဉ်စနစ် မသုံးဘူး — အတူတူ ပျံနေရုံ၊ ဒါကြောင့် social ပဲ။
+  { id: "fpv-race", type: "social", mapId: "fpv-race", maxPlayers: 32 },
+  { id: "fpv-park", type: "social", mapId: "fpv-park", maxPlayers: 32 },
+  { id: "fpv-city", type: "social", mapId: "fpv-city", maxPlayers: 32 },
+  { id: "fpv-canyon", type: "social", mapId: "fpv-canyon", maxPlayers: 32 },
+  { id: "fpv-warehouse", type: "social", mapId: "fpv-warehouse", maxPlayers: 32 },
+  { id: "fpv-range", type: "social", mapId: "fpv-range", maxPlayers: 32 },
+
   // ★ Assassin mini-game arenas (၁၈+)。 Room ကို ခွဲထားတာက ပွဲတွေ
   //   သီးခြားဖြစ်ဖို့ — တစ်ခုတည်းဆိုရင် ကမ္ဘာပေါ်က လူအားလုံး တစ်ပွဲထဲ
   //   ရောနေမယ်။
-  "assassin-1",
-  "assassin-2",
-  "assassin-3",
-]);
+  {
+    id: "assassin-1",
+    type: "game",
+    mapId: "arena",
+    maxPlayers: 12,
+    gate: "adult",
+    gameMode: "assassin",
+  },
+  {
+    id: "assassin-2",
+    type: "game",
+    mapId: "arena",
+    maxPlayers: 12,
+    gate: "adult",
+    gameMode: "assassin",
+  },
+  {
+    id: "assassin-3",
+    type: "game",
+    mapId: "arena",
+    maxPlayers: 12,
+    gate: "adult",
+    gameMode: "assassin",
+  },
+
+  // ★ ဝှက်တမ်း — ထိခိုက်မှု လုံးဝမရှိလို့ အသက်ကန့်သတ်ချက် မလိုဘူး။
+  //   Arena spec က ဒါကို အရင်ထုတ်ဖို့ ပြောထားတယ်: lobby/match/snapshot
+  //   အားလုံးကို combat မပါဘဲ စမ်းသပ်ပြီးသား ဖြစ်သွားလို့။
+  {
+    id: "hide-1",
+    type: "game",
+    mapId: "arena",
+    maxPlayers: 12,
+    gameMode: "hide",
+    gameConfig: { minPlayers: 3, matchMinutes: 5, seekerCount: 1 },
+  },
+  {
+    id: "hide-2",
+    type: "game",
+    mapId: "arena",
+    maxPlayers: 12,
+    gameMode: "hide",
+    gameConfig: { minPlayers: 3, matchMinutes: 5, seekerCount: 1 },
+  },
+];
+
+const ROOM_BY_ID = new Map(ROOM_DEFS.map((d) => [d.id, Object.freeze(d)]));
+
+const ROOMS = new Set(ROOM_BY_ID.keys());
 
 /// ★ ၁၈+ သာ ဝင်ခွင့်ရှိတဲ့ room။ Voice ရဲ့ ဂိတ်နဲ့ တူညီတဲ့ `adult` claim ကို
 ///   သုံးတယ် — client မှာ ခလုတ်ဖျောက်ရုံနဲ့ ဘာမှ မကာကွယ်ဘူး၊ စစ်တာက
 ///   server.js မှာ။
-const ADULT_ROOMS = new Set(["assassin-1", "assassin-2", "assassin-3"]);
+/// ★ စာရင်းကို လက်နဲ့ မရေးတော့ဘူး — def ကနေ ဆွဲထုတ်တယ်။ Room အသစ်ထည့်ပြီး
+///   ဂိတ်စာရင်းထဲ ထည့်ဖို့ မေ့သွားတာက ဒီနေရာမှာ ဖြစ်လို့ မရတော့ဘူး။
+const ADULT_ROOMS = new Set(ROOM_DEFS.filter((d) => d.gate === "adult").map((d) => d.id));
 
 /// ★ NFT ပိုင်မှ ဝင်လို့ရတဲ့ room။ စစ်ဆေးမှုက **server မှာသာ** ဖြစ်တယ် —
 /// client မှာ ခလုတ်ဖျောက်ထားရုံနဲ့ ဘာမှမကာကွယ်ဘူး (server.js ကြည့်ပါ)။
-const GATED_ROOMS = new Set(["vip"]);
+const GATED_ROOMS = new Set(ROOM_DEFS.filter((d) => d.gate === "token").map((d) => d.id));
+
+/// Room သတ်မှတ်ချက်ကို ပြန်ရယူ — မသိတဲ့ id ဆိုရင် `null`。
+function roomDef(id) {
+  return ROOM_BY_ID.get(String(id || "")) ?? null;
+}
+
+/// ★ **တစ်နေရာတည်းက စစ်ချက်** (spec A1.2)。 Combat message တိုင်း ဒီကို
+///   ဖြတ်ရမယ် — social room မှာ လက်နက်/ထိခိုက်မှု လုံးဝ မဖြစ်ရ။
+///   `roomId` မသိရင် `false` — မသိတာကို ခွင့်ပြုတာက ဒီနေရာမှာ အန္တရာယ်ရှိတယ်。
+function isGameRoom(id) {
+  return roomDef(id)?.type === "game";
+}
+
+/// ဒီ room က ဘယ် mode လဲ (`null` = social)。
+function roomGameMode(id) {
+  return roomDef(id)?.gameMode ?? null;
+}
 
 /// room name ကို client ကနေတိုက်ရိုက်မယူရ — မသိတဲ့ name တစ်ခုနဲ့ တစ်ယောက်တည်း
 /// ရှိတဲ့ "room" အသစ်တွေ အကန့်အသတ်မဲ့ ဆောက်လို့ရသွားမယ် (memory leak)။
@@ -241,6 +316,30 @@ class Rooms {
     for (const g of this.ghosts.values()) n += g.size;
     return n;
   }
+
+  /// ★ Room အလိုက် အရေအတွက် — `/health` မှာပြဖို့ (spec A1.3)。
+  ///   စုစုပေါင်းတစ်ခုတည်းက "ဘယ် room မှာ လူပြည့်နေလဲ" ကို မဖြေနိုင်ဘူး၊
+  ///   ပွဲစဉ်တွေ ဘာလို့ မစတာလဲ စစ်တဲ့အခါ အဲဒါက ပထမဆုံး မေးခွန်းပါ။
+  ///   လူမရှိတဲ့ room ကို ချန်ထားတယ် — အမြဲ သုည ၁၅ ကြောင်း ပြနေရင်
+  ///   အရေးကြီးတဲ့ ကိန်းက ပျောက်သွားတယ်။
+  byRoom() {
+    const out = {};
+    for (const id of ROOM_BY_ID.keys()) {
+      const n = this.count(id);
+      if (n > 0) out[id] = n;
+    }
+    return out;
+  }
 }
 
-module.exports = { Rooms, normalizeRoom, ROOMS, GATED_ROOMS, ADULT_ROOMS };
+module.exports = {
+  Rooms,
+  normalizeRoom,
+  roomDef,
+  roomGameMode,
+  isGameRoom,
+  ROOMS,
+  ROOM_DEFS,
+  GATED_ROOMS,
+  ADULT_ROOMS,
+};

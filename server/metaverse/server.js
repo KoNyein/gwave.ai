@@ -4,8 +4,16 @@ const http = require("http");
 const crypto = require("crypto");
 const { WebSocketServer } = require("ws");
 
-const { Rooms, normalizeRoom, ROOMS, GATED_ROOMS, ADULT_ROOMS } = require("./rooms");
+const {
+  Rooms,
+  normalizeRoom,
+  isGameRoom,
+  ROOMS,
+  GATED_ROOMS,
+  ADULT_ROOMS,
+} = require("./rooms");
 const assassin = require("./assassin.js");
+const arena = require("./arena.js");
 const { identify } = require("./auth");
 const { Pool } = require("pg");
 
@@ -39,6 +47,34 @@ const CHAT_MIN_GAP_MS = 500;
 const MAX_MESSAGE_BYTES = 16 * 1024;
 const MAX_CHAT_CHARS = 200;
 const EMOTES = new Set(["wave", "dance", "sit"]);
+
+/// ★ ထိခိုက်မှုနဲ့ ပတ်သက်တဲ့ message အားလုံး (Arena spec A1.2)。
+///   ဒီစာရင်းထဲ ရှိတာက **game room မှာသာ** ခွင့်ပြုတယ်။ Combat message
+///   အသစ်ထည့်ရင် ဒီထဲ ထည့်ဖို့ မမေ့ပါနဲ့ — မထည့်ရင် social room ကနေ
+///   ခေါ်လို့ရသွားမယ်။ (`rooms.test.js` က ဒါကို စစ်ပေးတယ်။)
+const COMBAT_TYPES = new Set([
+  "aJoin",
+  "aMove",
+  "aFire",
+  "aWeapon",
+  "aSkin",
+  "aReload",
+]);
+
+/// ★ Player တစ်ယောက်ကို တစ်ခါပဲ သတိပေး — flood တိုက်ခံရရင် log က
+///   အသုံးမဝင်တဲ့ စာကြောင်း သန်းချီ ဖြစ်သွားမယ်။
+/// Arena snapshot tick — `snapshot.js` က သတ်မှတ်ထားတဲ့ ၂၀Hz。
+const SNAPSHOT_TICK_MS = require("./snapshot").TICK_MS;
+
+const warned = new Set();
+function warnOnce(playerId, message) {
+  const key = `${playerId}:${message}`;
+  if (warned.has(key)) return;
+  // ★ အကန့်အသတ်မဲ့ မကြီးလာစေရ — memory leak ဖြစ်မယ်။
+  if (warned.size > 5000) warned.clear();
+  warned.add(key);
+  console.warn(`[mv] ${message}`);
+}
 
 const rooms = new Rooms();
 
@@ -238,12 +274,10 @@ const server = http.createServer((req, res) => {
       status: "ok",
       uptime: Math.round(process.uptime()),
       players: rooms.total(),
-      rooms: {
-        city: rooms.count("city"),
-        farm: rooms.count("farm"),
-        snow: rooms.count("snow"),
-        sky: rooms.count("sky"),
-      },
+      // ★ Room အလိုက် အရေအတွက် — အရင်က city/farm/snow/sky ၄ ခုပဲ hardcode
+      //   လုပ်ထားလို့ arena/fpv room တွေမှာ ဘယ်နှစ်ယောက် ရှိလဲ ဘယ်တော့မှ
+      //   မမြင်ရဘူး။ "ပွဲ ဘာလို့ မစတာလဲ" ဆိုတာ စစ်တဲ့အခါ ဒါက ပထမမေးခွန်း။
+      rooms: rooms.byRoom(),
       // ★ Web3 က mirror ကနေ ဖြေနေလား RPC ကနေလား၊ circuit ဖွင့်နေလား —
       //   ဒါမပါရင် "VIP room ဝင်လို့မရဘူး" ဆိုတဲ့ report တစ်ခုကို
       //   ဘယ်ကစရှာရမှန်း မသိဘူး။
@@ -579,6 +613,18 @@ wss.on("connection", async (ws, req) => {
     }
     if (!msg || typeof msg.type !== "string") return;
 
+    // ★ **Combat ဂိတ် — တစ်နေရာတည်း** (Arena spec A1.2)。
+    //   Social room မှာ လက်နက်/ထိခိုက်မှု လုံးဝ မဖြစ်ရ။ Case တစ်ခုချင်းစီမှာ
+    //   စစ်ရင် message အသစ်ထည့်တဲ့အခါ တစ်ခုလောက် မေ့ကျန်တတ်တယ် — အဲဒါက
+    //   စကားပြောခန်းထဲမှာ လူပစ်လို့ရသွားတာ။ ဒါကြောင့် dispatch မဝင်ခင်
+    //   ဒီတစ်ချက်နဲ့ ဖြတ်တယ်။
+    if (COMBAT_TYPES.has(msg.type) && !isGameRoom(player.room)) {
+      // ★ တိတ်တိတ်မပစ်ဘဲ မှတ်တယ် — ဒါက ဖြစ်သင့်တာမဟုတ်လို့ ဖြစ်နေရင်
+      //   client bug ဒါမှမဟုတ် တစ်ယောက်ယောက် စမ်းနေတာ။ ၂ ခုလုံး သိချင်တယ်။
+      warnOnce(player.id, `combat message ${msg.type} in social room ${player.room}`);
+      return;
+    }
+
     switch (msg.type) {
       case "update": {
         const x = Number(msg.x);
@@ -737,6 +783,47 @@ wss.on("connection", async (ws, req) => {
         // `score` ပါလာလည်း ဘယ်နေရာမှာမှ မဖတ်ဘူး။
         if (!msg.action || typeof msg.action !== "object") break;
         games.action(player.room, player.id, msg.action);
+        break;
+      }
+
+      // ── Arena (ပွဲစဉ် mode များ — ဝှက်တမ်း စသည်) ───────────────────────
+      // ★ Handler တိုင်းမှာ room type ကို ပြန်စစ်တယ် — connection အခါက
+      //   စစ်ပြီး room ပြောင်းလို့ရရင် စစ်ချက်က အလကားဖြစ်မယ်။
+      case "gJoin": {
+        if (!isGameRoom(player.room)) break;
+        const reply = arena.join(player.room, player, Date.now());
+        if (reply) send(ws, reply);
+        // ★ လက်ရှိ ပွဲအခြေအနေကို တစ်ခါတည်း ပို့တယ် — မပို့ရင် ပွဲအလယ်
+        //   ဝင်လာသူက နောက် state ပြောင်းတဲ့အထိ ဘာမှ မမြင်ရဘူး။
+        const st = arena.stateOf(player.room);
+        if (st) send(ws, { type: "gState", ...st });
+        break;
+      }
+
+      case "gInput": {
+        if (!isGameRoom(player.room)) break;
+        // ★ နေရာကို `update` က ကိုင်တယ် (anti-cheat နဲ့အတူ)。 ဒီမှာ
+        //   လုပ်တာက sequence ကို မှတ်တာပဲ — client က ဘယ် input အထိ
+        //   server လက်ခံပြီးပြီလဲ သိမှ reconcile လုပ်လို့ရတယ်။
+        arena.input(player.room, player.id, msg);
+        break;
+      }
+
+      case "gAction": {
+        if (!isGameRoom(player.room)) break;
+        if (!msg.action || typeof msg.action !== "object") break;
+        for (const e of arena.action(rooms, player.room, player, msg.action, Date.now())) {
+          emit(player.room, arena.gEvent(e));
+        }
+        break;
+      }
+
+      case "gLeave": {
+        if (!isGameRoom(player.room)) break;
+        for (const e of arena.leave(player.room, player.id, Date.now(), { voluntary: true })) {
+          emit(player.room, arena.gEvent(e));
+        }
+        emit(player.room, { type: "gLeft", ids: [player.id] });
         break;
       }
 
@@ -949,6 +1036,12 @@ wss.on("connection", async (ws, req) => {
       // ကစားသူ မကျန်တော့ရင် state ကို မထားခဲ့ဘူး
       if (aMatch.players.size === 0) matches.delete(player.room);
     }
+    // ★ Arena — ပြတ်သွားတာက ကိုယ်တိုင်ထွက်တာ **မဟုတ်ဘူး**。 နေရာကို
+    //   ၆၀ စက္ကန့် ချန်ထားတယ် (spec A3.2) — Mae Sot ဘက် network
+    //   မတည်ငြိမ်လို့ ပြတ်တာနဲ့ ပွဲထဲက ထုတ်ပစ်ရင် ကစားလို့ မရတော့ဘူး။
+    for (const e of arena.leave(player.room, player.id, Date.now(), { voluntary: false })) {
+      emit(player.room, arena.gEvent(e));
+    }
     rooms.remove(player.room, player.id);
     emit(player.room, { type: "leave", id: player.id });
     // ★ ထွက်ချိန်မှာ မဖြစ်မနေ သိမ်းရမယ် — ၃၀ စက္ကန့် flush ကို စောင့်ရင်
@@ -975,6 +1068,20 @@ const assassinTicker = setInterval(() => {
     aPushPersonal(roomId, match);
   }
 }, 500);
+
+/// ★ Arena — 20Hz。 ဒီတစ်ခုတည်းက ပွဲစဉ်အားလုံးကို မောင်းတယ်:
+///   lifecycle transition, mode tick, snapshot ပို့ခြင်း။ Room တစ်ခုချင်းစီ
+///   အတွက် timer သီးသန့် မထားဘူး — room ၅၀ ဆိုရင် timer ၅၀ ဖြစ်ပြီး
+///   event loop က အဲဒါတွေကြားမှာ ကုန်သွားမယ်။
+const arenaTicker = setInterval(() => {
+  try {
+    arena.tick(rooms, emit, Date.now());
+  } catch (err) {
+    // ★ Tick တစ်ခု ကျလို့ ticker တစ်ခုလုံး ရပ်သွားရင် ပွဲအားလုံး
+    //   ခဲသွားမယ် — ဖမ်းပြီး ဆက်သွားတယ်။
+    console.error("[mv] arena tick failed:", err);
+  }
+}, SNAPSHOT_TICK_MS);
 
 const weatherTicker = setInterval(() => {
   for (const roomId of weather.due()) {
@@ -1009,6 +1116,7 @@ async function shutdown(signal) {
   clearInterval(moveFlusher);
   clearInterval(weatherTicker);
   clearInterval(assassinTicker);
+  clearInterval(arenaTicker);
   games.stopAll();
 
   // Client တွေ မထွက်သေးရင်တောင် ၁၀ စက္ကန့်ထက် မစောင့်ဘူး
