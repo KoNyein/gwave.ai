@@ -57,6 +57,15 @@
   V (or the 👁 button) toggles first-person, and clicking in first person takes
   pointer lock. The left HUD is a flow-layout accordion — one panel open at a
   time — so nothing overlaps on short landscape viewports.
+- **Metaverse/FPV/Assassin server**: the `metaverse` container on the app EC2
+  box (127.0.0.1:8090, behind Caddy at `/mv/*`), not ECS. It **deploys
+  automatically** now — `.github/workflows/metaverse-server.yml` builds to ECR
+  and rolls out over SSM on every push to `main` touching `server/metaverse/**`,
+  with a health-gated rollback to the previous image. `workflow_dispatch`
+  redeploys without a code change. No hand rebuild over SSH; if you find
+  yourself typing `docker build` on the box, something is wrong with the
+  workflow and that is the thing to fix. Verify with
+  `curl -s https://gwave.cc/mv/health`.
 - **Multiplayer transport**: the client connects to
   **`wss://<current-host>/mv/ws`** (same origin) after any
   `NEXT_PUBLIC_MV_WS_URL` override, rotating candidates on each reconnect.
@@ -90,7 +99,9 @@
   circuit breaker). The mint queue reaches `confirmed` only after three
   confirmations. The worker (`WEB3_WORKER=1`, one host, postgres advisory
   lock) runs the sender, confirmer and indexer. Key handling is in
-  `docs/WEB3_KEYS.md`. **`db/sql/web3.sql` is NOT applied on RDS yet.**
+  `docs/WEB3_KEYS.md`. `db/sql/web3.sql` is **APPLIED on RDS** (2026-08-02) — the four tables
+  exist with RLS sealed and grants to `service_role` only; nothing mints
+  until contracts and envs exist.
 
 - **Light meter (app, Farm & Home)**: reads the ambient-light sensor and
   converts to PPFD/DLI for four crops × growth stage. Refuses to show PPFD
@@ -125,16 +136,6 @@
   Go Live sessions get replays like app broadcasts do.
 - Native iOS app (Apple Developer Program, $99/yr, user-side).
 - Old Vercel project deletion (user-side).
-- Metaverse/FPV multiplayer runs as the **`metaverse` container on the app
-  EC2 box** (127.0.0.1:8090, behind Caddy at `/mv/*`), not ECS. Rebuild it by
-  hand after changing `server/metaverse/**`:
-  `cd ~/gwave.ai && git pull origin main && cd server/metaverse &&
-  sudo docker build -t gwave-metaverse . && sudo docker rm -f metaverse &&
-  sudo docker run -d --name metaverse --restart unless-stopped
-  -p 127.0.0.1:8090:8090 --env-file /etc/gwave-web.env -e PORT=8090
-  gwave-metaverse`. Verify with `curl -s https://gwave.cc/mv/health`.
-  The ECS path in `.github/workflows/metaverse-server.yml` stays gated off
-  behind `vars.MV_DEPLOY_ECS`.
 
 ## Changelog
 
