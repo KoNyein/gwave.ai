@@ -13,6 +13,7 @@ const {
   ADULT_ROOMS,
 } = require("./rooms");
 const assassin = require("./assassin.js");
+const arena = require("./arena.js");
 const { identify } = require("./auth");
 const { Pool } = require("pg");
 
@@ -62,6 +63,9 @@ const COMBAT_TYPES = new Set([
 
 /// ★ Player တစ်ယောက်ကို တစ်ခါပဲ သတိပေး — flood တိုက်ခံရရင် log က
 ///   အသုံးမဝင်တဲ့ စာကြောင်း သန်းချီ ဖြစ်သွားမယ်။
+/// Arena snapshot tick — `snapshot.js` က သတ်မှတ်ထားတဲ့ ၂၀Hz。
+const SNAPSHOT_TICK_MS = require("./snapshot").TICK_MS;
+
 const warned = new Set();
 function warnOnce(playerId, message) {
   const key = `${playerId}:${message}`;
@@ -782,6 +786,47 @@ wss.on("connection", async (ws, req) => {
         break;
       }
 
+      // ── Arena (ပွဲစဉ် mode များ — ဝှက်တမ်း စသည်) ───────────────────────
+      // ★ Handler တိုင်းမှာ room type ကို ပြန်စစ်တယ် — connection အခါက
+      //   စစ်ပြီး room ပြောင်းလို့ရရင် စစ်ချက်က အလကားဖြစ်မယ်။
+      case "gJoin": {
+        if (!isGameRoom(player.room)) break;
+        const reply = arena.join(player.room, player, Date.now());
+        if (reply) send(ws, reply);
+        // ★ လက်ရှိ ပွဲအခြေအနေကို တစ်ခါတည်း ပို့တယ် — မပို့ရင် ပွဲအလယ်
+        //   ဝင်လာသူက နောက် state ပြောင်းတဲ့အထိ ဘာမှ မမြင်ရဘူး။
+        const st = arena.stateOf(player.room);
+        if (st) send(ws, { type: "gState", ...st });
+        break;
+      }
+
+      case "gInput": {
+        if (!isGameRoom(player.room)) break;
+        // ★ နေရာကို `update` က ကိုင်တယ် (anti-cheat နဲ့အတူ)。 ဒီမှာ
+        //   လုပ်တာက sequence ကို မှတ်တာပဲ — client က ဘယ် input အထိ
+        //   server လက်ခံပြီးပြီလဲ သိမှ reconcile လုပ်လို့ရတယ်။
+        arena.input(player.room, player.id, msg);
+        break;
+      }
+
+      case "gAction": {
+        if (!isGameRoom(player.room)) break;
+        if (!msg.action || typeof msg.action !== "object") break;
+        for (const e of arena.action(rooms, player.room, player, msg.action, Date.now())) {
+          emit(player.room, arena.gEvent(e));
+        }
+        break;
+      }
+
+      case "gLeave": {
+        if (!isGameRoom(player.room)) break;
+        for (const e of arena.leave(player.room, player.id, Date.now(), { voluntary: true })) {
+          emit(player.room, arena.gEvent(e));
+        }
+        emit(player.room, { type: "gLeft", ids: [player.id] });
+        break;
+      }
+
       // ── Voice chat (Phase 14) ────────────────────────────────────────
       // ── Assassin (၁၈+ mini-game) ──────────────────────────────────────
       // ★ Case တိုင်းမှာ room ကို ပြန်စစ်တယ် — connection အခါက ဂိတ်ဖြတ်ပြီး
@@ -991,6 +1036,12 @@ wss.on("connection", async (ws, req) => {
       // ကစားသူ မကျန်တော့ရင် state ကို မထားခဲ့ဘူး
       if (aMatch.players.size === 0) matches.delete(player.room);
     }
+    // ★ Arena — ပြတ်သွားတာက ကိုယ်တိုင်ထွက်တာ **မဟုတ်ဘူး**。 နေရာကို
+    //   ၆၀ စက္ကန့် ချန်ထားတယ် (spec A3.2) — Mae Sot ဘက် network
+    //   မတည်ငြိမ်လို့ ပြတ်တာနဲ့ ပွဲထဲက ထုတ်ပစ်ရင် ကစားလို့ မရတော့ဘူး။
+    for (const e of arena.leave(player.room, player.id, Date.now(), { voluntary: false })) {
+      emit(player.room, arena.gEvent(e));
+    }
     rooms.remove(player.room, player.id);
     emit(player.room, { type: "leave", id: player.id });
     // ★ ထွက်ချိန်မှာ မဖြစ်မနေ သိမ်းရမယ် — ၃၀ စက္ကန့် flush ကို စောင့်ရင်
@@ -1017,6 +1068,20 @@ const assassinTicker = setInterval(() => {
     aPushPersonal(roomId, match);
   }
 }, 500);
+
+/// ★ Arena — 20Hz。 ဒီတစ်ခုတည်းက ပွဲစဉ်အားလုံးကို မောင်းတယ်:
+///   lifecycle transition, mode tick, snapshot ပို့ခြင်း။ Room တစ်ခုချင်းစီ
+///   အတွက် timer သီးသန့် မထားဘူး — room ၅၀ ဆိုရင် timer ၅၀ ဖြစ်ပြီး
+///   event loop က အဲဒါတွေကြားမှာ ကုန်သွားမယ်။
+const arenaTicker = setInterval(() => {
+  try {
+    arena.tick(rooms, emit, Date.now());
+  } catch (err) {
+    // ★ Tick တစ်ခု ကျလို့ ticker တစ်ခုလုံး ရပ်သွားရင် ပွဲအားလုံး
+    //   ခဲသွားမယ် — ဖမ်းပြီး ဆက်သွားတယ်။
+    console.error("[mv] arena tick failed:", err);
+  }
+}, SNAPSHOT_TICK_MS);
 
 const weatherTicker = setInterval(() => {
   for (const roomId of weather.due()) {
@@ -1051,6 +1116,7 @@ async function shutdown(signal) {
   clearInterval(moveFlusher);
   clearInterval(weatherTicker);
   clearInterval(assassinTicker);
+  clearInterval(arenaTicker);
   games.stopAll();
 
   // Client တွေ မထွက်သေးရင်တောင် ၁၀ စက္ကန့်ထက် မစောင့်ဘူး
