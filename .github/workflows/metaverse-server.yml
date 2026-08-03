@@ -20,8 +20,6 @@ concurrency:
 env:
   AWS_REGION: ap-southeast-1
   ECR_REPO: gwave-metaverse
-  ECS_CLUSTER: gwave-cluster
-  ECS_SERVICE: metaverse
 
 jobs:
   test:
@@ -62,26 +60,41 @@ jobs:
 
   deploy:
     # ★ PR မှာ deploy မလုပ်ရ — fork ကနေလာတဲ့ PR တစ်ခုက production ကို
-    # ပြောင်းလို့ရသွားမယ်။ main ကို push မှသာ။
-    # ★ ECS service မဆောက်ရသေးသရွေ့ deploy ကို ကျော်တယ် — repo variable
-    # MV_DEPLOY_ECS=true ထည့်မှသာ run မယ်။ မဟုတ်ရင် main က deploy step
-    # ကြောင့် အမြဲ နီနေမယ် (server က အခု EC2 docker နဲ့ run နေတယ်)။
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.MV_DEPLOY_ECS == 'true'
+    # ပြောင်းလို့ရသွားမယ်။ main ကို push (ဒါမှမဟုတ် လက်နဲ့ dispatch) မှသာ။
+    #
+    # ★ ဒီ job က **ECS မဟုတ်ဘူး** — production က app EC2 box ပေါ်က
+    #   `metaverse` container (127.0.0.1:8090, Caddy က gwave.cc/mv/* ကနေ
+    #   ဖြတ်ပေးတယ်)。 အရင်က ဒီနေရာမှာ ECS deploy တစ်ခု ရှိပြီး
+    #   `MV_DEPLOY_ECS` မဖွင့်ထားလို့ ဘယ်တော့မှ မပြေးဘူး — ရလဒ်က
+    #   `server/metaverse/**` ပြောင်းတိုင်း လူက EC2 ဝင်ပြီး docker build
+    #   လုပ်ရတာ။ မေ့သွားရင် ဂိမ်း/multiplayer က code အဟောင်းနဲ့ ကျန်နေတယ်
+    #   ဆိုတာ ဘယ်သူမှ မသိဘူး။ အခု web app ရဲ့ deploy.yml လမ်းစဉ်အတိုင်း
+    #   ECR → SSM နဲ့ တကယ် deploy လုပ်တယ်။
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     needs: test
     runs-on: ubuntu-latest
-    permissions:
-      # ★ OIDC — **access key မသုံးရ**။ Long-lived key က repo secret ထဲမှာ
-      # ထာဝရနေပြီး ပေါက်သွားရင် ဘယ်တော့ ပေါက်သွားလဲ မသိဘူး။ OIDC token က
-      # တစ်ခါသုံးဖြစ်ပြီး ဒီ repo ကနေသာ ထုတ်လို့ရတယ်။
-      id-token: write
-      contents: read
     steps:
       - uses: actions/checkout@v4
 
+      # deploy.yml နဲ့ တူတူ credential — box ပေါ်မှာ SSM နဲ့ command
+      # ပြေးဖို့ရော ECR ကို push ဖို့ရော ဒီ key က ခွင့်ရှိပြီးသား။
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_METAVERSE_DEPLOY_ROLE }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure the ECR repository exists
+        run: |
+          set -euo pipefail
+          aws ecr describe-repositories --repository-names "$ECR_REPO" \
+            --region "$AWS_REGION" >/dev/null 2>&1 && exit 0
+          echo "creating ECR repository $ECR_REPO"
+          aws ecr create-repository --repository-name "$ECR_REPO" \
+            --image-scanning-configuration scanOnPush=true \
+            --region "$AWS_REGION" >/dev/null
 
       - id: ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -91,36 +104,111 @@ jobs:
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
+          set -euo pipefail
           # ★ tag ကို commit sha နဲ့ ထားတယ် — `latest` တစ်ခုတည်းဆိုရင်
           # rollback လုပ်ဖို့ ဘယ် image ကို ပြန်သုံးရမလဲ မသိဘူး။
+          # ★ --platform linux/amd64 — EC2 box က x86_64。
           docker build --platform linux/amd64 \
             -t "$REGISTRY/$ECR_REPO:${{ github.sha }}" \
             -t "$REGISTRY/$ECR_REPO:latest" .
           docker push "$REGISTRY/$ECR_REPO:${{ github.sha }}"
           docker push "$REGISTRY/$ECR_REPO:latest"
 
-      - name: Deploy
+      - name: Deploy on EC2 via SSM
+        env:
+          INSTANCE_ID: ${{ vars.APP_INSTANCE_ID }}
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
-          aws ecs update-service \
-            --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" \
-            --force-new-deployment --region "$AWS_REGION"
+          set -euo pipefail
+          [ -n "$INSTANCE_ID" ] || { echo "::error::APP_INSTANCE_ID repo variable is not set"; exit 1; }
+          IMAGE="$REGISTRY/$ECR_REPO:${{ github.sha }}"
 
-      - name: Wait for the service to settle
-        run: |
-          # ★ စောင့်မှ deploy က တကယ်အောင်မြင်လားဆိုတာ သိရမယ်။ မစောင့်ရင်
-          # workflow က အစိမ်းရောင်ပြပြီး တကယ်က task တွေ crash loop
-          # ဖြစ်နေတာမျိုး ဖြစ်တတ်တယ်။
-          aws ecs wait services-stable \
-            --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" --region "$AWS_REGION"
+          # ★ box ပေါ်မှာ ပြေးမယ့် script。 အရေးကြီးဆုံးအချက် ၃ ခု —
+          #   ၁။ အဟောင်းကို `metaverse-prev:rollback` လို့ tag လုပ်ထားတယ် —
+          #      အသစ်က health မကျရင် ချက်ချင်း ပြန်တင်ဖို့。 ဒါမရှိရင်
+          #      deploy တစ်ခု ကျရုံနဲ့ metaverse/FPV/Assassin အားလုံး ပြုတ်မယ်။
+          #   ၂။ env က /etc/gwave-web.env — runtime secret တွေ အဲဒီမှာပဲ
+          #      ရှိတယ် (CI ကနေ လုံးဝ မကူးဘူး)。
+          #   ၃။ file ထဲ ရေးပြီး jq နဲ့ JSON ပြောင်းတယ် — script ထဲက
+          #      quote တွေက shell expansion နှစ်ဆင့် ဖြတ်စရာ မလိုတော့ဘူး。
+          #      (SSM က Linux မှာ root အနေနဲ့ ပြေးတယ်၊ sudo မလို။)
+          cat > /tmp/mv-deploy.sh <<EOF
+          set -euo pipefail
+          IMAGE="$IMAGE"
 
-      - name: Health check
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "$REGISTRY"
+          docker pull "\$IMAGE"
+
+          if docker inspect metaverse >/dev/null 2>&1; then
+            PREV=\$(docker inspect --format '{{.Config.Image}}' metaverse)
+            docker tag "\$PREV" metaverse-prev:rollback
+          else
+            PREV=""
+          fi
+
+          start() {
+            docker rm -f metaverse >/dev/null 2>&1 || true
+            docker run -d --name metaverse --restart unless-stopped \
+              -p 127.0.0.1:8090:8090 \
+              --env-file /etc/gwave-web.env -e PORT=8090 \
+              "\$1"
+          }
+
+          start "\$IMAGE"
+
+          # WebSocket server က listen ဖြစ်ဖို့ စက္ကန့်အနည်းငယ် ယူတယ် —
+          # ချက်ချင်း စစ်ရင် အမြဲ ကျမယ်။
+          ok=0
+          for i in \$(seq 1 20); do
+            sleep 3
+            if curl -fsS http://127.0.0.1:8090/health >/dev/null; then ok=1; break; fi
+          done
+
+          if [ "\$ok" != "1" ]; then
+            echo "new image failed health check"
+            docker logs --tail 50 metaverse || true
+            if [ -n "\$PREV" ]; then
+              echo "rolling back to \$PREV"
+              start metaverse-prev:rollback
+            fi
+            exit 1
+          fi
+
+          curl -fsS http://127.0.0.1:8090/health
+          docker image prune -f >/dev/null 2>&1 || true
+          EOF
+
+          jq -Rs '{commands: [.]}' /tmp/mv-deploy.sh > /tmp/mv-params.json
+          CMD_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy $ECR_REPO:${{ github.sha }}" \
+            --parameters file:///tmp/mv-params.json \
+            --query 'Command.CommandId' --output text)
+          echo "SSM CommandId: $CMD_ID"
+
+          STATUS=InProgress
+          for i in $(seq 1 60); do
+            sleep 10
+            STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in Success|Failed|Cancelled|TimedOut) break ;; esac
+            echo "  still $STATUS (${i}0s)"
+          done
+          echo "----- stdout -----"
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query StandardOutputContent --output text
+          echo "----- stderr -----"
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query StandardErrorContent --output text
+          echo "SSM status: $STATUS"
+          [ "$STATUS" = "Success" ] || { echo "::error::metaverse deploy failed (rolled back if a previous image existed)"; exit 1; }
+
+      - name: Health check through the domain
         run: |
-          # ★ Production က ECS/mv.gwave.cc မဟုတ်တော့ဘူး — EC2 box ပေါ်က
-          # `metaverse` container ကို Caddy က gwave.cc/mv/* ကနေ ဖြတ်ပေးတယ်။
-          # (ဒီ job က vars.MV_DEPLOY_ECS ဖွင့်မှ ပြေးတယ်၊ ပုံမှန် ပိတ်ထား။)
+          # ★ box ပေါ်က check က container ကိုပဲ စစ်တယ်။ ဒါက Caddy route
+          # ပါ အလုပ်လုပ်လားဆိုတာ စစ်တယ် — user တွေ တကယ် သွားတဲ့လမ်း။
           for i in $(seq 1 10); do
-            if curl -fsS "${MV_HEALTH_URL:-https://gwave.cc/mv/health}"; then exit 0; fi
+            if curl -fsS "https://gwave.cc/mv/health"; then exit 0; fi
             sleep 6
           done
-          echo "health check never passed"
+          echo "::error::gwave.cc/mv/health never passed"
           exit 1
