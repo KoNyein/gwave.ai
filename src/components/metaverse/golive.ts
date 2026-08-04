@@ -182,10 +182,20 @@ export function createMvGoLive(canvas: HTMLCanvasElement): MvGoLive {
     async start(title: string) {
       if (active) throw new Error("already live");
       // ၁။ LiveKit stream row ဆောက် — feed မှာ ပေါ်မယ့် live post
+      // ★ provider:"livekit" — production ရဲ့ default provider က IVS မို့
+      //   ပုံမှန် create က IVS stage ဆောက်ပေးပြီး LiveKit token တောင်းတဲ့
+      //   ဒီ pipeline နဲ့ မကိုက်ဘူး ("This stream is not a LiveKit
+      //   stream." — user report)။ Metaverse Go Live က livekit-client နဲ့
+      //   လွှင့်တာမို့ LiveKit room ကို အတိအကျ တောင်းတယ်။
       const created = await fetch("/api/live/create", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title, kind: "stream", record: false }),
+        body: JSON.stringify({
+          title,
+          kind: "stream",
+          record: false,
+          provider: "livekit",
+        }),
       });
       if (!created.ok) {
         const e = (await created.json().catch(() => null)) as { error?: string } | null;

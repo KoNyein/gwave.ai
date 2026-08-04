@@ -37,6 +37,12 @@ const bodySchema = z.object({
   // Opt-in recording: when true the broadcast is saved and becomes a replay
   // after it ends; when false nothing is recorded (international standard).
   record: z.boolean().optional().default(true),
+  // Force a specific SFU regardless of the deployment's default provider.
+  // The metaverse Go Live publishes through livekit-client, so on an
+  // IVS-default deployment its create MUST still mint a LiveKit room —
+  // otherwise getLiveStageToken answers "This stream is not a LiveKit
+  // stream." and the broadcast can never start (user-reported failure).
+  provider: z.enum(["auto", "livekit"]).optional().default("auto"),
 });
 
 /**
@@ -76,11 +82,22 @@ export async function POST(request: Request) {
     }
   }
 
+  // Caller demands LiveKit (metaverse Go Live) — skip the provider-default
+  // branches entirely. If LiveKit isn't configured on this deployment we say
+  // so instead of silently minting a stream the caller can't publish to.
+  const wantsLivekit = parsed.data.provider === "livekit";
+  if (wantsLivekit && !livekitConfigured()) {
+    return NextResponse.json(
+      { error: "LiveKit is not configured on this server." },
+      { status: 503 },
+    );
+  }
+
   // AWS-native path (flagged): Amazon IVS Real-Time. The host broadcasts from
   // the phone/browser camera over WebRTC (FB/TikTok-style); viewers subscribe
   // through AWS's global edge, and a server-side composition records the mixed
   // view to S3. Gated by NEXT_PUBLIC_LIVE_PROVIDER=ivs + mode "camera".
-  if (ivsIsDefaultProvider() && parsed.data.mode === "camera") {
+  if (!wantsLivekit && ivsIsDefaultProvider() && parsed.data.mode === "camera") {
     let stageArn: string;
     try {
       stageArn = await createIvsStage(`gwave-${profile.id.slice(0, 8)}`);
@@ -173,7 +190,7 @@ export async function POST(request: Request) {
   // watch the channel's HLS URL off AWS's global edge, and IVS auto-records to
   // S3 when a recording configuration is attached. Gated by
   // NEXT_PUBLIC_LIVE_PROVIDER=ivs so nothing changes until the flag flips.
-  if (ivsIsDefaultProvider()) {
+  if (!wantsLivekit && ivsIsDefaultProvider()) {
     let channel;
     try {
       channel = await createIvsChannel(
@@ -239,7 +256,7 @@ export async function POST(request: Request) {
   // an Agora stream; the host publishes from the browser and Cloud Recording
   // auto-saves to S3. Gated by NEXT_PUBLIC_LIVE_PROVIDER=agora so LiveKit stays
   // the default until cutover.
-  if (agoraIsDefaultProvider()) {
+  if (!wantsLivekit && agoraIsDefaultProvider()) {
     const admin = createAdminClient();
     const { data: row, error } = await admin
       .from("live_streams")
