@@ -139,6 +139,37 @@
 
 ## Changelog
 
+- 2026-08-04 (web): **In-world screens play phone lives (phase 2b).**
+  attachLiveKitScreen connects the city screen as a LiveKit viewer
+  (stage token, proximity connect/disconnect) so app Go Live broadcasts
+  play as VideoTexture — no more "app ထဲ ကြည့်ပါ" placeholder when a
+  LiveKit live is on. Board API returns the live id for it. PR #487.
+
+- 2026-08-04 (web): **Burmese voice lines via device TTS.** voicelines.ts
+  speaks my-MM lines (match start/win/kill/wrong-kill/death/respawn/
+  pickup) through speechSynthesis with per-line + global throttles;
+  bandit NPCs answer in a lower pitch when befriended ("ကောင်းပြီ
+  သူငယ်ချင်း…") or shot ("သတ္တိရှိရင် လာခဲ့"). Silent no-op on devices
+  without a Burmese voice. PR #486.
+
+- 2026-08-04 (web+mv): **Arena high-rise towers + platform physics.**
+  Maps gain walkable platforms; world.groundAt + scene physics give
+  landing, auto step-up and edge falls. Two 6x6 firing towers at
+  (0,±10) with switchback stairs up to open y=6 floors for cross-tower
+  sniping; server y clamp raised 6 → 14. PR #485.
+
+- 2026-08-04 (web): **Rigged GLB avatars arena-wide + combat anims.**
+  Every arena avatar (self, remotes, bandits) renders as a kit soldier
+  character (stable per-player variant); shots play
+  holding-right-shoot / melee clips, kills play the die clip with a
+  1.5s corpse hold. Social rooms keep the customizable procedural
+  body. PRs #482 + #484.
+
+- 2026-08-04 (tooling): **scripts/merge-animations.mjs** — gltf-transform
+  based GLB animation merger (user-contributed, hardened with
+  ALL_EXTENSIONS + clip-name dedupe); confirmed the shipped kit
+  characters carry 27 animation clips each. PR #481.
+
 - 2026-08-04 (web): **Hikvision brand removed** (product decision —
   partner application on hold): connector stub, env plumbing, and the
   RTSP preset deleted; the vendor-cloud framework stays vendor-agnostic
