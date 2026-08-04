@@ -19,6 +19,10 @@ export type HumanState = {
   /// ဖွင့်ရမယ်။ မဟုတ်ရင် ရှေ့လှမ်းနေတဲ့ခြေနဲ့ နောက်ဆုတ်နေတဲ့ moonwalk
   /// ဖြစ်ပြီး "ကိုယ်ဟန် မှားနေတယ်" လို့ မြင်ရတယ်။
   backward?: boolean;
+  /// ⚔️ လက်နက်ကိုင်ထားလား — arena မှာ လက်နှစ်ဖက်ကို ရင်ဘတ်အမြင့်
+  /// ကိုင်ဟန်ထားတယ်။ မထားရင် သေနတ်က ပေါင်နားမှာ တွဲလွဲကျနေပြီး
+  /// "ကိုင်မထားဘူး" လို့ မြင်ရတယ်။
+  armed?: boolean;
 };
 
 export type Avatar = {
@@ -271,6 +275,15 @@ export function createHuman(clothColor = 0x3f88c5, skinColor = 0xe8b088): Avatar
     // ── target ဆီကို ချောချောဆွဲ ────────────────────────────────────────
     const k = state.airborne ? 18 : 14;
     hips.position.y = approach(hips.position.y, hipsY, dt, 10);
+    // ⚔️ လက်နက်ကိုင်ဟန် — emote မရှိချိန် လက်နှစ်ဖက် ရင်ဘတ်အမြင့်
+    // (ညာလက် ချိန်၊ ဘယ်လက် အောက်ကထောက်)။ ခြေလှမ်း/ခုန်တာ မထိဘူး။
+    if (state.armed && !emote) {
+      armRT = -1.25;
+      foreRT = -0.85;
+      armLT = -0.95;
+      foreLT = -1.05;
+    }
+
     torso.rotation.x = approach(torso.rotation.x, torsoPitch, dt, k);
     torso.rotation.z = approach(torso.rotation.z, torsoRoll, dt, k);
     head.rotation.x = approach(head.rotation.x, headPitch, dt, k);
