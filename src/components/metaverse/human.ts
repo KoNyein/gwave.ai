@@ -32,6 +32,8 @@ export type Avatar = {
     hips: THREE.Object3D;
     footL: THREE.Object3D;
     footR: THREE.Object3D;
+    /// ညာလက်ဖျား — arena မှာ ရွေးထားတဲ့ လက်နက် 3D ကိုင်ဖို့ (weapons3d.ts)
+    handR: THREE.Object3D;
   };
   /// လက်ရှိ ကပ်ထားတဲ့ အစိတ်အပိုင်းများ — config ပြောင်းရင် ဖယ်ပြီး dispose
   attachments: THREE.Object3D[];
@@ -136,6 +138,10 @@ export function createHuman(clothColor = 0x3f88c5, skinColor = 0xe8b088): Avatar
   const armR = joint(torso, shoulderY, gUpperArm, cloth, LEN.upperArm, -0.27);
   const foreL = joint(armL, -LEN.upperArm, gForeArm, skin, LEN.foreArm);
   const foreR = joint(armR, -LEN.upperArm, gForeArm, skin, LEN.foreArm);
+  // ညာလက်ဖျား attach point — လက်နက်ကိုင်ဖို့ (လက်ရင်းအဆုံးမှာ)
+  const handR = new THREE.Group();
+  handR.position.y = -LEN.foreArm;
+  foreR.add(handR);
 
   const thighL = joint(hips, 0, gThigh, dark, LEN.thigh, 0.11);
   const thighR = joint(hips, 0, gThigh, dark, LEN.thigh, -0.11);
@@ -302,7 +308,7 @@ export function createHuman(clothColor = 0x3f88c5, skinColor = 0xe8b088): Avatar
 
   return {
     group,
-    attach: { head, torso, hips, footL, footR },
+    attach: { head, torso, hips, footL, footR, handR },
     attachments: [],
     materials: { skin, cloth, dark },
     update,
