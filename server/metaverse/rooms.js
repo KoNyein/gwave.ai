@@ -20,7 +20,10 @@ const ROOM_DEFS = [
   { id: "sky", type: "social", mapId: "sky", maxPlayers: 200 },
   { id: "main", type: "social", mapId: "city", maxPlayers: 200 },
   // 🌆 Kenney kit showcase city (client: maps/gwave-city.ts)
-  { id: "gwave-city", type: "social", mapId: "gwave-city", maxPlayers: 200 },
+  // ★ worldR — client map ရဲ့ walkRadius (114) က default anti-cheat bound
+  //   (90) ထက် ကျယ်လို့ ဒီ room မှာ ချဲ့ပေးထားတယ်။ မချဲ့ရင် မြို့စွန်ရောက်တာနဲ့
+  //   server က rubber-band လုပ်ပြီး "လမ်းလျှောက်လို့မရ" ဖြစ်တယ်။
+  { id: "gwave-city", type: "social", mapId: "gwave-city", maxPlayers: 200, worldR: 120 },
   { id: "vip", type: "social", mapId: "city", maxPlayers: 200, gate: "token" },
 
   // FPV drone simulator maps (client: src/lib/fpv/maps.ts)。 ဒါတွေက

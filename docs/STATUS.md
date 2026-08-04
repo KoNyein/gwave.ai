@@ -139,6 +139,30 @@
 
 ## Changelog
 
+- 2026-08-04 (web+server): **Arena playability overhaul — walk fix, combat
+  feedback, keyboard controls, scoreboard, team play.** Root cause of
+  "can't walk in arena": every game-layer teleport (assassin spawn on
+  aJoin, respawn, round reset) moved the client without updating presence,
+  so the next `update` tripped the anti-cheat speed check and rubber-banded
+  the player back (`syncPresence` in server.js now syncs presence on all
+  three teleport paths). Per-room `worldR` override added (gwave-city 120)
+  because its walkRadius 114 exceeded the global 90 bound — walking the
+  city edge no longer rubber-bands. Combat feel: new pooled combatfx.ts
+  (tracers, muzzle flash light, spawn rings) + the assassin Web-Audio sfx
+  (shots per weapon, hit markers, hurt, kill/win jingles, empty-click,
+  reload) wired into the metaverse arena — local fire feedback is instant,
+  remote aShot events render tracers from the shooter. HUD rebuilt so no
+  pointer-events-auto container ever covers the joystick: weapons strip
+  (1-7 numbered) top-center, ❤️/ammo read-only bottom-center (emote bar
+  hidden in game rooms), fire/reload/scoreboard/invite/exit as a
+  thumb-reach cluster above the jump button; hit-marker ✕, red damage
+  vignette, center kill/win/respawn banners, hold-Tab (or 🏆) scoreboard.
+  Keyboard: click=fire (auto first-person on arena entry), R=reload,
+  1-7=weapon switch, Tab=scoreboard, documented in the HUD help panel.
+  Team play: 📣 invite button shares a `/metaverse?room=` deep link (the
+  scene now honors `?room=`), scoreboard doubles as a roster, chat/voice
+  stay available in game rooms. PR #464.
+
 - 2026-08-04 (web+server): **Gwave City — Kenney 3D kit showcase world.**
   The map engine gained GLB model support (`MapDef.models` + a lazy
   GLTFLoader in world.ts: per-URL cache, clones, shadows, instant AABB
