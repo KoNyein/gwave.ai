@@ -21,6 +21,8 @@ export type Sfx = {
   reload(): void;
   /// ကျည်ကုန်နေချိန် မောင်းခလုတ်ဖြုတ်သံ — "ဘာလို့ မထွက်တာလဲ" ကို အသံက ဖြေတယ်
   empty(): void;
+  /// 🪟 မှန်ကွဲသံ — ပေါက်ကွဲမှုအပျက်အစီး / မှန်ချပ်ထိမှန်မှုအတွက်
+  glass(delay?: number): void;
   kill(correct: boolean): void;
   /// ပွဲနိုင်သံစဉ် — aWin
   win(): void;
@@ -128,10 +130,11 @@ export function createSfx(volume = 0.7): Sfx {
     shot(weapon: string) {
       switch (weapon) {
         case "sniper":
-          // ကျယ်ပြီး နိမ့်တဲ့ ပဲ့တင်သံ ရှည်ရှည်
+          // ကျယ်ပြီး နိမ့်တဲ့ ပဲ့တင်သံ ရှည်ရှည် + အဝေးက ပြန်လာတဲ့ echo
           burst({ dur: 0.5, gain: 0.9, type: "lowpass", freq: 1700 });
           burst({ dur: 0.9, gain: 0.28, type: "lowpass", freq: 420, delay: 0.05 });
           tone({ freq: 90, to: 45, dur: 0.35, gain: 0.35, type: "sine" });
+          burst({ dur: 0.45, gain: 0.1, type: "lowpass", freq: 800, delay: 0.3 });
           break;
         case "shotgun":
           burst({ dur: 0.34, gain: 0.95, type: "lowpass", freq: 1100 });
@@ -185,6 +188,22 @@ export function createSfx(volume = 0.7): Sfx {
     empty() {
       // ချောင်းသေးသေး တစ်ချက် — ကျည်မရှိတဲ့ "ကလစ်"
       burst({ dur: 0.04, gain: 0.25, type: "bandpass", freq: 3200, q: 3 });
+    },
+
+    glass(delay = 0) {
+      // ကွဲထွက်သံ (မြင့်တဲ့ ဆူညံသံ) + ကျကွဲတဲ့ စအိုးစ ၄ စ — pitch မတူအောင်
+      // ကျပန်း — မှန်ချပ်ကြီး ကွဲကျသလို ကြားရတယ်။
+      burst({ dur: 0.22, gain: 0.38, type: "highpass", freq: 3800, delay });
+      for (let i = 0; i < 4; i++) {
+        tone({
+          freq: 2400 + Math.random() * 1900,
+          to: 650 + Math.random() * 500,
+          dur: 0.14 + Math.random() * 0.12,
+          gain: 0.09,
+          type: "triangle",
+          delay: delay + 0.05 + i * 0.07,
+        });
+      }
     },
 
     kill(correct: boolean) {

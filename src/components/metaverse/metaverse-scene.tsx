@@ -215,6 +215,28 @@ export function MetaverseScene() {
   /// လူရဲ့ ရွေးချယ်မှု (localStorage) ကို မဖျက်ဘူး၊ စက်ကောင်းတဲ့ဖုန်းနဲ့
   /// နောက်တစ်ခါဝင်ရင် ပြန်ရမယ်။
   const degradedRef = useRef(false);
+  /// 🔋 ဘက်ထရီချွေတာ mode — 30fps ကန့် + pixelRatio 1 + အရိပ်ပိတ်။
+  /// ဖုန်းပူ/ဘက်ထရီစား ပြဿနာအတွက် user ကိုယ်တိုင် ဖွင့်ပိတ်လို့ရတယ်၊
+  /// ရွေးချယ်မှုက localStorage မှာ ကျန်တယ်။
+  const [eco, setEco] = useState(false);
+  const ecoRef = useRef(false);
+  const ecoApplyRef = useRef<((on: boolean) => void) | null>(null);
+  useEffect(() => {
+    const on = window.localStorage.getItem("mv:eco") === "1";
+    ecoRef.current = on;
+    setEco(on);
+  }, []);
+  const toggleEco = () => {
+    const on = !ecoRef.current;
+    ecoRef.current = on;
+    setEco(on);
+    try {
+      window.localStorage.setItem("mv:eco", on ? "1" : "0");
+    } catch {
+      /* private mode */
+    }
+    ecoApplyRef.current?.(on);
+  };
   // ဒီ ၃ ခုက မကြာခဏမပြောင်းလို့ React state နဲ့ ရတယ် (position မဟုတ်ဘူး)
   const [online, setOnline] = useState(1);
   // ssr:false မို့ ဒီ initializer က browser မှာပဲ ပြေးတယ် — window သုံးလို့ရတယ်
@@ -541,6 +563,19 @@ export function MetaverseScene() {
     shadowRef.current = applyShadows;
     applyShadows(window.localStorage.getItem(SHADOW_KEY) !== "0");
 
+    // 🔋 Eco mode — render ကုန်ကျမှု ချက်ချင်း လျှော့/ပြန်တင်။ FPS ကန့်က
+    // tick ထဲမှာ (ecoRef ကို frame တိုင်း ကြည့်တယ်)။
+    ecoApplyRef.current = (on: boolean) => {
+      if (on) {
+        renderer.setPixelRatio(1);
+        applyShadows(false);
+      } else if (!degradedRef.current) {
+        renderer.setPixelRatio(inApp ? 1 : Math.min(window.devicePixelRatio, 2));
+        applyShadows(window.localStorage.getItem(SHADOW_KEY) !== "0");
+      }
+    };
+    if (ecoRef.current) ecoApplyRef.current(true);
+
     // ── Post-processing (bloom) ───────────────────────────────────────────
     const postfx = createPostFx(
       renderer,
@@ -597,6 +632,8 @@ export function MetaverseScene() {
     };
     /// 💥 ပေါက်ကွဲမှု/ထိချက်က ကင်မရာ တုန်ခါမှု
     let shake = 0;
+    /// 💥 ဗုံးဒဏ်ကြောင့် လွင့်စင်မှု (knockback) — impulse ပြီး ဖြည်းဖြည်း သေတယ်
+    const kb = { x: 0, z: 0 };
     let lastFireLocal = 0;
     let firing = false;
     /// 🚶 FP head-bob အတွက် လမ်းလျှောက်ချိန်တိုင်း — movement ကို ခံစားရအောင်
@@ -1155,10 +1192,26 @@ export function MetaverseScene() {
               if (Number.isFinite(bx) && Number.isFinite(bz)) {
                 combatFx?.boom(bx, bz, br);
                 sfx?.shot("bomb");
+                // 💥 အပျက်အစီး မှန်ကွဲသံ — ပေါက်ကွဲမှုနောက် ခဏအကြာ
+                sfx?.glass(0.12);
                 const d = Math.hypot(bx - p.x, bz - p.z);
                 if (d < 25) {
                   shake = Math.max(shake, 0.4 * (1 - d / 25));
                   buzz(Math.round(30 + 50 * (1 - d / 25)));
+                }
+                // 💥 အနီးမှာ ပေါက်ရင် avatar လွင့်တယ် — ဗုံးကနေ အဝေးဘက်
+                // တွန်း + အပေါ်ခုန် + ပြင်းတဲ့ တုန်ခါမှု (user request)။
+                if (d < br * 2) {
+                  const k = 1 - d / (br * 2);
+                  const ddx = p.x - bx;
+                  const ddz = p.z - bz;
+                  const dl = Math.hypot(ddx, ddz) || 1;
+                  kb.x = (ddx / dl) * 14 * k;
+                  kb.z = (ddz / dl) * 14 * k;
+                  p.vy = Math.max(p.vy, 5 * k);
+                  p.airborne = true;
+                  shake = Math.max(shake, 0.55 * k);
+                  buzz([90, 40, 130]);
                 }
               }
               break;
@@ -1897,8 +1950,17 @@ export function MetaverseScene() {
     let effectT = 0;
     let nearId: string | null = null;
 
+    /// 🔋 Eco mode ရဲ့ 30fps ကန့်အတွက် နောက်ဆုံး render ချိန်
+    let lastEcoFrame = 0;
     const tick = () => {
       raf = requestAnimationFrame(tick);
+      // 🔋 Eco — frame ကျော်တယ် (dt က getDelta မို့ ကျော်ထားတဲ့အချိန်က
+      // နောက် frame ထဲ စုဝင်လာလို့ ရွေ့လျားနှုန်း မမှားဘူး)။
+      if (ecoRef.current) {
+        const nowMs = performance.now();
+        if (nowMs - lastEcoFrame < 31) return;
+        lastEcoFrame = nowMs;
+      }
       // dt ကို ကန့်သတ် — tab ပြန်ဖွင့်ချိန်မှာ dt ကြီးကြီးဝင်လာရင်
       // player က နံရံဖြတ်ပြီး ခုန်ထွက်သွားမယ်။
       const dt = Math.min(frameClock.getDelta(), 0.05);
@@ -1979,6 +2041,22 @@ export function MetaverseScene() {
         const solved = resolveCollision(nx, nz, p.x, p.z, world.colliders, world.walkRadius);
         p.x = solved.x;
         p.z = solved.z;
+      }
+      // 💥 ဗုံးလွင့်စင်မှု — input နဲ့မဆိုင်ဘဲ တွန်းတယ်၊ collision လည်း စစ်တယ်
+      if (!riding && (Math.abs(kb.x) > 0.05 || Math.abs(kb.z) > 0.05)) {
+        const kSolved = resolveCollision(
+          p.x + kb.x * dt,
+          p.z + kb.z * dt,
+          p.x,
+          p.z,
+          world.colliders,
+          world.walkRadius,
+        );
+        p.x = kSolved.x;
+        p.z = kSolved.z;
+        const decay = Math.exp(-5 * dt);
+        kb.x *= decay;
+        kb.z *= decay;
       }
       // ── မျက်နှာမူရာ — ရုတ်တရက်မလှည့်ဘဲ ချောချောလှည့် ──────────────────
       // ★ First-person မှာ CS လိုပဲ **ကင်မရာဘက်ကို အမြဲ** မျက်နှာမူတယ် —
@@ -3013,6 +3091,19 @@ export function MetaverseScene() {
               className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/50 text-[13px] backdrop-blur"
             >
               👤
+            </button>
+            <button
+              data-hud="1"
+              onClick={toggleEco}
+              aria-label="ဘက်ထရီချွေတာ mode"
+              title="ဘက်ထရီချွေတာ mode — 30fps + အရိပ်ပိတ်"
+              className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
+                eco
+                  ? "border-lime-400/60 bg-lime-500/25 text-lime-200"
+                  : "border-white/20 bg-black/50"
+              }`}
+            >
+              🔋
             </button>
             <button
               data-hud="1"
