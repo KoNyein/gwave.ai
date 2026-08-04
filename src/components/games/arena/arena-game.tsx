@@ -11,6 +11,7 @@ import {
 } from "@/lib/arena/net";
 
 import { connectArena, type ArenaClient, type ArenaState } from "./net";
+import { BrandedLoading } from "@/components/metaverse/branded-loading";
 import { createArenaScene, type SceneHandle } from "./scene";
 
 /// ဝှက်တမ်း — ကစားစခန်း。
@@ -375,6 +376,11 @@ export default function ArenaGame({ room = "hide-1" }: { room?: string }) {
   return (
     <div className="relative h-[100dvh] w-full touch-none overflow-hidden bg-slate-900">
       <canvas ref={canvasRef} className="h-full w-full" />
+
+      {/* Gwave branded loading — server နဲ့ မချိတ်မိသေးသရွေ့ */}
+      {selfId === null && !denied ? (
+        <BrandedLoading title="🙈 ဝှက်တမ်း ထဲ ဝင်နေသည်…" subtitle="Gwave Arena" />
+      ) : null}
 
       {/* ── အပေါ်ဘား ── */}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
