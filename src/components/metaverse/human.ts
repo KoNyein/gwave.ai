@@ -14,6 +14,11 @@ export type HumanState = {
   running: boolean;
   airborne: boolean;
   emote: "wave" | "dance" | "sit" | null;
+  /// ★ နောက်ပြန်လျှောက်နေလား (back-pedal) — arena မှာ ကိုယ်လုံးက ချိန်ရာဘက်
+  /// မျက်နှာမူထားပြီး နောက်ပြန်ဆုတ်တဲ့အခါ ခြေလှမ်း cycle ကို ပြောင်းပြန်
+  /// ဖွင့်ရမယ်။ မဟုတ်ရင် ရှေ့လှမ်းနေတဲ့ခြေနဲ့ နောက်ဆုတ်နေတဲ့ moonwalk
+  /// ဖြစ်ပြီး "ကိုယ်ဟန် မှားနေတယ်" လို့ မြင်ရတယ်။
+  backward?: boolean;
 };
 
 export type Avatar = {
@@ -171,7 +176,8 @@ export function createHuman(clothColor = 0x3f88c5, skinColor = 0xe8b088): Avatar
     emoteT += dt;
 
     // ခြေလှမ်း cycle က speed နဲ့အချိုးကျ — မြန်လေ ခြေလှမ်းသိပ်လေ။
-    phase += dt * (moving ? 2.2 + speed * 0.85 : 0);
+    // နောက်ပြန်ဆုတ်ရင် cycle ပြောင်းပြန် (HumanState.backward ရဲ့ မှတ်ချက်)။
+    phase += dt * (moving ? 2.2 + speed * 0.85 : 0) * (state.backward ? -1 : 1);
     breathe += dt * 1.6;
 
     const sw = Math.sin(phase);

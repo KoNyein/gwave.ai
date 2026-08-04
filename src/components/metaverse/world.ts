@@ -600,6 +600,26 @@ function buildTrees(
 /// နှစ်ခုတွဲစစ်ရင် နံရံကို ထောင့်စောင်းတိုးမိတာနဲ့ လုံးဝရပ်သွားမယ် (ကပ်နေသလို)။
 /// သီးခြားစစ်ရင် တိုက်တဲ့ဝင်ရိုးကိုပဲ ပိတ်ပြီး ကျန်တစ်ခုက ဆက်ရွှေ့လို့ရလို့
 /// နံရံတလျှောက် ဘေးတိုက်လျှောသွားတယ် — Roblox/GTA မှာ ခံစားရတဲ့အတိုင်း။
+/// နေရာတစ်ခုက collider (AABB + player radius) ထဲမှာလား — ယာဉ်ဆင်းချိန်
+/// လွတ်တဲ့နေရာ ရွေးဖို့နဲ့ resolveCollision ရဲ့ unstick စစ်ချက်မှာ သုံးတယ်။
+export function insideCollider(
+  px: number,
+  pz: number,
+  colliders: Collider[],
+): boolean {
+  for (const c of colliders) {
+    if (
+      px > c.minX - PLAYER_RADIUS &&
+      px < c.maxX + PLAYER_RADIUS &&
+      pz > c.minZ - PLAYER_RADIUS &&
+      pz < c.maxZ + PLAYER_RADIUS
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function resolveCollision(
   nx: number,
   nz: number,
@@ -611,22 +631,16 @@ export function resolveCollision(
   let x = nx;
   let z = nz;
 
-  const hits = (px: number, pz: number) => {
-    for (const c of colliders) {
-      if (
-        px > c.minX - PLAYER_RADIUS &&
-        px < c.maxX + PLAYER_RADIUS &&
-        pz > c.minZ - PLAYER_RADIUS &&
-        pz < c.maxZ + PLAYER_RADIUS
-      ) {
-        return true;
-      }
-    }
-    return false;
-  };
+  const hits = (px: number, pz: number) => insideCollider(px, pz, colliders);
 
-  if (hits(x, oldZ)) x = oldX;
-  if (hits(x, z)) z = oldZ;
+  // ★★ လက်ရှိနေရာကိုက collider ထဲမှာ ရှိနေပြီးသားဆိုရင် (ယာဉ်ဆင်းချိန်/
+  //   teleport က ချလိုက်တာ) **ပိတ်မထားဘူး** — ပိတ်ရင် ဘယ်ဘက်ကိုမှ
+  //   မရွှေ့နိုင်တော့ဘဲ ထာဝရ ကပ်နေတယ်။ လွတ်တဲ့နေရာ ပြန်ရောက်တာနဲ့
+  //   ပုံမှန် collision ပြန်စတယ်။
+  if (!hits(oldX, oldZ)) {
+    if (hits(x, oldZ)) x = oldX;
+    if (hits(x, z)) z = oldZ;
+  }
 
   const r = Math.hypot(x, z);
   const limit = worldRadius - 2;
