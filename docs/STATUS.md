@@ -139,6 +139,25 @@
 
 ## Changelog
 
+- 2026-08-04 (web): **Arena PUBG-standard combat.** The real "can't shoot"
+  root cause: the server rays from the *player's eye* (combat.js EYE_Y) but
+  the client sent the *camera's* direction — in third person the camera sits
+  behind and above, pitched down, so the server ray dove into the ground and
+  never hit anyone. Fire now converges the crosshair ray to the player eye
+  (accurate in both FP and TP). Grenades were also exploding at the
+  thrower's own feet because the client never sent the aFire target x,z —
+  now throws to the aimed point (15u), and the previously-unhandled aBoom
+  event renders a double shockwave ring + flash + distance-scaled screen
+  shake. PUBG-style controls: hold-to-auto-fire at each weapon's server
+  fireMs (client pre-cooldown), right-click-hold / 🎯 button = ADS with
+  per-weapon FOV zoom (sniper 18° + full scope overlay with reticle lines),
+  aim sensitivity scales with FOV, per-weapon camera recoil kick, mouse
+  wheel cycles weapons in-arena (Q = previous, 1-7 direct), 🧎 crouch
+  toggle for touch, damage numbers (-34) beside the crosshair, and a red
+  direction arrow showing where incoming fire came from. Esc/pointer-lock
+  exit clears held fire + ADS. Controls documented in the HUD help panel.
+  PR #465.
+
 - 2026-08-04 (web+server): **Arena playability overhaul — walk fix, combat
   feedback, keyboard controls, scoreboard, team play.** Root cause of
   "can't walk in arena": every game-layer teleport (assassin spawn on
