@@ -4,6 +4,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { MAX_HP, RESPAWN_S, TDM_TARGET, WEAPONS } from "@gwave-strike/shared";
 
 import { Input } from "./core/input";
+import { gltfLoader } from "./core/loaders";
 import { Fx } from "./fx/fx";
 import { PlayerController } from "./player/controller";
 import { WeaponSystem } from "./player/weapons";
@@ -71,8 +72,8 @@ async function boot() {
   gun.add(barrel, body);
   camera.add(gun);
 
-  // ── Bots: 4 allies + 5 enemies ──
-  const bots = new BotManager(world.scene, SOLDIER_URL, 5);
+  // ── Bots: 5 per team (BLUE fights beside the player) ──
+  const bots = new BotManager(world.scene, gltfLoader(renderer), SOLDIER_URL, 5);
 
   // Rapier ray for wall distance (hitscan clipping + bot LOS)
   const wallDist = (o: THREE.Vector3, d: THREE.Vector3): number => {

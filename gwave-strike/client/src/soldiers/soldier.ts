@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
+import type { GLTFLoader, GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as skeletonClone } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 /// Soldier GLB + animation FSM (blueprint §2.4).
@@ -30,8 +30,8 @@ const CLIP_MAP: Record<SoldierState, string[]> = {
 };
 
 let cached: Promise<GLTF> | null = null;
-function loadBase(url: string): Promise<GLTF> {
-  if (!cached) cached = new GLTFLoader().loadAsync(url);
+function loadBase(loader: GLTFLoader, url: string): Promise<GLTF> {
+  if (!cached) cached = loader.loadAsync(url);
   return cached;
 }
 
@@ -43,8 +43,8 @@ export class Soldier {
   private oneShotUntil = 0;
   dead = false;
 
-  constructor(url: string, tint?: number) {
-    void loadBase(url).then((gltf) => {
+  constructor(loader: GLTFLoader, url: string, tint?: number) {
+    void loadBase(loader, url).then((gltf) => {
       const model = skeletonClone(gltf.scene);
       // Kit characters are authored large — normalize to ~1.75m
       const box = new THREE.Box3().setFromObject(model);

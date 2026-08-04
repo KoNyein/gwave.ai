@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 import { MAX_HP, MAP_HALF, RESPAWN_S, WEAPONS } from "@gwave-strike/shared";
 
@@ -33,11 +34,17 @@ export class BotManager {
   bots: Bot[] = [];
   private scene: THREE.Scene;
 
-  constructor(scene: THREE.Scene, soldierUrl: string, perTeam: number) {
+  constructor(
+    scene: THREE.Scene,
+    loader: GLTFLoader,
+    soldierUrl: string,
+    perTeam: number,
+  ) {
     this.scene = scene;
     for (let team = 0; team <= 1; team++) {
       for (let i = 0; i < perTeam; i++) {
         const soldier = new Soldier(
+          loader,
           soldierUrl,
           team === 0 ? 0x7799ff : 0xff8877,
         );
