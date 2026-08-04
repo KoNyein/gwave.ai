@@ -139,6 +139,50 @@
 
 ## Changelog
 
+- 2026-08-04 (web+mv): **Arena bandit bot NPCs + weapon drops.** New
+  server-side AI (`server/metaverse/bots.js`, 150ms ticker): 3 named
+  bandit bots wander the arena, hold a 60s grudge against anyone who
+  shoots them (chase + fire through the same server-authoritative
+  handleFire path, distance-scaled aim error), mug non-friends who come
+  within 6u, and can be befriended with the new 🤝 wave chip — a friend
+  bot follows its player and returns fire at their attackers; shooting
+  it breaks the friendship. Bots stay out of the assassin target ring
+  and scoring; the reward for killing one is its dropped weapon. Any
+  death now drops the victim's weapon (half mag, 30s TTL) rendered as a
+  spinning 3D mesh; walking over it auto-picks it up (ammo capped at
+  2× mag) with a Burmese toast. 9 new tests (252 total). PR #473.
+
+- 2026-08-04 (web+mv): **Weapon realism pass.** Realistic wide sniper
+  scope (bright 41vmin view, mil-dot hairlines, no more black cutout),
+  chest-high armed hold pose for avatars in TP (human.ts `armed` state),
+  knife is true melee (slash animation, no tracer), and grenades got a
+  standard fuse: server emits aThrown (client arcs the projectile) and
+  detonates 900ms later via new assassin.detonate() with damage computed
+  from positions at detonation time — dodgeable. PR #472.
+
+- 2026-08-04 (web): **Arena HP bar + rules guide + haptics.** Bottom-
+  center HP bar with % and colour states plus 🎯score·☠️kills chip; 📜
+  rules card (assassin scoring, weapons roles, hide-and-seek rules,
+  live killsToWin); vibration feedback for fire/hit/damage/kill/death/
+  explosion/win; game-room chip row moved down to clear the app WebView
+  back arrow (accidental exits); avatar customiser re-applies live
+  without restarting the scene. PR #471.
+
+- 2026-08-04 (mv): **Stale-socket clobber fix.** A heartbeat-killed old
+  socket's cleanup was deleting the reconnected player from the room and
+  assassin match, killing weapon switch + HP display ("သေနတ်ပြောင်းမရ").
+  drop() now verifies it owns the current registration first. PR #470.
+
+- 2026-08-04 (web): **Minimal floating game HUD.** Game rooms replace
+  the status panel box with icon-only floating chips (🏆📣👤📜❓🏙),
+  compact fps pill, and hidden social rows — the game view is almost
+  entirely unobstructed on phones. PR #469.
+
+- 2026-08-04 (web): **Arena environment v2.** Brighter palette, factory
+  skyline backdrop outside the walk area, market stalls/carts/tanks/
+  rocks as new cover (with colliders), NPC villager statues, lantern
+  ring, clear-sky default. PR #468.
+
 - 2026-08-04 (web): **HUD zone design standard + real weapon icons + held
   3D weapons.** Documented six HUD zones (top-left panel, top-center
   weapons, top-right minimap/menu, bottom-left joystick/chat, bottom-center
