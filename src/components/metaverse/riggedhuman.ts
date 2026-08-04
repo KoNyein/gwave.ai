@@ -21,6 +21,17 @@ import type { Avatar, HumanState } from "./human";
 const KIT_SCALE = 0.2;
 const KIT_Y = 1;
 
+/// ရနိုင်တဲ့ character variant အားလုံး (character-a.glb … character-r.glb)
+export const SOLDIER_VARIANTS = "abcdefghijklmnopqr".split("");
+
+/// Player id ကနေ တည်ငြိမ်တဲ့ variant ရွေး — တစ်ယောက်တည်းက ဘယ် client
+/// ကကြည့်ကြည့် ရုပ်တူနေဖို့ (hash → variant)။
+export function soldierVariantFor(key: string): string {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return SOLDIER_VARIANTS[h % SOLDIER_VARIANTS.length] ?? "a";
+}
+
 export function createRiggedHuman(variant: string): Avatar {
   const group = new THREE.Group();
 
@@ -50,6 +61,27 @@ export function createRiggedHuman(variant: string): Avatar {
   let current = "";
   let disposed = false;
   let model: THREE.Group | null = null;
+  /// One-shot clip (ပစ်ဟန်/ဓားဝှေ့/သေ) ပြနေချိန် — locomotion မဖျက်စေနဲ့
+  let oneShotUntil = 0;
+
+  /// 🔫 One-shot clip — ပစ်တိုင်း `holding-right-shoot`၊ ဓားဆို
+  /// `attack-melee-right`၊ သေရင် `die` (holdMs နဲ့ အလောင်းပုံ ဆက်ထား)။
+  /// Avatar interface ကို မချဲ့ဘဲ group.userData ကနေ ပေးတယ် — dog/
+  /// procedural avatar တွေမှာ မရှိလို့ caller က optional chaining နဲ့ ခေါ်။
+  const playClip = (name: string, holdMs = 0) => {
+    if (!mixer) return;
+    const a = actions.get(name);
+    if (!a) return;
+    const prev = actions.get(current);
+    a.reset();
+    a.setLoop(THREE.LoopOnce, 1);
+    a.clampWhenFinished = true;
+    a.play();
+    if (prev && prev !== a) a.crossFadeFrom(prev, 0.06, false);
+    current = name;
+    oneShotUntil = performance.now() + a.getClip().duration * 1000 + holdMs - 60;
+  };
+  group.userData.playClip = playClip;
 
   void import("three/examples/jsm/loaders/GLTFLoader.js").then(({ GLTFLoader }) => {
     if (disposed) return;
@@ -75,22 +107,33 @@ export function createRiggedHuman(variant: string): Avatar {
     );
   });
 
-  /// Clip ကူးပြောင်း — crossfade လေးနဲ့ ချောချော
+  /// Clip ကူးပြောင်း — fadeIn/fadeOut (crossFadeFrom က ရပ်ပြီးသား
+  /// one-shot action ကနေ ပြန်ကူးရင် snap ဖြစ်တတ်လို့)။ Loop settings ကို
+  /// playClip က LoopOnce ပြောင်းထားနိုင်လို့ ပြန်သတ်မှတ်တယ်။
   function play(name: string, fade = 0.18) {
     if (name === current) return;
     const next = actions.get(name);
     if (!next) return;
     const prev = actions.get(current);
-    next.reset().play();
-    if (prev) next.crossFadeFrom(prev, fade, false);
+    next.reset();
+    next.setLoop(THREE.LoopRepeat, Infinity);
+    next.clampWhenFinished = false;
+    next.fadeIn(fade).play();
+    if (prev && prev !== next) prev.fadeOut(fade);
     current = name;
   }
 
   function update(dt: number, s: HumanState) {
     if (!mixer) return;
+    // One-shot ပြနေချိန် locomotion မလွှမ်း — ပြီးမှ ပြန်ဆက်တယ်
+    if (performance.now() < oneShotUntil) {
+      mixer.update(dt);
+      return;
+    }
     if (s.speed > 5) play("sprint");
     else if (s.speed > 0.15) play("walk");
     else if (s.emote === "wave") play("emote-yes");
+    else if (s.emote === "sit") play("sit");
     else if (s.armed) play("holding-right");
     else play("idle");
     mixer.update(dt);
