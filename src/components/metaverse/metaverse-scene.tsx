@@ -240,7 +240,14 @@ export function MetaverseScene() {
   // ── ⚔️ Arena (hub-world game room) — combat HUD state ────────────────────
   // ★ Room type "game" (arena) မှာသာ သုံးတယ်။ Avatar/socket/login က social
   //   room တွေနဲ့ တစ်ခုတည်း — combat layer ကပဲ အထပ်ပိုတာ။
-  type ArenaBoardRow = { id: string; name: string; score: number; alive: boolean };
+  type ArenaBoardRow = {
+    id: string;
+    name: string;
+    score: number;
+    alive: boolean;
+    /// 🏴‍☠️ ဓားပြ NPC — scoreboard မှာ ခွဲပြဖို့
+    bot?: boolean;
+  };
   type ArenaYou = {
     hp: number;
     alive: boolean;
@@ -562,6 +569,19 @@ export function MetaverseScene() {
     /// လက်နက် fireMs — aInit က server တန်ဖိုးတွေနဲ့ ပြည့်တယ် (auto-fire နှုန်း)။
     /// Server ကလည်း ကိုယ့်ဘက်က ထပ်စစ်တယ် — ဒါက client ရဲ့ ကြိုကန့်သတ်ချက်ပဲ။
     const wFireMs: Record<string, number> = {};
+    /// လက်နက် မြန်မာအမည် — aPickup toast မှာ ပြဖို့ (aInit က ပြည့်တယ်)
+    const wNames: Record<string, string> = {};
+    /// 🔫 မြေပေါ်ကျနေတဲ့ လက်နက် drop များ — server ရဲ့ aDrop/aDropGone နဲ့
+    /// အတူ လိုက်တယ်။ လှည့်နေတဲ့ 3D mesh က "ကောက်လို့ရတယ်" ဆိုတာ မြင်သာစေတယ်။
+    const dropMeshes = new Map<number, THREE.Group>();
+    let dropSpinT = 0;
+    const removeDrop = (id: number) => {
+      const g = dropMeshes.get(id);
+      if (!g) return;
+      dropMeshes.delete(id);
+      scene.remove(g);
+      disposeWeapon(g);
+    };
     /// ပစ်ချိန် ကင်မရာ ခုန်တက်ချက် (recoil) — လက်နက်အလိုက်
     const RECOIL: Record<string, number> = {
       pistol: 0.014, knife: 0.004, sniper: 0.032, bomb: 0.01,
@@ -1072,9 +1092,28 @@ export function MetaverseScene() {
                 (m.weapons as Record<string, unknown>) ?? {},
               );
               for (const [wk, wv] of Object.entries(
-                (m.weapons as Record<string, { fireMs?: number }>) ?? {},
+                (m.weapons as Record<string, { fireMs?: number; my?: string }>) ?? {},
               )) {
                 wFireMs[wk] = Number(wv?.fireMs) || 350;
+                wNames[wk] = String(wv?.my ?? wk);
+              }
+              // 🏴‍☠️ ဓားပြ bot တွေက presence ထဲ မရှိဘူး (socket မရှိလို့) —
+              // assassin state ကနေပဲ remote avatar အဖြစ် ဆောက်တယ်။
+              for (const q of (m.players as ArenaBoardRow[]) ?? []) {
+                if (!q.bot) continue;
+                const qb = q as ArenaBoardRow & {
+                  x?: number; y?: number; z?: number; ry?: number; weapon?: string;
+                };
+                addRemote(q.id, {
+                  x: Number(qb.x) || 0,
+                  y: Number(qb.y) || 0,
+                  z: Number(qb.z) || 0,
+                  ry: Number(qb.ry) || 0,
+                  name: q.name,
+                  authed: false,
+                });
+                const br = remotes.get(q.id);
+                if (br) setHandWeapon(br.avatar, String(qb.weapon ?? "pistol"));
               }
               teleportMe(m.players);
               break;
@@ -1139,11 +1178,26 @@ export function MetaverseScene() {
               break;
             }
             case "aEnter": {
-              const q = m.player as ArenaBoardRow;
+              const q = m.player as ArenaBoardRow & {
+                x?: number; y?: number; z?: number; ry?: number; weapon?: string;
+              };
               setArenaHud((h) => ({
                 ...h,
                 board: [...h.board.filter((b) => b.id !== q.id), q],
               }));
+              if (q.bot) {
+                addRemote(q.id, {
+                  x: Number(q.x) || 0,
+                  y: Number(q.y) || 0,
+                  z: Number(q.z) || 0,
+                  ry: Number(q.ry) || 0,
+                  name: q.name,
+                  authed: false,
+                });
+                const br = remotes.get(q.id);
+                if (br) setHandWeapon(br.avatar, String(q.weapon ?? "pistol"));
+                pushFeed(`🏴‍☠️ ${q.name} ကွင်းထဲ ဝင်လာပြီ`, false);
+              }
               break;
             }
             case "aLeave":
@@ -1151,7 +1205,22 @@ export function MetaverseScene() {
                 ...h,
                 board: h.board.filter((b) => b.id !== m.id),
               }));
+              // Bot avatar က presence leave မလာဘူး — ဒီကနေပဲ ဖြုတ်တယ်
+              if (String(m.id).startsWith("bot:")) dropRemote(String(m.id));
               break;
+            case "aMove": {
+              // 🏴‍☠️ Bot တွေရဲ့ ရွေ့လျားမှု — လူသားတွေက presence update နဲ့
+              // လာပြီးသားမို့ bot id တွေကိုပဲ ဒီကနေ မောင်းတယ် (remotes ရဲ့
+              // target-lerp စနစ်အတိုင်း ချောချော ရွေ့တယ်)။
+              if (!String(m.id).startsWith("bot:")) break;
+              const br = remotes.get(String(m.id));
+              if (!br) break;
+              br.target.x = Number(m.x) || 0;
+              br.target.y = Number(m.y) || 0;
+              br.target.z = Number(m.z) || 0;
+              br.target.ry = Number(m.ry) || 0;
+              break;
+            }
             case "aHit": {
               // ထိခံရသူ (remote) နေရာမှာ မီးပွား + ကွင်းနီ — ဘယ်သူထိလဲ
               // မျက်စိနဲ့ မြင်သာအောင် (ကိုယ်ပစ်တာ မဟုတ်လည်း ပြတယ်)
@@ -1212,18 +1281,24 @@ export function MetaverseScene() {
               // သေဆုံးသူ (remote) နေရာမှာ ကွင်းနီကြီး — kill motion graphic
               const kr = remotes.get(String(m.victimId));
               if (kr) combatFx?.ring(kr.cur.x, kr.cur.z, 0x991111, 1.3);
+              // 🏴‍☠️ ဓားပြပါတဲ့ kill က assassin အမှတ်မထိ — "လူမှား ✗" မပြရ
+              const anyBot = m.victimBot === true || m.killerBot === true;
               pushFeed(
-                `${m.killerName} → ${m.victimName}${m.correct === true ? " ✓" : " ✗ (လူမှား)"}`,
-                m.correct === true,
+                anyBot
+                  ? `${m.killerName} → ${m.victimName} 🏴‍☠️`
+                  : `${m.killerName} → ${m.victimName}${m.correct === true ? " ✓" : " ✗ (လူမှား)"}`,
+                m.correct === true || m.victimBot === true,
               );
               if (m.killerId === myId) {
-                sfx?.kill(m.correct === true);
-                buzz(m.correct === true ? [30, 40, 70] : [80]);
+                sfx?.kill(m.correct === true || m.victimBot === true);
+                buzz(m.correct === true || m.victimBot === true ? [30, 40, 70] : [80]);
                 flashBanner(
-                  m.correct === true
-                    ? `☠️ ${m.victimName} ကို သတ်လိုက်ပြီ!`
-                    : `✗ လူမှားသွားပြီ — ${m.victimName}`,
-                  m.correct === true ? "good" : "bad",
+                  m.victimBot === true
+                    ? `🏴‍☠️ ${m.victimName} ကို နှိမ်လိုက်ပြီ — လက်နက် ကျသွားတယ်`
+                    : m.correct === true
+                      ? `☠️ ${m.victimName} ကို သတ်လိုက်ပြီ!`
+                      : `✗ လူမှားသွားပြီ — ${m.victimName}`,
+                  m.correct === true || m.victimBot === true ? "good" : "bad",
                 );
               } else if (m.victimId === myId) {
                 sfx?.hurt();
@@ -1247,6 +1322,52 @@ export function MetaverseScene() {
                 sfx?.reload();
                 combatFx?.ring(p.x, p.z, 0x4ade80);
                 flashBanner("💚 ပြန်ရှင်ပြီ — သတိထား", "good");
+              } else if (String(m.id).startsWith("bot:")) {
+                // Bot ပြန်ရှင်ချိန် — အလောင်းနေရာကနေ spawn ကို ချက်ချင်း ခုန်
+                const br = remotes.get(String(m.id));
+                if (br) {
+                  br.cur.x = br.target.x = Number(m.x) || 0;
+                  br.cur.z = br.target.z = Number(m.z) || 0;
+                  combatFx?.ring(br.cur.x, br.cur.z, 0x4ade80);
+                }
+              }
+              break;
+            case "aDrop": {
+              // 🔫 မြေပေါ် လက်နက်ကျမှု — လှည့်နေတဲ့ mesh (tick မှာ spin)
+              const did = Number(m.id);
+              if (!Number.isFinite(did) || dropMeshes.has(did)) break;
+              const g = buildWeaponMesh(String(m.weapon || "pistol"));
+              g.position.set(Number(m.x) || 0, 0.55, Number(m.z) || 0);
+              g.scale.setScalar(1.4);
+              scene.add(g);
+              dropMeshes.set(did, g);
+              break;
+            }
+            case "aDropGone":
+              removeDrop(Number(m.id));
+              break;
+            case "aPickup": {
+              // ကိုယ်ကောက်မိတဲ့ ကျည် — toast + အသံ + တုန်ခါမှု
+              const wk = String(m.weapon || "");
+              sfx?.reload();
+              buzz(20);
+              pushFeed(
+                `🔫 ${wNames[wk] ?? wk} ကျည် +${Number(m.gained) || 0} ကောက်ရပြီ`,
+                true,
+              );
+              break;
+            }
+            case "aBotMood":
+              if (m.mood === "friend") {
+                if (m.of === myId) {
+                  buzz([20, 30, 20]);
+                  flashBanner(
+                    `🤝 ${m.name} နဲ့ မိတ်ဆွေဖြစ်ပြီ — မင်းကို ကူညီမယ်`,
+                    "good",
+                  );
+                } else {
+                  pushFeed(`🤝 ${m.name} က မိတ်ဆွေရသွားပြီ`, true);
+                }
               }
               break;
             case "aWin":
@@ -2051,6 +2172,15 @@ export function MetaverseScene() {
       weather.update(dt, p.x, p.y + 6, p.z);
       gameFx.update(effectT);
       combatFx?.update(dt);
+      // 🔫 မြေပေါ်က drop လက်နက်တွေ — လှည့် + မျောနေတဲ့ bob (ကောက်လို့ရ
+      // မှန်း မြင်သာအောင်)
+      if (dropMeshes.size > 0) {
+        dropSpinT += dt;
+        for (const g of dropMeshes.values()) {
+          g.rotation.y += dt * 2.2;
+          g.position.y = 0.55 + Math.sin(dropSpinT * 2.4) * 0.09;
+        }
+      }
 
       // ── ဆောက်လုပ်ရေး: ghost + ကွက် streaming (Phase 18) ────────────────
       plots.update(p.x, p.z);
@@ -2210,6 +2340,7 @@ export function MetaverseScene() {
       nametags?.dispose();
       weather.dispose();
       gameFx.dispose();
+      for (const id of [...dropMeshes.keys()]) removeDrop(id);
       combatFx?.dispose();
       sfx?.dispose();
       buildRender.dispose();
@@ -2632,10 +2763,22 @@ export function MetaverseScene() {
             {(roomId === "arena"
               ? [...arenaHud.board]
                   .sort((a, b) => b.score - a.score)
-                  .map((r) => ({ id: r.id, name: r.name, score: r.score, dead: !r.alive }))
+                  .map((r) => ({
+                    id: r.id,
+                    name: r.name,
+                    score: r.score,
+                    dead: !r.alive,
+                    bot: r.bot === true,
+                  }))
               : [...hideHud.players]
                   .sort((a, b) => b.score - a.score)
-                  .map((r) => ({ id: r.id, name: r.name, score: r.score, dead: false }))
+                  .map((r) => ({
+                    id: r.id,
+                    name: r.name,
+                    score: r.score,
+                    dead: false,
+                    bot: false,
+                  }))
             ).map((r, i) => (
               <div
                 key={r.id}
@@ -2644,7 +2787,8 @@ export function MetaverseScene() {
                 }`}
               >
                 <span className="truncate">
-                  {i + 1}. {r.name}
+                  {i + 1}. {r.bot ? "🏴‍☠️ " : ""}
+                  {r.name}
                   {r.id === meId ? " (မင်း)" : ""}
                   {r.dead ? " ☠️" : ""}
                 </span>
@@ -2681,6 +2825,9 @@ export function MetaverseScene() {
                 <p>💀 သေရင် <b>၄ စက္ကန့်</b>အတွင်း နေရာအသစ်မှာ hp အပြည့်နဲ့ ပြန်ရှင်တယ်။</p>
                 <p>🔫 <b>လက်နက် ၇ မျိုး</b> — ပစ္စတို (မျှတ) · ဓား (အနီးကပ်၊ ကျည်မကုန်) · စနိုက်ပါ (အဝေး + scope) · ဗုံး (ဧရိယာပေါက်ကွဲ) · SMG (အမြန်ပစ်) · သေနတ်ကြီး (အနီး အပြင်းဆုံး) · ရီဗော်လ်ဗာ (ခေါင်းထိ တစ်ချက်သေ)။</p>
                 <p>🎯 ခေါင်းထိချက် ဒဏ် ၂ ဆ — 🎯 ချိန်ကွင်း (ADS) နဲ့ ပိုတိကျအောင် ချိန်ပါ။</p>
+                <p>🏴‍☠️ <b>ဓားပြ NPC ၃ ယောက်</b> — အနားကပ်ရင် လုယက်တယ်၊ ပစ်မိရင် ရန်ငြိုးထားပြီး လိုက်ပစ်တယ်။ သတ်ရင် အမှတ်မထိဘဲ <b>လက်နက် ကျတယ်</b>။</p>
+                <p>🔫 <b>ကျတဲ့လက်နက်</b> (လှည့်နေတဲ့ လက်နက်) ဘေးကပ်ရင် အလိုအလျောက် ကောက်ပြီး ကျည်ရတယ် — စက္ကန့် ၃၀ အတွင်း မကောက်ရင် ပျောက်တယ်။</p>
+                <p>🤝 <b>ဓားပြနဲ့ မိတ်ဆွေဖွဲ့</b> — အနားကပ်ပြီး 🤝 (လက်ပြ) နှိပ်ရင် friend ဖြစ်တယ်။ Friend bot က နောက်ကလိုက်ပြီး မင်းကို ပစ်သူကို ပြန်ကူပစ်ပေးတယ် — သူ့ကို ပြန်ပစ်မိရင် မိတ်ဆွေပျက်တယ်။</p>
                 <p>👥 <b>အဖွဲ့နဲ့</b> — 📣 link ဖိတ် · 🏆 အမှတ်စာရင်း · chat/voice သုံးလို့ရ။</p>
               </div>
             </>
@@ -2799,6 +2946,21 @@ export function MetaverseScene() {
             >
               📣
             </button>
+            {roomId === "arena" && (
+              <button
+                data-hud="1"
+                onClick={() => {
+                  // 👋 wave — server က အနီးက ဓားပြ bot နဲ့ မိတ်ဆွေဖွဲ့ပေးတယ်
+                  setEmote("wave");
+                  window.setTimeout(() => setEmote(null), 1600);
+                }}
+                aria-label="ဓားပြနဲ့ မိတ်ဆွေဖွဲ့မယ် (လက်ပြ)"
+                title="ဓားပြနဲ့ မိတ်ဆွေဖွဲ့မယ် (လက်ပြ)"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/50 text-[13px] backdrop-blur"
+              >
+                🤝
+              </button>
+            )}
             <button
               data-hud="1"
               onClick={() => {
