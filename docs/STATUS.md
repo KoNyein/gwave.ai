@@ -139,6 +139,26 @@
 
 ## Changelog
 
+- 2026-08-04 (web): **CCTV vendor-cloud framework (PR 1 of 4) + post-RLS
+  regression fix.** Groundwork for linking approved camera-vendor cloud
+  accounts (docs/tasks/VENDOR_CLOUD_CAMERA_INTEGRATION.md): `vendor_cloud`
+  camera type, `camera_vendor_connections` (owner-readable metadata, zero
+  client write paths) + `camera_vendor_secrets` (sealed: RLS with no
+  policies, grants revoked, AES-256-GCM ciphertext keyed by
+  `CAMERA_VENDOR_TOKEN_KEY_V1` in `/etc/gwave-web.env`), vendor columns on
+  `user_cameras`, connector interface + registry mirroring the health
+  providers, a deterministic fake connector (dev/test only, hard-rejected in
+  production) and a Hikvision typed stub that stays disabled until approved
+  partner credentials + a signed-off docs/cctv/VENDOR_FEASIBILITY.md exist.
+  Feature flag `cctv_vendor_cloud` seeded OFF. Routes/UI come in PR 2-3.
+  **Applying the three new migrations on RDS is pending (user-side, then
+  `sudo docker restart postgrest`).** While validating, the RLS audit caught
+  a real regression: `20260711110000_fix_post_rls.sql` had rewritten the
+  posts INSERT policy and dropped the suspension / group-membership /
+  page-owner guards — suspended users could post again.
+  `20260804092000_restore_post_insert_guards.sql` restores all three
+  (audit now fully green on a scratch replay of every migration).
+
 - 2026-08-04 (ship): **PR #456 squash-merged to main (`fea470c`) and deployed.**
   Assassin hit registration is now **server-authoritative** (Arena spec A4):
   the client sends only its camera-ray direction (`aFire {dx,dy,dz}`);

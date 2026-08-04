@@ -156,6 +156,110 @@ do $$ begin
 end $$;
 
 -- ---------------------------------------------------------------------
+-- Vendor-cloud camera connections: metadata is owner-read-only, the
+-- secrets table is sealed to every client role, and token state cannot
+-- be written from the browser at all.
+-- ---------------------------------------------------------------------
+reset role;
+insert into public.camera_vendor_connections
+  (id, user_id, provider, provider_account_id, status) values
+  ('90000000-0000-0000-0000-0000000000c1',
+   '00000000-0000-0000-0000-000000000001', 'fake', 'audit-acct', 'connected');
+insert into public.camera_vendor_secrets
+  (connection_id, access_token_ciphertext, token_nonce, token_auth_tag) values
+  ('90000000-0000-0000-0000-0000000000c1', 'Y2lwaGVy', 'bm9uY2U=', 'dGFn');
+set local role authenticated;
+
+-- u1 (owner): may read own metadata, may NOT read secrets or write state.
+select pg_temp.impersonate('00000000-0000-0000-0000-000000000001');
+
+do $$ begin
+  if not exists (select 1 from public.camera_vendor_connections
+                 where id = '90000000-0000-0000-0000-0000000000c1') then
+    raise exception 'FAIL: owner cannot read their own vendor connection';
+  end if;
+  raise notice 'OK: owner reads their own vendor connection metadata';
+end $$;
+
+do $$ begin
+  begin
+    if exists (select 1 from public.camera_vendor_secrets
+               where connection_id = '90000000-0000-0000-0000-0000000000c1') then
+      raise exception 'FAIL: owner read the vendor secrets table';
+    end if;
+  exception when insufficient_privilege then
+    null; -- revoked grant is the expected denial
+  end;
+  raise notice 'OK: vendor secrets are sealed even from the owner';
+end $$;
+
+do $$ begin
+  begin
+    update public.camera_vendor_connections
+    set status = 'connected', token_expires_at = now() + interval '10 years'
+    where id = '90000000-0000-0000-0000-0000000000c1';
+    if exists (select 1 from public.camera_vendor_connections
+               where id = '90000000-0000-0000-0000-0000000000c1'
+                 and token_expires_at > now() + interval '5 years') then
+      raise exception 'FAIL: owner rewrote vendor token state from the client';
+    end if;
+  exception when insufficient_privilege then
+    null; -- revoked UPDATE grant is the expected denial
+  end;
+  raise notice 'OK: client-side vendor connection writes are denied';
+end $$;
+
+-- u5 (stranger): sees nothing, writes nothing.
+select pg_temp.impersonate('00000000-0000-0000-0000-000000000005');
+
+do $$ begin
+  if exists (select 1 from public.camera_vendor_connections
+             where id = '90000000-0000-0000-0000-0000000000c1') then
+    raise exception 'FAIL: stranger read another user''s vendor connection';
+  end if;
+  raise notice 'OK: vendor connections are hidden from other users';
+end $$;
+
+do $$ begin
+  begin
+    insert into public.camera_vendor_connections (user_id, provider)
+    values ('00000000-0000-0000-0000-000000000005', 'fake');
+    raise exception 'FAIL: client inserted a vendor connection directly';
+  exception when insufficient_privilege then
+    raise notice 'OK: direct vendor connection insert rejected';
+  end;
+end $$;
+
+-- anon: the whole feature is invisible.
+reset role;
+set local role anon;
+
+do $$ begin
+  begin
+    if exists (select 1 from public.camera_vendor_connections) then
+      raise exception 'FAIL: anonymous read of vendor connections';
+    end if;
+  exception when insufficient_privilege then
+    null; -- revoked grant is the expected denial
+  end;
+  raise notice 'OK: anonymous users cannot see vendor connections';
+end $$;
+
+do $$ begin
+  begin
+    if exists (select 1 from public.camera_vendor_secrets) then
+      raise exception 'FAIL: anonymous read of vendor secrets';
+    end if;
+  exception when insufficient_privilege then
+    null;
+  end;
+  raise notice 'OK: anonymous users cannot see vendor secrets';
+end $$;
+
+reset role;
+set local role authenticated;
+
+-- ---------------------------------------------------------------------
 -- Suspension: u5 suspended (as superuser), then tries to post.
 -- ---------------------------------------------------------------------
 reset role;
