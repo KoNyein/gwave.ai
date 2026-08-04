@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAvatarStore } from "../store/avatarStore";
@@ -10,6 +11,12 @@ import {
   type AvatarAsset,
 } from "../types";
 import { AvatarPreview } from "./AvatarPreview";
+
+/// Scanner ကို dynamic — MediaPipe WASM ~12MB က scan နှိပ်မှသာ ဆွဲရမယ်
+const FaceScanner = dynamic(
+  () => import("../scan/FaceScanner").then((m) => m.FaceScanner),
+  { ssr: false },
+);
 
 /// 🧬 Avatar editor shell (spec §8) — Phase 1။
 /// Tabs: Scan (Phase 2 placeholder + consent + delete) / Body / Skin /
@@ -23,6 +30,7 @@ export function AvatarEditor() {
   const [tab, setTab] = useState<Tab>("body");
   const [assets, setAssets] = useState<AvatarAsset[]>([]);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     void load();
@@ -59,6 +67,16 @@ export function AvatarEditor() {
 
   return (
     <div className="flex h-[calc(100dvh-3.5rem)] flex-col gap-3 p-3 md:flex-row">
+      {scanning && (
+        <FaceScanner
+          onClose={() => setScanning(false)}
+          onDone={({ faceGlbUrl, faceThumbUrl }) => {
+            setScanning(false);
+            patch({ faceGlbUrl, faceThumbUrl, scanSource: "face" });
+            void save();
+          }}
+        />
+      )}
       {/* ── Preview ── */}
       <div className="relative min-h-[45dvh] flex-1 overflow-hidden rounded-2xl border border-white/10 bg-black/40 md:min-h-0">
         <AvatarPreview config={config} bodyGlbUrl={bodyGlbUrl} />
@@ -95,17 +113,47 @@ export function AvatarEditor() {
         <div className="flex-1 space-y-3 overflow-y-auto p-3">
           {tab === "scan" && (
             <div className="space-y-3 text-sm text-white/75">
-              <p className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-[13px] leading-relaxed">
-                📷 <b>Face Scan (Phase 2)</b> — ကင်မရာနဲ့ မျက်နှာ 3D scan
-                ဖမ်းပြီး avatar ခေါင်းမှာ ကိုယ့်မျက်နှာအစစ် တပ်တာ
-                မကြာမီ ရောက်လာပါမယ်။ အခု Phase 1 မှာ ကိုယ်ခန္ဓာ၊
-                အသားအရေ၊ ပုံစံ ချိန်ညှိတာတွေ အရင် သုံးလို့ရပါပြီ။
-              </p>
+              {config.faceGlbUrl ? (
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3">
+                  {config.faceThumbUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={config.faceThumbUrl}
+                      alt="scan thumbnail"
+                      className="h-14 w-14 rounded-lg object-cover"
+                    />
+                  )}
+                  <div className="flex-1 text-[13px]">
+                    <p className="text-emerald-200">✓ မျက်နှာ scan တပ်ထားပြီ</p>
+                    <button
+                      onClick={async () => {
+                        await fetch("/api/avatar/upload", { method: "DELETE" }).catch(
+                          () => undefined,
+                        );
+                        patch({ faceGlbUrl: null, faceThumbUrl: null, scanSource: "none" });
+                        void save();
+                      }}
+                      className="mt-1 text-[11px] text-red-300 underline"
+                    >
+                      🗑 Scan ဖျက်မယ် (အပြီးဖျက်)
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="rounded-lg border border-white/15 bg-white/5 p-3 text-[13px] leading-relaxed">
+                  📷 ကင်မရာနဲ့ မျက်နှာကို 3D scan ဖမ်းပြီး avatar ခေါင်းမှာ
+                  ကိုယ့်မျက်နှာအစစ် တပ်လို့ရပါပြီ။
+                </p>
+              )}
+              <button
+                onClick={() => setScanning(true)}
+                className="w-full rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-black hover:bg-emerald-400"
+              >
+                📷 {config.faceGlbUrl ? "ပြန် Scan မယ်" : "မျက်နှာ Scan စတင်မယ်"}
+              </button>
               <p className="text-[12px] leading-relaxed text-white/50">
-                🔒 မျက်နှာ scan က biometric data ဖြစ်လို့ scan မလုပ်ခင်
-                သဘောတူညီချက် တောင်းပါမယ်၊ ဖုန်းထဲမှာပဲ process လုပ်ပြီး
-                နောက်ဆုံး 3D file သာ upload တက်ပါမယ်၊ ဘယ်အချိန်မဆို
-                ဖျက်လို့ရပါမယ်။
+                🔒 Biometric — frame တွေ ဖုန်းထဲမှာပဲ process လုပ်တယ်၊
+                နောက်ဆုံး 3D file ပဲ upload တက်တယ်၊ ဘယ်အချိန်မဆို ဖျက်လို့ရတယ်။
               </p>
             </div>
           )}
