@@ -7,7 +7,7 @@
 ///   ဆောက်တာပဲ လုပ်တယ်၊ map အသစ်ထည့်ဖို့ data file တစ်ခု ရေးပြီး
 ///   `maps/index.ts` မှာ မှတ်ပုံတင်ရုံပဲ။
 
-export type MapId = "city" | "farm" | "snow" | "sky" | "arena" | "hide-1";
+export type MapId = "city" | "farm" | "snow" | "sky" | "gwave-city" | "arena" | "hide-1";
 
 export type WeatherKind =
   | "clear"
@@ -96,6 +96,24 @@ export type TerrainDef =
   /// ပျံနေတဲ့ ကျွန်းများ
   | { kind: "islands"; islands: { x: number; y: number; z: number; r: number }[] };
 
+/// GLB model placement — Kenney kit စတဲ့ CC0 asset တွေကို map data အဖြစ်
+/// ချထားနည်း။ ★ `url` က public/ ထဲက GLB ဖြစ်ပြီး ဘေးမှာ `Textures/`
+/// folder ရှိရမယ် (Kenney GLB တွေက texture ကို သီးခြားဖိုင်နဲ့ ကိုးကားတယ်)။
+export type ModelDef = {
+  url: string;
+  x: number;
+  z: number;
+  /// Radian။ ★ collider ပါတဲ့ model မှာ 90° အဆတိုင်းသာ သုံးပါ — AABB
+  /// collider က ထောင့်စောင်းကို မဖော်ပြနိုင်ဘူး။
+  ry?: number;
+  scale?: number;
+  /// မြေအောက်စူးနေ/မြေပေါ်မြောနေရင် ညှိချက် (scale မပြောင်းခင် unit)
+  y?: number;
+  /// ရှိမှ collider ထည့်တယ် — မပါရင် အလှသက်သက် (ဖြတ်လျှောက်လို့ရ)။
+  /// w/d က model unit (scale မထည့်ခင်) — engine က scale နဲ့ မြှောက်ပေးတယ်။
+  collide?: { w: number; d: number };
+};
+
 export type MapDef = {
   id: MapId;
   /// မြန်မာလို နာမည် — map picker မှာ ပြတယ်
@@ -126,6 +144,8 @@ export type MapDef = {
   trees: { x: number; z: number; kind: "pine" | "palm" | "broadleaf" | "bare"; scale: number }[];
   lamps: { x: number; z: number; color: number }[];
   vehicles: { kind: VehicleKind; x: number; z: number; ry: number }[];
+  /// GLB model placements (optional) — Kenney kit worlds
+  models?: ModelDef[];
   weather: { default: WeatherKind; allowed: WeatherKind[] };
   ambientSound?: "city" | "forest" | "wind" | "waves";
   /// မြို့လယ် screen စတဲ့ Gwave ချိတ်ဆက်မှုတွေ
