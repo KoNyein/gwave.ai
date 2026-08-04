@@ -98,6 +98,18 @@ function makePlayer(id, name, index) {
   };
 }
 
+/// 🏴‍☠️ ဓားပြ bot — ကစားသမားနဲ့ တူတူပဲ၊ `bot: true` ပဲ ကွာတယ်။
+/// AI (ရန်ငြိုး/မိတ်ဆွေ/လှည့်လည်) က bots.js မှာ — ဒီမှာ state ပဲ ဆောက်တယ်။
+/// ★ Bot က assassin ရဲ့ ပစ်မှတ်သံသရာ ထဲ **မပါဘူး** (assignTargets မှာ
+///   ဖယ်ထားတယ်) — bot သတ်လို့ ပွဲမနိုင်သလို လူမှားလည်း မဖြစ်ဘူး။
+function makeBot(id, name, index, weapon = "pistol", skin = "phantom") {
+  const b = makePlayer(id, name, index);
+  b.bot = true;
+  if (WEAPONS[weapon]) b.weapon = weapon;
+  if (SKINS[skin]) b.skin = skin;
+  return b;
+}
+
 /// ★ WEAPONS ကနေ တွက်တယ် — လက်နက်အသစ် ထည့်တိုင်း ဒီ function ကို
 ///   ပြင်ဖို့ မမေ့သွားအောင် (မေ့ရင် ကျည် undefined ဖြစ်ပြီး ဘယ်တော့မှ
 ///   မပစ်နိုင်တော့ဘူး)。
@@ -113,7 +125,8 @@ function freshAmmo() {
 ///   ဆိုလိုတာက ကမ္ဘာပေါ်က ကစားသမား အားလုံး တစ်ပွဲထဲမှာ ရောနေမယ်။ Room
 ///   အလိုက် ခွဲထားမှ ပွဲတွေ သီးခြားဖြစ်တယ်။
 function createMatch() {
-  return { players: new Map(), seq: 0, endsAt: 0 };
+  /// `drops` — မြေပေါ်ကျနေတဲ့ လက်နက်တွေ (သေသူဆီက)။ ကောက်ရင် ကျည်ရတယ်။
+  return { players: new Map(), seq: 0, endsAt: 0, drops: new Map(), dropSeq: 0 };
 }
 
 /// ── ပစ်မှတ် ခွဲဝေခြင်း — သံသရာပုံစံ (A → B → C → A) ─────────────────────
@@ -121,7 +134,9 @@ function createMatch() {
 /// ★ ဒါမှ ကစားသမားတိုင်း ပစ်မှတ်တစ်ခုစီ ရပြီး၊ တစ်ယောက်ချင်းစီကိုလည်း
 ///   တစ်ယောက်တည်းက လိုက်ရှာတယ်။
 function assignTargets(match, rng = crypto) {
-  const alive = [...match.players.values()].filter((p) => p.alive);
+  // ★ Bot တွေ သံသရာထဲ မပါဘူး — ပါရင် bot ကို လျှို့ဝှက်ပစ်မှတ် ရသူက
+  //   AI ကို သတ်ရုံနဲ့ ပွဲနိုင်သွားမယ် (farm ဖြစ်တယ်)။
+  const alive = [...match.players.values()].filter((p) => p.alive && !p.bot);
   if (alive.length < 2) {
     for (const p of match.players.values()) {
       p.targetId = null;
@@ -183,6 +198,8 @@ function publicPlayer(p) {
     kills: p.kills,
     score: p.score,
     weapon: p.weapon,
+    /// Client က ဓားပြ NPC ကို လူသားနဲ့ ခွဲမြင်ဖို့ (nametag/avatar)
+    bot: !!p.bot,
   };
 }
 
@@ -280,8 +297,13 @@ function resolveKill(match, killer, victim, now = Date.now()) {
   victim.deaths++;
   victim.respawnAt = now + RESPAWN_MS;
 
-  const correct = killer.targetId === victim.id;
-  if (correct) {
+  let correct = false;
+  if (killer.bot || victim.bot) {
+    // 🏴‍☠️ ဓားပြပါတဲ့ သတ်ဖြတ်မှုက assassin အမှတ်စနစ်ကို **မထိဘူး** —
+    //   bot သတ်တာ လူမှားမဟုတ်သလို ပွဲနိုင်မှတ်လည်း မတက်ဘူး။ ဆုက
+    //   သူ့ဆီက ကျတဲ့ လက်နက် (drop) ပဲ။
+  } else if (killer.targetId === victim.id) {
+    correct = true;
     killer.kills++;
     killer.score += 1;
   } else {
@@ -450,10 +472,16 @@ function applyDamage(match, attacker, victim, dmg, weapon, hitPart, now = Date.n
       weapon,
       hitPart,
       correct: r.correct,
+      /// 🏴‍☠️ Client က ဓားပြသတ်တာကို "လူမှား ✗" လို့ မပြမိအောင်
+      victimBot: !!victim.bot,
+      killerBot: !!attacker.bot,
       killerKills: attacker.kills,
       killerScore: attacker.score,
     },
   });
+  // 🔫 သေသူ့လက်နက် မြေပေါ်ကျတယ် — ကောက်ရင် ကျည်ရတယ်။ ဓားက drop မဖြစ်ဘူး
+  // (ကျည်မရှိလို့ ကောက်စရာ မရှိဘူး)။
+  out.push(...spawnDrop(match, victim, now));
   if (r.won) {
     out.push({
       all: true,
@@ -463,9 +491,72 @@ function applyDamage(match, attacker, victim, dmg, weapon, hitPart, now = Date.n
   return out;
 }
 
+// ── 🔫 လက်နက် drop / ကောက်ယူမှု ─────────────────────────────────────────
+/// ကောက်နိုင်တဲ့ အကွာအဝေး
+const PICKUP_RANGE = 1.6;
+/// မကောက်ဘဲ ထားရင် ပျောက်သွားချိန်
+const DROP_TTL_MS = 30000;
+
+/// သေသူ့နေရာမှာ သူ့လက်နက် ကျတယ် — ကျည် တစ်ဝက်မောင်းပါတယ်။
+function spawnDrop(match, victim, now = Date.now()) {
+  const w = WEAPONS[victim.weapon];
+  if (!w || w.ammo === Infinity) return [];
+  const id = ++match.dropSeq;
+  const drop = {
+    id,
+    x: round2(victim.x),
+    z: round2(victim.z),
+    weapon: victim.weapon,
+    ammo: Math.max(1, Math.ceil(w.ammo / 2)),
+    expiresAt: now + DROP_TTL_MS,
+  };
+  match.drops.set(id, drop);
+  return [
+    { all: true, msg: { type: "aDrop", id, x: drop.x, z: drop.z, weapon: drop.weapon } },
+  ];
+}
+
+/// ရွေ့တိုင်း စစ်တယ် — အနီးက drop ကို အလိုအလျောက် ကောက်တယ်။
+/// ကျည်က မောင်းနှစ်မောင်းစာထက် မကျော်ဘူး (သိုမကုန်အောင်)။
+function collectDrops(match, me, now = Date.now()) {
+  const out = [];
+  if (!me.alive) return out;
+  for (const drop of match.drops.values()) {
+    if (drop.expiresAt <= now) continue; // expireDrops က မကြာခင် ရှင်းလိမ့်မယ်
+    if (Math.hypot(drop.x - me.x, drop.z - me.z) > PICKUP_RANGE) continue;
+    match.drops.delete(drop.id);
+    const mag = WEAPONS[drop.weapon]?.ammo ?? 0;
+    const before = me.ammo[drop.weapon] ?? 0;
+    me.ammo[drop.weapon] = Math.min(mag * 2, before + drop.ammo);
+    out.push({ all: true, msg: { type: "aDropGone", id: drop.id } });
+    out.push({
+      to: me.id,
+      msg: {
+        type: "aPickup",
+        weapon: drop.weapon,
+        gained: me.ammo[drop.weapon] - before,
+      },
+    });
+  }
+  return out;
+}
+
+/// သက်တမ်းကုန်တဲ့ drop တွေ ရှင်းတယ် — transport ticker က ခေါ်တယ်။
+function expireDrops(match, now = Date.now()) {
+  const out = [];
+  for (const drop of match.drops.values()) {
+    if (drop.expiresAt > now) continue;
+    match.drops.delete(drop.id);
+    out.push({ all: true, msg: { type: "aDropGone", id: drop.id } });
+  }
+  return out;
+}
+
 module.exports = {
   ARENA,
   BOMB_FUSE_MS,
+  DROP_TTL_MS,
+  PICKUP_RANGE,
   KILLS_TO_WIN,
   MAX_HP,
   MAX_SPEED,
@@ -477,11 +568,14 @@ module.exports = {
   applyDamage,
   applyMove,
   assignTargets,
+  collectDrops,
   computeDamage,
   createMatch,
   detonate,
+  expireDrops,
   freshAmmo,
   handleFire,
+  makeBot,
   makePlayer,
   personalState,
   publicPlayer,
