@@ -194,7 +194,6 @@ export function isHealthEnabled(): boolean {
  */
 export {
   getCameraVendorTokenKey,
-  getHikvisionConfig,
   isCctvVendorFakeEnabled,
 } from "@/lib/cctv/vendors/config";
 

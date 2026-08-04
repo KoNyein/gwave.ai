@@ -139,6 +139,44 @@
 
 ## Changelog
 
+- 2026-08-04 (web): **Hikvision brand removed** (product decision —
+  partner application on hold): connector stub, env plumbing, and the
+  RTSP preset deleted; the vendor-cloud framework stays vendor-agnostic
+  and Hikvision hardware still works via generic ONVIF/RTSP. PR #480.
+
+- 2026-08-04 (web): **Metaverse Go Live → newsfeed.** New golive.ts
+  publishes the WebGL canvas (30fps) + mic through the existing LiveKit
+  Go Live pipeline (create → stage token → goLive → end); 🔴 chips in
+  game/social HUD with off/starting/live states; broadcast ends cleanly
+  on room change or teardown. Appears in the feed Live rail like any
+  live and is announced on the in-world screens. PR #479.
+
+- 2026-08-04 (web): **GWAVE LIVE screens play current lives.** The city
+  screen polls /api/metaverse/board every 60s — IVS lives play via HLS
+  VideoTexture (auto-swap on start, placeholder on end), LiveKit phone
+  lives are announced by title ("app ထဲ ကြည့်ပါ"). PR #478.
+
+- 2026-08-04 (web+mv): **NPC balance (user feedback).** NPCs are now
+  peaceful until the avatar shoots first (proximity mugging removed,
+  grudge 25s), damage scaled to 60%, HP 70, aim error doubled, fire
+  rate halved, chase speeds reduced. PR #477.
+
+- 2026-08-04 (web+mv): **Avatar profile pictures with show/hide.** New
+  presence `pic` message (server-validated https URL, hide = server
+  never sends it); nametags render a round photo above the name with a
+  client-side origin allowlist; 🖼 toggle chips persist in
+  localStorage. PR #476.
+
+- 2026-08-04 (web): **Arena feel pack.** Bomb knockback fling (impulse +
+  vertical pop + strong vibration, collision-checked), glass-shatter
+  debris after explosions + sniper echo tail, and a 🔋 eco mode (30fps
+  cap, pixelRatio 1, shadows off, persisted). PR #475.
+
+- 2026-08-04 (web+mv): **Arena NPC dogs.** Two befriendable wild dogs
+  (npc-only bite weapon, procedural dog model with diagonal gait) that
+  follow and pack-attack for their friend; melee targeting closes to
+  bite range. PR #474.
+
 - 2026-08-04 (web+mv): **Arena bandit bot NPCs + weapon drops.** New
   server-side AI (`server/metaverse/bots.js`, 150ms ticker): 3 named
   bandit bots wander the arena, hold a 60s grudge against anyone who
