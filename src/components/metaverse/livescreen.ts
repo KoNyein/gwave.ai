@@ -57,9 +57,13 @@ function placeholderTexture(text: string): THREE.CanvasTexture {
 export function attachLiveScreen(
   screenMesh: THREE.Mesh,
   playbackUrl: string,
+  offlineText?: string,
 ): LiveScreen {
+  // ★ `offlineText` — URL မရှိတဲ့ LiveKit (ဖုန်း Go Live) live တွေအတွက်
+  //   "ဘယ်သူ လွှင့်နေတယ်၊ app ထဲကြည့်ပါ" စာတန်း ပြလို့ရအောင်။
   const offline = placeholderTexture(
-    playbackUrl ? "ယခု တိုက်ရိုက်လွှင့်မှု မရှိပါ" : "တိုက်ရိုက်လွှင့်မှု မသတ်မှတ်ရသေး",
+    offlineText ??
+      (playbackUrl ? "ယခု တိုက်ရိုက်လွှင့်မှု မရှိပါ" : "တိုက်ရိုက်လွှင့်မှု မသတ်မှတ်ရသေး"),
   );
   const offlineMat = new THREE.MeshBasicMaterial({
     map: offline,

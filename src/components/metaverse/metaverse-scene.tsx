@@ -1962,23 +1962,50 @@ export function MetaverseScene() {
 
     // ── ကြော်ငြာသင်ပုန်း + တကယ့် live stream ──────────────────────────────
     // ★ ဒါက လောကကို စတင်ဖို့ မလိုအပ်ဘူး — မရလည်း သင်ပုန်းက ဗလာနေရုံပဲ။
-    // ဒါကြောင့် await မလုပ်ဘဲ နောက်ကွယ်မှာ ခေါ်တယ်။
-    void fetch("/api/metaverse/board", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { posts?: { author: string; text: string }[]; live?: { url: string } | null } | null) => {
-        if (killed || !data) return;
-        landmarks.setNotices(data.posts ?? []);
-        const url = data.live?.url;
-        if (url && url !== liveUrl && world.screenMesh) {
-          // တကယ် live ရှိရင် env ထဲက default ကို အစားထိုးတယ်
-          screen?.dispose();
-          screen = attachLiveScreen(world.screenMesh, url);
-          liveUrl = url;
-        }
-      })
-      .catch(() => {
-        /* သင်ပုန်း ဗလာနေရုံပဲ — လောကက ဆက်လည်တယ် */
-      });
+    // ★ တစ်ခါတည်း မဟုတ်ဘဲ **မိနစ်တိုင်း ပြန်စစ်တယ်** — ကိုယ်ဝင်ပြီးမှ
+    //   စလွှင့်တဲ့ live ကို screen က မိရမယ်၊ ပြီးသွားတဲ့ live ကိုလည်း
+    //   placeholder ပြန်ပြရမယ် (အရင်က ဝင်ချိန် တစ်ခါပဲ စစ်လို့ မမိဘူး)။
+    const pollBoard = () => {
+      void fetch("/api/metaverse/board", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then(
+          (
+            data: {
+              posts?: { author: string; text: string }[];
+              live?: { title?: string | null; url: string | null } | null;
+            } | null,
+          ) => {
+            if (killed || !data || !world.screenMesh) return;
+            landmarks.setNotices(data.posts ?? []);
+            const url = data.live?.url ?? "";
+            if (url && url !== liveUrl) {
+              // IVS live — screen မှာ တိုက်ရိုက် ဖွင့်တယ်
+              screen?.dispose();
+              screen = attachLiveScreen(world.screenMesh, url);
+              liveUrl = url;
+            } else if (!url && data.live?.title && liveUrl !== "app-live") {
+              // LiveKit (ဖုန်း Go Live) — URL မရှိလို့ ခေါင်းစဉ်ပဲ ပြတယ်
+              screen?.dispose();
+              screen = attachLiveScreen(
+                world.screenMesh,
+                "",
+                `🔴 ${String(data.live.title).slice(0, 40)} — app ထဲ ကြည့်ပါ`,
+              );
+              liveUrl = "app-live";
+            } else if (!url && !data.live && liveUrl) {
+              // Live ပြီးသွားပြီ — default (env URL ဒါမှမဟုတ် placeholder) ပြန်ထား
+              screen?.dispose();
+              screen = attachLiveScreen(world.screenMesh, IVS_URL);
+              liveUrl = "";
+            }
+          },
+        )
+        .catch(() => {
+          /* သင်ပုန်း ဗလာနေရုံပဲ — လောကက ဆက်လည်တယ် */
+        });
+    };
+    pollBoard();
+    const boardTimer = window.setInterval(pollBoard, 60000);
 
     // ── Render loop ───────────────────────────────────────────────────────
     const frameClock = new THREE.Clock();
@@ -2468,6 +2495,7 @@ export function MetaverseScene() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("resize", onResize);
+      window.clearInterval(boardTimer);
       document.removeEventListener("pointerlockchange", onLockChange);
       el.removeEventListener("contextmenu", onCtxMenu);
       el.removeEventListener("pointerdown", onPointerDown);
