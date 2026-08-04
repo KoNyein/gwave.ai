@@ -22,6 +22,18 @@ function matchWith(n) {
   return m;
 }
 
+/// ★ ပစ်သူ့ မျက်လုံး (y+1.6) ကနေ ရန်သူရဲ့ ခန္ဓာအပိုင်းဆီ ချိန်တဲ့ ဦးတည်ချက်။
+///   `part` = "body" (ရင်ဘတ် ~0.78) ဒါမှမဟုတ် "head" (~1.62)。 client က
+///   ကင်မရာ ray direction ပို့တာနဲ့ တူအောင် — combat.js ရဲ့ EYE_Y=1.6။
+function aimAt(shooter, victim, part = "body") {
+  const ty = part === "head" ? 1.62 : 0.78;
+  return {
+    dx: victim.x - shooter.x,
+    dy: ty - ((shooter.y ?? 0) + 1.6),
+    dz: victim.z - shooter.z,
+  };
+}
+
 // ── ပစ်မှတ် ခွဲဝေမှု ─────────────────────────────────────────────────────
 test("★ ကစားသမားတိုင်း ပစ်မှတ်တစ်ခုစီ ရပြီး၊ တစ်ယောက်တည်းက လိုက်ရှာတယ်", () => {
   const m = matchWith(4);
@@ -129,7 +141,10 @@ test("★★ ကွင်းတစ်ဖက်ကနေ ခုန်ရောက
   A.applyMove(m, me, { x: 25, z: 0, y: 0, ry: 0 }, 1050);
   assert.ok(Math.hypot(me.x - 25, me.z) > 2.6, `ခုန်ရောက်သွားတယ် — x=${me.x}`);
 
-  const events = A.handleFire(m, me, { targetId: victim.id, hitPart: "body" }, 2000);
+  // ★ ရန်သူဆီ တည့်တည့် ချိန်ပေမယ့် ဓားရဲ့ range (၂.၆) ကို ကျော်လို့
+  //   server က မထိဘူး — ခုန်ရောက်တာ အလကား။
+  const dir = aimAt(me, victim);
+  const events = A.handleFire(m, me, { dx: dir.dx, dy: dir.dy, dz: dir.dz }, 2000);
   const hit = events.find((e) => e.msg?.type === "aHit");
   assert.equal(hit, undefined, "အဝေးကနေ ဓားနဲ့ ထိသွားတယ်");
 });
@@ -156,9 +171,10 @@ test("★ ပစ်နှုန်း ကန့်သတ်ချက် — ခ�
   const m = matchWith(2);
   const [me, victim] = [...m.players.values()];
   me.x = 0; me.z = 0; victim.x = 2; victim.z = 0;
-  const first = A.handleFire(m, me, { targetId: victim.id, hitPart: "body" }, 1000);
+  const dir = aimAt(me, victim);
+  const first = A.handleFire(m, me, { dx: dir.dx, dy: dir.dy, dz: dir.dz }, 1000);
   assert.ok(first.some((e) => e.msg?.type === "aShot"), "ပထမတစ်ချက် မထွက်ဘူး");
-  const second = A.handleFire(m, me, { targetId: victim.id, hitPart: "body" }, 1050);
+  const second = A.handleFire(m, me, { dx: dir.dx, dy: dir.dy, dz: dir.dz }, 1050);
   assert.equal(second.length, 0, "ပစ်နှုန်း ကန့်သတ်ချက် အလုပ်မလုပ်ဘူး");
 });
 
@@ -167,9 +183,56 @@ test("★ ကျည်ကုန်ရင် မထွက်ရ", () => {
   const [me, victim] = [...m.players.values()];
   me.x = 0; me.z = 0; victim.x = 2; victim.z = 0;
   me.ammo.pistol = 0;
-  const out = A.handleFire(m, me, { targetId: victim.id, hitPart: "body" }, 1000);
+  const dir = aimAt(me, victim);
+  const out = A.handleFire(m, me, { dx: dir.dx, dy: dir.dy, dz: dir.dz }, 1000);
   assert.equal(out.length, 1);
   assert.equal(out[0].msg.type, "aNoAmmo");
+});
+
+// ── ★★ Server-authoritative hit registration (Arena spec A4) ──────────────
+
+test("★★ ရန်သူကို တည့်တည့်ချိန်ရင် server က ထိချက် တွက်ပေးတယ်", () => {
+  const m = matchWith(2);
+  const [me, victim] = [...m.players.values()];
+  me.x = 0; me.z = 0; victim.x = 0; victim.z = 5;
+  const dir = aimAt(me, victim, "body");
+  const out = A.handleFire(m, me, { dx: dir.dx, dy: dir.dy, dz: dir.dz }, 1000);
+  assert.ok(out.some((e) => e.msg?.type === "aShot"), "ပစ်သံ ထွက်ရမယ်");
+  assert.ok(out.some((e) => e.msg?.type === "aHit"), "ထိချက် ဖြစ်ရမယ်");
+});
+
+test("★★ client က 'ခေါင်းထိတယ်' လို့ လိမ်လို့ မရ — server က ကိုယ်တိုင် တွက်တယ်", () => {
+  // အရင် cheat — targetId + hitPart:'head' ပို့ရုံ။ အခု အဲဒီ field တွေ
+  // ပါလာလည်း server က လုံးဝ မဖတ်ဘူး၊ direction ကိုပဲ ကြည့်တယ်။
+  const m = matchWith(2);
+  const [me, victim] = [...m.players.values()];
+  me.x = 0; me.z = 0; victim.x = 0; victim.z = 5;
+  // ရင်ဘတ်ကို ချိန်ပေမယ့် "head" လို့ လိမ်ပို့တယ်
+  const dir = aimAt(me, victim, "body");
+  const out = A.handleFire(
+    m,
+    me,
+    { dx: dir.dx, dy: dir.dy, dz: dir.dz, targetId: victim.id, hitPart: "head" },
+    1000,
+  );
+  // ★ ရင်ဘတ်ချိန်တာမို့ body damage ပဲ ရရမယ် — head mult မရ။
+  //   Pistol body = 34, head = 68။ HP 100 ကနေ 66 ကျရင် body ဖြစ်တယ်။
+  assert.equal(victim.hp, 100 - 34, "ရင်ဘတ်ချိန်တာကို ခေါင်းအဖြစ် တွက်လို့ မရ");
+});
+
+test("★★ ရန်သူကို ကျော်ကြည့်ရင် လွဲတယ် — targetId ပါလာလည်း အသုံးမဝင်", () => {
+  const m = matchWith(2);
+  const [me, victim] = [...m.players.values()];
+  me.x = 0; me.z = 0; victim.x = 0; victim.z = 5;
+  // ရန်သူက +z မှာ ဒါပေမယ့် −z ကို ကြည့်ပြီး targetId လိမ်ပို့တယ်
+  const out = A.handleFire(
+    m,
+    me,
+    { dx: 0, dy: 0, dz: -1, targetId: victim.id, hitPart: "body" },
+    1000,
+  );
+  assert.equal(victim.hp, 100, "မချိန်ဘဲ targetId နဲ့ ထိလို့ မရရ");
+  assert.ok(!out.some((e) => e.msg?.type === "aHit"), "ထိချက် မဖြစ်ရ");
 });
 
 // ── အမှတ်ပေးစနစ် ─────────────────────────────────────────────────────────

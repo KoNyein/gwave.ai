@@ -1,5 +1,7 @@
 "use strict";
 
+const combat = require("./combat");
+
 /// Gwave Assassin — match logic (၁၈+ mini-game)。
 ///
 /// ကစားနည်း — ကစားသမားတိုင်းမှာ **လျှို့ဝှက်ပစ်မှတ်** တစ်ယောက်စီ ရှိတယ်။
@@ -367,14 +369,25 @@ function handleFire(match, me, msg, now = Date.now()) {
     return out;
   }
 
-  const victim = match.players.get(msg.targetId);
-  if (!victim || !victim.alive || victim.id === me.id) return out;
-  const dist = Math.hypot(victim.x - me.x, victim.z - me.z);
-  if (dist > w.range) return out;
+  // ★★ Server-authoritative hit registration (Arena spec A4)。
+  //   အရင်က client က `targetId`/`hitPart` ပို့ပြီး server က အကွာအဝေးပဲ
+  //   စစ်တယ် — `hitPart:"head"` အမြဲပို့ရင် ခေါင်းထိချက် အမြဲရတယ်၊
+  //   နောက်ကျောက လူကိုလည်း range အတွင်းဆို ပစ်လို့ရတယ်။ Aimbot ဆိုတာ
+  //   message တစ်ကြောင်းပဲ။
+  //
+  //   အခုက client က **ကြည့်နေတဲ့ ဦးတည်ချက်** (`dx,dy,dz`) ပဲ ပို့တယ်။
+  //   ဘယ်သူထိလဲ၊ ဘယ်အပိုင်းလဲ — server က ကိုယ့် position data နဲ့
+  //   ray ပစ်ပြီး ဆုံးဖြတ်တယ်။ `targetId`/`hitPart` ပါလာလည်း **မဖတ်ဘူး**。
+  const hit = combat.resolveShot(
+    me,
+    { x: msg.dx, y: msg.dy, z: msg.dz },
+    match.players.values(),
+    w.range,
+  );
+  if (!hit) return out;
 
-  const hitPart = msg.hitPart === "head" ? "head" : "body";
-  const dmg = computeDamage(me.weapon, hitPart, dist);
-  out.push(...applyDamage(match, me, victim, dmg, me.weapon, hitPart, now));
+  const dmg = computeDamage(me.weapon, hit.part, hit.dist);
+  out.push(...applyDamage(match, me, hit.victim, dmg, me.weapon, hit.part, now));
   return out;
 }
 
