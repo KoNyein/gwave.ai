@@ -35,6 +35,7 @@
     "@googlemaps/js-api-loader": "^2.1.1",
     "@livekit/components-react": "^2",
     "@livekit/components-styles": "^1",
+    "@mediapipe/tasks-vision": "^1.0.1",
     "@mux/mux-node": "^14.1.1",
     "@mux/mux-player-react": "^3.13.0",
     "@radix-ui/react-avatar": "^1.1.2",
