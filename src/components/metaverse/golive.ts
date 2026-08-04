@@ -193,7 +193,12 @@ export function createMvGoLive(canvas: HTMLCanvasElement): MvGoLive {
         body: JSON.stringify({
           title,
           kind: "stream",
-          record: false,
+          // ★ record:true — user report: "live stream save မရ၊ replay မရ"။
+          //   goLive() က record_enabled && egressConfigured() ဆို LiveKit
+          //   room ကို S3 MP4 အဖြစ် record စပြီး sweep က replay ဖြစ်အောင်
+          //   လုပ်ပေးတယ်။ Server မှာ LIVEKIT_EGRESS_S3_* envs မရှိရင်
+          //   ဒီ flag က ဘာမှ မဖြစ်စေဘူး (recording ကျော်တယ်) — အန္တရာယ်ကင်း။
+          record: true,
           provider: "livekit",
         }),
       });

@@ -139,6 +139,18 @@
 
 ## Changelog
 
+- 2026-08-04 (web): **Metaverse Go Live records for replay.** Streams
+  now create with record:true — with LIVEKIT_EGRESS_S3_* envs set (see
+  deploy/livekit-egress-replay-env.md, user-side) every broadcast
+  auto-saves an MP4 replay; without them the flag is a no-op. PR #495.
+
+- 2026-08-04 (web): **Go Live provider fix + mobile chat re-home.**
+  Root cause of "Go Live does nothing": prod default provider is IVS
+  but the metaverse publishes via LiveKit — create now honors
+  provider:"livekit". Touch chat moved to mobile-FPS layout: read-only
+  lines above the joystick, 💬 opens a top-anchored composer the
+  keyboard can't cover. PR #494.
+
 - 2026-08-04 (web+mv): **Scan faces in rooms (avatar Phase 4).** Social
   room avatars wear their owner's scanned face GLB — own face from the
   metaverse avatar API, remotes via the public /api/avatar?userId=
