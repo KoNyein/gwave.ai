@@ -993,6 +993,8 @@ wss.on("connection", async (ws, req) => {
         const match = matches.get(player.room);
         const me = match?.players.get(player.id);
         if (!me || !assassin.WEAPONS[msg.weapon]) break;
+        // 🐕 NPC သီးသန့်လက်နက် (ကိုက် စသဖြင့်) ကို လူက ရွေးလို့ မရဘူး
+        if (assassin.WEAPONS[msg.weapon].npc) break;
         me.weapon = msg.weapon;
         rooms.broadcast(player.room, { type: "aWeaponOf", id: me.id, weapon: me.weapon });
         send(ws, { type: "aYou", you: assassin.personalState(match, me) });

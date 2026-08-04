@@ -20,14 +20,18 @@ const assassin = require("./assassin.js");
 ///   damage၊ respawn၊ scoreboard အားလုံး လမ်းကြောင်းအဟောင်းအတိုင်း
 ///   အလုပ်လုပ်တယ်၊ code လမ်းကြောင်း ဒုတိယတစ်ခု မဆောက်ဘူး။
 
-const BOT_COUNT = 3;
 /// id prefix — client id တွေက uuid/guest token မို့ မတိုက်ဆိုင်နိုင်ဘူး
 const BOT_PREFIX = "bot:";
+/// 🐕 ခွေးတွေက လူထက်မြန်တယ် (ပြေးရင်တော့ လွတ်နိုင်သေးတယ်)၊ ကိုက်တာက
+/// melee သီးသန့် — ဓားပြတွေကတော့ သေနတ်နဲ့။
 const BOT_DEFS = [
-  { name: "ဓားပြ ဖိုးသောက်", weapon: "smg", skin: "phantom" },
-  { name: "ဓားပြ ငစိန်", weapon: "shotgun", skin: "commander" },
-  { name: "ဓားပြ ရွှေတုတ်", weapon: "revolver", skin: "ranger" },
+  { name: "ဓားပြ ဖိုးသောက်", weapon: "smg", skin: "phantom", speed: 4.6 },
+  { name: "ဓားပြ ငစိန်", weapon: "shotgun", skin: "commander", speed: 4.6 },
+  { name: "ဓားပြ ရွှေတုတ်", weapon: "revolver", skin: "ranger", speed: 4.6 },
+  { name: "🐕 ခွေးနက်", weapon: "bite", skin: "phantom", speed: 6.2, dog: true },
+  { name: "🐕 ရွှေဝါ", weapon: "bite", skin: "knight", speed: 6.2, dog: true },
 ];
+const BOT_COUNT = BOT_DEFS.length;
 
 /// ရန်ငြိုး ကြာချိန် — ပစ်ခံရရင် ဒီလောက်ကြာ လိုက်တယ်
 const GRUDGE_MS = 60000;
@@ -67,6 +71,8 @@ function ensureBots(match) {
     if (have.has(id)) continue;
     const def = BOT_DEFS[i % BOT_DEFS.length];
     const b = assassin.makeBot(id, def.name, match.seq++, def.weapon, def.skin);
+    if (def.dog) b.dog = true;
+    b.botSpeed = def.speed;
     // Spawn ကွဲအောင် နည်းနည်း ရွှေ့ — လူ spawn ပေါ် တည့်တည့် မကျအောင်
     b.x += (i - 1) * 1.5;
     b.grudge = {};
@@ -127,7 +133,15 @@ function befriend(match, playerId, now = Date.now()) {
   return [
     {
       all: true,
-      msg: { type: "aBotMood", id: best.id, name: best.name, mood: "friend", of: playerId },
+      msg: {
+        type: "aBotMood",
+        id: best.id,
+        name: best.name,
+        mood: "friend",
+        of: playerId,
+        /// 🐕 Client က ခွေးအတွက် banner စာသား ကွဲပြဖို့
+        dog: !!best.dog,
+      },
     },
   ];
 }
@@ -185,9 +199,11 @@ function tick(match, now = Date.now(), dt = 0.15) {
       const w = assassin.WEAPONS[b.weapon] ?? assassin.WEAPONS.pistol;
       b.ry = Math.atan2(target.x - b.x, target.z - b.z);
       if (b.aimSince === 0) b.aimSince = now;
-      const wantD = Math.max(2.5, w.range * 0.55);
+      // 🐕 Melee (ကိုက်/ဓား) ဆို ကိုက်နိုင်တဲ့အကွာအထိ ကပ်ရမယ် — သေနတ်ဆို
+      //   range ရဲ့ တစ်ဝက်လောက်မှာ ရပ်ပြီး ပစ်တယ်။
+      const wantD = w.range < 5 ? w.range * 0.6 : Math.max(2.5, w.range * 0.55);
       if (dist > wantD) {
-        moved = stepToward(b, target.x, target.z, CHASE_SPEED * dt);
+        moved = stepToward(b, target.x, target.z, (b.botSpeed ?? CHASE_SPEED) * dt);
       }
       const canFire =
         dist <= w.range * 0.95 &&
@@ -202,7 +218,7 @@ function tick(match, now = Date.now(), dt = 0.15) {
         // ── Friend နောက်လိုက် ────────────────────────────────────────
         const d = Math.hypot(friend.x - b.x, friend.z - b.z);
         if (d > FOLLOW_DIST) {
-          moved = stepToward(b, friend.x, friend.z, CHASE_SPEED * dt);
+          moved = stepToward(b, friend.x, friend.z, (b.botSpeed ?? CHASE_SPEED) * dt);
           b.ry = Math.atan2(friend.x - b.x, friend.z - b.z);
         }
       } else {
