@@ -411,9 +411,12 @@ export function AssassinGame({ room }: { room: string }) {
 
     // ── ပစ်ခတ်ခြင်း ────────────────────────────────────────────────────
     //
-    // ★ Client က raycast လုပ်ပြီး "ဘယ်သူ့ကို ဘယ်နေရာမှာ" ဆိုတာ အကြံပြုတယ်။
-    //   Server က အကွာအဝေး/ပစ်နှုန်း/ကျည် ပြန်စစ်တယ် — ဒါကြောင့် raycast
-    //   လိမ်ညာလို့ ရပေမယ့် အကွာအဝေး ကျော်လို့ မရဘူး။
+    // ★★ Client က **ကြည့်နေတဲ့ ဦးတည်ချက်ပဲ** ပို့တယ် — ဘယ်သူထိလဲ၊
+    //   ခေါင်းလား ကိုယ်လား ဆိုတာ server က ကိုယ့် position data နဲ့ ray
+    //   ပစ်ပြီး ဆုံးဖြတ်တယ် (server/metaverse/combat.js)。 အရင်က client
+    //   raycast ရဲ့ အဖြေ (`targetId`/`hitPart`) ကို ပို့နေတာ — အဲဒါက
+    //   "ခေါင်းထိတယ်" လို့ အမြဲပြောတဲ့ aimbot ကို message တစ်ကြောင်းနဲ့
+    //   ရေးလို့ ရစေတယ်။ အခု server က အဲဒီ field တွေကို လုံးဝ မဖတ်တော့ဘူး။
     const ray = new THREE.Raycaster();
     const centre = new THREE.Vector2(0, 0);
     const fire = () => {
@@ -424,27 +427,13 @@ export function AssassinGame({ room }: { room: string }) {
       const w = youRef.current?.weapon ?? "pistol";
       sfx.shot(w);
       if (w === "bomb") {
-        // ဗုံး — ရှေ့ ၈ မီတာ အကွာကို ပစ်တယ်
+        // ဗုံး — ရှေ့ ၈ မီတာ အကွာကို ပစ်တယ် (server က range ပြန်စစ်တယ်)
         send({ type: "aFire", x: me.x - Math.sin(me.ry) * 8, z: me.z - Math.cos(me.ry) * 8 });
         return;
       }
       ray.setFromCamera(centre, camera);
-      const targets: THREE.Object3D[] = [];
-      for (const a of actors.values()) {
-        if (a.data.alive) targets.push(a.fighter.headHit, a.fighter.bodyHit);
-      }
-      const hits = ray.intersectObjects(targets, false);
-      const first = hits[0];
-      if (!first) {
-        send({ type: "aFire" });
-        return;
-      }
-      const pid = first.object.parent?.userData?.playerId;
-      send({
-        type: "aFire",
-        targetId: pid,
-        hitPart: first.object.userData.part === "head" ? "head" : "body",
-      });
+      const d = ray.ray.direction;
+      send({ type: "aFire", dx: d.x, dy: d.y, dz: d.z });
     };
     const onMouseDown = (e: MouseEvent) => {
       if (e.button === 0 && document.pointerLockElement === canvas) fire();
