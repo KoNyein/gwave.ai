@@ -35,14 +35,16 @@ export async function GET() {
       .is("removed_at", null)
       .order("created_at", { ascending: false })
       .limit(MAX_POSTS),
-    // မြို့လယ် မျက်နှာပြင်အတွက် — ယခု တိုက်ရိုက်လွှင့်နေတဲ့ IVS stream
+    // မြို့လယ် မျက်နှာပြင်အတွက် — ယခု တိုက်ရိုက်လွှင့်နေတဲ့ stream။
+    // ★ IVS (HLS URL ရှိ) ကို ဦးစားပေးတယ် — screen မှာ တိုက်ရိုက် ဖွင့်လို့
+    //   ရလို့။ LiveKit (ဖုန်း Go Live) ဆိုရင် URL မရှိပေမယ့် ခေါင်းစဉ်ကို
+    //   screen placeholder မှာ ပြပေးတယ် ("app ထဲ ကြည့်ပါ")။
     admin
       .from("live_streams")
       .select("id, title, ivs_playback_url, created_at")
       .eq("status", "live")
-      .not("ivs_playback_url", "is", null)
       .order("created_at", { ascending: false })
-      .limit(1),
+      .limit(5),
   ]);
 
   const rows = postsRes.data ?? [];
@@ -69,10 +71,15 @@ export async function GET() {
     at: r.created_at,
   }));
 
-  const liveRow = liveRes.data?.[0];
-  const live = liveRow?.ivs_playback_url
-    ? { title: liveRow.title, url: liveRow.ivs_playback_url }
-    : null;
+  // IVS (ဖွင့်လို့ရတဲ့ URL ပါတာ) အရင်၊ မရှိမှ LiveKit (title ပဲ ပြ)
+  const liveRows = liveRes.data ?? [];
+  const ivsRow = liveRows.find((r) => r.ivs_playback_url);
+  const anyRow = liveRows[0];
+  const live = ivsRow
+    ? { title: ivsRow.title, url: ivsRow.ivs_playback_url }
+    : anyRow
+      ? { title: anyRow.title, url: null }
+      : null;
 
   return NextResponse.json(
     { posts, live },
