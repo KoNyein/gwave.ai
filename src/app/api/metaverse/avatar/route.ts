@@ -40,13 +40,20 @@ export async function GET() {
   }
 
   const admin = createAdminClient();
-  const [{ data: row }, owned] = await Promise.all([
+  const [{ data: row }, owned, { data: scanRow }] = await Promise.all([
     admin
       .from("mv_players")
       .select("avatar_config")
       .eq("user_id", profile.id)
       .maybeSingle(),
     ownedSkus(profile.id),
+    // 🧬 Scan avatar (Phase 4) — social room မှာ ခေါင်းပေါ် တပ်မယ့်
+    // မျက်နှာ GLB။ Flat query — embed မသုံးရ (CLAUDE.md)။
+    admin
+      .from("mv_scan_avatars")
+      .select("face_glb_url")
+      .eq("user_id", profile.id)
+      .maybeSingle(),
   ]);
 
   return NextResponse.json(
@@ -58,6 +65,8 @@ export async function GET() {
       /// 🖼 Metaverse ထဲ avatar ခေါင်းပေါ် ပြမယ့် profile ဓာတ်ပုံ —
       /// ပြ/မပြ ရွေးချယ်မှုက client (localStorage) မှာ။
       pic: profile.avatar_url ?? null,
+      /// 🧬 Scan မျက်နှာ GLB (ရှိရင်) — client က social room မှာ တပ်တယ်
+      scanFace: scanRow?.face_glb_url ?? null,
     },
     { headers: { "cache-control": "no-store, private" } },
   );
