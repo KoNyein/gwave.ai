@@ -139,6 +139,20 @@
 
 ## Changelog
 
+- 2026-08-04 (web): **HUD zone design standard + real weapon icons + held
+  3D weapons.** Documented six HUD zones (top-left panel, top-center
+  weapons, top-right minimap/menu, bottom-left joystick/chat, bottom-center
+  readouts, bottom-right combat cluster) and enforced them: game rooms hide
+  the verbose keybind text behind a ❓ ခလုတ်များ toggle (the long help line
+  was overlapping the weapons strip), hide the ownership chip, and narrow
+  the chat box so nothing covers anything in either orientation. Weapon
+  buttons now show real weapon silhouettes (inline SVG per weapon — pistol,
+  knife, sniper, bomb, SMG, shotgun, revolver) instead of text-only chips.
+  The avatar physically holds the selected weapon: new weapons3d.ts builds
+  blocky 3D models attached to a new right-hand attach point (human.ts),
+  swapped live on weapon change; first-person gets a camera viewmodel with
+  fire-kick recoil; remote players' hands sync from aShot events. PR #467.
+
 - 2026-08-04 (web): **Arena HUD precision layout + weapon crosshairs +
   avatar picker in game rooms.** Screenshots showed the right-side action
   cluster colliding with the minimap/Menu/ownership chip in landscape and

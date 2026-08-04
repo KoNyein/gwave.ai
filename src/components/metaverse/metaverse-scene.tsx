@@ -34,6 +34,7 @@ import { createVehicle, type Vehicle } from "./vehicles";
 import { VoicePanel } from "./voice-panel";
 import { createVoiceChat, type VoiceChat } from "./voicechat";
 import { createWeather } from "./weather";
+import { buildWeaponMesh, disposeWeapon } from "./weapons3d";
 import { OwnershipControl } from "./web3/ownership";
 import { buildWorld, insideCollider, resolveCollision } from "./world";
 import { isInApp, native } from "@/lib/metaverse/native";
@@ -290,6 +291,9 @@ export function MetaverseScene() {
   const [dmgNums, setDmgNums] = useState<{ id: number; text: string; head: boolean }[]>([]);
   /// အထိခံရတဲ့ ဦးတည်ရာ — မျက်နှာပြင်အလယ် အနီမြှား (PUBG-style)
   const [hurtFrom, setHurtFrom] = useState<{ deg: number; at: number } | null>(null);
+  /// ❓ ခလုတ်လမ်းညွှန် — game room မှာ default ဖျောက်ထားပြီး ❓ နှိပ်မှ ပြတယ်
+  /// (စာတန်းရှည်က weapons strip နဲ့ ထပ်လို့)
+  const [showHelp, setShowHelp] = useState(false);
 
   // ── 🙈 ဝှက်တမ်း (hub-world game room, hide-1) ────────────────────────────
   type HidePlayer = { id: string; name: string; score: number };
@@ -431,6 +435,17 @@ export function MetaverseScene() {
     window.setTimeout(() => setInvited(false), 1800);
   };
 
+  /// ★ HUD ဇုန် design standard — element တိုင်း ကိုယ့်ဇုန်ထဲမှာပဲ နေရမယ်၊
+  /// ဇုန်ချင်း ဘယ်တော့မှ မထပ်ရ (screenshot တွေမှာ တွေ့ခဲ့တဲ့ ထပ်နေမှုတွေရဲ့
+  /// အဖြေ)။ ဇုန်များ:
+  ///   ↖ ဘယ်အပေါ်  — room chips + compact panel (game action row ပါ)
+  ///   ↑ အလယ်အပေါ် — weapons strip (arena) / ပွဲအခြေအနေ (hide)
+  ///   ↗ ညာအပေါ်   — minimap + ☰ Menu (social extras က game room မှာ ဖျောက်)
+  ///   ↙ ဘယ်အောက် — joystick + chat (game room မှာ chat ကျဉ်း)
+  ///   ↓ အလယ်အောက် — ❤️/ကျည် ဖတ်ရုံ pill
+  ///   ↘ ညာအောက်  — ခုန် + 🔫/🔄/🎯/🧎 combat cluster
+  const inGameRoom = roomId === "arena" || roomId === "hide-1";
+
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
@@ -446,6 +461,7 @@ export function MetaverseScene() {
     setCrouchOn(false);
     setDmgNums([]);
     setHurtFrom(null);
+    setShowHelp(false);
     arenaWeaponListRef.current = [];
     setBooted(false);
 
@@ -552,6 +568,36 @@ export function MetaverseScene() {
     let firing = false;
     /// 🚶 FP head-bob အတွက် လမ်းလျှောက်ချိန်တိုင်း — movement ကို ခံစားရအောင်
     let walkT = 0;
+    /// 🔫 လက်ထဲကိုင်ထားတဲ့ လက်နက် 3D — avatar (TP) + FP viewmodel။
+    /// Avatar တစ်ကိုယ်ချင်း userData ထဲ kind/mesh သိမ်းပြီး ပြောင်းမှ swap။
+    const setHandWeapon = (
+      av: { group: THREE.Group; attach: { handR: THREE.Object3D } },
+      kind: string,
+    ) => {
+      if (av.group.userData.weaponKind === kind) return;
+      av.group.userData.weaponKind = kind;
+      const old = av.group.userData.weaponMesh as THREE.Group | undefined;
+      if (old) {
+        old.parent?.remove(old);
+        disposeWeapon(old);
+      }
+      const mesh = buildWeaponMesh(kind);
+      mesh.rotation.x = -0.35;
+      av.attach.handR.add(mesh);
+      av.group.userData.weaponMesh = mesh;
+    };
+    /// FP viewmodel — ကင်မရာအောက်ညာမှာ ကိုင်ထားတဲ့ လက်နက် (PUBG-style)။
+    /// Camera child ကို render ဖို့ scene ထဲ camera ထည့်ရတယ်။
+    let vmKind = "";
+    let vmKick = 0;
+    const vmGroup = new THREE.Group();
+    if (map.id === "arena") {
+      scene.add(camera);
+      vmGroup.position.set(0.34, -0.3, -0.62);
+      vmGroup.rotation.y = Math.PI;
+      vmGroup.visible = false;
+      camera.add(vmGroup);
+    }
 
     // ── User ဆောက်ထားတဲ့ အရာများ (Phase 18) ───────────────────────────────
     // ★ InstancedMesh — type တစ်ခုချင်းကို draw call တစ်ခုစီ။ မဟုတ်ရင်
@@ -1034,6 +1080,12 @@ export function MetaverseScene() {
                 combatFx?.tracer(from, dir, 30);
                 combatFx?.muzzle(from);
               }
+              // ပစ်သူ (remote) ရဲ့ လက်ထဲ လက်နက်ကိုလည်း ပြ — aShot က
+              // သူ့လက်နက်အမျိုးအစား ပါလာလို့ ဒီကနေ sync လုပ်တယ်။
+              const shooter = remotes.get(String(m.id));
+              if (shooter) {
+                setHandWeapon(shooter.avatar, String(m.weapon || "pistol"));
+              }
               sfx?.shot(String(m.weapon || "pistol"));
               break;
             }
@@ -1216,6 +1268,7 @@ export function MetaverseScene() {
           const rec = RECOIL[combat.weapon] ?? 0.012;
           cam.pitch = THREE.MathUtils.clamp(cam.pitch - rec, -1.2, 1.2);
           cam.yaw += (Math.random() - 0.5) * rec * 0.6;
+          vmKick = 0.07;
         }
 
         // 💣 ဗုံး — ပစ်မှတ်မြေမှတ် x,z ပါ ပို့တယ်။ မပို့ရင် server က
@@ -1855,6 +1908,21 @@ export function MetaverseScene() {
       if (map.id === "arena") {
         // ဖိထားရင် fireMs နှုန်းအတိုင်း ဆက်ပစ် (cooldown က fireOnce ထဲမှာ)
         if (firing) arenaFireRef.current?.();
+        // 🔫 ရွေးထားတဲ့ လက်နက်ကို လက်ထဲကိုင် (TP) + FP viewmodel
+        setHandWeapon(me, combat.weapon);
+        if (vmKind !== combat.weapon) {
+          vmKind = combat.weapon;
+          const oldVm = vmGroup.children[0] as THREE.Group | undefined;
+          if (oldVm) {
+            vmGroup.remove(oldVm);
+            disposeWeapon(oldVm);
+          }
+          vmGroup.add(buildWeaponMesh(vmKind));
+        }
+        vmGroup.visible = fpvRef.current;
+        // ပစ်တိုင်း viewmodel နောက်ဆုတ် kick — ပြန်ပြေဖြည်းဖြည်း
+        vmGroup.position.z = -0.62 + vmKick;
+        vmKick *= Math.exp(-10 * dt);
         // ပြေးရင် FOV နည်းနည်းကျယ် — အရှိန်ခံစားချက် (PUBG sprint feel)
         const targetFov = adsRef.current
           ? ADS_FOV[combat.weapon] ?? 45
@@ -2194,14 +2262,17 @@ export function MetaverseScene() {
                   key={key}
                   data-hud="1"
                   onClick={() => arenaWeaponPickRef.current?.(key)}
-                  className={`pointer-events-auto rounded-lg border px-2 py-1 text-[11px] backdrop-blur ${
+                  className={`pointer-events-auto flex flex-col items-center gap-0.5 rounded-lg border px-2 py-1 backdrop-blur ${
                     arenaHud.you?.weapon === key
                       ? "border-amber-400/70 bg-amber-500/20 text-amber-200"
                       : "border-white/15 bg-black/50 text-white/70 hover:bg-black/70"
                   }`}
                 >
-                  {i < 7 ? `${i + 1}·` : ""}
-                  {w.my}
+                  <WeaponIcon kind={key} />
+                  <span className="text-[10px] leading-none">
+                    {i < 7 ? `${i + 1}·` : ""}
+                    {w.my}
+                  </span>
                 </button>
               ))}
             </div>
@@ -2432,19 +2503,25 @@ export function MetaverseScene() {
       <div className="pointer-events-none absolute bottom-40 left-3 top-3 z-20 flex flex-col items-start gap-2">
       <div className="shrink-0 select-none rounded-lg bg-black/40 px-3 py-2 text-[11px] leading-relaxed text-white/80 backdrop-blur">
         <div className="font-semibold text-emerald-300">Gwave Metaverse</div>
-        {!touch && (
+        {/* Game room မှာ generic လမ်းညွှန်တွေ ဖျောက် — panel ကျဉ်းမှ
+            weapons strip နဲ့ မထပ်ဘူး။ Game keybind တွေက ❓ နောက်မှာ။ */}
+        {!touch && !inGameRoom && (
           <>
             <div>WASD ရွှေ့ · Shift လျှောက် · Ctrl ကုပ် · Space ခုန်</div>
             <div>V မြင်ကွင်း · မောက်စ်ဆွဲ = ကင်မရာ · scroll = zoom</div>
             {fpv && <div className="text-emerald-300/80">FP: click = ကြည့်ရှုထိန်း · Esc = လွှတ်</div>}
           </>
         )}
-        {touch && <div>ဘယ်ဘက် joystick · ညာဘက် ခုန်</div>}
+        {touch && !inGameRoom && <div>ဘယ်ဘက် joystick · ညာဘက် ခုန်</div>}
         {/* ⚔️ Game room ခလုတ်လမ်းညွှန် — desktop မှာ keyboard, ဖုန်းမှာ ခလုတ် */}
-        {roomId === "arena" && (
+        {roomId === "arena" && showHelp && (
           <div className="text-amber-200/90">
             {touch ? (
-              "🔫 ဖိထား = ဆက်ပစ် · 🎯 ချိန်ကွင်း · 🧎 ကုပ် · 🔄 ကျည် · 👤 ရုပ်ပြင် — ဘယ်အပေါ်တန်း"
+              <>
+                <div>🔫 ဖိထား = ဆက်ပစ် · 🎯 ချိန်ကွင်း · 🧎 ကုပ်</div>
+                <div>🔄 ကျည်ဖြည့် · အပေါ်တန်း = လက်နက်ပြောင်း</div>
+                <div>ဘယ် joystick = ရွှေ့ · မျက်နှာပြင်ဆွဲ = ကြည့်</div>
+              </>
             ) : (
               <>
                 <div>Click ဖိထား = ဆက်ပစ် · Right-click = 🎯 ချိန်ကွင်း</div>
@@ -2454,7 +2531,7 @@ export function MetaverseScene() {
             )}
           </div>
         )}
-        {roomId === "hide-1" && (
+        {roomId === "hide-1" && showHelp && (
           <div className="text-amber-200/90">
             {touch ? "🖐 ဖမ်း · 🏆 အမှတ် · 📣 ဖိတ်" : "🖐 = ဖမ်း · Tab = အမှတ်စာရင်း"}
           </div>
@@ -2488,6 +2565,17 @@ export function MetaverseScene() {
               className="rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-[11px] text-white/85 backdrop-blur"
             >
               👤 ရုပ်ပြင်
+            </button>
+            <button
+              data-hud="1"
+              onClick={() => setShowHelp((h) => !h)}
+              className={`rounded-lg border px-2 py-1 text-[11px] backdrop-blur ${
+                showHelp
+                  ? "border-amber-400/60 bg-amber-500/20 text-amber-200"
+                  : "border-white/20 bg-black/50 text-white/85"
+              }`}
+            >
+              ❓ ခလုတ်များ
             </button>
             <button
               data-hud="1"
@@ -2744,7 +2832,11 @@ export function MetaverseScene() {
             ဧည့်သည်မှာ ချိတ်စရာ အကောင့်မရှိဘူး)。
             ★ Chip နှိပ်မှ sheet တက်တယ် — အဝင်မှာ ချက်ချင်း မမေးဘူး
             (W8.7 ရဲ့ ပထမဆုံး အမှား)。 */}
-        {meAuthed && <OwnershipControl wallet={wallet} onChange={setWallet} />}
+        {/* Game room မှာ ဖျောက် — ညာဘက်တန်း ရှည်ရင် combat ခလုတ်တွေနဲ့
+            ထပ်တယ် (ပိုင်ဆိုင်မှုက ပွဲထဲမှာ မလိုအပ်တဲ့ feature)။ */}
+        {meAuthed && !inGameRoom && (
+          <OwnershipControl wallet={wallet} onChange={setWallet} />
+        )}
 
         {/* ★ လျှော့ချလိုက်တာကို **တိတ်တိတ်မလုပ်ရ** — ဘာလို့ ရုပ်ညံ့သွားလဲ
             မသိရင် "ဒီ site က ချွတ်ယွင်းနေတယ်" လို့ ထင်မယ်။ ပြန်မြှင့်ဖို့
@@ -2804,7 +2896,12 @@ export function MetaverseScene() {
 
       {/* ── Chat ─────────────────────────────────────────────────────── */}
       {link !== "off" && (
-        <div className="absolute bottom-20 left-3 z-10 w-[min(19rem,60vw)] sm:bottom-3 sm:w-72">
+        <div
+          className={`absolute bottom-20 left-3 z-10 sm:bottom-3 sm:w-72 ${
+            // Game room မှာ ကျဉ်း — ကျယ်ရင် အလယ်အောက်က ❤️/ကျည် pill နဲ့ ထပ်တယ်
+            inGameRoom ? "w-[min(13rem,36vw)]" : "w-[min(19rem,60vw)]"
+          }`}
+        >
           <div className="mb-1 max-h-40 space-y-0.5 overflow-hidden">
             {chat.slice(-6).map((c, i) => (
               <div
@@ -2956,5 +3053,59 @@ function ArenaCrosshair({ weapon, ads }: { weapon: string; ads: boolean }) {
       <div style={{ ...bar, top: -1, left: -(gap + len), height: 2, width: len }} />
       <div style={{ ...bar, top: -1, left: gap, height: 2, width: len }} />
     </div>
+  );
+}
+
+/// 🔫 လက်နက် icon (SVG silhouette) — စာသားချည်းထက် လက်နက်ပုံ တကယ်မြင်ရမှ
+/// ဘယ်ခလုတ်က ဘာလက်နက်လဲ တစ်ချက်ကြည့်တာနဲ့ သိတယ်။ `currentColor` သုံးလို့
+/// ရွေးထားချိန် အဝါ၊ မရွေးရသေးရင် မီးခိုး — ခလုတ်အရောင်နဲ့ လိုက်တယ်။
+function WeaponIcon({ kind }: { kind: string }) {
+  const f = "currentColor";
+  return (
+    <svg viewBox="0 0 36 16" width={30} height={13} aria-hidden className="block">
+      {kind === "knife" ? (
+        <>
+          <polygon points="9,8 26,4 34,8 26,10.5" fill={f} />
+          <rect x="2" y="6.6" width="7.5" height="3" rx="1.2" fill={f} opacity="0.8" />
+        </>
+      ) : kind === "bomb" ? (
+        <>
+          <circle cx="17" cy="9.5" r="6" fill={f} />
+          <path d="M20 4.5 Q23 1 27 3" stroke={f} strokeWidth="1.5" fill="none" />
+          <circle cx="27.4" cy="2.8" r="1.3" fill={f} />
+        </>
+      ) : kind === "sniper" ? (
+        <>
+          <rect x="2" y="8" width="32" height="2.4" fill={f} />
+          <circle cx="15" cy="5" r="2.6" fill="none" stroke={f} strokeWidth="1.4" />
+          <polygon points="2,8 8,8 8,14 3,14" fill={f} />
+          <rect x="17" y="10.4" width="3" height="4" fill={f} />
+        </>
+      ) : kind === "shotgun" ? (
+        <>
+          <rect x="9" y="7" width="25" height="3" fill={f} />
+          <rect x="15" y="10.4" width="8" height="2.6" rx="1.2" fill={f} opacity="0.85" />
+          <polygon points="2,6 10,7 10,12.5 2,13.5" fill={f} />
+        </>
+      ) : kind === "smg" ? (
+        <>
+          <rect x="6" y="6" width="20" height="4" fill={f} />
+          <rect x="26" y="7" width="8" height="2" fill={f} />
+          <rect x="13" y="10" width="4" height="6" fill={f} />
+          <rect x="6.5" y="10" width="3.5" height="3.5" fill={f} opacity="0.85" />
+        </>
+      ) : kind === "revolver" ? (
+        <>
+          <rect x="10" y="5.6" width="24" height="2.8" fill={f} />
+          <circle cx="15" cy="8.8" r="3" fill={f} />
+          <polygon points="6,8 11.5,8.8 10.5,14.5 5,13.5" fill={f} />
+        </>
+      ) : (
+        <>
+          <rect x="8" y="5" width="26" height="4" rx="1" fill={f} />
+          <polygon points="8,9 15.5,9 13.8,15 7,14.4" fill={f} />
+        </>
+      )}
+    </svg>
   );
 }
