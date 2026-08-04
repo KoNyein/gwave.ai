@@ -35,7 +35,7 @@ import { VoicePanel } from "./voice-panel";
 import { createVoiceChat, type VoiceChat } from "./voicechat";
 import { createWeather } from "./weather";
 import { OwnershipControl } from "./web3/ownership";
-import { buildWorld, resolveCollision } from "./world";
+import { buildWorld, insideCollider, resolveCollision } from "./world";
 import { isInApp, native } from "@/lib/metaverse/native";
 import { snap, type BuildType } from "@/lib/metaverse/build";
 import { questEvent } from "@/lib/quests";
@@ -1296,9 +1296,20 @@ export function MetaverseScene() {
     // ── စီး / ဆင်း ────────────────────────────────────────────────────────
     const toggleRide = () => {
       if (riding) {
-        // ★ ယာဉ်ဘေး ၁.၅ unit မှာ ချတယ် — ယာဉ်ထဲမှာ ချရင် ကပ်နေမယ်
-        p.x = riding.state.x + Math.cos(riding.state.ry) * 1.8;
-        p.z = riding.state.z - Math.sin(riding.state.ry) * 1.8;
+        // ★ ယာဉ်ဘေးမှာ ချတယ် — ဒါပေမယ့် အဲဒီနေရာက အဆောက်အအုံ collider
+        //   ထဲဆိုရင် တခြားဘက်တွေ စမ်းတယ်။ Collider ထဲ ချမိရင် ကစားသမား
+        //   ကပ်နေတယ် (resolveCollision ရဲ့ unstick က ကယ်ပေမယ့် မချမိတာ
+        //   အကောင်းဆုံး)။
+        const ry0 = riding.state.ry;
+        let px = riding.state.x + Math.cos(ry0) * 1.8;
+        let pz = riding.state.z - Math.sin(ry0) * 1.8;
+        for (const a of [Math.PI / 2, -Math.PI / 2, Math.PI]) {
+          if (!insideCollider(px, pz, world.colliders)) break;
+          px = riding.state.x + Math.cos(ry0 + a) * 1.8;
+          pz = riding.state.z - Math.sin(ry0 + a) * 1.8;
+        }
+        p.x = px;
+        p.z = pz;
         p.y = 0;
         riding.state.speed = 0;
         riding.driver = null;
