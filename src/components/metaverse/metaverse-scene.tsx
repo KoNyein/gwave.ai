@@ -2163,7 +2163,12 @@ export function MetaverseScene() {
       const wade = depth > 0.15 ? 0.5 : 1;
       const speed = wants ? baseSpeed * Math.min(1, mag) * wade : 0;
 
-      // ── ခုန် ───────────────────────────────────────────────────────────
+      // ── ခုန် + 🏢 platform ကြမ်းပြင် ────────────────────────────────────
+      // ★ groundY က ခြေအောက်က အမြင့်ဆုံး ကြမ်းပြင် (မြေပြင် 0 သို့မဟုတ်
+      //   platform) — လှေကားတက်တာ (step-up ≤0.5), အစွန်းကနေ လျှောက်ထွက်ရင်
+      //   ကျတာ, အပေါ်ကနေ ကျရင် platform ပေါ် နားတာ အားလုံး ဒီတစ်တန်ဖိုးက
+      //   စီမံတယ်။
+      const groundY = riding ? 0 : world.groundAt(p.x, p.z, p.y);
       if (input.jump && !p.airborne) {
         p.vy = JUMP_V;
         p.airborne = true;
@@ -2171,10 +2176,19 @@ export function MetaverseScene() {
       if (p.airborne) {
         p.vy -= GRAVITY * dt;
         p.y += p.vy * dt;
-        if (p.y <= 0) {
-          p.y = 0;
+        if (p.vy <= 0 && p.y <= groundY) {
+          p.y = groundY;
           p.vy = 0;
           p.airborne = false;
+        }
+      } else if (!riding) {
+        if (groundY > p.y) {
+          // လှေကားအဆင့် — ချောချောတက်
+          p.y = groundY;
+        } else if (p.y > groundY + 0.02) {
+          // အစွန်းကျော်လျှောက် — လွတ်ကျ
+          p.airborne = true;
+          p.vy = 0;
         }
       }
 
