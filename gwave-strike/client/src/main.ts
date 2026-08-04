@@ -3,8 +3,10 @@ import RAPIER from "@dimforge/rapier3d-compat";
 
 import { MAX_HP, RESPAWN_S, TDM_TARGET } from "@gwave-strike/shared";
 
+import { GameAudio } from "./core/audio";
 import { Input } from "./core/input";
 import { gltfLoader } from "./core/loaders";
+import { attachTouchControls, isTouchDevice } from "./core/touch";
 import { Fx } from "./fx/fx";
 import { Net } from "./net/net";
 import { PlayerController } from "./player/controller";
@@ -12,6 +14,8 @@ import { WeaponSystem, type HitTarget } from "./player/weapons";
 import { BotManager } from "./soldiers/bots";
 import { Soldier } from "./soldiers/soldier";
 import { createHud } from "./ui/hud";
+import { createMinimap, type MapDot } from "./ui/minimap";
+import { createScoreboard, createSettings, type ScoreRow } from "./ui/panels";
 import { buildWorld, terrainHeight } from "./world/world";
 
 /// GWAVE STRIKE — Phase 3 client: multiplayer via Colyseus when the server
@@ -59,6 +63,29 @@ async function boot() {
   const hud = createHud(app);
   const fx = new Fx(world.scene, camera);
   const loader = gltfLoader(renderer);
+  const audio = new GameAudio();
+  const minimap = createMinimap(hud.root);
+  const scoreboard = createScoreboard(hud.root);
+  createSettings(hud.root, renderer, input);
+  const touch = isTouchDevice();
+  if (touch) attachTouchControls(hud.root, input);
+
+  // PWA
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    void navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+  }
+
+  // Tab scoreboard hold
+  let showBoard = false;
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Tab") {
+      e.preventDefault();
+      showBoard = true;
+    }
+  });
+  window.addEventListener("keyup", (e) => {
+    if (e.code === "Tab") showBoard = false;
+  });
 
   // ── Player ──
   const spawn = new THREE.Vector3(0, terrainHeight(0, -70) + 2, -70);
@@ -109,7 +136,10 @@ async function boot() {
       hud.setScore(b, r);
     },
     onHit: (victimIsMe, _dmg, iAmShooter, head) => {
-      if (iAmShooter) hud.hitmarker(head);
+      if (iAmShooter) {
+        hud.hitmarker(head);
+        audio.hit();
+      }
       if (victimIsMe) hud.damage();
     },
   });
@@ -189,6 +219,7 @@ async function boot() {
       const hit = weapons.update(dt, input, eye, targets, wallDist);
       if (hit) {
         fx.muzzle();
+        audio.shot(0);
         fx.tracer(
           eye
             .clone()
@@ -244,9 +275,10 @@ async function boot() {
 
     // ── Offline bots ──
     if (!online && bots) {
-      const incoming = bots.update(dt, now, camera.position, alive, wallDist, (a, b) =>
-        fx.tracer(a, b),
-      );
+      const incoming = bots.update(dt, now, camera.position, alive, wallDist, (a, b) => {
+        fx.tracer(a, b);
+        audio.shot(a.distanceTo(camera.position));
+      });
       if (incoming > 0 && alive) {
         hp -= incoming;
         hud.damage();
@@ -269,9 +301,64 @@ async function boot() {
 
     hud.setHp(hp);
     hud.setAmmo(weapons.mag, weapons.reserve, weapons.reloading > 0);
+
+    // ── Footsteps (own, grounded movement) ──
+    const moving = Math.abs(input.state.f) + Math.abs(input.state.s) > 0.2;
+    stepAcc += moving && alive ? dt : 0;
+    if (stepAcc > (input.state.run ? 0.32 : 0.45)) {
+      stepAcc = 0;
+      audio.footstep();
+    }
+
+    // ── Minimap ──
+    const dots: MapDot[] = [{ x: p.x, z: p.z, team: online ? net.myTeam : 0, me: true }];
+    if (online) {
+      for (const id of net.remotes.keys()) {
+        const v = net.sample(id);
+        if (v && v.hp > 0) dots.push({ x: v.x, z: v.z, team: v.team });
+      }
+    } else if (bots) {
+      for (const b of bots.bots) {
+        if (b.hp > 0) dots.push({ x: b.pos.x, z: b.pos.z, team: b.team });
+      }
+    }
+    minimap.draw(dots, input.state.yaw);
+
+    // ── Scoreboard (Tab) ──
+    const rows: ScoreRow[] = [];
+    if (showBoard) {
+      if (online) {
+        for (const buf of net.remotes.values()) {
+          const v = buf[buf.length - 1];
+          if (v)
+            rows.push({
+              name: v.name,
+              team: v.team,
+              kills: v.kills,
+              deaths: v.deaths,
+              me: false,
+            });
+        }
+        rows.push({
+          name: "မင်း",
+          team: net.myTeam,
+          kills: net.myKills,
+          deaths: net.myDeaths,
+          me: true,
+        });
+      } else if (bots) {
+        for (const b of bots.bots) {
+          rows.push({ name: b.id, team: b.team, kills: 0, deaths: 0, me: false });
+        }
+        rows.push({ name: "မင်း", team: 0, kills: 0, deaths: 0, me: true });
+      }
+    }
+    scoreboard.toggle(showBoard, rows);
+
     fx.update();
     renderer.render(world.scene, camera);
   }
+  let stepAcc = 0;
   frame();
 }
 

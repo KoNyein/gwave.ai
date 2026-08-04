@@ -18,6 +18,8 @@ export type RemoteView = {
   yaw: number;
   hp: number;
   anim: string;
+  kills: number;
+  deaths: number;
   t: number; // arrival time for interpolation
 };
 
@@ -38,6 +40,8 @@ type PlayerLike = {
   yaw: number;
   hp: number;
   anim: string;
+  kills: number;
+  deaths: number;
   lastSeq: number;
   listen?: unknown;
 };
@@ -47,6 +51,8 @@ export class Net {
   meId = "";
   myTeam = 0;
   myHp = 100;
+  myKills = 0;
+  myDeaths = 0;
   myServerPos = { x: 0, y: 0, z: 0, seq: 0 };
   /// snapshot buffers per remote id for 100ms-in-the-past interpolation
   remotes = new Map<string, RemoteView[]>();
@@ -76,6 +82,8 @@ export class Net {
             this.myTeam = p.team;
             this.myHp = p.hp;
             this.myServerPos = { x: p.x, y: p.y, z: p.z, seq: p.lastSeq };
+            this.myKills = p.kills;
+            this.myDeaths = p.deaths;
             return;
           }
           let buf = this.remotes.get(id);
@@ -94,6 +102,8 @@ export class Net {
             yaw: p.yaw,
             hp: p.hp,
             anim: p.anim,
+            kills: p.kills,
+            deaths: p.deaths,
             t: now,
           });
           while (buf.length > 12) buf.shift();
