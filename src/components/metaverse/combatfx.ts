@@ -20,8 +20,11 @@ export type CombatFx = {
   tracer(from: THREE.Vector3, dir: THREE.Vector3, len?: number): void;
   /// ပြောင်းဝ မီးပွင့် — ကိုယ့်မျက်နှာရှေ့ / ပစ်သူနေရာမှာ ခဏလင်းတယ်
   muzzle(at: THREE.Vector3): void;
-  /// မြေပြင် ကွင်းလှိုင်း — respawn / kill နေရာပြ (အနီ=သေ၊ အစိမ်း=ရှင်)
-  ring(x: number, z: number, color: number): void;
+  /// မြေပြင် ကွင်းလှိုင်း — respawn / kill နေရာပြ (အနီ=သေ၊ အစိမ်း=ရှင်)။
+  /// `scale` က ကွင်းအရွယ် ဆချဲ့ချက် (ဗုံးပေါက်ကွဲမှုမှာ ကြီးကြီး)။
+  ring(x: number, z: number, color: number, scale?: number): void;
+  /// 💥 ဗုံးပေါက်ကွဲမှု — ကွင်းလှိုင်းကြီး ၂ ထပ် + မီးလင်းချက် ကြီး
+  boom(x: number, z: number, radius: number): void;
   update(dt: number): void;
   dispose(): void;
 };
@@ -60,6 +63,7 @@ export function createCombatFx(scene: THREE.Scene): CombatFx {
   type Ring = {
     mesh: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
     life: number;
+    scale: number;
   };
   const rings: Ring[] = [];
   for (let i = 0; i < MAX_RINGS; i++) {
@@ -74,7 +78,7 @@ export function createCombatFx(scene: THREE.Scene): CombatFx {
     mesh.rotation.x = -Math.PI / 2;
     mesh.visible = false;
     group.add(mesh);
-    rings.push({ mesh, life: 0 });
+    rings.push({ mesh, life: 0, scale: 1 });
   }
   let nextRing = 0;
 
@@ -85,8 +89,23 @@ export function createCombatFx(scene: THREE.Scene): CombatFx {
   flash.visible = true;
   group.add(flash);
   let flashLife = 0;
+  let flashDur = 0.08;
+  let flashMax = 14;
 
   const up = new THREE.Vector3(0, 1, 0);
+
+  function spawnRing(x: number, z: number, color: number, scale = 1) {
+    const r = rings[nextRing % MAX_RINGS];
+    nextRing++;
+    if (!r) return;
+    r.mesh.position.set(x, 0.07, z);
+    r.mesh.scale.setScalar(0.4 * scale);
+    r.mesh.material.color.setHex(color);
+    r.mesh.material.opacity = 0.9;
+    r.mesh.visible = true;
+    r.life = RING_LIFE;
+    r.scale = scale;
+  }
 
   return {
     tracer(from, dir, len = 36) {
@@ -106,18 +125,23 @@ export function createCombatFx(scene: THREE.Scene): CombatFx {
       flash.position.copy(at);
       flash.intensity = 14;
       flashLife = 0.08;
+      flashDur = 0.08;
+      flashMax = 14;
     },
 
-    ring(x, z, color) {
-      const r = rings[nextRing % MAX_RINGS];
-      nextRing++;
-      if (!r) return;
-      r.mesh.position.set(x, 0.07, z);
-      r.mesh.scale.setScalar(0.4);
-      r.mesh.material.color.setHex(color);
-      r.mesh.material.opacity = 0.9;
-      r.mesh.visible = true;
-      r.life = RING_LIFE;
+    ring(x, z, color, scale = 1) {
+      spawnRing(x, z, color, scale);
+    },
+
+    boom(x, z, radius) {
+      // ကွင်း ၂ ထပ် — အပြင်ကျယ် + အတွင်းနီ — ပေါက်ကွဲမှုအရွယ် ပြတယ်
+      spawnRing(x, z, 0xffb066, Math.max(1, radius / 3));
+      spawnRing(x, z, 0xff5533, Math.max(0.6, radius / 5));
+      flash.position.set(x, 1.4, z);
+      flash.intensity = 32;
+      flashLife = 0.3;
+      flashDur = 0.3;
+      flashMax = 32;
     },
 
     update(dt) {
@@ -138,12 +162,12 @@ export function createCombatFx(scene: THREE.Scene): CombatFx {
           continue;
         }
         const k = 1 - r.life / RING_LIFE;
-        r.mesh.scale.setScalar(0.4 + k * 3.2);
+        r.mesh.scale.setScalar((0.4 + k * 3.2) * r.scale);
         r.mesh.material.opacity = (1 - k) * 0.9;
       }
       if (flashLife > 0) {
         flashLife -= dt;
-        flash.intensity = Math.max(0, (flashLife / 0.08) * 14);
+        flash.intensity = Math.max(0, (flashLife / flashDur) * flashMax);
       }
     },
 

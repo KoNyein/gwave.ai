@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
 import { createSpatialAudio, type SpatialAudio } from "./audio";
@@ -273,6 +273,23 @@ export function MetaverseScene() {
   const [banner, setBanner] = useState<{ text: string; tone: "good" | "bad"; at: number } | null>(null);
   /// 📣 ဖိတ်စာ ကူးပြီးကြောင်း အတည်ပြုချက်
   const [invited, setInvited] = useState(false);
+  /// 🎯 ADS (ချိန်ကွင်းချိန်ခြင်း) — right-click ဖိထား / 🎯 ခလုတ် toggle။
+  /// state က UI (scope overlay/ခလုတ်အရောင်)၊ ref က render loop (FOV zoom)။
+  const [ads, setAds] = useState(false);
+  const adsRef = useRef(false);
+  const setAdsBoth = useCallback((on: boolean) => {
+    adsRef.current = on;
+    setAds(on);
+  }, []);
+  /// 🔫 ဖိထားရင် ဆက်ပစ် (auto-fire) — effect ထဲက fire loop ကို ချိတ်တယ်
+  const arenaFireHoldRef = useRef<((down: boolean) => void) | null>(null);
+  /// 🧎 ကုပ်ခလုတ် (ဖုန်း) — effect ထဲက input.crouch ကို တိုက်ရိုက်ထိတယ်
+  const [crouchOn, setCrouchOn] = useState(false);
+  const crouchSetRef = useRef<((on: boolean) => void) | null>(null);
+  /// ထိမှန်မှု ဒဏ်ရာဂဏန်း (-34) — crosshair ဘေး ပေါ်ပြီး ပျောက်တယ်
+  const [dmgNums, setDmgNums] = useState<{ id: number; text: string; head: boolean }[]>([]);
+  /// အထိခံရတဲ့ ဦးတည်ရာ — မျက်နှာပြင်အလယ် အနီမြှား (PUBG-style)
+  const [hurtFrom, setHurtFrom] = useState<{ deg: number; at: number } | null>(null);
 
   // ── 🙈 ဝှက်တမ်း (hub-world game room, hide-1) ────────────────────────────
   type HidePlayer = { id: string; name: string; score: number };
@@ -425,6 +442,10 @@ export function MetaverseScene() {
     setDmgOn(false);
     setBanner(null);
     setInvited(false);
+    setAdsBoth(false);
+    setCrouchOn(false);
+    setDmgNums([]);
+    setHurtFrom(null);
     arenaWeaponListRef.current = [];
     setBooted(false);
 
@@ -511,7 +532,24 @@ export function MetaverseScene() {
     const sfx: Sfx | null = isGameWorld ? createSfx(0.8) : null;
     const combatFx: CombatFx | null = map.id === "arena" ? createCombatFx(scene) : null;
     /// aYou ကနေ update ဖြစ်တဲ့ ကိုယ့် combat အခြေအနေ — fire feedback အတွက်
-    const combat = { weapon: "pistol", alive: true, ammo: -1 };
+    const combat = { weapon: "pistol", alive: true, ammo: -1, prevWeapon: "knife" };
+    /// လက်နက် fireMs — aInit က server တန်ဖိုးတွေနဲ့ ပြည့်တယ် (auto-fire နှုန်း)။
+    /// Server ကလည်း ကိုယ့်ဘက်က ထပ်စစ်တယ် — ဒါက client ရဲ့ ကြိုကန့်သတ်ချက်ပဲ။
+    const wFireMs: Record<string, number> = {};
+    /// ပစ်ချိန် ကင်မရာ ခုန်တက်ချက် (recoil) — လက်နက်အလိုက်
+    const RECOIL: Record<string, number> = {
+      pistol: 0.014, knife: 0.004, sniper: 0.032, bomb: 0.01,
+      smg: 0.006, shotgun: 0.034, revolver: 0.022,
+    };
+    /// 🎯 ADS FOV — sniper က scope အပြည့်၊ ကျန်တာ နည်းနည်းချုံ့
+    const BASE_FOV = 60;
+    const ADS_FOV: Record<string, number> = {
+      sniper: 18, revolver: 38, pistol: 45, smg: 45, shotgun: 50, bomb: 50, knife: 55,
+    };
+    /// 💥 ပေါက်ကွဲမှု/ထိချက်က ကင်မရာ တုန်ခါမှု
+    let shake = 0;
+    let lastFireLocal = 0;
+    let firing = false;
 
     // ── User ဆောက်ထားတဲ့ အရာများ (Phase 18) ───────────────────────────────
     // ★ InstancedMesh — type တစ်ခုချင်းကို draw call တစ်ခုစီ။ မဟုတ်ရင်
@@ -951,14 +989,33 @@ export function MetaverseScene() {
               arenaWeaponListRef.current = Object.keys(
                 (m.weapons as Record<string, unknown>) ?? {},
               );
+              for (const [wk, wv] of Object.entries(
+                (m.weapons as Record<string, { fireMs?: number }>) ?? {},
+              )) {
+                wFireMs[wk] = Number(wv?.fireMs) || 350;
+              }
               teleportMe(m.players);
               break;
             case "aYou": {
               const you = m.you as ArenaYou;
+              if (you.weapon !== combat.weapon) combat.prevWeapon = combat.weapon;
               combat.weapon = you.weapon;
               combat.alive = you.alive;
               combat.ammo = you.ammo?.[you.weapon] ?? -1;
               setArenaHud((h) => ({ ...h, you }));
+              break;
+            }
+            case "aBoom": {
+              // 💥 ဗုံးပေါက်ကွဲမှု — server က ပေါက်ကွဲတဲ့နေရာ x,z + radius ပို့တယ်
+              const bx = Number(m.x);
+              const bz = Number(m.z);
+              const br = Number(m.radius) || 6;
+              if (Number.isFinite(bx) && Number.isFinite(bz)) {
+                combatFx?.boom(bx, bz, br);
+                sfx?.shot("bomb");
+                const d = Math.hypot(bx - p.x, bz - p.z);
+                if (d < 25) shake = Math.max(shake, 0.4 * (1 - d / 25));
+              }
               break;
             }
             case "aShot": {
@@ -1000,14 +1057,39 @@ export function MetaverseScene() {
                 window.setTimeout(() => {
                   if (!killed) setHitMark((h) => (h?.at === at ? null : h));
                 }, 200);
+                // ဒဏ်ရာဂဏန်း — crosshair ဘေး "-34" ပေါ်ပြီး မှေးသွားတယ်
+                const dmg = Number(m.dmg);
+                if (Number.isFinite(dmg) && dmg > 0) {
+                  const id = at + Math.random();
+                  setDmgNums((list) => [
+                    ...list.slice(-3),
+                    { id, text: `-${dmg}`, head: m.hitPart === "head" },
+                  ]);
+                  window.setTimeout(() => {
+                    if (!killed) setDmgNums((list) => list.filter((n) => n.id !== id));
+                  }, 700);
+                }
                 pushFeed(m.hitPart === "head" ? "ခေါင်းထိ ✓✓" : "ထိမှန်တယ် ✓", true);
               }
               if (m.victimId === myId) {
                 sfx?.hurt();
                 setDmgOn(true);
+                shake = Math.max(shake, 0.12);
                 window.setTimeout(() => {
                   if (!killed) setDmgOn(false);
                 }, 320);
+                // အထိခံရတဲ့ ဦးတည်ရာ မြှား — ပစ်သူက ဘယ်ဘက်ကလဲ သိရအောင်
+                const att = remotes.get(String(m.attackerId));
+                if (att) {
+                  const ang =
+                    Math.atan2(att.cur.x - p.x, att.cur.z - p.z) - cam.yaw;
+                  const deg = Math.round((-ang * 180) / Math.PI);
+                  const hAt = Date.now();
+                  setHurtFrom({ deg, at: hAt });
+                  window.setTimeout(() => {
+                    if (!killed) setHurtFrom((h) => (h?.at === hAt ? null : h));
+                  }, 700);
+                }
                 pushFeed("အထိခံရတယ်", false);
               }
               break;
@@ -1083,23 +1165,57 @@ export function MetaverseScene() {
       // ⚔️ ပစ်ခတ်မှု — ကင်မရာ ကြည့်နေတဲ့ **ဦးတည်ချက်ပဲ** ပို့တယ်။ ဘယ်သူ
       // ထိလဲ ဆုံးဖြတ်တာ server (A4 server-authoritative) — origin/target
       // ကို client က လိမ်လို့ မရဘူး။
-      arenaFireRef.current = () => {
+      const fireOnce = () => {
         if (roomId !== "arena") return;
         sfx?.resume();
         if (!combat.alive) return;
-        const d = new THREE.Vector3();
-        camera.getWorldDirection(d);
+        // Client-side ကြို-cooldown — server fireMs ကို မကျော်အောင်
+        // (ဖိထားပစ်တဲ့ auto-fire က frame တိုင်း ခေါ်လို့)။
+        const now = Date.now();
+        const fireMs = wFireMs[combat.weapon] ?? 320;
+        if (now - lastFireLocal < fireMs) return;
+        lastFireLocal = now;
+
+        // ★★ ချိန်ချက် — server က ray ကို **player ရဲ့ မျက်လုံး** ကနေ ပစ်တယ်၊
+        //   ကင်မရာကနေ မဟုတ်ဘူး။ Third-person မှာ ကင်မရာက နောက်မှာ
+        //   အောက်စိုက်ကြည့်နေလို့ ကင်မရာ direction ကို တိုက်ရိုက်ပို့ရင်
+        //   server ray က မြေထဲ စိုက်ဝင်ပြီး **ဘယ်တော့မှ မထိဘူး** — ဒါက
+        //   "ပစ်လို့မရဘူး" ရဲ့ ဇစ်မြစ်။ ဒါကြောင့် crosshair ချိန်ထားတဲ့
+        //   အဝေးမှတ်ကို ရှာပြီး မျက်လုံးကနေ အဲဒီမှတ်ဆီ converge လုပ်တယ် —
+        //   FP မှာရော TP မှာရော တိကျတယ်။
+        const camDir = new THREE.Vector3();
+        camera.getWorldDirection(camDir);
+        const aimAt = camera.position.clone().addScaledVector(camDir, 60);
+        const eye = new THREE.Vector3(p.x, p.y + 1.6, p.z);
+        const d = aimAt.sub(eye).normalize();
+
         // ★ Server ကို မစောင့်ဘဲ ချက်ချင်း တုံ့ပြန်တယ် — အသံ/ကျည်လမ်းကြောင်း
         //   နောက်ကျရင် "ပစ်လို့မရဘူး" လို့ ခံစားရတယ်။ ထိမထိကတော့ server
         //   (aHit/aKill) ကပဲ ဆုံးဖြတ်တယ်။
         if (combat.ammo !== 0) {
           sfx?.shot(combat.weapon);
-          const from = camera.position.clone().addScaledVector(d, 0.9);
-          from.y -= 0.12;
-          combatFx?.tracer(from, d, 40);
-          combatFx?.muzzle(from);
+          combatFx?.tracer(eye.clone().addScaledVector(d, 0.9), d, 40);
+          combatFx?.muzzle(eye.clone().addScaledVector(d, 0.9));
+          // Recoil — ကင်မရာ အပေါ်ခုန် + ဘေးယိမ်းအနည်းငယ် (PUBG-style)
+          const rec = RECOIL[combat.weapon] ?? 0.012;
+          cam.pitch = THREE.MathUtils.clamp(cam.pitch - rec, -1.2, 1.2);
+          cam.yaw += (Math.random() - 0.5) * rec * 0.6;
         }
-        net?.sendRaw({ type: "aFire", dx: d.x, dy: d.y, dz: d.z });
+
+        // 💣 ဗုံး — ပစ်မှတ်မြေမှတ် x,z ပါ ပို့တယ်။ မပို့ရင် server က
+        //   ကိုယ့်ခြေရင်းမှာ ဖောက်ခွဲပြီး ကိုယ့်ကိုယ်ကိုယ် ထိတယ်!
+        if (combat.weapon === "bomb") {
+          const target = eye.clone().addScaledVector(d, 15);
+          net?.sendRaw({ type: "aFire", dx: d.x, dy: d.y, dz: d.z, x: target.x, z: target.z });
+        } else {
+          net?.sendRaw({ type: "aFire", dx: d.x, dy: d.y, dz: d.z });
+        }
+      };
+      arenaFireRef.current = fireOnce;
+      // 🔫 ဖိထား = ဆက်ပစ် — SMG လို လက်နက်တွေအတွက် (နှုန်းက fireMs အတိုင်း)
+      arenaFireHoldRef.current = (down) => {
+        firing = down;
+        if (down) fireOnce();
       };
       arenaReloadRef.current = () => {
         if (roomId !== "arena") return;
@@ -1205,6 +1321,10 @@ export function MetaverseScene() {
     // ⚔️ ပွဲကွင်းက FPS ဂိမ်း — first-person နဲ့ စတယ် (crosshair နဲ့
     // ချိန်တာက ကင်မရာဦးတည်ချက်မို့ FP မှာမှ တိကျတယ်)။ V နဲ့ ပြန်ထွက်လို့ရတယ်။
     if (map.id === "arena") setFpView(true);
+    // 🧎 ဖုန်း ကုပ်ခလုတ် — React ခလုတ်ကနေ effect ထဲက input ကို တိုက်ရိုက်ထိတယ်
+    crouchSetRef.current = (on) => {
+      input.crouch = on;
+    };
 
     // ── Keyboard ──────────────────────────────────────────────────────────
     const keyMap: Record<string, keyof Input> = {
@@ -1241,9 +1361,14 @@ export function MetaverseScene() {
       }
       if (e.code === "KeyE") toggleRide();
       if (e.code === "KeyV") setFpView(!fpvRef.current);
-      // ⚔️ Game room ခလုတ်များ — R ကျည်ဖြည့် · 1-7 လက်နက် · Tab အမှတ်စာရင်း
+      // ⚔️ Game room ခလုတ်များ — R ကျည်ဖြည့် · 1-7 လက်နက် · Q အရင်လက်နက် ·
+      // Tab အမှတ်စာရင်း
       if (map.id === "arena") {
         if (e.code === "KeyR") arenaReloadRef.current?.();
+        if (e.code === "KeyQ") {
+          const prev = combat.prevWeapon;
+          if (prev && prev !== combat.weapon) arenaWeaponPickRef.current?.(prev);
+        }
         const dig = /^Digit([1-7])$/.exec(e.code);
         if (dig) {
           const key = arenaWeaponListRef.current[Number(dig[1]) - 1];
@@ -1276,9 +1401,11 @@ export function MetaverseScene() {
       sfx?.resume();
       // Joystick ဧရိယာက touch ကို ကင်မရာ မယူရ
       if ((e.target as HTMLElement).dataset?.hud) return;
-      // ⚔️ Pointer lock ထဲ (first-person) click = ပစ်တယ် — CS အတိုင်း။
+      // ⚔️ Pointer lock ထဲ (first-person) — PUBG အတိုင်း:
+      //   left ဖိထား = ဆက်ပစ် · right ဖိထား = 🎯 ADS ချိန်ကွင်း
       if (roomId === "arena" && document.pointerLockElement === el) {
-        arenaFireRef.current?.();
+        if (e.button === 2) setAdsBoth(true);
+        else arenaFireHoldRef.current?.(true);
         return;
       }
       // ★ First-person + mouse — CS လိုပဲ click တစ်ချက်နဲ့ pointer lock
@@ -1298,22 +1425,25 @@ export function MetaverseScene() {
       renderer.domElement.setPointerCapture(e.pointerId);
     };
     const onPointerMove = (e: PointerEvent) => {
+      // 🎯 ADS ချိန်နေချိန် sensitivity ကို FOV အချိုးအတိုင်း လျှော့တယ် —
+      // scope ချဲ့ထားချိန် ကင်မရာ မြန်လွန်းရင် ချိန်လို့မရဘူး (PUBG စည်းမျဉ်း)
+      const sens = map.id === "arena" ? camera.fov / BASE_FOV : 1;
       // Pointer lock ထဲမှာ — movementX/Y နဲ့ တိုက်ရိုက်လှည့်တယ်
       if (document.pointerLockElement === el) {
-        cam.yaw -= e.movementX * 0.0028;
+        cam.yaw -= e.movementX * 0.0028 * sens;
         cam.pitch = THREE.MathUtils.clamp(
-          cam.pitch + e.movementY * 0.0022,
+          cam.pitch + e.movementY * 0.0022 * sens,
           fpvRef.current ? -1.2 : -0.25,
           1.2,
         );
         return;
       }
       if (dragId !== e.pointerId) return;
-      cam.yaw -= (e.clientX - dragX) * 0.005;
+      cam.yaw -= (e.clientX - dragX) * 0.005 * sens;
       // ★ FP မှာ မော့ကြည့်လို့ရအောင် pitch ကို အောက်ဘက် ပိုကျယ်ပေးတယ် —
       // third-person မှာတော့ မြေအောက် မြင်သွားမှာမို့ -0.25 ပဲ။
       cam.pitch = THREE.MathUtils.clamp(
-        cam.pitch + (e.clientY - dragY) * 0.004,
+        cam.pitch + (e.clientY - dragY) * 0.004 * sens,
         fpvRef.current ? -1.2 : -0.25,
         1.2,
       );
@@ -1322,8 +1452,25 @@ export function MetaverseScene() {
     };
     const onPointerUp = (e: PointerEvent) => {
       if (dragId === e.pointerId) dragId = null;
+      // ⚔️ ဖိထားတာ လွှတ်ရင် ပစ်ရပ် / ADS ထွက်
+      if (roomId === "arena") {
+        if (e.button === 2) setAdsBoth(false);
+        else if (e.button === 0) arenaFireHoldRef.current?.(false);
+      }
     };
     const onWheel = (e: WheelEvent) => {
+      // ⚔️ ပွဲကွင်းမှာ wheel = လက်နက်လှိမ့်ပြောင်း (PUBG) — zoom က V နဲ့
+      if (map.id === "arena") {
+        const list = arenaWeaponListRef.current;
+        if (list.length > 0) {
+          const cur = Math.max(0, list.indexOf(combat.weapon));
+          const next = (cur + (e.deltaY > 0 ? 1 : list.length - 1)) % list.length;
+          const key = list[next];
+          if (key && key !== combat.weapon) arenaWeaponPickRef.current?.(key);
+        }
+        e.preventDefault();
+        return;
+      }
       if (fpvRef.current) {
         // FP ထဲမှာ zoom ထုတ်ရင် third-person ပြန်ထွက်တယ် (game convention)
         if (e.deltaY > 0) setFpView(false);
@@ -1336,11 +1483,24 @@ export function MetaverseScene() {
       e.preventDefault();
     };
     const el = renderer.domElement;
+    // ⚔️ Right-click = ADS မို့ context menu မတက်ရ
+    const onCtxMenu = (e: Event) => {
+      if (map.id === "arena") e.preventDefault();
+    };
     el.addEventListener("pointerdown", onPointerDown);
     el.addEventListener("pointermove", onPointerMove);
     el.addEventListener("pointerup", onPointerUp);
     el.addEventListener("pointercancel", onPointerUp);
+    el.addEventListener("contextmenu", onCtxMenu);
     el.addEventListener("wheel", onWheel, { passive: false });
+    // ⚔️ Esc နဲ့ pointer lock ထွက်သွားရင် ဖိထားပစ်/ADS ကျန်မနေရ
+    const onLockChange = () => {
+      if (map.id === "arena" && document.pointerLockElement !== el) {
+        firing = false;
+        setAdsBoth(false);
+      }
+    };
+    document.addEventListener("pointerlockchange", onLockChange);
 
     // ── Mobile joystick ───────────────────────────────────────────────────
     // DOM element ၂ ခုနဲ့ — React state မသုံးဘူး၊ touch တိုင်း re-render
@@ -1645,6 +1805,26 @@ export function MetaverseScene() {
       }
       // Frame တိုင်း တွက်တယ် — စီးနေရင်လည်း ဖျောက် (toggleRide နဲ့ တူညီ)
       me.group.visible = !riding && !fpvRef.current;
+
+      // ── ⚔️ Auto-fire + ADS zoom + ကင်မရာ တုန်ခါမှု ─────────────────────
+      if (map.id === "arena") {
+        // ဖိထားရင် fireMs နှုန်းအတိုင်း ဆက်ပစ် (cooldown က fireOnce ထဲမှာ)
+        if (firing) arenaFireRef.current?.();
+        const targetFov = adsRef.current ? ADS_FOV[combat.weapon] ?? 45 : BASE_FOV;
+        if (Math.abs(camera.fov - targetFov) > 0.05) {
+          camera.fov += (targetFov - camera.fov) * Math.min(1, 10 * dt);
+          camera.updateProjectionMatrix();
+        }
+      }
+      if (shake > 0.004) {
+        camera.position.x += (Math.random() - 0.5) * shake;
+        camera.position.y += (Math.random() - 0.5) * shake * 0.6;
+        camera.position.z += (Math.random() - 0.5) * shake;
+        shake *= Math.exp(-6 * dt);
+      } else {
+        shake = 0;
+      }
+
       // နားထောင်သူက ကင်မရာ — လှည့်တာနဲ့ အသံရဲ့ ဘယ်/ညာ ပြောင်းရမယ်
       audio.syncListener(camera);
 
@@ -1794,6 +1974,8 @@ export function MetaverseScene() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("resize", onResize);
+      document.removeEventListener("pointerlockchange", onLockChange);
+      el.removeEventListener("contextmenu", onCtxMenu);
       el.removeEventListener("pointerdown", onPointerDown);
       el.removeEventListener("pointermove", onPointerMove);
       el.removeEventListener("pointerup", onPointerUp);
@@ -1847,7 +2029,8 @@ export function MetaverseScene() {
     };
     // ★ roomId ပြောင်းရင် အားလုံး ပြန်ဆောက်တယ် — cleanup က renderer,
     // geometry, material, socket အကုန် ရှင်းပြီးမှ အသစ် စတယ်။
-  }, [roomId, avatarNonce]);
+    // (setAdsBoth က useCallback([]) မို့ တည်ငြိမ်တယ်)
+  }, [roomId, avatarNonce, setAdsBoth]);
 
   return (
     <div ref={mountRef} className="relative h-full w-full">
@@ -1889,6 +2072,44 @@ export function MetaverseScene() {
               }`}
             >
               ✕
+            </div>
+          ) : null}
+          {/* 🎯 Sniper scope — ADS ချိန်မှာ မှန်ဘီလူးဝိုင်း + ချိန်မျဉ်း */}
+          {ads && arenaHud.you?.weapon === "sniper" ? (
+            <div
+              className="pointer-events-none absolute inset-0 z-[9]"
+              style={{
+                background:
+                  "radial-gradient(circle at center, transparent 0 34vmin, rgba(0,0,0,0.96) 35vmin 100%)",
+              }}
+            >
+              <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-black/50" />
+              <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-black/50" />
+            </div>
+          ) : null}
+          {/* ဒဏ်ရာဂဏန်းများ — ထိတိုင်း "-34" crosshair ဘေး ပေါ်တယ် */}
+          <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -mt-3 ml-7 flex flex-col items-start">
+            {dmgNums.map((n) => (
+              <span
+                key={n.id}
+                className={`text-sm font-bold drop-shadow ${
+                  n.head ? "text-red-400" : "text-amber-300"
+                }`}
+              >
+                {n.text}
+              </span>
+            ))}
+          </div>
+          {/* အထိခံရဦးတည်ရာ — ပစ်သူဘက် ညွှန်တဲ့ အနီမြှား (PUBG-style) */}
+          {hurtFrom ? (
+            <div
+              key={hurtFrom.at}
+              className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-44 w-44"
+              style={{ transform: `translate(-50%,-50%) rotate(${hurtFrom.deg}deg)` }}
+            >
+              <div className="absolute left-1/2 top-0 -translate-x-1/2 text-2xl text-red-500/90 drop-shadow">
+                ▲
+              </div>
             </div>
           ) : null}
           {/* အထိခံရချိန် အနီ vignette — မျက်နှာပြင်အနားတွေ ခဏနီသွားတယ် */}
@@ -1987,6 +2208,23 @@ export function MetaverseScene() {
             <div className="flex items-center gap-2">
               <button
                 data-hud="1"
+                onClick={() => {
+                  setCrouchOn((c) => {
+                    crouchSetRef.current?.(!c);
+                    return !c;
+                  });
+                }}
+                aria-label="ကုပ်မယ်"
+                className={`pointer-events-auto rounded-full border px-3 py-2 text-sm backdrop-blur ${
+                  crouchOn
+                    ? "border-emerald-400/70 bg-emerald-500/30 text-emerald-200"
+                    : "border-white/20 bg-black/50 text-white/80"
+                }`}
+              >
+                🧎
+              </button>
+              <button
+                data-hud="1"
                 onClick={() => arenaReloadRef.current?.()}
                 aria-label="ကျည်ဖြည့်မယ် (R)"
                 className="pointer-events-auto rounded-full border border-white/20 bg-black/50 px-3 py-2 text-sm text-white/80 backdrop-blur"
@@ -1995,13 +2233,29 @@ export function MetaverseScene() {
               </button>
               <button
                 data-hud="1"
-                onClick={() => arenaFireRef.current?.()}
-                aria-label="ပစ်မယ်"
-                className="pointer-events-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-red-400/70 bg-red-500/30 text-2xl backdrop-blur active:scale-95 active:bg-red-500/60"
+                onClick={() => setAdsBoth(!ads)}
+                aria-label="ချိန်ကွင်း (ADS)"
+                className={`pointer-events-auto rounded-full border px-3 py-2 text-sm backdrop-blur ${
+                  ads
+                    ? "border-amber-400/70 bg-amber-500/30 text-amber-200"
+                    : "border-white/20 bg-black/50 text-white/80"
+                }`}
               >
-                🔫
+                🎯
               </button>
             </div>
+            {/* 🔫 ဖိထား = ဆက်ပစ် — SMG အတွက် မဖြစ်မနေ (နှုန်းက server fireMs) */}
+            <button
+              data-hud="1"
+              onPointerDown={() => arenaFireHoldRef.current?.(true)}
+              onPointerUp={() => arenaFireHoldRef.current?.(false)}
+              onPointerLeave={() => arenaFireHoldRef.current?.(false)}
+              onPointerCancel={() => arenaFireHoldRef.current?.(false)}
+              aria-label="ပစ်မယ် (ဖိထားရင် ဆက်ပစ်)"
+              className="pointer-events-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-red-400/70 bg-red-500/30 text-2xl backdrop-blur active:scale-95 active:bg-red-500/60"
+            >
+              🔫
+            </button>
           </div>
           {arenaHud.you && !arenaHud.you.alive ? (
             <p className="pointer-events-none absolute left-1/2 top-[42%] z-20 -translate-x-1/2 whitespace-nowrap rounded-lg bg-black/70 px-4 py-2 text-sm text-red-300 backdrop-blur">
@@ -2186,9 +2440,15 @@ export function MetaverseScene() {
         {/* ⚔️ Game room ခလုတ်လမ်းညွှန် — desktop မှာ keyboard, ဖုန်းမှာ ခလုတ် */}
         {roomId === "arena" && (
           <div className="text-amber-200/90">
-            {touch
-              ? "🔫 ပစ် · 🔄 ကျည်ဖြည့် · 🏆 အမှတ် · 📣 ဖိတ်"
-              : "Click = ပစ် · R = ကျည်ဖြည့် · 1-7 = လက်နက် · Tab = အမှတ်စာရင်း"}
+            {touch ? (
+              "🔫 ဖိထား = ဆက်ပစ် · 🎯 ချိန်ကွင်း · 🧎 ကုပ် · 🔄 ကျည် · 🏆 အမှတ် · 📣 ဖိတ်"
+            ) : (
+              <>
+                <div>Click ဖိထား = ဆက်ပစ် · Right-click = 🎯 ချိန်ကွင်း</div>
+                <div>R = ကျည်ဖြည့် · 1-7 / လှိမ့် = လက်နက် · Q = အရင်လက်နက်</div>
+                <div>Ctrl = ကုပ် · Shift = လျှောက် · Tab = အမှတ်စာရင်း</div>
+              </>
+            )}
           </div>
         )}
         {roomId === "hide-1" && (
