@@ -37,6 +37,7 @@ import { createVoiceChat, type VoiceChat } from "./voicechat";
 import { createWeather } from "./weather";
 import { buildWeaponMesh, disposeWeapon } from "./weapons3d";
 import { createDog } from "./dog3d";
+import { createRiggedHuman } from "./riggedhuman";
 import { OwnershipControl } from "./web3/ownership";
 import { buildWorld, insideCollider, resolveCollision } from "./world";
 import { isInApp, native } from "@/lib/metaverse/native";
@@ -869,15 +870,26 @@ export function MetaverseScene() {
     /// ဖုန်းမှာ ၅၀ ယောက် ပြရင် frame က ကျတယ် (spec 17.4)。
     const MAX_REMOTES = inApp ? 20 : 80;
 
-    const addRemote = (id: string, s: RemoteState, kind: "human" | "dog" = "human") => {
+    const addRemote = (
+      id: string,
+      s: RemoteState,
+      kind: "human" | "dog" | "soldier" = "human",
+    ) => {
       if (remotes.has(id)) return;
       if (remotes.size >= MAX_REMOTES) return;
-      // 🐕 ခွေး NPC ဆို ခွေး 3D model — Avatar interface တူလို့ ကျန်တာ
-      // (lerp/nametag/dispose) အကုန် တစ်လမ်းတည်း။ အမွေးရောင်က နာမည်အလိုက်။
+      // 🐕 ခွေး NPC ဆို ခွေး 3D model၊ 🎖 ဓားပြ NPC ဆို animation clip
+      // ပါတဲ့ rigged kit character — Avatar interface တူလို့ ကျန်တာ
+      // (lerp/nametag/dispose) အကုန် တစ်လမ်းတည်း။
+      // (Player avatar တွေက ရုပ်ပြင်ခန်း customize လုပ်လို့ရတဲ့
+      //  procedural human အတိုင်း — GLB နဲ့ အစားထိုးရင် customization ပျက်မယ်)
       const avatar =
         kind === "dog"
           ? createDog(s.name?.includes("နက်") ? 0x24201c : 0xb9873c)
-          : createHuman(colorFor(id));
+          : kind === "soldier"
+            ? createRiggedHuman(
+                ["b", "c", "j"][(Number.parseInt(id.slice(4), 10) || 1) - 1] ?? "b",
+              )
+            : createHuman(colorFor(id));
       avatar.group.position.set(s.x ?? 0, s.y ?? 0, s.z ?? 0);
       scene.add(avatar.group);
       remotes.set(id, {
@@ -1237,7 +1249,7 @@ export function MetaverseScene() {
                     name: q.name,
                     authed: false,
                   },
-                  q.dog ? "dog" : "human",
+                  q.dog ? "dog" : "soldier",
                 );
                 const br = remotes.get(q.id);
                 if (br && !q.dog) {
@@ -1346,7 +1358,7 @@ export function MetaverseScene() {
                     name: q.name,
                     authed: false,
                   },
-                  q.dog ? "dog" : "human",
+                  q.dog ? "dog" : "soldier",
                 );
                 const br = remotes.get(q.id);
                 if (br && !q.dog) {
