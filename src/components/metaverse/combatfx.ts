@@ -27,6 +27,9 @@ export type CombatFx = {
   ring(x: number, z: number, color: number, scale?: number): void;
   /// 💥 ဗုံးပေါက်ကွဲမှု — ကွင်းလှိုင်းကြီး ၂ ထပ် + မီးလင်းချက် ကြီး
   boom(x: number, z: number, radius: number): void;
+  /// 💣 ဗုံးပစ်လွှတ်မှု — from ကနေ to အထိ parabola arc နဲ့ `dur` စက္ကန့်
+  /// ပျံသွားတယ် (ပေါက်ကွဲမှုက သီးခြား `boom` — server ရဲ့ fuse ချိန်)
+  lob(fromX: number, fromZ: number, toX: number, toZ: number, dur: number): void;
   update(dt: number): void;
   dispose(): void;
 };
@@ -83,6 +86,30 @@ export function createCombatFx(scene: THREE.Scene): CombatFx {
     rings.push({ mesh, life: 0, scale: 1 });
   }
   let nextRing = 0;
+
+  // ── 💣 ဗုံးပျံသန်းမှု pool ──────────────────────────────────────────────
+  const MAX_LOBS = 4;
+  const lobGeo = new THREE.SphereGeometry(0.11, 8, 6);
+  type Lob = {
+    mesh: THREE.Mesh<THREE.SphereGeometry, THREE.MeshStandardMaterial>;
+    t: number;
+    dur: number;
+    fx: number;
+    fz: number;
+    tx: number;
+    tz: number;
+  };
+  const lobs: Lob[] = [];
+  for (let i = 0; i < MAX_LOBS; i++) {
+    const mesh = new THREE.Mesh(
+      lobGeo,
+      new THREE.MeshStandardMaterial({ color: 0x2e4630, roughness: 0.6 }),
+    );
+    mesh.visible = false;
+    group.add(mesh);
+    lobs.push({ mesh, t: 0, dur: 0, fx: 0, fz: 0, tx: 0, tz: 0 });
+  }
+  let nextLob = 0;
 
   // ── ပြောင်းဝ မီးပွင့် — light တစ်လုံးတည်း ပြန်သုံးတယ် ──────────────────
   // ★ PointLight အသစ် ထည့်/ဖြုတ်တိုင်း shader ပြန် compile ဖြစ်နိုင်လို့
@@ -152,6 +179,19 @@ export function createCombatFx(scene: THREE.Scene): CombatFx {
       spawnRing(x, z, color, scale);
     },
 
+    lob(fromX, fromZ, toX, toZ, dur) {
+      const l = lobs[nextLob % MAX_LOBS];
+      nextLob++;
+      if (!l) return;
+      l.fx = fromX;
+      l.fz = fromZ;
+      l.tx = toX;
+      l.tz = toZ;
+      l.t = 0;
+      l.dur = Math.max(0.2, dur);
+      l.mesh.visible = true;
+    },
+
     boom(x, z, radius) {
       // ကွင်း ၂ ထပ် — အပြင်ကျယ် + အတွင်းနီ — ပေါက်ကွဲမှုအရွယ် ပြတယ်
       spawnRing(x, z, 0xffb066, Math.max(1, radius / 3));
@@ -188,6 +228,18 @@ export function createCombatFx(scene: THREE.Scene): CombatFx {
         flashLife -= dt;
         flash.intensity = Math.max(0, (flashLife / flashDur) * flashMax);
       }
+      for (const l of lobs) {
+        if (!l.mesh.visible) continue;
+        l.t += dt;
+        const k = Math.min(1, l.t / l.dur);
+        // Parabola — ထိပ်မှာ ~4 unit မြင့်ပြီး ပစ်မှတ်မြေမှာ ကျတယ်
+        l.mesh.position.set(
+          l.fx + (l.tx - l.fx) * k,
+          1.2 + Math.sin(k * Math.PI) * 4,
+          l.fz + (l.tz - l.fz) * k,
+        );
+        if (k >= 1) l.mesh.visible = false;
+      }
     },
 
     dispose() {
@@ -195,8 +247,10 @@ export function createCombatFx(scene: THREE.Scene): CombatFx {
       // GPU memory တက်နေမယ်။
       for (const t of tracers) t.mesh.material.dispose();
       for (const r of rings) r.mesh.material.dispose();
+      for (const l of lobs) l.mesh.material.dispose();
       tracerGeo.dispose();
       ringGeo.dispose();
+      lobGeo.dispose();
       scene.remove(group);
     },
   };

@@ -609,6 +609,8 @@ export function MetaverseScene() {
     /// Camera child ကို render ဖို့ scene ထဲ camera ထည့်ရတယ်။
     let vmKind = "";
     let vmKick = 0;
+    /// 🔪 ဓားဝှေ့ animation ကျန်ချိန် — ဓားက ကျည်လမ်းကြောင်းမဟုတ်ဘဲ ဝှေ့တယ်
+    let swingT = 0;
     const vmGroup = new THREE.Group();
     if (map.id === "arena") {
       scene.add(camera);
@@ -1124,6 +1126,18 @@ export function MetaverseScene() {
               sfx?.shot(String(m.weapon || "pistol"));
               break;
             }
+            case "aThrown": {
+              // 💣 ဗုံးပစ်လွှတ်မှု — fuse ချိန်အတွင်း arc နဲ့ ပျံသွားတာ ပြတယ်။
+              // ပေါက်ကွဲမှုက server ရဲ့ aBoom (fuse ပြီးမှ) နဲ့ လာတယ်။
+              const fx2 = Number(m.fromX);
+              const fz2 = Number(m.fromZ);
+              const tx2 = Number(m.x);
+              const tz2 = Number(m.z);
+              if ([fx2, fz2, tx2, tz2].every(Number.isFinite)) {
+                combatFx?.lob(fx2, fz2, tx2, tz2, (Number(m.ms) || 900) / 1000);
+              }
+              break;
+            }
             case "aEnter": {
               const q = m.player as ArenaBoardRow;
               setArenaHud((h) => ({
@@ -1302,8 +1316,13 @@ export function MetaverseScene() {
         //   (aHit/aKill) ကပဲ ဆုံးဖြတ်တယ်။
         if (combat.ammo !== 0) {
           sfx?.shot(combat.weapon);
-          combatFx?.tracer(eye.clone().addScaledVector(d, 0.9), d, 40);
-          combatFx?.muzzle(eye.clone().addScaledVector(d, 0.9));
+          if (combat.weapon === "knife") {
+            // 🔪 ဓားက ဝှေ့တာ — ကျည်လမ်းကြောင်း/ပြောင်းဝမီး မထွက်ရဘူး
+            swingT = 0.25;
+          } else {
+            combatFx?.tracer(eye.clone().addScaledVector(d, 0.9), d, 40);
+            combatFx?.muzzle(eye.clone().addScaledVector(d, 0.9));
+          }
           // Recoil — ကင်မရာ အပေါ်ခုန် + ဘေးယိမ်းအနည်းငယ် (PUBG-style)
           const rec = RECOIL[combat.weapon] ?? 0.012;
           cam.pitch = THREE.MathUtils.clamp(cam.pitch - rec, -1.2, 1.2);
@@ -1838,6 +1857,7 @@ export function MetaverseScene() {
         airborne: p.airborne,
         emote: emoteRef.current,
         backward: backpedal,
+        armed: map.id === "arena",
       });
 
       // ── တခြား player တွေ ───────────────────────────────────────────────
@@ -1871,6 +1891,7 @@ export function MetaverseScene() {
             running: r.speed > 5,
             airborne: r.cur.y > 0.15,
             emote: r.emote,
+            armed: map.id === "arena",
             // သူလည်း back-pedal ဖြစ်နိုင်တယ် — ရွေ့ရာနဲ့ မျက်နှာမူရာ ဆန့်ကျင်ရင်
             backward:
               dist > 0.02 &&
@@ -1982,6 +2003,18 @@ export function MetaverseScene() {
         // ပစ်တိုင်း viewmodel နောက်ဆုတ် kick — ပြန်ပြေဖြည်းဖြည်း
         vmGroup.position.z = -0.62 + vmKick;
         vmKick *= Math.exp(-10 * dt);
+        // 🔪 ဓားဝှေ့ — လက်ထဲကဓား + FP viewmodel နှစ်ခုလုံး အောက်ဝှေ့ချ
+        if (swingT > 0) {
+          swingT = Math.max(0, swingT - dt);
+          const kSwing = Math.sin((1 - swingT / 0.25) * Math.PI);
+          const hw = me.group.userData.weaponMesh as THREE.Group | undefined;
+          if (hw) hw.rotation.x = -0.35 - kSwing * 1.3;
+          vmGroup.rotation.x = -kSwing * 0.9;
+        } else {
+          const hw = me.group.userData.weaponMesh as THREE.Group | undefined;
+          if (hw && hw.rotation.x !== -0.35) hw.rotation.x = -0.35;
+          if (vmGroup.rotation.x !== 0) vmGroup.rotation.x = 0;
+        }
         // ပြေးရင် FOV နည်းနည်းကျယ် — အရှိန်ခံစားချက် (PUBG sprint feel)
         const targetFov = adsRef.current
           ? ADS_FOV[combat.weapon] ?? 45
@@ -2235,8 +2268,11 @@ export function MetaverseScene() {
       ) : null}
       {roomId === "arena" && !arenaHud.denied ? (
         <>
-          {/* ချိန်ကွင်း — လက်နက်အလိုက် ပုံစံကွဲ + ADS မှာ ကျဉ်း */}
-          <ArenaCrosshair weapon={arenaHud.you?.weapon ?? "pistol"} ads={ads} />
+          {/* ချိန်ကွင်း — လက်နက်အလိုက် ပုံစံကွဲ + ADS မှာ ကျဉ်း။
+              Sniper scope ဖွင့်ထားချိန် scope ရဲ့ ချိန်မျဉ်းကပဲ တာဝန်ယူတယ်။ */}
+          {!(ads && arenaHud.you?.weapon === "sniper") && (
+            <ArenaCrosshair weapon={arenaHud.you?.weapon ?? "pistol"} ads={ads} />
+          )}
           {/* 🎯 ADS (sniper မဟုတ်တဲ့ လက်နက်) — အနားတွေ မှိန် (iron-sight ခံစားချက်) */}
           {ads && arenaHud.you?.weapon !== "sniper" ? (
             <div
@@ -2257,17 +2293,61 @@ export function MetaverseScene() {
               ✕
             </div>
           ) : null}
-          {/* 🎯 Sniper scope — ADS ချိန်မှာ မှန်ဘီလူးဝိုင်း + ချိန်မျဉ်း */}
+          {/* 🎯 Sniper scope — realistic: မြင်ကွင်းက ကျယ်ကျယ်လင်းလင်း၊
+              အနားသား soft + မှန် tint ပါးပါး + mil-dot ချိန်မျဉ်း။
+              (အရင် version က အကွက်သေးပြီး အပြင်မဲကြီးမို့ view တစ်ခုလုံး
+              မဲနေတယ်ဆိုတဲ့ report) */}
           {ads && arenaHud.you?.weapon === "sniper" ? (
-            <div
-              className="pointer-events-none absolute inset-0 z-[9]"
-              style={{
-                background:
-                  "radial-gradient(circle at center, transparent 0 34vmin, rgba(0,0,0,0.96) 35vmin 100%)",
-              }}
-            >
-              <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-black/50" />
-              <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-black/50" />
+            <div className="pointer-events-none absolute inset-0 z-[9]">
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(circle at center, transparent 0 41vmin, rgba(0,0,0,0.55) 42vmin, rgba(0,0,0,0.94) 47vmin)",
+                }}
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(circle at center, rgba(140,180,255,0.04) 0 30vmin, rgba(0,0,0,0.18) 39vmin, transparent 41.5vmin)",
+                }}
+              />
+              {/* ချိန်မျဉ်း ပါးပါး + mil-dots */}
+              <div
+                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80"
+                style={{ width: "82vmin", height: 1.5 }}
+              />
+              <div
+                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80"
+                style={{ width: 1.5, height: "82vmin" }}
+              />
+              {[-18, -9, 9, 18].map((v) => (
+                <div
+                  key={`h${v}`}
+                  className="absolute left-1/2 top-1/2 rounded-full bg-black/80"
+                  style={{
+                    width: 5,
+                    height: 5,
+                    transform: `translate(calc(-50% + ${v}vmin), -50%)`,
+                  }}
+                />
+              ))}
+              {[-18, -9, 9, 18].map((v) => (
+                <div
+                  key={`v${v}`}
+                  className="absolute left-1/2 top-1/2 rounded-full bg-black/80"
+                  style={{
+                    width: 5,
+                    height: 5,
+                    transform: `translate(-50%, calc(-50% + ${v}vmin))`,
+                  }}
+                />
+              ))}
+              <div
+                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-500"
+                style={{ width: 4, height: 4 }}
+              />
             </div>
           ) : null}
           {/* ဒဏ်ရာဂဏန်းများ — ထိတိုင်း "-34" crosshair ဘေး ပေါ်တယ် */}
