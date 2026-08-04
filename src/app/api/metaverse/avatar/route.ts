@@ -34,7 +34,7 @@ export async function GET() {
   const profile = await getCurrentProfile();
   if (!profile) {
     return NextResponse.json(
-      { config: DEFAULT_AVATAR, owned: [...FREE_ACCESSORIES] },
+      { config: DEFAULT_AVATAR, owned: [...FREE_ACCESSORIES], pic: null },
       { headers: { "cache-control": "no-store, private" } },
     );
   }
@@ -55,6 +55,9 @@ export async function GET() {
         ? sanitizeAvatar(row.avatar_config, owned)
         : DEFAULT_AVATAR,
       owned: [...owned],
+      /// 🖼 Metaverse ထဲ avatar ခေါင်းပေါ် ပြမယ့် profile ဓာတ်ပုံ —
+      /// ပြ/မပြ ရွေးချယ်မှုက client (localStorage) မှာ။
+      pic: profile.avatar_url ?? null,
     },
     { headers: { "cache-control": "no-store, private" } },
   );

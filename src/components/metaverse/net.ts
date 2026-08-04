@@ -18,6 +18,8 @@ export type RemoteState = {
   /// နာမည်ကို ကြည့်ပြီး ခန့်မှန်းလို့ မရဘူး — ဧည့်သည်က ဘယ်နာမည်မဆို
   /// ပေးလို့ရလို့။
   authed?: boolean;
+  /// 🖼 Profile ဓာတ်ပုံ URL — ပိုင်ရှင်က ပြထားမှသာ ပါတယ် (null = ဖျောက်)
+  pic?: string | null;
 };
 
 /// ── Mini-game (Phase 16) ────────────────────────────────────────────────────
@@ -59,6 +61,8 @@ export type NetHandlers = {
   onEmote?: (id: string, emote: string | null) => void;
   onChat?: (id: string, name: string, text: string, authed: boolean) => void;
   onName?: (id: string, name: string) => void;
+  /// 🖼 တစ်ယောက်ယောက် profile ဓာတ်ပုံ ပြ/ဖျောက် ပြောင်းလိုက်တယ်
+  onPic?: (id: string, pic: string | null) => void;
   /// Server က anti-cheat နဲ့ ငြင်းလိုက်တဲ့အခါ — နေရာအမှန်ကို ပြန်ပေးတယ်
   onCorrect?: (x: number, y: number, z: number) => void;
   onStatus?: (connected: boolean, detail?: string) => void;
@@ -114,6 +118,8 @@ export type NetClient = {
   sendUpdate(x: number, y: number, z: number, ry: number): void;
   sendChat(text: string): void;
   sendEmote(emote: string | null): void;
+  /// 🖼 ကိုယ့် profile ဓာတ်ပုံ ပြ (url) / ဖျောက် (null)
+  sendPic(url: string | null): void;
   /// Guest သာ — signed-in user ရဲ့ နာမည်က token ကလာလို့ server က ငြင်းတယ်။
   sendName(name: string): void;
   sendMount(vehicleId: string): void;
@@ -217,6 +223,10 @@ export function connectMetaverse(
     sendEmote(emote) {
       if (ws?.readyState !== WebSocket.OPEN) return;
       ws.send(JSON.stringify({ type: "emote", emote }));
+    },
+    sendPic(url) {
+      if (ws?.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "pic", url }));
     },
     sendName(name) {
       if (ws?.readyState !== WebSocket.OPEN) return;
@@ -376,6 +386,9 @@ export function connectMetaverse(
         }
         case "emote":
           handlers.onEmote?.(String(m.id), (m.emote as string | null) ?? null);
+          break;
+        case "pic":
+          handlers.onPic?.(String(m.id), (m.pic as string | null) ?? null);
           break;
         case "chat":
           handlers.onChat?.(
