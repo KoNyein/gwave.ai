@@ -300,6 +300,9 @@ export function MetaverseScene() {
   const [showHelp, setShowHelp] = useState(false);
   /// 📜 ပြိုင်ပွဲစည်းမျဉ်း / user guide panel
   const [showRules, setShowRules] = useState(false);
+  /// 👤 ရုပ်ပြင်ခန်း ပိတ်ချိန် — game room မှာ scene ပြန်မဆောက်ဘဲ
+  /// config အသစ်ကို လက်ရှိ avatar ပေါ် တိုက်ရိုက် တင်ဖို့
+  const applyAvatarRef = useRef<(() => void) | null>(null);
 
   // ── 🙈 ဝှက်တမ်း (hub-world game room, hide-1) ────────────────────────────
   type HidePlayer = { id: string; name: string; score: number };
@@ -693,6 +696,18 @@ export function MetaverseScene() {
       .catch(() => {
         applyAvatarConfig(me, DEFAULT_AVATAR);
       });
+    // ရုပ်ပြင်ပြီးတိုင်း ပြန်ခေါ်လို့ရတဲ့ live re-apply — scene rebuild မလို
+    applyAvatarRef.current = () => {
+      void fetch("/api/metaverse/avatar", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: { config?: AvatarConfig } | null) => {
+          if (killed || !d?.config) return;
+          applyAvatarConfig(me, sanitizeAvatar(d.config, new Set()));
+        })
+        .catch(() => {
+          /* ရုပ်ပြင်မအောင်မြင်လည်း ပွဲက ဆက်သွားရမယ် */
+        });
+    };
 
     // Player ရဲ့ အခြေအနေ — ★ React state မဟုတ်၊ mutable object
     const p = {
@@ -2627,7 +2642,14 @@ export function MetaverseScene() {
             accordion — panel က ကိုယ့်ခလုတ်အောက်မှာ ပွင့်ပြီး ကျန်တာတွေ
             အောက်ရွေ့တယ်၊ မဆံ့ရင် တန်းက scroll ဖြစ်တယ် (bottom-40 က
             joystick/chat ဧရိယာ မထိအောင်)။ */}
-      <div className="pointer-events-none absolute bottom-40 left-3 top-3 z-20 flex flex-col items-start gap-2">
+      {/* ★ Game room မှာ top-16 — app WebView ရဲ့ ⬅ back ခလုတ်က top-left မှာ
+          မြုပ်နေပြီး chip တန်းရဲ့ ပထမခလုတ်နဲ့ ထပ်နေတယ် (🏆 နှိပ်မယ်ဆိုပြီး
+          back ကို မှားနှိပ် → game ထဲက ထွက်သွားတယ်)။ */}
+      <div
+        className={`pointer-events-none absolute bottom-40 left-3 z-20 flex flex-col items-start gap-2 ${
+          inGameRoom ? "top-16" : "top-3"
+        }`}
+      >
       {/* ★ Game room မှာ panel box ကြီး မသုံးဘူး — status က game display ကို
           နေရာအများကြီး ယူနေတယ်ဆိုတဲ့ report အရ float chip အသေးတွေပဲ။ */}
       <div
@@ -3030,8 +3052,11 @@ export function MetaverseScene() {
         <AvatarCustomiser
           onClose={() => {
             setDressing(false);
-            // scene ကို ပြန်ဆောက်ပြီး avatar အသစ်နဲ့ စတယ်
-            setAvatarNonce((n) => n + 1);
+            // ★ Game room မှာ scene ပြန်မဆောက်ဘူး — ပြန်ဆောက်ရင် WS ပြန်ချိတ်
+            //   ပြီး "ပွဲထဲက ထွက်ပြီး ပြန်စရသလို" ဖြစ်တယ် (report)။
+            //   Avatar ကို နေရာမှာတင် live ပြောင်းတယ်။
+            if (inGameRoom) applyAvatarRef.current?.();
+            else setAvatarNonce((n) => n + 1);
           }}
         />
       )}
