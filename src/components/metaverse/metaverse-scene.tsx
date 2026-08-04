@@ -25,6 +25,7 @@ import {
   type LiveScreen,
 } from "./livescreen";
 import { createMvGoLive, type MvCamMode } from "./golive";
+import { createScanFaces } from "./scanface";
 import { getMap, MAP_LIST } from "./maps";
 import { createMinimap } from "./minimap";
 import { createNametags } from "./nametags";
@@ -885,14 +886,26 @@ export function MetaverseScene() {
     // profile pic (myPic) ကတော့ room မရွေး လိုတယ်။
     void fetch("/api/metaverse/avatar", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d: { config?: AvatarConfig; pic?: string | null } | null) => {
-        if (killed || !d) return;
-        if (d.config && map.id !== "arena") {
-          applyAvatarConfig(me, sanitizeAvatar(d.config, new Set()));
-        }
-        myPic = typeof d.pic === "string" ? d.pic : null;
-        syncPic();
-      })
+      .then(
+        (
+          d: {
+            config?: AvatarConfig;
+            pic?: string | null;
+            scanFace?: string | null;
+          } | null,
+        ) => {
+          if (killed || !d) return;
+          if (d.config && map.id !== "arena") {
+            applyAvatarConfig(me, sanitizeAvatar(d.config, new Set()));
+          }
+          // 🧬 ကိုယ့် scan မျက်နှာ — social room မှာသာ (arena က soldier ရုပ်)
+          if (typeof d.scanFace === "string" && map.id !== "arena") {
+            scanFaces.attachUrl(me, d.scanFace);
+          }
+          myPic = typeof d.pic === "string" ? d.pic : null;
+          syncPic();
+        },
+      )
       .catch(() => {
         if (map.id !== "arena") applyAvatarConfig(me, DEFAULT_AVATAR);
       });
@@ -937,6 +950,8 @@ export function MetaverseScene() {
 
     // ── Multiplayer ───────────────────────────────────────────────────────
     const remotes = new Map<string, Remote>();
+    /// 🧬 Scan-face plates — social room avatar ခေါင်းတွေမှာ တကယ့်မျက်နှာ
+    const scanFaces = createScanFaces();
     /// 🤝 ကိုယ် မိတ်ဆွေဖွဲ့ပြီးသား NPC id များ — 「မိတ်ဆွေဖွဲ့မယ်」 context
     /// ခလုတ်က friend ဖြစ်ပြီးသားကို ထပ်မပြအောင် (bot သေရင်/ပွဲပြန်စရင်
     /// server ဘက်မှာ friendship ပျက်လို့ ဒီမှာလည်း ဖျက်တယ်)
@@ -975,6 +990,9 @@ export function MetaverseScene() {
             : createHuman(colorFor(id));
       avatar.group.position.set(s.x ?? 0, s.y ?? 0, s.z ?? 0);
       scene.add(avatar.group);
+      // 🧬 Social room က လူသား remote — သူ့ scan မျက်နှာ ရှိရင် တပ်ပေး
+      // (arena မှာ soldier ရုပ်နဲ့ ကစားတာမို့ မတပ်ဘူး — game identity)
+      if (kind === "human" && !rigged) scanFaces.attachFor(id, avatar);
       remotes.set(id, {
         avatar,
         cur: { x: s.x ?? 0, y: s.y ?? 0, z: s.z ?? 0, ry: s.ry ?? 0 },
@@ -2746,6 +2764,7 @@ export function MetaverseScene() {
       // ★ screen က fetch ပြီးမှ အစားထိုးခံရနိုင်လို့ holder ကနေ dispose လုပ်တယ်
       screen?.dispose();
       minimap?.dispose();
+      scanFaces.dispose();
       nametags?.dispose();
       weather.dispose();
       gameFx.dispose();

@@ -139,6 +139,38 @@
 
 ## Changelog
 
+- 2026-08-04 (web+mv): **Scan faces in rooms (avatar Phase 4).** Social
+  room avatars wear their owner's scanned face GLB — own face from the
+  metaverse avatar API, remotes via the public /api/avatar?userId=
+  read (authed metaverse ids are profile ids), URL+model caches with
+  a 16-entry GPU cap. Arena keeps soldier bodies. Phase 4 PR.
+
+- 2026-08-04 (web): **Body scan (avatar Phase 3).** Front A-pose
+  capture with self-hosted pose_landmarker_lite: visibility-gated
+  measurements → anthropometric-referenced [-1,1] morph weights,
+  optional real height input, "Reset to scan" in the Body tab.
+  PR #492.
+
+- 2026-08-04 (web): **Face scan (avatar Phase 2).** Fully client-side
+  MediaPipe face scan (self-hosted WASM+model, consent-gated presigned
+  upload): canonical-topology mesh from the front capture, projected
+  1024² texture, GLTFExporter GLB on the avatar's head with
+  hard-delete. PR #491.
+
+- 2026-08-04 (web): **Avatar scan system Phase 1.** mv_scan_avatars /
+  avatar_assets / avatar_inventory schema (applied on RDS),
+  /api/avatar + /upload (presigned, consent-gated) + /assets routes,
+  zustand store, /profile/avatar editor (turntable preview, 11 morph
+  sliders, skin palette, body-style grid). PR #490.
+
+- 2026-08-04 (web+mv): **Go Live fix + camera PiP + befriend UX +
+  HUD declutter.** Go Live errors now surface as toasts (root cause of
+  "button does nothing"); compositor pipeline adds face/back-camera
+  PiP to the stream (APK v1.0.272 grants WebView camera); NPC
+  befriending got a proximity context button + always-on failure
+  feedback (server FRIEND_RANGE 5); game HUD collapsed behind ⋯ with
+  a slimmer killfeed. PR #489, APK 272.
+
 - 2026-08-04 (web): **In-world screens play phone lives (phase 2b).**
   attachLiveKitScreen connects the city screen as a LiveKit viewer
   (stage token, proximity connect/disconnect) so app Go Live broadcasts
