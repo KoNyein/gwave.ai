@@ -19,7 +19,11 @@ export type Sfx = {
   /// ကိုယ် ထိခံရတယ်
   hurt(): void;
   reload(): void;
+  /// ကျည်ကုန်နေချိန် မောင်းခလုတ်ဖြုတ်သံ — "ဘာလို့ မထွက်တာလဲ" ကို အသံက ဖြေတယ်
+  empty(): void;
   kill(correct: boolean): void;
+  /// ပွဲနိုင်သံစဉ် — aWin
+  win(): void;
   step(): void;
   setVolume(v: number): void;
   dispose(): void;
@@ -178,6 +182,11 @@ export function createSfx(volume = 0.7): Sfx {
       burst({ dur: 0.08, gain: 0.35, type: "bandpass", freq: 1800, q: 2, delay: 0.16 });
     },
 
+    empty() {
+      // ချောင်းသေးသေး တစ်ချက် — ကျည်မရှိတဲ့ "ကလစ်"
+      burst({ dur: 0.04, gain: 0.25, type: "bandpass", freq: 3200, q: 3 });
+    },
+
     kill(correct: boolean) {
       if (correct) {
         // တက်သွားတဲ့ သံစဉ် — အောင်မြင်မှု
@@ -188,6 +197,14 @@ export function createSfx(volume = 0.7): Sfx {
         // ★ လူမှားသတ်မိတာကို **ချက်ချင်း သိရမယ်** — ကျသွားတဲ့ သံစဉ်။
         tone({ freq: 400, to: 160, dur: 0.35, gain: 0.3, type: "sawtooth" });
       }
+    },
+
+    win() {
+      // အောင်ပွဲ fanfare — အတက်သံစဉ် ၄ လုံး
+      tone({ freq: 523, dur: 0.12, gain: 0.24, type: "triangle" });
+      tone({ freq: 659, dur: 0.12, gain: 0.24, type: "triangle", delay: 0.11 });
+      tone({ freq: 784, dur: 0.12, gain: 0.24, type: "triangle", delay: 0.22 });
+      tone({ freq: 1047, dur: 0.3, gain: 0.26, type: "triangle", delay: 0.33 });
     },
 
     step() {

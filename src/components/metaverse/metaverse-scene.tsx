@@ -12,6 +12,8 @@ import { applyAvatarConfig } from "./avatar/parts";
 import { BuildPanel, type BuildBridge } from "./build/panel";
 import { createPlotStream } from "./build/plots";
 import { createBuildRender, createGhost } from "./build/render";
+import { createSfx, type Sfx } from "../games/assassin/sfx";
+import { createCombatFx, type CombatFx } from "./combatfx";
 import { createGameFx, type GameFx } from "./gamefx";
 import { GamesMenu, GamesOverlays, type GamePhase } from "./games-panel";
 import { createHuman, type Avatar, type HumanState } from "./human";
@@ -255,6 +257,22 @@ export function MetaverseScene() {
     denied: boolean;
   }>({ weapons: {}, you: null, board: [], feed: [], denied: false });
   const arenaFireRef = useRef<(() => void) | null>(null);
+  /// ကျည်ဖြည့် / လက်နက်ပြောင်း — HUD ခလုတ်နဲ့ keyboard နှစ်ခုလုံးက ဒီကို
+  /// ခေါ်တယ် (sfx ပါ တွဲဖွင့်ဖို့ effect ထဲမှာ သတ်မှတ်တယ်)
+  const arenaReloadRef = useRef<(() => void) | null>(null);
+  const arenaWeaponPickRef = useRef<((key: string) => void) | null>(null);
+  /// 1-7 keyboard အတွက် — aInit ရောက်မှ ပြည့်တယ်
+  const arenaWeaponListRef = useRef<string[]>([]);
+  /// 🏆 အမှတ်စာရင်း — Tab ဖိထားစဉ် / 🏆 ခလုတ်နဲ့ ဖွင့်ပိတ်
+  const [showBoard, setShowBoard] = useState(false);
+  /// ထိမှန်မှု တုံ့ပြန်ချက် — crosshair ဘေး ✕ (200ms)
+  const [hitMark, setHitMark] = useState<{ head: boolean; at: number } | null>(null);
+  /// အထိခံရချိန် အနီရောင် vignette
+  const [dmgOn, setDmgOn] = useState(false);
+  /// အလယ်တည့်တည့် ကြေညာစာတန်း (kill / win / respawn)
+  const [banner, setBanner] = useState<{ text: string; tone: "good" | "bad"; at: number } | null>(null);
+  /// 📣 ဖိတ်စာ ကူးပြီးကြောင်း အတည်ပြုချက်
+  const [invited, setInvited] = useState(false);
 
   // ── 🙈 ဝှက်တမ်း (hub-world game room, hide-1) ────────────────────────────
   type HidePlayer = { id: string; name: string; score: number };
@@ -329,7 +347,11 @@ export function MetaverseScene() {
     }
     if (window.localStorage.getItem(BLOOM_KEY) === "0") setBloom(false);
     if (window.localStorage.getItem(SHADOW_KEY) === "0") setShadows(false);
-    const saved = window.localStorage.getItem(MAP_KEY);
+    // ★ ?room= deep link (📣 ဖိတ်စာ link) က မှတ်ထားတဲ့ room ထက် အနိုင်ရ —
+    //   သူငယ်ချင်း ပို့တဲ့ link နှိပ်ရင် သူ့ room ထဲ တန်းရောက်ရမယ်။
+    const fromUrl = new URLSearchParams(window.location.search).get("room");
+    const urlRoom = fromUrl && MAP_LIST.some((m) => m.id === fromUrl) ? fromUrl : null;
+    const saved = urlRoom ?? window.localStorage.getItem(MAP_KEY);
     if (saved) setRoomId(saved);
   }, []);
 
@@ -376,12 +398,34 @@ export function MetaverseScene() {
     setRoomId(id);
   };
 
+  /// 📣 အဖွဲ့ဖိတ်ခေါ် — ဒီ room ရဲ့ deep link ကို share (မရရင် clipboard)။
+  /// အဖွဲ့နဲ့ ဆော့ဖို့ အလွယ်ဆုံးလမ်း — link နှိပ်ရင် တူတူ room ထဲ ရောက်တယ်။
+  const invite = () => {
+    const url = `${window.location.origin}/metaverse?room=${roomId}`;
+    const nav = navigator as Navigator & {
+      share?: (d: { url: string; title?: string }) => Promise<void>;
+    };
+    if (typeof nav.share === "function") {
+      void nav.share({ url, title: "Gwave Metaverse — လာဆော့ကြ!" }).catch(() => {});
+    } else {
+      void navigator.clipboard?.writeText(url).catch(() => {});
+    }
+    setInvited(true);
+    window.setTimeout(() => setInvited(false), 1800);
+  };
+
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
     const map = getMap(roomId);
     setArenaHud({ weapons: {}, you: null, board: [], feed: [], denied: false });
     setHideHud({ phase: "waiting", endsAt: null, role: null, blindUntil: null, players: [], feed: [] });
+    setShowBoard(false);
+    setHitMark(null);
+    setDmgOn(false);
+    setBanner(null);
+    setInvited(false);
+    arenaWeaponListRef.current = [];
     setBooted(false);
 
     /// Gwave app ရဲ့ WebView ထဲမှာ ဖွင့်နေလား (Phase 17)。
@@ -458,6 +502,16 @@ export function MetaverseScene() {
 
     // ── Mini-game ရဲ့ အမှတ်အသားများ (Phase 16) ────────────────────────────
     const gameFx: GameFx = createGameFx(scene);
+
+    // ── ⚔️ Game room feedback ────────────────────────────────────────────
+    // ★ ပစ်ချက်တစ်ချက်မှာ အသံ + ကျည်လမ်းကြောင်း + မီးပွင့် မရှိရင်
+    //   "ပစ်လို့မရဘူး" လို့ ခံစားရတယ် — server က မှန်နေလည်း client မှာ
+    //   တုံ့ပြန်ချက် မရှိရင် ဂိမ်းက ပျက်နေသလိုပဲ။
+    const isGameWorld = map.id === "arena" || map.id === "hide-1";
+    const sfx: Sfx | null = isGameWorld ? createSfx(0.8) : null;
+    const combatFx: CombatFx | null = map.id === "arena" ? createCombatFx(scene) : null;
+    /// aYou ကနေ update ဖြစ်တဲ့ ကိုယ့် combat အခြေအနေ — fire feedback အတွက်
+    const combat = { weapon: "pistol", alive: true, ammo: -1 };
 
     // ── User ဆောက်ထားတဲ့ အရာများ (Phase 18) ───────────────────────────────
     // ★ InstancedMesh — type တစ်ခုချင်းကို draw call တစ်ခုစီ။ မဟုတ်ရင်
@@ -803,8 +857,14 @@ export function MetaverseScene() {
                     ? (m.players as HidePlayer[])
                     : h.players,
                 }));
-                if (phase === "live") hFeed("ပွဲ စပါပြီ — ပုန်းကြ!", true);
-                if (phase === "ended") hFeed("ပွဲ ပြီးပါပြီ", true);
+                if (phase === "live") {
+                  sfx?.kill(true);
+                  hFeed("ပွဲ စပါပြီ — ပုန်းကြ!", true);
+                }
+                if (phase === "ended") {
+                  sfx?.win();
+                  hFeed("ပွဲ ပြီးပါပြီ", true);
+                }
                 break;
               }
               case "gEvent":
@@ -830,6 +890,7 @@ export function MetaverseScene() {
                     setHideHud((h) => ({ ...h, blindUntil: Number(m.until) || null }));
                     break;
                   case "tagged":
+                    sfx?.hitMarker(false);
                     hFeed(`🖐 ${nameOf(m.id)} အဖမ်းခံရပြီ`, m.id !== myId);
                     break;
                   case "score":
@@ -872,6 +933,14 @@ export function MetaverseScene() {
               p.z = Number(mine.z);
             }
           };
+          /// ကြေညာစာတန်း — 2.2s ကြာရင် အလိုအလျောက် ပျောက်တယ်
+          const flashBanner = (text: string, tone: "good" | "bad") => {
+            const at = Date.now();
+            setBanner({ text, tone, at });
+            window.setTimeout(() => {
+              if (!killed) setBanner((b) => (b?.at === at ? null : b));
+            }, 2200);
+          };
           switch (m.type) {
             case "aInit":
               setArenaHud((h) => ({
@@ -879,11 +948,36 @@ export function MetaverseScene() {
                 weapons: (m.weapons as Record<string, { my: string }>) ?? {},
                 board: (m.players as ArenaBoardRow[]) ?? [],
               }));
+              arenaWeaponListRef.current = Object.keys(
+                (m.weapons as Record<string, unknown>) ?? {},
+              );
               teleportMe(m.players);
               break;
-            case "aYou":
-              setArenaHud((h) => ({ ...h, you: m.you as ArenaYou }));
+            case "aYou": {
+              const you = m.you as ArenaYou;
+              combat.weapon = you.weapon;
+              combat.alive = you.alive;
+              combat.ammo = you.ammo?.[you.weapon] ?? -1;
+              setArenaHud((h) => ({ ...h, you }));
               break;
+            }
+            case "aShot": {
+              // တခြားသူ ပစ်တာ — သူ့နေရာကနေ ကျည်လမ်းကြောင်း + အသံ။
+              // ကိုယ့်ပစ်ချက်ကတော့ arenaFireRef မှာ ချက်ချင်း ပြပြီးသား။
+              if (m.id === myId) break;
+              const sx = Number(m.x);
+              const sy = Number(m.y);
+              const sz = Number(m.z);
+              const sry = Number(m.ry);
+              if ([sx, sy, sz, sry].every(Number.isFinite)) {
+                const from = new THREE.Vector3(sx, sy + 1.35, sz);
+                const dir = new THREE.Vector3(Math.sin(sry), 0, Math.cos(sry));
+                combatFx?.tracer(from, dir, 30);
+                combatFx?.muzzle(from);
+              }
+              sfx?.shot(String(m.weapon || "pistol"));
+              break;
+            }
             case "aEnter": {
               const q = m.player as ArenaBoardRow;
               setArenaHud((h) => ({
@@ -899,14 +993,41 @@ export function MetaverseScene() {
               }));
               break;
             case "aHit":
-              if (m.attackerId === myId) pushFeed("ထိမှန်တယ် ✓", true);
-              if (m.victimId === myId) pushFeed("အထိခံရတယ်", false);
+              if (m.attackerId === myId) {
+                sfx?.hitMarker(m.hitPart === "head");
+                const at = Date.now();
+                setHitMark({ head: m.hitPart === "head", at });
+                window.setTimeout(() => {
+                  if (!killed) setHitMark((h) => (h?.at === at ? null : h));
+                }, 200);
+                pushFeed(m.hitPart === "head" ? "ခေါင်းထိ ✓✓" : "ထိမှန်တယ် ✓", true);
+              }
+              if (m.victimId === myId) {
+                sfx?.hurt();
+                setDmgOn(true);
+                window.setTimeout(() => {
+                  if (!killed) setDmgOn(false);
+                }, 320);
+                pushFeed("အထိခံရတယ်", false);
+              }
               break;
             case "aKill":
               pushFeed(
                 `${m.killerName} → ${m.victimName}${m.correct === true ? " ✓" : " ✗ (လူမှား)"}`,
                 m.correct === true,
               );
+              if (m.killerId === myId) {
+                sfx?.kill(m.correct === true);
+                flashBanner(
+                  m.correct === true
+                    ? `☠️ ${m.victimName} ကို သတ်လိုက်ပြီ!`
+                    : `✗ လူမှားသွားပြီ — ${m.victimName}`,
+                  m.correct === true ? "good" : "bad",
+                );
+              } else if (m.victimId === myId) {
+                sfx?.hurt();
+                flashBanner(`☠️ ${m.killerName} က မင်းကို သတ်သွားပြီ`, "bad");
+              }
               setArenaHud((h) => ({
                 ...h,
                 board: h.board.map((b) =>
@@ -920,11 +1041,19 @@ export function MetaverseScene() {
               if (m.id === myId) {
                 p.x = Number(m.x);
                 p.z = Number(m.z);
-                pushFeed("ပြန်ရှင်ပြီ — သတိထား", true);
+                sfx?.reload();
+                combatFx?.ring(p.x, p.z, 0x4ade80);
+                flashBanner("💚 ပြန်ရှင်ပြီ — သတိထား", "good");
               }
               break;
             case "aWin":
-              pushFeed(`🏆 ${m.winnerName} အနိုင်ရပါပြီ`, true);
+              sfx?.win();
+              flashBanner(
+                m.winnerId === myId
+                  ? "🏆 မင်း အနိုင်ရပါပြီ!"
+                  : `🏆 ${m.winnerName} အနိုင်ရပါပြီ`,
+                "good",
+              );
               break;
             case "aReset":
               setArenaHud((h) => ({
@@ -932,10 +1061,11 @@ export function MetaverseScene() {
                 board: (m.players as ArenaBoardRow[]) ?? [],
               }));
               teleportMe(m.players);
-              pushFeed("ပွဲအသစ် စပါပြီ", true);
+              flashBanner("🔔 ပွဲအသစ် စပါပြီ", "good");
               break;
             case "aNoAmmo":
-              pushFeed("ကျည် ကုန်ပြီ — 🔄 နဲ့ ဖြည့်ပါ", false);
+              sfx?.empty();
+              pushFeed("ကျည် ကုန်ပြီ — R / 🔄 နဲ့ ဖြည့်ပါ", false);
               break;
           }
         },
@@ -955,9 +1085,32 @@ export function MetaverseScene() {
       // ကို client က လိမ်လို့ မရဘူး။
       arenaFireRef.current = () => {
         if (roomId !== "arena") return;
+        sfx?.resume();
+        if (!combat.alive) return;
         const d = new THREE.Vector3();
         camera.getWorldDirection(d);
+        // ★ Server ကို မစောင့်ဘဲ ချက်ချင်း တုံ့ပြန်တယ် — အသံ/ကျည်လမ်းကြောင်း
+        //   နောက်ကျရင် "ပစ်လို့မရဘူး" လို့ ခံစားရတယ်။ ထိမထိကတော့ server
+        //   (aHit/aKill) ကပဲ ဆုံးဖြတ်တယ်။
+        if (combat.ammo !== 0) {
+          sfx?.shot(combat.weapon);
+          const from = camera.position.clone().addScaledVector(d, 0.9);
+          from.y -= 0.12;
+          combatFx?.tracer(from, d, 40);
+          combatFx?.muzzle(from);
+        }
         net?.sendRaw({ type: "aFire", dx: d.x, dy: d.y, dz: d.z });
+      };
+      arenaReloadRef.current = () => {
+        if (roomId !== "arena") return;
+        sfx?.resume();
+        sfx?.reload();
+        net?.sendRaw({ type: "aReload" });
+      };
+      arenaWeaponPickRef.current = (key) => {
+        if (roomId !== "arena") return;
+        sfx?.resume();
+        net?.sendRaw({ type: "aWeapon", weapon: key });
       };
       // 🙈 ဖမ်းခြင်း — အနီးဆုံး ကစားသမားကို ရွေးပြီး server ကို တင်ပြတယ်။
       // အကွာအဝေး (TAG_RANGE) နဲ့ cooldown ကို **server က** စစ်တယ် —
@@ -1049,6 +1202,9 @@ export function MetaverseScene() {
       }
     };
     fpvSetRef.current = setFpView;
+    // ⚔️ ပွဲကွင်းက FPS ဂိမ်း — first-person နဲ့ စတယ် (crosshair နဲ့
+    // ချိန်တာက ကင်မရာဦးတည်ချက်မို့ FP မှာမှ တိကျတယ်)။ V နဲ့ ပြန်ထွက်လို့ရတယ်။
+    if (map.id === "arena") setFpView(true);
 
     // ── Keyboard ──────────────────────────────────────────────────────────
     const keyMap: Record<string, keyof Input> = {
@@ -1085,6 +1241,19 @@ export function MetaverseScene() {
       }
       if (e.code === "KeyE") toggleRide();
       if (e.code === "KeyV") setFpView(!fpvRef.current);
+      // ⚔️ Game room ခလုတ်များ — R ကျည်ဖြည့် · 1-7 လက်နက် · Tab အမှတ်စာရင်း
+      if (map.id === "arena") {
+        if (e.code === "KeyR") arenaReloadRef.current?.();
+        const dig = /^Digit([1-7])$/.exec(e.code);
+        if (dig) {
+          const key = arenaWeaponListRef.current[Number(dig[1]) - 1];
+          if (key) arenaWeaponPickRef.current?.(key);
+        }
+      }
+      if (isGameWorld && e.code === "Tab") {
+        setShowBoard(true);
+        e.preventDefault();
+      }
     };
     const onKeyUp = (e: KeyboardEvent) => {
       if (typing(e)) return;
@@ -1093,6 +1262,7 @@ export function MetaverseScene() {
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") input.run = false;
       if (e.code === "ControlLeft" || e.code === "ControlRight") input.crouch = false;
       if (e.code === "Space") input.jump = false;
+      if (isGameWorld && e.code === "Tab") setShowBoard(false);
     };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
@@ -1102,6 +1272,8 @@ export function MetaverseScene() {
     let dragX = 0;
     let dragY = 0;
     const onPointerDown = (e: PointerEvent) => {
+      // Browser က user gesture မတိုင်ခင် audio ခွင့်မပြုလို့ ဒီမှာ ဖွင့်တယ်
+      sfx?.resume();
       // Joystick ဧရိယာက touch ကို ကင်မရာ မယူရ
       if ((e.target as HTMLElement).dataset?.hud) return;
       // ⚔️ Pointer lock ထဲ (first-person) click = ပစ်တယ် — CS အတိုင်း။
@@ -1179,6 +1351,7 @@ export function MetaverseScene() {
     const stickRadius = 46;
 
     const stickStart = (e: PointerEvent) => {
+      sfx?.resume();
       stickId = e.pointerId;
       stick?.setPointerCapture(e.pointerId);
       stickMove(e);
@@ -1489,6 +1662,7 @@ export function MetaverseScene() {
       world.updateEffects(dt, effectT, weather.wetness, p.x, p.z);
       weather.update(dt, p.x, p.y + 6, p.z);
       gameFx.update(effectT);
+      combatFx?.update(dt);
 
       // ── ဆောက်လုပ်ရေး: ghost + ကွက် streaming (Phase 18) ────────────────
       plots.update(p.x, p.z);
@@ -1646,6 +1820,8 @@ export function MetaverseScene() {
       nametags?.dispose();
       weather.dispose();
       gameFx.dispose();
+      combatFx?.dispose();
+      sfx?.dispose();
       buildRender.dispose();
       plots.dispose();
       ghost.dispose();
@@ -1701,8 +1877,57 @@ export function MetaverseScene() {
       ) : null}
       {roomId === "arena" && !arenaHud.denied ? (
         <>
+          {/* Crosshair + ထိမှတ် ✕ — ထိမှန်တိုင်း ခဏပေါ်တယ် (ခေါင်း=အနီ) */}
           <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 select-none text-2xl text-white/70">
             +
+          </div>
+          {hitMark ? (
+            <div
+              key={hitMark.at}
+              className={`pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 select-none text-3xl font-bold ${
+                hitMark.head ? "text-red-400" : "text-amber-300"
+              }`}
+            >
+              ✕
+            </div>
+          ) : null}
+          {/* အထိခံရချိန် အနီ vignette — မျက်နှာပြင်အနားတွေ ခဏနီသွားတယ် */}
+          <div
+            className={`pointer-events-none absolute inset-0 z-[8] transition-opacity duration-300 ${
+              dmgOn ? "opacity-100" : "opacity-0"
+            }`}
+            style={{
+              background:
+                "radial-gradient(ellipse at center, transparent 55%, rgba(220,38,38,0.5) 100%)",
+            }}
+          />
+          {/* ★ ပစ်မှတ် + လက်နက်တန်း — **အပေါ်ဗဟို**။ အရင်က အောက်ဗဟိုမှာ
+              pointer-events-auto container ကြီးက joystick ကို ဖုံးထားလို့
+              ဖုန်းမှာ လမ်းလျှောက်လို့ မရဘူး — container က pointer-events-none၊
+              ခလုတ်တစ်ခုချင်းပဲ auto။ */}
+          <div className="pointer-events-none absolute left-1/2 top-3 z-10 flex -translate-x-1/2 flex-col items-center gap-1.5">
+            {arenaHud.you?.target ? (
+              <p className="rounded-full bg-black/60 px-3 py-1 text-[11px] text-amber-300 backdrop-blur">
+                🎯 ပစ်မှတ် — {arenaHud.you.target.name}
+              </p>
+            ) : null}
+            <div className="flex max-w-[92vw] flex-wrap items-center justify-center gap-1.5">
+              {Object.entries(arenaHud.weapons).map(([key, w], i) => (
+                <button
+                  key={key}
+                  data-hud="1"
+                  onClick={() => arenaWeaponPickRef.current?.(key)}
+                  className={`pointer-events-auto rounded-lg border px-2 py-1 text-[11px] backdrop-blur ${
+                    arenaHud.you?.weapon === key
+                      ? "border-amber-400/70 bg-amber-500/20 text-amber-200"
+                      : "border-white/15 bg-black/50 text-white/70 hover:bg-black/70"
+                  }`}
+                >
+                  {i < 7 ? `${i + 1}·` : ""}
+                  {w.my}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="pointer-events-none absolute right-2 top-20 z-10 w-60 space-y-1">
             {arenaHud.feed.map((f) => (
@@ -1716,70 +1941,73 @@ export function MetaverseScene() {
               </p>
             ))}
           </div>
-          <div className="pointer-events-auto absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1.5">
-            {arenaHud.you?.target ? (
-              <p className="rounded-full bg-black/60 px-3 py-1 text-[11px] text-amber-300 backdrop-blur">
-                🎯 ပစ်မှတ် — {arenaHud.you.target.name}
-              </p>
-            ) : null}
-            <div className="flex max-w-[92vw] flex-wrap items-center justify-center gap-1.5">
-              {Object.entries(arenaHud.weapons).map(([key, w]) => (
-                <button
-                  key={key}
-                  data-hud="1"
-                  onClick={() => netRef.current?.sendRaw({ type: "aWeapon", weapon: key })}
-                  className={`rounded-lg border px-2 py-1 text-[11px] backdrop-blur ${
-                    arenaHud.you?.weapon === key
-                      ? "border-amber-400/70 bg-amber-500/20 text-amber-200"
-                      : "border-white/15 bg-black/50 text-white/70 hover:bg-black/70"
-                  }`}
-                >
-                  {w.my}
-                </button>
-              ))}
-            </div>
+          {/* ❤️ / ကျည် — ဖတ်ရုံသက်သက် (အောက်ဗဟို၊ emote bar နေရာ) */}
+          <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2">
+            <span className="rounded bg-black/60 px-2.5 py-1 text-sm text-red-300 backdrop-blur">
+              ❤️ {arenaHud.you?.hp ?? "—"}
+            </span>
+            <span className="rounded bg-black/60 px-2.5 py-1 text-sm text-white/80 backdrop-blur">
+              {(() => {
+                const y = arenaHud.you;
+                if (!y) return "—";
+                const n = y.ammo?.[y.weapon];
+                const label = arenaHud.weapons[y.weapon]?.my ?? y.weapon;
+                return `${label} · ${n === -1 || n === undefined ? "∞" : n}`;
+              })()}
+            </span>
+          </div>
+          {/* ★ လုပ်ဆောင်ချက်တန်း — ညာဘက် (ခုန်ခလုတ်အပေါ်)၊ လက်မနဲ့ မီတယ်။
+              Joystick (ဘယ်) နဲ့ လုံးဝ မထပ်ဘူး။ */}
+          <div className="pointer-events-none absolute bottom-32 right-4 z-10 flex flex-col items-end gap-2">
             <div className="flex items-center gap-2">
-              <span className="rounded bg-black/60 px-2 py-1 text-xs text-red-300 backdrop-blur">
-                ❤️ {arenaHud.you?.hp ?? "—"}
-              </span>
               <button
                 data-hud="1"
-                onClick={() => arenaFireRef.current?.()}
-                aria-label="ပစ်မယ်"
-                className="rounded-full border border-red-400/60 bg-red-500/25 px-6 py-3 text-lg backdrop-blur active:bg-red-500/50"
+                onClick={() => setShowBoard((s) => !s)}
+                aria-label="အမှတ်စာရင်း"
+                className="pointer-events-auto rounded-full border border-white/20 bg-black/50 px-3 py-2 text-sm backdrop-blur"
               >
-                🔫
+                🏆
               </button>
               <button
                 data-hud="1"
-                onClick={() => netRef.current?.sendRaw({ type: "aReload" })}
-                aria-label="ကျည်ဖြည့်မယ်"
-                className="rounded-full border border-white/20 bg-black/50 px-3 py-2 text-sm text-white/80 backdrop-blur"
+                onClick={invite}
+                aria-label="အဖွဲ့ဖိတ်မယ်"
+                className="pointer-events-auto rounded-full border border-white/20 bg-black/50 px-3 py-2 text-sm backdrop-blur"
               >
-                🔄
+                📣
               </button>
-              <span className="rounded bg-black/60 px-2 py-1 text-xs text-white/70 backdrop-blur">
-                {(() => {
-                  const y = arenaHud.you;
-                  if (!y) return "—";
-                  const n = y.ammo?.[y.weapon];
-                  return n === -1 || n === undefined ? "∞" : String(n);
-                })()}
-              </span>
               <button
                 data-hud="1"
                 onClick={() => chooseMap("city")}
-                className="rounded-lg border border-white/15 bg-black/50 px-2 py-1.5 text-[11px] text-white/70 backdrop-blur hover:bg-black/70"
+                className="pointer-events-auto rounded-lg border border-white/15 bg-black/50 px-2 py-1.5 text-[11px] text-white/70 backdrop-blur hover:bg-black/70"
               >
                 🏙 ထွက်မယ်
               </button>
             </div>
-            {arenaHud.you && !arenaHud.you.alive ? (
-              <p className="rounded bg-black/70 px-3 py-1 text-xs text-red-300 backdrop-blur">
-                သေဆုံးပြီ — ပြန်ရှင်ဖို့ ခဏစောင့်ပါ…
-              </p>
-            ) : null}
+            <div className="flex items-center gap-2">
+              <button
+                data-hud="1"
+                onClick={() => arenaReloadRef.current?.()}
+                aria-label="ကျည်ဖြည့်မယ် (R)"
+                className="pointer-events-auto rounded-full border border-white/20 bg-black/50 px-3 py-2 text-sm text-white/80 backdrop-blur"
+              >
+                🔄
+              </button>
+              <button
+                data-hud="1"
+                onClick={() => arenaFireRef.current?.()}
+                aria-label="ပစ်မယ်"
+                className="pointer-events-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-red-400/70 bg-red-500/30 text-2xl backdrop-blur active:scale-95 active:bg-red-500/60"
+              >
+                🔫
+              </button>
+            </div>
           </div>
+          {arenaHud.you && !arenaHud.you.alive ? (
+            <p className="pointer-events-none absolute left-1/2 top-[42%] z-20 -translate-x-1/2 whitespace-nowrap rounded-lg bg-black/70 px-4 py-2 text-sm text-red-300 backdrop-blur">
+              ☠️ သေဆုံးပြီ — ပြန်ရှင်ဖို့ ခဏစောင့်ပါ…
+            </p>
+          ) : null}
         </>
       ) : null}
 
@@ -1835,25 +2063,98 @@ export function MetaverseScene() {
             ))}
           </div>
 
-          <div className="pointer-events-auto absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2">
+          {/* ★ ခလုတ်တွေ ညာဘက် (ခုန်ခလုတ်အပေါ်) — အောက်ဗဟိုမှာ ထားရင်
+              ကျဉ်းတဲ့ဖုန်းမှာ joystick နဲ့ ထပ်ပြီး လမ်းလျှောက်လို့ မရဘူး။ */}
+          <div className="pointer-events-none absolute bottom-32 right-4 z-10 flex flex-col items-end gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                data-hud="1"
+                onClick={() => setShowBoard((s) => !s)}
+                aria-label="အမှတ်စာရင်း"
+                className="pointer-events-auto rounded-full border border-white/20 bg-black/50 px-3 py-2 text-sm backdrop-blur"
+              >
+                🏆
+              </button>
+              <button
+                data-hud="1"
+                onClick={invite}
+                aria-label="အဖွဲ့ဖိတ်မယ်"
+                className="pointer-events-auto rounded-full border border-white/20 bg-black/50 px-3 py-2 text-sm backdrop-blur"
+              >
+                📣
+              </button>
+              <button
+                data-hud="1"
+                onClick={() => chooseMap("city")}
+                className="pointer-events-auto rounded-lg border border-white/15 bg-black/50 px-2 py-1.5 text-[11px] text-white/70 backdrop-blur hover:bg-black/70"
+              >
+                🏙 ထွက်မယ်
+              </button>
+            </div>
             {hideHud.role === "seeker" && hideHud.phase === "live" ? (
               <button
                 data-hud="1"
                 onClick={() => hideTagRef.current?.()}
-                className="rounded-full border border-amber-400/60 bg-amber-500/25 px-6 py-3 text-lg backdrop-blur active:bg-amber-500/50"
+                className="pointer-events-auto rounded-full border-2 border-amber-400/70 bg-amber-500/30 px-6 py-4 text-xl backdrop-blur active:scale-95 active:bg-amber-500/60"
               >
                 🖐 ဖမ်းမယ်
               </button>
             ) : null}
-            <button
-              data-hud="1"
-              onClick={() => chooseMap("city")}
-              className="rounded-lg border border-white/15 bg-black/50 px-2 py-1.5 text-[11px] text-white/70 backdrop-blur hover:bg-black/70"
-            >
-              🏙 ထွက်မယ်
-            </button>
           </div>
         </>
+      ) : null}
+
+      {/* ── ⚔️🙈 မျှသုံး game UI — ကြေညာစာတန်း / အမှတ်စာရင်း / ဖိတ်စာ toast ── */}
+      {banner ? (
+        <p
+          key={banner.at}
+          className={`pointer-events-none absolute left-1/2 top-[30%] z-20 -translate-x-1/2 whitespace-nowrap rounded-xl bg-black/65 px-5 py-2 text-base font-bold backdrop-blur ${
+            banner.tone === "good" ? "text-emerald-300" : "text-red-300"
+          }`}
+        >
+          {banner.text}
+        </p>
+      ) : null}
+      {showBoard && (roomId === "arena" || roomId === "hide-1") ? (
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 w-72 max-w-[88vw] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/15 bg-black/80 p-3 backdrop-blur">
+          <p className="mb-2 text-center text-xs font-semibold text-white/90">
+            🏆 အမှတ်စာရင်း
+          </p>
+          <div className="space-y-1">
+            {(roomId === "arena"
+              ? [...arenaHud.board]
+                  .sort((a, b) => b.score - a.score)
+                  .map((r) => ({ id: r.id, name: r.name, score: r.score, dead: !r.alive }))
+              : [...hideHud.players]
+                  .sort((a, b) => b.score - a.score)
+                  .map((r) => ({ id: r.id, name: r.name, score: r.score, dead: false }))
+            ).map((r, i) => (
+              <div
+                key={r.id}
+                className={`flex items-center justify-between rounded px-2 py-1 text-[12px] ${
+                  r.id === meId ? "bg-emerald-500/15 text-emerald-200" : "text-white/85"
+                }`}
+              >
+                <span className="truncate">
+                  {i + 1}. {r.name}
+                  {r.id === meId ? " (မင်း)" : ""}
+                  {r.dead ? " ☠️" : ""}
+                </span>
+                <span className="font-semibold">{r.score}</span>
+              </div>
+            ))}
+            {(roomId === "arena" ? arenaHud.board : hideHud.players).length === 0 ? (
+              <p className="text-center text-[11px] text-white/50">
+                ကစားသမား မရှိသေးဘူး
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+      {invited ? (
+        <p className="pointer-events-none absolute left-1/2 top-24 z-20 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-600/85 px-4 py-1.5 text-xs text-white backdrop-blur">
+          📣 ဖိတ်စာ link ကူးပြီးပြီ — သူငယ်ချင်းတွေကို ပို့လိုက်ပါ
+        </p>
       ) : null}
 
       {/* ── Gwave branded loading — world/game အဝင်တိုင်း logo + စာတန်း ── */}
@@ -1882,6 +2183,19 @@ export function MetaverseScene() {
           </>
         )}
         {touch && <div>ဘယ်ဘက် joystick · ညာဘက် ခုန်</div>}
+        {/* ⚔️ Game room ခလုတ်လမ်းညွှန် — desktop မှာ keyboard, ဖုန်းမှာ ခလုတ် */}
+        {roomId === "arena" && (
+          <div className="text-amber-200/90">
+            {touch
+              ? "🔫 ပစ် · 🔄 ကျည်ဖြည့် · 🏆 အမှတ် · 📣 ဖိတ်"
+              : "Click = ပစ် · R = ကျည်ဖြည့် · 1-7 = လက်နက် · Tab = အမှတ်စာရင်း"}
+          </div>
+        )}
+        {roomId === "hide-1" && (
+          <div className="text-amber-200/90">
+            {touch ? "🖐 ဖမ်း · 🏆 အမှတ် · 📣 ဖိတ်" : "🖐 = ဖမ်း · Tab = အမှတ်စာရင်း"}
+          </div>
+        )}
         {ready && (
           <div className="mt-1 flex items-center gap-2 text-white/50">
             <span>{fps} fps</span>
@@ -2253,7 +2567,9 @@ export function MetaverseScene() {
         <BuildPanel bridge={buildRef} onClose={() => setBuilding(false)} />
       )}
 
-      {/* Emote bar */}
+      {/* Emote bar — game room မှာ ဖျောက်တယ် (အောက်ဗဟိုက ❤️/ကျည် ပြသချက်
+          နေရာ + ပွဲထဲမှာ မလိုအပ်တဲ့ ခလုတ် လျှော့) */}
+      {roomId !== "arena" && roomId !== "hide-1" && (
       <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-2">
         {EMOTES.map((e) => (
           <button
@@ -2272,6 +2588,7 @@ export function MetaverseScene() {
           </button>
         ))}
       </div>
+      )}
 
       {/* Mobile joystick — sm အထက်မှာ ဖျောက် */}
       <div
