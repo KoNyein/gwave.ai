@@ -139,6 +139,21 @@
 
 ## Changelog
 
+- 2026-08-04 (ship): **PR #456 squash-merged to main (`fea470c`) and deployed.**
+  Assassin hit registration is now **server-authoritative** (Arena spec A4):
+  the client sends only its camera-ray direction (`aFire {dx,dy,dz}`);
+  `server/metaverse/combat.js` casts the ray from the server's own shooter
+  position + eye height against hitboxes pinned to the client toon model
+  (head sphere r0.28 @ y1.62, body capsule 0.33–1.23 r0.34, no legs box).
+  `targetId`/`hitPart` claims from the client are ignored, so hit-part
+  spoofing, shooting through your own back and origin spoofing are dead —
+  a mutation test proves the guard is load-bearing. Also on this train:
+  Arena groundwork A1/A2/A3/A5 (game-room types, arena map, match lifecycle,
+  20 Hz snapshots + interest management), hide-and-seek mode (`hide-1/2`,
+  no combat), and the `/games/arena` client (prediction/reconciliation/
+  interpolation, three.js scene). Web deploy + metaverse container rollout
+  both succeeded on `fea470c`; health checks green. APK **v1.0.269**
+  published to `mobile-latest`.
 - 2026-08-02 (ship): **PR #451 squash-merged to main (`02aaf31`) and deployed.**
   FPV drone mesh + chase camera + calibration wizard + aerodynamics + DJI
   Avata 2/O3/O4, metaverse category settings menu, car wheel hub groups and
