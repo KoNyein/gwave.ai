@@ -39,7 +39,9 @@ const BOT_COUNT = BOT_DEFS.length;
 ///   တိုတိုပဲ ထားပြီး မြန်မြန် မေ့တယ်။
 const GRUDGE_MS = 25000;
 /// 👋 မိတ်ဆွေဖွဲ့နိုင်တဲ့ အကွာအဝေး
-const FRIEND_RANGE = 4;
+// 4 → 5: wander နေတဲ့ bot ကို 4m အတွင်း အတိအကျ ကပ်ရတာ ခက်လွန်းလို့
+// (user report: "မိတ်ဆွေဖွဲ့ခလုတ် အလုပ်မလုပ်ဘူး") နည်းနည်း ဖြေလျှော့တယ်
+const FRIEND_RANGE = 5;
 /// Friend နောက်လိုက်ရင် ထားမယ့် အကွာအဝေး
 const FOLLOW_DIST = 3.5;
 /// ခြေလှမ်း (m/s) — လူထက် နှေးတယ်၊ ပြေးရင် လွတ်နိုင်တယ်
@@ -114,22 +116,50 @@ function noteHit(match, attackerId, victimId, now = Date.now()) {
 }
 
 /// 👋 Wave နဲ့ မိတ်ဆွေဖွဲ့ခြင်း — အနီးဆုံး bot (ရန်ငြိုးမရှိ၊ friend
-/// မဟုတ်သေး) တစ်ယောက်နဲ့ ဖြစ်တယ်။ Event ပြန်မလာရင် ဘာမှ မဖြစ်ဘူး။
+/// မဟုတ်သေး) တစ်ယောက်နဲ့ ဖြစ်တယ်။
+/// ★ **အမြဲ feedback ပြန်တယ်** — အရင်က မအောင်ရင် [] ပြန်လို့ user က
+///   "🤝 ခလုတ် အလုပ်မလုပ်ဘူး" လို့ပဲ ထင်တယ် (report)။ International
+///   standard: action တိုင်း result ရှိရမယ်။ မအောင်တဲ့အခါ တောင်းသူဆီသာ
+///   mood:"none" + အကြောင်းရင်း (far/grudge/none) + အနီးဆုံးအကွာအဝေး
+///   ပြန်ပို့တယ်။
 function befriend(match, playerId, now = Date.now()) {
   const me = match.players.get(playerId);
   if (!me || isBot(me) || !me.alive) return [];
   let best = null;
   let bestD = FRIEND_RANGE;
+  let nearestD = Infinity; // range ပြင်ပ အနီးဆုံး befriend-လုပ်နိုင်တဲ့ bot
+  let grudgeNear = false; // range အတွင်း ရန်ငြိုးထားတဲ့ bot ရှိလား
   for (const b of bots(match)) {
     if (!b.alive || b.friendOf === playerId) continue;
-    if ((b.grudge[playerId] ?? 0) > now) continue; // ရန်ငြိုးရှိရင် လက်မခံဘူး
     const d = Math.hypot(b.x - me.x, b.z - me.z);
+    if ((b.grudge[playerId] ?? 0) > now) {
+      // ရန်ငြိုးရှိရင် လက်မခံဘူး — ဒါပေမယ့် အနီးမှာဆို အကြောင်းပြန်ဖို့ မှတ်ထား
+      if (d < FRIEND_RANGE) grudgeNear = true;
+      continue;
+    }
+    if (d < nearestD) nearestD = d;
     if (d < bestD) {
       best = b;
       bestD = d;
     }
   }
-  if (!best) return [];
+  if (!best) {
+    return [
+      {
+        to: playerId,
+        msg: {
+          type: "aBotMood",
+          mood: "none",
+          reason: grudgeNear
+            ? "grudge"
+            : Number.isFinite(nearestD)
+              ? "far"
+              : "none",
+          dist: Number.isFinite(nearestD) ? Math.round(nearestD) : null,
+        },
+      },
+    ];
+  }
   best.friendOf = playerId;
   return [
     {
