@@ -1,3 +1,4 @@
+import { ARENA_MAP } from "./arena";
 import { CITY } from "./city";
 import { FARM } from "./farm";
 import { SKY } from "./sky";
@@ -13,9 +14,11 @@ export const MAPS: Record<MapId, MapDef> = {
   farm: FARM,
   snow: SNOW,
   sky: SKY,
+  arena: ARENA_MAP,
 };
 
-export const MAP_LIST: MapDef[] = [CITY, FARM, SNOW, SKY];
+/// ★ arena က နောက်ဆုံး — social ၄ ခုနဲ့ game room ကို picker မှာ ခွဲမြင်ရအောင်။
+export const MAP_LIST: MapDef[] = [CITY, FARM, SNOW, SKY, ARENA_MAP];
 
 /// ★ မသိတဲ့ id ကို city အဖြစ် ယူတယ် — URL ကနေ ဘာမဆို ဝင်လာနိုင်လို့
 /// (server ရဲ့ `normalizeRoom` နဲ့ တူညီတဲ့ ချဉ်းကပ်ပုံ)။
