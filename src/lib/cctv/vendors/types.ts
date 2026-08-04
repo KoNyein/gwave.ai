@@ -17,7 +17,6 @@
  * enum) so adding a provider is a registry change, not a migration.
  */
 export type CameraVendorId =
-  | "hikvision"
   | "dahua"
   | "reolink"
   | "amcrest"

@@ -54,23 +54,9 @@ test("the fake provider is rejected in production regardless of env", () => {
   );
 });
 
-test("hikvision resolves by id but is NOT enabled (stub)", () => {
-  // Even a fully-set env must not enable the stub — IMPLEMENTED is false
-  // until approved credentials + feasibility sign-off (PR 4).
-  withEnv(
-    {
-      HIKVISION_CAMERA_ENABLED: "true",
-      HIKVISION_CLIENT_ID: "id",
-      HIKVISION_CLIENT_SECRET: "secret",
-      HIKVISION_AUTH_BASE_URL: "https://auth.hik.example",
-      HIKVISION_API_BASE_URL: "https://api.hik.example",
-      HIKVISION_REDIRECT_URI: "https://gwave.cc/api/cctv/vendors/hikvision/callback",
-    },
-    () => {
-      assert.ok(getCameraVendorConnector("hikvision"));
-      assert.equal(getEnabledCameraVendorConnector("hikvision"), null);
-    },
-  );
+test("a removed provider id resolves to null (hikvision removed 2026-08-04)", () => {
+  assert.equal(getCameraVendorConnector("hikvision"), null);
+  assert.equal(getEnabledCameraVendorConnector("hikvision"), null);
 });
 
 test("an unknown provider id resolves to null", () => {
