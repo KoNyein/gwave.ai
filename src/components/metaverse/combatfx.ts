@@ -18,6 +18,8 @@ const RING_LIFE = 0.6;
 export type CombatFx = {
   /// ကျည်လမ်းကြောင်း — `from` ကနေ `dir` အတိုင်း `len` unit
   tracer(from: THREE.Vector3, dir: THREE.Vector3, len?: number): void;
+  /// ထိမှတ် မီးပွား — ကျည်ထိတဲ့နေရာမှာ အစွန်းထွက် အလင်းစ ၃ စ
+  impact(at: THREE.Vector3): void;
   /// ပြောင်းဝ မီးပွင့် — ကိုယ့်မျက်နှာရှေ့ / ပစ်သူနေရာမှာ ခဏလင်းတယ်
   muzzle(at: THREE.Vector3): void;
   /// မြေပြင် ကွင်းလှိုင်း — respawn / kill နေရာပြ (အနီ=သေ၊ အစိမ်း=ရှင်)။
@@ -94,6 +96,19 @@ export function createCombatFx(scene: THREE.Scene): CombatFx {
 
   const up = new THREE.Vector3(0, 1, 0);
 
+  function spawnTracer(from: THREE.Vector3, dir: THREE.Vector3, len = 36) {
+    const t = tracers[nextTracer % MAX_TRACERS];
+    nextTracer++;
+    if (!t) return;
+    const d = dir.clone().normalize();
+    t.mesh.position.copy(from).addScaledVector(d, len / 2);
+    t.mesh.quaternion.setFromUnitVectors(up, d);
+    t.mesh.scale.set(1, len, 1);
+    t.mesh.visible = true;
+    t.mesh.material.opacity = 0.85;
+    t.life = TRACER_LIFE;
+  }
+
   function spawnRing(x: number, z: number, color: number, scale = 1) {
     const r = rings[nextRing % MAX_RINGS];
     nextRing++;
@@ -109,16 +124,20 @@ export function createCombatFx(scene: THREE.Scene): CombatFx {
 
   return {
     tracer(from, dir, len = 36) {
-      const t = tracers[nextTracer % MAX_TRACERS];
-      nextTracer++;
-      if (!t) return;
-      const d = dir.clone().normalize();
-      t.mesh.position.copy(from).addScaledVector(d, len / 2);
-      t.mesh.quaternion.setFromUnitVectors(up, d);
-      t.mesh.scale.set(1, len, 1);
-      t.mesh.visible = true;
-      t.mesh.material.opacity = 0.85;
-      t.life = TRACER_LIFE;
+      spawnTracer(from, dir, len);
+    },
+
+    impact(at) {
+      // အလင်းစ ၃ စ — ကျည်ထိမှတ်က မျက်စိနဲ့ မြင်သာအောင်
+      for (let i = 0; i < 3; i++) {
+        const dir = new THREE.Vector3(
+          Math.random() - 0.5,
+          Math.random() * 0.8,
+          Math.random() - 0.5,
+        );
+        if (dir.lengthSq() < 1e-4) dir.set(0, 1, 0);
+        spawnTracer(at, dir, 1.1);
+      }
     },
 
     muzzle(at) {
