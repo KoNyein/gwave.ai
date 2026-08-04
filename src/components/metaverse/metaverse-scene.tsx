@@ -237,6 +237,28 @@ export function MetaverseScene() {
     }
     ecoApplyRef.current?.(on);
   };
+  /// 🖼 Avatar ခေါင်းပေါ် profile ဓာတ်ပုံ ပြ/ဖျောက် — default ပြတယ်၊
+  /// privacy အတွက် ဖျောက်လို့ရတယ် (ရွေးချယ်မှု localStorage မှာ ကျန်တယ်)။
+  /// ဖျောက်ထားရင် server က တခြားသူတွေဆီ URL လုံးဝ မပို့ဘူး။
+  const [showPic, setShowPic] = useState(true);
+  const showPicRef = useRef(true);
+  const picSendRef = useRef<((on: boolean) => void) | null>(null);
+  useEffect(() => {
+    const on = window.localStorage.getItem("mv:showpic") !== "0";
+    showPicRef.current = on;
+    setShowPic(on);
+  }, []);
+  const togglePic = () => {
+    const on = !showPicRef.current;
+    showPicRef.current = on;
+    setShowPic(on);
+    try {
+      window.localStorage.setItem("mv:showpic", on ? "1" : "0");
+    } catch {
+      /* private mode */
+    }
+    picSendRef.current?.(on);
+  };
   // ဒီ ၃ ခုက မကြာခဏမပြောင်းလို့ React state နဲ့ ရတယ် (position မဟုတ်ဘူး)
   const [online, setOnline] = useState(1);
   // ssr:false မို့ ဒီ initializer က browser မှာပဲ ပြေးတယ် — window သုံးလို့ရတယ်
@@ -748,12 +770,23 @@ export function MetaverseScene() {
     // ── ကိုယ့်လူရုပ် ───────────────────────────────────────────────────────
     const me: Avatar = createHuman(0x44bba4, 0xe8b088);
     scene.add(me.group);
+    // 🖼 ကိုယ့် profile ဓာတ်ပုံ URL — avatar API ကနေ လာတယ်။ ပြထားရင်
+    // server ဆီ ပို့ပြီး တခြားသူတွေရဲ့ nametag မှာ ပေါ်တယ်။
+    let myPic: string | null = null;
+    const syncPic = () => {
+      net?.sendPic(showPicRef.current && myPic ? myPic : null);
+    };
+    picSendRef.current = (on) => {
+      net?.sendPic(on && myPic ? myPic : null);
+    };
     // ★ သိမ်းထားတဲ့ avatar ကို ဖတ်ပြီး တင်တယ် — မရရင် default နဲ့ ဆက်သွားတယ်
     void fetch("/api/metaverse/avatar", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d: { config?: AvatarConfig } | null) => {
+      .then((d: { config?: AvatarConfig; pic?: string | null } | null) => {
         if (killed || !d?.config) return;
         applyAvatarConfig(me, sanitizeAvatar(d.config, new Set()));
+        myPic = typeof d.pic === "string" ? d.pic : null;
+        syncPic();
       })
       .catch(() => {
         applyAvatarConfig(me, DEFAULT_AVATAR);
@@ -823,7 +856,7 @@ export function MetaverseScene() {
         emote: (s.emote as HumanState["emote"]) ?? null,
         speed: 0,
       });
-      nametags?.add(id, s.name ?? "Gwave", s.authed !== false);
+      nametags?.add(id, s.name ?? "Gwave", s.authed !== false, s.pic ?? null);
       setOnline(remotes.size + 1);
     };
 
@@ -876,6 +909,9 @@ export function MetaverseScene() {
           if (roomId === "hide-1") net?.sendRaw({ type: "gJoin" });
           // ဖုန်းရဲ့ နာရီ မမှန်လည်း server နဲ့ တူညီအောင်
           clockOffset = serverTime - Date.now();
+          // 🖼 ပြထားရင် ကိုယ့် profile ဓာတ်ပုံကို server ဆီ ကြေညာတယ် —
+          // avatar fetch က socket ထက် အရင်ပြီးနေရင် ဒီကနေ ပို့တယ်
+          syncPic();
         },
         onJoin: (id, s) => addRemote(id, s),
         onLeave: dropRemote,
@@ -905,6 +941,10 @@ export function MetaverseScene() {
           // setname က ဧည့်သည်ကသာ ပို့လို့ရတယ် (server က signed-in user ကို
           // ငြင်းတယ်) — ဒါကြောင့် အမှတ်အသားက "ဧည့်သည်" အတိုင်း ကျန်တယ်
           nametags?.rename(id, name);
+        },
+        // 🖼 တစ်ယောက်ယောက် profile ဓာတ်ပုံ ပြ/ဖျောက် ပြောင်းလိုက်တယ်
+        onPic: (id, pic) => {
+          nametags?.setPic(id, pic);
         },
         onWeather: (kind, intensity, wx, wz) => {
           // ★ map က ခွင့်ပြုထားတဲ့ ရာသီဥတုကိုသာ လက်ခံတယ် — server က
@@ -3094,6 +3134,19 @@ export function MetaverseScene() {
             </button>
             <button
               data-hud="1"
+              onClick={togglePic}
+              aria-label="Profile ဓာတ်ပုံ ပြ/ဖျောက်"
+              title="Profile ဓာတ်ပုံ ပြ/ဖျောက်"
+              className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
+                showPic
+                  ? "border-sky-400/60 bg-sky-500/25 text-sky-200"
+                  : "border-white/20 bg-black/50"
+              }`}
+            >
+              🖼
+            </button>
+            <button
+              data-hud="1"
               onClick={toggleEco}
               aria-label="ဘက်ထရီချွေတာ mode"
               title="ဘက်ထရီချွေတာ mode — 30fps + အရိပ်ပိတ်"
@@ -3141,6 +3194,23 @@ export function MetaverseScene() {
               🏙
             </button>
           </div>
+        )}
+        {/* 🖼 Social room မှာလည်း profile ဓာတ်ပုံ ပြ/ဖျောက် ရွေးလို့ရရမယ် —
+            game room မှာတော့ အပေါ်က chip တန်းထဲ ရှိပြီးသား */}
+        {!inGameRoom && (
+          <button
+            data-hud="1"
+            onClick={togglePic}
+            aria-label="Profile ဓာတ်ပုံ ပြ/ဖျောက်"
+            title="Profile ဓာတ်ပုံ ပြ/ဖျောက်"
+            className={`pointer-events-auto flex h-8 items-center gap-1 rounded-full border px-2.5 text-[11px] backdrop-blur ${
+              showPic
+                ? "border-sky-400/60 bg-sky-500/25 text-sky-200"
+                : "border-white/20 bg-black/50 text-white/80"
+            }`}
+          >
+            🖼 {showPic ? "ပုံပြထား" : "ပုံဖျောက်ထား"}
+          </button>
         )}
         {ready && (
           <div
