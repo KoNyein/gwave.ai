@@ -139,6 +139,24 @@
 
 ## Changelog
 
+- 2026-08-04 (web): **CCTV vendor-cloud account linking (PR 2 of 4).**
+  Routes: `/api/cctv/vendors` (list), `[provider]/connect` (state + PKCE in
+  an HTTP-only cookie bound to user+provider, 10-min expiry),
+  `[provider]/callback` (every validation failure is a hard stop; connected=1
+  only after the DB writes), `[provider]/cameras` (fresh-token discovery
+  with a 60s cache + refresh-race protection), `[provider]/import`
+  (candidates re-validated against the account, sanitized data only) and
+  `[provider]/disconnect` (revoke → delete secrets → mark disconnected).
+  UI: "Connect vendor account" section in the add-camera form (self-hiding
+  while the flag is off), `/cameras/vendors/[provider]` import page with
+  capabilities badges and the local-gateway recommendation. en+my strings.
+  All endpoints FAIL CLOSED when the `cctv_vendor_cloud` flag is off or
+  unreadable — 5 new Playwright guard tests pin that; 10 new oauth-state
+  unit tests cover the CSRF/login-CSRF/expiry failure modes. No schema
+  change (PR 1's migrations already applied on RDS). Still nothing
+  user-visible in production until the flag is switched on AND a provider
+  is configured (fake = dev only, Hikvision = stub until partner approval).
+
 - 2026-08-04 (web): **CCTV vendor-cloud framework (PR 1 of 4) + post-RLS
   regression fix.** Groundwork for linking approved camera-vendor cloud
   accounts (docs/tasks/VENDOR_CLOUD_CAMERA_INTEGRATION.md): `vendor_cloud`
