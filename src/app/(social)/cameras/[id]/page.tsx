@@ -11,6 +11,7 @@ import { KvsPlayer } from "@/components/cctv/kvs-player";
 import { PtzControls } from "@/components/cctv/ptz-controls";
 import { CameraShareControls } from "@/components/cctv/camera-share-controls";
 import { HlsPlayer } from "@/components/cctv/hls-player";
+import { VendorCameraPlayer } from "@/components/cctv/vendor/vendor-camera-player";
 import { Button } from "@/components/ui/button";
 import { getCurrentProfile } from "@/lib/auth";
 import { publishUrl } from "@/lib/cctv-player";
@@ -70,7 +71,13 @@ export default async function CameraDetailPage(
 
       <h1 className="text-xl font-bold">{camera.title}</h1>
 
-      {camera.camera_type === "kvs" ? (
+      {camera.camera_type === "vendor_cloud" ? (
+        <VendorCameraPlayer
+          cameraId={camera.id}
+          title={camera.title}
+          provider={camera.vendor_provider}
+        />
+      ) : camera.camera_type === "kvs" ? (
         <KvsPlayer
           id={camera.id}
           title={camera.title}
@@ -84,7 +91,11 @@ export default async function CameraDetailPage(
 
       {camera.ptz_url ? <PtzControls cameraId={camera.id} /> : null}
 
-      <CameraHlsForm id={camera.id} hlsUrl={camera.hls_url} />
+      {/* Vendor-cloud playback comes from short-lived sessions, never a
+          pasted URL — the HLS override form does not apply. */}
+      {camera.camera_type !== "vendor_cloud" ? (
+        <CameraHlsForm id={camera.id} hlsUrl={camera.hls_url} />
+      ) : null}
 
       {publish ? (
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-3">
