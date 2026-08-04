@@ -17,6 +17,10 @@ const FaceScanner = dynamic(
   () => import("../scan/FaceScanner").then((m) => m.FaceScanner),
   { ssr: false },
 );
+const BodyScanner = dynamic(
+  () => import("../scan/BodyScanner").then((m) => m.BodyScanner),
+  { ssr: false },
+);
 
 /// 🧬 Avatar editor shell (spec §8) — Phase 1။
 /// Tabs: Scan (Phase 2 placeholder + consent + delete) / Body / Skin /
@@ -31,6 +35,16 @@ export function AvatarEditor() {
   const [assets, setAssets] = useState<AvatarAsset[]>([]);
   const [savedFlash, setSavedFlash] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [bodyScanning, setBodyScanning] = useState(false);
+  /// Scan ကရလာတဲ့ morph မိတ္တူ — "Reset to scan" အတွက် (spec §5.2)
+  const [hasScanMorphs, setHasScanMorphs] = useState(false);
+  useEffect(() => {
+    try {
+      setHasScanMorphs(!!window.localStorage.getItem("mv:scanmorphs"));
+    } catch {
+      /* private mode */
+    }
+  }, []);
 
   useEffect(() => {
     void load();
@@ -73,6 +87,25 @@ export function AvatarEditor() {
           onDone={({ faceGlbUrl, faceThumbUrl }) => {
             setScanning(false);
             patch({ faceGlbUrl, faceThumbUrl, scanSource: "face" });
+            void save();
+          }}
+        />
+      )}
+      {bodyScanning && (
+        <BodyScanner
+          onClose={() => setBodyScanning(false)}
+          onApply={(m) => {
+            setBodyScanning(false);
+            try {
+              window.localStorage.setItem("mv:scanmorphs", JSON.stringify(m));
+              setHasScanMorphs(true);
+            } catch {
+              /* private mode */
+            }
+            patch({
+              morphs: { ...config.morphs, ...m },
+              scanSource: config.faceGlbUrl ? "face+body" : config.scanSource,
+            });
             void save();
           }}
         />
@@ -151,6 +184,12 @@ export function AvatarEditor() {
               >
                 📷 {config.faceGlbUrl ? "ပြန် Scan မယ်" : "မျက်နှာ Scan စတင်မယ်"}
               </button>
+              <button
+                onClick={() => setBodyScanning(true)}
+                className="w-full rounded-xl border border-emerald-400/50 bg-emerald-500/10 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/20"
+              >
+                🧍 ကိုယ်ခန္ဓာ Scan (အချိုးအစား တိုင်း)
+              </button>
               <p className="text-[12px] leading-relaxed text-white/50">
                 🔒 Biometric — frame တွေ ဖုန်းထဲမှာပဲ process လုပ်တယ်၊
                 နောက်ဆုံး 3D file ပဲ upload တက်တယ်၊ ဘယ်အချိန်မဆို ဖျက်လို့ရတယ်။
@@ -193,11 +232,28 @@ export function AvatarEditor() {
                   />
                 </label>
               ))}
+              {hasScanMorphs && (
+                <button
+                  onClick={() => {
+                    try {
+                      const raw = window.localStorage.getItem("mv:scanmorphs");
+                      if (!raw) return;
+                      const m = JSON.parse(raw) as Record<string, number>;
+                      patch({ morphs: m });
+                    } catch {
+                      /* corrupt copy — ဘာမှမလုပ် */
+                    }
+                  }}
+                  className="w-full rounded-lg border border-white/20 py-2 text-xs text-white/70 hover:bg-white/5"
+                >
+                  ↺ Scan တိုင်းတာမှုအတိုင်း ပြန်ထား
+                </button>
+              )}
               <p className="text-[11px] leading-relaxed text-white/40">
-                Phase 1 — အရပ်/ကိုယ်ချိန်/ခေါင်းအရွယ်က preview မှာ
-                ချက်ချင်းမြင်ရပြီး ကျန် slider တွေက morph-target base body
-                ရောက်တဲ့ Phase မှာ အပြည့် သက်ရောက်ပါမယ်။ Body scan နဲ့
-                အလိုအလျောက် ဖြည့်တာ Phase 3 မှာ လာပါမယ်။
+                အရပ်/ကိုယ်ချိန်/ခေါင်းအရွယ်က preview မှာ ချက်ချင်းမြင်ရပြီး
+                ကျန် slider တွေက morph-target base body ရောက်တဲ့ Phase မှာ
+                အပြည့် သက်ရောက်ပါမယ်။ 🧍 Scan tab က ကိုယ်ခန္ဓာ scan နဲ့
+                အချိုးအစားတွေ အလိုအလျောက် ဖြည့်လို့ရပါပြီ။
               </p>
             </div>
           )}
