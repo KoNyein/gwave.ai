@@ -24,7 +24,7 @@ import {
   attachLiveKitScreen,
   type LiveScreen,
 } from "./livescreen";
-import { createMvGoLive } from "./golive";
+import { createMvGoLive, type MvCamMode } from "./golive";
 import { getMap, MAP_LIST } from "./maps";
 import { createMinimap } from "./minimap";
 import { createNametags } from "./nametags";
@@ -274,15 +274,56 @@ export function MetaverseScene() {
   /// "starting" ကြားအခြေအနေက ခလုတ်နှစ်ခါနှိပ် race မဖြစ်အောင်။
   const [mvLive, setMvLive] = useState<"off" | "starting" | "on">("off");
   const goLiveRef = useRef<((title: string) => Promise<boolean>) | null>(null);
+  /// ★ Error ကို **မျက်မြင် toast** နဲ့ ပြရမယ် — အရင်က တိတ်တိတ် မျိုလို့
+  /// user က "ခလုတ် နှိပ်လို့မရဘူး" လို့ပဲ ထင်နေတယ်။
+  const [mvErr, setMvErr] = useState<string | null>(null);
+  const mvErrTimer = useRef<number>(0);
+  const showMvErr = (msg: string) => {
+    setMvErr(msg);
+    window.clearTimeout(mvErrTimer.current);
+    mvErrTimer.current = window.setTimeout(() => setMvErr(null), 6000);
+  };
   const toggleGoLive = () => {
     if (mvLive === "starting" || !goLiveRef.current) return;
     if (mvLive === "off") {
       const title = `${meName || "Gwave"} — ${getMap(roomId).emoji} ${getMap(roomId).name} Metaverse Live`;
       setMvLive("starting");
-      void goLiveRef.current(title).then((ok) => setMvLive(ok ? "on" : "off"));
+      goLiveRef.current(title).then(
+        (ok) => setMvLive(ok ? "on" : "off"),
+        (err: unknown) => {
+          setMvLive("off");
+          showMvErr(err instanceof Error ? err.message : "Live စတင်လို့ မရဘူး");
+        },
+      );
     } else {
       void goLiveRef.current("").then(() => setMvLive("off"));
     }
+  };
+  /// 🤳 Host ကင်မရာ PiP — off → မျက်နှာ (front) → အနောက် (back) → off
+  const [mvCam, setMvCam] = useState<MvCamMode>("off");
+  const camRef = useRef<((m: MvCamMode) => Promise<void>) | null>(null);
+  const cycleCam = () => {
+    const next: MvCamMode =
+      mvCam === "off" ? "user" : mvCam === "user" ? "environment" : "off";
+    setMvCam(next);
+    camRef.current?.(next).catch((err: unknown) => {
+      setMvCam("off");
+      showMvErr(
+        err instanceof Error ? err.message : "ကင်မရာ ဖွင့်လို့ မရဘူး",
+      );
+    });
+  };
+  /// ☰ Game room ရဲ့ ဒုတိယအဆင့် ခလုတ်များ ခေါက်သိမ်း/ဖြန့် — default
+  /// ခေါက်ထား (မြင်ကွင်း အကွယ် နည်းအောင်)
+  const [hudMore, setHudMore] = useState(false);
+  /// 🤝 NPC context ခလုတ် — မိတ်ဆွေဖွဲ့လို့ရတဲ့ NPC တစ်ယောက် အနီး
+  /// (FRIEND_RANGE) ရောက်မှ ပေါ်တယ် (PUBG/GTA style context action)။
+  /// null = ဘယ်သူမှ မနီးဘူး၊ string = အနီးဆုံး NPC နာမည်
+  const [npcNear, setNpcNear] = useState<string | null>(null);
+  /// လက်ပြပြီး မိတ်ဆွေဖွဲ့ — 🤝 chip ရော context ခလုတ်ရော ဒီတစ်ခုတည်း သုံး
+  const waveBefriend = () => {
+    setEmote("wave");
+    window.setTimeout(() => setEmote(null), 1600);
   };
   // ဒီ ၃ ခုက မကြာခဏမပြောင်းလို့ React state နဲ့ ရတယ် (position မဟုတ်ဘူး)
   const [online, setOnline] = useState(1);
@@ -542,6 +583,7 @@ export function MetaverseScene() {
     setHideHud({ phase: "waiting", endsAt: null, role: null, blindUntil: null, players: [], feed: [] });
     setShowBoard(false);
     setHitMark(null);
+    setNpcNear(null);
     setDmgOn(false);
     setBanner(null);
     setInvited(false);
@@ -797,13 +839,12 @@ export function MetaverseScene() {
         await mvGoLive.stop();
         return false;
       }
-      try {
-        await mvGoLive.start(title);
-        return true;
-      } catch {
-        return false;
-      }
+      // ★ Error ကို ဒီမှာ မမျိုဘူး — UI (toggleGoLive) က ဖမ်းပြီး toast ပြမယ်
+      await mvGoLive.start(title);
+      return true;
     };
+    // 🤳 ကင်မရာ PiP mode — UI chip ကနေ ချိတ်တယ်
+    camRef.current = (m: MvCamMode) => mvGoLive.setCamera(m);
 
     restoreRef.current = () => {
       renderer.setPixelRatio(inApp ? 1 : Math.min(window.devicePixelRatio, 2));
@@ -896,6 +937,10 @@ export function MetaverseScene() {
 
     // ── Multiplayer ───────────────────────────────────────────────────────
     const remotes = new Map<string, Remote>();
+    /// 🤝 ကိုယ် မိတ်ဆွေဖွဲ့ပြီးသား NPC id များ — 「မိတ်ဆွေဖွဲ့မယ်」 context
+    /// ခလုတ်က friend ဖြစ်ပြီးသားကို ထပ်မပြအောင် (bot သေရင်/ပွဲပြန်စရင်
+    /// server ဘက်မှာ friendship ပျက်လို့ ဒီမှာလည်း ဖျက်တယ်)
+    const botFriends = new Set<string>();
 
     /// ★ App ထဲမှာ တစ်ပြိုင်နက် ပြမယ့် လူအရေအတွက်ကို ကန့်သတ်တယ် —
     /// avatar တစ်ယောက်က mesh အများကြီးနဲ့ nametag တစ်ခုစီ ရှိတယ်၊
@@ -1451,6 +1496,8 @@ export function MetaverseScene() {
                 combatFx?.ring(vr.cur.x, vr.cur.z, 0xff5544, 0.45);
               }
               if (m.attackerId === myId) {
+                // ကိုယ့် friend NPC ကို ပစ်မိရင် server ဘက်မှာ မိတ်ဆွေပျက်တယ်
+                botFriends.delete(String(m.victimId));
                 sfx?.hitMarker(m.hitPart === "head");
                 buzz(m.hitPart === "head" ? [20, 20, 30] : 25);
                 const at = Date.now();
@@ -1499,6 +1546,9 @@ export function MetaverseScene() {
               break;
             }
             case "aKill": {
+              // Bot သေရင် friendship ပျက်တယ် (server respawn က ရှင်းတယ်) —
+              // context ခလုတ် ပြန်ပေါ်နိုင်အောင် ဒီဘက်မှာလည်း ဖျက်
+              botFriends.delete(String(m.victimId));
               // သေဆုံးသူ (remote) နေရာမှာ ကွင်းနီကြီး — kill motion graphic
               const kr = remotes.get(String(m.victimId));
               if (kr) combatFx?.ring(kr.cur.x, kr.cur.z, 0x991111, 1.3);
@@ -1597,6 +1647,7 @@ export function MetaverseScene() {
             case "aBotMood":
               if (m.mood === "friend") {
                 if (m.of === myId) {
+                  botFriends.add(String(m.id));
                   buzz([20, 30, 20]);
                   // 🗣 NPC က မြန်မာသံနဲ့ တုံ့ပြန် (ခွေးက အသံမပြော)
                   if (m.dog !== true) voice?.say("befriend");
@@ -1609,6 +1660,17 @@ export function MetaverseScene() {
                 } else {
                   pushFeed(`🤝 ${m.name} က မိတ်ဆွေရသွားပြီ`, true);
                 }
+              } else if (m.mood === "none") {
+                // ★ မိတ်ဆွေဖွဲ့ မအောင်တဲ့ feedback — အရင်က ဘာမှ မပြလို့
+                // "🤝 ခလုတ် အလုပ်မလုပ်ဘူး" လို့ ထင်ကြတယ် (report)
+                flashBanner(
+                  m.reason === "grudge"
+                    ? "😠 ဒီ NPC က မင်းကို ရန်ငြိုးထားနေတုန်း — ခဏနေမှ ပြန်ကြိုးစားပါ"
+                    : m.reason === "far"
+                      ? `🤝 NPC နဲ့ ဝေးနေသေးတယ် (${Number(m.dist) || "?"}m) — ကပ်ပြီးမှ လက်ပြပါ`
+                      : "🤝 အနီးမှာ မိတ်ဆွေဖွဲ့လို့ရတဲ့ NPC မရှိသေးဘူး",
+                  "bad",
+                );
               }
               break;
             case "aWin":
@@ -1623,6 +1685,7 @@ export function MetaverseScene() {
               if (m.winnerId === myId) voice?.say("win");
               break;
             case "aReset":
+              botFriends.clear(); // ပွဲအသစ် — friendship တွေ ပြန်စ
               setArenaHud((h) => ({
                 ...h,
                 board: (m.players as ArenaBoardRow[]) ?? [],
@@ -2142,6 +2205,7 @@ export function MetaverseScene() {
     /// ရေလှိုင်း/မီးအတွက် တိုးနေတဲ့ အချိန် (နာရီနဲ့ မဆိုင်ဘူး)
     let effectT = 0;
     let nearId: string | null = null;
+    let npcNearName: string | null = null;
 
     /// 🔋 Eco mode ရဲ့ 30fps ကန့်အတွက် နောက်ဆုံး render ချိန်
     let lastEcoFrame = 0;
@@ -2573,6 +2637,24 @@ export function MetaverseScene() {
           nearId = near?.id ?? null;
           setNearby(near);
         }
+        // 🤝 Arena — မိတ်ဆွေဖွဲ့လို့ရတဲ့ NPC အနီး ရောက်/ထွက် စစ်တယ်
+        // (server FRIEND_RANGE=5 နဲ့ တစ်ထပ်တည်း — ခလုတ်ပေါ်ရင် အောင်ရမယ်)
+        if (map.id === "arena") {
+          let bn: string | null = null;
+          let bd = 5;
+          for (const [rid, r] of remotes) {
+            if (!rid.startsWith("bot:") || botFriends.has(rid)) continue;
+            const d = Math.hypot(r.cur.x - p.x, r.cur.z - p.z);
+            if (d < bd) {
+              bd = d;
+              bn = r.name;
+            }
+          }
+          if (bn !== npcNearName) {
+            npcNearName = bn;
+            setNpcNear(bn);
+          }
+        }
       }
     };
 
@@ -2854,20 +2936,23 @@ export function MetaverseScene() {
                 🎯 ပစ်မှတ် — {arenaHud.you.target.name}
               </p>
             ) : null}
-            <div className="flex max-w-[92vw] flex-wrap items-center justify-center gap-1.5">
+            {/* ★ Compact strip — ဖုန်း landscape မှာ ဒုတိယတန်း ချိုးမကျအောင်
+                padding/gap လျှော့ပြီး ဖောက်ထွင်းအောင် bg လျှော့ (screenshot
+                report: လက်နက်တန်းက မြင်ကွင်း ကွယ်တယ်) */}
+            <div className="flex max-w-[96vw] flex-wrap items-center justify-center gap-1">
               {Object.entries(arenaHud.weapons).map(([key, w], i) => (
                 <button
                   key={key}
                   data-hud="1"
                   onClick={() => arenaWeaponPickRef.current?.(key)}
-                  className={`pointer-events-auto flex flex-col items-center gap-0.5 rounded-lg border px-2 py-1 backdrop-blur ${
+                  className={`pointer-events-auto flex flex-col items-center gap-0.5 rounded-lg border px-1.5 py-0.5 backdrop-blur ${
                     arenaHud.you?.weapon === key
                       ? "border-amber-400/70 bg-amber-500/20 text-amber-200"
-                      : "border-white/15 bg-black/50 text-white/70 hover:bg-black/70"
+                      : "border-white/10 bg-black/35 text-white/60 hover:bg-black/60"
                   }`}
                 >
                   <WeaponIcon kind={key} />
-                  <span className="text-[10px] leading-none">
+                  <span className="text-[9px] leading-none">
                     {i < 7 ? `${i + 1}·` : ""}
                     {w.my}
                   </span>
@@ -2875,11 +2960,16 @@ export function MetaverseScene() {
               ))}
             </div>
           </div>
-          <div className="pointer-events-none absolute right-2 top-20 z-10 w-60 space-y-1">
-            {arenaHud.feed.map((f) => (
+          {/* Kill feed — ★ minimap (right-3 top-3, 132px) အောက်ကို ရွှေ့ပြီး
+              ပိုသေး/ပိုဖောက်ထွင်း — အရင် top-20 မှာ minimap နဲ့ ထပ်နေပြီး
+              စာတန်းကြီးတွေက မြင်ကွင်း ကွယ်တယ် (screenshot report)။
+              International standard: killfeed က ဖတ်ရုံသေးသေး၊ w-fit၊
+              ညာကပ်။ */}
+          <div className="pointer-events-none absolute right-2 top-[168px] z-10 flex w-48 flex-col items-end space-y-0.5">
+            {arenaHud.feed.slice(-4).map((f) => (
               <p
                 key={`${f.at}-${f.text}`}
-                className={`rounded bg-black/55 px-2 py-1 text-[11px] backdrop-blur ${
+                className={`w-fit max-w-full rounded bg-black/35 px-1.5 py-0.5 text-[10px] leading-snug backdrop-blur ${
                   f.good ? "text-emerald-300" : "text-red-300"
                 }`}
               >
@@ -3036,11 +3126,13 @@ export function MetaverseScene() {
             ) : null}
           </div>
 
-          <div className="pointer-events-none absolute right-2 top-20 z-10 w-60 space-y-1">
-            {hideHud.feed.map((f) => (
+          {/* Event feed — arena killfeed နဲ့ တူတူ: minimap အောက်၊ သေးပြီး
+              ဖောက်ထွင်း (မြင်ကွင်း မကွယ်စေနဲ့) */}
+          <div className="pointer-events-none absolute right-2 top-[168px] z-10 flex w-48 flex-col items-end space-y-0.5">
+            {hideHud.feed.slice(-4).map((f) => (
               <p
                 key={`${f.at}-${f.text}`}
-                className={`rounded bg-black/55 px-2 py-1 text-[11px] backdrop-blur ${
+                className={`w-fit max-w-full rounded bg-black/35 px-1.5 py-0.5 text-[10px] leading-snug backdrop-blur ${
                   f.good ? "text-emerald-300" : "text-amber-300"
                 }`}
               >
@@ -3257,129 +3349,165 @@ export function MetaverseScene() {
               ရုပ်ပြင်ခန်း (အရောင်/အဝတ်/ကိုယ်ခန္ဓာ ရွေးချယ်မှုအပြည့်)။ */}
         {/* ★ Icon-only float ခလုတ်အသေးများ — စာတန်းပါရင် panel က game
             display ကို နေရာယူလွန်းတယ် (report)။ Icon က aria/title နဲ့။ */}
+        {/* ── Game room ခလုတ်တန်း — **default ခေါက်ထား** ─────────────────
+            ★ Screenshot report: chip ၁၀ လုံးတန်းက game မြင်ကွင်းကို
+              ကွယ်နေတယ်။ International FPS standard (PUBG/CoD mobile) က
+              persistent chrome အနည်းဆုံး — ဒါကြောင့် 🏆 + ⋯ ပဲ ချန်ပြီး
+              ကျန်တာ ⋯ နောက်မှာ ဝှက်တယ်။ Live လွှင့်နေချိန်မှာတော့ 🔴 (ရပ်)
+              နဲ့ 🤳 (ကင်မရာ) ကို အမြန်လက်လှမ်းမီအောင် အမြဲပြတယ်။ */}
         {(roomId === "arena" || roomId === "hide-1") && (
-          <div className="pointer-events-auto flex items-center gap-1">
+          <div className="pointer-events-auto flex max-w-[70vw] flex-wrap items-center gap-1">
             <button
               data-hud="1"
               onClick={() => setShowBoard((s) => !s)}
               aria-label="အမှတ်စာရင်း"
               title="အမှတ်စာရင်း"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/50 text-[13px] backdrop-blur"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/40 text-[13px] backdrop-blur"
             >
               🏆
             </button>
-            <button
-              data-hud="1"
-              onClick={invite}
-              aria-label="အဖွဲ့ဖိတ်မယ်"
-              title="အဖွဲ့ဖိတ်မယ်"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/50 text-[13px] backdrop-blur"
-            >
-              📣
-            </button>
-            {roomId === "arena" && (
+            {(mvLive !== "off" || hudMore) && (
               <button
                 data-hud="1"
-                onClick={() => {
-                  // 👋 wave — server က အနီးက ဓားပြ bot နဲ့ မိတ်ဆွေဖွဲ့ပေးတယ်
-                  setEmote("wave");
-                  window.setTimeout(() => setEmote(null), 1600);
-                }}
-                aria-label="ဓားပြနဲ့ မိတ်ဆွေဖွဲ့မယ် (လက်ပြ)"
-                title="ဓားပြနဲ့ မိတ်ဆွေဖွဲ့မယ် (လက်ပြ)"
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/50 text-[13px] backdrop-blur"
+                onClick={toggleGoLive}
+                aria-label="Metaverse Go Live"
+                title="Game မြင်ကွင်းကို feed ဆီ တိုက်ရိုက်လွှင့်မယ်"
+                className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
+                  mvLive === "on"
+                    ? "animate-pulse border-red-400/70 bg-red-500/30 text-red-200"
+                    : mvLive === "starting"
+                      ? "border-amber-400/60 bg-amber-500/25 text-amber-200"
+                      : "border-white/20 bg-black/40"
+                }`}
               >
-                🤝
+                🔴
+              </button>
+            )}
+            {(mvLive === "on" || hudMore) && (
+              <button
+                data-hud="1"
+                onClick={cycleCam}
+                aria-label="Live ကင်မရာ — မျက်နှာ/အနောက်/ပိတ်"
+                title="Live ကင်မရာ PiP — မျက်နှာ → အနောက် → ပိတ်"
+                className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
+                  mvCam === "off"
+                    ? "border-white/20 bg-black/40"
+                    : "border-sky-400/60 bg-sky-500/25 text-sky-200"
+                }`}
+              >
+                {mvCam === "environment" ? "📷" : "🤳"}
               </button>
             )}
             <button
               data-hud="1"
-              onClick={() => {
-                setMenu(null);
-                setDressing(true);
-              }}
-              aria-label="Avatar ရုပ်ပြင်မယ်"
-              title="Avatar ရုပ်ပြင်မယ်"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/50 text-[13px] backdrop-blur"
-            >
-              👤
-            </button>
-            <button
-              data-hud="1"
-              onClick={togglePic}
-              aria-label="Profile ဓာတ်ပုံ ပြ/ဖျောက်"
-              title="Profile ဓာတ်ပုံ ပြ/ဖျောက်"
+              onClick={() => setHudMore((m) => !m)}
+              aria-label={hudMore ? "ခလုတ်များ ခေါက်မယ်" : "ခလုတ်များ ဖြန့်မယ်"}
+              title={hudMore ? "ခလုတ်များ ခေါက်မယ်" : "ခလုတ်များ ဖြန့်မယ်"}
               className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
-                showPic
-                  ? "border-sky-400/60 bg-sky-500/25 text-sky-200"
-                  : "border-white/20 bg-black/50"
-              }`}
-            >
-              🖼
-            </button>
-            <button
-              data-hud="1"
-              onClick={toggleGoLive}
-              aria-label="Metaverse Go Live"
-              title="Game မြင်ကွင်းကို feed ဆီ တိုက်ရိုက်လွှင့်မယ်"
-              className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
-                mvLive === "on"
-                  ? "animate-pulse border-red-400/70 bg-red-500/30 text-red-200"
-                  : mvLive === "starting"
-                    ? "border-amber-400/60 bg-amber-500/25 text-amber-200"
-                    : "border-white/20 bg-black/50"
-              }`}
-            >
-              🔴
-            </button>
-            <button
-              data-hud="1"
-              onClick={toggleEco}
-              aria-label="ဘက်ထရီချွေတာ mode"
-              title="ဘက်ထရီချွေတာ mode — 30fps + အရိပ်ပိတ်"
-              className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
-                eco
-                  ? "border-lime-400/60 bg-lime-500/25 text-lime-200"
-                  : "border-white/20 bg-black/50"
-              }`}
-            >
-              🔋
-            </button>
-            <button
-              data-hud="1"
-              onClick={() => setShowRules((r) => !r)}
-              aria-label="ပြိုင်ပွဲစည်းမျဉ်း"
-              title="ပြိုင်ပွဲစည်းမျဉ်း"
-              className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
-                showRules
+                hudMore
                   ? "border-emerald-400/60 bg-emerald-500/25 text-emerald-200"
-                  : "border-white/20 bg-black/50"
+                  : "border-white/20 bg-black/40"
               }`}
             >
-              📜
+              {hudMore ? "✕" : "⋯"}
             </button>
-            <button
-              data-hud="1"
-              onClick={() => setShowHelp((h) => !h)}
-              aria-label="ခလုတ်လမ်းညွှန်"
-              title="ခလုတ်လမ်းညွှန်"
-              className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
-                showHelp
-                  ? "border-amber-400/60 bg-amber-500/25 text-amber-200"
-                  : "border-white/20 bg-black/50"
-              }`}
-            >
-              ❓
-            </button>
-            <button
-              data-hud="1"
-              onClick={() => chooseMap("city")}
-              aria-label="မြို့တော်ကို ထွက်မယ်"
-              title="မြို့တော်ကို ထွက်မယ်"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/50 text-[13px] backdrop-blur"
-            >
-              🏙
-            </button>
+            {hudMore && (
+              <>
+                <button
+                  data-hud="1"
+                  onClick={invite}
+                  aria-label="အဖွဲ့ဖိတ်မယ်"
+                  title="အဖွဲ့ဖိတ်မယ်"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/40 text-[13px] backdrop-blur"
+                >
+                  📣
+                </button>
+                {roomId === "arena" && (
+                  <button
+                    data-hud="1"
+                    onClick={waveBefriend}
+                    aria-label="NPC နဲ့ မိတ်ဆွေဖွဲ့မယ် (လက်ပြ)"
+                    title="NPC နဲ့ မိတ်ဆွေဖွဲ့မယ် (လက်ပြ) — 5m အတွင်း ကပ်ပြီးမှ"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/40 text-[13px] backdrop-blur"
+                  >
+                    🤝
+                  </button>
+                )}
+                <button
+                  data-hud="1"
+                  onClick={() => {
+                    setMenu(null);
+                    setDressing(true);
+                  }}
+                  aria-label="Avatar ရုပ်ပြင်မယ်"
+                  title="Avatar ရုပ်ပြင်မယ်"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/40 text-[13px] backdrop-blur"
+                >
+                  👤
+                </button>
+                <button
+                  data-hud="1"
+                  onClick={togglePic}
+                  aria-label="Profile ဓာတ်ပုံ ပြ/ဖျောက်"
+                  title="Profile ဓာတ်ပုံ ပြ/ဖျောက်"
+                  className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
+                    showPic
+                      ? "border-sky-400/60 bg-sky-500/25 text-sky-200"
+                      : "border-white/20 bg-black/40"
+                  }`}
+                >
+                  🖼
+                </button>
+                <button
+                  data-hud="1"
+                  onClick={toggleEco}
+                  aria-label="ဘက်ထရီချွေတာ mode"
+                  title="ဘက်ထရီချွေတာ mode — 30fps + အရိပ်ပိတ်"
+                  className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
+                    eco
+                      ? "border-lime-400/60 bg-lime-500/25 text-lime-200"
+                      : "border-white/20 bg-black/40"
+                  }`}
+                >
+                  🔋
+                </button>
+                <button
+                  data-hud="1"
+                  onClick={() => setShowRules((r) => !r)}
+                  aria-label="ပြိုင်ပွဲစည်းမျဉ်း"
+                  title="ပြိုင်ပွဲစည်းမျဉ်း"
+                  className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
+                    showRules
+                      ? "border-emerald-400/60 bg-emerald-500/25 text-emerald-200"
+                      : "border-white/20 bg-black/40"
+                  }`}
+                >
+                  📜
+                </button>
+                <button
+                  data-hud="1"
+                  onClick={() => setShowHelp((h) => !h)}
+                  aria-label="ခလုတ်လမ်းညွှန်"
+                  title="ခလုတ်လမ်းညွှန်"
+                  className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
+                    showHelp
+                      ? "border-amber-400/60 bg-amber-500/25 text-amber-200"
+                      : "border-white/20 bg-black/40"
+                  }`}
+                >
+                  ❓
+                </button>
+                <button
+                  data-hud="1"
+                  onClick={() => chooseMap("city")}
+                  aria-label="မြို့တော်ကို ထွက်မယ်"
+                  title="မြို့တော်ကို ထွက်မယ်"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/40 text-[13px] backdrop-blur"
+                >
+                  🏙
+                </button>
+              </>
+            )}
           </div>
         )}
         {/* 🖼 Social room မှာလည်း profile ဓာတ်ပုံ ပြ/ဖျောက် ရွေးလို့ရရမယ် —
@@ -3414,6 +3542,21 @@ export function MetaverseScene() {
             >
               🔴 {mvLive === "on" ? "LIVE — ရပ်မယ်" : mvLive === "starting" ? "စတင်နေ…" : "Go Live"}
             </button>
+            {mvLive === "on" && (
+              <button
+                data-hud="1"
+                onClick={cycleCam}
+                aria-label="Live ကင်မရာ — မျက်နှာ/အနောက်/ပိတ်"
+                title="Live ကင်မရာ PiP — မျက်နှာ → အနောက် → ပိတ်"
+                className={`flex h-8 items-center gap-1 rounded-full border px-2.5 text-[11px] backdrop-blur ${
+                  mvCam === "off"
+                    ? "border-white/20 bg-black/50 text-white/80"
+                    : "border-sky-400/60 bg-sky-500/25 text-sky-200"
+                }`}
+              >
+                {mvCam === "environment" ? "📷 အနောက်" : mvCam === "user" ? "🤳 မျက်နှာ" : "🤳 ကင်မရာ"}
+              </button>
+            )}
           </div>
         )}
         {ready && (
@@ -3731,6 +3874,29 @@ export function MetaverseScene() {
         </a>
       )}
 
+      {/* ── 🤝 NPC context ခလုတ် — မိတ်ဆွေဖွဲ့လို့ရတဲ့ NPC ရဲ့ 5m အတွင်း
+          ရောက်မှ ပေါ်တယ် (international context-action pattern — PUBG ရဲ့
+          pickup prompt လို)။ ⋯ ထဲက 🤝 chip ကို မသိလည်း ဒီခလုတ်နဲ့
+          ဖွဲ့လို့ရတယ်၊ ပေါ်နေရင် အကွာအဝေးက အောင်မြန်တယ်။ */}
+      {roomId === "arena" && npcNear && (
+        <button
+          data-hud="1"
+          onClick={waveBefriend}
+          className="pointer-events-auto absolute bottom-24 left-1/2 z-10 -translate-x-1/2 animate-pulse rounded-full border-2 border-emerald-400/70 bg-emerald-600/35 px-5 py-2.5 text-sm text-emerald-100 backdrop-blur active:scale-95 active:bg-emerald-500/60"
+        >
+          🤝 {npcNear} နဲ့ မိတ်ဆွေဖွဲ့မယ်
+        </button>
+      )}
+
+      {/* ── 🔴 Live / ကင်မရာ error toast — အရင်က error တွေ တိတ်တိတ်ပျောက်လို့
+          "Go Live ခလုတ် နှိပ်လို့မရဘူး" ဖြစ်နေတယ်။ ခုက အကြောင်းရင်းကို
+          ၆ စက္ကန့် မြင်ရအောင် ပြတယ်။ */}
+      {mvErr && (
+        <p className="pointer-events-none absolute left-1/2 top-24 z-30 max-w-[86vw] -translate-x-1/2 rounded-lg border border-red-400/40 bg-black/80 px-4 py-2 text-center text-xs text-red-200 backdrop-blur">
+          ⚠️ {mvErr}
+        </p>
+      )}
+
       {/* ── Chat ─────────────────────────────────────────────────────── */}
       {link !== "off" && (
         <div
@@ -3740,7 +3906,8 @@ export function MetaverseScene() {
           }`}
         >
           <div className="mb-1 max-h-40 space-y-0.5 overflow-hidden">
-            {chat.slice(-6).map((c, i) => (
+            {/* Game room မှာ ၄ ကြောင်းပဲ — မြင်ကွင်း အကွယ်နည်းအောင် */}
+            {chat.slice(inGameRoom ? -4 : -6).map((c, i) => (
               <div
                 key={`${c.at}-${i}`}
                 className="w-fit max-w-full rounded bg-black/45 px-2 py-1 text-[11px] leading-snug text-white/90 backdrop-blur"
