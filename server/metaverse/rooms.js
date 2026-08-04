@@ -233,7 +233,7 @@ class Rooms {
 
   setGhost(roomId, id, state, origin) {
     const g = this.ghostRoom(roomId);
-    const cur = g.get(id) ?? { id, x: 0, y: 0, z: 0, ry: 0, name: "Gwave", emote: null, authed: false };
+    const cur = g.get(id) ?? { id, x: 0, y: 0, z: 0, ry: 0, name: "Gwave", emote: null, authed: false, pic: null };
     g.set(id, { ...cur, ...state, origin, seenAt: Date.now() });
   }
 
@@ -284,6 +284,8 @@ class Rooms {
       // ★ authed က client ဘက်မှာ "ဧည့်သည်" အမှတ်အသား ပြဖို့ — နာမည်ကို
       // ကြည့်ပြီး ခွဲလို့မရဘူး၊ guest က ဘယ်နာမည်မဆို ပေးလို့ရလို့။
       authed: p.authed,
+      /// 🖼 Profile ဓာတ်ပုံ — ပြထားသူသာ (null = ဖျောက်ထားတယ်)
+      pic: p.pic ?? null,
     });
     for (const p of this.rooms.get(roomId)?.values() ?? []) {
       if (p.id !== exceptId) out[p.id] = view(p);
@@ -306,6 +308,7 @@ class Rooms {
         name: p.name,
         emote: p.emote ?? null,
         authed: p.authed,
+        pic: p.pic ?? null,
       };
     }
     return out;

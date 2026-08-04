@@ -436,6 +436,9 @@ function onBusMessage(roomId, msg, origin) {
     case "name":
       rooms.setGhost(roomId, msg.id, { name: msg.name, authed: false }, origin);
       break;
+    case "pic":
+      rooms.setGhost(roomId, msg.id, { pic: msg.pic ?? null }, origin);
+      break;
     case "chat":
     case "weather":
     case "vstate":
@@ -509,6 +512,9 @@ wss.on("connection", async (ws, req) => {
     z: 12,
     ry: Math.PI,
     emote: null,
+    /// 🖼 Profile ဓာတ်ပုံ URL — client က ကိုယ်တိုင် ပို့/ဖျောက်တယ်
+    /// ("pic" message)၊ null = မပြဘူး (privacy default က client ဘက်မှာ)။
+    pic: null,
     lastMoveAt: Date.now(),
     lastChatAt: 0,
     // ── persistence ───────────────────────────────────────────────────────
@@ -620,6 +626,7 @@ wss.on("connection", async (ws, req) => {
         ry: player.ry,
         name: player.name,
         authed: player.authed,
+        pic: player.pic,
       },
     },
     player.id,
@@ -733,6 +740,22 @@ wss.on("connection", async (ws, req) => {
           const am = matches.get(player.room);
           if (am) aSend(player.room, bots.befriend(am, player.id));
         }
+        break;
+      }
+
+      // 🖼 Profile ဓာတ်ပုံ ပြ/ဖျောက် — client က ကိုယ့် URL ကိုယ် ပို့တယ်။
+      // ★ https URL အတိုတစ်ခုသာ လက်ခံတယ် — မဟုတ်ရင် null (ဖျောက်တယ်)။
+      //   Client ဘက်ကလည်း ကိုယ့် origin/CDN က URL ကိုသာ ပြတယ် — server က
+      //   URL အမှန်ကို မစစ်နိုင်လို့ (profile db မကိုင်ဘူး) နှစ်လွှာစစ်တယ်။
+      case "pic": {
+        const u =
+          typeof msg.url === "string" &&
+          msg.url.length <= 300 &&
+          /^https:\/\/\S+$/.test(msg.url)
+            ? msg.url
+            : null;
+        player.pic = u;
+        emit(player.room, { type: "pic", id: player.id, pic: u }, player.id);
         break;
       }
 
