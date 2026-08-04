@@ -233,24 +233,39 @@ test("🐕 ခွေး: bite (npc weapon) နဲ့ ဝင်လာပြီး
   assert.equal(match.drops.size, dropsBefore, "dog death drops nothing");
 });
 
-test("ဓားပြသဘာဝ: friend မဟုတ်တဲ့လူ အနားကပ်ရင် လုယက်ရန်ငြိုး ဖြစ်တယ်", () => {
+test("NPC ငြိမ်းချမ်းရေး: အနားကပ်ရုံနဲ့ ရန်မဖြစ်ဘူး — ပစ်ခံရမှသာ", () => {
   const now = 6_000_000;
   const match = matchWithHuman();
   bots.ensureBots(match, now);
   const h = match.players.get("h1");
   const b = firstBot(match);
-  h.x = b.x + 2;
+  // ကပ်လျက် ရပ်နေလည်း — tick ဘယ်နှခါပဲ ပြေးပြေး ရန်ငြိုး မထားရဘူး
+  h.x = b.x + 1.5;
   h.z = b.z;
   bots.tick(match, now);
-  assert.ok((b.grudge["h1"] ?? 0) > now, "bandit should turn on close strangers");
+  bots.tick(match, now + 200);
+  assert.equal(b.grudge["h1"], undefined, "NPCs must stay peaceful until attacked");
+  // ပစ်လိုက်မှသာ ရန်ဖြစ်တယ်
+  bots.noteHit(match, "h1", b.id, now + 300);
+  assert.ok((b.grudge["h1"] ?? 0) > now, "grudge only after being shot");
+});
 
-  // Friend ဖြစ်ရင် မလုယက်ဘူး
-  const b2 = [...match.players.values()].filter((p) => p.bot)[1];
-  b2.friendOf = "h1";
-  h.x = b2.x + 1;
-  h.z = b2.z;
-  delete b2.grudge["h1"];
-  // b2 ကို သီးသန့်စစ် — tick တစ်ခါပြီးရင် friend မို့ ရန်ငြိုး မထားရ
-  bots.tick(match, now + 100);
-  assert.equal(b2.grudge["h1"], undefined);
+test("Balance: bot ဒဏ် ၆၀% + HP 70 — လူထက် အားနည်းရမယ်", () => {
+  const match = matchWithHuman();
+  bots.ensureBots(match);
+  const b = firstBot(match);
+  assert.equal(b.hp, assassin.BOT_HP);
+  assert.equal(assassin.BOT_HP < assassin.MAX_HP, true);
+  // Bot ပစ်ချက်ရဲ့ ဒဏ်လျှော့ — handleFire ကနေ တိုက်ရိုက်စစ် (smg 17 → 10)
+  const h = match.players.get("h1");
+  b.weapon = "smg";
+  b.x = 0;
+  b.z = 0;
+  b.ry = 0;
+  h.x = 0;
+  h.z = 4;
+  const ev = assassin.handleFire(match, b, { dx: 0, dy: -0.15, dz: 1 }, 9_000_000);
+  const hit = ev.find((e) => e.msg?.type === "aHit");
+  assert.ok(hit, "point-blank straight shot should land");
+  assert.ok(hit.msg.dmg <= Math.round(17 * 0.6) + 1, "bot damage must be scaled down");
 });
