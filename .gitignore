@@ -56,3 +56,4 @@ mobile/.flutter-plugins*
 
 # Metaverse server ရဲ့ dependency (သီးခြား npm project)
 /server/metaverse/node_modules
+server/metaverse/.next/

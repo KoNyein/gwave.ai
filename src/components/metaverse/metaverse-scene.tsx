@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import * as THREE from "three";
 
 import { createSpatialAudio, type SpatialAudio } from "./audio";
 import { AvatarCustomiser } from "./avatar/customiser";
+import { BrandedLoading } from "./branded-loading";
 import { HudMenu } from "./hud-menu";
 import { DEFAULT_AVATAR, sanitizeAvatar, type AvatarConfig } from "./avatar/config";
 import { applyAvatarConfig } from "./avatar/parts";
@@ -256,6 +256,31 @@ export function MetaverseScene() {
   }>({ weapons: {}, you: null, board: [], feed: [], denied: false });
   const arenaFireRef = useRef<(() => void) | null>(null);
 
+  // ── 🙈 ဝှက်တမ်း (hub-world game room, hide-1) ────────────────────────────
+  type HidePlayer = { id: string; name: string; score: number };
+  const [hideHud, setHideHud] = useState<{
+    phase: "waiting" | "countdown" | "live" | "ended";
+    endsAt: number | null;
+    role: "seeker" | "hider" | null;
+    blindUntil: number | null;
+    players: HidePlayer[];
+    feed: { text: string; good: boolean; at: number }[];
+  }>({ phase: "waiting", endsAt: null, role: null, blindUntil: null, players: [], feed: [] });
+  const hideTagRef = useRef<(() => void) | null>(null);
+  /// ပွဲချိန်တိုင်မာ / blind countdown — စက္ကန့်တိုင်း rerender ဖို့
+  const [nowSec, setNowSec] = useState(() => Date.now());
+  useEffect(() => {
+    if (roomId !== "hide-1") return;
+    const t = setInterval(() => setNowSec(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [roomId]);
+  /// ★ Loading overlay — ပထမဆုံး "live" မဖြစ်မချင်း Gwave branding ပြတယ်။
+  /// Room ပြောင်းတိုင်း ပြန်ပေါ်တယ် (world/game အဝင်တိုင်း)။
+  const [booted, setBooted] = useState(false);
+  useEffect(() => {
+    if (link === "live") setBooted(true);
+  }, [link]);
+
   // ── ဆောက်လုပ်ရေး (Phase 18) ───────────────────────────────────────────────
   /// ★ Panel က React၊ ghost နဲ့ instance တွေက 3D — ကြားထဲမှာ ref တစ်ခုနဲ့
   /// ချိတ်တယ်။ Object စာရင်းကို React state ထဲ ထားပေမယ့် **ghost ရဲ့ နေရာ**
@@ -356,6 +381,8 @@ export function MetaverseScene() {
     if (!mount) return;
     const map = getMap(roomId);
     setArenaHud({ weapons: {}, you: null, board: [], feed: [], denied: false });
+    setHideHud({ phase: "waiting", endsAt: null, role: null, blindUntil: null, players: [], feed: [] });
+    setBooted(false);
 
     /// Gwave app ရဲ့ WebView ထဲမှာ ဖွင့်နေလား (Phase 17)。
     /// ★ URL ရဲ့ `app=1` ကနေ ချက်ချင်း သိရတယ် — bridge ရောက်တာကို စောင့်ရင်
@@ -608,6 +635,7 @@ export function MetaverseScene() {
           // ⚔️ Game room ဆိုရင် combat layer ထဲ ချက်ချင်း ဝင်တယ် — login/
           // socket အသစ် မလို၊ ဒီ connection ပေါ်မှာပဲ။
           if (roomId === "arena") net?.sendRaw({ type: "aJoin" });
+          if (roomId === "hide-1") net?.sendRaw({ type: "gJoin" });
           // ဖုန်းရဲ့ နာရီ မမှန်လည်း server နဲ့ တူညီအောင်
           clockOffset = serverTime - Date.now();
         },
@@ -741,6 +769,91 @@ export function MetaverseScene() {
           );
         },
         onRaw: (m) => {
+          // 🙈 ဝှက်တမ်း game layer — position က presence ကနေ server ဘက်မှာ
+          // sync ဖြစ်ပြီးသား (arena.js syncPositions)၊ ဒီမှာ ပွဲအခြေအနေပဲ။
+          if (roomId === "hide-1") {
+            const hFeed = (text: string, good: boolean) =>
+              setHideHud((h) => ({
+                ...h,
+                feed: [...h.feed.slice(-4), { text, good, at: Date.now() }],
+              }));
+            const nameOf = (id: unknown) =>
+              id === myId ? "မင်း" : remotes.get(String(id))?.name ?? "ကစားသမား";
+            const asPhase = (st: unknown): "waiting" | "countdown" | "live" | "ended" =>
+              st === "countdown" || st === "live" || st === "ended" ? st : "waiting";
+            switch (m.type) {
+              case "gJoined":
+                setHideHud((h) => ({
+                  ...h,
+                  phase: asPhase(m.state),
+                  endsAt: Number(m.countdownEndsAt) || Number(m.endsAt) || null,
+                }));
+                break;
+              case "gDenied":
+                hFeed("ခဏ ဝင်လို့မရသေး — စောင့်ပြီး ပြန်စမ်းပါ", false);
+                break;
+              case "gState": {
+                const phase = asPhase(m.state);
+                setHideHud((h) => ({
+                  ...h,
+                  phase,
+                  endsAt: Number(m.endsAt) || (phase === "waiting" ? null : h.endsAt),
+                  role: phase === "waiting" ? null : h.role,
+                  players: Array.isArray(m.players)
+                    ? (m.players as HidePlayer[])
+                    : h.players,
+                }));
+                if (phase === "live") hFeed("ပွဲ စပါပြီ — ပုန်းကြ!", true);
+                if (phase === "ended") hFeed("ပွဲ ပြီးပါပြီ", true);
+                break;
+              }
+              case "gEvent":
+                switch (m.kind) {
+                  case "role":
+                    setHideHud((h) => ({
+                      ...h,
+                      role:
+                        m.id === myId
+                          ? "seeker"
+                          : h.role === "seeker" || h.role === null
+                            ? "hider"
+                            : h.role,
+                    }));
+                    hFeed(
+                      m.id === myId
+                        ? "🔦 မင်းက ရှာဖွေသူ — ဖမ်းလိုက်!"
+                        : `🔦 ${nameOf(m.id)} က ရှာဖွေသူ`,
+                      m.id !== myId,
+                    );
+                    break;
+                  case "blind":
+                    setHideHud((h) => ({ ...h, blindUntil: Number(m.until) || null }));
+                    break;
+                  case "tagged":
+                    hFeed(`🖐 ${nameOf(m.id)} အဖမ်းခံရပြီ`, m.id !== myId);
+                    break;
+                  case "score":
+                    setHideHud((h) => ({
+                      ...h,
+                      players: h.players.map((q) =>
+                        q.id === m.id ? { ...q, score: Number(m.score) || q.score } : q,
+                      ),
+                    }));
+                    break;
+                }
+                break;
+              case "gLeft":
+                if (Array.isArray(m.ids)) {
+                  const gone = new Set((m.ids as unknown[]).map(String));
+                  setHideHud((h) => ({
+                    ...h,
+                    players: h.players.filter((q) => !gone.has(q.id)),
+                  }));
+                }
+                break;
+            }
+            return;
+          }
           // ⚔️ Assassin combat layer — game room မှာသာ။ Position rendering က
           // ပုံမှန် presence (update/state) အတိုင်း avatar တွေနဲ့ပဲ သွားတယ်၊
           // ဒီမှာက ကစားမှုအခြေအနေ (hp/target/kill feed) ပဲ ကိုင်တယ်။
@@ -845,6 +958,20 @@ export function MetaverseScene() {
         const d = new THREE.Vector3();
         camera.getWorldDirection(d);
         net?.sendRaw({ type: "aFire", dx: d.x, dy: d.y, dz: d.z });
+      };
+      // 🙈 ဖမ်းခြင်း — အနီးဆုံး ကစားသမားကို ရွေးပြီး server ကို တင်ပြတယ်။
+      // အကွာအဝေး (TAG_RANGE) နဲ့ cooldown ကို **server က** စစ်တယ် —
+      // ဒီ 2.2 က ခလုတ်နှိပ်သူကို အလကား packet မပို့စေဖို့ ကြိုစစ်တာပဲ။
+      hideTagRef.current = () => {
+        if (roomId !== "hide-1") return;
+        let best: { id: string; d: number } | null = null;
+        for (const [rid, r] of remotes) {
+          const d = Math.hypot(r.cur.x - p.x, r.cur.z - p.z);
+          if (d < 2.2 && (!best || d < best.d)) best = { id: rid, d };
+        }
+        if (best) {
+          net?.sendRaw({ type: "gAction", action: { type: "tag", targetId: best.id } });
+        }
       };
       // ★ `ry` ကို client က ပို့ပေမယ့် **ထိမထိ ဆုံးဖြတ်တာက server** —
       // ဒါက "ဘယ်ကို ကြည့်နေလဲ" ဆိုတဲ့ input သာ ဖြစ်တယ်၊ ရလဒ် မဟုတ်ဘူး။
@@ -1656,6 +1783,87 @@ export function MetaverseScene() {
         </>
       ) : null}
 
+      {/* ── 🙈 ဝှက်တမ်း HUD — hide-1 room မှာသာ ── */}
+      {roomId === "hide-1" ? (
+        <>
+          {/* Seeker ရဲ့ မျက်စိမှိတ်ချိန် — မှောင်ပြီး countdown ပြတယ် */}
+          {hideHud.role === "seeker" &&
+          hideHud.blindUntil &&
+          hideHud.blindUntil > nowSec ? (
+            <div className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-black/90">
+              <p className="text-3xl">🙈</p>
+              <p className="text-sm text-white/90">
+                မျက်စိမှိတ်ထားပါ… {Math.max(0, Math.ceil((hideHud.blindUntil - nowSec) / 1000))} စက္ကန့်
+              </p>
+              <p className="text-xs text-white/50">ပုန်းသူတွေ ပုန်းနေကြပြီ</p>
+            </div>
+          ) : null}
+
+          <div className="pointer-events-none absolute left-1/2 top-3 z-10 flex -translate-x-1/2 flex-col items-center gap-1">
+            <p className="rounded-full bg-black/60 px-3 py-1 text-xs text-white/90 backdrop-blur">
+              {hideHud.phase === "waiting"
+                ? `🙈 ဝှက်တမ်း — ကစားသမား ${hideHud.players.length} ယောက် (၃ ယောက်ပြည့်ရင် စမယ်)`
+                : hideHud.phase === "countdown"
+                  ? `⏳ စတော့မယ်… ${hideHud.endsAt ? Math.max(0, Math.ceil((hideHud.endsAt - nowSec) / 1000)) : ""} စက္ကန့်`
+                  : hideHud.phase === "live"
+                    ? `⏱ ${hideHud.endsAt ? Math.max(0, Math.floor((hideHud.endsAt - nowSec) / 60000)) + ":" + String(Math.max(0, Math.floor(((hideHud.endsAt - nowSec) % 60000) / 1000))).padStart(2, "0") : ""} ကျန်သေး`
+                    : "🏁 ပွဲပြီးပါပြီ — ခဏနေ ပြန်စမယ်"}
+            </p>
+            {hideHud.phase === "live" && hideHud.role ? (
+              <p
+                className={`rounded-full px-3 py-1 text-[11px] backdrop-blur ${
+                  hideHud.role === "seeker"
+                    ? "bg-amber-500/25 text-amber-200"
+                    : "bg-emerald-500/25 text-emerald-200"
+                }`}
+              >
+                {hideHud.role === "seeker" ? "🔦 မင်းက ရှာဖွေသူ" : "🙈 ပုန်းပါ — အဖမ်းမခံနဲ့"}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="pointer-events-none absolute right-2 top-20 z-10 w-60 space-y-1">
+            {hideHud.feed.map((f) => (
+              <p
+                key={`${f.at}-${f.text}`}
+                className={`rounded bg-black/55 px-2 py-1 text-[11px] backdrop-blur ${
+                  f.good ? "text-emerald-300" : "text-amber-300"
+                }`}
+              >
+                {f.text}
+              </p>
+            ))}
+          </div>
+
+          <div className="pointer-events-auto absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2">
+            {hideHud.role === "seeker" && hideHud.phase === "live" ? (
+              <button
+                data-hud="1"
+                onClick={() => hideTagRef.current?.()}
+                className="rounded-full border border-amber-400/60 bg-amber-500/25 px-6 py-3 text-lg backdrop-blur active:bg-amber-500/50"
+              >
+                🖐 ဖမ်းမယ်
+              </button>
+            ) : null}
+            <button
+              data-hud="1"
+              onClick={() => chooseMap("city")}
+              className="rounded-lg border border-white/15 bg-black/50 px-2 py-1.5 text-[11px] text-white/70 backdrop-blur hover:bg-black/70"
+            >
+              🏙 ထွက်မယ်
+            </button>
+          </div>
+        </>
+      ) : null}
+
+      {/* ── Gwave branded loading — world/game အဝင်တိုင်း logo + စာတန်း ── */}
+      {!booted && link !== "auth" ? (
+        <BrandedLoading
+          title={`${getMap(roomId).emoji} ${getMap(roomId).name} ထဲ ဝင်နေသည်…`}
+          subtitle="Gwave Metaverse"
+        />
+      ) : null}
+
       {/* ── HUD ဘယ်ဘက်တန်း ──────────────────────────────────────────────
           ★ Flow layout — အရင်က ခလုတ်တွေကို absolute top-24/36/48/60 နဲ့
             တစ်ခုချင်း ချထားလို့ panel ဖွင့်တိုင်း အောက်က ခလုတ်တွေနဲ့
@@ -1781,23 +1989,6 @@ export function MetaverseScene() {
                 </span>
               </button>
             ))}
-            {/* ── 🎮 Portal — ဂိမ်း world တွေက metaverse client နဲ့ protocol
-                မတူလို့ room အဖြစ် မဝင်ရဘူး၊ သီးခြား page ကို ကူးတယ်။ */}
-            <Link
-              data-hud="1"
-              href="/games/arena"
-              className="flex w-full items-start gap-2.5 rounded-lg border border-amber-400/30 bg-amber-500/10 px-2.5 py-2 text-left transition hover:bg-amber-500/20"
-            >
-              <span className="text-xl leading-none">🎮</span>
-              <span className="min-w-0">
-                <span className="block text-xs font-semibold text-white/90">
-                  ဂိမ်းခန်းများ — ဝှက်တမ်း (Arena)
-                </span>
-                <span className="block text-[10px] leading-snug text-white/55">
-                  ရှာဖွေသူ ၁ ယောက်၊ ကျန်တာ ပုန်း — ဂိမ်း world ထဲ ကူးမယ်
-                </span>
-              </span>
-            </Link>
           </div>
         )}
 

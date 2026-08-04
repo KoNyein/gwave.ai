@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import type { MapDef } from "./maps/types";
+import type { MapDef, ModelDef } from "./maps/types";
 import { createFire, type Fire } from "./world/fire";
 import { buildInterior, INTERIOR_VISIBLE_WITHIN, type Interior } from "./world/interior";
 import { createPropFactory } from "./world/props";
@@ -158,6 +158,65 @@ export function buildWorld(scene: THREE.Scene, map: MapDef): World {
 
   // ── သစ်ပင်များ ──────────────────────────────────────────────────────────
   buildTrees(map, place, track, colliders);
+
+  // ── GLB models (Kenney kits etc.) ────────────────────────────────────────
+  // ★ Collider တွေက **ချက်ချင်း** ဝင်တယ် — model ဖိုင်တွေ download မပြီးခင်
+  //   ကတည်းက နံရံက အလုပ်လုပ်နေရမယ် (မဟုတ်ရင် load မပြီးခင် အဆောက်အအုံ
+  //   ထဲ လျှောက်ဝင်ပြီး ရုတ်တရက် ပိတ်မိနေမယ်)။ မြင်ကွင်းက progressive —
+  //   ရောက်လာတာနဲ့ တစ်ခုချင်း ပေါ်တယ်။
+  if (map.models?.length) {
+    for (const m of map.models) {
+      if (!m.collide) continue;
+      const sc = m.scale ?? 1;
+      const hw = (m.collide.w * sc) / 2;
+      const hd = (m.collide.d * sc) / 2;
+      // 90° အဆ လှည့်ထားရင် w/d လဲတယ် — AABB မို့ ဒီလောက်ပဲ ဖော်ပြနိုင်တယ်
+      const quarter = Math.abs(Math.round((m.ry ?? 0) / (Math.PI / 2))) % 2 === 1;
+      const [a2, b2] = quarter ? [hd, hw] : [hw, hd];
+      colliders.push({ minX: m.x - a2, maxX: m.x + a2, minZ: m.z - b2, maxZ: m.z + b2 });
+    }
+    let modelsDisposed = false;
+    disposables.push({ dispose: () => { modelsDisposed = true; } });
+    void (async () => {
+      // ★ Lazy import — GLTFLoader က model မပါတဲ့ map တွေရဲ့ bundle ထဲ မပါစေနဲ့
+      const { GLTFLoader } = await import("three/examples/jsm/loaders/GLTFLoader.js");
+      const loader = new GLTFLoader();
+      const cache = new Map<string, Promise<THREE.Group>>();
+      const load = (url: string) => {
+        let pr = cache.get(url);
+        if (!pr) {
+          pr = new Promise<THREE.Group>((resolve, reject) =>
+            loader.load(url, (g) => resolve(g.scene), undefined, reject),
+          );
+          cache.set(url, pr);
+        }
+        return pr;
+      };
+      const placeModel = async (m: ModelDef) => {
+        try {
+          const src = await load(m.url);
+          if (modelsDisposed) return;
+          const obj = src.clone(true);
+          obj.scale.setScalar(m.scale ?? 1);
+          obj.position.set(m.x, (m.y ?? 0) * (m.scale ?? 1), m.z);
+          obj.rotation.y = m.ry ?? 0;
+          obj.traverse((c) => {
+            const mesh = c as THREE.Mesh;
+            if (mesh.isMesh) {
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;
+            }
+          });
+          place(obj);
+        } catch {
+          // ★ Model တစ်ခု ကျရင် ကျော် — file ပျက်လို့ world တစ်ခုလုံး
+          //   မပျက်ရဘူး (map data ကို ကိုးကားချက် စစ်တာ CI မှာ မဟုတ်ဘူး)
+        }
+      };
+      // Parallel load — model တစ်ရာလောက်တောင် URL unique က ~၅၀ ပဲ (cache)
+      await Promise.all(map.models!.map(placeModel));
+    })();
+  }
 
   // ── ရေ ─────────────────────────────────────────────────────────────────
   const water = createWater(map.water, scene);

@@ -19,6 +19,8 @@ const ROOM_DEFS = [
   { id: "snow", type: "social", mapId: "snow", maxPlayers: 200 },
   { id: "sky", type: "social", mapId: "sky", maxPlayers: 200 },
   { id: "main", type: "social", mapId: "city", maxPlayers: 200 },
+  // 🌆 Kenney kit showcase city (client: maps/gwave-city.ts)
+  { id: "gwave-city", type: "social", mapId: "gwave-city", maxPlayers: 200 },
   { id: "vip", type: "social", mapId: "city", maxPlayers: 200, gate: "token" },
 
   // FPV drone simulator maps (client: src/lib/fpv/maps.ts)。 ဒါတွေက
