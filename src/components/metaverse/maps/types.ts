@@ -114,6 +114,21 @@ export type ModelDef = {
   collide?: { w: number; d: number };
 };
 
+/// 🏢 လျှောက်လို့ရတဲ့ အမြင့်ကြမ်းပြင် — w×d ကြမ်းပြင်ရဲ့ **ပေါ်မျက်နှာပြင်**
+/// က y အမြင့်မှာ။ လှေကား = အမြင့်တဖြည်းဖြည်းတက်တဲ့ platform အတန်း
+/// (တစ်ဆင့်ကို ≤0.5 unit — engine ရဲ့ step-up ခွင့်ပြုချက်အောက်)။
+/// Platform မှာ ဘေးတိုက် collider မရှိဘူး — အပေါ်ကနေ ကျရင် တက်မိတယ်၊
+/// အစွန်းကနေ လျှောက်ထွက်ရင် ကျတယ် (ပစ်ကွင်းအဖွင့်)။
+export type PlatformDef = {
+  x: number;
+  z: number;
+  w: number;
+  d: number;
+  /// ပေါ်မျက်နှာပြင် အမြင့်
+  y: number;
+  color?: number;
+};
+
 export type MapDef = {
   id: MapId;
   /// မြန်မာလို နာမည် — map picker မှာ ပြတယ်
@@ -146,6 +161,8 @@ export type MapDef = {
   vehicles: { kind: VehicleKind; x: number; z: number; ry: number }[];
   /// GLB model placements (optional) — Kenney kit worlds
   models?: ModelDef[];
+  /// 🏢 လျှောက်လို့ရတဲ့ အမြင့်ကြမ်းပြင်များ (လှေကား/အထပ်) — optional
+  platforms?: PlatformDef[];
   weather: { default: WeatherKind; allowed: WeatherKind[] };
   ambientSound?: "city" | "forest" | "wind" | "waves";
   /// မြို့လယ် screen စတဲ့ Gwave ချိတ်ဆက်မှုတွေ

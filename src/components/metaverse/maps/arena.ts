@@ -1,4 +1,4 @@
-import type { MapDef, ModelDef } from "./types";
+import type { MapDef, ModelDef, PlatformDef } from "./types";
 
 /// ⚔️ Arena — hub world ထဲက **game room** (Assassin)。
 ///
@@ -37,6 +37,65 @@ const crate = (x: number, z: number, s = 2): MapDef["buildings"][number] => ({
   color: 0x565c6b,
   roof: "flat",
 });
+
+/// 🏢 ပစ်ကွင်းတာဝါ — ကြမ်းပြင် y=6 firing floor + switchback လှေကား
+/// (တစ်ဆင့် 0.5 — engine step-up ခွင့်ပြုချက်အတွင်း)။ တာဝါနှစ်လုံးက
+/// မျက်နှာချင်းဆိုင် — တစ်ဖက်တာဝါက အခြားတစ်ဖက်ကို လှမ်းပစ်လို့ရတယ်
+/// (user request: အထပ်မြင့် အပြန်အလှန် ပစ်ကွင်း)။
+/// `s` = ကွင်းဗဟိုကနေ ဘယ်ဘက်လားဆိုတဲ့ လက္ခဏာ (stairs/wall ကို
+/// အပြင်ဘက် ထားဖို့)။
+const towerPlatforms = (tx: number, tz: number): PlatformDef[] => {
+  const s = tz > 0 ? 1 : -1;
+  const out: PlatformDef[] = [];
+  // လှေကားအဆင့် ၆ ဆင့် — အောက်လမ်းကြောင်း (ဗဟိုဘက်ခြမ်း)၊ +x ဦးတည်
+  for (let i = 0; i < 6; i++) {
+    out.push({
+      x: tx - 2.5 + i,
+      z: tz - s * 3.4,
+      w: 1.05,
+      d: 1.2,
+      y: 0.5 * (i + 1),
+      color: 0x6b7280,
+    });
+  }
+  // ထောင့်နားနေပလက်ဖောင်း
+  out.push({ x: tx + 3.4, z: tz - s * 3.4, w: 1.6, d: 1.6, y: 3, color: 0x6b7280 });
+  // အပေါ်လှေကား ၆ ဆင့် — အရှေ့လမ်းကြောင်း၊ ကွင်းပြင်ဘက် ဦးတည်
+  for (let i = 0; i < 6; i++) {
+    out.push({
+      x: tx + 3.4,
+      z: tz - s * 2.5 + s * i,
+      w: 1.2,
+      d: 1.05,
+      y: 3 + 0.5 * (i + 1),
+      color: 0x6b7280,
+    });
+  }
+  // 🔭 ပစ်ကွင်းကြမ်းပြင် — 6×6, y=6
+  out.push({ x: tx, z: tz, w: 6, d: 6, y: 6, color: 0x7c6a4d });
+  return out;
+};
+
+const towerBuildings = (tx: number, tz: number): MapDef["buildings"] => {
+  const s = tz > 0 ? 1 : -1;
+  const pillar = (x: number, z: number): MapDef["buildings"][number] => ({
+    x,
+    z,
+    w: 0.9,
+    h: 5.8,
+    d: 0.9,
+    color: 0x565c6b,
+    roof: "flat",
+  });
+  return [
+    pillar(tx - 2.7, tz - 2.7),
+    pillar(tx + 2.7, tz - 2.7),
+    pillar(tx - 2.7, tz + 2.7),
+    pillar(tx + 2.7, tz + 2.7),
+    // အပြင်ဘက် အောက်ထပ်နံရံ — မြေပြင်တိုက်ပွဲအတွက် အကာ (collider ပါ)
+    { x: tx, z: tz + s * 2.7, w: 5.4, h: 5.6, d: 0.5, color: 0x4d5464, roof: "flat" },
+  ];
+};
 
 const wall = (x: number, z: number, horizontal: boolean): MapDef["buildings"][number] => ({
   x,
@@ -145,7 +204,13 @@ export const ARENA_MAP: MapDef = {
     { x: -24, z: 24, w: 3.5, h: 2.6, d: 3.5, color: 0x4a465e, roof: "flat" },
     { x: 24, z: -24, w: 3.5, h: 2.6, d: 3.5, color: 0x4a465e, roof: "flat" },
     { x: -24, z: -24, w: 3.5, h: 2.6, d: 3.5, color: 0x4a465e, roof: "flat" },
+    // 🏢 ပစ်ကွင်းတာဝါ ၂ လုံး — ခြေတိုင်/နံရံများ (ကြမ်းပြင်က platforms)
+    ...towerBuildings(0, 10),
+    ...towerBuildings(0, -10),
   ],
+  // 🏢 လှေကား + firing floor — မျက်နှာချင်းဆိုင် တာဝါ ၂ လုံး၊
+  // engine ရဲ့ platform-Y physics နဲ့ တက်လို့ရတယ်
+  platforms: [...towerPlatforms(0, 10), ...towerPlatforms(0, -10)],
   water: [],
   fires: [
     { x: 26, z: 0, scale: 1.1 },

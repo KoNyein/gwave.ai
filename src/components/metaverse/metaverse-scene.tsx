@@ -13,12 +13,17 @@ import { BuildPanel, type BuildBridge } from "./build/panel";
 import { createPlotStream } from "./build/plots";
 import { createBuildRender, createGhost } from "./build/render";
 import { createSfx, type Sfx } from "../games/assassin/sfx";
+import { createVoiceLines } from "./voicelines";
 import { createCombatFx, type CombatFx } from "./combatfx";
 import { createGameFx, type GameFx } from "./gamefx";
 import { GamesMenu, GamesOverlays, type GamePhase } from "./games-panel";
 import { createHuman, type Avatar, type HumanState } from "./human";
 import { buildLandmarks, type Landmark } from "./landmarks";
-import { attachLiveScreen, type LiveScreen } from "./livescreen";
+import {
+  attachLiveScreen,
+  attachLiveKitScreen,
+  type LiveScreen,
+} from "./livescreen";
 import { createMvGoLive } from "./golive";
 import { getMap, MAP_LIST } from "./maps";
 import { createMinimap } from "./minimap";
@@ -644,6 +649,8 @@ export function MetaverseScene() {
     const isGameWorld = map.id === "arena" || map.id === "hide-1";
     const sfx: Sfx | null = isGameWorld ? createSfx(0.8) : null;
     const combatFx: CombatFx | null = map.id === "arena" ? createCombatFx(scene) : null;
+    /// 🗣 မြန်မာအသံ ကြေညာချက် + NPC တုံ့ပြန်သံ (device TTS)
+    const voice = map.id === "arena" ? createVoiceLines() : null;
     /// aYou ကနေ update ဖြစ်တဲ့ ကိုယ့် combat အခြေအနေ — fire feedback အတွက်
     const combat = { weapon: "pistol", alive: true, ammo: -1, prevWeapon: "knife" };
     /// လက်နက် fireMs — aInit က server တန်ဖိုးတွေနဲ့ ပြည့်တယ် (auto-fire နှုန်း)။
@@ -1468,6 +1475,8 @@ export function MetaverseScene() {
               if (m.victimId === myId) {
                 sfx?.hurt();
                 buzz(45);
+                // 🏴‍☠️ ဓားပြက ပစ်လာရင် မြန်မာသံ ကြိမ်းမောင်း (throttle ပါ)
+                if (String(m.attackerId).startsWith("bot:")) voice?.say("taunt");
                 setDmgOn(true);
                 shake = Math.max(shake, 0.12);
                 window.setTimeout(() => {
@@ -1514,6 +1523,9 @@ export function MetaverseScene() {
               if (m.killerId === myId) {
                 sfx?.kill(m.correct === true || m.victimBot === true);
                 buzz(m.correct === true || m.victimBot === true ? [30, 40, 70] : [80]);
+                voice?.say(
+                  m.correct === true || m.victimBot === true ? "kill" : "wrongKill",
+                );
                 flashBanner(
                   m.victimBot === true
                     ? `🏴‍☠️ ${m.victimName} ကို နှိမ်လိုက်ပြီ — လက်နက် ကျသွားတယ်`
@@ -1525,6 +1537,7 @@ export function MetaverseScene() {
               } else if (m.victimId === myId) {
                 sfx?.hurt();
                 buzz(140);
+                voice?.say("death");
                 flashBanner(`☠️ ${m.killerName} က မင်းကို သတ်သွားပြီ`, "bad");
               }
               setArenaHud((h) => ({
@@ -1543,6 +1556,7 @@ export function MetaverseScene() {
                 p.z = Number(m.z);
                 sfx?.reload();
                 combatFx?.ring(p.x, p.z, 0x4ade80);
+                voice?.say("respawn");
                 flashBanner("💚 ပြန်ရှင်ပြီ — သတိထား", "good");
               } else if (String(m.id).startsWith("bot:")) {
                 // Bot ပြန်ရှင်ချိန် — အလောင်းနေရာကနေ spawn ကို ချက်ချင်း ခုန်
@@ -1573,6 +1587,7 @@ export function MetaverseScene() {
               const wk = String(m.weapon || "");
               sfx?.reload();
               buzz(20);
+              voice?.say("pickup");
               pushFeed(
                 `🔫 ${wNames[wk] ?? wk} ကျည် +${Number(m.gained) || 0} ကောက်ရပြီ`,
                 true,
@@ -1583,6 +1598,8 @@ export function MetaverseScene() {
               if (m.mood === "friend") {
                 if (m.of === myId) {
                   buzz([20, 30, 20]);
+                  // 🗣 NPC က မြန်မာသံနဲ့ တုံ့ပြန် (ခွေးက အသံမပြော)
+                  if (m.dog !== true) voice?.say("befriend");
                   flashBanner(
                     m.dog === true
                       ? `🐕 ${m.name} က မင်းကို ခင်သွားပြီ — ရန်သူကို ဝိုင်းကိုက်ပေးမယ်`
@@ -1603,6 +1620,7 @@ export function MetaverseScene() {
                   : `🏆 ${m.winnerName} အနိုင်ရပါပြီ`,
                 "good",
               );
+              if (m.winnerId === myId) voice?.say("win");
               break;
             case "aReset":
               setArenaHud((h) => ({
@@ -1611,6 +1629,7 @@ export function MetaverseScene() {
               }));
               teleportMe(m.players);
               flashBanner("🔔 ပွဲအသစ် စပါပြီ", "good");
+              voice?.say("start");
               break;
             case "aNoAmmo":
               sfx?.empty();
@@ -2072,26 +2091,33 @@ export function MetaverseScene() {
           (
             data: {
               posts?: { author: string; text: string }[];
-              live?: { title?: string | null; url: string | null } | null;
+              live?: {
+                id?: string | null;
+                title?: string | null;
+                url: string | null;
+              } | null;
             } | null,
           ) => {
             if (killed || !data || !world.screenMesh) return;
             landmarks.setNotices(data.posts ?? []);
             const url = data.live?.url ?? "";
+            const lkId = !url && data.live?.id ? String(data.live.id) : "";
             if (url && url !== liveUrl) {
-              // IVS live — screen မှာ တိုက်ရိုက် ဖွင့်တယ်
+              // IVS live — screen မှာ HLS နဲ့ တိုက်ရိုက် ဖွင့်တယ်
               screen?.dispose();
               screen = attachLiveScreen(world.screenMesh, url);
               liveUrl = url;
-            } else if (!url && data.live?.title && liveUrl !== "app-live") {
-              // LiveKit (ဖုန်း Go Live) — URL မရှိလို့ ခေါင်းစဉ်ပဲ ပြတယ်
+            } else if (lkId && liveUrl !== `lk:${lkId}`) {
+              // 📱 LiveKit (ဖုန်း Go Live) — SFU ကို ကြည့်သူအဖြစ် ချိတ်ပြီး
+              // host ရဲ့ video ကို screen မှာ တိုက်ရိုက်ပြ (phase 2b)။
+              // ချိတ်မရရင် (guest စသဖြင့်) placeholder ကျန်နေတယ်။
               screen?.dispose();
-              screen = attachLiveScreen(
+              screen = attachLiveKitScreen(
                 world.screenMesh,
-                "",
-                `🔴 ${String(data.live.title).slice(0, 40)} — app ထဲ ကြည့်ပါ`,
+                lkId,
+                `${String(data.live?.title ?? "LIVE").slice(0, 40)}`,
               );
-              liveUrl = "app-live";
+              liveUrl = `lk:${lkId}`;
             } else if (!url && !data.live && liveUrl) {
               // Live ပြီးသွားပြီ — default (env URL ဒါမှမဟုတ် placeholder) ပြန်ထား
               screen?.dispose();
@@ -2163,7 +2189,12 @@ export function MetaverseScene() {
       const wade = depth > 0.15 ? 0.5 : 1;
       const speed = wants ? baseSpeed * Math.min(1, mag) * wade : 0;
 
-      // ── ခုန် ───────────────────────────────────────────────────────────
+      // ── ခုန် + 🏢 platform ကြမ်းပြင် ────────────────────────────────────
+      // ★ groundY က ခြေအောက်က အမြင့်ဆုံး ကြမ်းပြင် (မြေပြင် 0 သို့မဟုတ်
+      //   platform) — လှေကားတက်တာ (step-up ≤0.5), အစွန်းကနေ လျှောက်ထွက်ရင်
+      //   ကျတာ, အပေါ်ကနေ ကျရင် platform ပေါ် နားတာ အားလုံး ဒီတစ်တန်ဖိုးက
+      //   စီမံတယ်။
+      const groundY = riding ? 0 : world.groundAt(p.x, p.z, p.y);
       if (input.jump && !p.airborne) {
         p.vy = JUMP_V;
         p.airborne = true;
@@ -2171,10 +2202,19 @@ export function MetaverseScene() {
       if (p.airborne) {
         p.vy -= GRAVITY * dt;
         p.y += p.vy * dt;
-        if (p.y <= 0) {
-          p.y = 0;
+        if (p.vy <= 0 && p.y <= groundY) {
+          p.y = groundY;
           p.vy = 0;
           p.airborne = false;
+        }
+      } else if (!riding) {
+        if (groundY > p.y) {
+          // လှေကားအဆင့် — ချောချောတက်
+          p.y = groundY;
+        } else if (p.y > groundY + 0.02) {
+          // အစွန်းကျော်လျှောက် — လွတ်ကျ
+          p.airborne = true;
+          p.vy = 0;
         }
       }
 
@@ -2630,6 +2670,7 @@ export function MetaverseScene() {
       for (const id of [...dropMeshes.keys()]) removeDrop(id);
       combatFx?.dispose();
       sfx?.dispose();
+      voice?.dispose();
       buildRender.dispose();
       plots.dispose();
       ghost.dispose();
