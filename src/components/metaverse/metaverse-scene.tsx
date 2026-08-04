@@ -246,6 +246,8 @@ export function MetaverseScene() {
     alive: boolean;
     kills: number;
     score: number;
+    /// လူမှားသတ်မိမှု အရေအတွက် — scoreboard မှာ ✗ နဲ့ ပြတယ်
+    wrongKills?: number;
     weapon: string;
     ammo: Record<string, number>;
     target: { id: string; name: string } | null;
@@ -256,7 +258,9 @@ export function MetaverseScene() {
     board: ArenaBoardRow[];
     feed: { text: string; good: boolean; at: number }[];
     denied: boolean;
-  }>({ weapons: {}, you: null, board: [], feed: [], denied: false });
+    /// ပထမဆုံး ဘယ်နှစ်ယောက်သတ်ရင် နိုင်လဲ — aInit က server တန်ဖိုး
+    killsToWin: number;
+  }>({ weapons: {}, you: null, board: [], feed: [], denied: false, killsToWin: 3 });
   const arenaFireRef = useRef<(() => void) | null>(null);
   /// ကျည်ဖြည့် / လက်နက်ပြောင်း — HUD ခလုတ်နဲ့ keyboard နှစ်ခုလုံးက ဒီကို
   /// ခေါ်တယ် (sfx ပါ တွဲဖွင့်ဖို့ effect ထဲမှာ သတ်မှတ်တယ်)
@@ -294,6 +298,8 @@ export function MetaverseScene() {
   /// ❓ ခလုတ်လမ်းညွှန် — game room မှာ default ဖျောက်ထားပြီး ❓ နှိပ်မှ ပြတယ်
   /// (စာတန်းရှည်က weapons strip နဲ့ ထပ်လို့)
   const [showHelp, setShowHelp] = useState(false);
+  /// 📜 ပြိုင်ပွဲစည်းမျဉ်း / user guide panel
+  const [showRules, setShowRules] = useState(false);
 
   // ── 🙈 ဝှက်တမ်း (hub-world game room, hide-1) ────────────────────────────
   type HidePlayer = { id: string; name: string; score: number };
@@ -450,7 +456,7 @@ export function MetaverseScene() {
     const mount = mountRef.current;
     if (!mount) return;
     const map = getMap(roomId);
-    setArenaHud({ weapons: {}, you: null, board: [], feed: [], denied: false });
+    setArenaHud({ weapons: {}, you: null, board: [], feed: [], denied: false, killsToWin: 3 });
     setHideHud({ phase: "waiting", endsAt: null, role: null, blindUntil: null, players: [], feed: [] });
     setShowBoard(false);
     setHitMark(null);
@@ -462,6 +468,7 @@ export function MetaverseScene() {
     setDmgNums([]);
     setHurtFrom(null);
     setShowHelp(false);
+    setShowRules(false);
     arenaWeaponListRef.current = [];
     setBooted(false);
 
@@ -568,6 +575,15 @@ export function MetaverseScene() {
     let firing = false;
     /// 🚶 FP head-bob အတွက် လမ်းလျှောက်ချိန်တိုင်း — movement ကို ခံစားရအောင်
     let walkT = 0;
+    /// 📳 ဖုန်းတုန်ခါမှု — ပစ်/ထိ/သေ တိုင်း ရင်ခုန်စေဖို့။ Support မရှိရင်
+    /// (iOS Safari) တိတ်တိတ် ကျော်တယ်။
+    const buzz = (pattern: number | number[]) => {
+      try {
+        navigator.vibrate?.(pattern);
+      } catch {
+        /* unsupported */
+      }
+    };
     /// 🔫 လက်ထဲကိုင်ထားတဲ့ လက်နက် 3D — avatar (TP) + FP viewmodel။
     /// Avatar တစ်ကိုယ်ချင်း userData ထဲ kind/mesh သိမ်းပြီး ပြောင်းမှ swap။
     const setHandWeapon = (
@@ -1033,6 +1049,7 @@ export function MetaverseScene() {
                 ...h,
                 weapons: (m.weapons as Record<string, { my: string }>) ?? {},
                 board: (m.players as ArenaBoardRow[]) ?? [],
+                killsToWin: Number(m.killsToWin) || 3,
               }));
               arenaWeaponListRef.current = Object.keys(
                 (m.weapons as Record<string, unknown>) ?? {},
@@ -1062,7 +1079,10 @@ export function MetaverseScene() {
                 combatFx?.boom(bx, bz, br);
                 sfx?.shot("bomb");
                 const d = Math.hypot(bx - p.x, bz - p.z);
-                if (d < 25) shake = Math.max(shake, 0.4 * (1 - d / 25));
+                if (d < 25) {
+                  shake = Math.max(shake, 0.4 * (1 - d / 25));
+                  buzz(Math.round(30 + 50 * (1 - d / 25)));
+                }
               }
               break;
             }
@@ -1115,6 +1135,7 @@ export function MetaverseScene() {
               }
               if (m.attackerId === myId) {
                 sfx?.hitMarker(m.hitPart === "head");
+                buzz(m.hitPart === "head" ? [20, 20, 30] : 25);
                 const at = Date.now();
                 setHitMark({ head: m.hitPart === "head", at });
                 window.setTimeout(() => {
@@ -1136,6 +1157,7 @@ export function MetaverseScene() {
               }
               if (m.victimId === myId) {
                 sfx?.hurt();
+                buzz(45);
                 setDmgOn(true);
                 shake = Math.max(shake, 0.12);
                 window.setTimeout(() => {
@@ -1167,6 +1189,7 @@ export function MetaverseScene() {
               );
               if (m.killerId === myId) {
                 sfx?.kill(m.correct === true);
+                buzz(m.correct === true ? [30, 40, 70] : [80]);
                 flashBanner(
                   m.correct === true
                     ? `☠️ ${m.victimName} ကို သတ်လိုက်ပြီ!`
@@ -1175,6 +1198,7 @@ export function MetaverseScene() {
                 );
               } else if (m.victimId === myId) {
                 sfx?.hurt();
+                buzz(140);
                 flashBanner(`☠️ ${m.killerName} က မင်းကို သတ်သွားပြီ`, "bad");
               }
               setArenaHud((h) => ({
@@ -1198,6 +1222,7 @@ export function MetaverseScene() {
               break;
             case "aWin":
               sfx?.win();
+              buzz([40, 60, 40, 60, 120]);
               flashBanner(
                 m.winnerId === myId
                   ? "🏆 မင်း အနိုင်ရပါပြီ!"
@@ -1269,6 +1294,7 @@ export function MetaverseScene() {
           cam.pitch = THREE.MathUtils.clamp(cam.pitch - rec, -1.2, 1.2);
           cam.yaw += (Math.random() - 0.5) * rec * 0.6;
           vmKick = 0.07;
+          buzz(12);
         }
 
         // 💣 ဗုံး — ပစ်မှတ်မြေမှတ် x,z ပါ ပို့တယ်။ မပို့ရင် server က
@@ -2307,20 +2333,53 @@ export function MetaverseScene() {
               </p>
             ))}
           </div>
-          {/* ❤️ / ကျည် — ဖတ်ရုံသက်သက် (အောက်ဗဟို၊ emote bar နေရာ) */}
-          <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2">
-            <span className="rounded bg-black/60 px-2.5 py-1 text-sm text-red-300 backdrop-blur">
-              ❤️ {arenaHud.you?.hp ?? "—"}
-            </span>
-            <span className="rounded bg-black/60 px-2.5 py-1 text-sm text-white/80 backdrop-blur">
-              {(() => {
-                const y = arenaHud.you;
-                if (!y) return "—";
-                const n = y.ammo?.[y.weapon];
-                const label = arenaHud.weapons[y.weapon]?.my ?? y.weapon;
-                return `${label} · ${n === -1 || n === undefined ? "∞" : n}`;
-              })()}
-            </span>
+          {/* ❤️ အသက် bar (%) + ကျည် + အမှတ် — ဖတ်ရုံသက်သက် (အောက်ဗဟို)။
+              ★ Bar မပါရင် "ဘယ်အချိန်သေမလဲ မသိ" (report) — % နဲ့ အရောင်
+              (စိမ်း>၆၀၊ ဝါ>၃၀၊ နီ) နဲ့ တစ်ချက်ကြည့်တာနဲ့ သိရတယ်။ */}
+          <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1">
+            {arenaHud.you ? (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm">❤️</span>
+                  <div className="h-3 w-36 overflow-hidden rounded-full border border-white/25 bg-black/60">
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        arenaHud.you.hp > 60
+                          ? "bg-emerald-400"
+                          : arenaHud.you.hp > 30
+                            ? "bg-amber-400"
+                            : "bg-red-500"
+                      }`}
+                      style={{ width: `${Math.max(0, Math.min(100, arenaHud.you.hp))}%` }}
+                    />
+                  </div>
+                  <span
+                    className={`rounded bg-black/60 px-1.5 py-0.5 text-xs backdrop-blur ${
+                      arenaHud.you.hp <= 30 ? "text-red-300" : "text-white/90"
+                    }`}
+                  >
+                    {Math.max(0, arenaHud.you.hp)}%
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px]">
+                  <span className="rounded bg-black/60 px-2 py-0.5 text-white/80 backdrop-blur">
+                    {(() => {
+                      const y = arenaHud.you;
+                      const n = y.ammo?.[y.weapon];
+                      const label = arenaHud.weapons[y.weapon]?.my ?? y.weapon;
+                      return `${label} · ${n === -1 || n === undefined || n === null ? "∞" : n}`;
+                    })()}
+                  </span>
+                  <span className="rounded bg-black/60 px-2 py-0.5 text-amber-200/90 backdrop-blur">
+                    🎯 {arenaHud.you.score} · ☠️ {arenaHud.you.kills}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <span className="rounded bg-black/60 px-2.5 py-1 text-xs text-white/60 backdrop-blur">
+                ⚔️ ပွဲထဲ ချိတ်နေသည်…
+              </span>
+            )}
           </div>
           {/* ★★ Combat ခလုတ်များ — **တစ်ခုချင်း absolute နေရာချ**။ အရင်က
               ညာဘက် cluster တစ်ခုတည်း စုထားလို့ landscape မှာ minimap/Menu/
@@ -2463,9 +2522,17 @@ export function MetaverseScene() {
       ) : null}
       {showBoard && (roomId === "arena" || roomId === "hide-1") ? (
         <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 w-72 max-w-[88vw] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/15 bg-black/80 p-3 backdrop-blur">
-          <p className="mb-2 text-center text-xs font-semibold text-white/90">
+          <p className="mb-1 text-center text-xs font-semibold text-white/90">
             🏆 အမှတ်စာရင်း
           </p>
+          {roomId === "arena" ? (
+            <p className="mb-2 text-center text-[10px] text-white/55">
+              ပထမဆုံး {arenaHud.killsToWin} မှတ် ရသူ နိုင်သည်
+              {arenaHud.you
+                ? ` · မင်း — ☠️${arenaHud.you.kills} ✗${arenaHud.you.wrongKills ?? 0}`
+                : ""}
+            </p>
+          ) : null}
           <div className="space-y-1">
             {(roomId === "arena"
               ? [...arenaHud.board]
@@ -2501,6 +2568,48 @@ export function MetaverseScene() {
         <p className="pointer-events-none absolute left-1/2 top-24 z-20 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-600/85 px-4 py-1.5 text-xs text-white backdrop-blur">
           📣 ဖိတ်စာ link ကူးပြီးပြီ — သူငယ်ချင်းတွေကို ပို့လိုက်ပါ
         </p>
+      ) : null}
+
+      {/* ── 📜 ပြိုင်ပွဲစည်းမျဉ်း / user guide — game room များအတွက် ── */}
+      {showRules && inGameRoom ? (
+        <div className="pointer-events-auto absolute left-1/2 top-1/2 z-30 max-h-[80vh] w-80 max-w-[92vw] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-white/15 bg-black/85 p-4 text-[12px] leading-relaxed text-white/90 backdrop-blur">
+          {roomId === "arena" ? (
+            <>
+              <p className="mb-2 text-center text-sm font-bold text-amber-300">
+                ⚔️ Assassin ပြိုင်ပွဲ စည်းမျဉ်းများ
+              </p>
+              <div className="space-y-1.5">
+                <p>🎯 <b>လျှို့ဝှက်ပစ်မှတ်</b> — ကစားသမားတိုင်းမှာ ကိုယ့်ပစ်မှတ် တစ်ယောက်စီ ရှိတယ်။ မင်းရဲ့ပစ်မှတ်ကို အပေါ်မှာ ပြထားပြီး <b>မင်းကို ဘယ်သူလိုက်နေလဲတော့ မသိရဘူး</b>။</p>
+                <p>✅ မှန်တဲ့ပစ်မှတ်ကို သတ်ရင် <b>+၁ မှတ်</b> — ပစ်မှတ်အသစ် ချက်ချင်းရမယ်။</p>
+                <p>❌ လူမှားသတ်ရင် <b>−၁ မှတ်</b> — မိမိကို ပစ်လာသူကိုတော့ ပြန်ခုခံလို့ရတယ်။</p>
+                <p>🏆 <b>ပထမဆုံး {arenaHud.killsToWin} မှတ်</b> ရသူ နိုင်တယ် — ပြီးရင် ခဏအတွင်း ပွဲအသစ် ပြန်စတယ်။</p>
+                <p>💀 သေရင် <b>၄ စက္ကန့်</b>အတွင်း နေရာအသစ်မှာ hp အပြည့်နဲ့ ပြန်ရှင်တယ်။</p>
+                <p>🔫 <b>လက်နက် ၇ မျိုး</b> — ပစ္စတို (မျှတ) · ဓား (အနီးကပ်၊ ကျည်မကုန်) · စနိုက်ပါ (အဝေး + scope) · ဗုံး (ဧရိယာပေါက်ကွဲ) · SMG (အမြန်ပစ်) · သေနတ်ကြီး (အနီး အပြင်းဆုံး) · ရီဗော်လ်ဗာ (ခေါင်းထိ တစ်ချက်သေ)။</p>
+                <p>🎯 ခေါင်းထိချက် ဒဏ် ၂ ဆ — 🎯 ချိန်ကွင်း (ADS) နဲ့ ပိုတိကျအောင် ချိန်ပါ။</p>
+                <p>👥 <b>အဖွဲ့နဲ့</b> — 📣 link ဖိတ် · 🏆 အမှတ်စာရင်း · chat/voice သုံးလို့ရ။</p>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="mb-2 text-center text-sm font-bold text-emerald-300">
+                🙈 ဝှက်တမ်း စည်းမျဉ်းများ
+              </p>
+              <div className="space-y-1.5">
+                <p>👥 ကစားသမား <b>၃ ယောက်ပြည့်ရင်</b> ပွဲ အလိုအလျောက် စတယ်။</p>
+                <p>🔦 တစ်ယောက်က <b>ရှာဖွေသူ</b> — စစချင်း သူ မျက်စိမှိတ်နေချိန် ကျန်သူတွေ ပုန်းရမယ်။</p>
+                <p>🖐 ရှာဖွေသူက အနီးကပ်ရောက်ရင် ဖမ်းခလုတ်နဲ့ ဖမ်းတယ်။</p>
+                <p>⏱ ပွဲချိန် ၅ မိနစ် — မဖမ်းမိဘဲ လွတ်နေသူတွေ အမှတ်ရတယ်။</p>
+              </div>
+            </>
+          )}
+          <button
+            data-hud="1"
+            onClick={() => setShowRules(false)}
+            className="mt-3 w-full rounded-lg border border-white/25 bg-white/10 py-1.5 text-center text-xs hover:bg-white/20"
+          >
+            ပိတ်မယ်
+          </button>
+        </div>
       ) : null}
 
       {/* ── Gwave branded loading — world/game အဝင်တိုင်း logo + စာတန်း ── */}
@@ -2599,6 +2708,19 @@ export function MetaverseScene() {
               className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/50 text-[13px] backdrop-blur"
             >
               👤
+            </button>
+            <button
+              data-hud="1"
+              onClick={() => setShowRules((r) => !r)}
+              aria-label="ပြိုင်ပွဲစည်းမျဉ်း"
+              title="ပြိုင်ပွဲစည်းမျဉ်း"
+              className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
+                showRules
+                  ? "border-emerald-400/60 bg-emerald-500/25 text-emerald-200"
+                  : "border-white/20 bg-black/50"
+              }`}
+            >
+              📜
             </button>
             <button
               data-hud="1"
