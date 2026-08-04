@@ -186,6 +186,18 @@ export function isHealthEnabled(): boolean {
   return isFitbitEnabled() || isGoogleFitEnabled();
 }
 
+/**
+ * Vendor-cloud camera integration (docs/tasks/VENDOR_CLOUD_CAMERA_INTEGRATION.md).
+ * The implementations live in src/lib/cctv/vendors/config.ts (dependency-free
+ * so the vendor test suites run without the full Next env); re-exported here
+ * so app code keeps one import point for env accessors. All server-only.
+ */
+export {
+  getCameraVendorTokenKey,
+  getHikvisionConfig,
+  isCctvVendorFakeEnabled,
+} from "@/lib/cctv/vendors/config";
+
 export const authEnv = {
   get jwtPrivateKeyPem(): string {
     return Buffer.from(required("APP_JWT_PRIVATE_KEY"), "base64").toString("utf8");

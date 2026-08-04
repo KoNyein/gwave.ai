@@ -8,11 +8,14 @@ import { useTranslations } from "next-intl";
 import { HlsPlayer } from "@/components/cctv/hls-player";
 import { KvsPlayer } from "@/components/cctv/kvs-player";
 import { cn } from "@/lib/utils";
+import type { CameraType } from "@/types/database";
 
 export interface WallCamera {
   id: string;
   title: string;
-  camera_type: "webrtc" | "rtsp" | "kvs";
+  // vendor_cloud tiles fall through to the open-full-view tile — the wall
+  // must not auto-open a vendor live session per imported camera (§14.4).
+  camera_type: CameraType;
   hls_url: string | null;
 }
 
