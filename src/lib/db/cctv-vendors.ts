@@ -45,6 +45,26 @@ export interface VendorConnectionMeta {
 const META_COLUMNS =
   "id, provider, provider_account_id, account_label, status, scopes, connected_at, token_expires_at, last_success_at, last_error_code, last_error_at";
 
+/**
+ * The cctv_vendor_cloud feature flag, read server-side. Fails CLOSED: any
+ * error (missing row, unreachable database, stale schema cache) reads as
+ * disabled — a broken flag must never open the feature.
+ */
+export async function isVendorCloudEnabled(): Promise<boolean> {
+  try {
+    const db = untyped(createAdminClient());
+    const { data, error } = await db
+      .from("feature_flags")
+      .select("enabled")
+      .eq("key", "cctv_vendor_cloud")
+      .maybeSingle();
+    if (error || !data) return false;
+    return (data as { enabled: boolean }).enabled === true;
+  } catch {
+    return false;
+  }
+}
+
 // ── Owner-visible reads (request-scoped client, RLS enforced) ───────────────
 
 export async function listVendorConnections(
@@ -303,6 +323,21 @@ export async function disconnectVendorConnection(
   if (error) throw new Error(`disconnectVendorConnection: ${error.message}`);
 }
 
+/** The owner's CONNECTED connections for one provider, newest first. */
+export async function listVendorConnectionsForProvider(
+  userId: string,
+  provider: string,
+): Promise<VendorConnectionMeta[]> {
+  const db = untyped(await createClient());
+  const { data } = await db
+    .from("camera_vendor_connections")
+    .select(META_COLUMNS)
+    .eq("user_id", userId)
+    .eq("provider", provider)
+    .order("connected_at", { ascending: false });
+  return (data ?? []) as VendorConnectionMeta[];
+}
+
 // ── Imported cameras ────────────────────────────────────────────────────────
 
 export interface ImportedVendorCamera {
@@ -329,4 +364,50 @@ export async function listImportedVendorCameras(
     .eq("vendor_connection_id", connectionId)
     .order("created_at", { ascending: false });
   return (data ?? []) as ImportedVendorCamera[];
+}
+
+/**
+ * Import one discovered camera as a user_cameras row. Request-scoped client
+ * so the owner RLS policy applies. Only sanitized candidate data goes in —
+ * never a stream URL. Returns the new camera id, or null when the camera was
+ * already imported (unique index on connection+vendor camera id).
+ */
+export async function importVendorCamera(input: {
+  userId: string;
+  connectionId: string;
+  provider: string;
+  vendorCameraId: string;
+  title: string;
+  model?: string;
+  capabilities: Record<string, boolean>;
+  safeMetadata?: Record<string, unknown>;
+  streamId: string;
+  shareToken: string;
+}): Promise<string | null> {
+  const db = untyped(await createClient());
+  const { data, error } = await db
+    .from("user_cameras")
+    .insert({
+      owner_id: input.userId,
+      title: input.title.slice(0, 120),
+      camera_type: "vendor_cloud",
+      stream_id: input.streamId,
+      share_token: input.shareToken,
+      is_public: false,
+      vendor_connection_id: input.connectionId,
+      vendor_camera_id: input.vendorCameraId,
+      vendor_provider: input.provider,
+      vendor_display_model: input.model?.slice(0, 120) ?? null,
+      vendor_capabilities: input.capabilities,
+      vendor_metadata: input.safeMetadata ?? null,
+      vendor_last_seen_at: new Date().toISOString(),
+    })
+    .select("id")
+    .maybeSingle();
+  if (error) {
+    // 23505 = unique violation → already imported; every other failure throws.
+    if (error.code === "23505") return null;
+    throw new Error(`importVendorCamera: ${error.message}`);
+  }
+  return (data as { id: string } | null)?.id ?? null;
 }
