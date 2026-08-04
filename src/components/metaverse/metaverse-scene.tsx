@@ -1513,7 +1513,7 @@ export function MetaverseScene() {
         cam.yaw -= e.movementX * 0.0028 * sens;
         cam.pitch = THREE.MathUtils.clamp(
           cam.pitch + e.movementY * 0.0022 * sens,
-          fpvRef.current ? -1.2 : -0.25,
+          fpvRef.current || map.id === "arena" ? -1.2 : -0.25,
           1.2,
         );
         return;
@@ -1524,7 +1524,7 @@ export function MetaverseScene() {
       // third-person မှာတော့ မြေအောက် မြင်သွားမှာမို့ -0.25 ပဲ။
       cam.pitch = THREE.MathUtils.clamp(
         cam.pitch + (e.clientY - dragY) * 0.004 * sens,
-        fpvRef.current ? -1.2 : -0.25,
+        fpvRef.current || map.id === "arena" ? -1.2 : -0.25,
         1.2,
       );
       dragX = e.clientX;
@@ -1890,6 +1890,24 @@ export function MetaverseScene() {
           p.x + Math.sin(cam.yaw) * cp,
           eyeY - Math.sin(cam.pitch),
           p.z + Math.cos(cam.yaw) * cp,
+        );
+      } else if (map.id === "arena" && !riding) {
+        // ⚔️ Arena third-person — **over-shoulder** (PUBG standard)။
+        // ★ ရိုးရိုး TP လို ကင်မရာက player ကို တည့်တည့်ကြည့်ရင် crosshair က
+        //   ကိုယ့် avatar ပေါ် ကျနေပြီး တခြား player ကို ချိန်လို့မရဘူး —
+        //   ညာပခုံးဘက် 0.75 ရွှေ့ပြီး pitch အတိုင်း ရှေ့ကို ချိန်တယ်။
+        const dist = cam.dist;
+        const sx = Math.cos(cam.yaw) * 0.75;
+        const sz = -Math.sin(cam.yaw) * 0.75;
+        camera.position.set(
+          p.x + sx - Math.sin(cam.yaw) * cp * dist,
+          p.y + 1.55 + Math.sin(cam.pitch) * dist,
+          p.z + sz - Math.cos(cam.yaw) * cp * dist,
+        );
+        camera.lookAt(
+          p.x + sx + Math.sin(cam.yaw) * cp * 6,
+          p.y + 1.45 - Math.sin(cam.pitch) * 6,
+          p.z + sz + Math.cos(cam.yaw) * cp * 6,
         );
       } else {
         // ယာဉ်ကြီးလေ ကင်မရာ ဝေးလေ — မဟုတ်ရင် ယာဉ်က မျက်နှာပြင် ဖုံးမယ်
