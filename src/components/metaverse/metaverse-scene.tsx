@@ -19,7 +19,11 @@ import { createGameFx, type GameFx } from "./gamefx";
 import { GamesMenu, GamesOverlays, type GamePhase } from "./games-panel";
 import { createHuman, type Avatar, type HumanState } from "./human";
 import { buildLandmarks, type Landmark } from "./landmarks";
-import { attachLiveScreen, type LiveScreen } from "./livescreen";
+import {
+  attachLiveScreen,
+  attachLiveKitScreen,
+  type LiveScreen,
+} from "./livescreen";
 import { createMvGoLive } from "./golive";
 import { getMap, MAP_LIST } from "./maps";
 import { createMinimap } from "./minimap";
@@ -2087,26 +2091,33 @@ export function MetaverseScene() {
           (
             data: {
               posts?: { author: string; text: string }[];
-              live?: { title?: string | null; url: string | null } | null;
+              live?: {
+                id?: string | null;
+                title?: string | null;
+                url: string | null;
+              } | null;
             } | null,
           ) => {
             if (killed || !data || !world.screenMesh) return;
             landmarks.setNotices(data.posts ?? []);
             const url = data.live?.url ?? "";
+            const lkId = !url && data.live?.id ? String(data.live.id) : "";
             if (url && url !== liveUrl) {
-              // IVS live — screen မှာ တိုက်ရိုက် ဖွင့်တယ်
+              // IVS live — screen မှာ HLS နဲ့ တိုက်ရိုက် ဖွင့်တယ်
               screen?.dispose();
               screen = attachLiveScreen(world.screenMesh, url);
               liveUrl = url;
-            } else if (!url && data.live?.title && liveUrl !== "app-live") {
-              // LiveKit (ဖုန်း Go Live) — URL မရှိလို့ ခေါင်းစဉ်ပဲ ပြတယ်
+            } else if (lkId && liveUrl !== `lk:${lkId}`) {
+              // 📱 LiveKit (ဖုန်း Go Live) — SFU ကို ကြည့်သူအဖြစ် ချိတ်ပြီး
+              // host ရဲ့ video ကို screen မှာ တိုက်ရိုက်ပြ (phase 2b)။
+              // ချိတ်မရရင် (guest စသဖြင့်) placeholder ကျန်နေတယ်။
               screen?.dispose();
-              screen = attachLiveScreen(
+              screen = attachLiveKitScreen(
                 world.screenMesh,
-                "",
-                `🔴 ${String(data.live.title).slice(0, 40)} — app ထဲ ကြည့်ပါ`,
+                lkId,
+                `${String(data.live?.title ?? "LIVE").slice(0, 40)}`,
               );
-              liveUrl = "app-live";
+              liveUrl = `lk:${lkId}`;
             } else if (!url && !data.live && liveUrl) {
               // Live ပြီးသွားပြီ — default (env URL ဒါမှမဟုတ် placeholder) ပြန်ထား
               screen?.dispose();

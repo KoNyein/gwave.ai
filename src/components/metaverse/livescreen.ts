@@ -1,5 +1,7 @@
 import * as THREE from "three";
 
+import { getLiveStageToken } from "@/lib/actions/live";
+
 /// မြို့လယ်က ကြီးမားတဲ့ မျက်နှာပြင် — Gwave ရဲ့ AWS IVS live stream ကို
 /// လောကထဲမှာ တိုက်ရိုက် ပြတယ်။
 ///
@@ -165,6 +167,101 @@ export function attachLiveScreen(
       }
       videoTex?.dispose();
       videoMat?.dispose();
+      offlineMat.dispose();
+      offline.dispose();
+      screenMesh.material = oldMat;
+    },
+  };
+}
+
+/// ── 📱 LiveKit live (ဖုန်း Go Live) ကို screen မှာ တိုက်ရိုက်ဖွင့်ခြင်း ──
+///
+/// ★ IVS လို HLS URL မရှိဘူး — LiveKit SFU ကို **ကြည့်သူအဖြစ် ချိတ်** ပြီး
+///   host ရဲ့ video track ကို VideoTexture အဖြစ် ပြတယ်။ Token က
+///   getLiveStageToken (ကြည့်သူ = canPublish false) — feed ရဲ့ ကြည့်သူ
+///   လမ်းကြောင်းအတိုင်းပဲ။
+/// ★ **နားရောက်မှ ချိတ်တယ်** — SFU connection တစ်ခုက data စားလို့ ဝေးရင်
+///   ဖြုတ်တယ် (hysteresis PLAY_WITHIN/STOP_BEYOND တူတူ)။
+/// ★ Guest/ချိတ်မရရင် placeholder ("app ထဲ ကြည့်ပါ") အတိုင်း ကျန်တယ် —
+///   error မပြ၊ game ဆက်လည်တယ်။
+export function attachLiveKitScreen(
+  screenMesh: THREE.Mesh,
+  streamId: string,
+  title: string,
+): LiveScreen {
+  const offline = placeholderTexture(`🔴 ${title.slice(0, 40)}`);
+  const offlineMat = new THREE.MeshBasicMaterial({ map: offline, side: THREE.DoubleSide });
+  const oldMat = screenMesh.material as THREE.Material;
+  screenMesh.material = offlineMat;
+
+  let videoTex: THREE.VideoTexture | null = null;
+  let videoMat: THREE.MeshBasicMaterial | null = null;
+  let room: { disconnect(): Promise<void> } | null = null;
+  let connecting = false;
+  let playing = false;
+  let disposed = false;
+
+  const teardown = () => {
+    const r = room;
+    room = null;
+    playing = false;
+    if (r) void r.disconnect().catch(() => undefined);
+    if (!disposed) screenMesh.material = offlineMat;
+    videoTex?.dispose();
+    videoTex = null;
+    videoMat?.dispose();
+    videoMat = null;
+  };
+
+  const connect = async () => {
+    if (connecting || room || disposed) return;
+    connecting = true;
+    try {
+      const tok = await getLiveStageToken(streamId);
+      if (!tok.ok || disposed) return;
+      const lk = await import("livekit-client");
+      const r = new lk.Room();
+      r.on(lk.RoomEvent.TrackSubscribed, (track) => {
+        if (disposed || track.kind !== lk.Track.Kind.Video) return;
+        const el = track.attach() as HTMLVideoElement;
+        el.muted = true;
+        el.playsInline = true;
+        videoTex = new THREE.VideoTexture(el);
+        videoTex.colorSpace = THREE.SRGBColorSpace;
+        videoMat = new THREE.MeshBasicMaterial({ map: videoTex, side: THREE.DoubleSide });
+        screenMesh.material = videoMat;
+        playing = true;
+      });
+      r.on(lk.RoomEvent.Disconnected, () => {
+        if (!disposed) teardown();
+      });
+      await r.connect(tok.data.url, tok.data.token);
+      if (disposed) {
+        void r.disconnect().catch(() => undefined);
+        return;
+      }
+      room = r;
+    } catch {
+      /* ချိတ်မရ — placeholder အတိုင်း */
+    } finally {
+      connecting = false;
+    }
+  };
+
+  return {
+    get playing() {
+      return playing;
+    },
+    update(px, pz) {
+      if (disposed) return;
+      const d = Math.hypot(px - SCREEN_POS.x, pz - SCREEN_POS.z);
+      if (!room && !connecting && d < PLAY_WITHIN) void connect();
+      else if (room && d > STOP_BEYOND) teardown();
+      if (playing && videoTex) videoTex.needsUpdate = true;
+    },
+    dispose() {
+      disposed = true;
+      teardown();
       offlineMat.dispose();
       offline.dispose();
       screenMesh.material = oldMat;
