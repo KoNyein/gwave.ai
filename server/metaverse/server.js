@@ -911,6 +911,35 @@ wss.on("connection", async (ws, req) => {
         if (events.length === 0) break;
         aSend(player.room, events);
         aPushPersonal(player.room, match);
+        // 💣 ဗုံး fuse — handleFire က `fuse` marker ပြန်ရင် BOMB_FUSE_MS
+        //   အကြာမှာ detonate (ဒဏ်က ပေါက်ကွဲချိန်နေရာတွေနဲ့ — ရှောင်လို့ရ)။
+        for (const e of events) {
+          if (!e.fuse) continue;
+          const { x: fx, z: fz, attackerId } = e.fuse;
+          const fuseRoom = player.room;
+          setTimeout(() => {
+            const m2 = matches.get(fuseRoom);
+            if (!m2) return;
+            const boomEvents = assassin.detonate(m2, attackerId, fx, fz);
+            aSend(fuseRoom, boomEvents);
+            aPushPersonal(fuseRoom, m2);
+            if (boomEvents.some((ev) => ev.msg?.type === "aWin")) {
+              setTimeout(() => {
+                const m3 = matches.get(fuseRoom);
+                if (!m3) return;
+                assassin.resetRound(m3);
+                for (const p3 of m3.players.values()) {
+                  syncPresence(fuseRoom, p3.id, p3.x, p3.y, p3.z);
+                }
+                rooms.broadcast(fuseRoom, {
+                  type: "aReset",
+                  players: [...m3.players.values()].map(assassin.publicPlayer),
+                });
+                aPushPersonal(fuseRoom, m3);
+              }, assassin.ROUND_RESET_MS).unref?.();
+            }
+          }, assassin.BOMB_FUSE_MS).unref?.();
+        }
         // ★ တစ်ယောက် နိုင်သွားရင် ခဏနေပြီး ပွဲပြန်စတယ်။
         if (events.some((e) => e.msg?.type === "aWin")) {
           const roomId = player.room;

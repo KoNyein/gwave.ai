@@ -25,6 +25,8 @@ const MAX_HP = 100;
 const KILLS_TO_WIN = 3;
 const RESPAWN_MS = 4000;
 const ROUND_RESET_MS = 5000;
+/// 💣 ဗုံး fuse — ပစ်လွှတ်ပြီး ဒီအချိန်ကြာမှ ပေါက်ကွဲတယ်
+const BOMB_FUSE_MS = 900;
 
 /// ကွင်းအကျယ် (radius) — ဒီအပြင် ထွက်လို့ မရဘူး။
 const ARENA = 30;
@@ -354,18 +356,25 @@ function handleFire(match, me, msg, now = Date.now()) {
   });
 
   if (w.splash > 0) {
+    // 💣 ဗုံးက ချက်ချင်း မပေါက်ကွဲဘူး — arc နဲ့ ပျံသွားပြီး fuse ချိန်ပြည့်မှ
+    //   ပေါက်ကွဲတယ် (standard grenade)။ Transport (server.js) က `fuse`
+    //   marker ကို ဖတ်ပြီး BOMB_FUSE_MS အကြာမှာ `detonate()` ကို ခေါ်တယ် —
+    //   ဒဏ်တွက်ချက်မှုက **ပေါက်ကွဲချိန်က နေရာတွေ** နဲ့ (ရှောင်လို့ရတယ်)။
     const bx = Number.isFinite(Number(msg.x)) ? Number(msg.x) : me.x;
     const bz = Number.isFinite(Number(msg.z)) ? Number(msg.z) : me.z;
     if (Math.hypot(bx - me.x, bz - me.z) > w.range) return out;
-    out.push({ all: true, msg: { type: "aBoom", x: round2(bx), z: round2(bz), radius: w.splash } });
-    for (const v of match.players.values()) {
-      if (!v.alive) continue;
-      const d = Math.hypot(v.x - bx, v.z - bz);
-      if (d > w.splash) continue;
-      const fall = 1 - d / w.splash;
-      const dmg = Math.max(1, Math.round(computeDamage("bomb", "body", 0) * fall));
-      out.push(...applyDamage(match, me, v, dmg, "bomb", "body", now));
-    }
+    out.push({
+      all: true,
+      msg: {
+        type: "aThrown",
+        fromX: round2(me.x),
+        fromZ: round2(me.z),
+        x: round2(bx),
+        z: round2(bz),
+        ms: BOMB_FUSE_MS,
+      },
+    });
+    out.push({ fuse: { x: bx, z: bz, attackerId: me.id } });
     return out;
   }
 
@@ -388,6 +397,28 @@ function handleFire(match, me, msg, now = Date.now()) {
 
   const dmg = computeDamage(me.weapon, hit.part, hit.dist);
   out.push(...applyDamage(match, me, hit.victim, dmg, me.weapon, hit.part, now));
+  return out;
+}
+
+/// 💣 ဗုံး ပေါက်ကွဲမှု — fuse ပြည့်ချိန် transport က ခေါ်တယ်။ ဒဏ်ကို
+/// **ပေါက်ကွဲချိန်က player နေရာတွေ** နဲ့ တွက်တယ် — ကြားထဲ ရှောင်ပြေးလို့ရ။
+/// ပစ်သူ ထွက်သွားပြီးရင် မြင်ကွင်း (aBoom) ပဲ ပြပြီး ဒဏ်မရှိ — ကိုယ်စားလှယ်
+/// မဲ့ kill credit က resolveKill ကို ချိုးမယ်။
+function detonate(match, attackerId, bx, bz, now = Date.now()) {
+  const w = WEAPONS.bomb;
+  const out = [
+    { all: true, msg: { type: "aBoom", x: round2(bx), z: round2(bz), radius: w.splash } },
+  ];
+  const me = match.players.get(attackerId);
+  if (!me) return out;
+  for (const v of match.players.values()) {
+    if (!v.alive) continue;
+    const d = Math.hypot(v.x - bx, v.z - bz);
+    if (d > w.splash) continue;
+    const fall = 1 - d / w.splash;
+    const dmg = Math.max(1, Math.round(computeDamage("bomb", "body", 0) * fall));
+    out.push(...applyDamage(match, me, v, dmg, "bomb", "body", now));
+  }
   return out;
 }
 
@@ -434,6 +465,7 @@ function applyDamage(match, attacker, victim, dmg, weapon, hitPart, now = Date.n
 
 module.exports = {
   ARENA,
+  BOMB_FUSE_MS,
   KILLS_TO_WIN,
   MAX_HP,
   MAX_SPEED,
@@ -447,6 +479,7 @@ module.exports = {
   assignTargets,
   computeDamage,
   createMatch,
+  detonate,
   freshAmmo,
   handleFire,
   makePlayer,
