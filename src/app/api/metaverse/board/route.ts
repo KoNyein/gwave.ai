@@ -76,9 +76,11 @@ export async function GET() {
   const ivsRow = liveRows.find((r) => r.ivs_playback_url);
   const anyRow = liveRows[0];
   const live = ivsRow
-    ? { title: ivsRow.title, url: ivsRow.ivs_playback_url }
+    ? { id: ivsRow.id, title: ivsRow.title, url: ivsRow.ivs_playback_url }
     : anyRow
-      ? { title: anyRow.title, url: null }
+      ? // LiveKit — id ပါမှ metaverse screen က SFU ကို ကြည့်သူအဖြစ် ချိတ်ပြီး
+        // တိုက်ရိုက် ပြနိုင်တယ် (phase 2b)
+        { id: anyRow.id, title: anyRow.title, url: null }
       : null;
 
   return NextResponse.json(
