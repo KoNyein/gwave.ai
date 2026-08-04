@@ -865,6 +865,11 @@ wss.on("connection", async (ws, req) => {
           // က anti-cheat မကျဘူး (syncPresence ရဲ့ မှတ်ချက် ကြည့်ပါ)။
           const meA = match.players.get(player.id);
           syncPresence(player.room, player.id, meA.x, meA.y, meA.z);
+        } else {
+          // ပြန်ချိတ် (reconnect) — match ထဲ ရှိပြီးသား၊ presence ကို
+          // assassin နေရာနဲ့ ညှိပြီး personal state ချက်ချင်း ပြန်ပို့တယ်။
+          const meA = match.players.get(player.id);
+          syncPresence(player.room, player.id, meA.x, meA.y, meA.z);
         }
         send(ws, {
           type: "aInit",
@@ -1066,6 +1071,15 @@ wss.on("connection", async (ws, req) => {
   });
 
   const drop = () => {
+    // ★★ Stale-socket clobber အကာအကွယ် — app ကို background ထားပြီး
+    //   ပြန်ဖွင့်ရင် player က socket **အသစ်** နဲ့ ပြန်ဝင်ပြီးသား ဖြစ်တတ်တယ်။
+    //   Socket အဟောင်းက heartbeat (~30s) နဲ့မှ သေပြီး ဒီ drop() ကို ခေါ်တဲ့
+    //   အခါ room/assassin match ထဲက **player အသစ်ကို** ဖျက်မိတယ် —
+    //   အဲဒီနောက် aWeapon/aFire အားလုံး "player မရှိ" နဲ့ ငြင်းပြီး
+    //   "သေနတ်ပြောင်းမရ/hp မပြ" ဖြစ်တယ်။ ဒီ socket က လက်ရှိတာဝန်ရှိတဲ့
+    //   socket ဟုတ်မှသာ cleanup ဆက်လုပ်တယ်။
+    const cur = rooms.rooms.get(player.room)?.get(player.id);
+    if (cur && cur !== player) return;
     // ★ Driver ပြတ်သွားရင် ယာဉ် လွတ်ရမယ် — မဟုတ်ရင် အဲဒီယာဉ်ကို
     // ဘယ်သူမှ ဘယ်တော့မှ မစီးရတော့ဘူး
     for (const id of rooms.releaseVehicles(player.room, player.id)) {
