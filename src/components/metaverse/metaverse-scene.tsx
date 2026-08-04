@@ -333,6 +333,9 @@ export function MetaverseScene() {
   );
   const [chat, setChat] = useState<ChatLine[]>([]);
   const [draft, setDraft] = useState("");
+  /// 💬 Touch chat input ဖွင့်/ပိတ် — input က screen ထိပ်မှာ ပွင့်တယ်
+  /// (keyboard က အောက်က တက်လာလို့ ထိပ်ကဟာ မကွယ်ဘူး)
+  const [chatOpen, setChatOpen] = useState(false);
   const [meName, setMeName] = useState("");
   const [meAuthed, setMeAuthed] = useState(false);
   const netRef = useRef<NetClient | null>(null);
@@ -3897,12 +3900,20 @@ export function MetaverseScene() {
         </p>
       )}
 
-      {/* ── Chat ─────────────────────────────────────────────────────── */}
-      {link !== "off" && (
+      {/* ── Chat ───────────────────────────────────────────────────────
+          ★ Desktop: ဘယ်အောက် panel (မူလအတိုင်း)။
+          ★ Touch (screenshot report: "messenger ကွယ်နေတယ်"): အရင်က
+            bottom-20 မှာ joystick နဲ့ ထပ်နေပြီး keyboard ဖွင့်ရင်ပါ
+            ကွယ်တယ်။ International mobile-game pattern (PUBG/Free Fire):
+            (၁) နောက်ဆုံး ၃ ကြောင်းကို joystick အပေါ်နား ဖောက်ထွင်းပြ
+            (ဖတ်ရုံ)၊ (၂) 💬 ခလုတ်နှိပ်မှ input က **မျက်နှာပြင် ထိပ်** မှာ
+            ပွင့်တယ် — keyboard က အောက်ကတက်လာလို့ ထိပ်က input ကို
+            ဘယ်တော့မှ မဖုံးဘူး။ */}
+      {link !== "off" && !touch && (
         <div
-          className={`absolute bottom-20 left-3 z-10 sm:bottom-3 sm:w-72 ${
+          className={`absolute bottom-3 left-3 z-10 w-72 ${
             // Game room မှာ ကျဉ်း — ကျယ်ရင် အလယ်အောက်က ❤️/ကျည် pill နဲ့ ထပ်တယ်
-            inGameRoom ? "w-[min(13rem,36vw)]" : "w-[min(19rem,60vw)]"
+            inGameRoom ? "w-[min(13rem,36vw)]" : ""
           }`}
         >
           <div className="mb-1 max-h-40 space-y-0.5 overflow-hidden">
@@ -3953,6 +3964,91 @@ export function MetaverseScene() {
             />
           </form>
         </div>
+      )}
+      {link !== "off" && touch && (
+        <>
+          {/* ဖတ်ရုံ chat မှတ်တမ်း — joystick (bottom-6 left-6 h-28) ရဲ့
+              အပေါ်နား၊ ဖောက်ထွင်း၊ ထိလို့မရ (game ထိန်းချုပ်မှု မနှောင့်ယှက်) */}
+          <div className="pointer-events-none absolute bottom-44 left-3 z-10 w-[min(15rem,55vw)] space-y-0.5">
+            {chat.slice(-3).map((c, i) => (
+              <div
+                key={`${c.at}-${i}`}
+                className="w-fit max-w-full rounded bg-black/35 px-1.5 py-0.5 text-[10px] leading-snug text-white/85 backdrop-blur"
+              >
+                <span
+                  className={
+                    c.authed
+                      ? "font-semibold text-emerald-300"
+                      : "font-semibold text-white/70"
+                  }
+                >
+                  {c.name}
+                </span>
+                {!c.authed && (
+                  <span className="ml-1 rounded bg-white/15 px-1 text-[8px] text-white/60">
+                    ဧည့်သည်
+                  </span>
+                )}{" "}
+                {c.text}
+              </div>
+            ))}
+          </div>
+          {/* 💬 chat ဖွင့်ခလုတ် — joystick အပေါ် တည့်တည့် (လက်မ လှမ်းမီ) */}
+          <button
+            data-hud="1"
+            onClick={() => setChatOpen((o) => !o)}
+            aria-label="Chat ရိုက်မယ်"
+            className={`absolute bottom-36 left-6 z-10 flex h-9 w-9 items-center justify-center rounded-full border text-[14px] backdrop-blur ${
+              chatOpen
+                ? "border-emerald-400/60 bg-emerald-500/25"
+                : "border-white/20 bg-black/40"
+            }`}
+          >
+            💬
+          </button>
+          {/* Input — မျက်နှာပြင် ထိပ် (keyboard နဲ့ ဘယ်တော့မှ မထပ်) */}
+          {chatOpen && (
+            <form
+              className="absolute left-1/2 top-14 z-30 flex w-[min(22rem,88vw)] -translate-x-1/2 items-center gap-1.5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const t = draft.trim();
+                if (t) {
+                  netRef.current?.sendChat(t);
+                  setDraft("");
+                }
+                setChatOpen(false);
+              }}
+            >
+              <input
+                data-hud="1"
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                maxLength={200}
+                placeholder="စာရိုက်ရန်…"
+                className="min-w-0 flex-1 rounded-full border border-emerald-400/50 bg-black/70 px-4 py-2.5 text-sm text-white outline-none backdrop-blur placeholder:text-white/35"
+              />
+              <button
+                type="submit"
+                data-hud="1"
+                aria-label="ပို့မယ်"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-black"
+              >
+                ➤
+              </button>
+              <button
+                type="button"
+                data-hud="1"
+                aria-label="ပိတ်မယ်"
+                onClick={() => setChatOpen(false)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white/70"
+              >
+                ✕
+              </button>
+            </form>
+          )}
+        </>
       )}
 
       {/* ── 🎮 Game overlays — scoreboard / lobby / ရလဒ် / လုပ်ဆောင်ချက်
