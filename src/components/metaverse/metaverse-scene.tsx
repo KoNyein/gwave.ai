@@ -316,6 +316,15 @@ export function MetaverseScene() {
   /// ☰ Game room ရဲ့ ဒုတိယအဆင့် ခလုတ်များ ခေါက်သိမ်း/ဖြန့် — default
   /// ခေါက်ထား (မြင်ကွင်း အကွယ် နည်းအောင်)
   const [hudMore, setHudMore] = useState(false);
+  /// 🤝 NPC context ခလုတ် — မိတ်ဆွေဖွဲ့လို့ရတဲ့ NPC တစ်ယောက် အနီး
+  /// (FRIEND_RANGE) ရောက်မှ ပေါ်တယ် (PUBG/GTA style context action)။
+  /// null = ဘယ်သူမှ မနီးဘူး၊ string = အနီးဆုံး NPC နာမည်
+  const [npcNear, setNpcNear] = useState<string | null>(null);
+  /// လက်ပြပြီး မိတ်ဆွေဖွဲ့ — 🤝 chip ရော context ခလုတ်ရော ဒီတစ်ခုတည်း သုံး
+  const waveBefriend = () => {
+    setEmote("wave");
+    window.setTimeout(() => setEmote(null), 1600);
+  };
   // ဒီ ၃ ခုက မကြာခဏမပြောင်းလို့ React state နဲ့ ရတယ် (position မဟုတ်ဘူး)
   const [online, setOnline] = useState(1);
   // ssr:false မို့ ဒီ initializer က browser မှာပဲ ပြေးတယ် — window သုံးလို့ရတယ်
@@ -574,6 +583,7 @@ export function MetaverseScene() {
     setHideHud({ phase: "waiting", endsAt: null, role: null, blindUntil: null, players: [], feed: [] });
     setShowBoard(false);
     setHitMark(null);
+    setNpcNear(null);
     setDmgOn(false);
     setBanner(null);
     setInvited(false);
@@ -927,6 +937,10 @@ export function MetaverseScene() {
 
     // ── Multiplayer ───────────────────────────────────────────────────────
     const remotes = new Map<string, Remote>();
+    /// 🤝 ကိုယ် မိတ်ဆွေဖွဲ့ပြီးသား NPC id များ — 「မိတ်ဆွေဖွဲ့မယ်」 context
+    /// ခလုတ်က friend ဖြစ်ပြီးသားကို ထပ်မပြအောင် (bot သေရင်/ပွဲပြန်စရင်
+    /// server ဘက်မှာ friendship ပျက်လို့ ဒီမှာလည်း ဖျက်တယ်)
+    const botFriends = new Set<string>();
 
     /// ★ App ထဲမှာ တစ်ပြိုင်နက် ပြမယ့် လူအရေအတွက်ကို ကန့်သတ်တယ် —
     /// avatar တစ်ယောက်က mesh အများကြီးနဲ့ nametag တစ်ခုစီ ရှိတယ်၊
@@ -1482,6 +1496,8 @@ export function MetaverseScene() {
                 combatFx?.ring(vr.cur.x, vr.cur.z, 0xff5544, 0.45);
               }
               if (m.attackerId === myId) {
+                // ကိုယ့် friend NPC ကို ပစ်မိရင် server ဘက်မှာ မိတ်ဆွေပျက်တယ်
+                botFriends.delete(String(m.victimId));
                 sfx?.hitMarker(m.hitPart === "head");
                 buzz(m.hitPart === "head" ? [20, 20, 30] : 25);
                 const at = Date.now();
@@ -1530,6 +1546,9 @@ export function MetaverseScene() {
               break;
             }
             case "aKill": {
+              // Bot သေရင် friendship ပျက်တယ် (server respawn က ရှင်းတယ်) —
+              // context ခလုတ် ပြန်ပေါ်နိုင်အောင် ဒီဘက်မှာလည်း ဖျက်
+              botFriends.delete(String(m.victimId));
               // သေဆုံးသူ (remote) နေရာမှာ ကွင်းနီကြီး — kill motion graphic
               const kr = remotes.get(String(m.victimId));
               if (kr) combatFx?.ring(kr.cur.x, kr.cur.z, 0x991111, 1.3);
@@ -1628,6 +1647,7 @@ export function MetaverseScene() {
             case "aBotMood":
               if (m.mood === "friend") {
                 if (m.of === myId) {
+                  botFriends.add(String(m.id));
                   buzz([20, 30, 20]);
                   // 🗣 NPC က မြန်မာသံနဲ့ တုံ့ပြန် (ခွေးက အသံမပြော)
                   if (m.dog !== true) voice?.say("befriend");
@@ -1640,6 +1660,17 @@ export function MetaverseScene() {
                 } else {
                   pushFeed(`🤝 ${m.name} က မိတ်ဆွေရသွားပြီ`, true);
                 }
+              } else if (m.mood === "none") {
+                // ★ မိတ်ဆွေဖွဲ့ မအောင်တဲ့ feedback — အရင်က ဘာမှ မပြလို့
+                // "🤝 ခလုတ် အလုပ်မလုပ်ဘူး" လို့ ထင်ကြတယ် (report)
+                flashBanner(
+                  m.reason === "grudge"
+                    ? "😠 ဒီ NPC က မင်းကို ရန်ငြိုးထားနေတုန်း — ခဏနေမှ ပြန်ကြိုးစားပါ"
+                    : m.reason === "far"
+                      ? `🤝 NPC နဲ့ ဝေးနေသေးတယ် (${Number(m.dist) || "?"}m) — ကပ်ပြီးမှ လက်ပြပါ`
+                      : "🤝 အနီးမှာ မိတ်ဆွေဖွဲ့လို့ရတဲ့ NPC မရှိသေးဘူး",
+                  "bad",
+                );
               }
               break;
             case "aWin":
@@ -1654,6 +1685,7 @@ export function MetaverseScene() {
               if (m.winnerId === myId) voice?.say("win");
               break;
             case "aReset":
+              botFriends.clear(); // ပွဲအသစ် — friendship တွေ ပြန်စ
               setArenaHud((h) => ({
                 ...h,
                 board: (m.players as ArenaBoardRow[]) ?? [],
@@ -2173,6 +2205,7 @@ export function MetaverseScene() {
     /// ရေလှိုင်း/မီးအတွက် တိုးနေတဲ့ အချိန် (နာရီနဲ့ မဆိုင်ဘူး)
     let effectT = 0;
     let nearId: string | null = null;
+    let npcNearName: string | null = null;
 
     /// 🔋 Eco mode ရဲ့ 30fps ကန့်အတွက် နောက်ဆုံး render ချိန်
     let lastEcoFrame = 0;
@@ -2603,6 +2636,24 @@ export function MetaverseScene() {
         if ((near?.id ?? null) !== nearId) {
           nearId = near?.id ?? null;
           setNearby(near);
+        }
+        // 🤝 Arena — မိတ်ဆွေဖွဲ့လို့ရတဲ့ NPC အနီး ရောက်/ထွက် စစ်တယ်
+        // (server FRIEND_RANGE=5 နဲ့ တစ်ထပ်တည်း — ခလုတ်ပေါ်ရင် အောင်ရမယ်)
+        if (map.id === "arena") {
+          let bn: string | null = null;
+          let bd = 5;
+          for (const [rid, r] of remotes) {
+            if (!rid.startsWith("bot:") || botFriends.has(rid)) continue;
+            const d = Math.hypot(r.cur.x - p.x, r.cur.z - p.z);
+            if (d < bd) {
+              bd = d;
+              bn = r.name;
+            }
+          }
+          if (bn !== npcNearName) {
+            npcNearName = bn;
+            setNpcNear(bn);
+          }
         }
       }
     };
@@ -3374,13 +3425,9 @@ export function MetaverseScene() {
                 {roomId === "arena" && (
                   <button
                     data-hud="1"
-                    onClick={() => {
-                      // 👋 wave — server က အနီးက ဓားပြ bot နဲ့ မိတ်ဆွေဖွဲ့ပေးတယ်
-                      setEmote("wave");
-                      window.setTimeout(() => setEmote(null), 1600);
-                    }}
-                    aria-label="ဓားပြနဲ့ မိတ်ဆွေဖွဲ့မယ် (လက်ပြ)"
-                    title="ဓားပြနဲ့ မိတ်ဆွေဖွဲ့မယ် (လက်ပြ)"
+                    onClick={waveBefriend}
+                    aria-label="NPC နဲ့ မိတ်ဆွေဖွဲ့မယ် (လက်ပြ)"
+                    title="NPC နဲ့ မိတ်ဆွေဖွဲ့မယ် (လက်ပြ) — 5m အတွင်း ကပ်ပြီးမှ"
                     className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/40 text-[13px] backdrop-blur"
                   >
                     🤝
@@ -3825,6 +3872,20 @@ export function MetaverseScene() {
         >
           {nearby.label} — ဝင်ရန် နှိပ်ပါ
         </a>
+      )}
+
+      {/* ── 🤝 NPC context ခလုတ် — မိတ်ဆွေဖွဲ့လို့ရတဲ့ NPC ရဲ့ 5m အတွင်း
+          ရောက်မှ ပေါ်တယ် (international context-action pattern — PUBG ရဲ့
+          pickup prompt လို)။ ⋯ ထဲက 🤝 chip ကို မသိလည်း ဒီခလုတ်နဲ့
+          ဖွဲ့လို့ရတယ်၊ ပေါ်နေရင် အကွာအဝေးက အောင်မြန်တယ်။ */}
+      {roomId === "arena" && npcNear && (
+        <button
+          data-hud="1"
+          onClick={waveBefriend}
+          className="pointer-events-auto absolute bottom-24 left-1/2 z-10 -translate-x-1/2 animate-pulse rounded-full border-2 border-emerald-400/70 bg-emerald-600/35 px-5 py-2.5 text-sm text-emerald-100 backdrop-blur active:scale-95 active:bg-emerald-500/60"
+        >
+          🤝 {npcNear} နဲ့ မိတ်ဆွေဖွဲ့မယ်
+        </button>
       )}
 
       {/* ── 🔴 Live / ကင်မရာ error toast — အရင်က error တွေ တိတ်တိတ်ပျောက်လို့

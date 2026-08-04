@@ -169,15 +169,41 @@ test("befriend: wave နဲ့ မိတ်ဆွေဖြစ်၊ ရန်င
   b.x = h.x + 2;
   b.z = h.z;
 
-  // ရန်ငြိုးရှိရင် လက်မခံ
+  // ရန်ငြိုးရှိရင် လက်မခံ — ★ ဒါပေမယ့် feedback တော့ ပြန်ရမယ် (တောင်းသူဆီသာ)
   b.grudge["h1"] = now + 10000;
-  assert.equal(bots.befriend(match, "h1", now).length, 0);
+  const rej = bots.befriend(match, "h1", now);
+  assert.equal(rej.length, 1);
+  assert.equal(rej[0].to, "h1");
+  assert.equal(rej[0].msg.type, "aBotMood");
+  assert.equal(rej[0].msg.mood, "none");
+  assert.equal(rej[0].msg.reason, "grudge");
 
   delete b.grudge["h1"];
   const ev = bots.befriend(match, "h1", now);
   assert.equal(ev[0]?.msg?.type, "aBotMood");
   assert.equal(ev[0].msg.mood, "friend");
   assert.equal(b.friendOf, "h1");
+});
+
+test("befriend: ဝေးရင် mood:none + reason:far + အကွာအဝေး ပြန်တယ်", () => {
+  const now = 4_100_000;
+  const match = matchWithHuman();
+  bots.ensureBots(match, now);
+  const h = match.players.get("h1");
+  // Bot အားလုံး ဝေးအောင် — h1 spawn (0,-22) ကနေ bot တွေက တခြား spawn တွေမှာ
+  const ev = bots.befriend(match, "h1", now);
+  assert.equal(ev.length, 1);
+  assert.equal(ev[0].to, "h1");
+  assert.equal(ev[0].msg.mood, "none");
+  assert.equal(ev[0].msg.reason, "far");
+  assert.ok(ev[0].msg.dist > bots.FRIEND_RANGE);
+
+  // ကပ်လိုက်ရင် အောင်တယ် — FRIEND_RANGE အတွင်း
+  const b = firstBot(match);
+  b.x = h.x + 3;
+  b.z = h.z;
+  const ok = bots.befriend(match, "h1", now);
+  assert.equal(ok[0].msg.mood, "friend");
 });
 
 test("friend bot: ကိုယ့် friend အထိခံရရင် ပစ်သူကို ရန်ငြိုး၊ friend ကို ပစ်မိရင် မိတ်ဆွေပျက်", () => {
