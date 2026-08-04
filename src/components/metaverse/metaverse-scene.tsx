@@ -13,6 +13,7 @@ import { BuildPanel, type BuildBridge } from "./build/panel";
 import { createPlotStream } from "./build/plots";
 import { createBuildRender, createGhost } from "./build/render";
 import { createSfx, type Sfx } from "../games/assassin/sfx";
+import { createVoiceLines } from "./voicelines";
 import { createCombatFx, type CombatFx } from "./combatfx";
 import { createGameFx, type GameFx } from "./gamefx";
 import { GamesMenu, GamesOverlays, type GamePhase } from "./games-panel";
@@ -644,6 +645,8 @@ export function MetaverseScene() {
     const isGameWorld = map.id === "arena" || map.id === "hide-1";
     const sfx: Sfx | null = isGameWorld ? createSfx(0.8) : null;
     const combatFx: CombatFx | null = map.id === "arena" ? createCombatFx(scene) : null;
+    /// 🗣 မြန်မာအသံ ကြေညာချက် + NPC တုံ့ပြန်သံ (device TTS)
+    const voice = map.id === "arena" ? createVoiceLines() : null;
     /// aYou ကနေ update ဖြစ်တဲ့ ကိုယ့် combat အခြေအနေ — fire feedback အတွက်
     const combat = { weapon: "pistol", alive: true, ammo: -1, prevWeapon: "knife" };
     /// လက်နက် fireMs — aInit က server တန်ဖိုးတွေနဲ့ ပြည့်တယ် (auto-fire နှုန်း)။
@@ -1468,6 +1471,8 @@ export function MetaverseScene() {
               if (m.victimId === myId) {
                 sfx?.hurt();
                 buzz(45);
+                // 🏴‍☠️ ဓားပြက ပစ်လာရင် မြန်မာသံ ကြိမ်းမောင်း (throttle ပါ)
+                if (String(m.attackerId).startsWith("bot:")) voice?.say("taunt");
                 setDmgOn(true);
                 shake = Math.max(shake, 0.12);
                 window.setTimeout(() => {
@@ -1514,6 +1519,9 @@ export function MetaverseScene() {
               if (m.killerId === myId) {
                 sfx?.kill(m.correct === true || m.victimBot === true);
                 buzz(m.correct === true || m.victimBot === true ? [30, 40, 70] : [80]);
+                voice?.say(
+                  m.correct === true || m.victimBot === true ? "kill" : "wrongKill",
+                );
                 flashBanner(
                   m.victimBot === true
                     ? `🏴‍☠️ ${m.victimName} ကို နှိမ်လိုက်ပြီ — လက်နက် ကျသွားတယ်`
@@ -1525,6 +1533,7 @@ export function MetaverseScene() {
               } else if (m.victimId === myId) {
                 sfx?.hurt();
                 buzz(140);
+                voice?.say("death");
                 flashBanner(`☠️ ${m.killerName} က မင်းကို သတ်သွားပြီ`, "bad");
               }
               setArenaHud((h) => ({
@@ -1543,6 +1552,7 @@ export function MetaverseScene() {
                 p.z = Number(m.z);
                 sfx?.reload();
                 combatFx?.ring(p.x, p.z, 0x4ade80);
+                voice?.say("respawn");
                 flashBanner("💚 ပြန်ရှင်ပြီ — သတိထား", "good");
               } else if (String(m.id).startsWith("bot:")) {
                 // Bot ပြန်ရှင်ချိန် — အလောင်းနေရာကနေ spawn ကို ချက်ချင်း ခုန်
@@ -1573,6 +1583,7 @@ export function MetaverseScene() {
               const wk = String(m.weapon || "");
               sfx?.reload();
               buzz(20);
+              voice?.say("pickup");
               pushFeed(
                 `🔫 ${wNames[wk] ?? wk} ကျည် +${Number(m.gained) || 0} ကောက်ရပြီ`,
                 true,
@@ -1583,6 +1594,8 @@ export function MetaverseScene() {
               if (m.mood === "friend") {
                 if (m.of === myId) {
                   buzz([20, 30, 20]);
+                  // 🗣 NPC က မြန်မာသံနဲ့ တုံ့ပြန် (ခွေးက အသံမပြော)
+                  if (m.dog !== true) voice?.say("befriend");
                   flashBanner(
                     m.dog === true
                       ? `🐕 ${m.name} က မင်းကို ခင်သွားပြီ — ရန်သူကို ဝိုင်းကိုက်ပေးမယ်`
@@ -1603,6 +1616,7 @@ export function MetaverseScene() {
                   : `🏆 ${m.winnerName} အနိုင်ရပါပြီ`,
                 "good",
               );
+              if (m.winnerId === myId) voice?.say("win");
               break;
             case "aReset":
               setArenaHud((h) => ({
@@ -1611,6 +1625,7 @@ export function MetaverseScene() {
               }));
               teleportMe(m.players);
               flashBanner("🔔 ပွဲအသစ် စပါပြီ", "good");
+              voice?.say("start");
               break;
             case "aNoAmmo":
               sfx?.empty();
@@ -2644,6 +2659,7 @@ export function MetaverseScene() {
       for (const id of [...dropMeshes.keys()]) removeDrop(id);
       combatFx?.dispose();
       sfx?.dispose();
+      voice?.dispose();
       buildRender.dispose();
       plots.dispose();
       ghost.dispose();
