@@ -61,7 +61,7 @@ test("a state started for another provider fails", () => {
   assert.equal(
     validateOauthState(parsed, {
       state: state.state,
-      provider: "hikvision",
+      provider: "dahua",
       userId: USER,
     }),
     "provider_mismatch",

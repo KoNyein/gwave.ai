@@ -29,33 +29,6 @@ export function getCameraVendorTokenKey(): Buffer | null {
 /** Version of the active token key. Bump on rotation; old rows keep theirs. */
 export const CAMERA_VENDOR_TOKEN_KEY_VERSION = 1;
 
-export type HikvisionConfig = {
-  clientId: string;
-  clientSecret: string;
-  authBaseUrl: string;
-  apiBaseUrl: string;
-  redirectUri: string;
-};
-
-/**
- * Hikvision partner API configuration. Null until every value is set, which
- * keeps the connector invisible (mirrors getFitbitConfig). The exact auth
- * mechanism is pinned down when approved partner credentials + official docs
- * exist — see docs/cctv/VENDOR_FEASIBILITY.md.
- */
-export function getHikvisionConfig(): HikvisionConfig | null {
-  const enabled = process.env.HIKVISION_CAMERA_ENABLED === "true";
-  const clientId = process.env.HIKVISION_CLIENT_ID?.trim();
-  const clientSecret = process.env.HIKVISION_CLIENT_SECRET?.trim();
-  const authBaseUrl = process.env.HIKVISION_AUTH_BASE_URL?.trim();
-  const apiBaseUrl = process.env.HIKVISION_API_BASE_URL?.trim();
-  const redirectUri = process.env.HIKVISION_REDIRECT_URI?.trim();
-  if (!enabled || !clientId || !clientSecret || !authBaseUrl || !apiBaseUrl || !redirectUri) {
-    return null;
-  }
-  return { clientId, clientSecret, authBaseUrl, apiBaseUrl, redirectUri };
-}
-
 /**
  * The fake connector may exist ONLY outside production: it exists so route
  * and Playwright tests never need real vendor credentials. In production it

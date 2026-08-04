@@ -9,10 +9,11 @@
  */
 
 import { fakeConnector } from "./fake.ts";
-import { hikvisionConnector } from "./hikvision.ts";
 import type { CameraVendorConnector } from "./types.ts";
 
-const ALL: CameraVendorConnector[] = [fakeConnector, hikvisionConnector];
+// Hikvision connector removed 2026-08-04 (product decision — partner
+// approval on hold). Reintroduce as its own PR when credentials exist.
+const ALL: CameraVendorConnector[] = [fakeConnector];
 
 /** The connector for an id, enabled or not. Null for unknown ids. */
 export function getCameraVendorConnector(

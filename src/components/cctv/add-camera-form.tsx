@@ -28,11 +28,6 @@ const RTSP_PRESETS: ReadonlyArray<{
     note: "Tapo app → Advanced Settings → Camera Account မှာ USER/PASS ဆောက်ပါ (cloud email မဟုတ်)။ HD=/stream1, SD=/stream2",
   },
   {
-    label: "Hikvision",
-    template: "rtsp://USER:PASS@192.168.1.100:554/Streaming/Channels/101",
-    note: "101 = main stream, 102 = sub stream",
-  },
-  {
     label: "Dahua",
     template:
       "rtsp://USER:PASS@192.168.1.100:554/cam/realmonitor?channel=1&subtype=0",
