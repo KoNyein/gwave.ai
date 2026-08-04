@@ -19,6 +19,7 @@ import { GamesMenu, GamesOverlays, type GamePhase } from "./games-panel";
 import { createHuman, type Avatar, type HumanState } from "./human";
 import { buildLandmarks, type Landmark } from "./landmarks";
 import { attachLiveScreen, type LiveScreen } from "./livescreen";
+import { createMvGoLive } from "./golive";
 import { getMap, MAP_LIST } from "./maps";
 import { createMinimap } from "./minimap";
 import { createNametags } from "./nametags";
@@ -258,6 +259,20 @@ export function MetaverseScene() {
       /* private mode */
     }
     picSendRef.current?.(on);
+  };
+  /// 🔴 Metaverse Go Live — game မြင်ကွင်းကို feed ဆီ တိုက်ရိုက်လွှင့်ခြင်း။
+  /// "starting" ကြားအခြေအနေက ခလုတ်နှစ်ခါနှိပ် race မဖြစ်အောင်။
+  const [mvLive, setMvLive] = useState<"off" | "starting" | "on">("off");
+  const goLiveRef = useRef<((title: string) => Promise<boolean>) | null>(null);
+  const toggleGoLive = () => {
+    if (mvLive === "starting" || !goLiveRef.current) return;
+    if (mvLive === "off") {
+      const title = `${meName || "Gwave"} — ${getMap(roomId).emoji} ${getMap(roomId).name} Metaverse Live`;
+      setMvLive("starting");
+      void goLiveRef.current(title).then((ok) => setMvLive(ok ? "on" : "off"));
+    } else {
+      void goLiveRef.current("").then(() => setMvLive("off"));
+    }
   };
   // ဒီ ၃ ခုက မကြာခဏမပြောင်းလို့ React state နဲ့ ရတယ် (position မဟုတ်ဘူး)
   const [online, setOnline] = useState(1);
@@ -761,6 +776,23 @@ export function MetaverseScene() {
     /// လူကိုယ်တိုင် "ပြန်မြှင့်" နှိပ်တဲ့အခါ — pixelRatio နဲ့ warm-up ကိုပါ
     /// ပြန်ချိန်ရမယ်၊ မဟုတ်ရင် ရုပ်က ဝါးနေဆဲ ဖြစ်ပြီး ဒုတိယအကြိမ် ချက်ချင်း
     /// ပြန်လျှော့ခံရမယ်။
+    // 🔴 Metaverse Go Live — renderer ရဲ့ canvas ကို 30fps ဖမ်းပြီး
+    // LiveKit ကနေ feed ဆီ လွှင့်တယ် (golive.ts)။ active ဖြစ်နေရင်
+    // ထပ်ခေါ်တာက stop — toggle သဘော။
+    const mvGoLive = createMvGoLive(renderer.domElement);
+    goLiveRef.current = async (title: string) => {
+      if (mvGoLive.active) {
+        await mvGoLive.stop();
+        return false;
+      }
+      try {
+        await mvGoLive.start(title);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
     restoreRef.current = () => {
       renderer.setPixelRatio(inApp ? 1 : Math.min(window.devicePixelRatio, 2));
       postfx.setSize(mount.clientWidth, mount.clientHeight);
@@ -2496,6 +2528,9 @@ export function MetaverseScene() {
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("resize", onResize);
       window.clearInterval(boardTimer);
+      // 🔴 Room ပြောင်း/ထွက်ရင် live ကို သေချာ ရပ် — မရပ်ရင် feed မှာ
+      // သေနေတဲ့ live post ကျန်နေမယ်
+      void mvGoLive.stop();
       document.removeEventListener("pointerlockchange", onLockChange);
       el.removeEventListener("contextmenu", onCtxMenu);
       el.removeEventListener("pointerdown", onPointerDown);
@@ -3175,6 +3210,21 @@ export function MetaverseScene() {
             </button>
             <button
               data-hud="1"
+              onClick={toggleGoLive}
+              aria-label="Metaverse Go Live"
+              title="Game မြင်ကွင်းကို feed ဆီ တိုက်ရိုက်လွှင့်မယ်"
+              className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
+                mvLive === "on"
+                  ? "animate-pulse border-red-400/70 bg-red-500/30 text-red-200"
+                  : mvLive === "starting"
+                    ? "border-amber-400/60 bg-amber-500/25 text-amber-200"
+                    : "border-white/20 bg-black/50"
+              }`}
+            >
+              🔴
+            </button>
+            <button
+              data-hud="1"
               onClick={toggleEco}
               aria-label="ဘက်ထရီချွေတာ mode"
               title="ဘက်ထရီချွေတာ mode — 30fps + အရိပ်ပိတ်"
@@ -3226,19 +3276,36 @@ export function MetaverseScene() {
         {/* 🖼 Social room မှာလည်း profile ဓာတ်ပုံ ပြ/ဖျောက် ရွေးလို့ရရမယ် —
             game room မှာတော့ အပေါ်က chip တန်းထဲ ရှိပြီးသား */}
         {!inGameRoom && (
-          <button
-            data-hud="1"
-            onClick={togglePic}
-            aria-label="Profile ဓာတ်ပုံ ပြ/ဖျောက်"
-            title="Profile ဓာတ်ပုံ ပြ/ဖျောက်"
-            className={`pointer-events-auto flex h-8 items-center gap-1 rounded-full border px-2.5 text-[11px] backdrop-blur ${
-              showPic
-                ? "border-sky-400/60 bg-sky-500/25 text-sky-200"
-                : "border-white/20 bg-black/50 text-white/80"
-            }`}
-          >
-            🖼 {showPic ? "ပုံပြထား" : "ပုံဖျောက်ထား"}
-          </button>
+          <div className="pointer-events-auto flex items-center gap-1.5">
+            <button
+              data-hud="1"
+              onClick={togglePic}
+              aria-label="Profile ဓာတ်ပုံ ပြ/ဖျောက်"
+              title="Profile ဓာတ်ပုံ ပြ/ဖျောက်"
+              className={`flex h-8 items-center gap-1 rounded-full border px-2.5 text-[11px] backdrop-blur ${
+                showPic
+                  ? "border-sky-400/60 bg-sky-500/25 text-sky-200"
+                  : "border-white/20 bg-black/50 text-white/80"
+              }`}
+            >
+              🖼 {showPic ? "ပုံပြထား" : "ပုံဖျောက်ထား"}
+            </button>
+            <button
+              data-hud="1"
+              onClick={toggleGoLive}
+              aria-label="Metaverse Go Live"
+              title="Metaverse မြင်ကွင်းကို feed ဆီ တိုက်ရိုက်လွှင့်မယ်"
+              className={`flex h-8 items-center gap-1 rounded-full border px-2.5 text-[11px] backdrop-blur ${
+                mvLive === "on"
+                  ? "animate-pulse border-red-400/70 bg-red-500/30 text-red-200"
+                  : mvLive === "starting"
+                    ? "border-amber-400/60 bg-amber-500/25 text-amber-200"
+                    : "border-white/20 bg-black/50 text-white/80"
+              }`}
+            >
+              🔴 {mvLive === "on" ? "LIVE — ရပ်မယ်" : mvLive === "starting" ? "စတင်နေ…" : "Go Live"}
+            </button>
+          </div>
         )}
         {ready && (
           <div
