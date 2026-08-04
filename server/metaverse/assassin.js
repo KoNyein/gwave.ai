@@ -295,7 +295,9 @@ function applyMove(match, me, msg, now = Date.now()) {
   }
   me.x = tx;
   me.z = tz;
-  me.y = Number.isFinite(ny) ? Math.max(0, Math.min(6, ny)) : 0;
+  // 🏢 y ကန့် ၁၄ — arena တာဝါ firing floor (y=6) + ခုန်အမြင့်။ ဒီထက်
+  // မြင့်ရင် client bug/လိမ်တာ — ဆွဲချ။
+  me.y = Number.isFinite(ny) ? Math.max(0, Math.min(14, ny)) : 0;
   if (Number.isFinite(nry)) me.ry = nry;
   return true;
 }

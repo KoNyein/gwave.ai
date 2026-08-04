@@ -26,6 +26,9 @@ export type World = {
   /// လျှောက်လို့ရတဲ့ အကွာအဝေး (collision clamp) — မြေပုံ/မြူ အတွက်
   /// `radius` နဲ့ မတူနိုင်ဘူး
   walkRadius: number;
+  /// 🏢 ခြေအောက် ကြမ်းပြင်အမြင့် — platform (လှေကား/အထပ်) ပေါ်ဆို သူ့
+  /// အမြင့်၊ မဟုတ်ရင် 0။ `py` က လက်ရှိအမြင့် (step-up ≤0.5 စစ်ဖို့)။
+  groundAt(px: number, pz: number, py: number): number;
   /// timeOfDay 0→1 (0 = သန်းခေါင်, 0.25 = နံနက်, 0.5 = မွန်းတည့်, 0.75 = ညနေ)။
   /// နေရောင်အား 0 (ည) → 1 (နေ့) ကို ပြန်ပေးတယ်။
   updateSky(timeOfDay: number): number;
@@ -154,6 +157,22 @@ export function buildWorld(scene: THREE.Scene, map: MapDef): World {
       minZ: b.z - b.d / 2,
       maxZ: b.z + b.d / 2,
     });
+  }
+
+  // ── 🏢 လျှောက်လို့ရတဲ့ အမြင့်ကြမ်းပြင်များ ──────────────────────────────
+  // ★ Platform မှာ **ဘေးတိုက် collider မထည့်ဘူး** — ထည့်ရင် 2D collider
+  //   ဖြစ်လို့ အောက်ကနေ လျှောက်ဖြတ်လို့ မရတော့ဘူး။ အပေါ်တက်တာက
+  //   groundAt() (step-up + အပေါ်ကကျ landing) နဲ့ပဲ။
+  const platforms = map.platforms ?? [];
+  for (const pl of platforms) {
+    const geo = track(new THREE.BoxGeometry(pl.w, 0.35, pl.d));
+    const mat = track(
+      new THREE.MeshStandardMaterial({ color: pl.color ?? 0x5a6472, roughness: 0.8 }),
+    );
+    const mesh = place(new THREE.Mesh(geo, mat));
+    mesh.position.set(pl.x, pl.y - 0.175, pl.z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
   }
 
   // ── သစ်ပင်များ ──────────────────────────────────────────────────────────
@@ -444,6 +463,20 @@ export function buildWorld(scene: THREE.Scene, map: MapDef): World {
     screenMesh,
     radius: R,
     walkRadius: map.walkRadius ?? R,
+    /// 🏢 ခြေထောက်အောက်က ကြမ်းပြင်အမြင့် — platform footprint ထဲရှိပြီး
+    /// **လက်ရှိအမြင့် + step-up (0.5)** အောက်/အတွင်းရှိတဲ့ အမြင့်ဆုံး
+    /// platform။ ဘာမှ မရှိရင် မြေပြင် 0။ (အပေါ်က platform ကို အောက်ကနေ
+    /// မတက်မိအောင် py စစ်တယ် — ခုန်လည်း ခေါင်းနဲ့မတိုးဘူး၊ ရိုးရှင်းမှု
+    /// အတွက် ceiling collision မထည့်ဘူး)
+    groundAt(px: number, pz: number, py: number): number {
+      let g = 0;
+      for (const pl of platforms) {
+        if (px < pl.x - pl.w / 2 - 0.35 || px > pl.x + pl.w / 2 + 0.35) continue;
+        if (pz < pl.z - pl.d / 2 - 0.35 || pz > pl.z + pl.d / 2 + 0.35) continue;
+        if (pl.y <= py + 0.5 && pl.y > g) g = pl.y;
+      }
+      return g;
+    },
     updateSky,
     updateInteriors,
     water,
