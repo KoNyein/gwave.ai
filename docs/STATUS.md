@@ -152,7 +152,13 @@
   tightens the gap), an iron-sight edge-dim vignette for non-sniper ADS,
   hit motion graphics on victims (impact sparks + red ring, dark-red kill
   ring — new combatfx.impact), FP head-bob while walking and a sprint FOV
-  widen (+5°) for movement feel. PR #466.
+  widen (+5°) for movement feel. Movement fix from the follow-up report
+  ("walking reversed / anatomy wrong"): in the arena the body now always
+  faces the aim direction even in third person (PUBG convention) instead
+  of spinning 180° to run at the camera when back-pedalling, and
+  human.ts gained a `backward` state that reverses the leg-swing cycle so
+  back-pedalling no longer moonwalks (applied to self and remotes).
+  PR #466.
 
 - 2026-08-04 (web): **Arena PUBG-standard combat.** The real "can't shoot"
   root cause: the server rays from the *player's eye* (combat.js EYE_Y) but

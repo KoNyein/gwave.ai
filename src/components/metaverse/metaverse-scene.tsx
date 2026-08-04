@@ -1702,11 +1702,15 @@ export function MetaverseScene() {
       //   A/D က strafe (ဘေးတိုး) ဖြစ်ပြီး ကိုယ်လုံးက မလှည့်ဘူး။ ဒါမှ
       //   တခြားသူတွေနဲ့ voice listener က မှန်တဲ့ ဦးတည်ရာ ရတယ်။
       if (!riding) {
-        const targetRy = fpvRef.current
-          ? cam.yaw
-          : speed > 0
-            ? Math.atan2(dirX, dirZ)
-            : p.ry;
+        // ⚔️ Arena — third-person မှာလည်း **ချိန်ရာဘက် အမြဲမျက်နှာမူ**
+        // (PUBG convention)။ မဟုတ်ရင် joystick အောက်ဆွဲတိုင်း ကိုယ်လုံးက
+        // ကင်မရာဘက် ၁၈၀° လှည့်ပြေးလာလို့ "လမ်းလျှောက်တာ ပြောင်းပြန်" ဖြစ်တယ်။
+        const targetRy =
+          fpvRef.current || map.id === "arena"
+            ? cam.yaw
+            : speed > 0
+              ? Math.atan2(dirX, dirZ)
+              : p.ry;
         let diff = targetRy - p.ry;
         while (diff > Math.PI) diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
@@ -1720,11 +1724,15 @@ export function MetaverseScene() {
 
       me.group.position.set(p.x, p.y, p.z);
       me.group.rotation.y = p.ry;
+      // မျက်နှာမူရာနဲ့ ရွေ့ရာ ဆန့်ကျင်နေရင် (back-pedal) ခြေလှမ်း ပြောင်းပြန်
+      const backpedal =
+        speed > 0 && Math.sin(p.ry) * dirX + Math.cos(p.ry) * dirZ < -0.1;
       me.update(dt, {
         speed,
         running,
         airborne: p.airborne,
         emote: emoteRef.current,
+        backward: backpedal,
       });
 
       // ── တခြား player တွေ ───────────────────────────────────────────────
@@ -1758,6 +1766,10 @@ export function MetaverseScene() {
             running: r.speed > 5,
             airborne: r.cur.y > 0.15,
             emote: r.emote,
+            // သူလည်း back-pedal ဖြစ်နိုင်တယ် — ရွေ့ရာနဲ့ မျက်နှာမူရာ ဆန့်ကျင်ရင်
+            backward:
+              dist > 0.02 &&
+              Math.sin(r.cur.ry) * dx + Math.cos(r.cur.ry) * dz < -0.01,
           });
         }
       }
