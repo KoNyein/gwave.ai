@@ -324,7 +324,41 @@ export interface GameCatalogItem {
   updated_at: string;
 }
 
-export type CameraType = "webrtc" | "rtsp" | "kvs";
+export type CameraType = "webrtc" | "rtsp" | "kvs" | "vendor_cloud";
+
+/** Normalized per-camera feature flags for vendor-cloud cameras. */
+export interface CameraVendorCapabilities {
+  liveView: boolean;
+  snapshot: boolean;
+  ptz: boolean;
+  audio: boolean;
+  twoWayAudio: boolean;
+  events: boolean;
+  playback: boolean;
+  publicSharingAllowed: boolean;
+}
+
+/**
+ * A linked camera-vendor cloud account (camera_vendor_connections).
+ * Metadata only — tokens live sealed in camera_vendor_secrets, which has no
+ * client-visible type on purpose.
+ */
+export interface CameraVendorConnection {
+  id: string;
+  user_id: string;
+  provider: string;
+  provider_account_id: string | null;
+  account_label: string | null;
+  status: "connected" | "expired" | "revoked" | "error" | "disconnected";
+  scopes: string[];
+  connected_at: string;
+  token_expires_at: string | null;
+  last_success_at: string | null;
+  last_error_code: string | null;
+  last_error_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface UserCamera {
   id: string;
@@ -345,6 +379,16 @@ export interface UserCamera {
   share_token: string;
   is_public: boolean;
   public_until: string | null;
+  // Vendor-cloud cameras only (all null otherwise): the linked account, the
+  // camera's id in that cloud, and sanitized display data. References only —
+  // never tokens, never stream URLs.
+  vendor_connection_id: string | null;
+  vendor_camera_id: string | null;
+  vendor_provider: string | null;
+  vendor_display_model: string | null;
+  vendor_capabilities: CameraVendorCapabilities | null;
+  vendor_metadata: Record<string, unknown> | null;
+  vendor_last_seen_at: string | null;
   created_at: string;
   updated_at: string;
 }
