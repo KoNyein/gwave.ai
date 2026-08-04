@@ -139,6 +139,23 @@
 
 ## Changelog
 
+- 2026-08-04 (web): **CCTV vendor-cloud playback sessions (PR 3 of 4).**
+  `src/lib/cctv/camera-service.ts` is now the ONE authorization + dispatch
+  path for playback: resolve camera → `canViewCamera` (owner / public
+  window / share token; vendor-cloud cameras stay owner-only unless the
+  provider's `publicSharingAllowed` capability is explicitly true — the
+  owner's public toggle cannot override vendor terms) → per-type session.
+  New routes, all rate-limited + `no-store`: `POST
+  /api/cctv/cameras/[id]/stream` (short-lived normalized session; never a
+  vendor token or raw RTSP), `GET .../snapshot` (owner-only, capability-
+  gated — what camera walls should poll instead of auto-live), `POST
+  .../ptz` (owner-only + explicit ptz capability). Client:
+  `VendorCameraPlayer` renews 30s before expiry, bounded backoff (2/4/8s
+  then manual retry), relink/offline/gateway states; camera detail page
+  dispatches vendor cameras to it; the wall keeps showing an open-tile for
+  them (no auto vendor sessions). 10 new playback unit tests (public-share
+  matrix) + 2 more e2e guards. Behind the same OFF flag as PR 1-2.
+
 - 2026-08-04 (web): **CCTV vendor-cloud account linking (PR 2 of 4).**
   Routes: `/api/cctv/vendors` (list), `[provider]/connect` (state + PKCE in
   an HTTP-only cookie bound to user+provider, 10-min expiry),

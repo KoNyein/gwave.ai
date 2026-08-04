@@ -44,6 +44,31 @@ test("camera discovery and import demand auth (or flag) — never 200", async ({
   expect([401, 404]).toContain(importRes.status());
 });
 
+test("stream sessions are never cached and fail closed", async ({ request }) => {
+  const response = await request.post(
+    "/api/cctv/cameras/00000000-0000-0000-0000-000000000000/stream",
+    { data: {} },
+  );
+  // No database → the camera cannot resolve; only a hard failure code is
+  // acceptable, and never a cacheable response.
+  expect([404, 429, 500, 502]).toContain(response.status());
+  if (response.headers()["cache-control"]) {
+    expect(response.headers()["cache-control"]).toContain("no-store");
+  }
+});
+
+test("vendor snapshot and ptz demand auth (or flag)", async ({ request }) => {
+  const snap = await request.get(
+    "/api/cctv/cameras/00000000-0000-0000-0000-000000000000/snapshot",
+  );
+  expect([401, 404, 429]).toContain(snap.status());
+  const ptz = await request.post(
+    "/api/cctv/cameras/00000000-0000-0000-0000-000000000000/ptz",
+    { data: { action: "stop" } },
+  );
+  expect([401, 404, 429]).toContain(ptz.status());
+});
+
 test("the vendor import page is auth/flag gated", async ({ request }) => {
   // Flag unavailable → 404; with a database this would bounce to /login.
   const response = await request.get("/cameras/vendors/fake", {
