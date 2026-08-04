@@ -82,6 +82,40 @@ export function AvatarPreview({
     const tintMats: THREE.MeshStandardMaterial[] = [];
     let modelRoot: THREE.Object3D | null = null;
     let headBone: THREE.Object3D | null = null;
+    let facePlate: THREE.Object3D | null = null;
+    let faceUrlLoaded: string | null = null;
+
+    /// 🧬 Scan face GLB ကို ခေါင်း node မှာ rigid attach (spec §6 HeadSocket
+    /// သဘော — placeholder body မှာ socket မပါလို့ head node ကို တိုက်ရိုက်)
+    const loadFacePlate = (url: string | null) => {
+      if (url === faceUrlLoaded) return;
+      faceUrlLoaded = url;
+      if (facePlate) {
+        facePlate.parent?.remove(facePlate);
+        facePlate = null;
+      }
+      if (!url || !modelRoot) return;
+      loader.load(
+        url,
+        (g) => {
+          if (disposed || url !== faceUrlLoaded || !modelRoot) return;
+          facePlate = g.scene;
+          const host = headBone ?? modelRoot;
+          host.add(facePlate);
+          // Head node ရဲ့ world scale ကို ချေဖျက်ပြီး မျက်နှာအရွယ် မှန်အောင်
+          const ws = new THREE.Vector3();
+          host.getWorldScale(ws);
+          const inv = ws.x !== 0 ? 1 / ws.x : 1;
+          facePlate.scale.setScalar(inv);
+          // ခေါင်းရှေ့ဘက် အနည်းငယ် — kit head က ~0.12m radius လောက်
+          facePlate.position.set(0, 0.02 * inv, 0.09 * inv);
+        },
+        undefined,
+        () => {
+          /* face GLB ဆွဲမရ — body သက်သက်နဲ့ ဆက်ပြ */
+        },
+      );
+    };
 
     const applyConfig = (c: AvatarConfig) => {
       if (!modelRoot) return;
@@ -97,6 +131,8 @@ export function AvatarPreview({
       // Skin tint — kit texture ပေါ် အနုစား multiply
       const tint = new THREE.Color(c.skinColor).lerp(new THREE.Color("#ffffff"), 0.55);
       for (const mat of tintMats) mat.color.copy(tint);
+      // 🧬 Scan မျက်နှာ — URL ပြောင်းမှသာ ပြန်ဆွဲ
+      loadFacePlate(c.faceGlbUrl);
     };
     applyRef.current = (c) => applyConfig(c);
 
