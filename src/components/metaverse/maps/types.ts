@@ -7,7 +7,7 @@
 ///   ဆောက်တာပဲ လုပ်တယ်၊ map အသစ်ထည့်ဖို့ data file တစ်ခု ရေးပြီး
 ///   `maps/index.ts` မှာ မှတ်ပုံတင်ရုံပဲ။
 
-export type MapId = "city" | "farm" | "snow" | "sky" | "arena";
+export type MapId = "city" | "farm" | "snow" | "sky" | "arena" | "hide-1";
 
 export type WeatherKind =
   | "clear"

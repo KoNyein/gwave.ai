@@ -139,6 +139,21 @@
 
 ## Changelog
 
+- 2026-08-04 (web): **Hide-and-seek became a full metaverse world + Gwave
+  branded loading.** 🙈 ဝှက်တမ်းဥယျာဉ် (room `hide-1`) is now the 6th
+  world in the map picker — garden-maze map (hedges, huts, pond, trees),
+  full standard functions (avatars, chat, presence, weather, day cycle)
+  because it IS a metaverse room; the hide game layer rides the same
+  socket via gJoin/gState/gEvent (positions come from normal presence —
+  the server already syncs them into the match). HUD: phase banner with
+  live countdown, seeker/hider role chip, seeker blind-phase blackout,
+  tag button (nearest player, server re-checks TAG_RANGE), feed, exit.
+  The amber /games/arena portal in the picker was removed (superseded by
+  the world entry). Every world/game entry now shows a Gwave-branded
+  loading screen (logo + GWAVE wordmark + Burmese tagline) until the
+  socket is live — shared component also used by the standalone
+  /games/arena page.
+
 - 2026-08-04 (web+server): **Arena joined the hub world (Roblox model).**
   The metaverse map picker now carries a 5th world — ⚔️ ပွဲကွင ်း (`arena`
   room, type `game`, 18+, gameMode assassin). One server (same WS), one
