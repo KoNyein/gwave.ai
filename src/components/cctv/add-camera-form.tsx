@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Plus, Video } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { VendorProviderList } from "@/components/cctv/vendor/vendor-provider-list";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -250,6 +251,11 @@ export function AddCameraForm() {
           {t("cancel")}
         </Button>
       </div>
+
+      {/* Approved vendor-cloud accounts (Hik-Connect etc.). Self-hiding:
+          renders nothing while the cctv_vendor_cloud flag is off or no
+          provider is configured. */}
+      <VendorProviderList />
     </form>
   );
 }
