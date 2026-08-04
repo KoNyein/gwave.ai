@@ -4,10 +4,10 @@ const assassin = require("./assassin.js");
 
 /// 🏴‍☠️ ဓားပြ Bot NPC များ — arena ရဲ့ server-side AI。
 ///
-/// ဒီဇိုင်း (user နဲ့ အတည်ပြုပြီး):
-///   · ဓားပြတွေက ပုံမှန် လှည့်လည်နေတယ် — **ပစ်ခံရရင် ရန်ငြိုး** ထားတယ်
-///     (grudge ~၆၀ စက္ကန့်) ပြီး ပစ်သူကို လိုက်ပစ်တယ်။
-///   · အနားကပ်ရင်လည်း ဓားပြပီပီ လုယက်ဖို့ တိုက်တယ် (ရန်ငြိုးအတို)။
+/// ဒီဇိုင်း (user နဲ့ အတည်ပြုပြီး + balance feedback အရ ညှိပြီး):
+///   · NPC တွေက ပုံမှန် **ငြိမ်းချမ်းစွာ** လှည့်လည်နေတယ် — **avatar က
+///     စပစ်မှသာ** ရန်ငြိုးထား (grudge ~၂၅ စက္ကန့်) ပြီး ပြန်တုံ့ပြန်တယ်။
+///     အနားကပ်ရုံနဲ့ ဘယ်တော့မှ မတိုက်ဘူး။
 ///   · 👋 wave နဲ့ **မိတ်ဆွေဖွဲ့လို့ရတယ်** — friend ဖြစ်ရင် နောက်က
 ///     လိုက်ပြီး ကိုယ့်ကို ပစ်တဲ့သူကို ပြန်ကူပစ်ပေးတယ်။ Friend ကို
 ///     ပစ်မိရင် မိတ်ဆွေပျက်ပြီး ရန်သူ ပြန်ဖြစ်တယ်။
@@ -25,28 +25,29 @@ const BOT_PREFIX = "bot:";
 /// 🐕 ခွေးတွေက လူထက်မြန်တယ် (ပြေးရင်တော့ လွတ်နိုင်သေးတယ်)၊ ကိုက်တာက
 /// melee သီးသန့် — ဓားပြတွေကတော့ သေနတ်နဲ့။
 const BOT_DEFS = [
-  { name: "ဓားပြ ဖိုးသောက်", weapon: "smg", skin: "phantom", speed: 4.6 },
-  { name: "ဓားပြ ငစိန်", weapon: "shotgun", skin: "commander", speed: 4.6 },
-  { name: "ဓားပြ ရွှေတုတ်", weapon: "revolver", skin: "ranger", speed: 4.6 },
-  { name: "🐕 ခွေးနက်", weapon: "bite", skin: "phantom", speed: 6.2, dog: true },
-  { name: "🐕 ရွှေဝါ", weapon: "bite", skin: "knight", speed: 6.2, dog: true },
+  { name: "ဓားပြ ဖိုးသောက်", weapon: "smg", skin: "phantom", speed: 3.8 },
+  { name: "ဓားပြ ငစိန်", weapon: "shotgun", skin: "commander", speed: 3.8 },
+  { name: "ဓားပြ ရွှေတုတ်", weapon: "revolver", skin: "ranger", speed: 3.8 },
+  { name: "🐕 ခွေးနက်", weapon: "bite", skin: "phantom", speed: 5.2, dog: true },
+  { name: "🐕 ရွှေဝါ", weapon: "bite", skin: "knight", speed: 5.2, dog: true },
 ];
 const BOT_COUNT = BOT_DEFS.length;
 
-/// ရန်ငြိုး ကြာချိန် — ပစ်ခံရရင် ဒီလောက်ကြာ လိုက်တယ်
-const GRUDGE_MS = 60000;
-/// အနားကပ်လို့ လုယက်တဲ့ ရန်ငြိုး (တိုတို)
-const MUG_GRUDGE_MS = 15000;
-const MUG_RANGE = 6;
+/// ရန်ငြိုး ကြာချိန် — ပစ်ခံရရင် ဒီလောက်ကြာ လိုက်တယ်။
+/// ★ User feedback: NPC တွေ ရန်လိုလွန်း/စွမ်းအားကြီးလွန်း — အခု **avatar
+///   က စပစ်မှသာ** ရန်ဖြစ်တယ် (အနားကပ်ရုံနဲ့ မတိုက်တော့ဘူး)၊ ရန်ငြိုးလည်း
+///   တိုတိုပဲ ထားပြီး မြန်မြန် မေ့တယ်။
+const GRUDGE_MS = 25000;
 /// 👋 မိတ်ဆွေဖွဲ့နိုင်တဲ့ အကွာအဝေး
 const FRIEND_RANGE = 4;
 /// Friend နောက်လိုက်ရင် ထားမယ့် အကွာအဝေး
 const FOLLOW_DIST = 3.5;
 /// ခြေလှမ်း (m/s) — လူထက် နှေးတယ်၊ ပြေးရင် လွတ်နိုင်တယ်
 const WANDER_SPEED = 2.4;
-const CHASE_SPEED = 4.6;
-/// ပစ်မှတ် တွေ့ပြီး ချက်ချင်း မပစ်ဘူး — ချိန်ချိန်ဆဆ (လူဆန်အောင်)
-const AIM_SETTLE_MS = 450;
+const CHASE_SPEED = 3.8;
+/// ပစ်မှတ် တွေ့ပြီး ချက်ချင်း မပစ်ဘူး — ချိန်ချိန်ဆဆ (လူဆန်အောင်၊
+/// ရှောင်ဖို့/ပြေးဖို့ အချိန်ရအောင် ရှည်ရှည်ထားတယ်)
+const AIM_SETTLE_MS = 900;
 /// ကျည်ကုန်ရင် ပြန်ဖြည့်ချိန်
 const RELOAD_MS = 1400;
 
@@ -179,15 +180,8 @@ function tick(match, now = Date.now(), dt = 0.15) {
   for (const b of bots(match)) {
     if (!b.alive) continue;
 
-    // ဓားပြသဘာဝ — friend မဟုတ်တဲ့လူ အနားကပ်ရင် လုယက်ဖို့ ရန်ငြိုးအတို
-    for (const h of hs) {
-      if (!h.alive || b.friendOf === h.id) continue;
-      if ((b.grudge[h.id] ?? 0) > now) continue;
-      if (Math.hypot(h.x - b.x, h.z - b.z) < MUG_RANGE) {
-        b.grudge[h.id] = now + MUG_GRUDGE_MS;
-      }
-    }
-
+    // ★ အနားကပ်ရုံနဲ့ **မတိုက်ဘူး** — ရန်ငြိုးက noteHit (ပစ်ခံရမှ) ကနေသာ
+    //   လာတယ်။ NPC တွေက ပုံမှန် ငြိမ်းချမ်းပြီး avatar က စမှသာ ပြန်တုံ့ပြန်တယ်။
     const picked = pickTarget(match, b, now);
     const friend = b.friendOf ? match.players.get(b.friendOf) : null;
     if (b.friendOf && !friend) b.friendOf = null; // friend ထွက်သွားရင်
@@ -266,16 +260,22 @@ function stepToward(b, tx, tz, step) {
 /// စည်းမျဉ်း တစ်ပုံစံတည်း)။ ချိန်ချက်မှာ **လွဲချက်** ထည့်ထားတယ် — ဝေးလေ
 /// လွဲလေ၊ ဒါမှ လူက ရွေ့ရင်း ရှောင်လို့ရတယ် (aimbot မဟုတ်ဘူး)。
 function botFire(match, b, target, dist, now) {
-  const err = 0.05 + dist * 0.006;
+  // ★ လွဲချက်ကြီးကြီး — NPC က လူလို မမှန်ရဘူး (user feedback: အရမ်း
+  //   စွမ်းအားကြီး)။ ရွေ့နေရင် အများကြီး လွဲမယ်။
+  const err = 0.12 + dist * 0.012;
   const dx = target.x - b.x + (Math.random() - 0.5) * err * dist;
   const dy = target.y + 0.9 - (b.y + 1.6) + (Math.random() - 0.5) * err * dist;
   const dz = target.z - b.z + (Math.random() - 0.5) * err * dist;
   const events = assassin.handleFire(match, b, { dx, dy, dz }, now);
+  // ပစ်ချက်ကြား ပိုကြာကြာ နား — bot ရဲ့ DPS ကို လူ့အောက် ချထားတယ်
+  if (events.some((e) => e.msg?.type === "aShot")) {
+    b.reloadUntil = Math.max(b.reloadUntil, now + (assassin.WEAPONS[b.weapon]?.fireMs ?? 400));
+  }
   // ကျည်ကုန်ရင် — bot က HUD မရှိလို့ သူ့ဘာသာ ပြန်ဖြည့်တယ် (ခဏ ရပ်ပြီး)
   const w = assassin.WEAPONS[b.weapon];
   if (w && w.ammo !== Infinity && b.ammo[b.weapon] <= 0) {
     b.ammo[b.weapon] = w.ammo;
-    b.reloadUntil = now + RELOAD_MS;
+    b.reloadUntil = Math.max(b.reloadUntil, now + RELOAD_MS);
   }
   // aNoAmmo လို bot-ဆီပို့မယ့် personal event တွေ ဖယ် — socket မရှိဘူး
   return events.filter((e) => !(e.to && String(e.to).startsWith(BOT_PREFIX)));
@@ -287,7 +287,6 @@ module.exports = {
   BOT_PREFIX,
   FRIEND_RANGE,
   GRUDGE_MS,
-  MUG_RANGE,
   befriend,
   ensureBots,
   isBot,
