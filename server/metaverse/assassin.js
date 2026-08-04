@@ -49,7 +49,7 @@ const WEAPONS = {
   revolver: { my: "ရီဗော်လ်ဗာ", dmg: 62, range: 55, fireMs: 1100, ammo: 6, headMult: 2.1, splash: 0 },
   // 🐕 ခွေးကိုက် — NPC သီးသန့် (npc flag)။ လူက ရွေးလို့ မရဘူး — server ရဲ့
   // aWeapon က ငြင်းတယ်၊ client ရဲ့ လက်နက်တန်းကလည်း ဖျောက်ထားတယ်။
-  bite: { my: "ကိုက်", dmg: 22, range: 2.2, fireMs: 700, ammo: Infinity, headMult: 1.0, splash: 0, npc: true },
+  bite: { my: "ကိုက်", dmg: 14, range: 2.2, fireMs: 700, ammo: Infinity, headMult: 1.0, splash: 0, npc: true },
 };
 
 /// ★ `armor`/`helmet` မရှိတော့ဘူး — အပေါ်က မှတ်ချက် ကြည့်ပါ။
@@ -105,9 +105,14 @@ function makePlayer(id, name, index) {
 /// AI (ရန်ငြိုး/မိတ်ဆွေ/လှည့်လည်) က bots.js မှာ — ဒီမှာ state ပဲ ဆောက်တယ်။
 /// ★ Bot က assassin ရဲ့ ပစ်မှတ်သံသရာ ထဲ **မပါဘူး** (assignTargets မှာ
 ///   ဖယ်ထားတယ်) — bot သတ်လို့ ပွဲမနိုင်သလို လူမှားလည်း မဖြစ်ဘူး။
+/// Bot HP — လူ (100) ထက် နည်းတယ်။ User feedback: NPC စွမ်းအားကြီးလွန်း —
+/// အလွယ်တကူ ပြန်နှိမ်လို့ရရမယ်။
+const BOT_HP = 70;
+
 function makeBot(id, name, index, weapon = "pistol", skin = "phantom") {
   const b = makePlayer(id, name, index);
   b.bot = true;
+  b.hp = BOT_HP;
   if (WEAPONS[weapon]) b.weapon = weapon;
   if (SKINS[skin]) b.skin = skin;
   return b;
@@ -330,7 +335,7 @@ function respawnDue(match, now = Date.now(), rng = crypto) {
     if (p.alive || now < p.respawnAt) continue;
     const sp = SPAWNS[rng.randomInt(SPAWNS.length)];
     p.alive = true;
-    p.hp = MAX_HP;
+    p.hp = p.bot ? BOT_HP : MAX_HP;
     p.x = sp.x;
     p.z = sp.z;
     p.y = 0;
@@ -347,7 +352,7 @@ function resetRound(match, rng = crypto) {
     p.score = 0;
     p.wrongKills = 0;
     p.deaths = 0;
-    p.hp = MAX_HP;
+    p.hp = p.bot ? BOT_HP : MAX_HP;
     p.alive = true;
     const sp = SPAWNS[rng.randomInt(SPAWNS.length)];
     p.x = sp.x;
@@ -422,7 +427,9 @@ function handleFire(match, me, msg, now = Date.now()) {
   );
   if (!hit) return out;
 
-  const dmg = computeDamage(me.weapon, hit.part, hit.dist);
+  let dmg = computeDamage(me.weapon, hit.part, hit.dist);
+  // 🏴‍☠️ NPC ရဲ့ ဒဏ်က လူ့ရဲ့ ၆၀% ပဲ — user feedback: NPC စွမ်းအားကြီးလွန်း။
+  if (me.bot) dmg = Math.max(1, Math.round(dmg * 0.6));
   out.push(...applyDamage(match, me, hit.victim, dmg, me.weapon, hit.part, now));
   return out;
 }
@@ -560,6 +567,7 @@ function expireDrops(match, now = Date.now()) {
 module.exports = {
   ARENA,
   BOMB_FUSE_MS,
+  BOT_HP,
   DROP_TTL_MS,
   PICKUP_RANGE,
   KILLS_TO_WIN,
