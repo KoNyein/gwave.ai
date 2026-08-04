@@ -1,0 +1,16 @@
+{
+  "name": "gwave-strike",
+  "private": true,
+  "version": "0.1.0",
+  "description": "GWAVE STRIKE — two-team open-world FPS (three.js + Rapier + Colyseus)",
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "npm run build -w shared && npm run dev -w client",
+    "build": "npm run build -w shared && npm run build -w client && npm run build -w server",
+    "typecheck": "npm run build -w shared && npm run typecheck -w client && npm run typecheck -w server"
+  }
+}

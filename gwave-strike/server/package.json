@@ -1,0 +1,21 @@
+{
+  "name": "@gwave-strike/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@colyseus/schema": "^4.0.30",
+    "@colyseus/ws-transport": "^0.17.13",
+    "@gwave-strike/shared": "*",
+    "colyseus": "^0.17.10"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

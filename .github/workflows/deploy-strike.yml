@@ -1,0 +1,76 @@
+name: Deploy GWAVE STRIKE
+
+# game.gwave.cc pipeline (blueprint §5.6) — completely separate from the main
+# web app's deploy.yml (different host path, different mechanism). Fires only
+# when gwave-strike/ changes, and only DEPLOYS when the SSH secrets exist —
+# otherwise it just builds, so merging this before the server is prepared is
+# safe.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "gwave-strike/**"
+      - ".github/workflows/deploy-strike.yml"
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gwave-strike
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run build
+
+      - name: Check deploy secrets
+        id: gate
+        env:
+          H: ${{ secrets.STRIKE_EC2_HOST }}
+          K: ${{ secrets.STRIKE_EC2_SSH_KEY }}
+        run: |
+          if [ -n "$H" ] && [ -n "$K" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::STRIKE_EC2_HOST / STRIKE_EC2_SSH_KEY not set — build-only run."
+          fi
+
+      - name: Copy build to EC2
+        if: steps.gate.outputs.ready == 'true'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STRIKE_EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.STRIKE_EC2_SSH_KEY }}
+          source: "gwave-strike/client/dist/*,gwave-strike/server/dist/*,gwave-strike/server/package.json,gwave-strike/shared/dist/*,gwave-strike/shared/package.json,gwave-strike/package.json,gwave-strike/deploy/*"
+          target: /var/www/gwave-strike/incoming
+
+      - name: Activate + restart
+        if: steps.gate.outputs.ready == 'true'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STRIKE_EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.STRIKE_EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd /var/www/gwave-strike
+            rm -rf client-dist.new && mkdir -p client-dist.new
+            cp -r incoming/gwave-strike/client/dist/* client-dist.new/
+            rm -rf server shared package.json.new
+            cp -r incoming/gwave-strike/server server
+            cp -r incoming/gwave-strike/shared shared
+            cp incoming/gwave-strike/package.json package.json
+            cp -r incoming/gwave-strike/deploy deploy
+            (cd server && npm install --omit=dev --no-audit --no-fund)
+            rm -rf client-dist.old
+            [ -d client-dist ] && mv client-dist client-dist.old || true
+            mv client-dist.new client-dist
+            pm2 startOrReload deploy/ecosystem.config.cjs
+            pm2 save
+            curl -sf http://127.0.0.1:2567/health
