@@ -103,6 +103,11 @@ export type NetHandlers = {
   onVoiceLeft?: (id: string) => void;
   /// "age" = ၁၈+ မပြည့်/အသက်မသိ · "auth" = ဝင်မထား · "full" = ပြည့်နေပြီ
   onVoiceDenied?: (reason: string) => void;
+  /// ★ Hub-world ဂိမ်း layer (Assassin/Arena) — ဒီ client core က မသိတဲ့
+  /// message အားလုံး ဒီကို ရောက်တယ်။ ဂိမ်းတစ်ခုချင်းက ကိုယ့် message
+  /// vocabulary ကို ကိုယ်ဖတ်တယ် — core protocol ကို မထိဘဲ ဂိမ်းအသစ်
+  /// ထည့်လို့ရအောင်။
+  onRaw?: (m: Record<string, unknown>) => void;
 };
 
 export type NetClient = {
@@ -131,6 +136,9 @@ export type NetClient = {
     vehicleId: string,
     s: { x: number; y: number; z: number; ry: number; speed: number },
   ): void;
+  /// ★ ဂိမ်း layer ရဲ့ message (aJoin/aFire/aMove …) — server ဘက်မှာ
+  /// room type စစ်ဆေးမှု ရှိပြီးသား (social room မှာ combat message ငြင်း)。
+  sendRaw(payload: Record<string, unknown>): void;
   close(): void;
   readonly connected: boolean;
 };
@@ -201,6 +209,10 @@ export function connectMetaverse(
       const t = text.slice(0, 200).trim();
       if (!t) return;
       ws.send(JSON.stringify({ type: "chat", text: t }));
+    },
+    sendRaw(payload) {
+      if (ws?.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify(payload));
     },
     sendEmote(emote) {
       if (ws?.readyState !== WebSocket.OPEN) return;
@@ -466,6 +478,9 @@ export function connectMetaverse(
           handlers.onVoiceDenied?.(String(m.reason));
           break;
         default:
+          // ဂိမ်း layer ရဲ့ message များ (aInit/aYou/aHit …) — core က မသိလည်း
+          // ဂိမ်းက သိတယ်။
+          handlers.onRaw?.(m);
           break;
       }
     };
@@ -477,6 +492,13 @@ export function connectMetaverse(
       // ဆက်ချိတ်နေရင် server ကို အလကား ရိုက်နေတာပဲ ဖြစ်မယ်။
       if (ev.code === 4001) {
         handlers.onStatus?.(false, "auth");
+        closed = true;
+        return;
+      }
+      // 4005/4006 = ဝင်မထား / ၁၈+ မဟုတ် — gate က server ရဲ့ ဆုံးဖြတ်ချက်၊
+      // retry လုပ်လည်း အဖြေမပြောင်းဘူး။
+      if (ev.code === 4005 || ev.code === 4006) {
+        handlers.onStatus?.(false, "denied");
         closed = true;
         return;
       }

@@ -234,6 +234,28 @@ export function MetaverseScene() {
   /// function တစ်ခု ထုတ်ပေးထားတယ်။
   const gameActionRef = useRef<((a: Record<string, unknown>) => void) | null>(null);
 
+  // ── ⚔️ Arena (hub-world game room) — combat HUD state ────────────────────
+  // ★ Room type "game" (arena) မှာသာ သုံးတယ်။ Avatar/socket/login က social
+  //   room တွေနဲ့ တစ်ခုတည်း — combat layer ကပဲ အထပ်ပိုတာ။
+  type ArenaBoardRow = { id: string; name: string; score: number; alive: boolean };
+  type ArenaYou = {
+    hp: number;
+    alive: boolean;
+    kills: number;
+    score: number;
+    weapon: string;
+    ammo: Record<string, number>;
+    target: { id: string; name: string } | null;
+  };
+  const [arenaHud, setArenaHud] = useState<{
+    weapons: Record<string, { my: string }>;
+    you: ArenaYou | null;
+    board: ArenaBoardRow[];
+    feed: { text: string; good: boolean; at: number }[];
+    denied: boolean;
+  }>({ weapons: {}, you: null, board: [], feed: [], denied: false });
+  const arenaFireRef = useRef<(() => void) | null>(null);
+
   // ── ဆောက်လုပ်ရေး (Phase 18) ───────────────────────────────────────────────
   /// ★ Panel က React၊ ghost နဲ့ instance တွေက 3D — ကြားထဲမှာ ref တစ်ခုနဲ့
   /// ချိတ်တယ်။ Object စာရင်းကို React state ထဲ ထားပေမယ့် **ghost ရဲ့ နေရာ**
@@ -333,6 +355,7 @@ export function MetaverseScene() {
     const mount = mountRef.current;
     if (!mount) return;
     const map = getMap(roomId);
+    setArenaHud({ weapons: {}, you: null, board: [], feed: [], denied: false });
 
     /// Gwave app ရဲ့ WebView ထဲမှာ ဖွင့်နေလား (Phase 17)。
     /// ★ URL ရဲ့ `app=1` ကနေ ချက်ချင်း သိရတယ် — bridge ရောက်တာကို စောင့်ရင်
@@ -560,6 +583,8 @@ export function MetaverseScene() {
     const worldTimeNow = () => (((Date.now() + clockOffset) % dayMs) / dayMs);
 
     let net: NetClient | null = null;
+    /// ⚔️ combat position packet ရဲ့ နောက်ဆုံးပို့ချိန် (10Hz throttle)
+    let lastAMoveAt = 0;
     /// ★ ကိုယ့် id — ကစားသူထဲ ပါလား (ကစားနေတာလား ကြည့်နေတာလား) ခွဲဖို့။
     /// React state က closure ထဲ အဟောင်း ဖမ်းထားလို့ effect ထဲမှာ ကိုယ်ပိုင်
     /// ကူးထားတယ်။
@@ -580,6 +605,9 @@ export function MetaverseScene() {
           setMeId(id);
           setGameList(games);
           setLink("live");
+          // ⚔️ Game room ဆိုရင် combat layer ထဲ ချက်ချင်း ဝင်တယ် — login/
+          // socket အသစ် မလို၊ ဒီ connection ပေါ်မှာပဲ။
+          if (roomId === "arena") net?.sendRaw({ type: "aJoin" });
           // ဖုန်းရဲ့ နာရီ မမှန်လည်း server နဲ့ တူညီအောင်
           clockOffset = serverTime - Date.now();
         },
@@ -712,13 +740,112 @@ export function MetaverseScene() {
                 : "denied-auth",
           );
         },
+        onRaw: (m) => {
+          // ⚔️ Assassin combat layer — game room မှာသာ။ Position rendering က
+          // ပုံမှန် presence (update/state) အတိုင်း avatar တွေနဲ့ပဲ သွားတယ်၊
+          // ဒီမှာက ကစားမှုအခြေအနေ (hp/target/kill feed) ပဲ ကိုင်တယ်။
+          if (roomId !== "arena") return;
+          const pushFeed = (text: string, good: boolean) =>
+            setArenaHud((h) => ({
+              ...h,
+              feed: [...h.feed.slice(-4), { text, good, at: Date.now() }],
+            }));
+          const teleportMe = (players: unknown) => {
+            const mine = (players as { id: string; x?: number; z?: number }[] | undefined)?.find(
+              (q) => q.id === myId,
+            );
+            if (mine && Number.isFinite(mine.x) && Number.isFinite(mine.z)) {
+              p.x = Number(mine.x);
+              p.z = Number(mine.z);
+            }
+          };
+          switch (m.type) {
+            case "aInit":
+              setArenaHud((h) => ({
+                ...h,
+                weapons: (m.weapons as Record<string, { my: string }>) ?? {},
+                board: (m.players as ArenaBoardRow[]) ?? [],
+              }));
+              teleportMe(m.players);
+              break;
+            case "aYou":
+              setArenaHud((h) => ({ ...h, you: m.you as ArenaYou }));
+              break;
+            case "aEnter": {
+              const q = m.player as ArenaBoardRow;
+              setArenaHud((h) => ({
+                ...h,
+                board: [...h.board.filter((b) => b.id !== q.id), q],
+              }));
+              break;
+            }
+            case "aLeave":
+              setArenaHud((h) => ({
+                ...h,
+                board: h.board.filter((b) => b.id !== m.id),
+              }));
+              break;
+            case "aHit":
+              if (m.attackerId === myId) pushFeed("ထိမှန်တယ် ✓", true);
+              if (m.victimId === myId) pushFeed("အထိခံရတယ်", false);
+              break;
+            case "aKill":
+              pushFeed(
+                `${m.killerName} → ${m.victimName}${m.correct === true ? " ✓" : " ✗ (လူမှား)"}`,
+                m.correct === true,
+              );
+              setArenaHud((h) => ({
+                ...h,
+                board: h.board.map((b) =>
+                  b.id === m.killerId
+                    ? { ...b, score: Number(m.killerScore) || b.score }
+                    : b,
+                ),
+              }));
+              break;
+            case "aRespawn":
+              if (m.id === myId) {
+                p.x = Number(m.x);
+                p.z = Number(m.z);
+                pushFeed("ပြန်ရှင်ပြီ — သတိထား", true);
+              }
+              break;
+            case "aWin":
+              pushFeed(`🏆 ${m.winnerName} အနိုင်ရပါပြီ`, true);
+              break;
+            case "aReset":
+              setArenaHud((h) => ({
+                ...h,
+                board: (m.players as ArenaBoardRow[]) ?? [],
+              }));
+              teleportMe(m.players);
+              pushFeed("ပွဲအသစ် စပါပြီ", true);
+              break;
+            case "aNoAmmo":
+              pushFeed("ကျည် ကုန်ပြီ — 🔄 နဲ့ ဖြည့်ပါ", false);
+              break;
+          }
+        },
         onStatus: (connected, detail) => {
           if (connected) setLink("live");
           else if (detail === "auth") setLink("auth");
-          else setLink("connecting");
+          else if (detail === "denied") {
+            // ⚔️ ၁၈+ ဂိတ်က server ရဲ့ ဆုံးဖြတ်ချက် (4005/4006) — retry မလုပ်။
+            setLink("auth");
+            setArenaHud((h) => ({ ...h, denied: true }));
+          } else setLink("connecting");
         },
       });
       netRef.current = net;
+      // ⚔️ ပစ်ခတ်မှု — ကင်မရာ ကြည့်နေတဲ့ **ဦးတည်ချက်ပဲ** ပို့တယ်။ ဘယ်သူ
+      // ထိလဲ ဆုံးဖြတ်တာ server (A4 server-authoritative) — origin/target
+      // ကို client က လိမ်လို့ မရဘူး။
+      arenaFireRef.current = () => {
+        if (roomId !== "arena") return;
+        const d = new THREE.Vector3();
+        camera.getWorldDirection(d);
+        net?.sendRaw({ type: "aFire", dx: d.x, dy: d.y, dz: d.z });
+      };
       // ★ `ry` ကို client က ပို့ပေမယ့် **ထိမထိ ဆုံးဖြတ်တာက server** —
       // ဒါက "ဘယ်ကို ကြည့်နေလဲ" ဆိုတဲ့ input သာ ဖြစ်တယ်၊ ရလဒ် မဟုတ်ဘူး။
       gameActionRef.current = (a) => net?.sendGameAction({ ...a, ry: p.ry });
@@ -850,6 +977,11 @@ export function MetaverseScene() {
     const onPointerDown = (e: PointerEvent) => {
       // Joystick ဧရိယာက touch ကို ကင်မရာ မယူရ
       if ((e.target as HTMLElement).dataset?.hud) return;
+      // ⚔️ Pointer lock ထဲ (first-person) click = ပစ်တယ် — CS အတိုင်း။
+      if (roomId === "arena" && document.pointerLockElement === el) {
+        arenaFireRef.current?.();
+        return;
+      }
       // ★ First-person + mouse — CS လိုပဲ click တစ်ချက်နဲ့ pointer lock
       //   ဝင်ပြီး mouse ရွှေ့ရုံနဲ့ ကြည့်လို့ရတယ် (drag မလိုတော့ဘူး)။
       //   Esc နဲ့ ပြန်လွတ်တယ် — browser ရဲ့ built-in။
@@ -1155,6 +1287,15 @@ export function MetaverseScene() {
       }
 
       net?.sendUpdate(p.x, p.y, p.z, p.ry);
+      // ⚔️ Combat position — server ရဲ့ anti-cheat (applyMove) အတွက် 10Hz။
+      // Presence (update) နဲ့ တန်ဖိုးတူတူပဲ — layer ၂ ခုက ကိန်းတစ်စုံတည်း။
+      if (roomId === "arena") {
+        const nowMs = Date.now();
+        if (nowMs - lastAMoveAt > 100) {
+          lastAMoveAt = nowMs;
+          net?.sendRaw({ type: "aMove", x: p.x, y: p.y, z: p.z, ry: p.ry });
+        }
+      }
 
       // ── ခြေသံ ──────────────────────────────────────────────────────────
       audio.move("me", p.x, p.y, p.z, speed, dt, p.airborne);
@@ -1413,6 +1554,107 @@ export function MetaverseScene() {
         aria-hidden
         className="pointer-events-none absolute inset-0 z-[5] overflow-hidden"
       />
+
+      {/* ── ⚔️ Arena combat HUD — game room မှာသာ။ Social room တွေမှာ ဒီ
+          layer လုံးဝ မရှိဘူး (server ကလည်း combat message ငြင်းတယ်)။ */}
+      {roomId === "arena" && arenaHud.denied ? (
+        <div className="pointer-events-auto absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/75 p-6 text-center">
+          <p className="max-w-sm text-sm leading-relaxed text-white/90">
+            ⚔️ ပွဲကွင်းက ၁၈+ သာ ဝင်လို့ရပါတယ် — အကောင့်ဝင်ပြီး
+            အသက်အတည်ပြုထားဖို့ လိုပါတယ်။
+          </p>
+          <button
+            data-hud="1"
+            onClick={() => chooseMap("city")}
+            className="rounded-lg border border-white/25 bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20"
+          >
+            🏙 မြို့တော်ကို ပြန်သွားမယ်
+          </button>
+        </div>
+      ) : null}
+      {roomId === "arena" && !arenaHud.denied ? (
+        <>
+          <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 select-none text-2xl text-white/70">
+            +
+          </div>
+          <div className="pointer-events-none absolute right-2 top-20 z-10 w-60 space-y-1">
+            {arenaHud.feed.map((f) => (
+              <p
+                key={`${f.at}-${f.text}`}
+                className={`rounded bg-black/55 px-2 py-1 text-[11px] backdrop-blur ${
+                  f.good ? "text-emerald-300" : "text-red-300"
+                }`}
+              >
+                {f.text}
+              </p>
+            ))}
+          </div>
+          <div className="pointer-events-auto absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1.5">
+            {arenaHud.you?.target ? (
+              <p className="rounded-full bg-black/60 px-3 py-1 text-[11px] text-amber-300 backdrop-blur">
+                🎯 ပစ်မှတ် — {arenaHud.you.target.name}
+              </p>
+            ) : null}
+            <div className="flex max-w-[92vw] flex-wrap items-center justify-center gap-1.5">
+              {Object.entries(arenaHud.weapons).map(([key, w]) => (
+                <button
+                  key={key}
+                  data-hud="1"
+                  onClick={() => netRef.current?.sendRaw({ type: "aWeapon", weapon: key })}
+                  className={`rounded-lg border px-2 py-1 text-[11px] backdrop-blur ${
+                    arenaHud.you?.weapon === key
+                      ? "border-amber-400/70 bg-amber-500/20 text-amber-200"
+                      : "border-white/15 bg-black/50 text-white/70 hover:bg-black/70"
+                  }`}
+                >
+                  {w.my}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded bg-black/60 px-2 py-1 text-xs text-red-300 backdrop-blur">
+                ❤️ {arenaHud.you?.hp ?? "—"}
+              </span>
+              <button
+                data-hud="1"
+                onClick={() => arenaFireRef.current?.()}
+                aria-label="ပစ်မယ်"
+                className="rounded-full border border-red-400/60 bg-red-500/25 px-6 py-3 text-lg backdrop-blur active:bg-red-500/50"
+              >
+                🔫
+              </button>
+              <button
+                data-hud="1"
+                onClick={() => netRef.current?.sendRaw({ type: "aReload" })}
+                aria-label="ကျည်ဖြည့်မယ်"
+                className="rounded-full border border-white/20 bg-black/50 px-3 py-2 text-sm text-white/80 backdrop-blur"
+              >
+                🔄
+              </button>
+              <span className="rounded bg-black/60 px-2 py-1 text-xs text-white/70 backdrop-blur">
+                {(() => {
+                  const y = arenaHud.you;
+                  if (!y) return "—";
+                  const n = y.ammo?.[y.weapon];
+                  return n === -1 || n === undefined ? "∞" : String(n);
+                })()}
+              </span>
+              <button
+                data-hud="1"
+                onClick={() => chooseMap("city")}
+                className="rounded-lg border border-white/15 bg-black/50 px-2 py-1.5 text-[11px] text-white/70 backdrop-blur hover:bg-black/70"
+              >
+                🏙 ထွက်မယ်
+              </button>
+            </div>
+            {arenaHud.you && !arenaHud.you.alive ? (
+              <p className="rounded bg-black/70 px-3 py-1 text-xs text-red-300 backdrop-blur">
+                သေဆုံးပြီ — ပြန်ရှင်ဖို့ ခဏစောင့်ပါ…
+              </p>
+            ) : null}
+          </div>
+        </>
+      ) : null}
 
       {/* ── HUD ဘယ်ဘက်တန်း ──────────────────────────────────────────────
           ★ Flow layout — အရင်က ခလုတ်တွေကို absolute top-24/36/48/60 နဲ့
