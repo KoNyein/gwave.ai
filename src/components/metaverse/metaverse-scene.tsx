@@ -37,7 +37,11 @@ import { createVoiceChat, type VoiceChat } from "./voicechat";
 import { createWeather } from "./weather";
 import { buildWeaponMesh, disposeWeapon } from "./weapons3d";
 import { createDog } from "./dog3d";
-import { createRiggedHuman } from "./riggedhuman";
+import {
+  createRiggedHuman,
+  soldierVariantFor,
+  SOLDIER_VARIANTS,
+} from "./riggedhuman";
 import { OwnershipControl } from "./web3/ownership";
 import { buildWorld, insideCollider, resolveCollision } from "./world";
 import { isInApp, native } from "@/lib/metaverse/native";
@@ -801,7 +805,23 @@ export function MetaverseScene() {
     };
 
     // ── ကိုယ့်လူရုပ် ───────────────────────────────────────────────────────
-    const me: Avatar = createHuman(0x44bba4, 0xe8b088);
+    // 🎖 Arena မှာ ကိုယ်တိုင်လည်း rigged soldier — variant ကို တစ်ခါမဲပြီး
+    // localStorage မှာ မှတ်ထားလို့ ဝင်တိုင်း ရုပ်တူနေတယ်။ Social room
+    // တွေမှာတော့ ရုပ်ပြင်ခန်း customize လုပ်လို့ရတဲ့ procedural body။
+    const myVariant = (() => {
+      try {
+        let v = window.localStorage.getItem("mv:soldier");
+        if (!v || !SOLDIER_VARIANTS.includes(v)) {
+          v = SOLDIER_VARIANTS[Math.floor(Math.random() * SOLDIER_VARIANTS.length)] ?? "a";
+          window.localStorage.setItem("mv:soldier", v);
+        }
+        return v;
+      } catch {
+        return "a";
+      }
+    })();
+    const me: Avatar =
+      map.id === "arena" ? createRiggedHuman(myVariant) : createHuman(0x44bba4, 0xe8b088);
     scene.add(me.group);
     // 🖼 ကိုယ့် profile ဓာတ်ပုံ URL — avatar API ကနေ လာတယ်။ ပြထားရင်
     // server ဆီ ပို့ပြီး တခြားသူတွေရဲ့ nametag မှာ ပေါ်တယ်။
@@ -812,20 +832,25 @@ export function MetaverseScene() {
     picSendRef.current = (on) => {
       net?.sendPic(on && myPic ? myPic : null);
     };
-    // ★ သိမ်းထားတဲ့ avatar ကို ဖတ်ပြီး တင်တယ် — မရရင် default နဲ့ ဆက်သွားတယ်
+    // ★ သိမ်းထားတဲ့ avatar ကို ဖတ်ပြီး တင်တယ် — မရရင် default နဲ့ ဆက်သွားတယ်။
+    // Arena မှာ ကိုယ့် body က rigged GLB မို့ procedural config မတင်ဘူး —
+    // profile pic (myPic) ကတော့ room မရွေး လိုတယ်။
     void fetch("/api/metaverse/avatar", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { config?: AvatarConfig; pic?: string | null } | null) => {
-        if (killed || !d?.config) return;
-        applyAvatarConfig(me, sanitizeAvatar(d.config, new Set()));
+        if (killed || !d) return;
+        if (d.config && map.id !== "arena") {
+          applyAvatarConfig(me, sanitizeAvatar(d.config, new Set()));
+        }
         myPic = typeof d.pic === "string" ? d.pic : null;
         syncPic();
       })
       .catch(() => {
-        applyAvatarConfig(me, DEFAULT_AVATAR);
+        if (map.id !== "arena") applyAvatarConfig(me, DEFAULT_AVATAR);
       });
     // ရုပ်ပြင်ပြီးတိုင်း ပြန်ခေါ်လို့ရတဲ့ live re-apply — scene rebuild မလို
     applyAvatarRef.current = () => {
+      if (map.id === "arena") return; // rigged body — config မသက်ဆိုင်ဘူး
       void fetch("/api/metaverse/avatar", { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : null))
         .then((d: { config?: AvatarConfig } | null) => {
@@ -882,12 +907,18 @@ export function MetaverseScene() {
       // (lerp/nametag/dispose) အကုန် တစ်လမ်းတည်း။
       // (Player avatar တွေက ရုပ်ပြင်ခန်း customize လုပ်လို့ရတဲ့
       //  procedural human အတိုင်း — GLB နဲ့ အစားထိုးရင် customization ပျက်မယ်)
+      // 🎖 Arena မှာ **လူသား remote တွေလည်း** rigged soldier — variant က
+      // id hash နဲ့ တည်ငြိမ် (client တိုင်း တူတူမြင်)၊ ဓားပြ bot တွေက
+      // သတ်မှတ်ထား variant (b/c/j)။
+      const rigged = kind === "soldier" || (kind === "human" && map.id === "arena");
       const avatar =
         kind === "dog"
           ? createDog(s.name?.includes("နက်") ? 0x24201c : 0xb9873c)
-          : kind === "soldier"
+          : rigged
             ? createRiggedHuman(
-                ["b", "c", "j"][(Number.parseInt(id.slice(4), 10) || 1) - 1] ?? "b",
+                kind === "soldier"
+                  ? (["b", "c", "j"][(Number.parseInt(id.slice(4), 10) || 1) - 1] ?? "b")
+                  : soldierVariantFor(id),
               )
             : createHuman(colorFor(id));
       avatar.group.position.set(s.x ?? 0, s.y ?? 0, s.z ?? 0);
@@ -1324,6 +1355,14 @@ export function MetaverseScene() {
               if (shooter && rw !== "bite") {
                 setHandWeapon(shooter.avatar, rw);
               }
+              // 🎖 Rigged avatar ဆို ပစ်တိုင်း ပစ်ဟန် one-shot clip —
+              // ဓား/ကိုက်ဆို ဝှေ့ဟန်။ (dog/procedural မှာ playClip မရှိ)
+              if (shooter) {
+                const playClip = shooter.avatar.group.userData.playClip as
+                  | ((name: string, holdMs?: number) => void)
+                  | undefined;
+                playClip?.(melee ? "attack-melee-right" : "holding-right-shoot");
+              }
               sfx?.shot(rw === "bite" ? "knife" : rw);
               break;
             }
@@ -1454,6 +1493,16 @@ export function MetaverseScene() {
               // သေဆုံးသူ (remote) နေရာမှာ ကွင်းနီကြီး — kill motion graphic
               const kr = remotes.get(String(m.victimId));
               if (kr) combatFx?.ring(kr.cur.x, kr.cur.z, 0x991111, 1.3);
+              // 🎖 Rigged avatar သေဟန် — die clip ပြပြီး ခဏ အလောင်းပုံ
+              // ဆက်ထား (respawn teleport မတိုင်ခင်)
+              {
+                const dieClip = (
+                  m.victimId === myId ? me.group : kr?.avatar.group
+                )?.userData.playClip as
+                  | ((name: string, holdMs?: number) => void)
+                  | undefined;
+                dieClip?.("die", 1500);
+              }
               // 🏴‍☠️ ဓားပြပါတဲ့ kill က assassin အမှတ်မထိ — "လူမှား ✗" မပြရ
               const anyBot = m.victimBot === true || m.killerBot === true;
               pushFeed(
@@ -1612,6 +1661,13 @@ export function MetaverseScene() {
         //   (aHit/aKill) ကပဲ ဆုံးဖြတ်တယ်။
         if (combat.ammo !== 0) {
           sfx?.shot(combat.weapon);
+          // 🎖 TP မှာ ကိုယ့် rigged body ရဲ့ ပစ်ဟန်/ဝှေ့ဟန် one-shot
+          // (FP မှာ body ဖျောက်ထားလို့ အလကား — ဒါပေမယ့် ခေါ်လည်း မထိခိုက်)
+          (me.group.userData.playClip as
+            | ((name: string, holdMs?: number) => void)
+            | undefined)?.(
+            combat.weapon === "knife" ? "attack-melee-right" : "holding-right-shoot",
+          );
           if (combat.weapon === "knife") {
             // 🔪 ဓားက ဝှေ့တာ — ကျည်လမ်းကြောင်း/ပြောင်းဝမီး မထွက်ရဘူး
             swingT = 0.25;
