@@ -57,6 +57,16 @@ export default async function GamesPage() {
       show: isAdult,
     },
     {
+      href: "/games/arena",
+      emoji: "🙈",
+      title: "ဝှက်တမ်း (Arena)",
+      description:
+        "ရှာဖွေသူ ၁ ယောက် — ကျန်တာ ပုန်း။ လက်နက်မပါ၊ အသက်ကန့်သတ်ချက် မလို",
+      // No age gate: hide-and-seek has no combat at all (the server refuses
+      // combat messages in this room type — see games/arena/page.tsx).
+      show: true,
+    },
+    {
       href: "/learn/game",
       emoji: "🌻",
       title: "Grow-a-Garden",
