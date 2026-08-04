@@ -1,0 +1,221 @@
+"use strict";
+
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+
+const assassin = require("./assassin.js");
+const bots = require("./bots.js");
+
+/// 🏴‍☠️ ဓားပြ bot AI — socket မလိုဘဲ စည်းမျဉ်းတွေ စမ်းတယ်။
+/// (assassin.test.js နဲ့ ပုံစံတူ — match object ကို တိုက်ရိုက် ကိုင်တယ်)
+
+function matchWithHuman(id = "h1", name = "လူသား") {
+  const match = assassin.createMatch();
+  match.players.set(id, assassin.makePlayer(id, name, match.seq++));
+  return match;
+}
+
+function firstBot(match) {
+  return [...match.players.values()].find((p) => p.bot);
+}
+
+const msgsOf = (events) => events.map((e) => e.msg?.type).filter(Boolean);
+
+test("ensureBots: လူရှိမှ ဓားပြ ၃ ယောက် ဝင်တယ်၊ ထပ်ခေါ်လည်း မထပ်ဘူး", () => {
+  const empty = assassin.createMatch();
+  assert.equal(bots.ensureBots(empty).length, 0);
+
+  const match = matchWithHuman();
+  const ev = bots.ensureBots(match);
+  const botList = [...match.players.values()].filter((p) => p.bot);
+  assert.equal(botList.length, bots.BOT_COUNT);
+  assert.equal(ev.filter((e) => e.msg?.type === "aEnter").length, bots.BOT_COUNT);
+  // Idempotent
+  assert.equal(bots.ensureBots(match).length, 0);
+  // publicPlayer မှာ bot flag ပါတယ် — client က ခွဲမြင်ဖို့
+  assert.equal(assassin.publicPlayer(botList[0]).bot, true);
+});
+
+test("assignTargets: bot တွေ သံသရာထဲ မပါဘူး", () => {
+  const match = matchWithHuman("h1");
+  match.players.set("h2", assassin.makePlayer("h2", "လူ၂", match.seq++));
+  bots.ensureBots(match);
+  assassin.assignTargets(match);
+  const h1 = match.players.get("h1");
+  const h2 = match.players.get("h2");
+  assert.equal(h1.targetId, "h2");
+  assert.equal(h2.targetId, "h1");
+  for (const b of [...match.players.values()].filter((p) => p.bot)) {
+    assert.equal(b.targetId, null);
+    assert.equal(b.hunterId, null);
+  }
+});
+
+test("noteHit: bot ကို ပစ်ရင် ရန်ငြိုးထားပြီး လိုက်ပစ်တယ်", () => {
+  const now = 1_000_000;
+  const match = matchWithHuman();
+  bots.ensureBots(match, now);
+  const h = match.players.get("h1");
+  const b = firstBot(match);
+  // ဝေးဝေးမှာ ထား — mug-range ကာကွယ်
+  h.x = 25;
+  h.z = 0;
+  b.x = -25;
+  b.z = 0;
+
+  bots.noteHit(match, "h1", b.id, now);
+  assert.ok(b.grudge["h1"] > now);
+
+  // Tick — bot က h1 ဆီ ချဉ်းကပ်ရမယ်
+  const before = Math.hypot(h.x - b.x, h.z - b.z);
+  bots.tick(match, now + 100);
+  const after = Math.hypot(h.x - b.x, h.z - b.z);
+  assert.ok(after < before, "bot must chase its grudge target");
+
+  // ရန်ငြိုး သက်တမ်းကုန်ရင် မလိုက်တော့ဘူး
+  const later = now + bots.GRUDGE_MS + 1000;
+  bots.tick(match, later);
+  assert.equal(b.grudge["h1"], undefined);
+});
+
+test("bot: ချိန်ပြီး fireMs/settle ပြည့်ရင် ပစ်တယ် (aShot ထွက်တယ်)", () => {
+  const now = 2_000_000;
+  const match = matchWithHuman();
+  bots.ensureBots(match, now);
+  const h = match.players.get("h1");
+  const b = firstBot(match);
+  h.x = 3;
+  h.z = 0;
+  b.x = 0;
+  b.z = 0;
+  bots.noteHit(match, "h1", b.id, now);
+
+  bots.tick(match, now); // aimSince စမှတ်
+  const ev = bots.tick(match, now + bots.AIM_SETTLE_MS + 200);
+  assert.ok(msgsOf(ev).includes("aShot"), "bot should fire after settling");
+});
+
+test("bot သတ်ရင်: အမှတ်မထိ၊ လက်နက် drop ကျတယ်", () => {
+  const match = matchWithHuman();
+  match.players.set("h2", assassin.makePlayer("h2", "လူ၂", match.seq++));
+  bots.ensureBots(match);
+  assassin.assignTargets(match);
+  const h = match.players.get("h1");
+  const b = firstBot(match);
+  b.weapon = "smg";
+
+  const ev = assassin.applyDamage(match, h, b, 999, h.weapon, "body");
+  const types = msgsOf(ev);
+  assert.ok(types.includes("aKill"));
+  assert.ok(types.includes("aDrop"), "bot death must drop its weapon");
+  const kill = ev.find((e) => e.msg?.type === "aKill").msg;
+  assert.equal(kill.victimBot, true);
+  assert.equal(kill.correct, false);
+  // Assassin အမှတ်စနစ် မထိရ
+  assert.equal(h.score, 0);
+  assert.equal(h.wrongKills, 0);
+  assert.equal(h.kills, 0);
+  // Drop ထဲမှာ bot ရဲ့ လက်နက်
+  const drop = [...match.drops.values()][0];
+  assert.equal(drop.weapon, "smg");
+});
+
+test("drops: ကောက်ရင် ကျည်တိုး + aPickup၊ TTL ကုန်ရင် ပျောက်တယ်", () => {
+  const now = 3_000_000;
+  const match = matchWithHuman();
+  const h = match.players.get("h1");
+  const victim = assassin.makePlayer("h2", "လူ၂", match.seq++);
+  victim.weapon = "revolver";
+  victim.x = 5;
+  victim.z = 5;
+  match.players.set("h2", victim);
+
+  assassin.applyDamage(match, h, victim, 999, "pistol", "body", now);
+  assert.equal(match.drops.size, 1);
+
+  // ဝေးရင် မကောက်ဘူး
+  h.x = 20;
+  h.z = 20;
+  assert.equal(assassin.collectDrops(match, h, now).length, 0);
+
+  // အနားရောက်ရင် ကောက်တယ်
+  h.x = 5;
+  h.z = 5.5;
+  const before = h.ammo.revolver;
+  const ev = assassin.collectDrops(match, h, now);
+  const types = msgsOf(ev);
+  assert.ok(types.includes("aDropGone"));
+  assert.ok(types.includes("aPickup"));
+  assert.ok(h.ammo.revolver > before);
+  assert.equal(match.drops.size, 0);
+
+  // TTL — မကောက်ဘဲ ထားရင် expireDrops က ရှင်းတယ်
+  const v2 = assassin.makePlayer("h3", "လူ၃", match.seq++);
+  match.players.set("h3", v2);
+  assassin.applyDamage(match, h, v2, 999, "pistol", "body", now);
+  assert.equal(match.drops.size, 1);
+  assert.equal(assassin.expireDrops(match, now + 1000).length, 0);
+  const gone = assassin.expireDrops(match, now + assassin.DROP_TTL_MS + 1);
+  assert.equal(msgsOf(gone)[0], "aDropGone");
+  assert.equal(match.drops.size, 0);
+});
+
+test("befriend: wave နဲ့ မိတ်ဆွေဖြစ်၊ ရန်ငြိုးရှိရင် ငြင်းတယ်", () => {
+  const now = 4_000_000;
+  const match = matchWithHuman();
+  bots.ensureBots(match, now);
+  const h = match.players.get("h1");
+  const b = firstBot(match);
+  b.x = h.x + 2;
+  b.z = h.z;
+
+  // ရန်ငြိုးရှိရင် လက်မခံ
+  b.grudge["h1"] = now + 10000;
+  assert.equal(bots.befriend(match, "h1", now).length, 0);
+
+  delete b.grudge["h1"];
+  const ev = bots.befriend(match, "h1", now);
+  assert.equal(ev[0]?.msg?.type, "aBotMood");
+  assert.equal(ev[0].msg.mood, "friend");
+  assert.equal(b.friendOf, "h1");
+});
+
+test("friend bot: ကိုယ့် friend အထိခံရရင် ပစ်သူကို ရန်ငြိုး၊ friend ကို ပစ်မိရင် မိတ်ဆွေပျက်", () => {
+  const now = 5_000_000;
+  const match = matchWithHuman("h1");
+  match.players.set("h2", assassin.makePlayer("h2", "လူ၂", match.seq++));
+  bots.ensureBots(match, now);
+  const b = firstBot(match);
+  b.friendOf = "h1";
+
+  // h2 က friend (h1) ကို ပစ်တယ် → bot က h2 ကို ရန်ငြိုး
+  bots.noteHit(match, "h2", "h1", now);
+  assert.ok(b.grudge["h2"] > now);
+
+  // h1 က ကိုယ့် friend bot ကို ပစ်မိရင် — မိတ်ဆွေပျက်ပြီး ရန်သူပြန်ဖြစ်
+  bots.noteHit(match, "h1", b.id, now);
+  assert.equal(b.friendOf, null);
+  assert.ok(b.grudge["h1"] > now);
+});
+
+test("ဓားပြသဘာဝ: friend မဟုတ်တဲ့လူ အနားကပ်ရင် လုယက်ရန်ငြိုး ဖြစ်တယ်", () => {
+  const now = 6_000_000;
+  const match = matchWithHuman();
+  bots.ensureBots(match, now);
+  const h = match.players.get("h1");
+  const b = firstBot(match);
+  h.x = b.x + 2;
+  h.z = b.z;
+  bots.tick(match, now);
+  assert.ok((b.grudge["h1"] ?? 0) > now, "bandit should turn on close strangers");
+
+  // Friend ဖြစ်ရင် မလုယက်ဘူး
+  const b2 = [...match.players.values()].filter((p) => p.bot)[1];
+  b2.friendOf = "h1";
+  h.x = b2.x + 1;
+  h.z = b2.z;
+  delete b2.grudge["h1"];
+  // b2 ကို သီးသန့်စစ် — tick တစ်ခါပြီးရင် friend မို့ ရန်ငြိုး မထားရ
+  bots.tick(match, now + 100);
+  assert.equal(b2.grudge["h1"], undefined);
+});

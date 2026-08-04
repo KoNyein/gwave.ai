@@ -14,6 +14,7 @@ const {
   ADULT_ROOMS,
 } = require("./rooms");
 const assassin = require("./assassin.js");
+const bots = require("./bots.js");
 const arena = require("./arena.js");
 const { identify } = require("./auth");
 const { Pool } = require("pg");
@@ -108,6 +109,15 @@ function aPushPersonal(roomId, match) {
   for (const p of match.players.values()) {
     const sock = rooms.rooms.get(roomId)?.get(p.id);
     if (sock) send(sock.ws, { type: "aYou", you: assassin.personalState(match, p) });
+  }
+}
+/// 🏴‍☠️ Combat event ထွက်တိုင်း bot တွေကို ကြည့်ခိုင်းတယ် — ရန်ငြိုး
+/// (ပစ်ခံရရင်) နဲ့ friend-ကာကွယ်မှု စည်းမျဉ်းက aHit ကနေ စတယ်။
+function noteCombat(match, events) {
+  for (const e of events) {
+    if (e.msg?.type === "aHit") {
+      bots.noteHit(match, String(e.msg.attackerId), String(e.msg.victimId));
+    }
   }
 }
 const weather = createWeatherDirector(ROOMS);
@@ -718,6 +728,11 @@ wss.on("connection", async (ws, req) => {
         if (e !== null && !EMOTES.has(e)) return;
         player.emote = e;
         emit(player.room, { type: "emote", id: player.id, emote: e }, player.id);
+        // 👋 Arena မှာ wave = အနီးက ဓားပြ bot နဲ့ မိတ်ဆွေဖွဲ့ကြိုးစားခြင်း
+        if (e === "wave") {
+          const am = matches.get(player.room);
+          if (am) aSend(player.room, bots.befriend(am, player.id));
+        }
         break;
       }
 
@@ -885,6 +900,8 @@ wss.on("connection", async (ws, req) => {
           player: assassin.publicPlayer(match.players.get(player.id)),
         }, player.id);
         aPushPersonal(player.room, match);
+        // 🏴‍☠️ လူရှိလာရင် ဓားပြ bot တွေ ကွင်းထဲ ဝင်တယ်
+        aSend(player.room, bots.ensureBots(match));
         break;
       }
 
@@ -899,6 +916,13 @@ wss.on("connection", async (ws, req) => {
         rooms.broadcast(player.room, {
           type: "aMove", id: me.id, x: me.x, y: me.y, z: me.z, ry: me.ry,
         }, player.id);
+        // 🔫 အနီးက ကျတဲ့လက်နက် အလိုအလျောက် ကောက်တယ် — ကျည်ရရင်
+        // ကိုယ့် HUD ကို aYou နဲ့ ချက်ချင်း ပြန်ပြတယ်။
+        const picked = assassin.collectDrops(match, me);
+        if (picked.length > 0) {
+          aSend(player.room, picked);
+          send(ws, { type: "aYou", you: assassin.personalState(match, me) });
+        }
         break;
       }
 
@@ -911,6 +935,7 @@ wss.on("connection", async (ws, req) => {
         if (events.length === 0) break;
         aSend(player.room, events);
         aPushPersonal(player.room, match);
+        noteCombat(match, events);
         // 💣 ဗုံး fuse — handleFire က `fuse` marker ပြန်ရင် BOMB_FUSE_MS
         //   အကြာမှာ detonate (ဒဏ်က ပေါက်ကွဲချိန်နေရာတွေနဲ့ — ရှောင်လို့ရ)။
         for (const e of events) {
@@ -923,6 +948,7 @@ wss.on("connection", async (ws, req) => {
             const boomEvents = assassin.detonate(m2, attackerId, fx, fz);
             aSend(fuseRoom, boomEvents);
             aPushPersonal(fuseRoom, m2);
+            noteCombat(m2, boomEvents);
             if (boomEvents.some((ev) => ev.msg?.type === "aWin")) {
               setTimeout(() => {
                 const m3 = matches.get(fuseRoom);
@@ -1106,8 +1132,14 @@ wss.on("connection", async (ws, req) => {
         rooms.broadcast(player.room, { type: "aLeave", id: player.id });
         aPushPersonal(player.room, aMatch);
       }
-      // ကစားသူ မကျန်တော့ရင် state ကို မထားခဲ့ဘူး
-      if (aMatch.players.size === 0) matches.delete(player.room);
+      // ကစားသူ (လူသား) မကျန်တော့ရင် state ကို မထားခဲ့ဘူး — bot တွေ
+      // တစ်ယောက်တည်း ကျန်နေရင်လည်း ပွဲသိမ်းတယ် (AI က လူမရှိဘဲ မလိုဘူး)။
+      if ([...aMatch.players.values()].every((p) => p.bot)) {
+        for (const b of aMatch.players.values()) {
+          rooms.broadcast(player.room, { type: "aLeave", id: b.id });
+        }
+        matches.delete(player.room);
+      }
     }
     // ★ Arena — ပြတ်သွားတာက ကိုယ်တိုင်ထွက်တာ **မဟုတ်ဘူး**。 နေရာကို
     //   ၆၀ စက္ကန့် ချန်ထားတယ် (spec A3.2) — Mae Sot ဘက် network
@@ -1143,6 +1175,29 @@ const assassinTicker = setInterval(() => {
     aPushPersonal(roomId, match);
   }
 }, 500);
+
+/// 🏴‍☠️ ဓားပြ Bot AI — 150ms tick。 လူရှိတဲ့ match မှာသာ အလုပ်လုပ်တယ်
+/// (bots.tick က လူမရှိရင် ချက်ချင်း ပြန်ထွက်တယ်) — room အလကားတွေအတွက်
+/// CPU မကုန်ဘူး။ Bot ပစ်ချက်တွေကလည်း handleFire ကိုပဲ ဖြတ်လို့ ရန်ငြိုး/
+/// friend-ကာကွယ်မှုအတွက် noteCombat ကို ဒီမှာလည်း ခေါ်ရတယ်။
+const botTicker = setInterval(() => {
+  for (const [roomId, match] of matches) {
+    try {
+      const events = bots.tick(match);
+      events.push(...assassin.expireDrops(match));
+      if (events.length === 0) continue;
+      aSend(roomId, events);
+      noteCombat(match, events);
+      // Bot က လူကို ထိရင် hp ပြောင်းတယ် — HUD ကို ချက်ချင်း ပြန်ပြ
+      if (events.some((e) => e.msg?.type === "aHit")) {
+        aPushPersonal(roomId, match);
+      }
+    } catch (err) {
+      // Tick တစ်ခု ကျလို့ ticker တစ်ခုလုံး မရပ်စေနဲ့
+      console.error("[mv] bot tick failed:", err);
+    }
+  }
+}, 150);
 
 /// ★ Arena — 20Hz。 ဒီတစ်ခုတည်းက ပွဲစဉ်အားလုံးကို မောင်းတယ်:
 ///   lifecycle transition, mode tick, snapshot ပို့ခြင်း။ Room တစ်ခုချင်းစီ
@@ -1191,6 +1246,7 @@ async function shutdown(signal) {
   clearInterval(moveFlusher);
   clearInterval(weatherTicker);
   clearInterval(assassinTicker);
+  clearInterval(botTicker);
   clearInterval(arenaTicker);
   games.stopAll();
 
