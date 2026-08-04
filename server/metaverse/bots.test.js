@@ -198,6 +198,41 @@ test("friend bot: ကိုယ့် friend အထိခံရရင် ပစ�
   assert.ok(b.grudge["h1"] > now);
 });
 
+test("🐕 ခွေး: bite (npc weapon) နဲ့ ဝင်လာပြီး အနီးကပ်မှ ကိုက်တယ်", () => {
+  const now = 7_000_000;
+  const match = matchWithHuman();
+  bots.ensureBots(match, now);
+  const dogs = [...match.players.values()].filter((p) => p.dog);
+  assert.equal(dogs.length, 2, "two wild dogs join");
+  const d = dogs[0];
+  assert.equal(d.weapon, "bite");
+  assert.equal(assassin.WEAPONS.bite.npc, true, "bite must be npc-only");
+  assert.equal(assassin.publicPlayer(d).dog, true);
+
+  const h = match.players.get("h1");
+  // ဝေးရင် မကိုက်နိုင် — ကပ်လာအောင် ပြေးတယ် (လူထက်မြန်)
+  h.x = d.x + 10;
+  h.z = d.z;
+  bots.noteHit(match, "h1", d.id, now);
+  const before = Math.hypot(h.x - d.x, h.z - d.z);
+  bots.tick(match, now + 100);
+  assert.ok(Math.hypot(h.x - d.x, h.z - d.z) < before, "dog chases");
+
+  // ကိုက်နိုင်တဲ့အကွာ — settle ပြီးရင် aShot(bite) ထွက်တယ်
+  h.x = d.x + 1.5;
+  h.z = d.z;
+  bots.tick(match, now + 200);
+  const ev = bots.tick(match, now + 200 + bots.AIM_SETTLE_MS + 300);
+  const shot = ev.find((e) => e.msg?.type === "aShot" && e.msg.id === d.id);
+  assert.ok(shot, "dog should bite when close and settled");
+  assert.equal(shot.msg.weapon, "bite");
+
+  // ခွေးသေရင် drop မကျဘူး (bite က ammo Infinity)
+  const dropsBefore = match.drops.size;
+  assassin.applyDamage(match, h, d, 999, "pistol", "body", now);
+  assert.equal(match.drops.size, dropsBefore, "dog death drops nothing");
+});
+
 test("ဓားပြသဘာဝ: friend မဟုတ်တဲ့လူ အနားကပ်ရင် လုယက်ရန်ငြိုး ဖြစ်တယ်", () => {
   const now = 6_000_000;
   const match = matchWithHuman();

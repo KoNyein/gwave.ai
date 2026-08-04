@@ -35,6 +35,7 @@ import { VoicePanel } from "./voice-panel";
 import { createVoiceChat, type VoiceChat } from "./voicechat";
 import { createWeather } from "./weather";
 import { buildWeaponMesh, disposeWeapon } from "./weapons3d";
+import { createDog } from "./dog3d";
 import { OwnershipControl } from "./web3/ownership";
 import { buildWorld, insideCollider, resolveCollision } from "./world";
 import { isInApp, native } from "@/lib/metaverse/native";
@@ -247,6 +248,8 @@ export function MetaverseScene() {
     alive: boolean;
     /// 🏴‍☠️ ဓားပြ NPC — scoreboard မှာ ခွဲပြဖို့
     bot?: boolean;
+    /// 🐕 ခွေး NPC — ခွေး 3D model + 🐕 tag
+    dog?: boolean;
   };
   type ArenaYou = {
     hp: number;
@@ -764,10 +767,15 @@ export function MetaverseScene() {
     /// ဖုန်းမှာ ၅၀ ယောက် ပြရင် frame က ကျတယ် (spec 17.4)。
     const MAX_REMOTES = inApp ? 20 : 80;
 
-    const addRemote = (id: string, s: RemoteState) => {
+    const addRemote = (id: string, s: RemoteState, kind: "human" | "dog" = "human") => {
       if (remotes.has(id)) return;
       if (remotes.size >= MAX_REMOTES) return;
-      const avatar = createHuman(colorFor(id));
+      // 🐕 ခွေး NPC ဆို ခွေး 3D model — Avatar interface တူလို့ ကျန်တာ
+      // (lerp/nametag/dispose) အကုန် တစ်လမ်းတည်း။ အမွေးရောင်က နာမည်အလိုက်။
+      const avatar =
+        kind === "dog"
+          ? createDog(s.name?.includes("နက်") ? 0x24201c : 0xb9873c)
+          : createHuman(colorFor(id));
       avatar.group.position.set(s.x ?? 0, s.y ?? 0, s.z ?? 0);
       scene.add(avatar.group);
       remotes.set(id, {
@@ -1081,19 +1089,25 @@ export function MetaverseScene() {
             }, 2200);
           };
           switch (m.type) {
-            case "aInit":
+            case "aInit": {
+              // 🐕 NPC သီးသန့်လက်နက် (ကိုက်) ကို လူ့လက်နက်တန်း/ရွေးစာရင်းက
+              // ဖျောက်ထားတယ် — server ကလည်း aWeapon မှာ ငြင်းတယ်။
+              const wAll =
+                (m.weapons as Record<
+                  string,
+                  { my?: string; fireMs?: number; npc?: boolean }
+                >) ?? {};
+              const wHuman = Object.fromEntries(
+                Object.entries(wAll).filter(([, v]) => !v?.npc),
+              );
               setArenaHud((h) => ({
                 ...h,
-                weapons: (m.weapons as Record<string, { my: string }>) ?? {},
+                weapons: wHuman as Record<string, { my: string }>,
                 board: (m.players as ArenaBoardRow[]) ?? [],
                 killsToWin: Number(m.killsToWin) || 3,
               }));
-              arenaWeaponListRef.current = Object.keys(
-                (m.weapons as Record<string, unknown>) ?? {},
-              );
-              for (const [wk, wv] of Object.entries(
-                (m.weapons as Record<string, { fireMs?: number; my?: string }>) ?? {},
-              )) {
+              arenaWeaponListRef.current = Object.keys(wHuman);
+              for (const [wk, wv] of Object.entries(wAll)) {
                 wFireMs[wk] = Number(wv?.fireMs) || 350;
                 wNames[wk] = String(wv?.my ?? wk);
               }
@@ -1104,19 +1118,26 @@ export function MetaverseScene() {
                 const qb = q as ArenaBoardRow & {
                   x?: number; y?: number; z?: number; ry?: number; weapon?: string;
                 };
-                addRemote(q.id, {
-                  x: Number(qb.x) || 0,
-                  y: Number(qb.y) || 0,
-                  z: Number(qb.z) || 0,
-                  ry: Number(qb.ry) || 0,
-                  name: q.name,
-                  authed: false,
-                });
+                addRemote(
+                  q.id,
+                  {
+                    x: Number(qb.x) || 0,
+                    y: Number(qb.y) || 0,
+                    z: Number(qb.z) || 0,
+                    ry: Number(qb.ry) || 0,
+                    name: q.name,
+                    authed: false,
+                  },
+                  q.dog ? "dog" : "human",
+                );
                 const br = remotes.get(q.id);
-                if (br) setHandWeapon(br.avatar, String(qb.weapon ?? "pistol"));
+                if (br && !q.dog) {
+                  setHandWeapon(br.avatar, String(qb.weapon ?? "pistol"));
+                }
               }
               teleportMe(m.players);
               break;
+            }
             case "aYou": {
               const you = m.you as ArenaYou;
               if (you.weapon !== combat.weapon) combat.prevWeapon = combat.weapon;
@@ -1146,11 +1167,14 @@ export function MetaverseScene() {
               // တခြားသူ ပစ်တာ — သူ့နေရာကနေ ကျည်လမ်းကြောင်း + အသံ။
               // ကိုယ့်ပစ်ချက်ကတော့ arenaFireRef မှာ ချက်ချင်း ပြပြီးသား။
               if (m.id === myId) break;
+              const rw = String(m.weapon || "pistol");
+              // 🔪🐕 Melee (ဓား/ကိုက်) မှာ ကျည်လမ်းကြောင်း/ပြောင်းဝမီး မရှိရ
+              const melee = rw === "knife" || rw === "bite";
               const sx = Number(m.x);
               const sy = Number(m.y);
               const sz = Number(m.z);
               const sry = Number(m.ry);
-              if ([sx, sy, sz, sry].every(Number.isFinite)) {
+              if (!melee && [sx, sy, sz, sry].every(Number.isFinite)) {
                 const from = new THREE.Vector3(sx, sy + 1.35, sz);
                 const dir = new THREE.Vector3(Math.sin(sry), 0, Math.cos(sry));
                 combatFx?.tracer(from, dir, 30);
@@ -1158,11 +1182,12 @@ export function MetaverseScene() {
               }
               // ပစ်သူ (remote) ရဲ့ လက်ထဲ လက်နက်ကိုလည်း ပြ — aShot က
               // သူ့လက်နက်အမျိုးအစား ပါလာလို့ ဒီကနေ sync လုပ်တယ်။
+              // (ကိုက် = ခွေး — လက်နက် mesh မရှိဘူး)
               const shooter = remotes.get(String(m.id));
-              if (shooter) {
-                setHandWeapon(shooter.avatar, String(m.weapon || "pistol"));
+              if (shooter && rw !== "bite") {
+                setHandWeapon(shooter.avatar, rw);
               }
-              sfx?.shot(String(m.weapon || "pistol"));
+              sfx?.shot(rw === "bite" ? "knife" : rw);
               break;
             }
             case "aThrown": {
@@ -1186,17 +1211,28 @@ export function MetaverseScene() {
                 board: [...h.board.filter((b) => b.id !== q.id), q],
               }));
               if (q.bot) {
-                addRemote(q.id, {
-                  x: Number(q.x) || 0,
-                  y: Number(q.y) || 0,
-                  z: Number(q.z) || 0,
-                  ry: Number(q.ry) || 0,
-                  name: q.name,
-                  authed: false,
-                });
+                addRemote(
+                  q.id,
+                  {
+                    x: Number(q.x) || 0,
+                    y: Number(q.y) || 0,
+                    z: Number(q.z) || 0,
+                    ry: Number(q.ry) || 0,
+                    name: q.name,
+                    authed: false,
+                  },
+                  q.dog ? "dog" : "human",
+                );
                 const br = remotes.get(q.id);
-                if (br) setHandWeapon(br.avatar, String(q.weapon ?? "pistol"));
-                pushFeed(`🏴‍☠️ ${q.name} ကွင်းထဲ ဝင်လာပြီ`, false);
+                if (br && !q.dog) {
+                  setHandWeapon(br.avatar, String(q.weapon ?? "pistol"));
+                }
+                pushFeed(
+                  q.dog
+                    ? `🐕 ${q.name} ကွင်းထဲ ဝင်လာပြီ`
+                    : `🏴‍☠️ ${q.name} ကွင်းထဲ ဝင်လာပြီ`,
+                  false,
+                );
               }
               break;
             }
@@ -1362,7 +1398,9 @@ export function MetaverseScene() {
                 if (m.of === myId) {
                   buzz([20, 30, 20]);
                   flashBanner(
-                    `🤝 ${m.name} နဲ့ မိတ်ဆွေဖြစ်ပြီ — မင်းကို ကူညီမယ်`,
+                    m.dog === true
+                      ? `🐕 ${m.name} က မင်းကို ခင်သွားပြီ — ရန်သူကို ဝိုင်းကိုက်ပေးမယ်`
+                      : `🤝 ${m.name} နဲ့ မိတ်ဆွေဖြစ်ပြီ — မင်းကို ကူညီမယ်`,
                     "good",
                   );
                 } else {
@@ -2769,6 +2807,7 @@ export function MetaverseScene() {
                     score: r.score,
                     dead: !r.alive,
                     bot: r.bot === true,
+                    dog: r.dog === true,
                   }))
               : [...hideHud.players]
                   .sort((a, b) => b.score - a.score)
@@ -2778,6 +2817,7 @@ export function MetaverseScene() {
                     score: r.score,
                     dead: false,
                     bot: false,
+                    dog: false,
                   }))
             ).map((r, i) => (
               <div
@@ -2787,7 +2827,7 @@ export function MetaverseScene() {
                 }`}
               >
                 <span className="truncate">
-                  {i + 1}. {r.bot ? "🏴‍☠️ " : ""}
+                  {i + 1}. {r.dog ? "🐕 " : r.bot ? "🏴‍☠️ " : ""}
                   {r.name}
                   {r.id === meId ? " (မင်း)" : ""}
                   {r.dead ? " ☠️" : ""}
@@ -2828,6 +2868,7 @@ export function MetaverseScene() {
                 <p>🏴‍☠️ <b>ဓားပြ NPC ၃ ယောက်</b> — အနားကပ်ရင် လုယက်တယ်၊ ပစ်မိရင် ရန်ငြိုးထားပြီး လိုက်ပစ်တယ်။ သတ်ရင် အမှတ်မထိဘဲ <b>လက်နက် ကျတယ်</b>။</p>
                 <p>🔫 <b>ကျတဲ့လက်နက်</b> (လှည့်နေတဲ့ လက်နက်) ဘေးကပ်ရင် အလိုအလျောက် ကောက်ပြီး ကျည်ရတယ် — စက္ကန့် ၃၀ အတွင်း မကောက်ရင် ပျောက်တယ်။</p>
                 <p>🤝 <b>ဓားပြနဲ့ မိတ်ဆွေဖွဲ့</b> — အနားကပ်ပြီး 🤝 (လက်ပြ) နှိပ်ရင် friend ဖြစ်တယ်။ Friend bot က နောက်ကလိုက်ပြီး မင်းကို ပစ်သူကို ပြန်ကူပစ်ပေးတယ် — သူ့ကို ပြန်ပစ်မိရင် မိတ်ဆွေပျက်တယ်။</p>
+                <p>🐕 <b>ခွေးရိုင်း ၂ ကောင်</b> — အနားကပ်ရင် ကိုက်တယ်၊ လူထက် ပြေးမြန်တယ်။ 🤝 လက်ပြပြီး ခင်လိုက်ရင် နောက်ကလိုက်ပြီး <b>ရန်သူကို ဝိုင်းကိုက်ပေးတယ်</b>။</p>
                 <p>👥 <b>အဖွဲ့နဲ့</b> — 📣 link ဖိတ် · 🏆 အမှတ်စာရင်း · chat/voice သုံးလို့ရ။</p>
               </div>
             </>

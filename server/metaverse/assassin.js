@@ -47,6 +47,9 @@ const WEAPONS = {
   smg: { my: "အက်စ်အမ်ဂျီ", dmg: 17, range: 30, fireMs: 95, ammo: 30, headMult: 1.6, splash: 0 },
   shotgun: { my: "သေနတ်ကြီး", dmg: 96, range: 9, fireMs: 900, ammo: 6, headMult: 1.2, splash: 0 },
   revolver: { my: "ရီဗော်လ်ဗာ", dmg: 62, range: 55, fireMs: 1100, ammo: 6, headMult: 2.1, splash: 0 },
+  // 🐕 ခွေးကိုက် — NPC သီးသန့် (npc flag)။ လူက ရွေးလို့ မရဘူး — server ရဲ့
+  // aWeapon က ငြင်းတယ်၊ client ရဲ့ လက်နက်တန်းကလည်း ဖျောက်ထားတယ်။
+  bite: { my: "ကိုက်", dmg: 22, range: 2.2, fireMs: 700, ammo: Infinity, headMult: 1.0, splash: 0, npc: true },
 };
 
 /// ★ `armor`/`helmet` မရှိတော့ဘူး — အပေါ်က မှတ်ချက် ကြည့်ပါ။
@@ -200,6 +203,8 @@ function publicPlayer(p) {
     weapon: p.weapon,
     /// Client က ဓားပြ NPC ကို လူသားနဲ့ ခွဲမြင်ဖို့ (nametag/avatar)
     bot: !!p.bot,
+    /// 🐕 ခွေး NPC — client က လူပုံစားမယ့်အစား ခွေး 3D model ဆောက်ဖို့
+    dog: !!p.dog,
   };
 }
 
