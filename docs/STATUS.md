@@ -139,6 +139,21 @@
 
 ## Changelog
 
+- 2026-08-04 (web): **Arena HUD precision layout + weapon crosshairs +
+  avatar picker in game rooms.** Screenshots showed the right-side action
+  cluster colliding with the minimap/Menu/ownership chip in landscape and
+  the fire button clipped at the screen edge — combat buttons are now
+  individually placed (🔫 left of jump, 🔄 above it, 🎯 above jump, 🧎
+  between fire and joystick) and 🏆/📣/🏙 moved into the top-left panel as
+  a compact row joined by a new 👤 ရုပ်ပြင် button that opens the existing
+  metaverse AvatarCustomiser (full body/colour/outfit selection) straight
+  from game rooms. Per-weapon crosshairs (gap cross for pistols, wide for
+  SMG, circle for shotgun, fine for sniper, dot/◎ for knife/bomb; ADS
+  tightens the gap), an iron-sight edge-dim vignette for non-sniper ADS,
+  hit motion graphics on victims (impact sparks + red ring, dark-red kill
+  ring — new combatfx.impact), FP head-bob while walking and a sprint FOV
+  widen (+5°) for movement feel. PR #466.
+
 - 2026-08-04 (web): **Arena PUBG-standard combat.** The real "can't shoot"
   root cause: the server rays from the *player's eye* (combat.js EYE_Y) but
   the client sent the *camera's* direction — in third person the camera sits
