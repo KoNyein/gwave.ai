@@ -1,19 +1,14 @@
 import * as THREE from "three";
 import type RAPIER_NS from "@dimforge/rapier3d-compat";
 
-import { MAP_HALF } from "@gwave-strike/shared";
+import { MAP_HALF, terrainHeight } from "@gwave-strike/shared";
 
 /// Open-world terrain + lighting + cover crates (blueprint §2.2).
-/// The prototype's sin/cos terrain becomes a Rapier heightfield collider so
-/// the character controller can walk it 1:1 with what is rendered.
+/// terrainHeight lives in shared/ — the server sim grounds with the same
+/// function, and the Rapier heightfield collider samples it so movement
+/// matches the render 1:1.
 
-export function terrainHeight(x: number, z: number): number {
-  return (
-    Math.sin(x * 0.045) * Math.cos(z * 0.038) * 2.2 +
-    Math.sin(x * 0.012 + 1.7) * 3.5 +
-    Math.cos(z * 0.017 + 0.4) * 2.6
-  );
-}
+export { terrainHeight };
 
 export type World = {
   scene: THREE.Scene;

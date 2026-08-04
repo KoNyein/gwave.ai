@@ -9,7 +9,10 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@gwave-strike/shared": "*"
+    "@colyseus/schema": "^4.0.30",
+    "@colyseus/ws-transport": "^0.17.13",
+    "@gwave-strike/shared": "*",
+    "colyseus": "^0.17.10"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

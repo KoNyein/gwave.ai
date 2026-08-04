@@ -1,18 +1,30 @@
 import { createServer } from "node:http";
 
-/// Phase 1 stub — health endpoint only. Phase 3 replaces this with the
-/// Colyseus server (MatchRoom, authoritative sim) per blueprint §4.
+import { Server } from "colyseus";
+import { WebSocketTransport } from "@colyseus/ws-transport";
+
+import { MatchRoom } from "./rooms/MatchRoom.js";
+
+/// Colyseus server (blueprint §4) + plain health endpoint for the Nginx /
+/// deploy checks. WebSocket path is proxied at /colyseus/ in production.
 
 const PORT = Number(process.env.PORT) || 2567;
 
-createServer((req, res) => {
+const http = createServer((req, res) => {
   if (req.url === "/health") {
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ ok: true, phase: 1 }));
+    res.end(JSON.stringify({ ok: true, phase: 3 }));
     return;
   }
   res.writeHead(404);
   res.end();
-}).listen(PORT, () => {
-  console.log(`[gwave-strike] health server on :${PORT} (Colyseus in Phase 3)`);
+});
+
+const game = new Server({
+  transport: new WebSocketTransport({ server: http }),
+});
+game.define("match", MatchRoom);
+
+http.listen(PORT, () => {
+  console.log(`[gwave-strike] Colyseus on :${PORT}`);
 });

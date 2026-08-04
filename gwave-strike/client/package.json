@@ -12,6 +12,7 @@
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.14.0",
     "@gwave-strike/shared": "*",
+    "colyseus.js": "^0.16.22",
     "three": "^0.170.0"
   },
   "devDependencies": {

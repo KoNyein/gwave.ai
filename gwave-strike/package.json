@@ -9,8 +9,8 @@
     "shared"
   ],
   "scripts": {
-    "dev": "npm run dev -w client",
+    "dev": "npm run build -w shared && npm run dev -w client",
     "build": "npm run build -w shared && npm run build -w client && npm run build -w server",
-    "typecheck": "npm run typecheck -w shared && npm run typecheck -w client && npm run typecheck -w server"
+    "typecheck": "npm run build -w shared && npm run typecheck -w client && npm run typecheck -w server"
   }
 }
