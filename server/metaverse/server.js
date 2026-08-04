@@ -7,6 +7,7 @@ const { WebSocketServer } = require("ws");
 const {
   Rooms,
   normalizeRoom,
+  roomDef,
   isGameRoom,
   ROOMS,
   GATED_ROOMS,
@@ -209,6 +210,22 @@ function markMoved(player) {
   // ★ Map ဖြစ်လို့ tick တစ်ခုထဲမှာ ၅ ခါ ရွှေ့လည်း **နောက်ဆုံးနေရာ** ပဲ
   // ပါမယ် — ကြားထဲက နေရာတွေက ဘယ်သူ့မှ အသုံးမဝင်ဘူး။
   m.set(player.id, player);
+}
+
+/// ⚔️ Game layer (assassin) က player ကို teleport လုပ်တိုင်း presence ကိုပါ
+/// ညှိရမယ်။ ★ မညှိရင် client က spawn ကို ခုန်သွားပြီး နောက် update မှာ
+/// presence anti-cheat ရဲ့ speed check က ကျလို့ `correct` နဲ့ နေရာဟောင်း
+/// ပြန်ဆွဲတယ် — teleport တိုင်း rubber-band ဖြစ်ပြီး "လမ်းလျှောက်လို့မရ"
+/// ခံစားချက် ဖြစ်တယ် (arena room မှာ တွေ့ခဲ့တဲ့ bug)။
+function syncPresence(roomId, id, x, y, z) {
+  const p = rooms.get(roomId)?.get(id);
+  if (!p) return;
+  p.x = x;
+  p.y = y;
+  p.z = z;
+  p.lastMoveAt = Date.now();
+  p.dirty = true;
+  markMoved(p);
 }
 
 const moveFlusher = setInterval(() => {
@@ -638,7 +655,11 @@ wss.on("connection", async (ws, req) => {
         // ရှိရမယ် (teleport hack ကိုတော့ ဒီမှာလည်း ဖမ်းတယ်)။
         const fpv = isFpvRoom(player.room);
         const maxSpeed = fpv ? FPV_MAX_SPEED : MAX_SPEED;
-        const worldR = fpv ? FPV_WORLD_RADIUS : WORLD_RADIUS;
+        // ★ Map ကြီးတဲ့ room (gwave-city 114) မှာ default 90 နဲ့ စစ်ရင်
+        //   မြို့စွန်မှာ rubber-band ဖြစ်တယ် — room def ရဲ့ worldR က အနိုင်ရ။
+        const worldR = fpv
+          ? FPV_WORLD_RADIUS
+          : roomDef(player.room)?.worldR ?? WORLD_RADIUS;
         const maxY = fpv ? FPV_MAX_Y : MAX_Y;
         const now = Date.now();
         const dt = Math.max(0.05, (now - player.lastMoveAt) / 1000);
@@ -840,6 +861,10 @@ wss.on("connection", async (ws, req) => {
             assassin.makePlayer(player.id, player.name, match.seq++),
           );
           assassin.assignTargets(match);
+          // Spawn teleport — presence ကိုပါ ညှိမှ client ရဲ့ နောက် update
+          // က anti-cheat မကျဘူး (syncPresence ရဲ့ မှတ်ချက် ကြည့်ပါ)။
+          const meA = match.players.get(player.id);
+          syncPresence(player.room, player.id, meA.x, meA.y, meA.z);
         }
         send(ws, {
           type: "aInit",
@@ -888,6 +913,11 @@ wss.on("connection", async (ws, req) => {
             const m2 = matches.get(roomId);
             if (!m2) return;
             assassin.resetRound(m2);
+            // ပွဲပြန်စချိန် spawn teleport — presence sync မလုပ်ရင်
+            // player အားလုံး rubber-band ဖြစ်မယ်။
+            for (const p2 of m2.players.values()) {
+              syncPresence(roomId, p2.id, p2.x, p2.y, p2.z);
+            }
             rooms.broadcast(roomId, {
               type: "aReset",
               players: [...m2.players.values()].map(assassin.publicPlayer),
@@ -1063,6 +1093,8 @@ const assassinTicker = setInterval(() => {
     const back = assassin.respawnDue(match);
     if (back.length === 0) continue;
     for (const p of back) {
+      // Respawn teleport — presence sync (rubber-band ကာကွယ်)
+      syncPresence(roomId, p.id, p.x, p.y, p.z);
       rooms.broadcast(roomId, { type: "aRespawn", id: p.id, x: p.x, y: p.y, z: p.z, hp: p.hp });
     }
     aPushPersonal(roomId, match);
