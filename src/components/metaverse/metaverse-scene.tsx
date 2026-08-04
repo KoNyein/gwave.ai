@@ -2519,8 +2519,16 @@ export function MetaverseScene() {
             အောက်ရွေ့တယ်၊ မဆံ့ရင် တန်းက scroll ဖြစ်တယ် (bottom-40 က
             joystick/chat ဧရိယာ မထိအောင်)။ */}
       <div className="pointer-events-none absolute bottom-40 left-3 top-3 z-20 flex flex-col items-start gap-2">
-      <div className="shrink-0 select-none rounded-lg bg-black/40 px-3 py-2 text-[11px] leading-relaxed text-white/80 backdrop-blur">
-        <div className="font-semibold text-emerald-300">Gwave Metaverse</div>
+      {/* ★ Game room မှာ panel box ကြီး မသုံးဘူး — status က game display ကို
+          နေရာအများကြီး ယူနေတယ်ဆိုတဲ့ report အရ float chip အသေးတွေပဲ။ */}
+      <div
+        className={`shrink-0 select-none text-[11px] leading-relaxed text-white/80 ${
+          inGameRoom ? "" : "rounded-lg bg-black/40 px-3 py-2 backdrop-blur"
+        }`}
+      >
+        {!inGameRoom && (
+          <div className="font-semibold text-emerald-300">Gwave Metaverse</div>
+        )}
         {/* Game room မှာ generic လမ်းညွှန်တွေ ဖျောက် — panel ကျဉ်းမှ
             weapons strip နဲ့ မထပ်ဘူး။ Game keybind တွေက ❓ နောက်မှာ။ */}
         {!touch && !inGameRoom && (
@@ -2533,7 +2541,7 @@ export function MetaverseScene() {
         {touch && !inGameRoom && <div>ဘယ်ဘက် joystick · ညာဘက် ခုန်</div>}
         {/* ⚔️ Game room ခလုတ်လမ်းညွှန် — desktop မှာ keyboard, ဖုန်းမှာ ခလုတ် */}
         {roomId === "arena" && showHelp && (
-          <div className="text-amber-200/90">
+          <div className="mt-1 rounded-lg bg-black/60 px-2 py-1 text-amber-200/90 backdrop-blur">
             {touch ? (
               <>
                 <div>🔫 ဖိထား = ဆက်ပစ် · 🎯 ချိန်ကွင်း · 🧎 ကုပ်</div>
@@ -2550,7 +2558,7 @@ export function MetaverseScene() {
           </div>
         )}
         {roomId === "hide-1" && showHelp && (
-          <div className="text-amber-200/90">
+          <div className="mt-1 rounded-lg bg-black/60 px-2 py-1 text-amber-200/90 backdrop-blur">
             {touch ? "🖐 ဖမ်း · 🏆 အမှတ် · 📣 ဖိတ်" : "🖐 = ဖမ်း · Tab = အမှတ်စာရင်း"}
           </div>
         )}
@@ -2558,21 +2566,27 @@ export function MetaverseScene() {
             ★ အရင်က ညာဘက် cluster မှာ ထားလို့ landscape မှာ minimap နဲ့
               ထပ်တယ် — ဒီမှာက ဘာနဲ့မှ မထပ်ဘူး။ 👤 က metaverse avatar
               ရုပ်ပြင်ခန်း (အရောင်/အဝတ်/ကိုယ်ခန္ဓာ ရွေးချယ်မှုအပြည့်)။ */}
+        {/* ★ Icon-only float ခလုတ်အသေးများ — စာတန်းပါရင် panel က game
+            display ကို နေရာယူလွန်းတယ် (report)။ Icon က aria/title နဲ့။ */}
         {(roomId === "arena" || roomId === "hide-1") && (
-          <div className="pointer-events-auto mt-1.5 flex flex-wrap items-center gap-1.5">
+          <div className="pointer-events-auto flex items-center gap-1">
             <button
               data-hud="1"
               onClick={() => setShowBoard((s) => !s)}
-              className="rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-[11px] text-white/85 backdrop-blur"
+              aria-label="အမှတ်စာရင်း"
+              title="အမှတ်စာရင်း"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/50 text-[13px] backdrop-blur"
             >
-              🏆 အမှတ်
+              🏆
             </button>
             <button
               data-hud="1"
               onClick={invite}
-              className="rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-[11px] text-white/85 backdrop-blur"
+              aria-label="အဖွဲ့ဖိတ်မယ်"
+              title="အဖွဲ့ဖိတ်မယ်"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/50 text-[13px] backdrop-blur"
             >
-              📣 ဖိတ်
+              📣
             </button>
             <button
               data-hud="1"
@@ -2580,34 +2594,44 @@ export function MetaverseScene() {
                 setMenu(null);
                 setDressing(true);
               }}
-              className="rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-[11px] text-white/85 backdrop-blur"
+              aria-label="Avatar ရုပ်ပြင်မယ်"
+              title="Avatar ရုပ်ပြင်မယ်"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/50 text-[13px] backdrop-blur"
             >
-              👤 ရုပ်ပြင်
+              👤
             </button>
             <button
               data-hud="1"
               onClick={() => setShowHelp((h) => !h)}
-              className={`rounded-lg border px-2 py-1 text-[11px] backdrop-blur ${
+              aria-label="ခလုတ်လမ်းညွှန်"
+              title="ခလုတ်လမ်းညွှန်"
+              className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] backdrop-blur ${
                 showHelp
-                  ? "border-amber-400/60 bg-amber-500/20 text-amber-200"
-                  : "border-white/20 bg-black/50 text-white/85"
+                  ? "border-amber-400/60 bg-amber-500/25 text-amber-200"
+                  : "border-white/20 bg-black/50"
               }`}
             >
-              ❓ ခလုတ်များ
+              ❓
             </button>
             <button
               data-hud="1"
               onClick={() => chooseMap("city")}
-              className="rounded-lg border border-white/15 bg-black/50 px-2 py-1 text-[11px] text-white/70 backdrop-blur"
+              aria-label="မြို့တော်ကို ထွက်မယ်"
+              title="မြို့တော်ကို ထွက်မယ်"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/50 text-[13px] backdrop-blur"
             >
-              🏙 ထွက်
+              🏙
             </button>
           </div>
         )}
         {ready && (
-          <div className="mt-1 flex items-center gap-2 text-white/50">
+          <div
+            className={`mt-1 flex items-center gap-2 text-white/50 ${
+              inGameRoom ? "w-fit rounded bg-black/40 px-1.5 py-0.5 text-[10px]" : ""
+            }`}
+          >
             <span>{fps} fps</span>
-            {clock && (
+            {clock && !inGameRoom && (
               <>
                 <span>·</span>
                 {/* Server နာရီကနေ တွက်ထားလို့ player တိုင်း တူညီတယ် */}
@@ -2635,8 +2659,8 @@ export function MetaverseScene() {
           </div>
         )}
 
-        {/* ── ကိုယ်ဘယ်သူလဲ ───────────────────────────────────────────── */}
-        {link === "live" && (
+        {/* ── ကိုယ်ဘယ်သူလဲ — game room မှာ ဖျောက် (နေရာချွေ) ────────── */}
+        {link === "live" && !inGameRoom && (
           <div className="pointer-events-auto mt-1 flex items-center gap-1.5">
             {meAuthed ? (
               <span className="text-emerald-300">👤 {meName}</span>
