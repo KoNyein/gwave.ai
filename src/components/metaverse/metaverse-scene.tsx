@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import * as THREE from "three";
 
 import { createSpatialAudio, type SpatialAudio } from "./audio";
@@ -1538,6 +1539,23 @@ export function MetaverseScene() {
                 </span>
               </button>
             ))}
+            {/* ── 🎮 Portal — ဂိမ်း world တွေက metaverse client နဲ့ protocol
+                မတူလို့ room အဖြစ် မဝင်ရဘူး၊ သီးခြား page ကို ကူးတယ်။ */}
+            <Link
+              data-hud="1"
+              href="/games/arena"
+              className="flex w-full items-start gap-2.5 rounded-lg border border-amber-400/30 bg-amber-500/10 px-2.5 py-2 text-left transition hover:bg-amber-500/20"
+            >
+              <span className="text-xl leading-none">🎮</span>
+              <span className="min-w-0">
+                <span className="block text-xs font-semibold text-white/90">
+                  ဂိမ်းခန်းများ — ဝှက်တမ်း (Arena)
+                </span>
+                <span className="block text-[10px] leading-snug text-white/55">
+                  ရှာဖွေသူ ၁ ယောက်၊ ကျန်တာ ပုန်း — ဂိမ်း world ထဲ ကူးမယ်
+                </span>
+              </span>
+            </Link>
           </div>
         )}
 
