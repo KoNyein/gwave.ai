@@ -30,6 +30,20 @@ const ROOM_DEFS = [
   { id: "fpv-warehouse", type: "social", mapId: "fpv-warehouse", maxPlayers: 32 },
   { id: "fpv-range", type: "social", mapId: "fpv-range", maxPlayers: 32 },
 
+  // ★ Hub-world arena — metaverse client က map picker ကနေ တိုက်ရိုက်
+  //   ဝင်တဲ့ Assassin game room (၁၈+)。 assassin-1..3 (သီးခြား /games
+  //   client) နဲ့ room ခွဲထားတာက protocol ရောမသွားအောင် — ဒီ room ထဲမှာ
+  //   metaverse presence (avatar) နဲ့ combat (aMove/aFire) နှစ်ထပ်လုံး
+  //   သွားတယ်။
+  {
+    id: "arena",
+    type: "game",
+    mapId: "arena",
+    maxPlayers: 12,
+    gate: "adult",
+    gameMode: "assassin",
+  },
+
   // ★ Assassin mini-game arenas (၁၈+)。 Room ကို ခွဲထားတာက ပွဲတွေ
   //   သီးခြားဖြစ်ဖို့ — တစ်ခုတည်းဆိုရင် ကမ္ဘာပေါ်က လူအားလုံး တစ်ပွဲထဲ
   //   ရောနေမယ်။

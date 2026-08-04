@@ -139,6 +139,23 @@
 
 ## Changelog
 
+- 2026-08-04 (web+server): **Arena joined the hub world (Roblox model).**
+  The metaverse map picker now carries a 5th world — ⚔️ ပွဲကွင ်း (`arena`
+  room, type `game`, 18+, gameMode assassin). One server (same WS), one
+  avatar (the player's metaverse avatar walks into the arena), one Cognito
+  login, no page reload — the combat layer (aJoin/aMove/aFire over the SAME
+  socket via the new `sendRaw`/`onRaw` game-layer hooks in net.ts) is
+  simply added on top of the normal presence protocol, and combat stays
+  server-authoritative (A4 ray resolution + applyMove anti-cheat).
+  In-scene HUD: crosshair, weapon row, hp/ammo, fire/reload (touch + CS
+  pointer-lock click), kill feed, target chip, death state, and a
+  return-to-city button; 18+ denial (WS close 4005/4006) renders a proper
+  gate screen instead of a silent retry loop. Social rooms keep ZERO combat
+  (server refuses combat messages by room type — unchanged). The separate
+  /games/assassin page still works (rooms assassin-1..3 are distinct from
+  `arena` so the two client protocols never share a match); retiring it is
+  the spec's later phase.
+
 - 2026-08-04 (web): **CCTV vendor-cloud playback sessions (PR 3 of 4).**
   `src/lib/cctv/camera-service.ts` is now the ONE authorization + dispatch
   path for playback: resolve camera → `canViewCamera` (owner / public
