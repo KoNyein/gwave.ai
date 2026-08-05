@@ -26,6 +26,13 @@ const ROOM_DEFS = [
   { id: "gwave-city", type: "social", mapId: "gwave-city", maxPlayers: 200, worldR: 120 },
   { id: "vip", type: "social", mapId: "city", maxPlayers: 200, gate: "token" },
 
+  // 🕹 Game Zone ရဲ့ ကိုယ်ပိုင် game room များ (client maps: drone-valley /
+  // champions / assassin-alley)။ ★ type social — mini-game runner (games.js)
+  // က room မရွေး အလုပ်လုပ်ပြီး drone-race/champions မှာ ယာဉ်တွေ လိုတယ်။
+  { id: "drone-race", type: "social", mapId: "drone-race", maxPlayers: 32 },
+  { id: "champions", type: "social", mapId: "champions", maxPlayers: 32 },
+  { id: "assassin-alley", type: "social", mapId: "assassin-alley", maxPlayers: 16 },
+
   // FPV drone simulator maps (client: src/lib/fpv/maps.ts)。 ဒါတွေက
   // ပွဲစဉ်စနစ် မသုံးဘူး — အတူတူ ပျံနေရုံ၊ ဒါကြောင့် social ပဲ။
   { id: "fpv-race", type: "social", mapId: "fpv-race", maxPlayers: 32 },

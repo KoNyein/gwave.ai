@@ -13,12 +13,13 @@ import type { Collider } from "./world";
 ///   (`/api/metaverse/board`) — ပို့စ် ၅ ခု၊ canvas texture အဖြစ်။
 
 /// Cabinet တစ်လုံးက ဘာလုပ်လဲ — **အားလုံး လောကထဲမှာပဲ**:
-///  - game    → server mini-game lobby ဖွင့် (drone race / assassin / race …)
-///  - room    → map/room ပြောင်း (STRIKE → arena စစ်မြေပြင်)
+///  - game    → လက်ရှိ room ထဲမှာ server mini-game lobby ဖွင့်
+///  - room    → ဂိမ်းရဲ့ ကိုယ်ပိုင် room ထဲ ပြောင်း၊ `gameId` ပါရင်
+///              ရောက်တာနဲ့ mini-game ကို အလိုအလျောက် join ပေးတယ်
 ///  - overlay → utility overlay (🧬 scan studio ကင်မရာသာ — ဂိမ်း မဟုတ်ဘူး)
 export type ArcadeAct =
   | { kind: "game"; gameId: string }
-  | { kind: "room"; roomId: string }
+  | { kind: "room"; roomId: string; gameId?: string }
   | { kind: "overlay" };
 
 export type Landmark = {
@@ -60,23 +61,26 @@ export type ArcadeGame = Landmark & { emoji: string; accent: string; tagMy: stri
 export const ARCADE_GAMES: ArcadeGame[] = [
   {
     id: "arc-drone", label: "GWAVE DRONE", href: "/drone/index.html",
-    x: -12, z: 20, radius: 3.4, act: { kind: "game", gameId: "droneRace" },
-    emoji: "🚁", accent: "#35e0b8", tagMy: "🛸 စီးပြီး ကောင်းကင် ring ဖြတ်",
+    x: -12, z: 20, radius: 3.4,
+    act: { kind: "room", roomId: "drone-race", gameId: "droneRace" },
+    emoji: "🚁", accent: "#35e0b8", tagMy: "Drone တောင်ကြား room · ring ၇ ခု",
   },
   {
     id: "arc-strike", label: "GWAVE STRIKE", href: "/strike/",
     x: -6, z: 20, radius: 3.4, act: { kind: "room", roomId: "arena" },
-    emoji: "🔫", accent: "#ff4d6d", tagMy: "Arena စစ်မြေပြင် ဝင်မယ်",
+    emoji: "🔫", accent: "#ff4d6d", tagMy: "Arena စစ်မြေပြင် room",
   },
   {
     id: "arc-assassin", label: "ASSASSIN", href: "/games/assassin",
-    x: 0, z: 20, radius: 3.4, act: { kind: "game", gameId: "assassin" },
-    emoji: "🎯", accent: "#f6ae2d", tagMy: "ပစ်မှတ်ကို လျှို့ဝှက်ချဉ်းကပ်",
+    x: 0, z: 20, radius: 3.4,
+    act: { kind: "room", roomId: "assassin-alley", gameId: "assassin" },
+    emoji: "🎯", accent: "#f6ae2d", tagMy: "ညလမ်းကြား room · လိုက်တမ်း",
   },
   {
     id: "arc-dronechamp", label: "DRONE CHAMPIONS", href: "/games/drone-sim",
-    x: 6, z: 20, radius: 3.4, act: { kind: "game", gameId: "race" },
-    emoji: "🏁", accent: "#3f88c5", tagMy: "Checkpoint ပြိုင်ပွဲ",
+    x: 6, z: 20, radius: 3.4,
+    act: { kind: "room", roomId: "champions", gameId: "race" },
+    emoji: "🏁", accent: "#3f88c5", tagMy: "ပြိုင်ကွင်း room · checkpoint",
   },
   {
     id: "arc-avatar", label: "3D AVATAR", href: "/profile/avatar",
