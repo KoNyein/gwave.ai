@@ -20,6 +20,8 @@ export type RemoteView = {
   anim: string;
   kills: number;
   deaths: number;
+  /// Gwave profile uuid when the player has a scan avatar ("" = none)
+  avatarId: string;
   t: number; // arrival time for interpolation
 };
 
@@ -43,6 +45,7 @@ type PlayerLike = {
   kills: number;
   deaths: number;
   lastSeq: number;
+  avatarId?: string;
   listen?: unknown;
 };
 
@@ -60,10 +63,17 @@ export class Net {
   private batch: unknown[] = [];
   private killfeedSeen = 0;
 
-  async connect(url: string, events: NetEvents): Promise<boolean> {
+  async connect(
+    url: string,
+    events: NetEvents,
+    avatarId?: string,
+  ): Promise<boolean> {
     try {
       const client = new Colyseus.Client(url);
-      const room = await client.joinOrCreate("match", { name: playerName() });
+      const room = await client.joinOrCreate("match", {
+        name: playerName(),
+        avatarId: avatarId ?? "",
+      });
       this.room = room;
       this.meId = room.sessionId;
 
@@ -104,6 +114,7 @@ export class Net {
             anim: p.anim,
             kills: p.kills,
             deaths: p.deaths,
+            avatarId: p.avatarId ?? "",
             t: now,
           });
           while (buf.length > 12) buf.shift();

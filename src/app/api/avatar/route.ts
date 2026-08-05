@@ -93,6 +93,7 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
 
   let targetId = userId;
+  let ownId: string | null = null;
   if (!targetId) {
     const profile = await getCurrentProfile();
     if (!profile) {
@@ -102,6 +103,10 @@ export async function GET(request: NextRequest) {
       );
     }
     targetId = profile.id;
+    // ကိုယ့် config ဖတ်တဲ့အခါ ကိုယ့် id ပါ ပြန်ပေး — STRIKE လို same-origin
+    // client တွေက room ထဲ avatarId ကြေညာဖို့ သုံးတယ် (room peer တွေ မြင်ပြီးသား
+    // id မို့ secret မဟုတ်ဘူး)။
+    ownId = profile.id;
   }
 
   const { data: row } = await admin
@@ -113,7 +118,10 @@ export async function GET(request: NextRequest) {
     .maybeSingle();
 
   return NextResponse.json(
-    { config: row ? rowToConfig(row as Row) : DEFAULT_SCAN_AVATAR },
+    {
+      config: row ? rowToConfig(row as Row) : DEFAULT_SCAN_AVATAR,
+      ...(ownId ? { userId: ownId } : {}),
+    },
     {
       headers: userId
         ? // Public read — room join မှာ လူတိုင်းဆွဲလို့ CDN မှာ ခဏ သိမ်းခိုင်း
