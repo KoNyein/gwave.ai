@@ -139,6 +139,20 @@
 
 ## Changelog
 
+- 2026-08-05 (metaverse): **Dedicated game rooms.** Each Game Zone
+  cabinet now teleports into its game's own room and auto-joins the
+  mini-game lobby on connect (pendingGameRef → onInit): 🚁 drone-race
+  → "Drone တောင်ကြား" map (hills valley, enterable hangar + control
+  tower, 5 launch pads with 6 drones, lake; auto-join droneRace); 🏁
+  champions → "Champions ပြိုင်ကွင်း" (grandstands, enterable pit
+  building, start/finish arch pillars at the final checkpoint, lamps
+  along the racing line, 4 cars + 2 drones; auto-join race); 🎯
+  assassin-alley → "Assassin လမ်းကြား" (night palette, fog default,
+  city-block alley maze with 3.2m walls, sparse lamps + fire barrels;
+  auto-join assassin); 🔫 STRIKE keeps the arena combat room. Server:
+  3 new social room defs (drone-race/champions 32p, assassin-alley
+  16p); client: 3 new MapDefs registered, MAP_LIST + MapId extended.
+
 - 2026-08-05 (metaverse): **In-world games — Game Zone cabinets now play
   IN the engine (user feedback: iframes rejected).** Two new server
   mini-games (games.js, logic server-side, cheat-proof, lobby/score/

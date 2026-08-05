@@ -1,5 +1,8 @@
 import { ARENA_MAP } from "./arena";
+import { ASSASSIN_ALLEY } from "./assassin-alley";
+import { CHAMPIONS_CIRCUIT } from "./champions";
 import { CITY } from "./city";
+import { DRONE_VALLEY } from "./drone-valley";
 import { FARM } from "./farm";
 import { GWAVE_CITY } from "./gwave-city";
 import { HIDE_MAP } from "./hide";
@@ -19,11 +22,25 @@ export const MAPS: Record<MapId, MapDef> = {
   "gwave-city": GWAVE_CITY,
   arena: ARENA_MAP,
   "hide-1": HIDE_MAP,
+  "drone-race": DRONE_VALLEY,
+  champions: CHAMPIONS_CIRCUIT,
+  "assassin-alley": ASSASSIN_ALLEY,
 };
 
-/// ★ Game room တွေ (ဝှက်တမ်း၊ ပွဲကွင်း) က နောက်ဆုံး — social ၄ ခုနဲ့
+/// ★ Game room တွေ (ဝှက်တမ်း၊ ပွဲကွင်းများ) က နောက်ဆုံး — social ၄ ခုနဲ့
 /// picker မှာ ခွဲမြင်ရအောင်။
-export const MAP_LIST: MapDef[] = [CITY, FARM, SNOW, SKY, GWAVE_CITY, HIDE_MAP, ARENA_MAP];
+export const MAP_LIST: MapDef[] = [
+  CITY,
+  FARM,
+  SNOW,
+  SKY,
+  GWAVE_CITY,
+  HIDE_MAP,
+  ARENA_MAP,
+  DRONE_VALLEY,
+  CHAMPIONS_CIRCUIT,
+  ASSASSIN_ALLEY,
+];
 
 /// ★ မသိတဲ့ id ကို city အဖြစ် ယူတယ် — URL ကနေ ဘာမဆို ဝင်လာနိုင်လို့
 /// (server ရဲ့ `normalizeRoom` နဲ့ တူညီတဲ့ ချဉ်းကပ်ပုံ)။

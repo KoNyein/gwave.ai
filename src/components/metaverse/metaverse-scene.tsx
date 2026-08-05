@@ -209,6 +209,8 @@ export function MetaverseScene() {
   /// null = ပိတ်ထား။ ဂိမ်းပွင့်နေချိန် လောကက နောက်ခံမှာ ဆက်ရှင်နေတယ် —
   /// ✕ ပိတ်တာနဲ့ ကိုယ့် avatar ရပ်နေတဲ့ နေရာမှာပဲ ချက်ချင်း ပြန်ရောက်တယ်။
   const [arcade, setArcade] = useState<{ label: string; href: string } | null>(null);
+  /// Game room ပြောင်းပြီး ရောက်တာနဲ့ join မယ့် mini-game — onInit မှာ ပို့တယ်
+  const pendingGameRef = useRef<string | null>(null);
   /// ★ Map ပြောင်းရင် scene တစ်ခုလုံး ပြန်ဆောက်တယ် (effect ရဲ့ dependency)
   /// — map တစ်ခုချင်းက သီးခြားလောက ဖြစ်လို့ ကြားခံ state ကျန်ခဲ့လို့မရဘူး။
   const [roomId, setRoomId] = useState(DEFAULT_ROOM);
@@ -557,8 +559,9 @@ export function MetaverseScene() {
   };
 
   /// 🕹 Game Zone action — cabinet/menu ကနေ **လောကထဲမှာပဲ** ကစားစေတယ်:
-  /// game → server mini-game lobby (droneRace/assassin/race), room → map
-  /// ပြောင်း (arena), overlay → 🧬 scan studio (ကင်မရာ utility သာ)။
+  /// game → လက်ရှိ room မှာ mini-game lobby, room → ဂိမ်းရဲ့ ကိုယ်ပိုင် room
+  /// ပြောင်း (gameId ပါရင် ရောက်တာနဲ့ အလိုအလျောက် lobby ဝင်),
+  /// overlay → 🧬 scan studio (ကင်မရာ utility သာ)။
   const runArcade = (g: { label: string; href: string; act?: import("./landmarks").ArcadeAct }) => {
     const act = g.act;
     if (!act) return;
@@ -566,6 +569,9 @@ export function MetaverseScene() {
     if (act.kind === "game") {
       netRef.current?.sendGameJoin(act.gameId);
     } else if (act.kind === "room") {
+      // room ပြောင်းရင် scene ပြန်ဆောက်ပြီး WS အသစ်ချိတ်တယ် — game join ကို
+      // onInit ရောက်မှ ပို့ရမယ် (အခုပို့ရင် room အဟောင်းမှာ lobby ဖွင့်မိတယ်)
+      pendingGameRef.current = act.gameId ?? null;
       chooseMap(act.roomId);
     } else {
       document.exitPointerLock?.();
@@ -1076,6 +1082,12 @@ export function MetaverseScene() {
           // socket အသစ် မလို၊ ဒီ connection ပေါ်မှာပဲ။
           if (roomId === "arena") net?.sendRaw({ type: "aJoin" });
           if (roomId === "hide-1") net?.sendRaw({ type: "gJoin" });
+          // 🕹 Game Zone ကနေ room ပြောင်းလာတာဆိုရင် mini-game lobby ကို
+          // ချိတ်မိတာနဲ့ ချက်ချင်း ဝင်တယ် (cabinet ရဲ့ auto-join)
+          if (pendingGameRef.current) {
+            net?.sendGameJoin(pendingGameRef.current);
+            pendingGameRef.current = null;
+          }
           // ဖုန်းရဲ့ နာရီ မမှန်လည်း server နဲ့ တူညီအောင်
           clockOffset = serverTime - Date.now();
           // 🖼 ပြထားရင် ကိုယ့် profile ဓာတ်ပုံကို server ဆီ ကြေညာတယ် —
