@@ -69,6 +69,27 @@ export function AddCameraForm() {
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // ── 🎥 Tapo guided wizard ────────────────────────────────────────────────
+  // Template ထဲက USER/PASS/IP ကို လက်နဲ့ အစားထိုးရတာ အမှားအများဆုံး
+  // အဆင့်မို့ Tapo အတွက်တော့ ကွက်လပ် ၃ ခု ဖြည့်ရုံနဲ့ URL ကို ကျွန်တော်တို့
+  // ဘက်က ဆောက်ပေးတယ်။ တခြား brand တွေက template chip အတိုင်း။
+  const [tapoMode, setTapoMode] = React.useState(false);
+  const [tapoIp, setTapoIp] = React.useState("");
+  const [tapoUser, setTapoUser] = React.useState("");
+  const [tapoPass, setTapoPass] = React.useState("");
+  const [tapoHd, setTapoHd] = React.useState(true);
+  React.useEffect(() => {
+    if (!tapoMode) return;
+    const ip = tapoIp.trim();
+    const u = tapoUser.trim();
+    const p = tapoPass;
+    if (ip && u && p) {
+      setRtspUrl(
+        `rtsp://${encodeURIComponent(u)}:${encodeURIComponent(p)}@${ip}:554/${tapoHd ? "stream1" : "stream2"}`,
+      );
+    }
+  }, [tapoMode, tapoIp, tapoUser, tapoPass, tapoHd]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setPending(true);
@@ -152,15 +173,82 @@ export function AddCameraForm() {
                 key={p.label}
                 type="button"
                 onClick={() => {
+                  if (p.label.startsWith("Tapo")) {
+                    // Tapo — guided wizard (template မဟုတ်)
+                    setTapoMode(true);
+                    setPresetNote(null);
+                    return;
+                  }
+                  setTapoMode(false);
                   setRtspUrl(p.template);
                   setPresetNote(p.note);
                 }}
-                className="rounded-full border px-2.5 py-1 text-xs transition-colors hover:bg-muted/60"
+                className={`rounded-full border px-2.5 py-1 text-xs transition-colors hover:bg-muted/60 ${
+                  p.label.startsWith("Tapo") && tapoMode
+                    ? "border-primary bg-primary/10"
+                    : ""
+                }`}
               >
                 {p.label}
               </button>
             ))}
           </div>
+          {tapoMode ? (
+            <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+              <p className="text-xs font-medium">
+                🎥 Tapo ကင်မရာ — အဆင့် ၃ ဆင့်တည်း
+              </p>
+              <ol className="list-decimal space-y-1 pl-4 text-xs text-muted-foreground">
+                <li>
+                  Tapo app → ကင်မရာရွေး → ⚙️ → <b>Advanced Settings</b> →{" "}
+                  <b>Camera Account</b> မှာ account အသစ်ဆောက်ပါ (Tapo cloud
+                  email <b>မဟုတ်ပါ</b> — ကင်မရာသီးသန့် အကောင့်ပါ)
+                </li>
+                <li>
+                  ကင်မရာရဲ့ IP ကို Tapo app → ⚙️ → Device Info မှာ ကြည့်ပါ
+                  (router မှာ DHCP reservation လုပ်ထားရင် IP မပြောင်းတော့ပါ)
+                </li>
+                <li>အောက်က ကွက်လပ် ၃ ခု ဖြည့်ပါ — link ကို အလိုအလျောက် ဆောက်ပေးပါမယ်</li>
+              </ol>
+              <div className="grid grid-cols-3 gap-2">
+                <Input
+                  value={tapoIp}
+                  onChange={(e) => setTapoIp(e.target.value)}
+                  placeholder="IP (192.168.1.xx)"
+                  maxLength={45}
+                  aria-label="Tapo camera IP"
+                />
+                <Input
+                  value={tapoUser}
+                  onChange={(e) => setTapoUser(e.target.value)}
+                  placeholder="Camera Account user"
+                  maxLength={60}
+                  aria-label="Tapo camera account user"
+                />
+                <Input
+                  type="password"
+                  value={tapoPass}
+                  onChange={(e) => setTapoPass(e.target.value)}
+                  placeholder="Password"
+                  maxLength={60}
+                  aria-label="Tapo camera account password"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={tapoHd}
+                  onChange={(e) => setTapoHd(e.target.checked)}
+                />
+                HD (stream1) — ဖြုတ်ရင် SD (stream2, data သက်သာ)
+              </label>
+              <p className="text-[11px] text-muted-foreground">
+                ⚠️ ကင်မရာက ဒီ server နဲ့ network တစ်ခုတည်း (သို့) VPN/port
+                forward နဲ့ ရောက်နိုင်ရပါမယ်။ Link က အောက်က RTSP ကွက်ထဲ
+                အလိုအလျောက် ဝင်သွားပါမယ်။
+              </p>
+            </div>
+          ) : null}
           <Input
             id="cam-rtsp"
             value={rtspUrl}
