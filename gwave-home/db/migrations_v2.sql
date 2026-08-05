@@ -5,18 +5,18 @@
 -- ============================================================
 
 -- ၁။ SENSOR READINGS — time-series data (charts + history)
-CREATE TABLE IF NOT EXISTS sensor_readings (
+CREATE TABLE IF NOT EXISTS gh_sensor_readings (
   time      TIMESTAMPTZ NOT NULL DEFAULT now(),
   device_id TEXT NOT NULL,
   trait     TEXT NOT NULL,                 -- 'sensor.soil_moisture'
   value     DOUBLE PRECISION NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_readings_dev_trait_time
-  ON sensor_readings (device_id, trait, time DESC);
+CREATE INDEX IF NOT EXISTS idx_gh_readings_dev_trait_time
+  ON gh_sensor_readings (device_id, trait, time DESC);
 
 -- TimescaleDB ရှိရင် (RDS: CREATE EXTENSION timescaledb) ဒီ ၂ ကြောင်းဖွင့်ပါ:
--- SELECT create_hypertable('sensor_readings','time', if_not_exists => TRUE);
--- SELECT add_retention_policy('sensor_readings', INTERVAL '365 days');
+-- SELECT create_hypertable('gh_sensor_readings','time', if_not_exists => TRUE);
+-- SELECT add_retention_policy('gh_sensor_readings', INTERVAL '365 days');
 
 -- ၂။ RULES — automation (if-then)
 CREATE TABLE IF NOT EXISTS gh_rules (
