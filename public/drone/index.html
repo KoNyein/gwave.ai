@@ -70,12 +70,42 @@
 .dmg{position:fixed;color:#fff;font-size:17px;font-weight:bold;pointer-events:none;
     text-shadow:0 0 4px #000;transform:translate(-50%,-50%);z-index:9}
   .dmg.head{color:#ffcf40;font-size:21px}
+  /* ===== Garage ===== */
+  #garage{position:fixed;top:0;left:0;height:100%;width:min(360px,94vw);background:var(--panel);
+    color:#dbe7ff;padding:0;overflow-y:auto;transform:translateX(-105%);transition:transform .25s;z-index:22;
+    font-size:13px}
+  #garage.open{transform:translateX(0)}
+  .g-head{display:flex;justify-content:space-between;align-items:center;padding:14px;
+    color:var(--accent);letter-spacing:1px;border-bottom:1px solid #24304a}
+  .g-head button{background:none;border:none;color:#8fa3c8;font-size:16px;cursor:pointer}
+  .g-tabs{display:flex;flex-wrap:wrap;gap:4px;padding:10px 12px}
+  .g-tabs button{flex:1;min-width:70px;padding:7px 4px;background:#151f36;border:1px solid #2c3a5e;
+    color:#9fb0d0;cursor:pointer;font-family:inherit}
+  .g-tabs button.on{background:#16305c;color:#fff;border-color:var(--accent)}
+  .g-parts{display:flex;flex-direction:column;gap:6px;padding:4px 12px}
+  .g-part{text-align:left;padding:8px 10px;background:#101a30;border:1px solid #24304a;
+    color:#c8d6f0;cursor:pointer;font-family:inherit}
+  .g-part small{display:block;color:#5f7096;pointer-events:none}
+  .g-part b{pointer-events:none}
+  .g-part.on{border-color:var(--accent);background:#0c2438}
+  .g-colors{display:flex;gap:12px;padding:10px 12px;border-top:1px solid #24304a;margin-top:8px}
+  .g-colors label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:#8fa3c8}
+  .g-spec{padding:8px 12px;border-top:1px solid #24304a;line-height:1.9}
+  .g-spec b{color:#fff;float:right}
+  .g-bar{height:6px;background:#101a30;border:1px solid #24304a;margin-top:-4px}
+  .g-bar div{height:100%}
+  .g-hint{color:var(--accent);font-size:12px;margin-top:6px}
+  .g-actions{display:flex;gap:8px;padding:12px}
+  .g-actions button{flex:1;padding:10px;background:#16305c;border:1px solid #2c4a8a;color:#fff;
+    cursor:pointer;font-family:inherit;letter-spacing:1px}
+  #g-testfly{background:#0c4a3c!important;border-color:var(--accent)!important}
 </style>
 </head>
 <body>
 <div id="app"></div>
 
 <!-- FPV OSD -->
+<canvas id="static" style="position:fixed;inset:0;pointer-events:none;z-index:7;opacity:0;width:100%;height:100%"></canvas>
 <div id="dmg-layer"></div>
 <div id="vignette" style="position:fixed;inset:0;pointer-events:none;z-index:8;opacity:0;
   background:radial-gradient(ellipse at center,transparent 45%,rgba(200,20,20,.55) 100%)"></div>
@@ -96,6 +126,8 @@
   </div>
   <div class="osd-tr">
     <div>RSSI <span id="rssi">99</span></div>
+    <div id="payload-osd" style="display:none">PAYLOAD: <span id="payload-state">SAFE</span></div>
+    <div id="mark-osd" style="display:none">MARKING <span id="mark-pct">0</span>%</div>
     <div>⏱ <span id="timer">00:00</span></div>
   </div>
   <div class="osd-bl">
@@ -120,10 +152,15 @@
   <div class="osd-center"><span id="crosshair">✛</span></div>
   <div id="horizon"></div>
   <div id="warn">⚠ LOW BATTERY</div>
-  <div id="armed-msg">LMB=Fire · RMB=ADS · R=Reload · 1/2/3=Guns · 4=Mine · 5=Tripwire · 6=C4 · G=Detonate · P=Wave · [F]=DRONE</div>
+  <div id="armed-msg">LMB=Fire · RMB=ADS · 4/5/6=Traps · G=Detonate · P=Wave · [F]=STRIKE DRONE (30m→ARM · crash=ပေါက် · G=manual)</div>
 </div>
 
 <button id="gear">⚙ SETTINGS</button>
+<button id="online-btn" style="position:fixed;top:10px;right:12px;z-index:21;background:#0b1220cc;
+  color:#7dffb0;border:1px solid #2c5e3a;padding:7px 14px;cursor:pointer;font-family:inherit;letter-spacing:1px">🌐 ONLINE</button>
+<button id="garage-btn" style="position:fixed;top:10px;left:12px;z-index:21;background:#0b1220cc;
+  color:#dbe7ff;border:1px solid #2c3a5e;padding:7px 14px;cursor:pointer;font-family:inherit;letter-spacing:1px">🔧 GARAGE</button>
+<div id="garage"></div>
 <div id="xr-bar"></div>
 
 <!-- Settings panel -->

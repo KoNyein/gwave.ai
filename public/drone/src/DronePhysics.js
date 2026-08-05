@@ -63,12 +63,25 @@ export class DronePhysics {
     this._tmp = { q: new THREE.Quaternion(), v: new THREE.Vector3(), e: new THREE.Euler() };
   }
 
+  // Garage build → physics (PartCatalog.computeBuild().physics)
+  applyBuild(bp) {
+    this.build = bp;
+    this.cfg.massG = bp.massG;
+    this.armLen = bp.armLen;
+    this.motorTau = bp.motorTau;
+    this.dragQuad = bp.dragQuad;
+    this.yawTorqueK = bp.yawTorqueK;
+    this.voltage = bp.voltFull;
+  }
+
   get massKg() { return this.cfg.massG / 1000; }
   get maxThrustN() {                     // total, scaled by throttle power %
-    return this.massKg * G * 6.0 * (this.cfg.thrPower / 100); // TWR 6 baseline
+    const base = this.build ? this.build.maxThrustN
+      : this.massKg * G * 6.0;           // no-build fallback: TWR 6
+    return base * (this.cfg.thrPower / 100);
   }
-  inertia() {                            // scales with mass
-    const s = this.massKg / 0.65;
+  inertia() {
+    const s = (this.massKg / 0.65) * (this.build?.inertiaMul ?? 1);
     return { x: 0.0023 * s, y: 0.0040 * s, z: 0.0023 * s };
   }
 
@@ -81,7 +94,7 @@ export class DronePhysics {
     this.pos.copy(spawn); this.vel.set(0,0,0);
     this.quat.identity(); this.angVel.set(0,0,0);
     this.motors = [0,0,0,0]; this.crashed = false; this.armed = false;
-    this.voltage = 25.2; this.flightTime = 0;
+    this.voltage = this.build?.voltFull ?? 25.2; this.flightTime = 0;
     Object.values(this.pid).forEach(p => p.reset());
   }
 
@@ -135,9 +148,12 @@ export class DronePhysics {
     // ---- 4. battery sag ----
     const avg = (this.motors[0]+this.motors[1]+this.motors[2]+this.motors[3]) / 4;
     this.sagFilter += (avg - this.sagFilter) * dt * 3;
-    const drain = this.flightTime / 240;                     // ~4min pack
-    this.voltage = 25.2 - this.sagFilter * 2.6 - drain * 3.0;
-    const vFactor = THREE.MathUtils.clamp(this.voltage / 25.2, 0.62, 1);
+    const full = this.build?.voltFull ?? 25.2;
+    const cap = this.build?.capacity ?? 1;
+    const sagMul = this.build?.sagMul ?? 1;
+    const drain = this.flightTime / (240 * cap);
+    this.voltage = full - this.sagFilter * 2.6 * sagMul - drain * (full * 0.12);
+    const vFactor = THREE.MathUtils.clamp(this.voltage / full, 0.62, 1);
 
     // ---- 5. forces ----
     const perMotorMax = this.maxThrustN / 4;
