@@ -203,14 +203,35 @@ export function FaceScanner({
                 <div className="h-[70%] w-[62%] rounded-[50%] border-2 border-dashed border-emerald-400/70" />
               </div>
               {camState !== "on" && (
-                <p className="absolute inset-x-0 bottom-2 text-center text-xs text-white/60">
-                  {camState === "starting" ? "ကင်မရာ ဖွင့်နေသည်…" : "ကင်မရာ မရသေးပါ"}
-                </p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 p-4 text-center">
+                  {camState === "starting" ? (
+                    <p className="text-sm text-white/80">📷 ကင်မရာ ဖွင့်နေသည်…</p>
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold text-amber-300">
+                        ကင်မရာ ဖွင့်လို့ မရသေးပါ
+                      </p>
+                      <p className="text-[12px] leading-relaxed text-white/70">
+                        ခွင့်ပြုချက် တောင်းလာရင်「ခွင့်ပြု / Allow」နှိပ်ပါ။
+                        ငြင်းမိသွားရင် ဖုန်း Settings → Apps → Gwave →
+                        Permissions → Camera ကို ဖွင့်ပြီး ပြန်ကြိုးစားပါ။
+                      </p>
+                      <button
+                        onClick={() => void start()}
+                        className="rounded-lg bg-emerald-500 px-4 py-1.5 text-[13px] font-semibold text-black"
+                      >
+                        🔄 ပြန်ကြိုးစားမယ်
+                      </button>
+                    </>
+                  )}
+                </div>
               )}
             </div>
-            <p className="text-center text-[12px] text-white/60">
-              မျက်နှာကို ဘဲဥကွင်းထဲ တည့်တည့်ထား၊ အလင်းကောင်းကောင်းနဲ့
-            </p>
+            <div className="rounded-lg bg-white/5 p-2.5 text-[12.5px] leading-relaxed text-white/75">
+              💡 <b>ကောင်းကောင်းရအောင်</b>: မျက်နှာကို ဘဲဥကွင်းထဲ တည့်တည့်ထား ·
+              အလင်းရောင် ကောင်းကောင်း (ပြတင်းပေါက်/မီးရှေ့) · မျက်မှန်/ဦးထုပ် ချွတ်ထား ·
+              ဖုန်းကို မျက်နှာအမြင့် တည့်တည့်ကိုင်
+            </div>
             <button
               onClick={snap}
               disabled={busy || camState !== "on"}
@@ -223,6 +244,9 @@ export function FaceScanner({
 
         {(step === "preview" || step === "uploading") && (
           <div className="space-y-3">
+            <p className="text-center text-[13px] text-white/80">
+              ✨ ကိုယ့် 3D မျက်နှာပါ — ကြိုက်ရင် ✓ သုံးမယ်၊ မကြိုက်ရင် ပြန်ရိုက်ပါ
+            </p>
             <div ref={previewRef} className="aspect-[3/4] w-full overflow-hidden rounded-xl" />
             <div className="flex gap-2">
               <button
