@@ -11,9 +11,14 @@ let loader: GLTFLoader | null = null;
 
 export function gltfLoader(renderer: THREE.WebGLRenderer): GLTFLoader {
   if (loader) return loader;
-  const draco = new DRACOLoader().setDecoderPath("/decoders/draco/");
+  // BASE_URL keeps the vendored decoders reachable behind the /strike prefix.
+  const base =
+    (import.meta as unknown as { env?: Record<string, string> }).env?.[
+      "BASE_URL"
+    ] ?? "/";
+  const draco = new DRACOLoader().setDecoderPath(`${base}decoders/draco/`);
   const ktx2 = new KTX2Loader()
-    .setTranscoderPath("/decoders/basis/")
+    .setTranscoderPath(`${base}decoders/basis/`)
     .detectSupport(renderer);
   loader = new GLTFLoader().setDRACOLoader(draco).setKTX2Loader(ktx2);
   return loader;

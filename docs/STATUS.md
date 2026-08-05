@@ -139,6 +139,15 @@
 
 ## Changelog
 
+- 2026-08-05 (game): **GWAVE STRIKE live at gwave.cc/strike.** Rehomed
+  from the never-provisioned game.gwave.cc plan onto the app box: one
+  `strike` container (127.0.0.1:8095) serves the vite-built client
+  (base=/strike/) AND Colyseus matchmaking/WS via its express
+  fall-through; deploy-strike.yml now mirrors metaverse-server.yml
+  (ECR gwave-strike → SSM, health-gated rollback). Caddy needs the
+  `/strike` redir + handle_path route on the box (deploy/Caddyfile,
+  README-strike.md) — added user-side at rollout.
+
 - 2026-08-05 (web): **Camera Bridge server side.** Router-less/CGNAT
   cameras: the Android app relays the camera's local RTSP OUT to a
   MediaMTX on the prod box (deploy/cctv-bridge/), republished as HLS

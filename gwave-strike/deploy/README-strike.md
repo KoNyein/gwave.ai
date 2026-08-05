@@ -1,39 +1,37 @@
-# game.gwave.cc — user-side deployment runbook (Phase 4)
+# GWAVE STRIKE — deployment (gwave.cc/strike, same app EC2 box)
 
-The GitHub workflow (`deploy-strike.yml`) builds on every push touching
-`gwave-strike/` and deploys automatically **once these one-time steps are
-done**. Until then it is build-only (safe).
+STRIKE runs as the `strike` docker container on the SAME EC2 box as the web
+app — no separate host, no game.gwave.cc DNS, no extra GitHub secrets. The
+original separate-EC2/nginx plan below was dropped in favor of this.
 
-## 1. DNS
-Route 53 → hosted zone gwave.cc → create **A record `game.gwave.cc`** →
-the EC2 Elastic IP (same instance as gwave.cc is fine — port 2567 stays
-internal behind Nginx).
+- **Pipeline**: `.github/workflows/deploy-strike.yml` — on every `main` push
+  touching `gwave-strike/`, builds the Dockerfile (client with vite
+  `base=/strike/` + Colyseus server serving those static files), pushes to
+  ECR `gwave-strike`, and rolls it out over SSM with a health-gated rollback
+  (mirror of `metaverse-server.yml`).
+- **Container**: `strike`, `127.0.0.1:8095`, `PORT=8095`. No secrets needed.
+- **Caddy** (one-time, on the box — already in `deploy/Caddyfile`):
 
-## 2. EC2 prep (SSH in, run once)
-```bash
-cd /path/to/repo/gwave-strike
-bash deploy/setup-ec2.sh
-sudo cp deploy/nginx.game.conf /etc/nginx/sites-available/game.gwave.cc
-sudo ln -s /etc/nginx/sites-available/game.gwave.cc /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d game.gwave.cc
-```
+  ```
+  redir /strike /strike/ permanent
+  handle_path /strike/* {
+      reverse_proxy 127.0.0.1:8095
+  }
+  ```
 
-## 3. GitHub secrets (repo → Settings → Secrets and variables → Actions)
-- `STRIKE_EC2_HOST` — the instance's public IP / hostname
-- `STRIKE_EC2_SSH_KEY` — a private key whose public half is in
-  `~ubuntu/.ssh/authorized_keys` on the instance
+  Add inside the `gwave.cc { … }` block of `/etc/caddy/Caddyfile`, then
+  `sudo systemctl reload caddy`.
+- **Health**: `https://gwave.cc/strike/health` → `{"ok":true,...}`. The
+  workflow warns (not fails) when only this domain check misses — that means
+  the Caddy route above hasn't been added yet.
+- **Client/WS routing**: the page, `/matchmake/*` and the room WebSockets all
+  ride the same `/strike` prefix; `handle_path` strips it and the container
+  sees clean paths. Offline (server down) the client falls back to local
+  bots automatically.
 
-## 4. First deploy
-Actions → **Deploy GWAVE STRIKE** → Run workflow (or push anything under
-`gwave-strike/`). Health check: `https://game.gwave.cc/health` →
-`{"ok":true,...}`.
+## Optional asset work (unchanged)
 
-## CDN (optional, §5.4)
-```bash
-aws s3 mb s3://gwave-strike-assets
-aws s3 sync gwave-strike/client/dist/assets s3://gwave-strike-assets/assets \
-  --cache-control "public,max-age=31536000,immutable"
-```
-CloudFront distribution over that bucket (alt domain cdn.gwave.cc) and build
-the client with `VITE_ASSET_BASE=https://cdn.gwave.cc` once heavy GLBs land.
+- Mixamo soldier model: `tools/merge-animations.md`, then flip `SOLDIER_URL`
+  in `client/src/main.ts` to `/assets/soldier.min.glb` (BASE-prefixed
+  automatically).
+- CDN offload for heavy GLBs: build with `VITE_ASSET_BASE` once needed.

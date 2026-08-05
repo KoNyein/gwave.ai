@@ -1,10 +1,10 @@
 name: Deploy GWAVE STRIKE
 
-# game.gwave.cc pipeline (blueprint §5.6) — completely separate from the main
-# web app's deploy.yml (different host path, different mechanism). Fires only
-# when gwave-strike/ changes, and only DEPLOYS when the SSH secrets exist —
-# otherwise it just builds, so merging this before the server is prepared is
-# safe.
+# STRIKE lives on the SAME app EC2 box as everything else — the `strike`
+# container (127.0.0.1:8095) behind Caddy's `handle_path /strike/*` — so this
+# mirrors metaverse-server.yml's ECR → SSM pipeline exactly. The old plan
+# (separate game.gwave.cc EC2 over SSH) was dropped: no new DNS, no new host,
+# no new secrets. Fires only when gwave-strike/ changes.
 on:
   workflow_dispatch:
   push:
@@ -12,10 +12,23 @@ on:
     paths:
       - "gwave-strike/**"
       - ".github/workflows/deploy-strike.yml"
+  pull_request:
+    paths:
+      - "gwave-strike/**"
+      - ".github/workflows/deploy-strike.yml"
+
+concurrency:
+  group: deploy-strike-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ap-southeast-1
+  ECR_REPO: gwave-strike
 
 jobs:
-  build-deploy:
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: gwave-strike
@@ -25,52 +38,142 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
+      # shared → client (vite base=/strike/) → server; typecheck rides on tsc
       - run: npm run build
 
-      - name: Check deploy secrets
-        id: gate
-        env:
-          H: ${{ secrets.STRIKE_EC2_HOST }}
-          K: ${{ secrets.STRIKE_EC2_SSH_KEY }}
+  deploy:
+    # PRs never deploy — main pushes and manual dispatch only.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same credentials deploy.yml / metaverse-server.yml use — ECR push and
+      # SSM on the box are already allowed for this key.
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure the ECR repository exists
         run: |
-          if [ -n "$H" ] && [ -n "$K" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          aws ecr describe-repositories --repository-names "$ECR_REPO" \
+            --region "$AWS_REGION" >/dev/null 2>&1 && exit 0
+          echo "creating ECR repository $ECR_REPO"
+          aws ecr create-repository --repository-name "$ECR_REPO" \
+            --image-scanning-configuration scanOnPush=true \
+            --region "$AWS_REGION" >/dev/null
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        working-directory: gwave-strike
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          set -euo pipefail
+          docker build --platform linux/amd64 \
+            -t "$REGISTRY/$ECR_REPO:${{ github.sha }}" \
+            -t "$REGISTRY/$ECR_REPO:latest" .
+          docker push "$REGISTRY/$ECR_REPO:${{ github.sha }}"
+          docker push "$REGISTRY/$ECR_REPO:latest"
+
+      - name: Deploy on EC2 via SSM
+        env:
+          INSTANCE_ID: ${{ vars.APP_INSTANCE_ID }}
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          set -euo pipefail
+          [ -n "$INSTANCE_ID" ] || { echo "::error::APP_INSTANCE_ID repo variable is not set"; exit 1; }
+          IMAGE="$REGISTRY/$ECR_REPO:${{ github.sha }}"
+
+          # Same rollback shape as the metaverse deploy: tag the running image
+          # before swapping, health-gate the new one, put the old one back on
+          # failure. SSM runs as root under dash, so bash comes via heredoc.
+          cat > /tmp/strike-deploy.sh <<EOF
+          set -euo pipefail
+          IMAGE="$IMAGE"
+
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "$REGISTRY"
+          docker pull "\$IMAGE"
+
+          if docker inspect strike >/dev/null 2>&1; then
+            PREV=\$(docker inspect --format '{{.Config.Image}}' strike)
+            docker tag "\$PREV" strike-prev:rollback
           else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::STRIKE_EC2_HOST / STRIKE_EC2_SSH_KEY not set — build-only run."
+            PREV=""
           fi
 
-      - name: Copy build to EC2
-        if: steps.gate.outputs.ready == 'true'
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.STRIKE_EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.STRIKE_EC2_SSH_KEY }}
-          source: "gwave-strike/client/dist/*,gwave-strike/server/dist/*,gwave-strike/server/package.json,gwave-strike/shared/dist/*,gwave-strike/shared/package.json,gwave-strike/package.json,gwave-strike/deploy/*"
-          target: /var/www/gwave-strike/incoming
+          start() {
+            docker rm -f strike >/dev/null 2>&1 || true
+            docker run -d --name strike --restart unless-stopped \
+              -p 127.0.0.1:8095:8095 -e PORT=8095 \
+              "\$1"
+          }
 
-      - name: Activate + restart
-        if: steps.gate.outputs.ready == 'true'
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.STRIKE_EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.STRIKE_EC2_SSH_KEY }}
-          script: |
-            set -e
-            cd /var/www/gwave-strike
-            rm -rf client-dist.new && mkdir -p client-dist.new
-            cp -r incoming/gwave-strike/client/dist/* client-dist.new/
-            rm -rf server shared package.json.new
-            cp -r incoming/gwave-strike/server server
-            cp -r incoming/gwave-strike/shared shared
-            cp incoming/gwave-strike/package.json package.json
-            cp -r incoming/gwave-strike/deploy deploy
-            (cd server && npm install --omit=dev --no-audit --no-fund)
-            rm -rf client-dist.old
-            [ -d client-dist ] && mv client-dist client-dist.old || true
-            mv client-dist.new client-dist
-            pm2 startOrReload deploy/ecosystem.config.cjs
-            pm2 save
-            curl -sf http://127.0.0.1:2567/health
+          start "\$IMAGE"
+
+          ok=0
+          for i in \$(seq 1 20); do
+            sleep 3
+            if curl -fsS http://127.0.0.1:8095/health >/dev/null; then ok=1; break; fi
+          done
+
+          if [ "\$ok" != "1" ]; then
+            echo "new image failed health check"
+            docker logs --tail 50 strike || true
+            if [ -n "\$PREV" ]; then
+              echo "rolling back to \$PREV"
+              start strike-prev:rollback
+            fi
+            exit 1
+          fi
+
+          curl -fsS http://127.0.0.1:8095/health
+          docker image prune -f >/dev/null 2>&1 || true
+          EOF
+
+          # ' = jq's escape for a single quote, so the generated heredoc
+          # marker is QUOTED ('STRIKEEOF') and sh expands nothing inside.
+          jq -Rs '{commands: ["bash <<\u0027STRIKEEOF\u0027\n" + . + "STRIKEEOF\n"]}' \
+            /tmp/strike-deploy.sh > /tmp/strike-params.json
+          CMD_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy $ECR_REPO:${{ github.sha }}" \
+            --parameters file:///tmp/strike-params.json \
+            --query 'Command.CommandId' --output text)
+          echo "SSM CommandId: $CMD_ID"
+
+          STATUS=InProgress
+          for i in $(seq 1 60); do
+            sleep 10
+            STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in Success|Failed|Cancelled|TimedOut) break ;; esac
+            echo "  still $STATUS (${i}0s)"
+          done
+          echo "----- stdout -----"
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query StandardOutputContent --output text
+          echo "----- stderr -----"
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query StandardErrorContent --output text
+          echo "SSM status: $STATUS"
+          [ "$STATUS" = "Success" ] || { echo "::error::strike deploy failed (rolled back if a previous image existed)"; exit 1; }
+
+      - name: Health check through the domain
+        run: |
+          # The container is health-gated above; this checks the Caddy route.
+          # Warning (not error) because the FIRST rollout lands before the
+          # /strike route exists in /etc/caddy/Caddyfile — add it, then this
+          # goes green on the next run.
+          for i in $(seq 1 10); do
+            if curl -fsS "https://gwave.cc/strike/health"; then exit 0; fi
+            sleep 6
+          done
+          echo "::warning::gwave.cc/strike/health not reachable — is the Caddy 'handle_path /strike/*' route added on the box? (deploy/README-strike.md)"
