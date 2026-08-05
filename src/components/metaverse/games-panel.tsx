@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import type { GameInfo, GameRanking, GameScore } from "./net";
 
-import { ARCADE_GAMES } from "./landmarks";
+import { ARCADE_GAMES, type ArcadeGame } from "./landmarks";
 
 /// Mini-game ရဲ့ HUD (Phase 16)。
 ///
@@ -40,6 +40,8 @@ const GAME_ICONS: Record<string, string> = {
   hunt: "🔍",
   targets: "🎯",
   grow: "🌱",
+  droneRace: "🚁",
+  assassin: "🗡",
 };
 
 const btn =
@@ -259,9 +261,9 @@ export function GamesMenu({
   open: boolean;
   onToggle: () => void;
   onJoin: (gameId: string) => void;
-  /// 🕹 Game Zone ဂိမ်းကို လောကထဲက overlay နဲ့ ဖွင့်တယ် — cabinet ဆီ
-  /// လမ်းလျှောက်စရာ မလိုဘဲ menu ကနေလည်း တန်းဝင်လို့ရအောင်
-  onArcade: (game: { label: string; href: string }) => void;
+  /// 🕹 Game Zone action — cabinet ဆီ လမ်းလျှောက်စရာ မလိုဘဲ menu ကနေ
+  /// လောကထဲ ပွဲစတယ် / arena ဝင်တယ် / scan studio ဖွင့်တယ်
+  onArcade: (game: ArcadeGame) => void;
 }) {
   const [tab, setTab] = useState<"play" | "board">("play");
   const [boardGame, setBoardGame] = useState("race");
@@ -334,7 +336,7 @@ export function GamesMenu({
               {ARCADE_GAMES.map((g) => (
                 <button
                   key={g.id}
-                  onClick={() => onArcade({ label: g.label, href: g.href })}
+                  onClick={() => onArcade(g)}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] text-white/80 transition hover:bg-white/10"
                 >
                   <span className="text-base">{g.emoji}</span>
