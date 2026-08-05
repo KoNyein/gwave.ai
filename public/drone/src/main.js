@@ -18,6 +18,10 @@ import { TargetRange } from './soldier/TargetRange.js';
 import { ExplosionSystem } from './combat/Explosion.js';
 import { FireGrid, Destructibles, TrapSystem } from './combat/Systems.js';
 import { WaveManager } from './ai/EnemyAI.js';
+import { DroneCombat } from './drone/DroneCombat.js';
+import { Garage } from './garage/Garage.js';
+import { NetClient } from './net/NetClient.js';
+import { GwaveAPI, NPCDialogue } from './net/GwaveAPI.js';
 
 const cfg = loadConfig();
 const PHYS_HZ = 240, PHYS_DT = 1 / PHYS_HZ;
@@ -232,7 +236,7 @@ const vo = (() => {                    // Burmese captions + radio beep (task 4.
 
 const explosion = new ExplosionSystem(world, audio);
 const fireGrid = new FireGrid(world, explosion);
-explosion.onExplode = (pos, r) => fireGrid.igniteArea(pos, r);
+explosion.onExplode = (pos, r) => { fireGrid.igniteArea(pos, r); net?.sendBoom?.(pos, r); };
 const traps = new TrapSystem(world, explosion, audio);
 traps.onMessage = m => vo(m, 'info');
 const destruct = new Destructibles(world, explosion, fireGrid, weapons);
@@ -285,6 +289,160 @@ const waveCtx = {
 };
 const waves = new WaveManager(world, collision, waveCtx, traps);
 let burnT = 0;
+
+// ---------- P6: drone combat ----------
+const droneCombat = new DroneCombat(world, explosion, audio, vo, collision);
+const jammer = droneCombat.addJammer(-45, 30);          // map ပေါ် jammer zone (ပစ်ဖျက်နိုင်)
+weapons.targets.push({ mesh: jammer.mesh, headY: 99, radius: 0.8,
+  onHit: (d) => jammer.onHit(d) });
+// enemies ကမြင်ရမယ့် drone interface
+waveCtx.drone = {
+  get flying() { return mode === 'FPV' && physics.armed && !droneCombat.destroyed; },
+  get pos() { return physics.pos; },
+  hit: (dmg) => droneCombat.takeDamage(dmg, physics),
+};
+// ---------- Garage (configurator) ----------
+const garage = new Garage((buildPhysics, colors) => {
+  physics.applyBuild(buildPhysics);
+  // drone mesh colors (procedural mesh materials)
+  droneMesh.traverse(o => {
+    if (!o.material?.color) return;
+    const hex = o.material.color.getHexString();
+    if (o.geometry?.type === 'CircleGeometry') o.material.color.set(colors.props);
+    else if (hex === 'cc2233' || o.__isBatt) { o.material.color.set(colors.battery); o.__isBatt = true; }
+    else if (o.geometry?.type !== 'CircleGeometry') o.material.color.set(colors.frame);
+  });
+}, vo);
+garage.onTestFly = () => { if (mode === 'AVATAR') deployDrone(); };
+document.getElementById('garage-btn')?.addEventListener('click', () => {
+  document.exitPointerLock?.();
+  garage.toggle();
+});
+addEventListener('keydown', e => { if (e.code === 'KeyB' && mode === 'AVATAR') {
+  document.exitPointerLock?.(); garage.toggle(); } });
+
+// ---------- P5: multiplayer ----------
+const net = new NetClient(world, vo, buildDroneMesh);
+net.onRemoteShot = (a, b) => {
+  weapons.__remote = true;
+  weapons._spawnTracer(a, b);
+  weapons.__remote = false;
+  audio.gunshot?.(210, 0.07);
+};
+net.onRemoteBoom = (p, r) => explosion.explode(p, { radius: r, damage: 0 }); // VFX only (dmg server-side)
+net.onLocalHit = (dmg, hp) => { player.hp = hp; player.takeDamage(0); player.hp = hp; };
+net.onRespawn = (pos) => { soldier.pos.set(...pos); soldier.vel.set(0, 0, 0);
+  player.hp = 100; player.alive = true; };
+net.onCorrect = (pos) => soldier.pos.set(...pos);      // server envelope rejection
+// online button — ?server=ws://host:8787 param သို့ localhost default
+document.getElementById('online-btn')?.addEventListener('click', () => {
+  if (net.connected) { net.disconnect(); return; }
+  // on gwave.cc the game server rides the same origin behind Caddy (/drone-ws)
+  const url = new URLSearchParams(location.search).get('server')
+    ?? (location.hostname === 'localhost' ? 'ws://localhost:8787'
+      : (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/drone-ws');
+  const name = gwave.profile?.display_name ?? (prompt('Pilot name:', 'Pilot') ?? 'Pilot');
+  net.connect(url, name, 'valley', gwave.token);
+});
+// PvP: remote players ကို local weapons targets ထဲထည့် (hit → server claim)
+setInterval(() => {
+  for (const r of net.remotes.values()) {
+    if (!weapons.targets.includes(r)) {
+      r.onHit = (dmg, point) => {                       // local raycast hit → server validate
+        const from = camera.getWorldPosition(new THREE.Vector3());
+        net.sendShoot(from, point, r.id, dmg);
+        weapons.__claimed = true;                       // wrapper duplicate မပို့စေရန်
+      };
+      weapons.targets.push(r);
+    }
+  }
+}, 1000);
+
+// local shot → server (tracer broadcast; hit claims သီးသန့် sendShoot ကနေသွား)
+const _origSpawnTracer = weapons._spawnTracer.bind(weapons);
+weapons._spawnTracer = (a, b, life) => {
+  _origSpawnTracer(a, b, life);
+  if (weapons.__claimed) { weapons.__claimed = false; return; }
+  if (net.connected && mode === 'AVATAR' && !weapons.__remote && net.ws?.readyState === 1)
+    net.ws.send(JSON.stringify({ t: 'shoot',
+      from: [a.x, a.y, a.z], to: [b.x, b.y, b.z], hit: 0, dmg: 0, lagMs: 0 }));
+};
+
+// ---------- P7: gwave integration ----------
+const gwave = new GwaveAPI(vo);
+const npc = new NPCDialogue(vo);
+// NPC "ဦးလှ" — spawn ဘေး (green mannequin)
+const npcAvatar = new Avatar(world);
+npcAvatar.root.position.set(-3, 0, 5);
+npcAvatar.root.rotation.y = Math.PI * 0.35;
+npcAvatar.root.traverse(o => {
+  if (o.material?.color && o.material.color.getHex() === 0x9aa7b8)
+    o.material = o.material.clone(), o.material.color.setHex(0x5aa86a);
+});
+const npcMotions = new Motions(npcAvatar);
+setInterval(() => {                          // idle + ရံဖန် wave
+  npcMotions.set(Math.random() < 0.15 ? 'WAVE' : 'IDLE');
+}, 4000);
+
+(async () => {
+  // login → profile / avatar / drone build sync
+  const p = await gwave.login();
+  if (p) {
+    if (p.avatarGlb) avatar.loadScan(p.avatarGlb).catch(() => {});   // 7.4
+    const cfg2 = await gwave.pullDroneConfig();                       // 7.3
+    if (cfg2?.build) {
+      Object.assign(garage.build, cfg2.build);
+      garage.apply(false);
+      vo('Drone build ကို gwave account ကနေ sync လုပ်ပြီး', 'info');
+    }
+  }
+})();
+// Garage save → cloud push
+const _gSave = garage.save.bind(garage);
+garage.save = () => {
+  const ok = _gSave();
+  gwave.pushDroneConfig(garage.build, cfg).then(cloud =>
+    cloud && vo('☁ gwave account ထဲ save ပြီး', 'info'));
+  return ok;
+};
+// [T] = NPC နားမှာ စကားပြော · [L] = leaderboard
+addEventListener('keydown', async e => {
+  if (e.code === 'KeyT' && mode === 'AVATAR'
+      && soldier.pos.distanceTo(npcAvatar.root.position) < 4) {
+    document.exitPointerLock?.();
+    const q = prompt('ဦးလှ ကို မေးမယ့်စကား:', 'drone ဘယ်လိုပျံရမလဲ');
+    if (q) npc.ask(q);
+  }
+  if (e.code === 'KeyL') {
+    const b = await gwave.leaderboard(5);
+    vo(b.length
+      ? '🏆 ' + b.map(r => `#${r.rank} ${r.display_name} K${r.kills}`).join(' · ')
+      : 'Leaderboard ဗလာ — api server run ထားလား?', 'wave');
+  }
+});
+// npc look at player when near
+setInterval(() => {
+  const near = soldier.pos.distanceTo(npcAvatar.root.position) < 6;
+  npcMotions.setLookTarget(near ? soldier.pos.clone().setY(1.5) : null);
+}, 500);
+
+// static noise overlay
+const staticCv = document.getElementById('static');
+const staticCtx = staticCv?.getContext('2d');
+if (staticCv) { staticCv.width = 256; staticCv.height = 144; }
+function drawStatic(signal) {
+  if (!staticCtx) return;
+  const op = Math.min(0.92, Math.max(0, 1 - signal) * 1.1);
+  staticCv.style.opacity = op < 0.06 ? 0 : op;
+  if (op < 0.06) return;
+  const img = staticCtx.createImageData(256, 144);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = (Math.random() * 255) | 0;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+    img.data[i + 3] = 255;
+  }
+  staticCtx.putImageData(img, 0, 0);
+}
 
 // trap placement — aim ground point (2.6m ရှေ့)
 function aimGround() {
@@ -349,12 +507,17 @@ document.getElementById('avatar-file')?.addEventListener('change', e => {
 let mode = 'AVATAR';
 function deployDrone() {
   if (mode === 'AVATAR') {
+    if (droneCombat.rebuildT > 0) {
+      vo(`Drone ပြန်ဆောက်နေ… ${droneCombat.rebuildT.toFixed(0)}s`, 'warn');
+      return;
+    }
     mode = 'FPV';
     document.exitPointerLock?.();
     weapons.vm.visible = false;
     fireHeld = adsHeld = false;
     const fwd = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), avatarYaw);
     physics.reset(soldier.pos.clone().addScaledVector(fwd, 1.4).setY(0.08));
+    droneCombat.onDeploy(physics.pos, soldier.pos);
     avatar.root.visible = true;
     motions.set('PILOT_SIT');
   } else {
@@ -363,7 +526,10 @@ function deployDrone() {
     motions.set('IDLE');
   }
 }
-addEventListener('keydown', e => { if (e.code === 'KeyF') deployDrone(); });
+addEventListener('keydown', e => {
+  if (e.code === 'KeyF') deployDrone();
+  if (e.code === 'KeyG' && mode === 'FPV') droneCombat.manualDetonate(physics);
+});
 
 // mouse orbit (AVATAR mode)
 let dragging = false;
@@ -488,6 +654,23 @@ function updateOSD(input) {
   osd.warn.style.display = physics.voltage < 21.4 && physics.armed ? 'block' : 'none';
   osd.msg.style.display = fpv && !physics.armed ? 'block' : 'none';
   osd.horizon.style.display = fpv ? 'block' : 'none';
+  // P6 OSD
+  const rssiEl = document.getElementById('rssi');
+  if (rssiEl) rssiEl.textContent = fpv ? Math.round(droneCombat.signal * 99) : 99;
+  drawStatic(fpv ? droneCombat.signal : 1);
+  const po = document.getElementById('payload-osd');
+  if (po) {
+    po.style.display = fpv && droneCombat.payload.equipped ? 'block' : 'none';
+    const ps = document.getElementById('payload-state');
+    ps.textContent = droneCombat.payload.armed ? 'ARMED ⚠' :
+      `SAFE (${Math.max(0, droneCombat.payload.ARM_DISTANCE - droneCombat.payload.traveled).toFixed(0)}m)`;
+    ps.style.color = droneCombat.payload.armed ? '#ff6a6a' : '#8dffa0';
+  }
+  const mo = document.getElementById('mark-osd');
+  if (mo) {
+    mo.style.display = fpv && droneCombat.markProgress > 0.05 ? 'block' : 'none';
+    document.getElementById('mark-pct').textContent = Math.round(droneCombat.markProgress * 100);
+  }
   // race panel
   const rp = document.getElementById('race-panel');
   if (rp) {
@@ -533,6 +716,13 @@ renderer.setAnimationLoop((now, frame) => {
       acc -= PHYS_DT;
     }
     race.update(frameDt, physics.pos, physics.quat);   // task 2.1
+    droneCombat.update(frameDt, physics, camera,
+      waves.enemies, destruct, waves.dogs[0]);
+    // kamikaze ပြီး / drone ပျက် → 1.5s အတွင်း soldier ပြန်
+    if (droneCombat.destroyed && !window.__returning) {
+      window.__returning = true;
+      setTimeout(() => { window.__returning = false; if (mode === 'FPV') deployDrone(); }, 1500);
+    }
     ghostMesh.visible = race.ghostPose(frameDt, _gp, _gq); // task 2.5
     if (ghostMesh.visible) { ghostMesh.position.copy(_gp); ghostMesh.quaternion.copy(_gq); }
     // next-gate highlight
@@ -543,6 +733,17 @@ renderer.setAnimationLoop((now, frame) => {
   } else { ghostMesh.visible = false; }
   audio.update(physics.motors, physics.armed, physics.voltage, frameDt); // task 2.4
   updateAvatar(frameDt);
+  npcMotions.update(frameDt, 0);
+  // P5 net sync
+  net.update(frameDt);
+  net.sendState(frameDt, {
+    mode: mode === 'FPV' ? 'DRONE' : 'SOLDIER',
+    pos: [soldier.pos.x, soldier.pos.y, soldier.pos.z],
+    yaw: soldier.yaw, pitch: soldier.pitch,
+    dronePos: [physics.pos.x, physics.pos.y, physics.pos.z],
+    droneQuat: [physics.quat.x, physics.quat.y, physics.quat.z, physics.quat.w],
+    anim: motions.state,
+  });
   // P4 systems (mode မရွေး run — drone ပျံနေချိန်လည်း ရန်သူတွေလှုပ်)
   explosion.update(frameDt);
   fireGrid.update(frameDt);

@@ -139,6 +139,26 @@
 
 ## Changelog
 
+- 2026-08-05 (game): **GWAVE DRONE Phase 5–7 (multiplayer + garage + gwave
+  integration).** gwavegamep7final package integrated. Client
+  (public/drone/): drone garage/configurator ([B], part catalog →
+  physics applyBuild + colors), drone combat P6 (signal/jammer zones,
+  FPV static noise, payload arming, kamikaze, target marking), NPC
+  "ဦးလှ" ([T], canned replies; OpenClaw endpoint via ?ai=), online
+  multiplayer (ONLINE btn → 16-player rooms, 20Hz state sync, 100ms
+  interpolation, remote avatars+drones, PvP with server-validated
+  hits, chat, kill feed, leaderboard [L]). New workspace
+  gwave-drone-server/ (ws :8787 + api :8788, one `drone` container,
+  deploy-drone-server.yml → ECR gwave-drone-server, SSM, health-gated):
+  auth patched with AUTH_MODE=gwave verifying the web session's gw_at
+  ES256 data token against APP_JWT_PUBLIC_JWK (identity = profiles.id;
+  service_role rejected); api uses GAME_DATABASE_URL (RDS ssl) with
+  in-memory fallback; /health added; client auto-targets same-origin
+  /drone-api + wss /drone-ws with gw_at cookie. wss://gwave.cc added
+  to CSP connect-src. Migration: gwave-drone-server/migrations/
+  001_game_schema.sql (schema `game`). EC2 setup pending (user):
+  migration + GAME_* envs + Caddy routes — deploy/gwave-drone/README.md.
+
 - 2026-08-05 (game): **GWAVE DRONE Phase 3+4 (soldier FPS + combat).**
   Uploaded gwavedronep4 package (superset of p2/p3) replaces the
   first-pass Phase 2 code in public/drone/: AVATAR↔FPV mode toggle
