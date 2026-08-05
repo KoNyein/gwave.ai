@@ -31,16 +31,23 @@ type Tab = "scan" | "body" | "skin" | "style";
 export function AvatarEditor() {
   const { config, dirty, saving, error, load, save, setMorph, patch, resetError } =
     useAvatarStore();
-  const [tab, setTab] = useState<Tab>("body");
+  // Scan is the whole point — land there, not on sliders.
+  const [tab, setTab] = useState<Tab>("scan");
   const [assets, setAssets] = useState<AvatarAsset[]>([]);
   const [savedFlash, setSavedFlash] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [bodyScanning, setBodyScanning] = useState(false);
+  const [guide, setGuide] = useState(false);
   /// Scan ကရလာတဲ့ morph မိတ္တူ — "Reset to scan" အတွက် (spec §5.2)
   const [hasScanMorphs, setHasScanMorphs] = useState(false);
   useEffect(() => {
     try {
       setHasScanMorphs(!!window.localStorage.getItem("mv:scanmorphs"));
+      // First visit: nobody knows what this screen IS — show the guide once.
+      if (!window.localStorage.getItem("mv:avatar-guide-seen")) {
+        setGuide(true);
+        window.localStorage.setItem("mv:avatar-guide-seen", "1");
+      }
     } catch {
       /* private mode */
     }
@@ -79,8 +86,21 @@ export function AvatarEditor() {
     }
   };
 
+  const faceDone = Boolean(config.faceGlbUrl);
+  const bodyDone = config.scanSource === "face+body" || hasScanMorphs;
+
   return (
     <div className="flex h-[calc(100dvh-3.5rem)] flex-col gap-3 p-3 md:flex-row">
+      {guide && (
+        <GuideOverlay
+          onStart={() => {
+            setGuide(false);
+            setTab("scan");
+            setScanning(true);
+          }}
+          onClose={() => setGuide(false)}
+        />
+      )}
       {scanning && (
         <FaceScanner
           onClose={() => setScanning(false)}
@@ -120,6 +140,41 @@ export function AvatarEditor() {
 
       {/* ── Panel ── */}
       <div className="flex w-full flex-col rounded-2xl border border-white/10 bg-black/30 md:w-96">
+        {/* What this screen IS + progress at a glance — the checklist is the
+            navigation for first-time users; tabs below are for returners. */}
+        <div className="space-y-2 border-b border-white/10 p-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[15px] font-bold text-white">
+              🧬 ကိုယ်ပိုင် 3D Avatar ဆောက်မယ်
+            </p>
+            <button
+              onClick={() => setGuide(true)}
+              className="rounded-full border border-white/25 px-2.5 py-1 text-[12px] text-white/80 hover:bg-white/10"
+            >
+              ❓ လမ်းညွှန်
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 text-center text-[12px]">
+            <button
+              onClick={() => setScanning(true)}
+              className={`rounded-lg border px-1 py-1.5 ${faceDone ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200" : "border-amber-400/50 bg-amber-500/10 text-amber-200"}`}
+            >
+              {faceDone ? "✓" : "၁"} မျက်နှာ Scan
+            </button>
+            <button
+              onClick={() => setBodyScanning(true)}
+              className={`rounded-lg border px-1 py-1.5 ${bodyDone ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200" : "border-white/20 bg-white/5 text-white/70"}`}
+            >
+              {bodyDone ? "✓" : "၂"} ကိုယ်ခန္ဓာ
+            </button>
+            <button
+              onClick={() => setTab("style")}
+              className="rounded-lg border border-white/20 bg-white/5 px-1 py-1.5 text-white/70"
+            >
+              ၃ ပုံစံ+သိမ်း
+            </button>
+          </div>
+        </div>
         <div className="flex gap-1 border-b border-white/10 p-2">
           {(
             [
@@ -132,10 +187,10 @@ export function AvatarEditor() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`rounded-lg px-3 py-1.5 text-xs ${
+              className={`rounded-lg px-3 py-1.5 text-[13px] font-semibold ${
                 tab === t
                   ? "bg-emerald-500/25 text-emerald-200"
-                  : "text-white/60 hover:bg-white/5"
+                  : "text-white/70 hover:bg-white/5"
               }`}
             >
               {label}
@@ -145,7 +200,12 @@ export function AvatarEditor() {
 
         <div className="flex-1 space-y-3 overflow-y-auto p-3">
           {tab === "scan" && (
-            <div className="space-y-3 text-sm text-white/75">
+            <div className="space-y-3 text-[14px] text-white/85">
+              <p className="rounded-lg bg-emerald-500/10 p-3 text-[13px] leading-relaxed text-emerald-100/90">
+                ဒီစာမျက်နှာက <b>ကိုယ့်မျက်နှာအစစ်နဲ့ 3D avatar</b> ဆောက်တဲ့နေရာပါ။
+                ဆောက်ပြီးသိမ်းရင် <b>Metaverse လောက</b> နဲ့{" "}
+                <b>GWAVE STRIKE ဂိမ်း</b> ထဲမှာ ကိုယ့်ရုပ်နဲ့ ပေါ်ပါမယ်။
+              </p>
               {config.faceGlbUrl ? (
                 <div className="flex items-center gap-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3">
                   {config.faceThumbUrl && (
@@ -173,10 +233,17 @@ export function AvatarEditor() {
                   </div>
                 </div>
               ) : (
-                <p className="rounded-lg border border-white/15 bg-white/5 p-3 text-[13px] leading-relaxed">
-                  📷 ကင်မရာနဲ့ မျက်နှာကို 3D scan ဖမ်းပြီး avatar ခေါင်းမှာ
-                  ကိုယ့်မျက်နှာအစစ် တပ်လို့ရပါပြီ။
-                </p>
+                <div className="rounded-lg border border-white/15 bg-white/5 p-3 text-[13px] leading-relaxed text-white/85">
+                  <p className="mb-1 font-semibold text-white">
+                    📷 လုပ်ရမယ့်အဆင့်တွေ:
+                  </p>
+                  <ol className="list-decimal space-y-1 pl-5">
+                    <li>အောက်က အစိမ်းရောင်ခလုတ် နှိပ်ပါ</li>
+                    <li>ကင်မရာခွင့် တောင်းရင်「ခွင့်ပြု」နှိပ်ပါ</li>
+                    <li>မျက်နှာကို ဘဲဥကွင်းထဲ တည့်တည့်ထားပြီး 📸 ဖမ်းပါ</li>
+                    <li>ကြိုက်ရင် ✓ သုံးမယ် — ပြီးပါပြီ</li>
+                  </ol>
+                </div>
               )}
               <button
                 onClick={() => setScanning(true)}
@@ -344,12 +411,87 @@ export function AvatarEditor() {
             {saving
               ? "သိမ်းနေသည်…"
               : savedFlash
-                ? "✓ သိမ်းပြီးပါပြီ"
+                ? "✓ သိမ်းပြီး — Metaverse + STRIKE မှာ ပေါ်ပါပြီ"
                 : dirty
-                  ? "သိမ်းမယ်"
+                  ? "💾 သိမ်းမယ်"
                   : "ပြောင်းလဲမှု မရှိသေးပါ"}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/// First-run "what IS this screen" overlay — reopened any time from ❓.
+/// One screen, four numbered steps, one big start button: a user who has
+/// never heard the word avatar must still know what to press.
+function GuideOverlay({
+  onStart,
+  onClose,
+}: {
+  onStart: () => void;
+  onClose: () => void;
+}) {
+  const steps: [string, string, string][] = [
+    [
+      "📷",
+      "၁။ မျက်နှာ Scan",
+      "ကင်မရာနဲ့ ကိုယ့်မျက်နှာကို တစ်ချက်ရိုက်ရုံ — 3D မျက်နှာ အလိုအလျောက် ဆောက်ပေးတယ်",
+    ],
+    [
+      "🧍",
+      "၂။ ကိုယ်ခန္ဓာ Scan (မဖြစ်မနေ မဟုတ်)",
+      "တစ်ကိုယ်လုံး ပုံရိုက်ရင် အရပ်/ပခုံး အချိုးအစား တိုင်းပေးတယ်",
+    ],
+    [
+      "👕",
+      "၃။ ပုံစံရွေး + သိမ်း",
+      "ဝတ်စုံ/အသားအရေ ရွေးပြီး「သိမ်းမယ်」နှိပ်ရုံ",
+    ],
+    [
+      "🎮",
+      "၄။ ဘယ်မှာ ပေါ်လဲ",
+      "Metaverse လောကထဲက avatar နဲ့ GWAVE STRIKE ဂိမ်းထဲက စစ်သားက ကိုယ့်ရုပ်နဲ့ ဖြစ်သွားတယ်",
+    ],
+  ];
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4">
+      <div className="w-full max-w-md space-y-3 rounded-2xl border border-white/15 bg-[#0d1220] p-5 text-white">
+        <p className="text-center text-lg font-bold">
+          🧬 ကိုယ့်မျက်နှာနဲ့ 3D Avatar ဆောက်မယ်
+        </p>
+        <p className="text-center text-[13px] text-white/70">
+          မိနစ်အနည်းငယ်ပဲ ကြာပါတယ် — အဆင့် ၃ ဆင့်တည်း
+        </p>
+        <div className="space-y-2.5">
+          {steps.map(([icon, title, body]) => (
+            <div key={title} className="flex gap-3 rounded-xl bg-white/5 p-3">
+              <span className="text-2xl">{icon}</span>
+              <div>
+                <p className="text-[14px] font-semibold">{title}</p>
+                <p className="text-[12.5px] leading-relaxed text-white/70">
+                  {body}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-[12px] leading-relaxed text-white/50">
+          🔒 ကင်မရာပုံတွေ ဖုန်းထဲမှာပဲ process လုပ်တယ် — ဘယ်အချိန်မဆို
+          ပြန်ဖျက်လို့ရတယ်။
+        </p>
+        <button
+          onClick={onStart}
+          className="w-full rounded-xl bg-emerald-500 py-3 text-[15px] font-bold text-black hover:bg-emerald-400"
+        >
+          📷 မျက်နှာ Scan စတင်မယ်
+        </button>
+        <button
+          onClick={onClose}
+          className="w-full rounded-xl border border-white/20 py-2 text-[13px] text-white/70 hover:bg-white/5"
+        >
+          နောက်မှ — အရင် လျှောက်ကြည့်မယ်
+        </button>
       </div>
     </div>
   );

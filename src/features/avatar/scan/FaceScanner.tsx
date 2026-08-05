@@ -5,7 +5,7 @@ import * as THREE from "three";
 
 import { buildFaceMesh, type BuiltFace } from "../build/faceMeshBuilder";
 import { exportGlb, uploadScanFile } from "../build/glbExport";
-import { captureFace } from "./faceLandmarks";
+import { captureFace, getFaceLandmarker } from "./faceLandmarks";
 import { useCamera } from "./useCamera";
 
 /// 📷 Face Scanner modal (spec §4.1) — Phase 2 v1: front capture။
@@ -36,6 +36,12 @@ export function FaceScanner({
   const [busy, setBusy] = useState(false);
   const builtRef = useRef<BuiltFace | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  /// AR overlay: live face mesh + auto-capture progress ring
+  const overlayRef = useRef<HTMLCanvasElement | null>(null);
+  const [hint, setHint] = useState("🧠 Scan engine ဖွင့်နေသည်…");
+  const busyRef = useRef(false);
+  busyRef.current = busy;
+  const snapRef = useRef<() => void>(() => undefined);
 
   // ── 3D preview (capture ပြီးမှ) ─────────────────────────────────────────
   useEffect(() => {
@@ -80,6 +86,162 @@ export function FaceScanner({
 
   useEffect(() => stop, [stop]);
 
+  // ── AR scanning overlay (camera step) ──────────────────────────────────
+  // The same MediaPipe singleton the capture uses runs live (~15fps): the
+  // detected mesh is drawn over the face, quality gates (found / close
+  // enough / centered / steady) drive a Face-ID-style progress ring, and a
+  // full ring auto-captures. The manual 📸 button stays as the fallback.
+  useEffect(() => {
+    if (step !== "camera") return;
+    let raf = 0;
+    let stopped = false;
+    let lastTs = 0;
+    let progress = 0;
+    let steadyFrames = 0;
+    let lastNose: { x: number; y: number } | null = null;
+    let lastHint = "";
+    const say = (h: string) => {
+      if (h !== lastHint) {
+        lastHint = h;
+        setHint(h);
+      }
+    };
+    void (async () => {
+      const lm = await getFaceLandmarker().catch(() => null);
+      if (!lm || stopped) {
+        if (!lm) say("⚠️ Scan engine ဆွဲလို့မရပါ — network စစ်ပြီး ပြန်ဝင်ပါ");
+        return;
+      }
+      const vision = await import("@mediapipe/tasks-vision");
+      const edges = vision.FaceLandmarker.FACE_LANDMARKS_TESSELATION;
+      const loop = (ts: number) => {
+        if (stopped) return;
+        raf = requestAnimationFrame(loop);
+        const v = videoRef.current;
+        const cv = overlayRef.current;
+        if (!v || !cv || v.videoWidth === 0 || busyRef.current) return;
+        if (ts - lastTs < 66) return; // ~15fps — phone GPU/battery friendly
+        const dt = Math.min(0.2, (ts - lastTs) / 1000);
+        lastTs = ts;
+        if (cv.width !== v.videoWidth || cv.height !== v.videoHeight) {
+          cv.width = v.videoWidth;
+          cv.height = v.videoHeight;
+        }
+        const ctx = cv.getContext("2d");
+        if (!ctx) return;
+        const W = cv.width;
+        const H = cv.height;
+        ctx.clearRect(0, 0, W, H);
+
+        let pts: { x: number; y: number }[] | undefined;
+        try {
+          pts = lm.detectForVideo(v, performance.now()).faceLandmarks?.[0];
+        } catch {
+          return;
+        }
+
+        // ── Gates + hint (first failing gate wins) ──
+        let ok = false;
+        if (!pts) {
+          say("🔍 မျက်နှာ ရှာနေသည် — ကင်မရာရှေ့ တည့်တည့်ထားပါ");
+          steadyFrames = 0;
+        } else {
+          let minX = 1, maxX = 0, minY = 1, maxY = 0;
+          for (const p of pts) {
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+          }
+          const nose = pts[1] ?? { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+          if (lastNose) {
+            const d = Math.hypot(nose.x - lastNose.x, nose.y - lastNose.y);
+            steadyFrames = d < 0.012 ? steadyFrames + 1 : 0;
+          }
+          lastNose = { x: nose.x, y: nose.y };
+
+          if (maxY - minY < 0.3) {
+            say("↔️ နည်းနည်း တိုးကပ်ပါ — မျက်နှာက ဝေးနေသေးတယ်");
+          } else if (nose.x < 0.3 || nose.x > 0.7 || nose.y < 0.25 || nose.y > 0.75) {
+            say("🎯 မျက်နှာကို အလယ်ကို ရွှေ့ပါ");
+          } else if (steadyFrames < 3) {
+            say("✋ ဖုန်းနဲ့ ခေါင်း ငြိမ်ငြိမ်ထားပါ");
+          } else {
+            ok = true;
+            say(`✨ ဖမ်းနေပြီ — ငြိမ်ငြိမ်နေပါ (${Math.round(progress * 100)}%)`);
+          }
+
+          // ── AR mesh (mirrored by CSS with the video) ──
+          ctx.strokeStyle = ok
+            ? "rgba(52,211,153,0.45)"
+            : "rgba(148,163,184,0.30)";
+          ctx.lineWidth = Math.max(1, W / 640);
+          ctx.beginPath();
+          for (let i = 0; i < edges.length; i += 2) {
+            const e = edges[i];
+            if (!e) continue;
+            const a = pts[e.start];
+            const b = pts[e.end];
+            if (!a || !b) continue;
+            ctx.moveTo(a.x * W, a.y * H);
+            ctx.lineTo(b.x * W, b.y * H);
+          }
+          ctx.stroke();
+          ctx.fillStyle = ok ? "rgba(110,231,183,0.9)" : "rgba(203,213,225,0.6)";
+          for (let i = 0; i < pts.length; i += 8) {
+            const p = pts[i];
+            if (!p) continue;
+            ctx.beginPath();
+            ctx.arc(p.x * W, p.y * H, Math.max(1.2, W / 500), 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // ── Progress ring around the face + scan sweep ──
+          const cx = ((minX + maxX) / 2) * W;
+          const cy = ((minY + maxY) / 2) * H;
+          const rx = ((maxX - minX) / 2) * W * 1.25;
+          const ry = ((maxY - minY) / 2) * H * 1.15;
+          ctx.strokeStyle = "rgba(255,255,255,0.18)";
+          ctx.lineWidth = Math.max(3, W / 160);
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          if (progress > 0) {
+            ctx.strokeStyle = "rgba(52,211,153,0.95)";
+            ctx.beginPath();
+            ctx.ellipse(
+              cx, cy, rx, ry, 0,
+              -Math.PI / 2,
+              -Math.PI / 2 + progress * Math.PI * 2,
+            );
+            ctx.stroke();
+            const sweepY = cy - ry + ((performance.now() / 900) % 1) * ry * 2;
+            const g = ctx.createLinearGradient(0, sweepY - 14, 0, sweepY + 14);
+            g.addColorStop(0, "rgba(52,211,153,0)");
+            g.addColorStop(0.5, "rgba(52,211,153,0.35)");
+            g.addColorStop(1, "rgba(52,211,153,0)");
+            ctx.fillStyle = g;
+            ctx.fillRect(cx - rx, sweepY - 14, rx * 2, 28);
+          }
+        }
+
+        progress = ok
+          ? Math.min(1, progress + dt / 1.3)
+          : Math.max(0, progress - dt * 1.6);
+        if (progress >= 1) {
+          progress = 0;
+          say("📸 ဖမ်းလိုက်ပြီ…");
+          snapRef.current();
+        }
+      };
+      raf = requestAnimationFrame(loop);
+    })();
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [step, videoRef]);
+
   const consent = async () => {
     setBusy(true);
     setErr(null);
@@ -123,6 +285,10 @@ export function FaceScanner({
       setBusy(false);
     }
   };
+
+  // The AR loop auto-captures through this ref so it always calls the
+  // freshest closure (busy/camera state included).
+  snapRef.current = () => void snap();
 
   const upload = async () => {
     const built = builtRef.current;
@@ -198,19 +364,53 @@ export function FaceScanner({
                 ref={videoRef}
                 className="aspect-[3/4] w-full -scale-x-100 object-cover"
               />
-              {/* Oval guide */}
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div className="h-[70%] w-[62%] rounded-[50%] border-2 border-dashed border-emerald-400/70" />
+              {/* AR overlay: live face mesh + progress ring + scan sweep —
+                  same mirror + cover crop as the video so it stays aligned */}
+              <canvas
+                ref={overlayRef}
+                className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100 object-cover"
+              />
+              {/* Corner brackets — scanner-viewfinder framing */}
+              <div className="pointer-events-none absolute inset-3">
+                <div className="absolute left-0 top-0 h-6 w-6 rounded-tl-lg border-l-2 border-t-2 border-emerald-400/80" />
+                <div className="absolute right-0 top-0 h-6 w-6 rounded-tr-lg border-r-2 border-t-2 border-emerald-400/80" />
+                <div className="absolute bottom-0 left-0 h-6 w-6 rounded-bl-lg border-b-2 border-l-2 border-emerald-400/80" />
+                <div className="absolute bottom-0 right-0 h-6 w-6 rounded-br-lg border-b-2 border-r-2 border-emerald-400/80" />
               </div>
               {camState !== "on" && (
-                <p className="absolute inset-x-0 bottom-2 text-center text-xs text-white/60">
-                  {camState === "starting" ? "ကင်မရာ ဖွင့်နေသည်…" : "ကင်မရာ မရသေးပါ"}
-                </p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 p-4 text-center">
+                  {camState === "starting" ? (
+                    <p className="text-sm text-white/80">📷 ကင်မရာ ဖွင့်နေသည်…</p>
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold text-amber-300">
+                        ကင်မရာ ဖွင့်လို့ မရသေးပါ
+                      </p>
+                      <p className="text-[12px] leading-relaxed text-white/70">
+                        ခွင့်ပြုချက် တောင်းလာရင်「ခွင့်ပြု / Allow」နှိပ်ပါ။
+                        ငြင်းမိသွားရင် ဖုန်း Settings → Apps → Gwave →
+                        Permissions → Camera ကို ဖွင့်ပြီး ပြန်ကြိုးစားပါ။
+                      </p>
+                      <button
+                        onClick={() => void start()}
+                        className="rounded-lg bg-emerald-500 px-4 py-1.5 text-[13px] font-semibold text-black"
+                      >
+                        🔄 ပြန်ကြိုးစားမယ်
+                      </button>
+                    </>
+                  )}
+                </div>
               )}
             </div>
-            <p className="text-center text-[12px] text-white/60">
-              မျက်နှာကို ဘဲဥကွင်းထဲ တည့်တည့်ထား၊ အလင်းကောင်းကောင်းနဲ့
+            {/* Live AR guidance — updates every frame from the mesh gates */}
+            <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-center text-[13.5px] font-semibold text-emerald-200">
+              {hint}
             </p>
+            <div className="rounded-lg bg-white/5 p-2.5 text-[12.5px] leading-relaxed text-white/75">
+              💡 <b>ကောင်းကောင်းရအောင်</b>: အလင်းရောင် ကောင်းကောင်း
+              (ပြတင်းပေါက်/မီးရှေ့) · မျက်မှန်/ဦးထုပ် ချွတ်ထား · ဖုန်းကို
+              မျက်နှာအမြင့် တည့်တည့်ကိုင် — အဆင်ပြေရင် <b>အလိုအလျောက် ဖမ်းပေး</b>ပါမယ်
+            </div>
             <button
               onClick={snap}
               disabled={busy || camState !== "on"}
@@ -223,6 +423,9 @@ export function FaceScanner({
 
         {(step === "preview" || step === "uploading") && (
           <div className="space-y-3">
+            <p className="text-center text-[13px] text-white/80">
+              ✨ ကိုယ့် 3D မျက်နှာပါ — ကြိုက်ရင် ✓ သုံးမယ်၊ မကြိုက်ရင် ပြန်ရိုက်ပါ
+            </p>
             <div ref={previewRef} className="aspect-[3/4] w-full overflow-hidden rounded-xl" />
             <div className="flex gap-2">
               <button
