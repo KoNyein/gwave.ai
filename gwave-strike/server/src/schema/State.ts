@@ -20,6 +20,10 @@ export class PlayerState extends Schema {
   @type("uint16") deaths = 0;
   /// Last input sequence the sim consumed — client reconciliation anchor
   @type("uint32") lastSeq = 0;
+  /// Gwave profile uuid when the player has a scan avatar ("" otherwise) —
+  /// clients use it to fetch the public face GLB. Never a secret: the same
+  /// id is already visible to room peers across the metaverse.
+  @type("string") avatarId = "";
 }
 
 export class MatchState extends Schema {
