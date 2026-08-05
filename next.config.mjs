@@ -154,7 +154,10 @@ const csp = [
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
   `frame-src 'self' https://www.youtube-nocookie.com https://accounts.google.com${cctvFrameSrc}${gameFrameSrc}${googleMapsSrc}`,
-  "frame-ancestors 'none'",
+  // 'self' (was 'none'): the metaverse Game Zone opens our own game pages
+  // (/drone, /strike, /games/*) in a same-origin overlay iframe. Cross-origin
+  // framing stays forbidden, so clickjacking protection is unchanged.
+  "frame-ancestors 'self'",
   "base-uri 'self'",
   "form-action 'self'",
   // No plugins/Flash/embeds — shrinks the attack surface for legacy vectors.
@@ -170,7 +173,9 @@ const securityHeaders = [
     value: "max-age=63072000; includeSubDomains; preload",
   },
   { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
+  // SAMEORIGIN (was DENY) — must agree with frame-ancestors 'self' above,
+  // or the metaverse Game Zone iframes get blocked by the stricter header.
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     // camera/microphone (calls + G-Pay face scan) and geolocation (location

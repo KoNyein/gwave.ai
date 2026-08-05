@@ -139,6 +139,20 @@
 
 ## Changelog
 
+- 2026-08-05 (metaverse): **🕹 Game Zone — all games playable INSIDE the
+  metaverse.** New arcade plaza behind spawn (z=20): 4 neon arcade
+  cabinets (GWAVE DRONE, GWAVE STRIKE, Assassin, Drone Champions) with
+  emissive canvas screens + accent marquees + colliders, a 🧬 3D SCAN
+  STUDIO pod (emissive pad + stand-in torus scan ring) and a GAME ZONE
+  arch. Walk up → pulsing HUD button → game opens in a same-origin
+  overlay iframe over the world (never leaves the metaverse; ✕ returns
+  in place). Closing the Scan Studio re-applies the avatar immediately
+  (applyAvatar in game rooms, avatarNonce rebuild elsewhere). 🎮 games
+  menu gained a "Game Zone" section listing all five. Enabler:
+  frame-ancestors 'none'→'self' + X-Frame-Options DENY→SAMEORIGIN
+  (cross-origin framing still blocked). Landmark type gained
+  `overlay?: boolean`.
+
 - 2026-08-05 (game): **GWAVE DRONE Phase 5–7 (multiplayer + garage + gwave
   integration).** gwavegamep7final package integrated. Client
   (public/drone/): drone garage/configurator ([B], part catalog →
