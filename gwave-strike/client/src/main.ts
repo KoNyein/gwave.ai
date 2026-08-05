@@ -23,13 +23,21 @@ import { buildWorld, terrainHeight } from "./world/world";
 /// hosting). The physics/weapons/FSM stack is identical in both modes; only
 /// who owns truth changes.
 
-const SOLDIER_URL = "/assets/soldier-placeholder.glb";
+// Vite's base ("/strike/" in production, "/" in dev) — hardcoded absolute
+// URLs would 404 behind the Caddy path prefix.
+const BASE =
+  (import.meta as unknown as { env?: Record<string, string> }).env?.[
+    "BASE_URL"
+  ] ?? "/";
+const SOLDIER_URL = `${BASE}assets/soldier-placeholder.glb`;
 const SERVER_URL =
   (import.meta as unknown as { env?: Record<string, string> }).env?.[
     "VITE_SERVER_URL"
   ] ??
   (location.protocol === "https:"
-    ? `wss://${location.host}/colyseus`
+    ? // Same origin, same path prefix: Caddy strips /strike and the strike
+      // container answers both Colyseus matchmaking and the room WS.
+      `wss://${location.host}${BASE.replace(/\/$/, "")}`
     : "ws://localhost:2567");
 
 async function boot() {
@@ -72,7 +80,7 @@ async function boot() {
 
   // PWA
   if ("serviceWorker" in navigator && location.protocol === "https:") {
-    void navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    void navigator.serviceWorker.register(`${BASE}sw.js`).catch(() => undefined);
   }
 
   // Tab scoreboard hold

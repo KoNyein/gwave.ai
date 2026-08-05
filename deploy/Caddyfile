@@ -27,6 +27,14 @@ gwave.cc {
 		reverse_proxy 127.0.0.1:8888
 	}
 
+	# GWAVE STRIKE — the `strike` container serves the game client AND its
+	# Colyseus matchmaking/WS on one port. Redirect the bare path so the
+	# client's relative URLs resolve under /strike/.
+	redir /strike /strike/ permanent
+	handle_path /strike/* {
+		reverse_proxy 127.0.0.1:8095
+	}
+
 	reverse_proxy web:3000
 }
 
