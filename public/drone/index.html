@@ -67,16 +67,32 @@
   .stick-knob{position:absolute;width:52px;height:52px;background:rgba(255,255,255,.35);
     border-radius:50%;transform:translate(-50%,-50%)}
   body.touch .stick-zone{display:block}
+.dmg{position:fixed;color:#fff;font-size:17px;font-weight:bold;pointer-events:none;
+    text-shadow:0 0 4px #000;transform:translate(-50%,-50%);z-index:9}
+  .dmg.head{color:#ffcf40;font-size:21px}
 </style>
 </head>
 <body>
 <div id="app"></div>
 
 <!-- FPV OSD -->
+<div id="dmg-layer"></div>
+<div id="vignette" style="position:fixed;inset:0;pointer-events:none;z-index:8;opacity:0;
+  background:radial-gradient(ellipse at center,transparent 45%,rgba(200,20,20,.55) 100%)"></div>
+<div id="caption" style="position:fixed;bottom:110px;left:50%;transform:translateX(-50%);
+  color:#ffe9c8;font-family:'Padauk','Noto Sans Myanmar',monospace;font-size:17px;
+  text-shadow:0 0 6px #000;z-index:9;text-align:center;pointer-events:none"></div>
 <div id="osd">
   <div class="osd-tl">
     <div>⚡ <span id="volt">25.2</span>V</div>
     <div>THR <span id="thr-bar"><span id="thr-fill"></span></span> <span id="thr-pct">0</span>%</div>
+  </div>
+  <div id="race-panel" style="position:absolute;top:86px;left:14px;line-height:1.6;display:none">
+    <div style="opacity:.7">Race time:</div>
+    <div id="race-time" style="font-size:19px">00:00:000</div>
+    <div id="lap-label" style="opacity:.7;margin-top:4px">Lap 1/2</div>
+    <div id="lap-list"></div>
+    <div style="opacity:.7;margin-top:4px">Best: <span id="best-time">--:--:---</span></div>
   </div>
   <div class="osd-tr">
     <div>RSSI <span id="rssi">99</span></div>
@@ -86,15 +102,25 @@
     <div>ALT <span id="alt">0.0</span>m</div>
     <div>SPD <span id="spd">0</span> km/h</div>
   </div>
+  <div id="hp-wrap" style="position:absolute;bottom:56px;left:14px;display:none">
+    <div style="opacity:.7">HP</div>
+    <div style="width:150px;height:10px;border:1px solid var(--osd-dim)">
+      <div id="hp-fill" style="height:100%;width:100%;background:#7dff8d"></div></div>
+    <div id="wave-label" style="margin-top:4px;opacity:.8">[P] = Wave စတင်</div>
+  </div>
+  <div id="ammo" style="position:absolute;bottom:56px;right:14px;text-align:right;display:none">
+    <div id="gun-name" style="opacity:.7">AK-47</div>
+    <div style="font-size:26px"><span id="mag">30</span><span style="font-size:14px;opacity:.6"> / <span id="reserve">90</span></span></div>
+  </div>
+  <div id="hitmarker" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:26px;opacity:0;color:#fff">✕</div>
   <div class="osd-br">
     <div id="mode-label">ACRO</div>
     <div id="arm-label">DISARMED</div>
   </div>
   <div class="osd-center"><span id="crosshair">✛</span></div>
   <div id="horizon"></div>
-  <div id="race-osd" style="position:absolute;top:8px;left:50%;transform:translateX(-50%);font-size:13px;letter-spacing:1px;color:#aef3c0;text-shadow:0 0 6px #000"></div>
   <div id="warn">⚠ LOW BATTERY</div>
-  <div id="armed-msg">[F] AVATAR ↔ DRONE · SPACE=ARM/Jump · WASD=Move/Throttle · Shift=Run · C=Crouch</div>
+  <div id="armed-msg">LMB=Fire · RMB=ADS · R=Reload · 1/2/3=Guns · 4=Mine · 5=Tripwire · 6=C4 · G=Detonate · P=Wave · [F]=DRONE</div>
 </div>
 
 <button id="gear">⚙ SETTINGS</button>
