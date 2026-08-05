@@ -1,0 +1,19 @@
+{
+  "name": "gwave-home",
+  "version": "1.0.0",
+  "description": "GWAVE Home/IoT platform \u2014 device registry, traits, MQTT plane, rules engine",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node test/smoke.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aedes": "^1.1.1",
+    "express": "^5.2.1",
+    "mqtt": "^5.15.2",
+    "pg": "^8.22.0"
+  }
+}
