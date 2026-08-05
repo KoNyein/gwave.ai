@@ -1,0 +1,23 @@
+{
+  "port": 4000,
+  "healthPollSeconds": 30,
+  "postgres": {
+    "host": "YOUR_RDS_ENDPOINT.rds.amazonaws.com",
+    "port": 5432,
+    "database": "gwave",
+    "user": "gwave",
+    "password": "CHANGE_ME",
+    "ssl": { "rejectUnauthorized": false }
+  },
+  "mediamtx": {
+    "apiUrl": "http://127.0.0.1:9997",
+    "publicHost": "YOUR_EC2_PUBLIC_IP",
+    "hlsPort": 8888,
+    "webrtcPort": 8889
+  },
+  "tuya": {
+    "apiBase": "https://openapi.tuyaeu.com",
+    "accessId": "YOUR_TUYA_ACCESS_ID",
+    "accessSecret": "YOUR_TUYA_ACCESS_SECRET"
+  }
+}
