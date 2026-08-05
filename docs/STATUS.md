@@ -139,6 +139,18 @@
 
 ## Changelog
 
+- 2026-08-05 (game): **GWAVE DRONE Phase 3+4 (soldier FPS + combat).**
+  Uploaded gwavedronep4 package (superset of p2/p3) replaces the
+  first-pass Phase 2 code in public/drone/: AVATAR↔FPV mode toggle
+  ([F] deploys the drone), soldier controller (sprint/crouch/jump,
+  pointer-lock FPS + 3rd person [V]), 3-slot weapon system with ADS/
+  recoil/reload + target range, enemy AI waves ([P], Burmese captions),
+  explosions + chain-reacting barrels/cars, fire grid burn damage,
+  traps (mine/tripwire/C4), HP/regen/vignette, refactored RaceSystem/
+  CollisionSystem/DroneAudio (gate & arm beeps, next-gate highlight,
+  optional GLB drone via ?drone= / assets/drone.glb). Best lap now
+  persisted per-track in localStorage (added on top of the package).
+
 - 2026-08-05 (game): **GWAVE DRONE live at gwave.cc/drone (P1+P2).**
   Uploaded FPV sim package (240Hz acro/angle physics, FeelFPV-parity
   rates UI, gamepad/ELRS/touch, WebXR, scan-avatar pilot) integrated
