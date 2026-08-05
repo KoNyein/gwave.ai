@@ -7,7 +7,7 @@
  *   gw/{siteId}/{deviceKey}/config   device က ကိုယ့် traits ကြေညာ (retained)
  *                                    → auto-discovery + auto-register
  *   gw/{siteId}/{deviceKey}/state    {"values":{"sensor.temperature":27.5}}
- *                                    → cache + sensor_readings ingest
+ *                                    → cache + gh_sensor_readings ingest
  *   gw/{siteId}/{deviceKey}/event    {"type":"motion", ...}
  *   gw/{siteId}/{deviceKey}/lwt      "offline" (Last Will) → offline detect
  *   gw/{siteId}/{deviceKey}/cmd      server → device command
@@ -118,11 +118,11 @@ class MqttConnector extends BaseConnector {
       [deviceId]
     );
 
-    // Ingestor: numeric values → sensor_readings
+    // Ingestor: numeric values → gh_sensor_readings
     for (const [trait, v] of Object.entries(values)) {
       if (typeof v === "number") {
         await this.pool.query(
-          `INSERT INTO sensor_readings (device_id, trait, value) VALUES ($1,$2,$3)`,
+          `INSERT INTO gh_sensor_readings (device_id, trait, value) VALUES ($1,$2,$3)`,
           [deviceId, trait, v]
         );
       }

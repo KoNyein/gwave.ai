@@ -184,7 +184,7 @@ app.get("/api/devices/:id/history", wrap(async (req, res) => {
   await registry.getDeviceAuthorized(req.userId, req.params.id);
   const hours = Math.min(Number(req.query.hours) || 24, 24 * 30);
   const { rows } = await pool.query(
-    `SELECT time, value FROM sensor_readings
+    `SELECT time, value FROM gh_sensor_readings
      WHERE device_id=$1 AND trait=$2 AND time > now() - ($3 || ' hours')::interval
      ORDER BY time`,
     [req.params.id, req.query.trait, String(hours)]
