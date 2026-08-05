@@ -1,0 +1,43 @@
+# MediaMTX config for the Gwave Camera Bridge (RTSP publish → HLS).
+#
+# The Gwave Android app pulls a local camera's RTSP (same WiFi / hotspot) and
+# publishes it OUT to this server — the answer for router-less / CGNAT
+# cameras the server can never reach. Runs on the SAME EC2 box as the web
+# container, via docker host networking (see README.md next to this file).
+#
+# Ports: 8554/tcp (RTSP publish, open to the internet — auth below),
+#        8888/tcp (HLS, loopback only — Caddy fronts it at /hls/*).
+
+# --- Protocols --------------------------------------------------------------
+rtsp: yes
+rtspAddress: :8554
+rtmp: no
+srt: no
+webrtc: no
+hls: yes
+hlsAddress: 127.0.0.1:8888
+hlsVariant: lowLatency
+hlsAllowOrigin: "*"
+api: no
+metrics: no
+
+# --- Auth -------------------------------------------------------------------
+# Every publish attempt is checked against the web app (2xx = allow). The
+# password is a short-lived HMAC token minted by /api/mobile/cctv/bridge —
+# never a user credential. Reads are excluded: HLS paths are unguessable ids
+# and the app gates who ever learns a URL (same model as camera-hls-form).
+authMethod: http
+authHTTPAddress: http://127.0.0.1:3000/api/cctv/bridge/auth
+authHTTPExclude:
+  - action: read
+  - action: playback
+  - action: api
+  - action: metrics
+  - action: pprof
+
+# --- Paths ------------------------------------------------------------------
+# Only bridge/cam_<hex> exists, and only as a publisher target. Anything else
+# (including the old live/ paths — this instance is CCTV-only) does not exist.
+paths:
+  ~^bridge/cam_[0-9a-f]+$:
+    source: publisher
