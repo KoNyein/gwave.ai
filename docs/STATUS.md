@@ -139,6 +139,17 @@
 
 ## Changelog
 
+- 2026-08-05 (game): **GWAVE DRONE live at gwave.cc/drone (P1+P2).**
+  Uploaded FPV sim package (240Hz acro/angle physics, FeelFPV-parity
+  rates UI, gamepad/ELRS/touch, WebXR, scan-avatar pilot) integrated
+  as a static app in public/drone/ (CDN three is CSP-allowed; /drone
+  redirect route added). Phase 2 implemented on top: gate lap timing
+  with strict checkpoint order + best lap, obstacle crash colliders
+  (barrels/trees/gate posts), physics-driven 4-motor sound + crash +
+  low-battery beeps, 20Hz ghost replay of the best lap, JSON track
+  format (public/drone/tracks/). Spec docs: GWAVE_METAVERSE_COMBAT.
+
+
 - 2026-08-05 (iot): **GWAVE Home platform (unified IoT engine).** New
   gwave-home/ workspace (from the user's uploaded platform+engine
   packages, reviewed & fixed: aedes 1.x createBroker init, "state"
