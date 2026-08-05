@@ -12,6 +12,7 @@ import { Net } from "./net/net";
 import { PlayerController } from "./player/controller";
 import { WeaponSystem, type HitTarget } from "./player/weapons";
 import { BotManager } from "./soldiers/bots";
+import { ScanAvatars, fetchOwnAvatar } from "./soldiers/scanAvatar";
 import { Soldier } from "./soldiers/soldier";
 import { createHud } from "./ui/hud";
 import { createMinimap, type MapDot } from "./ui/minimap";
@@ -131,9 +132,15 @@ async function boot() {
   };
 
   // ── Online (Colyseus) or offline (local bots) ──
+  // Scan avatars (spec §9): announce our profile id so others render our
+  // scanned face; render theirs from the state's avatarId.
+  const scanAvatars = new ScanAvatars(loader);
+  const ownAvatar = await fetchOwnAvatar();
   const net = new Net();
   let lastMyHp = MAX_HP;
-  const online = await net.connect(SERVER_URL, {
+  const online = await net.connect(
+    SERVER_URL,
+    {
     onKill: (text) => {
       hud.kill(text);
       if (text.startsWith("🏆")) hud.banner(text);
@@ -150,7 +157,9 @@ async function boot() {
       }
       if (victimIsMe) hud.damage();
     },
-  });
+    },
+    ownAvatar.userId ?? undefined,
+  );
 
   const bots = online ? null : new BotManager(world.scene, loader, SOLDIER_URL, 5);
   const remoteSoldiers = new Map<string, Soldier>();
@@ -261,6 +270,7 @@ async function boot() {
           s = new Soldier(loader, SOLDIER_URL, v.team === 0 ? 0x7799ff : 0xff8877);
           remoteSoldiers.set(id, s);
           world.scene.add(s.group);
+          if (v.avatarId) scanAvatars.apply(v.avatarId, s);
         }
         s.group.position.set(v.x, v.y, v.z);
         s.group.rotation.y = v.yaw;

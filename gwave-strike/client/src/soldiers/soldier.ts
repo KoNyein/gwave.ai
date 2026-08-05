@@ -41,7 +41,27 @@ export class Soldier {
   private actions = new Map<SoldierState, THREE.AnimationAction>();
   private current: SoldierState | null = null;
   private oneShotUntil = 0;
+  private model: THREE.Object3D | null = null;
+  private readyCbs: ((model: THREE.Object3D) => void)[] = [];
   dead = false;
+
+  /// Runs once the async GLB clone is in the scene graph (immediately if it
+  /// already is) — the scan-avatar attach needs the real bones, not the group.
+  onReady(cb: (model: THREE.Object3D) => void) {
+    if (this.model) cb(this.model);
+    else this.readyCbs.push(cb);
+  }
+
+  /// The rig's head bone (or the nearest thing named like one) — scan faces
+  /// ride it so they inherit every animation. Null on headless rigs.
+  headBone(): THREE.Object3D | null {
+    if (!this.model) return null;
+    let head: THREE.Object3D | null = null;
+    this.model.traverse((o) => {
+      if (!head && /head/i.test(o.name)) head = o;
+    });
+    return head;
+  }
 
   constructor(loader: GLTFLoader, url: string, tint?: number) {
     void loadBase(loader, url).then((gltf) => {
@@ -80,6 +100,8 @@ export class Soldier {
         }
       }
       this.play("idle");
+      this.model = model;
+      for (const cb of this.readyCbs.splice(0)) cb(model);
     });
   }
 

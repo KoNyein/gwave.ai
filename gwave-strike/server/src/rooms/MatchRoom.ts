@@ -67,7 +67,10 @@ export class MatchRoom extends Room {
     this.ensureBots();
   }
 
-  override onJoin(client: Client, options?: { name?: string }) {
+  override onJoin(
+    client: Client,
+    options?: { name?: string; avatarId?: string },
+  ) {
     const blue = [...this.state.players.values()].filter(
       (p) => p.team === 0 && !p.bot,
     ).length;
@@ -79,6 +82,12 @@ export class MatchRoom extends Room {
     const p = new PlayerState();
     p.id = client.sessionId;
     p.name = String(options?.name ?? "Player").slice(0, 24) || "Player";
+    // Only a well-formed uuid passes — anything else stays "" (no avatar).
+    const av = String(options?.avatarId ?? "");
+    p.avatarId =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(av)
+        ? av.toLowerCase()
+        : "";
     p.team = team;
     this.spawn(p);
     this.state.players.set(client.sessionId, p);
