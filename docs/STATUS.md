@@ -139,6 +139,36 @@
 
 ## Changelog
 
+- 2026-08-05 (web): **Camera Bridge server side.** Router-less/CGNAT
+  cameras: the Android app relays the camera's local RTSP OUT to a
+  MediaMTX on the prod box (deploy/cctv-bridge/), republished as HLS
+  at gwave.cc/hls/*. POST /api/mobile/cctv/bridge mints a path-scoped
+  24h HMAC publish token (CAMERA_VENDOR_TOKEN_KEY_V1) + owns the
+  camera row; /api/cctv/bridge/auth is the MediaMTX auth webhook
+  (fail-closed). Inert until CCTV_BRIDGE_PUBLISH_BASE +
+  CCTV_BRIDGE_HLS_BASE are set on EC2. App side ships on the mobile
+  branch.
+
+- 2026-08-05 (web): **Tapo guided RTSP wizard.** Picking Tapo in Add
+  Camera opens a 3-step Burmese wizard (Camera Account ≠ cloud email,
+  Device Info IP, HD/SD) composing the rtsp:// URL live — no hand-
+  editing templates. Vendor-cloud step 2 was investigated and shelved:
+  TP-Link has no official third-party API and the design doc forbids
+  reverse-engineering; the bridge above is the router-less answer.
+  PR #501.
+
+- 2026-08-04 (game): **GWAVE STRIKE Phases 1–5.** Isolated workspace
+  gwave-strike/ (three.js + Rapier client, Colyseus 0.17 authoritative
+  server, shared sim constants): open-world FPS with server-side
+  hitscan + lag comp, bots, offline fallback, PWA client, deploy kit
+  for game.gwave.cc (deploy-strike.yml; goes live when STRIKE_EC2_*
+  secrets + DNS exist). PRs #498 + #500.
+
+- 2026-08-04 (web): **LiveKit replays actually play.** /recordings
+  now knows the LiveKit egress bucket (LIVEKIT_EGRESS_S3_*) with a
+  CDN 302 fallback — feed cards and the app can stream saved lives.
+  PR #496.
+
 - 2026-08-04 (web): **Metaverse Go Live records for replay.** Streams
   now create with record:true — with LIVEKIT_EGRESS_S3_* envs set (see
   deploy/livekit-egress-replay-env.md, user-side) every broadcast
