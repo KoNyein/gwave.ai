@@ -76,8 +76,47 @@ src/main.js         — Drone Valley world, FPV camera, fixed-step loop, haptics
 - **Burmese VO (4.8):** caption system + radio beep — wave/ရန်သူတွေ့/ခွေးသတိပေး/kill callouts (audio file hooks ready)
 - Player: HP bar + damage vignette + 5s ပြီးမှ regen + heartbeat haptic (HP<25) + death/respawn
 
-## Next (P5 hooks)
-- Multiplayer netcode (WebTransport), STRIKE 5v5, kamikaze drone payload (explosion system ရှိပြီ — drone ချိတ်ရုံ)
+## Phase 6 — Kamikaze / Scout Drone Combat (implemented)
+- **Kamikaze payload (6.1):** [F] deploy → **30m ပျံမှ ARM** (OSD: SAFE→ARMED ⚠) → crash = ပေါက်ကွဲ (radius 6, dmg 220 + မီး) · [G] = manual detonate · fuse modes IMPACT/PROXIMITY/MANUAL · ပေါက်ပြီးရင် **10s rebuild cooldown** + soldier auto-return
+- **Video link (6.1):** distance + occlusion (သစ်ပင်/အဆောက်အအုံကွယ်) → **static noise overlay + RSSI ကျ** · link < 8% ၂ စက္ကန့် = failsafe crash
+- **Scout marking (6.2):** camera center ကို ရန်သူပေါ် 1s ထား → အနီ marker 8s (progress % OSD)
+- **Counters (6.3):** ရန်သူတွေက drone ကို ပြောင်းပစ် (drone HP 25, hitbox သေး — ပစ်ခက်), drone အသံကြားရင် alert · **Jammer zone** (map အနောက်ဘက်) — အထဲဝင်ရင် signal ×0.12, jammer ကို ပစ်ဖျက်ရင် airspace ပွင့်
+- Gameplay loop အပြည့်: mine ထောင် → wave ခေါ် → ရန်သူကို scout drone နဲ့ mark → kamikaze နဲ့ ထိုးစိုက် → ခွေးရှောင် → ကား/barrel chain ပေါက်ကွဲ
+
+## Garage — Drone Configurator (implemented)
+- **🔧 GARAGE button / [B]** — FeelFPV-style panel: Propellers (2/3/4/7-blade) · Motors (1700/1900/2400KV) · Battery (4S/6S, 1100–1800mAh) · Frame (3"/5"/7")
+- **Part တိုင်း physics တကယ်ထိ:** thrust, drag, motor spool (tau), battery sag/voltage/capacity, arm length, inertia — stat card = physics တွက်ချက် အတိအကျ
+- Spec sheet: Weight / TWR / Top speed / Flight time / Agility bars + build hint (မြန်မာ)
+- Color zones: frame / props / battery, 💾 SAVE (localStorage → production: RDS game.drone_builds), 🚁 TEST FLY = build နဲ့ချက်ချင်း deploy
+- Build ဥပမာ: Race (2-blade+2400KV) = TWR 6.5·76km/h·193s · Cine 7" = TWR 4.2·39km/h·372s · Micro 4S = TWR 7.3
+
+## Phase 5 — Multiplayer Netcode Core (implemented)
+**Run:**
+```bash
+cd server && npm install && node server.js     # ws://localhost:8787
+# client: 🌐 ONLINE button (သို့ ?server=ws://host:8787)
+# browser tab ၂ ခုဖွင့်ရင် တစ်ယောက်ကိုတစ်ယောက်မြင် + ပစ်လို့ရ
+```
+- **Server (authoritative):** room system (16 players), 30Hz snapshot tick, **envelope validation** (soldier 8.5 / drone 55 m/s ကျော်ရင် reject + snap-back correction), **lag-comp hit validation** (300ms position history rewind, claim ↔ rewound pos ≤1.2m), kill/respawn/killboard, chat, kamikaze boom relay
+- **Client:** 20Hz state send, **100ms interpolation buffer** (remote avatars smooth), remote players = Avatar+Motions (အပြာ tint, anim state sync), remote drone mesh + PILOT_SIT pose, PvP (remote ကိုပစ်ရင် local raycast → server validate), kill feed captions (မြန်မာ)
+- **Transport:** WebSocket — production: WebTransport datagrams (QUIC) upgrade — send/broadcast layer ၂ function ထဲသာရှိလို့ swap လွယ် (GAME_DESIGN_ANALYSIS §5.2)
+- Verified: 2-bot integration test — join/snapshots/teleport-reject/3×34dmg→kill/invalid-claim-reject/respawn အားလုံး pass
+
+## Phase 7 — gwave Integration (implemented, local-tested)
+**Run (dev):**
+```bash
+cd server && npm install
+AUTH_MODE=dev node api.js &     # REST API :8788 (memory store; DATABASE_URL → Postgres)
+AUTH_MODE=dev node server.js    # game server :8787 (token လိုပြီ)
+```
+- **Cognito SSO (7.1):** `server/auth.js` — AUTH_MODE off/dev/cognito · Cognito JWKS verify + `custom:avatar_glb` claim · game join မှာ token မပါရင် reject
+- **RDS schema (7.2):** `server/migrations/001_game_schema.sql` — players/matches/inventory/items/drone_builds + leaderboard view · `server/api.js` REST (pg ↔ memory auto)
+- **Drone build sync (7.3):** Garage SAVE → `PUT /me/drone-config` ☁ · login မှာ cloud build auto-pull + apply
+- **Avatar (7.4):** `/me` ရဲ့ avatarGlb (Cognito attribute) → scan GLB auto-load
+- **Stats + leaderboard (7.5):** kill → server-to-server `/report` (GAME_KEY auth) → kills/xp · **[L]** = top 5 leaderboard
+- **OpenClaw NPC (7.9):** စခန်းမှူး "ဦးလှ" NPC (spawn ဘေး, lookAt+wave) — **[T]** နဲ့စကားပြော → `?ai=` endpoint (offline = မြန်မာ fallback tips)
+- Verified: auth reject/accept, config roundtrip, kill→stats (K1/XP25), leaderboard rank
+- **Production:** `P7_DEPLOY.md` — Cognito/RDS/EC2/nginx/IVS/Marketplace/WebTransport checklist
 - Drone mesh ကို GLB နဲ့လဲ (`buildDroneMesh()` → GLTFLoader)
 - Config save → RDS `game.drone_configs` (localStorage placeholder ကို API call လဲ)
 - Rapier collision (gates/barrels), gate timing system, ghost replay

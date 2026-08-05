@@ -104,6 +104,23 @@ export class EnemyAI {
     return false;
   }
 
+  _fireAtDrone(dr, dt) {
+    this.fireT -= dt;
+    if (this.fireT > 0) return;
+    this.fireT = 1 / this.d.fireRate;
+    const from = this.pos.clone().setY(this.pos.y + 1.45);
+    this.yaw = Math.atan2(dr.pos.x - this.pos.x, dr.pos.z - this.pos.z);
+    const to = dr.pos.clone();
+    const dist = from.distanceTo(to);
+    const err = (this.d.aimErr * 2.2) * dist;        // drone သေး — ပစ်ခက်
+    to.x += (Math.random() - 0.5) * err * 2;
+    to.y += (Math.random() - 0.5) * err * 2;
+    to.z += (Math.random() - 0.5) * err * 2;
+    this.ctx.tracer(from, to);
+    this.ctx.audio?.gunshot?.(210, 0.09);
+    if (to.distanceTo(dr.pos) < 0.35) dr.hit(9);     // hitbox 0.35m
+  }
+
   _fireAtPlayer(dt) {
     this.fireT -= dt;
     if (this.fireT > 0) return;
@@ -136,6 +153,12 @@ export class EnemyAI {
     switch (this.state) {
       case 'PATROL': {
         if (los) { this._enter('COMBAT'); this.ctx.vo?.('ရန်သူတွေ့တယ်! ပစ်!', 'enemy'); break; }
+        const dr2 = this.ctx.drone;
+        if (dr2?.flying && this.pos.distanceTo(dr2.pos) < 16) {
+          this._enter('COMBAT');
+          this.ctx.vo?.('Drone အသံကြားတယ် — မိုးပေါ်ကြည့်!', 'enemy');
+          break;
+        }
         if (!this.patrolTarget || this._moveToward(this.patrolTarget, 1.6, dt)) {
           const a = Math.random() * Math.PI * 2;
           this.patrolTarget = this.pos.clone()
@@ -146,6 +169,12 @@ export class EnemyAI {
         break;
       }
       case 'COMBAT': {
+        // drone counter: drone အနီးပျံနေရင် တစ်ခါတစ်ရံ drone ကိုပြောင်းပစ်
+        const dr = this.ctx.drone;
+        if (dr?.flying && this.pos.distanceTo(dr.pos) < 22 && Math.random() < dt * 1.2) {
+          this._fireAtDrone(dr, dt);
+          break;
+        }
         if (!los) {
           this.lastKnown = player.pos.clone();
           if (this.stateT > 1.5) this._enter('INVESTIGATE', this.lastKnown);
