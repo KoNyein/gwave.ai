@@ -205,6 +205,10 @@ export function MetaverseScene() {
   /// လောကထဲက နာရီ — HUD မှာ ပြဖို့ (player အားလုံး တူညီရမယ်)
   const [clock, setClock] = useState("");
   const [nearby, setNearby] = useState<Landmark | null>(null);
+  /// 🕹 Game Zone — လောကထဲကနေ ဖွင့်ထားတဲ့ ဂိမ်း (overlay iframe)။
+  /// null = ပိတ်ထား။ ဂိမ်းပွင့်နေချိန် လောကက နောက်ခံမှာ ဆက်ရှင်နေတယ် —
+  /// ✕ ပိတ်တာနဲ့ ကိုယ့် avatar ရပ်နေတဲ့ နေရာမှာပဲ ချက်ချင်း ပြန်ရောက်တယ်။
+  const [arcade, setArcade] = useState<{ label: string; href: string } | null>(null);
   /// ★ Map ပြောင်းရင် scene တစ်ခုလုံး ပြန်ဆောက်တယ် (effect ရဲ့ dependency)
   /// — map တစ်ခုချင်းက သီးခြားလောက ဖြစ်လို့ ကြားခံ state ကျန်ခဲ့လို့မရဘူး။
   const [roomId, setRoomId] = useState(DEFAULT_ROOM);
@@ -3703,6 +3707,11 @@ export function MetaverseScene() {
           open={menu === "games"}
           onToggle={() => setMenu((m) => (m === "games" ? null : "games"))}
           onJoin={(gameId) => netRef.current?.sendGameJoin(gameId)}
+          onArcade={(g) => {
+            document.exitPointerLock?.();
+            setMenu(null);
+            setArcade(g);
+          }}
         />
 
         {/* 🏗 ဆောက်လုပ်ရေး (Phase 18) ကို ☰ Menu → 🌍 လောက ထဲ ရွှေ့လိုက်ပြီ
@@ -3886,7 +3895,19 @@ export function MetaverseScene() {
       )}
 
       {/* ── Landmark — အနားရောက်မှ ပေါ်တယ် ───────────────────────────── */}
-      {nearby && (
+      {nearby && nearby.overlay && (
+        <button
+          data-hud="1"
+          onClick={() => {
+            document.exitPointerLock?.();
+            setArcade({ label: nearby.label, href: nearby.href });
+          }}
+          className="absolute left-1/2 top-16 z-10 -translate-x-1/2 animate-pulse rounded-full border-2 border-fuchsia-400/60 bg-black/70 px-5 py-2.5 text-sm text-fuchsia-200 backdrop-blur transition hover:bg-black/85"
+        >
+          🕹 {nearby.label} — ကစားရန် နှိပ်ပါ
+        </button>
+      )}
+      {nearby && !nearby.overlay && (
         <a
           href={nearby.href}
           data-hud="1"
@@ -3894,6 +3915,37 @@ export function MetaverseScene() {
         >
           {nearby.label} — ဝင်ရန် နှိပ်ပါ
         </a>
+      )}
+
+      {/* ── 🕹 Game Zone overlay — ဂိမ်းက လောကရဲ့ အပေါ်မှာ ပွင့်တယ်၊
+          လောကထဲက မထွက်ဘူး။ iframe က same-origin မို့ login/session
+          အလိုအလျောက် ပါပြီးသား (frame-ancestors 'self')။ ✕ ပိတ်ရင်
+          iframe ပျက်သွားပြီး လောကထဲ ချက်ချင်း ပြန်ရောက်တယ်။ */}
+      {arcade && (
+        <div data-hud="1" className="fixed inset-0 z-[120] bg-black">
+          <iframe
+            src={arcade.href}
+            title={arcade.label}
+            className="h-full w-full border-0"
+            allow="camera; microphone; fullscreen; gamepad; xr-spatial-tracking; accelerometer; gyroscope; autoplay"
+            allowFullScreen
+          />
+          <button
+            onClick={() => {
+              // 🧬 Scan Studio ကနေ ပြန်ထွက်ရင် scan အသစ်ကို avatar ပေါ်
+              // ချက်ချင်း တင်ပေးတယ် — dressing overlay ပိတ်တဲ့ flow အတိုင်း
+              const wasAvatar = arcade.href.startsWith("/profile/avatar");
+              setArcade(null);
+              if (wasAvatar) {
+                if (inGameRoom) applyAvatarRef.current?.();
+                else setAvatarNonce((n) => n + 1);
+              }
+            }}
+            className="absolute right-3 top-3 z-[121] rounded-full border border-white/30 bg-black/70 px-4 py-2 text-sm text-white backdrop-blur transition hover:bg-black/90"
+          >
+            ✕ Metaverse ထဲ ပြန်မယ်
+          </button>
+        </div>
       )}
 
       {/* ── 🤝 NPC context ခလုတ် — မိတ်ဆွေဖွဲ့လို့ရတဲ့ NPC ရဲ့ 5m အတွင်း

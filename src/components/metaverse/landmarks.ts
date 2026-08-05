@@ -20,6 +20,9 @@ export type Landmark = {
   z: number;
   /// ဒီအကွာအဝေးအတွင်း ရောက်မှ HUD မှာ ပေါ်တယ်
   radius: number;
+  /// true = စာမျက်နှာကို လောကထဲကနေ **မထွက်ဘဲ** overlay iframe နဲ့ ဖွင့်တယ်
+  /// (arcade ဂိမ်းတွေ) — false/မရှိ = ပုံမှန် link အတိုင်း သွားတယ်
+  overlay?: boolean;
 };
 
 export type Landmarks = {
@@ -34,6 +37,42 @@ const SPOTS: Landmark[] = [
   { id: "farm", label: "စိုက်ခင်း · Farm", href: "/farm", x: -20, z: 8, radius: 4 },
   { id: "learn", label: "စာသင်ခန်း · Learn", href: "/learn", x: 20, z: -6, radius: 4 },
   { id: "live", label: "တိုက်ရိုက် · Live", href: "/live", x: -18, z: -8, radius: 4 },
+];
+
+/// ── 🕹 GAME ZONE — Gwave ဂိမ်းအားလုံးရဲ့ အဝင်ပေါက်က metaverse ထဲမှာ ──
+/// Spawn (0,12) ရဲ့ ကျောဘက် z=20 တန်းမှာ arcade cabinet ငါးလုံး။ ဂိမ်းက
+/// overlay iframe နဲ့ ပွင့်တယ် — လောကထဲက **မထွက်ဘူး**၊ ✕ ပိတ်ရင် ကိုယ့်
+/// avatar ရပ်နေတဲ့ နေရာမှာပဲ ပြန်ရောက်တယ်။ DRONE/STRIKE က သီးခြား
+/// three.js engine တွေမို့ iframe ကသာ engine နှစ်ခုကို frame budget
+/// မပြိုင်စေဘဲ တစ်ပြိုင်နက် ရှင်စေတဲ့ တစ်ခုတည်းသော ပုံစံ။
+export type ArcadeGame = Landmark & { emoji: string; accent: string; tagMy: string };
+
+export const ARCADE_GAMES: ArcadeGame[] = [
+  {
+    id: "arc-drone", label: "GWAVE DRONE", href: "/drone/index.html",
+    x: -12, z: 20, radius: 3.4, overlay: true,
+    emoji: "🚁", accent: "#35e0b8", tagMy: "FPV drone + FPS · online",
+  },
+  {
+    id: "arc-strike", label: "GWAVE STRIKE", href: "/strike/",
+    x: -6, z: 20, radius: 3.4, overlay: true,
+    emoji: "🔫", accent: "#ff4d6d", tagMy: "5v5 FPS · scan မျက်နှာ",
+  },
+  {
+    id: "arc-assassin", label: "ASSASSIN", href: "/games/assassin",
+    x: 0, z: 20, radius: 3.4, overlay: true,
+    emoji: "🎯", accent: "#f6ae2d", tagMy: "လျှို့ဝှက်ပစ်မှတ် · ၁၈+",
+  },
+  {
+    id: "arc-dronechamp", label: "DRONE CHAMPIONS", href: "/games/drone-sim",
+    x: 6, z: 20, radius: 3.4, overlay: true,
+    emoji: "🏁", accent: "#3f88c5", tagMy: "FPV ပြိုင်ပွဲ",
+  },
+  {
+    id: "arc-avatar", label: "3D AVATAR", href: "/profile/avatar",
+    x: 12, z: 20, radius: 3.4, overlay: true,
+    emoji: "🧬", accent: "#b18cff", tagMy: "မျက်နှာ + ကိုယ်ခန္ဓာ scan",
+  },
 ];
 
 /// ★ လမ်းဘေးမှာ ထားရမယ် — spawn (0, 12) ရဲ့ တည့်တည့်ရှေ့မှာ ထားရင်
@@ -65,6 +104,42 @@ function signTexture(label: string, accent: string): THREE.CanvasTexture {
     c.textAlign = "center";
     c.textBaseline = "middle";
     c.fillText(label, 256, 88, 470);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/// Arcade cabinet ရဲ့ မျက်နှာပြင် — emoji ကြီးကြီး + ဂိမ်းနာမည် + မြန်မာ
+/// tagline ကို canvas ပေါ်ဆွဲပြီး emissive texture အဖြစ် သုံးတယ် (ညဘက်
+/// လင်းနေအောင်)။ စာအားလုံး canvas ပေါ်မှာသာ — DOM/innerHTML မသုံးဘူး။
+function cabinetScreenTexture(g: { emoji: string; label: string; tagMy: string; accent: string }): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 640;
+  const c = canvas.getContext("2d");
+  if (c) {
+    const grad = c.createLinearGradient(0, 0, 0, 640);
+    grad.addColorStop(0, "#0a0f1e");
+    grad.addColorStop(1, "#111a30");
+    c.fillStyle = grad;
+    c.fillRect(0, 0, 512, 640);
+    c.strokeStyle = g.accent;
+    c.lineWidth = 14;
+    c.strokeRect(10, 10, 492, 620);
+    c.textAlign = "center";
+    c.font = "220px system-ui, sans-serif";
+    c.textBaseline = "middle";
+    c.fillText(g.emoji, 256, 240);
+    c.fillStyle = g.accent;
+    c.font = "700 52px system-ui, sans-serif";
+    c.fillText(g.label, 256, 430, 470);
+    c.fillStyle = "#cbd5e1";
+    c.font = "34px 'Padauk', 'Noto Sans Myanmar', system-ui, sans-serif";
+    c.fillText(g.tagMy, 256, 500, 470);
+    c.fillStyle = "#4ade80";
+    c.font = "600 30px 'Padauk', 'Noto Sans Myanmar', system-ui, sans-serif";
+    c.fillText("▶ ကစားရန် အနားကပ်ပါ", 256, 580, 470);
   }
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -152,6 +227,125 @@ export function buildLandmarks(
     sign.rotation.y = Math.atan2(-s.x, -s.z);
   }
 
+  // ── 🕹 GAME ZONE — arcade cabinet ငါးလုံး + မုခ်ဦး ─────────────────────
+  // Cabinet တစ်လုံး = ကိုယ်ထည် (box) + စောင်းနေတဲ့ control deck + emissive
+  // မျက်နှာပြင် + အပေါ်က marquee အလင်းတန်း။ ဂိမ်းရဲ့ accent အရောင်နဲ့
+  // emissive မို့ ညဘက်မှာ neon လို လင်းနေတယ်။
+  {
+    const bodyMat = track(
+      new THREE.MeshStandardMaterial({ color: 0x151a24, roughness: 0.55, metalness: 0.25 }),
+    );
+    const bodyGeo = track(new THREE.BoxGeometry(1.8, 2.5, 1.1));
+    const deckGeo = track(new THREE.BoxGeometry(1.8, 0.22, 0.62));
+    const marqueeGeo = track(new THREE.BoxGeometry(1.9, 0.34, 1.16));
+    const screenGeo = track(new THREE.PlaneGeometry(1.5, 1.85));
+
+    for (const g of ARCADE_GAMES) {
+      // 🧬 3D Scanner က cabinet မဟုတ်ဘူး — သီးခြား Scan Studio pod
+      // (အောက်မှာ) နဲ့ ဆောက်ထားတယ်
+      if (g.id === "arc-avatar") continue;
+      // cabinet က မြို့လယ်ဘက် (spawn ဘက် -z) ကို မျက်နှာမူတယ်
+      const face = Math.PI;
+      const body = place(new THREE.Mesh(bodyGeo, bodyMat));
+      body.position.set(g.x, 1.25, g.z);
+      body.rotation.y = face;
+      body.castShadow = true;
+
+      const accent = new THREE.Color(g.accent);
+      const marqueeMat = track(
+        new THREE.MeshStandardMaterial({
+          color: accent, emissive: accent, emissiveIntensity: 0.9, roughness: 0.4,
+        }),
+      );
+      const marquee = place(new THREE.Mesh(marqueeGeo, marqueeMat));
+      marquee.position.set(g.x, 2.67, g.z);
+      marquee.rotation.y = face;
+
+      const tex = track(cabinetScreenTexture(g));
+      const screenMat = track(
+        new THREE.MeshBasicMaterial({ map: tex }),
+      );
+      const screen = place(new THREE.Mesh(screenGeo, screenMat));
+      // မျက်နှာပြင်က ကိုယ်ထည်ရဲ့ -z မျက်နှာစာအပြင်ဘက် အနည်းငယ်ကွာ
+      screen.position.set(g.x, 1.5, g.z - 0.56);
+      screen.rotation.y = face;
+
+      const deck = place(new THREE.Mesh(deckGeo, bodyMat));
+      deck.position.set(g.x, 0.95, g.z - 0.75);
+      deck.rotation.y = face;
+      deck.rotation.x = -0.35;
+
+      colliders.push({
+        minX: g.x - 1.0, maxX: g.x + 1.0,
+        minZ: g.z - 0.75, maxZ: g.z + 0.6,
+      });
+    }
+
+    // ── 🧬 3D SCAN STUDIO — Game Zone အစွန်က scanning pod ────────────────
+    // ဝိုင်းစက်ပလက်ဖောင်း + မတ်တပ်ရပ် scan ring (torus) + emissive sign။
+    // Metaverse ရဲ့ ကိုယ်ပိုင် identity အချက်အချာ — ဒီမှာ scan လုပ်ပြီး
+    // ထွက်တာနဲ့ ကိုယ့် avatar မျက်နှာ ချက်ချင်း ပြောင်းသွားတယ်။
+    {
+      const studio = ARCADE_GAMES.find((g) => g.id === "arc-avatar");
+      if (studio) {
+        const violet = new THREE.Color(studio.accent);
+        const padMat = track(
+          new THREE.MeshStandardMaterial({
+            color: 0x141024, emissive: violet, emissiveIntensity: 0.35, roughness: 0.4,
+          }),
+        );
+        const padGeo = track(new THREE.CylinderGeometry(1.7, 1.9, 0.16, 28));
+        const pad = place(new THREE.Mesh(padGeo, padMat));
+        pad.position.set(studio.x, 0.08, studio.z);
+
+        const ringMat = track(
+          new THREE.MeshStandardMaterial({
+            color: violet, emissive: violet, emissiveIntensity: 1.1, roughness: 0.3,
+          }),
+        );
+        const ringGeo = track(new THREE.TorusGeometry(1.35, 0.07, 12, 48));
+        const ring = place(new THREE.Mesh(ringGeo, ringMat));
+        // မတ်တပ်ရပ် ring — လူက ထဲကို လျှောက်ဝင်လို့ရအောင် (scanner ပုံစံ)
+        ring.position.set(studio.x, 1.5, studio.z);
+        ring.rotation.y = Math.PI / 2;
+
+        const pole = place(new THREE.Mesh(postGeo, postMat));
+        pole.position.set(studio.x, 1.3, studio.z + 1.9);
+        const tex = track(cabinetScreenTexture(studio));
+        const signMat = track(new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+        const signGeoStudio = track(new THREE.PlaneGeometry(1.7, 2.1));
+        const sign = place(new THREE.Mesh(signGeoStudio, signMat));
+        sign.position.set(studio.x, 3.1, studio.z + 1.9);
+        sign.rotation.y = Math.PI;
+
+        // pad ရဲ့ ဘေးနှစ်ဘက်သာ ပိတ် — ရှေ့ (မြို့လယ်ဘက်) က ဝင်ပေါက်
+        colliders.push(
+          { minX: studio.x - 2.0, maxX: studio.x - 1.6, minZ: studio.z - 1.4, maxZ: studio.z + 1.4 },
+          { minX: studio.x + 1.6, maxX: studio.x + 2.0, minZ: studio.z - 1.4, maxZ: studio.z + 1.4 },
+        );
+      }
+    }
+
+    // မုခ်ဦး — "GAME ZONE" arch (တိုင်နှစ်တိုင် + ထိပ်စာတန်း)
+    const archMat = track(
+      new THREE.MeshStandardMaterial({ color: 0x1b2029, roughness: 0.6, metalness: 0.3 }),
+    );
+    const archPostGeo = track(new THREE.CylinderGeometry(0.18, 0.22, 4.6, 10));
+    for (const dx of [-15, 15]) {
+      const post = place(new THREE.Mesh(archPostGeo, archMat));
+      post.position.set(dx, 2.3, 16.5);
+      post.castShadow = true;
+      colliders.push({ minX: dx - 0.3, maxX: dx + 0.3, minZ: 16.2, maxZ: 16.8 });
+    }
+    const archTex = track(signTexture("🕹 GAME ZONE — ဂိမ်းရင်ပြင်", "#4ade80"));
+    const archMatSign = track(
+      new THREE.MeshBasicMaterial({ map: archTex, side: THREE.DoubleSide }),
+    );
+    const archSignGeo = track(new THREE.PlaneGeometry(9.6, 3));
+    const archSign = place(new THREE.Mesh(archSignGeo, archMatSign));
+    archSign.position.set(0, 4.6, 16.5);
+  }
+
   // ── ကြော်ငြာသင်ပုန်း ────────────────────────────────────────────────────
   const boardCanvas = document.createElement("canvas");
   boardCanvas.width = 768;
@@ -208,7 +402,7 @@ export function buildLandmarks(
     z: BOARD.z + nz * 2.6,
     radius: 3.6,
   };
-  const all = [...SPOTS, boardSpot];
+  const all = [...SPOTS, ...ARCADE_GAMES, boardSpot];
 
   return {
     nearest(x, z) {
