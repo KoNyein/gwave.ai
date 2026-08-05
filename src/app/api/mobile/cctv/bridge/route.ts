@@ -83,6 +83,11 @@ export async function POST(request: NextRequest) {
         owner_id: claims.sub,
         title,
         camera_type: "rtsp",
+        // camera_rtsp_needs_url CHECK requires a source URL on rtsp rows, but
+        // a bridged camera has no server-reachable source — the phone pushes
+        // instead, and playback goes through hls_url. A synthetic .invalid
+        // URL satisfies the constraint without ever carrying credentials.
+        rtsp_url: `rtsp://camera-bridge.invalid/${streamId}`,
         stream_id: streamId,
         share_token: randomBytes(16).toString("hex"),
         is_public: false,
