@@ -556,6 +556,23 @@ export function MetaverseScene() {
     setRoomId(id);
   };
 
+  /// 🕹 Game Zone action — cabinet/menu ကနေ **လောကထဲမှာပဲ** ကစားစေတယ်:
+  /// game → server mini-game lobby (droneRace/assassin/race), room → map
+  /// ပြောင်း (arena), overlay → 🧬 scan studio (ကင်မရာ utility သာ)။
+  const runArcade = (g: { label: string; href: string; act?: import("./landmarks").ArcadeAct }) => {
+    const act = g.act;
+    if (!act) return;
+    setMenu(null);
+    if (act.kind === "game") {
+      netRef.current?.sendGameJoin(act.gameId);
+    } else if (act.kind === "room") {
+      chooseMap(act.roomId);
+    } else {
+      document.exitPointerLock?.();
+      setArcade({ label: g.label, href: g.href });
+    }
+  };
+
   /// 📣 အဖွဲ့ဖိတ်ခေါ် — ဒီ room ရဲ့ deep link ကို share (မရရင် clipboard)။
   /// အဖွဲ့နဲ့ ဆော့ဖို့ အလွယ်ဆုံးလမ်း — link နှိပ်ရင် တူတူ room ထဲ ရောက်တယ်။
   const invite = () => {
@@ -3707,11 +3724,7 @@ export function MetaverseScene() {
           open={menu === "games"}
           onToggle={() => setMenu((m) => (m === "games" ? null : "games"))}
           onJoin={(gameId) => netRef.current?.sendGameJoin(gameId)}
-          onArcade={(g) => {
-            document.exitPointerLock?.();
-            setMenu(null);
-            setArcade(g);
-          }}
+          onArcade={runArcade}
         />
 
         {/* 🏗 ဆောက်လုပ်ရေး (Phase 18) ကို ☰ Menu → 🌍 လောက ထဲ ရွှေ့လိုက်ပြီ
@@ -3895,19 +3908,21 @@ export function MetaverseScene() {
       )}
 
       {/* ── Landmark — အနားရောက်မှ ပေါ်တယ် ───────────────────────────── */}
-      {nearby && nearby.overlay && (
+      {nearby && nearby.act && (
         <button
           data-hud="1"
-          onClick={() => {
-            document.exitPointerLock?.();
-            setArcade({ label: nearby.label, href: nearby.href });
-          }}
+          onClick={() => runArcade(nearby)}
           className="absolute left-1/2 top-16 z-10 -translate-x-1/2 animate-pulse rounded-full border-2 border-fuchsia-400/60 bg-black/70 px-5 py-2.5 text-sm text-fuchsia-200 backdrop-blur transition hover:bg-black/85"
         >
-          🕹 {nearby.label} — ကစားရန် နှိပ်ပါ
+          🕹 {nearby.label} —{" "}
+          {nearby.act.kind === "game"
+            ? "ပွဲ စမယ်"
+            : nearby.act.kind === "room"
+              ? "စစ်မြေပြင် ဝင်မယ်"
+              : "Scan လုပ်မယ်"}
         </button>
       )}
-      {nearby && !nearby.overlay && (
+      {nearby && !nearby.act && (
         <a
           href={nearby.href}
           data-hud="1"

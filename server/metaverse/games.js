@@ -251,11 +251,131 @@ const GROW = {
   },
 };
 
+/// ── 🚁 Drone race — ကောင်းကင် ring တွေကို 🛸 drone စီးပြီး အစဉ်လိုက်ဖြတ် ──
+/// RACE နဲ့ ပုံစံတူပေမယ့် checkpoint မှာ **y (အမြင့်) ပါတယ်** — မြေပြင်က
+/// လျှောက်ရုံနဲ့ မမီဘူး၊ Game Zone မှာ ရပ်ထားတဲ့ drone တွေ စီးရမယ်။
+const DRONE_RACE = {
+  id: "droneRace",
+  name: "Drone race",
+  nameMy: "🚁 Drone ပြိုင်ပွဲ",
+  minPlayers: 1,
+  maxPlayers: 12,
+  durationSec: 180,
+  arena: { x: 0, z: 0, radius: 70 },
+
+  onStart(ctx) {
+    // Ring နေရာတွေ server မှာသာ — beam အမြင့် 14m မို့ y ≤ 13 ထားတယ်၊
+    // ဒါမှ client marker ရဲ့ beam နဲ့ ring က ဆက်နေတယ်။
+    ctx.state.rings = [
+      { x: 0, y: 8, z: -20 },
+      { x: 24, y: 11, z: -6 },
+      { x: 30, y: 13, z: 24 },
+      { x: 0, y: 12, z: 42 },
+      { x: -28, y: 13, z: 22 },
+      { x: -32, y: 10, z: -8 },
+      { x: 0, y: 9, z: 20 },
+    ];
+    for (const p of ctx.players.values()) p.next = 0;
+  },
+
+  onTick(ctx) {
+    for (const p of ctx.players.values()) {
+      const r = ctx.state.rings[p.next];
+      if (!r) continue;
+      const pos = ctx.positionOf(p.id);
+      if (!pos) continue;
+      // ★ 3D အကွာအဝေး — အမြင့်ပါ မှန်မှ ဖြတ်တယ်လို့ သတ်မှတ်တယ်
+      if (Math.hypot(pos.x - r.x, (pos.y ?? 0) - r.y, pos.z - r.z) < 5) {
+        p.next++;
+        p.score = p.next * 100;
+        if (p.next >= ctx.state.rings.length) {
+          p.score += Math.max(0, ctx.timeLeft());
+          p.done = true;
+        }
+      }
+    }
+    if ([...ctx.players.values()].every((p) => p.done)) ctx.finish();
+  },
+
+  objectives(ctx, player) {
+    const r = ctx.state.rings[player.next];
+    return r
+      ? [{ kind: "checkpoint", x: r.x, y: r.y, z: r.z, index: player.next }]
+      : [];
+  },
+};
+
+/// ── 🎯 Assassin — ကိုယ့် ပစ်မှတ် (တခြား player) ကို လျှို့ဝှက်ချဉ်းကပ် ──
+/// Ring assignment: A→B→C→…→A။ ကိုယ့်ပစ်မှတ်ကို 2.2m အတွင်း ကပ်မိရင်
+/// eliminate — သူ့ပစ်မှတ်ကို ဆက်ခံတယ်။ နောက်ဆုံး ကျန်သူ နိုင်တယ်။
+/// ★ ပစ်မှတ်ရဲ့ တည်နေရာကို **8m grid အကြမ်း** ပဲ ပြတယ် — အတိအကျ ပြရင်
+///   ရှာပွဲ မဟုတ်တော့ဘူး၊ ပြေးပွဲ ဖြစ်သွားမယ်။
+const ASSASSIN = {
+  id: "assassin",
+  name: "Assassin",
+  nameMy: "🎯 Assassin",
+  minPlayers: 2,
+  maxPlayers: 16,
+  durationSec: 240,
+  arena: { x: 0, z: 0, radius: 70 },
+
+  onStart(ctx) {
+    const ids = [...ctx.players.keys()];
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0;
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+    ctx.state.target = {};
+    for (let i = 0; i < ids.length; i++) {
+      ctx.state.target[ids[i]] = ids[(i + 1) % ids.length];
+    }
+    for (const p of ctx.players.values()) p.alive = true;
+  },
+
+  onTick(ctx) {
+    for (const p of ctx.players.values()) {
+      if (!p.alive) continue;
+      const tid = ctx.state.target[p.id];
+      if (!tid || tid === p.id) continue;
+      const t = ctx.players.get(tid);
+      if (!t || !t.alive) continue;
+      const a = ctx.positionOf(p.id);
+      const b = ctx.positionOf(tid);
+      if (!a || !b) continue;
+      if (Math.hypot(a.x - b.x, a.z - b.z) < 2.2) {
+        t.alive = false;
+        p.score += 100;
+        const alive = [...ctx.players.values()].filter((q) => q.alive);
+        if (alive.length <= 1) {
+          p.score += Math.max(0, ctx.timeLeft());
+          ctx.finish();
+          return;
+        }
+        // ပစ်မှတ်ရဲ့ ပစ်မှတ်ကို ဆက်ခံ (ကိုယ့်ကိုယ် မဖြစ်ရ)
+        const inherited = ctx.state.target[tid];
+        ctx.state.target[p.id] = inherited === p.id ? null : inherited;
+      }
+    }
+  },
+
+  objectives(ctx, player) {
+    if (!player.alive) return [];
+    const tid = ctx.state.target[player.id];
+    const pos = tid ? ctx.positionOf(tid) : null;
+    if (!pos) return [];
+    return [
+      { kind: "target", x: Math.round(pos.x / 8) * 8, z: Math.round(pos.z / 8) * 8 },
+    ];
+  },
+};
+
 const GAMES = new Map([
   [RACE.id, RACE],
   [HUNT.id, HUNT],
   [TARGETS.id, TARGETS],
   [GROW.id, GROW],
+  [DRONE_RACE.id, DRONE_RACE],
+  [ASSASSIN.id, ASSASSIN],
 ]);
 
 /// လူစုချိန် — ဒီအချိန်အတွင်း `gameJoin` ပို့သူတွေနဲ့ စတယ်။

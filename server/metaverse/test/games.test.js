@@ -162,6 +162,57 @@ test("စိုက်ပျိုးပွဲမှာ ခလုတ် အမြ
   assert.strictEqual(player.plants.length, 1, "plant cooldown must hold");
 });
 
+test("🚁 drone ပြိုင်ပွဲ — ring ရဲ့ အောက် မြေပြင်မှာ ရပ်ရုံနဲ့ မဖြတ်ရဘူး", async (t) => {
+  // ပထမ ring က (0, 8, -20) — x/z မှန်ပေမယ့် y=0 (မြေပြင်) မို့ 3D
+  // အကွာအဝေးက 8m ≥ 5m၊ မဖြတ်ရ။ drone စီးပြီး အမြင့်တက်မှ ဖြတ်ရတယ်။
+  const positions = { a: { x: 0, y: 0, z: -20, ry: 0 } };
+  const { runner, broadcasts } = harness(positions);
+  runner.start("city", "droneRace", ["a"]);
+  t.after(() => runner.stopAll());
+
+  await sleep(700);
+  const ground = last(broadcasts, "gameState");
+  assert.strictEqual(ground.scores[0].score, 0, "ground pass must not count");
+
+  // အမြင့် 8m (drone စီးပြီး) — ဖြတ်ပြီလို့ သတ်မှတ်ရမယ်
+  positions.a = { x: 0, y: 8, z: -20, ry: 0 };
+  await sleep(700);
+  const air = last(broadcasts, "gameState");
+  assert.strictEqual(air.scores[0].score, 100, "air pass must count");
+});
+
+test("🎯 assassin — ပစ်မှတ်ကို ကပ်ရင် eliminate + ပစ်မှတ် ဆက်ခံတယ်", async (t) => {
+  // ၃ ယောက် ring: တစ်ယောက်စီမှာ ပစ်မှတ် တစ်ယောက်စီ ရှိတယ်။ a က ကိုယ့်
+  // ပစ်မှတ်နားကို သွားကပ်ရင် eliminate ဖြစ်ပြီး သူ့ရဲ့ ပစ်မှတ်ကို ဆက်ခံ၊
+  // နောက်ဆုံးတစ်ယောက်ပါ ရှင်းပြီးရင် ပွဲပြီးတယ် (winner bonus ပါ)။
+  const positions = {
+    a: { x: 0, y: 0, z: 0, ry: 0 },
+    b: { x: 40, y: 0, z: 0, ry: 0 },
+    c: { x: -40, y: 0, z: 0, ry: 0 },
+  };
+  const { runner, broadcasts } = harness(positions);
+  runner.start("city", "assassin", ["a", "b", "c"]);
+  t.after(() => runner.stopAll());
+
+  await sleep(700);
+  let state = last(broadcasts, "gameState");
+  assert.ok(state.scores.every((s) => s.score === 0), "no kills at range");
+
+  // a ကို ကျန်နှစ်ယောက်လုံးရဲ့ နားမှာ တစ်ယောက်ပြီးတစ်ယောက် ချထားတယ် —
+  // ring assignment က random မို့ a ရဲ့ ပစ်မှတ်က b ဒါမှမဟုတ် c ဖြစ်နိုင်တယ်၊
+  // နှစ်ယောက်လုံးဆီ သွားရင် ဘယ် assignment မှာမဆို ပွဲပြီးရမယ်။
+  positions.a = { x: 40, y: 0, z: 0, ry: 0 };   // b နား
+  await sleep(700);
+  positions.a = { x: -40, y: 0, z: 0, ry: 0 };  // c နား
+  await sleep(700);
+
+  const end = last(broadcasts, "gameEnd");
+  assert.ok(end, "game must end once only the killer is left");
+  const winner = end.rankings.find((r) => r.playerId === "a");
+  assert.ok(winner && winner.rank === 1 && winner.score > 200,
+    `a must win with 2 kills + time bonus, got ${JSON.stringify(end.rankings)}`);
+});
+
 test("မသိတဲ့ game id ကို ငြင်းတယ်", () => {
   const { runner } = harness();
   assert.strictEqual(runner.start("city", "../../etc/passwd", ["a"]), null);
@@ -169,7 +220,7 @@ test("မသိတဲ့ game id ကို ငြင်းတယ်", () => {
 });
 
 test("game တစ်ခုချင်းက interface တူညီရမယ် (hardcode မလုပ်ရ)", () => {
-  assert.strictEqual(GAMES.size, 4);
+  assert.strictEqual(GAMES.size, 6);
   for (const g of GAMES.values()) {
     assert.strictEqual(typeof g.id, "string");
     assert.strictEqual(typeof g.nameMy, "string");
@@ -239,7 +290,7 @@ test.after(() => {
 test("init မှာ game စာရင်း ပါလာတယ်", async () => {
   const a = connect("snow");
   const init = await a.next((m) => m.type === "init");
-  assert.ok(Array.isArray(init.games) && init.games.length === 4);
+  assert.ok(Array.isArray(init.games) && init.games.length === 6);
   a.close();
 });
 

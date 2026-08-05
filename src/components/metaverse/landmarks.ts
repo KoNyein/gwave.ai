@@ -12,6 +12,15 @@ import type { Collider } from "./world";
 /// ★ ကြော်ငြာသင်ပုန်းကတော့ တကယ့် newsfeed ကို လောကထဲမှာ ပြတယ်
 ///   (`/api/metaverse/board`) — ပို့စ် ၅ ခု၊ canvas texture အဖြစ်။
 
+/// Cabinet တစ်လုံးက ဘာလုပ်လဲ — **အားလုံး လောကထဲမှာပဲ**:
+///  - game    → server mini-game lobby ဖွင့် (drone race / assassin / race …)
+///  - room    → map/room ပြောင်း (STRIKE → arena စစ်မြေပြင်)
+///  - overlay → utility overlay (🧬 scan studio ကင်မရာသာ — ဂိမ်း မဟုတ်ဘူး)
+export type ArcadeAct =
+  | { kind: "game"; gameId: string }
+  | { kind: "room"; roomId: string }
+  | { kind: "overlay" };
+
 export type Landmark = {
   id: string;
   label: string;
@@ -20,9 +29,9 @@ export type Landmark = {
   z: number;
   /// ဒီအကွာအဝေးအတွင်း ရောက်မှ HUD မှာ ပေါ်တယ်
   radius: number;
-  /// true = စာမျက်နှာကို လောကထဲကနေ **မထွက်ဘဲ** overlay iframe နဲ့ ဖွင့်တယ်
-  /// (arcade ဂိမ်းတွေ) — false/မရှိ = ပုံမှန် link အတိုင်း သွားတယ်
-  overlay?: boolean;
+  /// ရှိရင် Game Zone landmark — HUD ခလုတ်က ဒီ action ကို run တယ်၊
+  /// မရှိရင် ပုံမှန် link အတိုင်း သွားတယ် (ဈေး/စိုက်ခင်း ဆိုင်းဘုတ်တွေ)
+  act?: ArcadeAct;
 };
 
 export type Landmarks = {
@@ -39,38 +48,39 @@ const SPOTS: Landmark[] = [
   { id: "live", label: "တိုက်ရိုက် · Live", href: "/live", x: -18, z: -8, radius: 4 },
 ];
 
-/// ── 🕹 GAME ZONE — Gwave ဂိမ်းအားလုံးရဲ့ အဝင်ပေါက်က metaverse ထဲမှာ ──
-/// Spawn (0,12) ရဲ့ ကျောဘက် z=20 တန်းမှာ arcade cabinet ငါးလုံး။ ဂိမ်းက
-/// overlay iframe နဲ့ ပွင့်တယ် — လောကထဲက **မထွက်ဘူး**၊ ✕ ပိတ်ရင် ကိုယ့်
-/// avatar ရပ်နေတဲ့ နေရာမှာပဲ ပြန်ရောက်တယ်။ DRONE/STRIKE က သီးခြား
-/// three.js engine တွေမို့ iframe ကသာ engine နှစ်ခုကို frame budget
-/// မပြိုင်စေဘဲ တစ်ပြိုင်နက် ရှင်စေတဲ့ တစ်ခုတည်းသော ပုံစံ။
+/// ── 🕹 GAME ZONE — Gwave ဂိမ်းအားလုံး **လောကထဲမှာကိုယ်တိုင်** ကစားတယ် ──
+/// Spawn (0,12) ရဲ့ ကျောဘက် z=20 တန်း။ Cabinet နှိပ်ရင် iframe မဖွင့်တော့ဘူး:
+///  - 🚁 GWAVE DRONE → server "droneRace" mini-game (ကောင်းကင် ring၊ 🛸 စီး)
+///  - 🔫 GWAVE STRIKE → arena room ပြောင်း (တာဝါ + သေနတ် + NPC စစ်မြေပြင်)
+///  - 🎯 ASSASSIN → server "assassin" mini-game (player ချင်း လျှို့ဝှက်လိုက်)
+///  - 🏁 DRONE CHAMPIONS → server "race" checkpoint ပြိုင်ပွဲ (drone စီးလည်းရ)
+///  - 🧬 3D SCAN → scan studio (ကင်မရာ utility မို့ overlay — ဂိမ်း မဟုတ်ဘူး)
 export type ArcadeGame = Landmark & { emoji: string; accent: string; tagMy: string };
 
 export const ARCADE_GAMES: ArcadeGame[] = [
   {
     id: "arc-drone", label: "GWAVE DRONE", href: "/drone/index.html",
-    x: -12, z: 20, radius: 3.4, overlay: true,
-    emoji: "🚁", accent: "#35e0b8", tagMy: "FPV drone + FPS · online",
+    x: -12, z: 20, radius: 3.4, act: { kind: "game", gameId: "droneRace" },
+    emoji: "🚁", accent: "#35e0b8", tagMy: "🛸 စီးပြီး ကောင်းကင် ring ဖြတ်",
   },
   {
     id: "arc-strike", label: "GWAVE STRIKE", href: "/strike/",
-    x: -6, z: 20, radius: 3.4, overlay: true,
-    emoji: "🔫", accent: "#ff4d6d", tagMy: "5v5 FPS · scan မျက်နှာ",
+    x: -6, z: 20, radius: 3.4, act: { kind: "room", roomId: "arena" },
+    emoji: "🔫", accent: "#ff4d6d", tagMy: "Arena စစ်မြေပြင် ဝင်မယ်",
   },
   {
     id: "arc-assassin", label: "ASSASSIN", href: "/games/assassin",
-    x: 0, z: 20, radius: 3.4, overlay: true,
-    emoji: "🎯", accent: "#f6ae2d", tagMy: "လျှို့ဝှက်ပစ်မှတ် · ၁၈+",
+    x: 0, z: 20, radius: 3.4, act: { kind: "game", gameId: "assassin" },
+    emoji: "🎯", accent: "#f6ae2d", tagMy: "ပစ်မှတ်ကို လျှို့ဝှက်ချဉ်းကပ်",
   },
   {
     id: "arc-dronechamp", label: "DRONE CHAMPIONS", href: "/games/drone-sim",
-    x: 6, z: 20, radius: 3.4, overlay: true,
-    emoji: "🏁", accent: "#3f88c5", tagMy: "FPV ပြိုင်ပွဲ",
+    x: 6, z: 20, radius: 3.4, act: { kind: "game", gameId: "race" },
+    emoji: "🏁", accent: "#3f88c5", tagMy: "Checkpoint ပြိုင်ပွဲ",
   },
   {
     id: "arc-avatar", label: "3D AVATAR", href: "/profile/avatar",
-    x: 12, z: 20, radius: 3.4, overlay: true,
+    x: 12, z: 20, radius: 3.4, act: { kind: "overlay" },
     emoji: "🧬", accent: "#b18cff", tagMy: "မျက်နှာ + ကိုယ်ခန္ဓာ scan",
   },
 ];

@@ -111,6 +111,9 @@ export function createGameFx(scene: THREE.Scene): GameFx {
         }
         m.root.visible = true;
         m.root.position.set(o.x, 0, o.z);
+        // ★ y ပါရင် (drone race ရဲ့ ကောင်းကင် ring) ring ကို အဲဒီအမြင့်မှာ
+        // ထားတယ် — pool ပြန်သုံးလို့ မပါရင်လည်း မြေပြင် ပြန်ချရမယ်။
+        m.ring.position.y = (o.y ?? 0) + 0.06;
         const color = COLORS[o.kind] ?? 0xffffff;
         m.beam.material.color.setHex(color);
         m.ring.material.color.setHex(color);
