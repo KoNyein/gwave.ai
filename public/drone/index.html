@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>GWAVE DRONE — FPV Simulator (Phase 1)</title>
+<style>
+  :root{
+    --osd:#e8ffe9; --osd-dim:rgba(232,255,233,.55);
+    --panel:#0b1220ee; --accent:#35e0b8; --warn:#ff5a5a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;
+    font-family:"Share Tech Mono","Courier New",monospace;user-select:none}
+  #app{position:fixed;inset:0}
+  canvas{display:block}
+
+  /* ===== FPV OSD (betaflight style) ===== */
+  #osd{position:fixed;inset:0;pointer-events:none;color:var(--osd);
+    text-shadow:0 0 4px rgba(0,0,0,.9),1px 1px 0 rgba(0,0,0,.8);font-size:15px}
+  .osd-tl{position:absolute;top:12px;left:14px;line-height:1.5}
+  .osd-tr{position:absolute;top:12px;right:14px;text-align:right;line-height:1.5}
+  .osd-bl{position:absolute;bottom:12px;left:14px;line-height:1.5}
+  .osd-br{position:absolute;bottom:12px;right:14px;text-align:right;line-height:1.5}
+  .osd-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
+  #crosshair{font-size:22px;opacity:.9}
+  #horizon{position:absolute;top:50%;left:50%;width:220px;height:2px;margin:-1px 0 0 -110px;
+    background:linear-gradient(90deg,transparent,var(--osd-dim) 15%,var(--osd-dim) 42%,transparent 42%,transparent 58%,var(--osd-dim) 58%,var(--osd-dim) 85%,transparent)}
+  #thr-bar{display:inline-block;width:90px;height:9px;border:1px solid var(--osd-dim);vertical-align:middle}
+  #thr-fill{height:100%;background:var(--osd);width:0%}
+  #warn{position:absolute;top:64%;left:50%;transform:translateX(-50%);
+    color:var(--warn);font-size:18px;letter-spacing:2px;display:none;animation:blink 1s steps(2) infinite}
+  #armed-msg{position:absolute;top:34%;left:50%;transform:translateX(-50%);font-size:17px;letter-spacing:1px;text-align:center}
+  @keyframes blink{50%{opacity:0}}
+
+  /* ===== Settings panel ===== */
+  #settings{position:fixed;top:0;right:0;height:100%;width:min(380px,94vw);background:var(--panel);
+    color:#dbe7ff;padding:18px 16px;overflow-y:auto;transform:translateX(105%);transition:transform .25s;z-index:20}
+  #settings.open{transform:translateX(0)}
+  #settings h2{font-size:15px;color:var(--accent);letter-spacing:2px;margin:14px 0 8px;border-bottom:1px solid #24304a;padding-bottom:4px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0;font-size:13px}
+  .row label{flex:1}
+  .stepper{display:flex;align-items:center;gap:6px}
+  .stepper button{width:30px;height:28px;background:#1a2540;border:1px solid #2c3a5e;color:#dbe7ff;cursor:pointer;font-size:15px}
+  .stepper span{min-width:56px;text-align:center;background:#111a30;padding:4px 2px;border:1px solid #2c3a5e}
+  .toggle{width:44px;height:24px;border-radius:12px;background:#26314e;position:relative;cursor:pointer;border:1px solid #2c3a5e}
+  .toggle::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#8fa3c8;transition:.15s}
+  .toggle.on{background:var(--accent)}
+  .toggle.on::after{left:22px;background:#04241c}
+  #ratecurve{width:100%;height:150px;background:#050a14;border:1px solid #24304a;margin-top:6px}
+  .btn{width:100%;padding:9px;margin-top:8px;background:#16305c;border:1px solid #2c4a8a;color:#fff;cursor:pointer;font-family:inherit;letter-spacing:1px}
+  .btn.accent{background:#0c4a3c;border-color:var(--accent)}
+  #bind-status{font-size:12px;color:var(--accent);min-height:16px}
+  #gear{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:21;background:#0b1220cc;
+    color:#dbe7ff;border:1px solid #2c3a5e;padding:7px 14px;cursor:pointer;font-family:inherit;letter-spacing:1px}
+
+  /* ===== XR bar ===== */
+  #xr-bar{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:21;display:flex;gap:8px}
+  .xr-btn{background:#0b1220cc;color:#dbe7ff;border:1px solid var(--accent);
+    padding:8px 14px;cursor:pointer;font-family:inherit;letter-spacing:1px}
+
+  /* ===== Touch sticks ===== */
+  .stick-zone{position:fixed;bottom:0;width:50%;height:52%;z-index:5;touch-action:none;display:none}
+  #zone-l{left:0} #zone-r{right:0}
+  .stick-base{position:absolute;width:120px;height:120px;border:2px solid rgba(255,255,255,.25);
+    border-radius:50%;transform:translate(-50%,-50%);display:none}
+  .stick-knob{position:absolute;width:52px;height:52px;background:rgba(255,255,255,.35);
+    border-radius:50%;transform:translate(-50%,-50%)}
+  body.touch .stick-zone{display:block}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<!-- FPV OSD -->
+<div id="osd">
+  <div class="osd-tl">
+    <div>⚡ <span id="volt">25.2</span>V</div>
+    <div>THR <span id="thr-bar"><span id="thr-fill"></span></span> <span id="thr-pct">0</span>%</div>
+  </div>
+  <div class="osd-tr">
+    <div>RSSI <span id="rssi">99</span></div>
+    <div>⏱ <span id="timer">00:00</span></div>
+  </div>
+  <div class="osd-bl">
+    <div>ALT <span id="alt">0.0</span>m</div>
+    <div>SPD <span id="spd">0</span> km/h</div>
+  </div>
+  <div class="osd-br">
+    <div id="mode-label">ACRO</div>
+    <div id="arm-label">DISARMED</div>
+  </div>
+  <div class="osd-center"><span id="crosshair">✛</span></div>
+  <div id="horizon"></div>
+  <div id="race-osd" style="position:absolute;top:8px;left:50%;transform:translateX(-50%);font-size:13px;letter-spacing:1px;color:#aef3c0;text-shadow:0 0 6px #000"></div>
+  <div id="warn">⚠ LOW BATTERY</div>
+  <div id="armed-msg">[F] AVATAR ↔ DRONE · SPACE=ARM/Jump · WASD=Move/Throttle · Shift=Run · C=Crouch</div>
+</div>
+
+<button id="gear">⚙ SETTINGS</button>
+<div id="xr-bar"></div>
+
+<!-- Settings panel -->
+<div id="settings">
+  <h2>RATES (Actual)</h2>
+  <div id="rates-rows"></div>
+  <canvas id="ratecurve"></canvas>
+
+  <h2>DRONE</h2>
+  <div class="row"><label>Drone weight</label><div class="stepper" data-cfg="massG" data-step="50" data-min="350" data-max="900" data-unit="g"></div></div>
+  <div class="row"><label>Camera angle</label><div class="stepper" data-cfg="camAngle" data-step="5" data-min="0" data-max="60" data-unit="°"></div></div>
+  <div class="row"><label>Camera FOV</label><div class="stepper" data-cfg="camFov" data-step="5" data-min="60" data-max="150" data-unit="°"></div></div>
+  <div class="row"><label>Throttle power</label><div class="stepper" data-cfg="thrPower" data-step="5" data-min="50" data-max="120" data-unit="%"></div></div>
+
+  <h2>CONTROLLER</h2>
+  <div class="row"><label>Half throttle (gamepad)</label><div class="toggle" data-tgl="halfThrottle"></div></div>
+  <div class="row"><label>Invert pitch</label><div class="toggle" data-tgl="invPitch"></div></div>
+  <div class="row"><label>Invert roll</label><div class="toggle" data-tgl="invRoll"></div></div>
+  <div class="row"><label>Invert yaw</label><div class="toggle" data-tgl="invYaw"></div></div>
+  <div class="row"><label>Invert throttle</label><div class="toggle" data-tgl="invThrottle"></div></div>
+  <button class="btn" id="autobind">AUTO BIND (4 axes)</button>
+  <div id="bind-status"></div>
+  <div class="row"><label>Active axis</label><span id="active-axis">NONE</span></div>
+
+  <h2>AVATAR (gwave 3D scan)</h2>
+  <div class="row"><label>Scan GLB ဖိုင်တင်ရန်</label></div>
+  <input type="file" id="avatar-file" accept=".glb,.gltf" style="width:100%;color:#8fa3c8;font-size:12px">
+  <p style="font-size:11px;color:#5f7096;margin:6px 0">
+    Mixamo-rigged GLB → motion အပြည့်လှုပ် · rig မပါ GLB → static ·
+    URL နဲ့လည်းရ: <code>?avatar=https://…/scan.glb</code></p>
+
+  <button class="btn accent" id="save">SAVE (localStorage*)</button>
+  <button class="btn" id="reset-cfg">RESET TO DEFAULT</button>
+  <p style="font-size:11px;color:#5f7096;margin-top:10px">
+    * production တွင် RDS `game.drone_configs` သို့ save မည်။<br>
+    Keyboard: W/S=Throttle · A/D=Yaw · Arrows=Pitch/Roll (Mode 2)
+  </p>
+</div>
+
+<!-- Touch sticks -->
+<div class="stick-zone" id="zone-l"><div class="stick-base"><div class="stick-knob"></div></div></div>
+<div class="stick-zone" id="zone-r"><div class="stick-base"><div class="stick-knob"></div></div></div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
