@@ -139,6 +139,22 @@
 
 ## Changelog
 
+- 2026-08-05 (metaverse): **In-world games — Game Zone cabinets now play
+  IN the engine (user feedback: iframes rejected).** Two new server
+  mini-games (games.js, logic server-side, cheat-proof, lobby/score/
+  leaderboard framework): 🚁 droneRace — 7 aerial checkpoint rings with
+  heights (y ≤ 13 so the marker beam stays connected), 3D distance
+  check means you must ride a 🛸 drone vehicle (3 parked at the Game
+  Zone); 🎯 assassin — ring target assignment, tag your target within
+  2.2m to eliminate + inherit their target, 8m-grid position hints,
+  last-alive wins. GameObjective gained optional y (client marker ring
+  floats at that height). Cabinet actions are now in-world: DRONE →
+  droneRace lobby, STRIKE → arena room switch, ASSASSIN → assassin
+  lobby, DRONE CHAMPIONS → race lobby; 🧬 Scan Studio stays an overlay
+  (camera utility). games menu Game Zone section triggers the same
+  actions. Tests: 2 new (3D ring gating, assassin elimination/win),
+  counts updated — 241 pass.
+
 - 2026-08-05 (metaverse): **🕹 Game Zone — all games playable INSIDE the
   metaverse.** New arcade plaza behind spawn (z=20): 4 neon arcade
   cabinets (GWAVE DRONE, GWAVE STRIKE, Assassin, Drone Champions) with

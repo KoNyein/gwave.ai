@@ -293,6 +293,10 @@ export const CITY: MapDef = {
     { kind: "car", x: 34, z: 24, ry: -Math.PI / 2 },
     { kind: "drone", x: -6, z: -6, ry: 0 },
     { kind: "drone", x: 6, z: -6, ry: 0 },
+    // 🕹 Game Zone ရှေ့က drone တွေ — 🚁 Drone ပြိုင်ပွဲအတွက် တန်းစီးလို့ရအောင်
+    { kind: "drone", x: -16, z: 22, ry: Math.PI },
+    { kind: "drone", x: 16, z: 22, ry: Math.PI },
+    { kind: "drone", x: 0, z: 24, ry: Math.PI },
   ],
 
   weather: { default: "clear", allowed: ["clear", "rain", "storm", "fog"] },

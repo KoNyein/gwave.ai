@@ -38,6 +38,8 @@ export type GameObjective = {
   kind: "checkpoint" | "item" | "target" | "plant";
   x: number;
   z: number;
+  /// အမြင့် — 🚁 drone race ရဲ့ ကောင်းကင် ring တွေမှာသာ ပါတယ်
+  y?: number;
   index?: number;
   grown?: number;
 };
