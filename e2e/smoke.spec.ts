@@ -58,8 +58,11 @@ test("security headers are present", async ({ request }) => {
   const response = await request.get("/login");
   const headers = response.headers();
   expect(headers["x-content-type-options"]).toBe("nosniff");
-  expect(headers["x-frame-options"]).toBe("DENY");
+  // SAMEORIGIN (not DENY): the metaverse Game Zone frames our own game
+  // pages in a same-origin overlay iframe; cross-origin framing stays blocked.
+  expect(headers["x-frame-options"]).toBe("SAMEORIGIN");
   expect(headers["content-security-policy"]).toContain("default-src 'self'");
+  expect(headers["content-security-policy"]).toContain("frame-ancestors 'self'");
   expect(headers["strict-transport-security"]).toContain("max-age=");
 });
 

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 
 import type { GameInfo, GameRanking, GameScore } from "./net";
 
+import { ARCADE_GAMES } from "./landmarks";
+
 /// Mini-game ရဲ့ HUD (Phase 16)。
 ///
 /// ★ ဒီ component က **အမှတ် တစ်လုံးမှ မတွက်ဘူး** — server ပို့တဲ့
@@ -250,12 +252,16 @@ export function GamesMenu({
   open,
   onToggle,
   onJoin,
+  onArcade,
 }: {
   games: GameInfo[];
   connected: boolean;
   open: boolean;
   onToggle: () => void;
   onJoin: (gameId: string) => void;
+  /// 🕹 Game Zone ဂိမ်းကို လောကထဲက overlay နဲ့ ဖွင့်တယ် — cabinet ဆီ
+  /// လမ်းလျှောက်စရာ မလိုဘဲ menu ကနေလည်း တန်းဝင်လို့ရအောင်
+  onArcade: (game: { label: string; href: string }) => void;
 }) {
   const [tab, setTab] = useState<"play" | "board">("play");
   const [boardGame, setBoardGame] = useState("race");
@@ -321,6 +327,24 @@ export function GamesMenu({
 
           {tab === "play" && (
             <div className="space-y-1">
+              {/* ── 🕹 Game Zone — server မလိုတဲ့ ဂိမ်းကြီးတွေ (overlay) ── */}
+              <div className="px-1 text-[10px] font-semibold text-fuchsia-300">
+                🕹 Game Zone
+              </div>
+              {ARCADE_GAMES.map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => onArcade({ label: g.label, href: g.href })}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] text-white/80 transition hover:bg-white/10"
+                >
+                  <span className="text-base">{g.emoji}</span>
+                  <span className="min-w-0 flex-1 truncate">{g.label}</span>
+                  <span className="shrink-0 truncate text-[9px] text-white/40">{g.tagMy}</span>
+                </button>
+              ))}
+              <div className="px-1 pt-1 text-[10px] font-semibold text-emerald-300">
+                🎪 လောကထဲ ပွဲများ
+              </div>
               {!connected && (
                 <div className="rounded bg-amber-500/15 px-2 py-1 text-[10px] text-amber-200">
                   Server နဲ့ မချိတ်ရသေးလို့ ပွဲ မကစားနိုင်သေးပါ။
