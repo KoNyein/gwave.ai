@@ -798,6 +798,20 @@ class ApiClient {
         .cast<Map<String, dynamic>>();
   }
 
+  // ---- CCTV Camera Bridge ---------------------------------------------------
+
+  /// Mint (or refresh, when [cameraId] is set) an outbound publish session for
+  /// the Camera Bridge. Returns publishUrl/username/password + the camera row
+  /// id; the camera's own local RTSP credentials never leave the phone.
+  Future<Map<String, dynamic>> cctvBridgeSession({
+    String? cameraId,
+    String? title,
+  }) =>
+      _mobilePost("/api/mobile/cctv/bridge", {
+        if (cameraId != null && cameraId.isNotEmpty) "cameraId": cameraId,
+        if (title != null) "title": title,
+      });
+
   // ---- Ride hailing ---------------------------------------------------------
   // Everything goes through /api/ride/* rather than PostgREST: the ride tables
   // have RLS with zero policies, so this is the only door. See docs/RIDE.md.
