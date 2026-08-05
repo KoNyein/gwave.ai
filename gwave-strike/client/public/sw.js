@@ -1,7 +1,10 @@
 // PWA service worker (blueprint §6): precache the shell, cache-first for
 // immutable assets (hashed bundles, GLB, decoders), network-first for HTML.
-const CACHE = "strike-v1";
-const SHELL = ["/", "/manifest.webmanifest", "/icon.svg"];
+// Path-prefix aware: in production the game lives under /strike/, so every
+// path is derived from the registration scope instead of being hardcoded.
+const CACHE = "strike-v2";
+const BASE = new URL(self.registration.scope).pathname; // "/" or "/strike/"
+const SHELL = [BASE, `${BASE}manifest.webmanifest`, `${BASE}icon.svg`];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
@@ -22,13 +25,18 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== "GET" || url.origin !== location.origin) return;
-  // WebSocket/Colyseus and health never cached
-  if (url.pathname.startsWith("/colyseus") || url.pathname === "/health") return;
+  // Colyseus matchmaking and health never cached
+  if (
+    url.pathname.startsWith(`${BASE}matchmake`) ||
+    url.pathname === `${BASE}health`
+  ) {
+    return;
+  }
 
   const immutable =
     /\.(js|css|glb|wasm|ktx2|svg|png)$/.test(url.pathname) ||
-    url.pathname.startsWith("/assets/") ||
-    url.pathname.startsWith("/decoders/");
+    url.pathname.startsWith(`${BASE}assets/`) ||
+    url.pathname.startsWith(`${BASE}decoders/`);
 
   if (immutable) {
     e.respondWith(
