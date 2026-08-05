@@ -1,7 +1,7 @@
 name: GWAVE Home platform
 
 # Same ECR → SSM pipeline as metaverse-server.yml / deploy-strike.yml.
-# One container `gwave-home`: REST API on 127.0.0.1:4000 (fronted by the
+# One container `gwave-home`: REST API on 127.0.0.1:4100 (container-internal 4000 — host 4000 belongs to the self-hosted Realtime) (fronted by the
 # Next.js /api/home proxy) + MQTT broker on 0.0.0.0:1883 (ESP32 nodes).
 on:
   workflow_dispatch:
@@ -107,7 +107,7 @@ jobs:
           start() {
             docker rm -f gwave-home >/dev/null 2>&1 || true
             docker run -d --name gwave-home --restart unless-stopped \
-              -p 127.0.0.1:4000:4000 -p 1883:1883 \
+              -p 127.0.0.1:4100:4000 -p 1883:1883 \
               --env-file /etc/gwave-web.env \
               "\$1"
           }
@@ -117,7 +117,7 @@ jobs:
           ok=0
           for i in \$(seq 1 20); do
             sleep 3
-            if curl -fsS http://127.0.0.1:4000/health >/dev/null; then ok=1; break; fi
+            if curl -fsS http://127.0.0.1:4100/health >/dev/null; then ok=1; break; fi
           done
 
           if [ "\$ok" != "1" ]; then
@@ -130,7 +130,7 @@ jobs:
             exit 1
           fi
 
-          curl -fsS http://127.0.0.1:4000/health
+          curl -fsS http://127.0.0.1:4100/health
           docker image prune -f >/dev/null 2>&1 || true
           EOF
 
