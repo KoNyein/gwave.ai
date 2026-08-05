@@ -57,3 +57,7 @@ mobile/.flutter-plugins*
 # Metaverse server ရဲ့ dependency (သီးခြား npm project)
 /server/metaverse/node_modules
 server/metaverse/.next/
+
+# GWAVE Home platform workspace
+gwave-home/node_modules
+gwave-home/config.json

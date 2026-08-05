@@ -1,0 +1,93 @@
+# ============================================================
+# GWAVE Farm Node - ESPHome config (ESP32)
+# DHT22 (အပူချိန်/စိုထိုင်းဆ) + Soil moisture + Relay (ရေစက်)
+#
+# သုံးနည်း:
+#   1. pip install esphome
+#   2. /api/provision ကနေ mqttUsername/Password ယူပြီး အောက်မှာထည့်
+#   3. esphome run farm-node.yaml   (USB နဲ့ချိတ်ပြီး flash)
+# ============================================================
+substitutions:
+  site_id: farm01
+  device_key: node1        # site ထဲမှာ တစ်မူထူးရမယ်
+
+esphome:
+  name: gwave-${site_id}-${device_key}
+
+esp32:
+  board: esp32dev
+
+wifi:
+  ssid: "YOUR_WIFI"
+  password: "YOUR_WIFI_PASSWORD"
+
+mqtt:
+  broker: YOUR_EC2_PUBLIC_IP
+  port: 1883
+  username: ${site_id}_${device_key}     # /api/provision ကရတဲ့ username
+  password: "PROVISIONED_PASSWORD"       # /api/provision ကရတဲ့ password
+  topic_prefix: gw/${site_id}/${device_key}
+  birth_message:
+    topic: gw/${site_id}/${device_key}/lwt
+    payload: online
+  will_message:                          # LWT — ပြတ်ရင် broker က auto ကြေညာ
+    topic: gw/${site_id}/${device_key}/lwt
+    payload: offline
+  on_connect:
+    # Auto-discovery: ကိုယ့် traits ကိုယ်ကြေညာ (retained)
+    - mqtt.publish:
+        topic: gw/${site_id}/${device_key}/config
+        retain: true
+        payload: >-
+          {"name":"Farm Node 1","type":"sensor","traits":{
+            "sensor.temperature":{"unit":"C"},
+            "sensor.humidity":{},
+            "sensor.soil_moisture":{},
+            "actuator.relay":{"channels":1}}}
+  on_message:
+    # Server ကလာတဲ့ command လက်ခံ
+    - topic: gw/${site_id}/${device_key}/cmd
+      then:
+        - lambda: |-
+            auto doc = parse_json(x);   // {"command":"setOn","params":{"on":true}}
+            // ESPHome ရဲ့ json lambda နဲ့ relay ထိန်း — အောက်က switch ကိုခေါ်
+        - switch.turn_on: pump_relay    # ရိုးရှင်းအောင် — production မှာ params စစ်ပြီးခွဲ
+
+sensor:
+  - platform: dht
+    pin: GPIO4
+    model: DHT22
+    temperature:
+      id: temp
+    humidity:
+      id: hum
+    update_interval: 30s
+  - platform: adc
+    pin: GPIO34
+    id: soil_raw
+    update_interval: 30s
+    filters:
+      - calibrate_linear:      # sensor အလိုက် တန်ဖိုးညှိ (ရေထဲ=100, ခြောက်=0)
+          - 3.3 -> 0.0
+          - 1.2 -> 100.0
+
+switch:
+  - platform: gpio
+    pin: GPIO26
+    id: pump_relay
+    name: pump
+
+# State တစ်ပေါင်းတည်း 30s တစ်ခါတင် — server format နဲ့ကိုက်အောင်
+interval:
+  - interval: 30s
+    then:
+      - mqtt.publish:
+          topic: gw/${site_id}/${device_key}/state
+          payload: !lambda |-
+            char buf[220];
+            snprintf(buf, sizeof(buf),
+              "{\"values\":{\"sensor.temperature\":%.1f,\"sensor.humidity\":%.1f,"
+              "\"sensor.soil_moisture\":%.1f,\"actuator.relay\":%s}}",
+              id(temp).state, id(hum).state, id(soil_raw).state,
+              id(pump_relay).state ? "true" : "false");
+            return std::string(buf);

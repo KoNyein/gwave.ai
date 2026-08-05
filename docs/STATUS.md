@@ -139,6 +139,19 @@
 
 ## Changelog
 
+- 2026-08-05 (iot): **GWAVE Home platform (unified IoT engine).** New
+  gwave-home/ workspace (from the user's uploaded platform+engine
+  packages, reviewed & fixed: aedes 1.x createBroker init, "state"
+  trigger type): device registry + traits + permissions, EMBEDDED MQTT
+  broker (aedes, per-device sha256 creds + topic ACL, port 1883),
+  auto-discovery, sensor time-series, rules engine (if/then/cooldown),
+  provisioning API. Deployed as the `gwave-home` container
+  (gwave-home.yml, ECR→SSM, health-gated). Web UI at gwave.cc/iot
+  (trait-driven dashboard, 24h SVG charts, Burmese rule builder,
+  ESP32 wizard) through the session-checked /api/home/* proxy. The
+  older /home smart-home page is untouched. Needs user-side rollout:
+  migrations on RDS + GH_* envs + SG 1883 (deploy/gwave-home/README).
+
 - 2026-08-05 (game): **GWAVE STRIKE live at gwave.cc/strike.** Rehomed
   from the never-provisioned game.gwave.cc plan onto the app box: one
   `strike` container (127.0.0.1:8095) serves the vite-built client
