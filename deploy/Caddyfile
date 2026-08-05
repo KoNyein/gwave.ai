@@ -21,6 +21,12 @@ gwave.cc {
 		reverse_proxy 127.0.0.1:8090
 	}
 
+	# Camera Bridge HLS (deploy/cctv-bridge/): MediaMTX republishes phone-
+	# relayed cameras on loopback :8888; this is their only public face.
+	handle_path /hls/* {
+		reverse_proxy 127.0.0.1:8888
+	}
+
 	reverse_proxy web:3000
 }
 
