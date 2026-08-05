@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -101,8 +102,34 @@ class _WebScreenState extends State<WebScreen> {
     // player the app hands browser broadcasts off to) instead of waiting for a
     // tap.
     if (controller.platform is AndroidWebViewController) {
-      (controller.platform as AndroidWebViewController)
-          .setMediaPlaybackRequiresUserGesture(false);
+      final android = controller.platform as AndroidWebViewController;
+      await android.setMediaPlaybackRequiresUserGesture(false);
+      // Camera/mic for web pages that capture — the 3D avatar face/body scan
+      // (/profile/avatar) is dead without this. Same order as the metaverse
+      // screen: Android runtime permission FIRST, only then grant the WebView
+      // request (granting first makes Android deny silently).
+      await android.setOnPlatformPermissionRequest((request) async {
+        final wantsMic =
+            request.types.contains(WebViewPermissionResourceType.microphone);
+        final wantsCam =
+            request.types.contains(WebViewPermissionResourceType.camera);
+        if (!wantsMic && !wantsCam) {
+          await request.deny();
+          return;
+        }
+        var granted = true;
+        if (wantsMic) {
+          granted = (await Permission.microphone.request()).isGranted && granted;
+        }
+        if (wantsCam) {
+          granted = (await Permission.camera.request()).isGranted && granted;
+        }
+        if (granted) {
+          await request.grant();
+        } else {
+          await request.deny();
+        }
+      });
     }
     if (mounted) setState(() => _web = controller);
   }

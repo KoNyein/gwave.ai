@@ -28,6 +28,8 @@ class _GamesScreenState extends State<GamesScreen> {
   ///   မကိုင်ဘူး၊ ကိုင်ရင်လည်း WebView ကို တိုက်ရိုက်ဖွင့်လို့ ကျော်လို့ရမယ်။
   ///   ၁၈+ မဟုတ်သူက အဲဒီစာမျက်နှာကနေ `/restricted` ကို ရောက်သွားမယ်။
   static const _builtins = <(String, String, String, String)>[
+    ("🔫", "GWAVE STRIKE", "5v5 FPS · scan မျက်နှာနဲ့", "/strike/"),
+    ("🧬", "3D Avatar", "မျက်နှာ + ကိုယ်ခန္ဓာ scan", "/profile/avatar"),
     ("🙈", "ဝှက်တမ်း", "ပုန်းတမ်း ရှာတမ်း · အားလုံး", "/games/arena"),
     ("🎯", "Assassin", "လျှို့ဝှက်ပစ်မှတ် · ၁၈+", "/games/assassin"),
     ("🚁", "Drone Champions", "FPV drone ပြိုင်ပွဲ", "/games/drone-sim"),
