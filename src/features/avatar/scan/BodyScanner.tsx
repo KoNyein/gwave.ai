@@ -10,6 +10,7 @@ import {
   POSE_BONES,
 } from "./poseLandmarks";
 import { useCamera } from "./useCamera";
+import { RecordButton } from "@/features/scan3d/RecordButton";
 import {
   DEFAULT_SCAN_AVATAR,
   MORPH_LABELS,
@@ -320,22 +321,23 @@ export function BodyScanner({
                     : "လက်ခြေ အကုန်ပေါ်အောင် ရပ်ပါ"}
               </div>
             </div>
-            <div className="flex gap-2">
-              <button
+            {/* ⏺ Pro-scanner record ခလုတ် (5s timer) + 📸 ချက်ချင်း fallback */}
+            <div className="flex items-center justify-center gap-6">
+              <RecordButton
                 onClick={timerCapture}
                 disabled={busy || camState !== "on" || countdown !== null}
-                className="flex-1 rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-black hover:bg-emerald-400 disabled:opacity-40"
-              >
-                {countdown !== null
-                  ? `⏱ ${countdown}…`
-                  : busy
-                    ? "တိုင်းနေသည်…"
-                    : "⏱ 5s ပြီး တိုင်းမယ်"}
-              </button>
+                label={
+                  countdown !== null
+                    ? `⏱ ${countdown}…`
+                    : busy
+                      ? "တိုင်းနေသည်…"
+                      : "⏱ 5s ပြီး တိုင်းမယ်"
+                }
+              />
               <button
                 onClick={measureNow}
                 disabled={busy || camState !== "on" || countdown !== null}
-                className="flex-1 rounded-xl border border-emerald-400/50 py-2.5 text-sm font-semibold text-emerald-300 disabled:opacity-40"
+                className="rounded-full border border-emerald-400/50 px-4 py-2 text-sm font-semibold text-emerald-300 disabled:opacity-40"
               >
                 📸 ချက်ချင်း
               </button>

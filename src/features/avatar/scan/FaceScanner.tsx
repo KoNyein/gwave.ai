@@ -7,6 +7,7 @@ import { buildFaceMesh, type BuiltFace } from "../build/faceMeshBuilder";
 import { exportGlb, uploadScanFile } from "../build/glbExport";
 import { captureFace, getFaceLandmarker } from "./faceLandmarks";
 import { useCamera } from "./useCamera";
+import { RecordButton } from "@/features/scan3d/RecordButton";
 
 /// 📷 Face Scanner modal (spec §4.1) — Phase 2 v1: front capture။
 ///
@@ -448,13 +449,14 @@ export function FaceScanner({
               (ပြတင်းပေါက်/မီးရှေ့) · မျက်မှန်/ဦးထုပ် ချွတ်ထား · ဖုန်းကို
               မျက်နှာအမြင့် တည့်တည့်ကိုင် — အဆင်ပြေရင် <b>အလိုအလျောက် ဖမ်းပေး</b>ပါမယ်
             </div>
-            <button
-              onClick={snap}
-              disabled={busy || camState !== "on"}
-              className="w-full rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-black hover:bg-emerald-400 disabled:opacity-40"
-            >
-              {busy ? "ဖမ်းနေသည်…" : "📸 ဖမ်းမယ်"}
-            </button>
+            {/* ⏺ Pro-scanner record ခလုတ် — scanner suite တစ်ပုံစံတည်း */}
+            <div className="flex justify-center pt-1">
+              <RecordButton
+                onClick={snap}
+                disabled={busy || camState !== "on"}
+                label={busy ? "ဖမ်းနေသည်…" : "📸 ဖမ်းမယ်"}
+              />
+            </div>
           </div>
         )}
 
