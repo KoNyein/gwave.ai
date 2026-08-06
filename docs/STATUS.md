@@ -139,6 +139,16 @@
 
 ## Changelog
 
+- 2026-08-06 (engine): **Phase 5 — plugin API.** window.gwaveEngine
+  surface (registerBehavior/registerAction/registerSystem + world/
+  events/hud/audio), plugin behaviors join the editor palette and the
+  BehaviorSystem falls through to the plugin registry for unknown
+  types; actions.run checks the plugin action registry; ?plugin=
+  same-origin ES-module loader (comma-separated, install(api) export).
+  Docs public/engine/PLUGINS.md + worked example
+  plugins/example-bouncer.js (trampoline behavior + confetti action).
+
+
 - 2026-08-06 (engine): **Phase 4 — asset pipeline.** Draco geometry
   decompression + KTX2/Basis texture transcoding wired into the shared
   GLTFLoader (decoders from the same three@0.168 CDN, KTX2 GPU-format
