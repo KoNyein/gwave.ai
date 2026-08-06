@@ -15,8 +15,8 @@ import type { AvatarConfig } from "../types";
 /// ★ GLB ကို config.outfitId ပြောင်းမှသာ ပြန်ဆွဲတယ် — slider လှုပ်တိုင်း
 ///   ပြန်ဆွဲရင် editor က လေးသွားမယ်။
 
-const KIT_BASE = "/metaverse/kits/characters/";
-const FALLBACK_GLB = `${KIT_BASE}character-a.glb`;
+// 🧍 Realistic Mixamo body — cartoon kit အစား (user: "cartoon မသုံးတော့ဘူး")
+const FALLBACK_GLB = "/metaverse/realistic/Soldier.glb";
 
 export function AvatarPreview({
   config,

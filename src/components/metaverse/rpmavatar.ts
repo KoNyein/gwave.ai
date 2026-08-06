@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 import type { Avatar, HumanState } from "./human";
-import { createRiggedHuman } from "./riggedhuman";
+import { createRealisticHuman } from "./realistichuman";
 
 /// 📸 Ready Player Me avatar (Phase: photo-real avatars)။
 ///
@@ -222,7 +222,7 @@ export function createRpmHuman(url: string): Avatar {
 /// (position/lerp/nametag) အကုန် ဒီအတိုင်း ဆက်အလုပ်လုပ်တယ်။
 export function createPlayerBody(variant: string): Avatar {
   const group = new THREE.Group();
-  let impl: Avatar = createRiggedHuman(variant);
+  let impl: Avatar = createRealisticHuman(variant);
   group.add(impl.group);
   // kit ရဲ့ setMorphs ကို ဆက်ဖောက်ပေး (RPM မှာ မလို — proportion အစစ်ပါပြီ)
   group.userData.setMorphs = (m: Record<string, number>) => {

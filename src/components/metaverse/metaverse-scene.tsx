@@ -45,11 +45,8 @@ import { createVoiceChat, type VoiceChat } from "./voicechat";
 import { createWeather } from "./weather";
 import { buildWeaponMesh, disposeWeapon } from "./weapons3d";
 import { createDog } from "./dog3d";
-import {
-  createRiggedHuman,
-  soldierVariantFor,
-  SOLDIER_VARIANTS,
-} from "./riggedhuman";
+import { soldierVariantFor, SOLDIER_VARIANTS } from "./riggedhuman";
+import { createRealisticHuman } from "./realistichuman";
 import { createPlayerBody } from "./rpmavatar";
 import { RpmOverlay } from "./avatar/rpm";
 import { OwnershipControl } from "./web3/ownership";
@@ -1054,11 +1051,13 @@ export function MetaverseScene() {
       // 🎖 Arena မှာ **လူသား remote တွေလည်း** rigged soldier — variant က
       // id hash နဲ့ တည်ငြိမ် (client တိုင်း တူတူမြင်)၊ ဓားပြ bot တွေက
       // သတ်မှတ်ထား variant (b/c/j)။
+      // 🧍 Cartoon kit ဖယ်ပြီ — NPC ရော player ရော Mixamo realistic body
+      // (user: "cartoon တွေလုံးအစား ဒီလို avatar တွေပဲ သုံးမယ်")
       const avatar =
         kind === "dog"
           ? createDog(s.name?.includes("နက်") ? 0x24201c : 0xb9873c)
           : kind === "soldier"
-            ? createRiggedHuman(
+            ? createRealisticHuman(
                 ["b", "c", "j"][(Number.parseInt(id.slice(4), 10) || 1) - 1] ?? "b",
               )
             : createPlayerBody(
