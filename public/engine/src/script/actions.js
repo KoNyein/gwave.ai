@@ -59,7 +59,7 @@ export function createActions(ctx) {
   /** run a list of action descriptors: [{ action: "addScore", … }] */
   function run(list, extra = {}) {
     for (const step of list ?? []) {
-      const fn = A[step.action];
+      const fn = A[step.action] ?? ctx.pluginActions?.get(step.action);
       if (fn) fn({ ...step, ...extra });
       else console.warn(`[actions] unknown action "${step.action}"`);
     }

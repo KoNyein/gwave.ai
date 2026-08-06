@@ -17,6 +17,7 @@ import { createHud } from "./ui/hud.js";
 import { createAudio3d } from "./audio/audio3d.js";
 import { createEditor } from "./editor/editor.js";
 import { NetSystem } from "./net/net.js";
+import { createPluginApi, loadUrlPlugins, pluginActions } from "./plugin/plugin.js";
 import { saveScene } from "./serialize/scene.js";
 
 const $ = (id) => document.getElementById(id);
@@ -43,6 +44,7 @@ const { run } = createActions({
   world,
   hud,
   audio,
+  pluginActions,
   respawn: (e) => {
     const t = e?.get("Transform");
     if (t) t.pos = [...(world.vars.checkpoint ?? [0, 1, 0])];
@@ -50,6 +52,16 @@ const { run } = createActions({
 });
 
 const editor = createEditor({ world, renderSystem, camera, canvas, applyEnv });
+
+// ── Phase 5 plugin API (spec §17) — window.gwaveEngine + ?plugin= loader ──
+const pluginApi = createPluginApi({
+  world,
+  hud,
+  audio,
+  addSystem: (sys) => world.addSystem(sys),
+});
+window.gwaveEngine = pluginApi;
+void loadUrlPlugins(pluginApi);
 
 // ── play / stop ────────────────────────────────────────────────────────────
 let playing = false;

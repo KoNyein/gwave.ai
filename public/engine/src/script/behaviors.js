@@ -4,6 +4,7 @@
 
 import { System } from "../core/ecs.js";
 import { within } from "../physics/physics.js";
+import { pluginBehaviors } from "../plugin/plugin.js";
 
 export class BehaviorSystem extends System {
   query = ["Transform", "Behavior"];
@@ -25,7 +26,20 @@ export class BehaviorSystem extends System {
     for (const e of this.entities) {
       const t = e.get("Transform");
       for (const b of e.get("Behavior")) {
-        this[`_${b.type}`]?.(e, b, t, dt, player, pT);
+        const builtin = this[`_${b.type}`];
+        if (builtin) {
+          builtin.call(this, e, b, t, dt, player, pT);
+          continue;
+        }
+        // Phase 5 — plugin-registered behaviors (spec §17)
+        const plugin = pluginBehaviors.get(b.type);
+        plugin?.fn(e, b, t, dt, {
+          player,
+          world: this.world,
+          run: this.run,
+          audio: this.audio,
+          physics: this.physics,
+        });
       }
     }
   }
