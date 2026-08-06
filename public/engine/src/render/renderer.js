@@ -17,17 +17,32 @@ export const ENV_PRESETS = {
   sunset: { bg: 0x2a1830, fog: [40, 130], sun: 2.4 },
 };
 
+/// Phase 6 — quality tiers (spec §16): phones (coarse pointer + high dpr)
+/// and forced ?lowfx=1 drop to a cheaper pipeline — clamped pixel ratio, no
+/// antialias, no shadows — so mid-range devices hold 60fps. WebGPU is probed
+/// and reported but the render path stays WebGL2: three 0.168's
+/// WebGPURenderer is not loadable through the CDN importmap reliably, so the
+/// actual renderer swap waits for the roadmap's §20 P6+ follow-up.
+export function detectQuality() {
+  const params = new URLSearchParams(location.search);
+  if (params.get("lowfx") === "1") return "low";
+  const coarse = matchMedia?.("(pointer: coarse)").matches;
+  if (coarse && devicePixelRatio > 2) return "low";
+  return "high";
+}
+
 export function createStage(canvas) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.shadowMap.enabled = true;
+  const quality = detectQuality();
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: quality === "high" });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, quality === "high" ? 2 : 1.5));
+  renderer.shadowMap.enabled = quality === "high";
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
   const scene = new THREE.Scene();
   const sun = new THREE.DirectionalLight(0xffffff, 2.2);
   sun.position.set(10, 16, 8);
-  sun.castShadow = true;
+  sun.castShadow = quality === "high";
   sun.shadow.mapSize.set(2048, 2048);
   Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 100 });
   scene.add(sun, new THREE.HemisphereLight(0xffffff, 0x333844, 0.7));
@@ -62,7 +77,7 @@ export function createStage(canvas) {
     }
   }
 
-  return { renderer, scene, applyEnv, resize };
+  return { renderer, scene, applyEnv, resize, quality };
 }
 
 const MAT = (c) =>
