@@ -59,8 +59,13 @@ class _GamesScreenState extends State<GamesScreen> {
   }
 
   /// Web features open in the signed-in in-app browser — never the external
-  /// browser, where no session exists.
-  Future<void> _openWeb(String path) => openWeb(context, path);
+  /// browser, where no session exists. FPS titles get game mode: fullscreen
+  /// immersive landscape (an FPS in a portrait strip under a toolbar was
+  /// unplayable — the view never fit the screen).
+  static const _landscapeGames = ["/strike/", "/drone/index.html"];
+
+  Future<void> _openWeb(String path) =>
+      openWeb(context, path, game: _landscapeGames.contains(path));
 
   @override
   Widget build(BuildContext context) {
