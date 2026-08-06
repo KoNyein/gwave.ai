@@ -43,7 +43,15 @@ export async function POST(req: NextRequest) {
   if (!profile) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
   const parsed = saveSchema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "invalid body" }, { status: 400 });
+  if (!parsed.success) {
+    // name the failing field — "invalid body" alone made a too-big thumbnail
+    // undiagnosable from the client toast
+    const issue = parsed.error.issues[0];
+    return NextResponse.json(
+      { error: `invalid ${issue?.path.join(".") || "body"}: ${issue?.message ?? ""}` },
+      { status: 400 },
+    );
+  }
   const { name, data, thumb, visibility } = parsed.data;
   if (JSON.stringify(data ?? null).length > MAX_DATA_BYTES) {
     return NextResponse.json({ error: "world too large" }, { status: 413 });
