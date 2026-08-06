@@ -12,14 +12,17 @@ import '../../core/models.dart';
 import '../../core/repository.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
-import '../messenger/conversations_screen.dart';
-import '../notifications/notifications_screen.dart';
 import '../stories/stories_bar.dart';
 import 'composer_screen.dart';
 import 'post_card.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
+
+  /// Bumped by the shell after the masthead's ➕ composer posts something —
+  /// the Feed lives in an IndexedStack, so a route result can't reach it.
+  static final ValueNotifier<int> refreshTick = ValueNotifier(0);
+  static void requestRefresh() => refreshTick.value++;
 
   @override
   State<FeedScreen> createState() => _FeedScreenState();
@@ -32,15 +35,14 @@ class _FeedScreenState extends State<FeedScreen> {
   bool _loadingMore = false;
   bool _end = false;
   String? _error;
-  int _unread = 0;
   int _newerBuild = 0; // > 0 when the release carries a newer APK
 
   @override
   void initState() {
     super.initState();
     _load(reset: true);
-    _loadUnread();
     _checkUpdate();
+    FeedScreen.refreshTick.addListener(_onExternalRefresh);
     _scroll.addListener(() {
       if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 400) {
         _load();
@@ -48,8 +50,13 @@ class _FeedScreenState extends State<FeedScreen> {
     });
   }
 
+  void _onExternalRefresh() {
+    if (mounted) _load(reset: true);
+  }
+
   @override
   void dispose() {
+    FeedScreen.refreshTick.removeListener(_onExternalRefresh);
     _scroll.dispose();
     super.dispose();
   }
@@ -104,12 +111,6 @@ class _FeedScreenState extends State<FeedScreen> {
     } catch (_) {}
   }
 
-  Future<void> _loadUnread() async {
-    final n =
-        await context.read<AppState>().repo.unreadNotificationCount();
-    if (mounted && n != _unread) setState(() => _unread = n);
-  }
-
   Future<void> _openComposer() async {
     final created = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const ComposerScreen()),
@@ -119,45 +120,9 @@ class _FeedScreenState extends State<FeedScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // The Facebook-style masthead (wordmark + action chips) lives in the
+    // HomeShell above the icon tab strip — the Feed is just its content.
     return Scaffold(
-      appBar: AppBar(
-        // Facebook-style masthead: brand wordmark left, round gray action
-        // chips right.
-        title: const Text(
-          "gwave",
-          style: TextStyle(
-            color: GwColors.primary,
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -1.2,
-            height: 1,
-          ),
-        ),
-        actions: [
-          _HeaderChip(
-            icon: Icons.add,
-            onTap: _openComposer,
-          ),
-          _HeaderChip(
-            icon: Icons.notifications,
-            badge: _unread,
-            onTap: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-              );
-              // The screen marks everything read — clear the badge on return.
-              if (mounted) setState(() => _unread = 0);
-            },
-          ),
-          _HeaderChip(
-            icon: Icons.chat_bubble,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ConversationsScreen()),
-            ),
-          ),
-          const SizedBox(width: 10),
-        ],
-      ),
       body: Column(
         children: [
           if (_newerBuild > 0)
@@ -319,35 +284,3 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 }
 
-/// Round light-gray icon button, the Facebook header chip.
-class _HeaderChip extends StatelessWidget {
-  const _HeaderChip({required this.icon, required this.onTap, this.badge = 0});
-  final IconData icon;
-  final VoidCallback onTap;
-  final int badge;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Badge(
-          isLabelVisible: badge > 0,
-          label: Text("$badge"),
-          backgroundColor: GwColors.live,
-          child: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: GwColors.surfaceMutedOf(context),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 21, color: GwColors.inkOf(context)),
-          ),
-        ),
-      ),
-    );
-  }
-}

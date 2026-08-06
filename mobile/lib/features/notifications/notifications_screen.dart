@@ -13,7 +13,14 @@ import '../web/web_screen.dart';
 import '../live/live_watch_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key});
+  const NotificationsScreen({super.key, this.active = true, this.embedded = false});
+
+  /// In the shell's IndexedStack every tab is built up front — loading (and
+  /// marking read) must wait until this tab is actually the visible one.
+  final bool active;
+
+  /// Tab mode: no back arrow, big Facebook-style headline.
+  final bool embedded;
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -22,12 +29,20 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   List<AppNotification> _items = [];
   bool _loading = true;
+  bool _loadedOnce = false;
   String? _error;
+  String _filter = "all"; // all | comments | mentions
 
   @override
   void initState() {
     super.initState();
-    _load();
+    if (widget.active) _load();
+  }
+
+  @override
+  void didUpdateWidget(NotificationsScreen old) {
+    super.didUpdateWidget(old);
+    if (!old.active && widget.active) _load();
   }
 
   Future<void> _load() async {
@@ -38,7 +53,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final repo = context.read<AppState>().repo;
     try {
       final n = await repo.notifications();
-      setState(() => _items = n);
+      setState(() {
+        _items = n;
+        _loadedOnce = true;
+      });
       // Clear the unread badge once the user has seen the list.
       repo.markNotificationsRead().catchError((_) {});
     } catch (e) {
@@ -48,14 +66,36 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  static const _commentTypes = {"post_comment", "comment_reply"};
+  static const _mentionTypes = {"post_mention", "mention"};
+
+  List<AppNotification> get _visible {
+    switch (_filter) {
+      case "comments":
+        return _items.where((n) => _commentTypes.contains(n.type)).toList();
+      case "mentions":
+        return _items.where((n) => _mentionTypes.contains(n.type)).toList();
+      default:
+        return _items;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Notifications")),
+      appBar: AppBar(
+        automaticallyImplyLeading: !widget.embedded,
+        titleSpacing: widget.embedded ? 16 : null,
+        title: Text(
+          tr(context, "Notifications", "အသိပေးချက်များ"),
+          style: const TextStyle(
+              fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+        ),
+      ),
       body: RefreshIndicator(
         color: GwColors.primary,
         onRefresh: _load,
-        child: _loading
+        child: _loading && !_loadedOnce
             ? const GwSkeletonList(count: 7)
             : _error != null && _items.isEmpty
                 ? ListView(children: [
@@ -65,19 +105,70 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         title: "Couldn't load",
                         subtitle: _error),
                   ])
-                : _items.isEmpty
-                    ? ListView(children: const [
-                        SizedBox(height: 120),
-                        GwEmpty(
-                            icon: Icons.notifications_none,
-                            title: "No notifications yet"),
-                      ])
-                    : ListView.separated(
-                        itemCount: _items.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(height: 1, indent: 72),
-                        itemBuilder: (_, i) => _tile(_items[i]),
-                      ),
+                : ListView(children: _listChildren(context)),
+      ),
+    );
+  }
+
+  /// Facebook layout: filter pills, then a bold "New" section (unread) and
+  /// an "Earlier" section (read) — unread rows keep their blue tint.
+  List<Widget> _listChildren(BuildContext context) {
+    final visible = _visible;
+    final fresh = visible.where((n) => !n.read).toList();
+    final earlier = visible.where((n) => n.read).toList();
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(14, 4, 14, 10),
+        child: Row(children: [
+          _pill(context, "all", tr(context, "All", "အားလုံး")),
+          const SizedBox(width: 8),
+          _pill(context, "comments", tr(context, "Comments", "Comment များ")),
+          const SizedBox(width: 8),
+          _pill(context, "mentions", tr(context, "Mentions", "Tag များ")),
+        ]),
+      ),
+      if (visible.isEmpty) ...[
+        const SizedBox(height: 100),
+        const GwEmpty(
+            icon: Icons.notifications_none, title: "No notifications yet"),
+      ] else ...[
+        if (fresh.isNotEmpty) _sectionHeader(context, tr(context, "New", "အသစ်")),
+        ...fresh.map(_tile),
+        if (earlier.isNotEmpty)
+          _sectionHeader(context, tr(context, "Earlier", "အရင်က")),
+        ...earlier.map(_tile),
+        const SizedBox(height: 30),
+      ],
+    ];
+  }
+
+  Widget _sectionHeader(BuildContext context, String label) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+      child: Text(label,
+          style: const TextStyle(
+              fontSize: 19, fontWeight: FontWeight.w900, letterSpacing: -0.3)),
+    );
+  }
+
+  Widget _pill(BuildContext context, String value, String label) {
+    final on = _filter == value;
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () => setState(() => _filter = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: on
+              ? GwColors.primary.withValues(alpha: 0.14)
+              : GwColors.surfaceMutedOf(context),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w800,
+                color: on ? GwColors.primary : GwColors.inkOf(context))),
       ),
     );
   }

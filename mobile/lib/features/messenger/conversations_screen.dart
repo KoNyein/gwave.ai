@@ -25,6 +25,8 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   Timer? _presencePoll;
   bool _loading = true;
   String? _error;
+  String _query = "";
+  String _filter = "all"; // all | active | groups
 
   @override
   void initState() {
@@ -170,11 +172,35 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     _load();
   }
 
+  /// Search + filter, Messenger-style: type-ahead over the thread titles,
+  /// then All / Active (online now) / Groups pills.
+  List<Conversation> get _visible {
+    final q = _query.trim().toLowerCase();
+    return _items.where((c) {
+      if (q.isNotEmpty && !c.displayTitle.toLowerCase().contains(q)) {
+        return false;
+      }
+      switch (_filter) {
+        case "active":
+          return !c.isGroup && _isOnline(c.other?.id);
+        case "groups":
+          return c.isGroup;
+        default:
+          return true;
+      }
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final visible = _visible;
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Chat"),
+        title: Text(
+          tr(context, "Chats", "စကားပြောခန်း"),
+          style: const TextStyle(
+              fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.group_add),
@@ -202,20 +228,95 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                         title: "Couldn't load Chat",
                         subtitle: _error),
                   ])
-                : _items.isEmpty
-                    ? ListView(children: const [
-                        SizedBox(height: 120),
-                        GwEmpty(
-                            icon: Icons.chat_bubble_outline,
-                            title: "No conversations yet"),
-                      ])
-                    : ListView.separated(
-                        padding: const EdgeInsets.only(bottom: 90),
-                        itemCount: _items.length,
-                        separatorBuilder: (_, __) => const Divider(
-                            height: 1, indent: 78, color: GwColors.line),
-                        itemBuilder: (_, i) => _tile(_items[i]),
-                      ),
+                : ListView(
+                    padding: const EdgeInsets.only(bottom: 90),
+                    children: [
+                      _searchBar(context),
+                      _filterRow(context),
+                      if (_items.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 100),
+                          child: GwEmpty(
+                              icon: Icons.chat_bubble_outline,
+                              title: "No conversations yet"),
+                        )
+                      else if (visible.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 80),
+                          child: GwEmpty(
+                              icon: Icons.search_off,
+                              title: tr(context, "No matches", "ရှာမတွေ့ပါ")),
+                        )
+                      else
+                        for (final c in visible) _tile(c),
+                    ],
+                  ),
+      ),
+    );
+  }
+
+  Widget _searchBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: GwColors.surfaceMutedOf(context),
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.search, size: 20, color: GwColors.inkSoftOf(context)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                onChanged: (v) => setState(() => _query = v),
+                decoration: InputDecoration(
+                  hintText: tr(context, "Search", "ရှာရန်"),
+                  hintStyle: TextStyle(color: GwColors.inkSoftOf(context)),
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 11),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _filterRow(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+      child: Row(children: [
+        _pill(context, "all", tr(context, "All", "အားလုံး")),
+        const SizedBox(width: 8),
+        _pill(context, "active", tr(context, "Active", "အွန်လိုင်း")),
+        const SizedBox(width: 8),
+        _pill(context, "groups", tr(context, "Groups", "အုပ်စုများ")),
+      ]),
+    );
+  }
+
+  Widget _pill(BuildContext context, String value, String label) {
+    final on = _filter == value;
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () => setState(() => _filter = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: on
+              ? GwColors.primary.withValues(alpha: 0.14)
+              : GwColors.surfaceMutedOf(context),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w800,
+                color: on ? GwColors.primary : GwColors.inkOf(context))),
       ),
     );
   }
@@ -261,11 +362,12 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             ),
       title: Text(c.displayTitle,
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+      // Messenger-style inline "message · time" subtitle.
       subtitle: Text(
         online
             ? tr(context, "Active now", "အွန်လိုင်းရှိသည်")
-            : (c.lastMessage ??
-                (c.subtitle.isNotEmpty ? c.subtitle : "Tap to open")),
+            : "${c.lastMessage ?? (c.subtitle.isNotEmpty ? c.subtitle : "Tap to open")}"
+                " · ${timeAgo(c.lastMessageAt)}",
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
@@ -273,8 +375,6 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             fontSize: 13,
             fontWeight: online ? FontWeight.w600 : FontWeight.w400),
       ),
-      trailing: Text(timeAgo(c.lastMessageAt),
-          style: const TextStyle(color: GwColors.inkSoft, fontSize: 12)),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => ChatScreen(conversation: c)),
       ),
