@@ -89,6 +89,38 @@ export function createRealisticHuman(variant: string): Avatar {
   const base = new Map<THREE.Object3D, THREE.Quaternion>();
   let hipsBaseY = 0;
   let phase = 0;
+  /// လက်ချရမယ့် signed z ထောင့် (bind T/A-pose → ဘေးမှာ သဘာဝကျကျ ချ)
+  let restL = 0;
+  let restR = 0;
+
+  /// လက်မောင်း bone ကို z ဝန်းကျင် ဘယ်ဘက်လှည့်ရင် လက်ဖျား **အောက်ကျလဲ**
+  /// စမ်းတိုင်းပြီး၊ ဒေါင်လိုက်နီးပါး ရောက်ဖို့ လိုတဲ့ ထောင့် ပြန်ပေးတယ်။
+  const armRestZ = (
+    arm: THREE.Object3D | null,
+    tip: THREE.Object3D | null,
+  ): number => {
+    if (!arm || !tip) return 0;
+    const orig = arm.quaternion.clone();
+    const tipY = (z: number) => {
+      arm.quaternion
+        .copy(orig)
+        .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, z)));
+      const v = new THREE.Vector3();
+      tip.getWorldPosition(v);
+      return v.y;
+    };
+    const down = tipY(0.6) < tipY(-0.6) ? 1 : -1;
+    // ဘေးကနေ ဒေါင်လိုက်အထိ ဘယ်လောက်ကွာသေးလဲ — arm→tip vector ထောင့်
+    arm.quaternion.copy(orig);
+    const a = new THREE.Vector3();
+    const t = new THREE.Vector3();
+    arm.getWorldPosition(a);
+    tip.getWorldPosition(t);
+    const horiz = Math.hypot(t.x - a.x, t.z - a.z);
+    const drop = a.y - t.y;
+    const ang = Math.atan2(horiz, Math.max(drop, 0.001));
+    return down * Math.max(0, ang - 0.14);
+  };
 
   const applyMorphs = (m: Record<string, number>) => {
     if (!model) {
@@ -177,6 +209,12 @@ export function createRealisticHuman(variant: string): Avatar {
         for (const b of Object.values(bones)) {
           if (b) base.set(b, b.quaternion.clone());
         }
+        // 🙆→🧍 Bind pose က T/A-pose (လက်ကားကား) — clip မပါတဲ့ body မှာ
+        // ဒီအတိုင်းဆို "အတောင့်လိုက်" ဖြစ်နေတယ် (user report)။ လက်တစ်ဖက်စီ
+        // ဘယ်လောက်ချရမလဲကို runtime မှာ တိုင်းတယ် — asset တိုင်း bind pose
+        // မတူလို့ ကိန်းသေ မသုံးဘူး။
+        restL = armRestZ(bones.armL, bones.foreL);
+        restR = armRestZ(bones.armR, bones.foreR);
         hipsBaseY = bones.hips?.position.y ?? 0;
         bones.head?.add(headAttach);
         g("RightHand")?.add(handR);
@@ -227,7 +265,24 @@ export function createRealisticHuman(variant: string): Avatar {
       .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z)));
   };
 
-  /// rpmavatar-style sine locomotion — clip မပါတဲ့ GLB အတွက်
+  /// 🔫 သေနတ်ကိုင်ဟန် — လက်နှစ်ဖက် ရှေ့ကိုင် (clip-less body: bind ကနေ၊
+  /// clip body: clip pose ပေါ် overlay)
+  const holdPose = (fromBind: boolean) => {
+    const f = fromBind ? rot : over;
+    if (fromBind) {
+      f(bones?.armR ?? null, -1.05, 0, restR * 0.35);
+      f(bones?.armL ?? null, -0.75, 0, restL * 0.55);
+    } else {
+      f(bones?.armR ?? null, -1.0, 0, 0);
+      f(bones?.armL ?? null, -0.7, 0, 0.25);
+    }
+    f(bones?.foreR ?? null, -0.45);
+    f(bones?.foreL ?? null, -0.85);
+  };
+
+  /// rpmavatar-style sine locomotion — clip မပါတဲ့ GLB အတွက်။ လက်တွေက
+  /// rest ထောင့် (ဘေးချ) ကို base ထားပြီး လှုပ်တယ် — bind T-pose အတိုင်း
+  /// "အတောင့်လိုက်" မဖြစ်တော့ဘူး။
   function procedural(dt: number, s: HumanState) {
     if (!bones) return;
     const moving = s.speed > 0.15;
@@ -242,8 +297,14 @@ export function createRealisticHuman(variant: string): Avatar {
       rot(bones.legR, sw2 * amp);
       rot(bones.shinL, Math.max(0, -sw) * amp * 1.2);
       rot(bones.shinR, Math.max(0, -sw2) * amp * 1.2);
-      rot(bones.armL, sw2 * amp * 0.7);
-      rot(bones.armR, sw * amp * 0.7);
+      if (s.armed) {
+        holdPose(true);
+      } else {
+        rot(bones.armL, sw2 * amp * 0.6, 0, restL);
+        rot(bones.armR, sw * amp * 0.6, 0, restR);
+        rot(bones.foreL, 0, 0, restL * 0.25);
+        rot(bones.foreR, 0, 0, restR * 0.25);
+      }
       rot(bones.spine, 0.06, 0, Math.sin(phase * 2) * 0.03);
       if (bones.hips) {
         bones.hips.position.y =
@@ -251,9 +312,10 @@ export function createRealisticHuman(variant: string): Avatar {
       }
     } else if (s.emote === "wave") {
       phase += dt * 6;
-      rot(bones.armR, 0, 0, -2.4);
+      // ညာလက် အပေါ်မြှောက် (rest ရဲ့ ဆန့်ကျင်ဘက် = အပေါ်) ပြီး လက်ဖျား ဝှေ့
+      rot(bones.armR, 0, 0, -restR * 0.9);
       rot(bones.foreR, 0, 0, Math.sin(phase) * 0.5 - 0.3);
-      rot(bones.armL, 0);
+      rot(bones.armL, 0, 0, restL);
       rot(bones.legL, 0);
       rot(bones.legR, 0);
       if (bones.hips) bones.hips.position.y = hipsBaseY;
@@ -262,22 +324,34 @@ export function createRealisticHuman(variant: string): Avatar {
       rot(bones.legR, -1.45);
       rot(bones.shinL, 1.4);
       rot(bones.shinR, 1.4);
-      rot(bones.armL, -0.4);
-      rot(bones.armR, -0.4);
+      rot(bones.armL, -0.4, 0, restL);
+      rot(bones.armR, -0.4, 0, restR);
       if (bones.hips) bones.hips.position.y = hipsBaseY - 0.35;
-    } else {
+    } else if (s.armed) {
+      // 🔫 ရပ်ပြီး သေနတ်ကိုင် — အသက်ရှူသလို အနည်းငယ် လှုပ်
       phase += dt * 1.6;
       const br = Math.sin(phase) * 0.02;
       rot(bones.legL, 0);
       rot(bones.legR, 0);
       rot(bones.shinL, 0);
       rot(bones.shinR, 0);
-      rot(bones.armL, 0, 0, 0.06 + br);
-      rot(bones.armR, 0, 0, -0.06 - br);
-      rot(bones.spine, br);
-      rot(bones.foreL, 0);
-      rot(bones.foreR, 0);
+      holdPose(true);
+      rot(bones.spine, 0.04 + br * 1.5);
       if (bones.hips) bones.hips.position.y = hipsBaseY;
+    } else {
+      // 🫁 idle — လက်ဘေးချပြီး အသက်ရှူတဲ့ ရင်ဘတ်/ပခုံး လှုပ်ရှားမှု
+      phase += dt * 1.6;
+      const br = Math.sin(phase) * 0.03;
+      rot(bones.legL, 0);
+      rot(bones.legR, 0);
+      rot(bones.shinL, 0);
+      rot(bones.shinR, 0);
+      rot(bones.armL, 0, 0, restL + br);
+      rot(bones.armR, 0, 0, restR - br);
+      rot(bones.foreL, 0, 0, restL * 0.25);
+      rot(bones.foreR, 0, 0, restR * 0.25);
+      rot(bones.spine, 0.02 + br * 2);
+      if (bones.hips) bones.hips.position.y = hipsBaseY + br * 0.15;
     }
   }
 
@@ -310,6 +384,8 @@ export function createRealisticHuman(variant: string): Avatar {
     else if (s.speed > 0.15) play("walk");
     else play("idle");
     mixer?.update(dt);
+    // 🔫 သေနတ်ကိုင်ဟန် — clip pose ပေါ် overlay (လမ်းလျှောက်ရင်း ကိုင်လည်း ရ)
+    if (s.armed && !s.emote) holdPose(false);
     // emote overlay — clip pose ပေါ် ထပ်မြှောက် (idle နေချိန်သာ)
     if (s.speed <= 0.15) {
       if (s.emote === "wave") {
