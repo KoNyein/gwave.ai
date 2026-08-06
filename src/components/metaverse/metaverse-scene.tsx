@@ -2183,9 +2183,11 @@ export function MetaverseScene() {
       // ★ မျက်နှာပြင်ရဲ့ "အပေါ်" (dy < 0) က ရှေ့သွားတာ ဖြစ်ရမယ်
       input.jz = -Math.sin(a) * d;
       if (knob) {
-        knob.style.transform = `translate(${Math.cos(a) * d * stickRadius}px, ${
-          Math.sin(a) * d * stickRadius
-        }px)`;
+        // ★ centering translate(-50%,-50%) ကို ထိန်းထားရမယ် — မထိန်းရင်
+        //   ပထမ touch ကတည်းက knob က အလယ်က နေ ရွေ့ကျန်နေတယ်
+        knob.style.transform = `translate(calc(-50% + ${
+          Math.cos(a) * d * stickRadius
+        }px), calc(-50% + ${Math.sin(a) * d * stickRadius}px))`;
       }
     };
     const stickEnd = (e: PointerEvent) => {
@@ -2193,7 +2195,7 @@ export function MetaverseScene() {
       stickId = null;
       input.jx = 0;
       input.jz = 0;
-      if (knob) knob.style.transform = "translate(0px, 0px)";
+      if (knob) knob.style.transform = "translate(-50%, -50%)";
     };
     stick?.addEventListener("pointerdown", stickStart);
     stick?.addEventListener("pointermove", stickMove);
