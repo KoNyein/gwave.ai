@@ -40,10 +40,10 @@ const SPECS: Record<string, Spec> = {
   l: { file: "Xbot", tint: 0x9fd0ff },
   m: { file: "Soldier", tint: null },
   n: { file: "Michelle", tint: 0x9fc8c0 },
-  o: { file: "Remy", tint: 0xc8b49f },
+  o: { file: "Character5", tint: null },
   p: { file: "Character3", tint: 0x9fb4c8 },
   q: { file: "Character4", tint: 0xc8b49f },
-  r: { file: "Granny", tint: 0xb4c89f },
+  r: { file: "Character5", tint: 0xb4c89f },
 };
 
 /// Studio ရဲ့ ရုပ်ရွေးခန်းအတွက် variant စာရင်း (id + base + tint)
