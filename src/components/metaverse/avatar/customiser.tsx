@@ -30,6 +30,7 @@ const BASE_META: Record<string, { icon: string; label: string }> = {
   Xbot: { icon: "🤖", label: "X Bot" },
   Character3: { icon: "🧔", label: "Casual ၃" },
   Character4: { icon: "🧑‍🦱", label: "Casual ၄" },
+  Character5: { icon: "🧑‍🎤", label: "Casual ၅" },
   Clown: { icon: "🤡", label: "လူရွှင်တော်" },
   Granny: { icon: "👵", label: "အဘွား" },
 };
