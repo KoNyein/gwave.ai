@@ -5,9 +5,9 @@ import { MAP_HALF } from "@gwave-strike/shared";
 
 export type MapDot = { x: number; z: number; team: number; me?: boolean };
 
-export function createMinimap(parent: HTMLElement) {
+export function createMinimap(parent: HTMLElement, size = 132) {
   const c = document.createElement("canvas");
-  const SIZE = 132;
+  const SIZE = size;
   c.width = c.height = SIZE * (window.devicePixelRatio || 1);
   c.style.cssText = `position:absolute;top:10px;right:10px;width:${SIZE}px;height:${SIZE}px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(6,12,18,.55);pointer-events:none`;
   parent.appendChild(c);

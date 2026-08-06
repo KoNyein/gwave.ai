@@ -73,10 +73,11 @@ async function boot() {
   const fx = new Fx(world.scene, camera);
   const loader = gltfLoader(renderer);
   const audio = new GameAudio();
-  const minimap = createMinimap(hud.root);
+  const touch = isTouchDevice();
+  // Phones: smaller minimap so it doesn't crowd the score + kill feed.
+  const minimap = createMinimap(hud.root, touch ? 96 : 132);
   const scoreboard = createScoreboard(hud.root);
   createSettings(hud.root, renderer, input);
-  const touch = isTouchDevice();
   if (touch) attachTouchControls(hud.root, input);
 
   // PWA

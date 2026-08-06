@@ -88,6 +88,42 @@ function mid(a: NormalizedLandmark, b: NormalizedLandmark): NormalizedLandmark {
   };
 }
 
+/// ── Live overlay support (Scanner v2) ────────────────────────────────
+/// Skeleton bones for the camera-step overlay — the user must SEE that the
+/// tracker has their whole body before capture makes sense.
+export const POSE_BONES: ReadonlyArray<readonly [number, number]> = [
+  [L_SHOULDER, R_SHOULDER],
+  [L_SHOULDER, L_ELBOW],
+  [L_ELBOW, L_WRIST],
+  [R_SHOULDER, R_ELBOW],
+  [R_ELBOW, R_WRIST],
+  [L_SHOULDER, L_HIP],
+  [R_SHOULDER, R_HIP],
+  [L_HIP, R_HIP],
+  [L_HIP, L_KNEE],
+  [L_KNEE, L_ANKLE],
+  [R_HIP, R_KNEE],
+  [R_KNEE, R_ANKLE],
+];
+
+export type LivePose = {
+  points: NormalizedLandmark[];
+  /// All key landmarks visible enough to measure.
+  ready: boolean;
+};
+
+/// One lightweight detection for the live overlay loop. Null = no person.
+export async function detectPose(
+  video: HTMLVideoElement,
+): Promise<LivePose | null> {
+  const lm = await getPoseLandmarker();
+  const res = lm.detectForVideo(video, performance.now());
+  const p = res.landmarks?.[0];
+  if (!p) return null;
+  const ready = KEY_POINTS.every((i) => ((p[i]?.visibility ?? 0) >= 0.7));
+  return { points: p, ready };
+}
+
 /// Frame တစ်ချပ်က measurement ratio ထုတ် — မပြည့်စုံရင် error string။
 /// aspect = width/height — normalized coords ကို axis ညီအောင် ပြန်ချဲ့တယ်။
 export async function captureBody(
