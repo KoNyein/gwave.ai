@@ -99,6 +99,35 @@
   #stick{position:absolute;left:37px;top:37px;width:46px;height:46px;border-radius:50%;background:var(--accent)}
   @media (pointer:coarse){#hud.playing #pad{display:block}}
 
+  /* ── phone layout: full-screen canvas, panels become slide-in drawers ──
+     The 3-column desktop grid left ZERO room for the 3D view on a phone —
+     palette+properties filled the screen and the header buttons were cut
+     off. Below 920px the canvas takes the whole screen, the side panels
+     slide in over it, and the header scrolls horizontally. */
+  .mtab{position:fixed;bottom:16px;z-index:46;display:none;flex-direction:column;gap:10px}
+  #mtab-left{left:12px}#mtab-right{right:12px}
+  .mtab button{width:48px;height:48px;border-radius:50%;font-size:21px;padding:0;justify-content:center;
+    background:var(--panel2);border:1px solid var(--line);box-shadow:0 6px 22px rgba(0,0,0,.5)}
+  .mtab button.active{outline:2px solid var(--accent)}
+  body.playing .mtab{display:none!important}
+  @media (max-width:920px){
+    #app{grid-template-columns:1fr;grid-template-rows:46px 1fr 0}
+    header{grid-column:1;overflow-x:auto;scrollbar-width:none;gap:6px;padding:0 8px;flex-wrap:nowrap}
+    header::-webkit-scrollbar{display:none}
+    header>*{flex:none}
+    .logo{font-size:0}.logo .dot{width:14px;height:14px}
+    #phys-chip{display:none}
+    #scene-name{width:92px}
+    aside.left,aside.right{position:fixed;top:46px;bottom:0;width:min(320px,86vw);z-index:45;
+      transition:transform .22s ease;box-shadow:0 0 44px rgba(0,0,0,.55)}
+    aside.left{left:0;transform:translateX(-105%)}
+    aside.right{right:0;transform:translateX(105%)}
+    aside.left.open,aside.right.open{transform:none}
+    footer{display:none}
+    .mtab{display:flex}
+    main .online{right:12px;top:10px}
+  }
+
   /* modal + toast */
   .modal{position:fixed;inset:0;background:rgba(4,6,10,.6);display:none;place-items:center;z-index:50}
   .modal.on{display:grid}
@@ -240,6 +269,8 @@
     <div id="props"><p style="color:var(--muted)">Select an object</p></div>
   </aside>
 
+  <div class="mtab" id="mtab-left"><button id="mt-palette" title="objects / palette">🧱</button></div>
+  <div class="mtab" id="mtab-right"><button id="mt-props" title="properties">⚙️</button></div>
   <footer>
     <span>gWave Studio</span>
     <span>Objects: <b id="s-count">0</b></span>
@@ -709,6 +740,24 @@ const hash=location.hash.match(/scene=(.+)/);
 if(hash){try{deserialize(decodeURIComponent(escape(atob(hash[1]))));toast('World loaded from link ✓','ok');}catch(e){TEMPLATES.platformer();}}
 else TEMPLATES.platformer();
 pushHistory();
+
+/* ---------------- phone drawers (see the max-width:920px CSS) ---------- */
+(function mobileLayout(){
+  const L=document.querySelector('aside.left'),R=document.querySelector('aside.right');
+  const bl=$('mt-palette'),br=$('mt-props');
+  if(!L||!R||!bl||!br)return;
+  const sync=()=>{bl.classList.toggle('active',L.classList.contains('open'));
+    br.classList.toggle('active',R.classList.contains('open'));};
+  bl.onclick=()=>{R.classList.remove('open');L.classList.toggle('open');sync();};
+  br.onclick=()=>{L.classList.remove('open');R.classList.toggle('open');sync();};
+  const closeAll=()=>{L.classList.remove('open');R.classList.remove('open');sync();};
+  canvas.addEventListener('pointerdown',closeAll);
+  // hide the drawer toggles while playing (they'd sit on the touch joystick)
+  const playBtn=$('play');
+  const syncPlaying=()=>setTimeout(()=>document.body.classList.toggle('playing',playBtn.classList.contains('stop')),0);
+  playBtn.addEventListener('click',()=>{closeAll();syncPlaying();});
+  addEventListener('keydown',e=>{if(e.code==='Escape')syncPlaying();});
+})();
 
 /* =====================================================================
    CLOUD SAVE + MULTIPLAYER + CHAT  (wired backends: /acct , /ws)
