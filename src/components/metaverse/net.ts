@@ -20,6 +20,8 @@ export type RemoteState = {
   authed?: boolean;
   /// 🖼 Profile ဓာတ်ပုံ URL — ပိုင်ရှင်က ပြထားမှသာ ပါတယ် (null = ဖျောက်)
   pic?: string | null;
+  /// 🧍 Avatar variant (a-r) — owner ရွေးထားတဲ့ ရုပ်၊ client တိုင်း တူတူပြ
+  v?: string | null;
 };
 
 /// ── Mini-game (Phase 16) ────────────────────────────────────────────────────
@@ -65,6 +67,7 @@ export type NetHandlers = {
   onName?: (id: string, name: string) => void;
   /// 🖼 တစ်ယောက်ယောက် profile ဓာတ်ပုံ ပြ/ဖျောက် ပြောင်းလိုက်တယ်
   onPic?: (id: string, pic: string | null) => void;
+  onVariant?: (id: string, v: string | null) => void;
   /// Server က anti-cheat နဲ့ ငြင်းလိုက်တဲ့အခါ — နေရာအမှန်ကို ပြန်ပေးတယ်
   onCorrect?: (x: number, y: number, z: number) => void;
   onStatus?: (connected: boolean, detail?: string) => void;
@@ -122,6 +125,7 @@ export type NetClient = {
   sendEmote(emote: string | null): void;
   /// 🖼 ကိုယ့် profile ဓာတ်ပုံ ပြ (url) / ဖျောက် (null)
   sendPic(url: string | null): void;
+  sendVariant(v: string): void;
   /// Guest သာ — signed-in user ရဲ့ နာမည်က token ကလာလို့ server က ငြင်းတယ်။
   sendName(name: string): void;
   sendMount(vehicleId: string): void;
@@ -225,6 +229,10 @@ export function connectMetaverse(
     sendEmote(emote) {
       if (ws?.readyState !== WebSocket.OPEN) return;
       ws.send(JSON.stringify({ type: "emote", emote }));
+    },
+    sendVariant(v) {
+      if (ws?.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "variant", v }));
     },
     sendPic(url) {
       if (ws?.readyState !== WebSocket.OPEN) return;
@@ -391,6 +399,9 @@ export function connectMetaverse(
           break;
         case "pic":
           handlers.onPic?.(String(m.id), (m.pic as string | null) ?? null);
+          break;
+        case "variant":
+          handlers.onVariant?.(String(m.id), (m.v as string | null) ?? null);
           break;
         case "chat":
           handlers.onChat?.(

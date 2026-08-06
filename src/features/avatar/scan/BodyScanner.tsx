@@ -37,7 +37,19 @@ export function BodyScanner({
   onApply: (morphs: MorphWeights) => void;
   onClose: () => void;
 }) {
-  const { videoRef, state: camState, start, stop } = useCamera();
+  const {
+    videoRef,
+    state: camState,
+    facing,
+    start,
+    stop,
+    flip,
+    torchSupported,
+    torchOn,
+    setTorch,
+  } = useCamera();
+  // mirror only the selfie camera — a mirrored back camera reads backwards
+  const mirror = facing === "user" ? " -scale-x-100" : "";
   const overlayRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number>(0);
   const busyRef = useRef(false);
@@ -230,13 +242,39 @@ export function BodyScanner({
             <div className="relative overflow-hidden rounded-xl bg-black">
               <video
                 ref={videoRef}
-                className="aspect-[3/4] w-full -scale-x-100 object-cover"
+                className={`aspect-[3/4] w-full object-cover${mirror}`}
               />
               {/* Live skeleton — same mirror as the video so bones sit on the body */}
               <canvas
                 ref={overlayRef}
-                className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100 object-cover"
+                className={`pointer-events-none absolute inset-0 h-full w-full object-cover${mirror}`}
               />
+              {/* Camera controls: 🔁 front/back, 🔦 torch (back cam, if the
+                  device supports it) — someone else scanning you with the
+                  back camera gives a far better capture */}
+              <div className="absolute right-2 top-2 flex flex-col gap-2">
+                <button
+                  onClick={() => void flip()}
+                  disabled={countdown !== null || busy}
+                  title={facing === "user" ? "နောက်ကင်မရာ" : "ရှေ့ကင်မရာ"}
+                  className="rounded-full border border-white/25 bg-black/50 px-2.5 py-2 text-base backdrop-blur-sm disabled:opacity-40"
+                >
+                  🔁
+                </button>
+                {torchSupported && (
+                  <button
+                    onClick={() => void setTorch(!torchOn)}
+                    title="ဓာတ်မီး"
+                    className={`rounded-full border px-2.5 py-2 text-base backdrop-blur-sm ${
+                      torchOn
+                        ? "border-amber-300 bg-amber-400/80"
+                        : "border-white/25 bg-black/50"
+                    }`}
+                  >
+                    🔦
+                  </button>
+                )}
+              </div>
               {/* A-pose stick-figure guide */}
               <svg
                 viewBox="0 0 100 150"
