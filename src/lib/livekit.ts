@@ -3,6 +3,7 @@ import "server-only";
 import {
   AccessToken,
   EgressClient,
+  EgressStatus,
   EncodedFileOutput,
   EncodedFileType,
   RoomServiceClient,
@@ -168,6 +169,31 @@ export async function stopRoomRecording(egressId: string): Promise<void> {
   await egressClient()
     .stopEgress(egressId)
     .catch(() => undefined);
+}
+
+/**
+ * Ask LiveKit directly whether a recording finished, and where it landed.
+ *
+ * The webhook (`egress_ended`) is the normal path for storing the replay's
+ * object key — but it only arrives if the SFU's webhook is configured and the
+ * delivery succeeds. This is the self-heal path: given the stored egress id,
+ * query the egress API and return the finished MP4's key, or null while it is
+ * still uploading / when it failed. Never throws.
+ */
+export async function egressRecordingPath(
+  egressId: string,
+): Promise<string | null> {
+  if (!egressConfigured()) return null;
+  try {
+    const infos = await egressClient().listEgress({ egressId });
+    const info = infos?.[0];
+    const filename = info?.fileResults?.[0]?.filename;
+    return filename && info?.status === EgressStatus.EGRESS_COMPLETE
+      ? filename
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Public URL a saved recording is played back from, or null when its base

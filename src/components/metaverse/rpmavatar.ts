@@ -56,6 +56,35 @@ export function createRpmHuman(url: string): Avatar {
   const base = new Map<THREE.Object3D, THREE.Quaternion>();
   let hipsBaseY = 0;
   let phase = 0;
+  /// လက်ချရမယ့် signed z ထောင့် — bind A/T-pose ကနေ ဘေးချ (တောင့်မနေအောင်)
+  let restL = 0;
+  let restR = 0;
+
+  const armRestZ = (
+    arm: THREE.Object3D | null,
+    tip: THREE.Object3D | null,
+  ): number => {
+    if (!arm || !tip) return 0;
+    const orig = arm.quaternion.clone();
+    const tipY = (z: number) => {
+      arm.quaternion
+        .copy(orig)
+        .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, z)));
+      const v = new THREE.Vector3();
+      tip.getWorldPosition(v);
+      return v.y;
+    };
+    const down = tipY(0.6) < tipY(-0.6) ? 1 : -1;
+    arm.quaternion.copy(orig);
+    const a = new THREE.Vector3();
+    const t = new THREE.Vector3();
+    arm.getWorldPosition(a);
+    tip.getWorldPosition(t);
+    const horiz = Math.hypot(t.x - a.x, t.z - a.z);
+    const drop = a.y - t.y;
+    const ang = Math.atan2(horiz, Math.max(drop, 0.001));
+    return down * Math.max(0, ang - 0.14);
+  };
 
   void import("three/examples/jsm/loaders/GLTFLoader.js").then(({ GLTFLoader }) => {
     if (disposed) return;
@@ -70,6 +99,8 @@ export function createRpmHuman(url: string): Avatar {
             (o as THREE.Mesh).frustumCulled = false; // skinned mesh pop-out ကာ
           }
         });
+        // 🧭 RPM rig လည်း Mixamo လိုပဲ game forward နဲ့ ၁၈၀° လွဲ — လှည့်ချိန်
+        model.rotation.y = Math.PI;
         // ~1.78m၊ ခြေဖဝါး မြေပေါ်
         const box = new THREE.Box3().setFromObject(model);
         const h = box.max.y - box.min.y;
@@ -96,6 +127,8 @@ export function createRpmHuman(url: string): Avatar {
         for (const bone of Object.values(bones)) {
           if (bone) base.set(bone, bone.quaternion.clone());
         }
+        restL = armRestZ(bones.armL, bones.foreL);
+        restR = armRestZ(bones.armR, bones.foreR);
         hipsBaseY = bones.hips?.position.y ?? 0;
         bones.head?.add(headAttach);
         const hand = b("RightHand");
@@ -141,10 +174,10 @@ export function createRpmHuman(url: string): Avatar {
       // ဒူးက ပေါင်နောက်ပြန်ချိန်မှာပဲ ကွေး (မြေအောက် မစူးအောင်)
       rot(bones.shinL, Math.max(0, -sw) * amp * 1.2);
       rot(bones.shinR, Math.max(0, -sw2) * amp * 1.2);
-      rot(bones.armL, sw2 * amp * 0.7);
-      rot(bones.armR, sw * amp * 0.7);
-      rot(bones.foreL, -0.25);
-      rot(bones.foreR, -0.25);
+      rot(bones.armL, sw2 * amp * 0.6, 0, restL);
+      rot(bones.armR, sw * amp * 0.6, 0, restR);
+      rot(bones.foreL, -0.25, 0, restL * 0.25);
+      rot(bones.foreR, -0.25, 0, restR * 0.25);
       rot(bones.spine, 0.06, 0, Math.sin(phase * 2) * 0.03);
       if (bones.hips) {
         bones.hips.position.y =
@@ -152,16 +185,17 @@ export function createRpmHuman(url: string): Avatar {
       }
     } else if (s.emote === "wave") {
       phase += dt * 6;
-      rot(bones.armR, 0, 0, -2.4);
+      // ညာလက် မြှောက် (rest ရဲ့ ဆန့်ကျင်ဘက်) ပြီး လက်ဖျား ဝှေ့
+      rot(bones.armR, 0, 0, -restR * 0.9);
       rot(bones.foreR, 0, 0, Math.sin(phase) * 0.5 - 0.3);
-      rot(bones.armL, 0);
+      rot(bones.armL, 0, 0, restL);
       rot(bones.legL, 0);
       rot(bones.legR, 0);
       if (bones.hips) bones.hips.position.y = hipsBaseY;
     } else if (s.emote === "dance") {
       phase += dt * 8;
-      rot(bones.armL, 0, 0, 1.6 + Math.sin(phase) * 0.6);
-      rot(bones.armR, 0, 0, -1.6 - Math.sin(phase + 1) * 0.6);
+      rot(bones.armL, 0, 0, restL * 0.3 + Math.sin(phase) * 0.5);
+      rot(bones.armR, 0, 0, restR * 0.3 - Math.sin(phase + 1) * 0.5);
       rot(bones.spine, 0, Math.sin(phase * 0.5) * 0.25, 0);
       if (bones.hips) {
         bones.hips.position.y = hipsBaseY + Math.abs(Math.sin(phase)) * 0.05;
@@ -171,23 +205,23 @@ export function createRpmHuman(url: string): Avatar {
       rot(bones.legR, -1.45);
       rot(bones.shinL, 1.4);
       rot(bones.shinR, 1.4);
-      rot(bones.armL, -0.4);
-      rot(bones.armR, -0.4);
+      rot(bones.armL, -0.4, 0, restL);
+      rot(bones.armR, -0.4, 0, restR);
       if (bones.hips) bones.hips.position.y = hipsBaseY - 0.35;
     } else {
-      // idle — အသက်ရှူသလို နည်းနည်း လှုပ်
+      // 🫁 idle — လက်ဘေးချ + အသက်ရှူ ရင်ဘတ်လှုပ်ရှားမှု
       phase += dt * 1.6;
-      const br = Math.sin(phase) * 0.02;
+      const br = Math.sin(phase) * 0.03;
       rot(bones.legL, 0);
       rot(bones.legR, 0);
       rot(bones.shinL, 0);
       rot(bones.shinR, 0);
-      rot(bones.armL, 0, 0, 0.06 + br);
-      rot(bones.armR, 0, 0, -0.06 - br);
-      rot(bones.spine, br);
-      rot(bones.foreL, 0);
-      rot(bones.foreR, 0);
-      if (bones.hips) bones.hips.position.y = hipsBaseY;
+      rot(bones.armL, 0, 0, restL + br);
+      rot(bones.armR, 0, 0, restR - br);
+      rot(bones.spine, 0.02 + br * 2);
+      rot(bones.foreL, 0, 0, restL * 0.25);
+      rot(bones.foreR, 0, 0, restR * 0.25);
+      if (bones.hips) bones.hips.position.y = hipsBaseY + br * 0.15;
     }
   }
 
