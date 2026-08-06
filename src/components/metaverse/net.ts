@@ -22,6 +22,8 @@ export type RemoteState = {
   pic?: string | null;
   /// 🧍 Avatar variant (a-r) — owner ရွေးထားတဲ့ ရုပ်၊ client တိုင်း တူတူပြ
   v?: string | null;
+  /// 📸 Ready Player Me GLB url — ရှိရင် kit rig အစား ဒါနဲ့ ဆွဲ
+  rpm?: string | null;
 };
 
 /// ── Mini-game (Phase 16) ────────────────────────────────────────────────────
@@ -68,6 +70,7 @@ export type NetHandlers = {
   /// 🖼 တစ်ယောက်ယောက် profile ဓာတ်ပုံ ပြ/ဖျောက် ပြောင်းလိုက်တယ်
   onPic?: (id: string, pic: string | null) => void;
   onVariant?: (id: string, v: string | null) => void;
+  onRpm?: (id: string, url: string | null) => void;
   /// Server က anti-cheat နဲ့ ငြင်းလိုက်တဲ့အခါ — နေရာအမှန်ကို ပြန်ပေးတယ်
   onCorrect?: (x: number, y: number, z: number) => void;
   onStatus?: (connected: boolean, detail?: string) => void;
@@ -126,6 +129,7 @@ export type NetClient = {
   /// 🖼 ကိုယ့် profile ဓာတ်ပုံ ပြ (url) / ဖျောက် (null)
   sendPic(url: string | null): void;
   sendVariant(v: string): void;
+  sendRpm(url: string | null): void;
   /// Guest သာ — signed-in user ရဲ့ နာမည်က token ကလာလို့ server က ငြင်းတယ်။
   sendName(name: string): void;
   sendMount(vehicleId: string): void;
@@ -233,6 +237,10 @@ export function connectMetaverse(
     sendVariant(v) {
       if (ws?.readyState !== WebSocket.OPEN) return;
       ws.send(JSON.stringify({ type: "variant", v }));
+    },
+    sendRpm(url) {
+      if (ws?.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: "rpm", url }));
     },
     sendPic(url) {
       if (ws?.readyState !== WebSocket.OPEN) return;
@@ -402,6 +410,9 @@ export function connectMetaverse(
           break;
         case "variant":
           handlers.onVariant?.(String(m.id), (m.v as string | null) ?? null);
+          break;
+        case "rpm":
+          handlers.onRpm?.(String(m.id), (m.rpm as string | null) ?? null);
           break;
         case "chat":
           handlers.onChat?.(
