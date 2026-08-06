@@ -10,7 +10,7 @@ import { createPhysics } from "./physics/physics.js";
 import { createActions } from "./script/actions.js";
 import { BehaviorSystem } from "./script/behaviors.js";
 import { PlayerControlSystem, GameRulesSystem } from "./script/player.js";
-import { createStage, RenderSystem } from "./render/renderer.js";
+import { createStage, RenderSystem, configureLoaders } from "./render/renderer.js";
 import { createInput } from "./input/input.js";
 import { createFollowCam } from "./camera/camera.js";
 import { createHud } from "./ui/hud.js";
@@ -27,7 +27,8 @@ const { renderer, scene, applyEnv, resize } = createStage(canvas);
 const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 1000);
 camera.position.set(8, 7, 10);
 
-const renderSystem = new RenderSystem(scene);
+configureLoaders(renderer); // Phase 4 — Draco + KTX2 on the shared loader
+const renderSystem = new RenderSystem(scene, camera);
 world.addSystem(renderSystem);
 
 const input = createInput();

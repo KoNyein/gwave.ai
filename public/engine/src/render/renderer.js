@@ -5,6 +5,8 @@
 
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+import { KTX2Loader } from "three/addons/loaders/KTX2Loader.js";
 
 import { System } from "../core/ecs.js";
 import { Animator, loadAnimationLibrary } from "../character/animator.js";
@@ -85,12 +87,30 @@ export function buildPrimitive(m) {
 
 const gltfLoader = new GLTFLoader();
 
+// ── Phase 4 asset pipeline (spec §10) — Draco geometry + KTX2/Basis texture
+// decompression on the shared loader. Decoders come from the same CDN as
+// three itself, so versions can never drift apart. KTX2 needs the renderer
+// for GPU-format detection, hence the late hook from main.js.
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath(
+  "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/libs/draco/gltf/",
+);
+gltfLoader.setDRACOLoader(dracoLoader);
+
+export function configureLoaders(renderer) {
+  const ktx2 = new KTX2Loader()
+    .setTranscoderPath("https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/libs/basis/")
+    .detectSupport(renderer);
+  gltfLoader.setKTX2Loader(ktx2);
+}
+
 export class RenderSystem extends System {
   query = ["Transform", "MeshRef"];
 
-  constructor(scene) {
+  constructor(scene, camera) {
     super();
     this.scene = scene;
+    this.camera = camera; // LOD switching + distance culling reference
     this.objects = new Map(); // entityId -> Object3D
     this.mixers = new Map(); // entityId -> AnimationMixer
   }
@@ -110,7 +130,26 @@ export class RenderSystem extends System {
     let obj = this.objects.get(entity.id);
     if (obj) return obj;
     const m = entity.get("MeshRef");
-    if (m.glbUrl) {
+    if (Array.isArray(m.lod) && m.lod.length) {
+      // Phase 4 — THREE.LOD: [{ url, distance }] levels, nearest first.
+      // Each level loads independently; missing levels just never pop in.
+      obj = new THREE.LOD();
+      for (const level of m.lod) {
+        const holder = new THREE.Group();
+        obj.addLevel(holder, level.distance ?? 0);
+        gltfLoader.load(
+          level.url,
+          (g) => {
+            g.scene.traverse((o) => {
+              if (o.isMesh) o.castShadow = o.receiveShadow = true;
+            });
+            holder.add(g.scene);
+          },
+          undefined,
+          (err) => console.warn("[render] LOD level failed", level.url, err),
+        );
+      }
+    } else if (m.glbUrl) {
       // async GLB — placeholder group swaps in when loaded
       obj = new THREE.Group();
       gltfLoader.load(
@@ -158,14 +197,24 @@ export class RenderSystem extends System {
   }
 
   update(dt) {
+    const cam = this.camera?.position;
     for (const e of this.entities) {
       const t = e.get("Transform");
       const m = e.get("MeshRef");
       const obj = this.objectFor(e);
-      obj.visible = m.visible !== false;
+      // Phase 4 — distance streaming: beyond cullDistance the object stops
+      // rendering entirely (draw-call budget on big worlds)
+      let culled = false;
+      if (m.cullDistance && cam) {
+        const dx = t.pos[0] - cam.x;
+        const dz = t.pos[2] - cam.z;
+        culled = dx * dx + dz * dz > m.cullDistance * m.cullDistance;
+      }
+      obj.visible = m.visible !== false && !culled;
       obj.position.set(t.pos[0], t.pos[1], t.pos[2]);
       if (t.euler) obj.rotation.set(t.euler[0], t.euler[1], t.euler[2]);
       if (t.scale != null) obj.scale.setScalar(t.scale);
+      if (obj.isLOD && this.camera) obj.update(this.camera);
     }
     for (const mixer of this.mixers.values()) mixer.update(dt);
   }

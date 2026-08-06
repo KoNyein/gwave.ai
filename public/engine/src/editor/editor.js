@@ -171,6 +171,13 @@ export function createEditor({ world, renderSystem, camera, canvas, applyEnv }) 
     }, "number");
     field("Scale", f(t.scale ?? 1), (v) => (t.scale = Math.max(0.01, +v || 1)), "number");
 
+    // Phase 4 — distance streaming: 0/blank = always rendered
+    const mAll = e.get("MeshRef");
+    field("Cull distance (0 = ∞)", mAll.cullDistance ?? 0, (v) => {
+      const n = +v || 0;
+      mAll.cullDistance = n > 0 ? n : undefined;
+    }, "number");
+
     // physics body type
     const rbLabel = document.createElement("label");
     rbLabel.className = "mini";
