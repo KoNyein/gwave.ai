@@ -196,6 +196,12 @@ export function createEditor({ world, renderSystem, camera, canvas, applyEnv }) 
     // player start (characters only)
     const ch = e.get("Character");
     if (ch) {
+      // Phase 2 — shared animation-library GLB (Mixamo clips retarget by
+      // bone name onto this character's skeleton)
+      const m = e.get("MeshRef");
+      field("Anim GLB (library)", m.animLib ?? "", (v) => {
+        m.animLib = v.trim() || undefined;
+      });
       const wrap = document.createElement("label");
       wrap.style.cssText = "display:flex;gap:8px;align-items:center;margin-top:10px;color:var(--warn)";
       const cb = document.createElement("input");

@@ -19,6 +19,7 @@ export function saveScene(world, meta) {
         color: m.color,
         glbUrl: m.glbUrl,
         isCharacter: m.isCharacter || undefined,
+        animLib: m.animLib || undefined,
       },
       transform: {
         pos: [...t.pos],

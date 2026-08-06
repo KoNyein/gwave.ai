@@ -13,7 +13,8 @@ import { PlayerControlSystem, GameRulesSystem } from "./script/player.js";
 import { createStage, RenderSystem } from "./render/renderer.js";
 import { createInput } from "./input/input.js";
 import { createFollowCam } from "./camera/camera.js";
-import { createHud, createAudio } from "./ui/hud.js";
+import { createHud } from "./ui/hud.js";
+import { createAudio3d } from "./audio/audio3d.js";
 import { createEditor } from "./editor/editor.js";
 import { saveScene } from "./serialize/scene.js";
 
@@ -31,7 +32,7 @@ world.addSystem(renderSystem);
 const input = createInput();
 const followCam = createFollowCam(camera, canvas);
 const hud = createHud(world);
-const audio = createAudio();
+const audio = createAudio3d();
 
 const physics = await createPhysics();
 $("phys-chip").textContent = `physics: ${physics.kind}`;
@@ -93,7 +94,11 @@ function startPlay() {
   const spawn = authored ? [...authored.get("Transform").pos] : [0, 1, 4];
   playerEntity.add("Transform", { pos: spawn, euler: [0, Math.PI, 0], scale: 1 });
   playerEntity.add("MeshRef", authored
-    ? { glbUrl: authored.get("MeshRef").glbUrl, isCharacter: true }
+    ? {
+        glbUrl: authored.get("MeshRef").glbUrl,
+        isCharacter: true,
+        animLib: authored.get("MeshRef").animLib,
+      }
     : { kind: "capsule", color: 0x5aa9ff });
   playerEntity.add("PlayerController", {
     physics: authored?.get("Character")?.physics ?? {
@@ -165,6 +170,49 @@ addEventListener("keydown", (e) => {
   if (e.code === "Escape" && playing) stopPlay();
 });
 
+// ── ⌨ Controls — rebindable action map (Phase 2, spec §7) ─────────────────
+const ACTION_LABELS = {
+  forward: "ရှေ့",
+  back: "နောက်",
+  left: "ဘယ်",
+  right: "ညာ",
+  jump: "ခုန်",
+  run: "ပြေး",
+  interact: "စကားပြော",
+};
+function renderControls() {
+  const list = $("controls-list");
+  if (!list) return;
+  list.innerHTML = "";
+  const km = input.keymap();
+  for (const [action, label] of Object.entries(ACTION_LABELS)) {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:5px";
+    const name = document.createElement("span");
+    name.style.cssText = "flex:1;font-size:12px";
+    name.textContent = label;
+    const btn = document.createElement("button");
+    btn.textContent = km[action];
+    btn.style.minWidth = "84px";
+    btn.onclick = () => {
+      btn.textContent = "…ကီးနှိပ်ပါ";
+      const capture = (e) => {
+        e.preventDefault();
+        removeEventListener("keydown", capture, true);
+        input.setKeymap({ [action]: e.code });
+        renderControls();
+      };
+      addEventListener("keydown", capture, true);
+    };
+    row.append(name, btn);
+    list.append(row);
+  }
+}
+$("controls").onclick = () => {
+  $("controls-panel").classList.toggle("hidden");
+  renderControls();
+};
+
 // starter content so the first visit isn't an empty void
 $("scene-name").value = "My Game";
 (function starter() {
@@ -193,6 +241,11 @@ startLoop({
     world.update(dt);
     if (playing && playerEntity) {
       followCam.follow(playerEntity.get("Transform").pos, dt);
+      // spatial audio listener rides the camera (Phase 2)
+      audio.updateListener(
+        [camera.position.x, camera.position.y, camera.position.z],
+        followCam.yaw,
+      );
       hud.tick();
     } else {
       editor.orbit.update();

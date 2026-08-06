@@ -12,8 +12,11 @@ export function createActions(ctx) {
     setVar({ name, value }) {
       if (typeof name === "string") ctx.world.vars[name] = value;
     },
-    playSound({ clip }) {
-      ctx.audio?.play(clip);
+    playSound({ clip, entity }) {
+      // Phase 2 — one-shots become positional when an entity is in scope
+      const pos = entity?.get("Transform")?.pos;
+      if (pos && ctx.audio?.playAt) ctx.audio.playAt(clip, pos);
+      else ctx.audio?.play(clip);
     },
     showMessage({ text, seconds = 2.2 }) {
       ctx.hud?.message(String(text ?? ""), seconds);
@@ -30,7 +33,9 @@ export function createActions(ctx) {
       if (!h || h.invulnerable > 0) return;
       h.hp = Math.max(0, h.hp - amount);
       h.invulnerable = 0.8; // brief i-frames so hazards tick, not melt
-      ctx.audio?.play("hurt");
+      const pos = entity?.get("Transform")?.pos;
+      if (pos && ctx.audio?.playAt) ctx.audio.playAt("hurt", pos);
+      else ctx.audio?.play("hurt");
       ctx.world.events.emit("healthChanged", { entity, hp: h.hp, maxHp: h.maxHp });
       if (h.hp <= 0) ctx.world.events.emit("died", { entity });
     },
