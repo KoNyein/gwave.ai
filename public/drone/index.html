@@ -99,6 +99,41 @@
   .g-actions button{flex:1;padding:10px;background:#16305c;border:1px solid #2c4a8a;color:#fff;
     cursor:pointer;font-family:inherit;letter-spacing:1px}
   #g-testfly{background:#0c4a3c!important;border-color:var(--accent)!important}
+  #g-equipfly{background:#4a2c0c!important;border-color:#ffb054!important}
+  .g-presets{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-bottom:1px solid #24304a}
+  .g-presets>small{color:var(--accent);letter-spacing:1px}
+
+  /* ===== Mobile ☰ menu (touch) ===== */
+  #menu-btn{position:fixed;top:10px;right:12px;z-index:23;display:none;background:#0b1220cc;
+    color:#dbe7ff;border:1px solid #2c3a5e;padding:9px 16px;cursor:pointer;font-family:inherit;
+    font-size:17px;letter-spacing:1px}
+  #mmenu{position:fixed;top:0;right:0;height:100%;width:min(280px,80vw);background:var(--panel);
+    z-index:24;transform:translateX(105%);transition:transform .25s;display:flex;flex-direction:column;
+    gap:10px;padding:16px 14px;overflow-y:auto}
+  #mmenu.open{transform:translateX(0)}
+  #mmenu .mm-head{display:flex;justify-content:space-between;align-items:center;color:var(--accent);
+    letter-spacing:2px;padding-bottom:8px;border-bottom:1px solid #24304a}
+  #mmenu .mm-head button{background:none;border:none;color:#8fa3c8;font-size:20px;cursor:pointer;padding:4px 10px}
+  #mmenu button.mm{display:flex;align-items:center;gap:10px;width:100%;padding:15px 14px;
+    background:#101a30;border:1px solid #2c3a5e;color:#dbe7ff;cursor:pointer;font-family:inherit;
+    font-size:15px;letter-spacing:1px;text-align:left}
+  #mmenu button.mm small{margin-left:auto;color:#5f7096;font-size:11px}
+  #mmenu button.mm.accent{background:#0c4a3c;border-color:var(--accent)}
+  /* touch: single ☰ menu — separate top buttons ကို menu ထဲ သိမ်း */
+  body.touch #menu-btn{display:block}
+  body.touch #online-btn,body.touch #garage-btn,body.touch #gear{display:none}
+  /* ✈ quick fly/land + 💥 detonate FABs — stick zone အပေါ်နား */
+  #fly-btn,#boom-btn{position:fixed;right:14px;z-index:20;display:none;width:64px;height:64px;
+    border-radius:50%;background:#0c4a3ccc;border:2px solid var(--accent);color:#fff;font-size:26px;
+    font-family:inherit;cursor:pointer;touch-action:manipulation}
+  #fly-btn{top:38%}
+  #boom-btn{top:24%;background:#4a0c0ccc;border-color:#ff5454}
+  body.touch #fly-btn{display:block}
+  /* bigger touch targets in drawers */
+  body.touch .g-part{padding:13px 12px}
+  body.touch .g-tabs button{padding:11px 6px}
+  body.touch .g-actions button{padding:14px}
+  body.touch .g-head button{font-size:22px;padding:6px 12px}
 </style>
 </head>
 <body>
@@ -161,6 +196,19 @@
 <button id="garage-btn" style="position:fixed;top:10px;left:12px;z-index:21;background:#0b1220cc;
   color:#dbe7ff;border:1px solid #2c3a5e;padding:7px 14px;cursor:pointer;font-family:inherit;letter-spacing:1px">🔧 GARAGE</button>
 <div id="garage"></div>
+
+<!-- Mobile ☰ menu (touch) — online/garage/settings/fly all reachable by thumb -->
+<button id="menu-btn">☰ MENU</button>
+<div id="mmenu">
+  <div class="mm-head"><span>GWAVE DRONE</span><button id="mm-close">✕</button></div>
+  <button class="mm accent" id="mm-fly">🚁 Drone မောင်းမယ် <small>F</small></button>
+  <button class="mm" id="mm-garage">🔧 Garage — Drone ပြောင်း <small>B</small></button>
+  <button class="mm" id="mm-online">🌐 Online ကစားမယ်</button>
+  <button class="mm" id="mm-board">🏆 Leaderboard <small>L</small></button>
+  <button class="mm" id="mm-settings">⚙ Settings</button>
+</div>
+<button id="fly-btn">🚁</button>
+<button id="boom-btn">💥</button>
 <div id="xr-bar"></div>
 
 <!-- Settings panel -->
