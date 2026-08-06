@@ -135,6 +135,7 @@ export function HudMenu({
   onShadows,
   onAvatar,
   onPhotoAvatar,
+  onLiveHub,
   onMap,
   onGames,
   onBuild,
@@ -161,6 +162,8 @@ export function HudMenu({
   onAvatar: () => void;
   /// 📸 Ready Player Me photo-avatar creator ဖွင့်
   onPhotoAvatar: () => void;
+  /// 📺 Live & Replays hub ဖွင့်
+  onLiveHub: () => void;
   onMap: () => void;
   onGames: () => void;
   onBuild: () => void;
@@ -255,6 +258,7 @@ export function HudMenu({
             <Action icon="🗺" title="လောက ပြောင်း" hint={mapLabel} onClick={onMap} />
             <Action icon="🎮" title="ပွဲများ" hint="ဝင်ကြေး မယူပါ" onClick={onGames} />
             <Action icon="🏗" title="ဆောက်မယ်" hint="ကိုယ်ပိုင်ကွက်ပေါ်မှာသာ" onClick={onBuild} />
+            <Action icon="📺" title="Live & Replays" hint="လွှင့်နေတာ + replay များ" onClick={onLiveHub} />
           </Section>
 
           <Section title="🧑 ကိုယ်ရေး">
