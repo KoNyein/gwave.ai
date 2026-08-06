@@ -1,5 +1,5 @@
 // garage/Garage.js — configurator UI + build state (FeelFPV garage style)
-import { PARTS, DEFAULT_BUILD, computeBuild } from './PartCatalog.js';
+import { PARTS, DEFAULT_BUILD, DRONE_PRESETS, computeBuild } from './PartCatalog.js';
 
 const KEY = 'gwave_drone_build_v1';
 
@@ -51,6 +51,19 @@ export class Garage {
         this.apply();
         this.render();
       }
+      // one-tap preset — swap the whole drone, keep the paint job
+      const pKey = t.closest?.('[data-preset]')?.dataset.preset;
+      if (pKey && DRONE_PRESETS[pKey]) {
+        Object.assign(this.build, structuredClone(DRONE_PRESETS[pKey].build));
+        this.apply();
+        this.save();
+        this.render();
+      }
+      if (t.id === 'g-equipfly') {
+        this.save();
+        this.toggle(false);
+        this.onTestFly?.();
+      }
       if (t.id === 'g-save') {
         const ok = this.save();
         this.vo?.(ok ? 'Build သိမ်းပြီး' : 'Storage မရ — session သာ', 'info');
@@ -78,6 +91,13 @@ export class Garage {
         <span>🔧 GARAGE — Drone Configurator</span>
         <button id="g-close">✕</button>
       </div>
+      <div class="g-presets">
+        <small>🚁 Drone ပြောင်း — တစ်ချက်နှိပ်</small>
+        ${Object.entries(DRONE_PRESETS).map(([k, p]) => `
+          <button data-preset="${k}" class="g-part g-preset ${this._isPreset(k) ? 'on' : ''}">
+            <b>${p.name}</b><small>${p.desc}</small>
+          </button>`).join('')}
+      </div>
       <div class="g-tabs">
         ${Object.entries(PARTS).map(([k, p]) =>
           `<button data-tab="${k}" class="${k === this.tab ? 'on' : ''}">${p.label}</button>`).join('')}
@@ -104,6 +124,13 @@ export class Garage {
       <div class="g-actions">
         <button id="g-save">💾 SAVE</button>
         <button id="g-testfly">🚁 TEST FLY</button>
+        <button id="g-equipfly" class="accent">🚀 ပြောင်းပြီး မောင်းမယ်</button>
       </div>`;
+  }
+
+  /// active preset highlight — parts loadout exactly matches the preset
+  _isPreset(key) {
+    const p = DRONE_PRESETS[key]?.build;
+    return !!p && Object.entries(p).every(([k, v]) => this.build[k] === v);
   }
 }
