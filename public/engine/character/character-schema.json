@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "gWave Character Config",
+  "description": "Every generated / scanned 3D asset gets one of these so it can be dropped into the metaverse as a playable or NPC game character. Stored in DB (assets.meta.character) and exported alongside the GLB.",
+  "type": "object",
+  "required": ["id", "name", "glbUrl", "kind", "rig", "transform", "physics"],
+  "properties": {
+    "id":        { "type": "string", "description": "asset/character uuid" },
+    "name":      { "type": "string" },
+    "glbUrl":    { "type": "string", "description": "URL of the mesh (.glb)" },
+    "thumbUrl":  { "type": "string" },
+    "kind":      { "type": "string", "enum": ["player", "npc", "prop", "vehicle", "mount"], "default": "npc" },
+
+    "rig": {
+      "type": "object",
+      "description": "How the mesh is animated.",
+      "required": ["type"],
+      "properties": {
+        "type":     { "type": "string", "enum": ["humanoid", "generic", "static", "vrm"], "default": "static" },
+        "skeleton": { "type": "string", "enum": ["mixamo", "vrm", "custom", "none"], "default": "none" },
+        "rootBone": { "type": "string", "default": "Hips" },
+        "eyeHeight":{ "type": "number", "default": 1.6, "description": "meters, for first-person camera" },
+        "autoRig":  { "type": "boolean", "default": true, "description": "was it auto-rigged on generation" }
+      }
+    },
+
+    "animations": {
+      "type": "object",
+      "description": "Named clips (from GLB or a shared humanoid animation library, retargeted).",
+      "properties": {
+        "idle":  { "type": "string", "default": "Idle" },
+        "walk":  { "type": "string", "default": "Walk" },
+        "run":   { "type": "string", "default": "Run" },
+        "jump":  { "type": "string", "default": "Jump" },
+        "wave":  { "type": "string" },
+        "custom":{ "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "transform": {
+      "type": "object",
+      "properties": {
+        "scale":       { "type": "number", "default": 1.0 },
+        "yUpCorrection":{ "type": "number", "default": 0, "description": "deg, if mesh faces wrong axis" },
+        "faceDirection":{ "type": "string", "enum": ["+Z", "-Z", "+X", "-X"], "default": "+Z" }
+      }
+    },
+
+    "physics": {
+      "type": "object",
+      "description": "Collider + movement for the character controller.",
+      "properties": {
+        "collider":    { "type": "string", "enum": ["capsule", "box", "sphere", "mesh"], "default": "capsule" },
+        "radius":      { "type": "number", "default": 0.3 },
+        "height":      { "type": "number", "default": 1.7 },
+        "mass":        { "type": "number", "default": 70 },
+        "moveSpeed":   { "type": "number", "default": 3.2, "description": "m/s walk" },
+        "runSpeed":    { "type": "number", "default": 6.0 },
+        "jumpForce":   { "type": "number", "default": 5.0 },
+        "gravity":     { "type": "number", "default": -9.81 },
+        "turnSpeed":   { "type": "number", "default": 10 },
+        "canFly":      { "type": "boolean", "default": false }
+      }
+    },
+
+    "camera": {
+      "type": "object",
+      "properties": {
+        "mode":     { "type": "string", "enum": ["thirdPerson", "firstPerson", "orbit"], "default": "thirdPerson" },
+        "distance": { "type": "number", "default": 4.5 },
+        "shoulder": { "type": "number", "default": 0.6 }
+      }
+    },
+
+    "stats": {
+      "type": "object",
+      "description": "Optional gameplay stats for RPG/metaverse use.",
+      "properties": {
+        "hp":      { "type": "number", "default": 100 },
+        "level":   { "type": "number", "default": 1 },
+        "team":    { "type": "string" },
+        "custom":  { "type": "object", "additionalProperties": { "type": "number" } }
+      }
+    },
+
+    "interaction": {
+      "type": "object",
+      "properties": {
+        "clickable":   { "type": "boolean", "default": true },
+        "dialogue":    { "type": "array", "items": { "type": "string" } },
+        "onInteract":  { "type": "string", "description": "event name emitted to game logic" },
+        "grabbable":   { "type": "boolean", "default": false }
+      }
+    },
+
+    "spawn": {
+      "type": "object",
+      "properties": {
+        "position": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "default": [0, 0, 0] },
+        "rotationY":{ "type": "number", "default": 0 },
+        "world":    { "type": "string", "description": "scene/world id" }
+      }
+    },
+
+    "lod": {
+      "type": "object",
+      "description": "Performance settings for crowded worlds.",
+      "properties": {
+        "generateLOD":  { "type": "boolean", "default": true },
+        "maxTriangles": { "type": "integer", "default": 40000 },
+        "draco":        { "type": "boolean", "default": true },
+        "cullDistance": { "type": "number", "default": 120 }
+      }
+    },
+
+    "network": {
+      "type": "object",
+      "description": "Multiplayer sync (Colyseus).",
+      "properties": {
+        "syncTransform": { "type": "boolean", "default": true },
+        "syncAnimation": { "type": "boolean", "default": true },
+        "authority":     { "type": "string", "enum": ["server", "owner"], "default": "server" }
+      }
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "id": "chr_9f3a71c0",
+  "name": "Aung Hero",
+  "glbUrl": "/outputs/9f3a71c0.glb",
+  "thumbUrl": "/outputs/9f3a71c0.png",
+  "kind": "player",
+
+  "rig": {
+    "type": "humanoid",
+    "skeleton": "mixamo",
+    "rootBone": "mixamorigHips",
+    "eyeHeight": 1.62,
+    "autoRig": true
+  },
+
+  "animations": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "run": "Run",
+    "jump": "Jump",
+    "wave": "Wave",
+    "custom": ["Dance", "Sit"]
+  },
+
+  "transform": { "scale": 1.0, "yUpCorrection": 0, "faceDirection": "+Z" },
+
+  "physics": {
+    "collider": "capsule", "radius": 0.3, "height": 1.7, "mass": 70,
+    "moveSpeed": 3.2, "runSpeed": 6.0, "jumpForce": 5.0,
+    "gravity": -9.81, "turnSpeed": 10, "canFly": false
+  },
+
+  "camera": { "mode": "thirdPerson", "distance": 4.5, "shoulder": 0.6 },
+
+  "stats": { "hp": 100, "level": 1, "team": "blue", "custom": { "stamina": 80, "coins": 0 } },
+
+  "interaction": {
+    "clickable": true,
+    "dialogue": ["မင်္ဂလာပါ!", "gWave metaverse ကို ကြိုဆိုပါတယ်။"],
+    "onInteract": "npc_talk",
+    "grabbable": false
+  },
+
+  "spawn": { "position": [0, 0, 0], "rotationY": 0, "world": "lobby" },
+
+  "lod": { "generateLOD": true, "maxTriangles": 40000, "draco": true, "cullDistance": 120 },
+
+  "network": { "syncTransform": true, "syncAnimation": true, "authority": "server" }
+}
