@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>gWave XR — VR / AR viewer</title>
+<style>
+  *{box-sizing:border-box;margin:0}
+  html,body{height:100%;overflow:hidden;background:#0a0c11;color:#e9eef7;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  #c{display:block;width:100%;height:100%}
+  .hud{position:fixed;top:14px;left:14px;background:rgba(10,12,17,.8);padding:12px 16px;border-radius:12px;max-width:320px;font-size:13px;line-height:1.6}
+  .hud b{color:#7de3c3}
+  .btns{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);display:flex;gap:10px;flex-wrap:wrap;justify-content:center;z-index:10}
+  .btns button{border:0;border-radius:24px;padding:14px 22px;font-size:15px;font-weight:700;cursor:pointer;
+    box-shadow:0 8px 30px rgba(0,0,0,.4)}
+  .vr{background:linear-gradient(135deg,#5aa9ff,#3f7ee0);color:#fff}
+  .ar{background:linear-gradient(135deg,#7de3c3,#3ecf8e);color:#04231a}
+  .disabled{opacity:.4;pointer-events:none}
+  .note{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);font-size:12px;color:#8b93a7;text-align:center;max-width:90vw}
+  .spin{position:fixed;inset:0;display:grid;place-items:center;background:#0a0c11;z-index:20;transition:.3s}
+  .spin.hide{opacity:0;pointer-events:none}
+  .spin div{width:42px;height:42px;border:3px solid #222b3d;border-top-color:#5aa9ff;border-radius:50%;animation:s 1s linear infinite}
+  @keyframes s{to{transform:rotate(360deg)}}
+  .arhud{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:rgba(10,12,17,.85);padding:8px 16px;border-radius:20px;font-weight:600;display:none}
+</style>
+</head>
+<body>
+<div class="spin" id="spin"><div></div></div>
+<canvas id="c"></canvas>
+<div class="hud" id="hud">
+  <b>gWave XR</b> — walk your world in VR, or place it in your room in AR.<br>
+  <span id="status" style="color:#8b93a7">loading scene…</span>
+</div>
+<div class="arhud" id="arhud">Move your phone to find a surface, then tap to place 🌍</div>
+<div class="note" id="note"></div>
+<div class="btns" id="btns"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
+import { ARButton } from 'three/addons/webxr/ARButton.js';
+import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+
+const $ = id => document.getElementById(id);
+const canvas = $('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.xr.enabled = true;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0e1420);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.05).texture;
+
+const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 1000);
+camera.position.set(0, 1.6, 4);
+
+const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+sun.position.set(6,12,6); sun.castShadow = true; sun.shadow.mapSize.set(2048,2048);
+scene.add(sun, new THREE.HemisphereLight(0xffffff, 0x333844, 0.8));
+
+// world root (everything the user built) — one group we can move/scale for AR
+const world = new THREE.Group();
+scene.add(world);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(40,48),
+  new THREE.MeshStandardMaterial({ color:0x16203a, roughness:0.96 }));
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; ground.name='__ground'; world.add(ground);
+
+const loader = new GLTFLoader();
+
+// ---- rebuild scene from a gWave share code (?scene=) or a GLB (?glb=) ----
+function primitive(type, color){
+  const mat = new THREE.MeshStandardMaterial({ color: color || 0x5aa9ff, roughness:0.6, metalness:0.08 });
+  let g;
+  if(type==='box') g=new THREE.BoxGeometry(1,1,1);
+  else if(type==='sphere') g=new THREE.SphereGeometry(0.6,28,20);
+  else if(type==='cylinder') g=new THREE.CylinderGeometry(0.5,0.5,1.2,24);
+  else if(type==='platform') g=new THREE.BoxGeometry(4,0.4,4);
+  else if(type==='ramp') g=new THREE.BoxGeometry(4,0.3,3);
+  else if(type==='coin') g=new THREE.TorusGeometry(0.4,0.14,14,28);
+  else g=new THREE.BoxGeometry(1,1,1);
+  const m=new THREE.Mesh(g,mat); m.castShadow=m.receiveShadow=true; return m;
+}
+function buildFrom(data){
+  (data.entities||[]).forEach(o=>{
+    const t=o.transform||{pos:[0,0.5,0],rotY:0,scale:1};
+    if(o.type==='glb'||o.type==='character'){
+      if(!o.glbUrl) return;
+      loader.load(o.glbUrl, gl=>{ const n=gl.scene; n.traverse(x=>{if(x.isMesh)x.castShadow=x.receiveShadow=true;});
+        n.position.fromArray(t.pos); n.rotation.y=t.rotY||0; n.scale.setScalar(t.scale||1); world.add(n); }, undefined, ()=>{});
+    } else if(o.type==='light'){
+      const pl=new THREE.PointLight(0xfff0cc,20,20,2); pl.position.fromArray(t.pos); world.add(pl);
+    } else {
+      const m=primitive(o.type, o.color?new THREE.Color(o.color).getHex():undefined);
+      m.position.fromArray(t.pos); m.rotation.y=t.rotY||0; m.scale.setScalar(t.scale||1); world.add(m);
+    }
+  });
+  if(data.env){ const bg={night:0x0e1420,day:0x9ec8ff,sunset:0x2a1830,space:0x05060a}[data.env]; if(bg)scene.background=new THREE.Color(bg); }
+}
+function loadScene(){
+  const p=new URLSearchParams(location.search);
+  const hash=location.hash.match(/scene=([^&]+)/);
+  const sc=p.get('scene')||(hash&&hash[1]);
+  const glb=p.get('glb');
+  try{
+    if(sc){ const data=JSON.parse(decodeURIComponent(escape(atob(sc)))); buildFrom(data); $('status').textContent='world: '+(data.name||'untitled'); }
+    else if(glb){ loader.load(glb,gl=>{const n=gl.scene;n.traverse(x=>{if(x.isMesh)x.castShadow=x.receiveShadow=true;});n.position.y=0.5;world.add(n);}); $('status').textContent='model loaded'; }
+    else { // demo
+      ['platform'].forEach(()=>{}); const pl=primitive('platform'); pl.position.set(0,0.2,0); world.add(pl);
+      [[-2,1,0,0xffd85e],[2,1,0,0xffd85e],[0,1,2,0xff6f91]].forEach(([x,y,z,c])=>{const m=primitive('coin',c);m.position.set(x,y,z);world.add(m);});
+      $('status').textContent='demo scene (open from Studio → XR for your world)';
+    }
+  }catch(e){ $('status').textContent='could not read scene'; }
+}
+loadScene();
+
+// ---- VR: teleport locomotion ----
+const controllerModelFactory = new XRControllerModelFactory();
+const marker = new THREE.Mesh(new THREE.RingGeometry(0.15,0.2,24).rotateX(-Math.PI/2),
+  new THREE.MeshBasicMaterial({ color:0x7de3c3 }));
+marker.visible=false; scene.add(marker);
+const rayGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-6)]);
+const raycaster = new THREE.Raycaster();
+let teleportInt=null;
+const controllers=[];
+function setupController(i){
+  const ctrl=renderer.xr.getController(i);
+  const line=new THREE.Line(rayGeo,new THREE.LineBasicMaterial({color:0x5aa9ff}));
+  line.scale.z=6; ctrl.add(line);
+  ctrl.addEventListener('selectstart',()=>ctrl.userData.sel=true);
+  ctrl.addEventListener('selectend',()=>{ ctrl.userData.sel=false;
+    if(teleportInt){ // move the XR reference space so user "teleports"
+      const base=renderer.xr.getReferenceSpace();
+      const off=new THREE.Vector3().subVectors(marker.position, new THREE.Vector3(0,0,0));
+      const transform=new XRRigidTransform({x:-teleportInt.x,y:0,z:-teleportInt.z});
+      renderer.xr.setReferenceSpace(base.getOffsetReferenceSpace(transform));
+    }});
+  scene.add(ctrl); controllers.push(ctrl);
+  const grip=renderer.xr.getControllerGrip(i); grip.add(controllerModelFactory.createControllerModel(grip)); scene.add(grip);
+}
+setupController(0); setupController(1);
+function updateTeleport(){
+  teleportInt=null; marker.visible=false;
+  for(const ctrl of controllers){
+    if(!ctrl.userData.sel) continue;
+    const m=new THREE.Matrix4().identity().extractRotation(ctrl.matrixWorld);
+    raycaster.ray.origin.setFromMatrixPosition(ctrl.matrixWorld);
+    raycaster.ray.direction.set(0,0,-1).applyMatrix4(m);
+    const hit=raycaster.intersectObject(ground,false)[0];
+    if(hit){ marker.position.copy(hit.point); marker.visible=true; teleportInt=hit.point.clone(); }
+  }
+}
+
+// ---- AR: hit-test placement ----
+let arReticle=null, hitTestSource=null, placed=false;
+function makeReticle(){
+  arReticle=new THREE.Mesh(new THREE.RingGeometry(0.08,0.1,32).rotateX(-Math.PI/2),
+    new THREE.MeshBasicMaterial({color:0x7de3c3}));
+  arReticle.matrixAutoUpdate=false; arReticle.visible=false; scene.add(arReticle);
+}
+function onARStart(){
+  makeReticle(); placed=false; world.visible=false; ground.visible=false; scene.background=null;
+  $('arhud').style.display='block'; $('hud').style.display='none'; $('btns').style.display='none';
+  const session=renderer.xr.getSession();
+  session.requestReferenceSpace('viewer').then(ref=>{
+    session.requestHitTestSource({ space: ref }).then(s=>hitTestSource=s);
+  });
+  session.addEventListener('end',()=>{ hitTestSource=null; $('arhud').style.display='none'; $('hud').style.display=''; $('btns').style.display='';
+    world.visible=true; ground.visible=true; if(arReticle){scene.remove(arReticle);arReticle=null;} });
+  // tap to place
+  session.addEventListener('select',()=>{
+    if(arReticle && arReticle.visible && !placed){
+      world.position.setFromMatrixPosition(arReticle.matrix);
+      world.scale.setScalar(0.15);          // shrink the world onto the table/floor
+      world.visible=true; placed=true;
+      $('arhud').textContent='Placed! Walk around it 🌍  (tap again to move)';
+    } else if(placed && arReticle && arReticle.visible){
+      world.position.setFromMatrixPosition(arReticle.matrix);
+    }
+  });
+}
+function updateAR(frame){
+  if(!hitTestSource||!frame) return;
+  const ref=renderer.xr.getReferenceSpace();
+  const hits=frame.getHitTestResults(hitTestSource);
+  if(hits.length){ const pose=hits[0].getPose(ref);
+    arReticle.visible=true; arReticle.matrix.fromArray(pose.transform.matrix); }
+  else arReticle.visible=false;
+}
+
+// ---- XR buttons (feature-detect) ----
+async function buildButtons(){
+  const btns=$('btns'); const note=$('note');
+  const xr=navigator.xr;
+  const vrOK = xr && await xr.isSessionSupported('immersive-vr').catch(()=>false);
+  const arOK = xr && await xr.isSessionSupported('immersive-ar').catch(()=>false);
+
+  if(vrOK){ const b=VRButton.createButton(renderer); style(b,'vr','🥽 Enter VR'); btns.appendChild(b); }
+  else btns.appendChild(fake('🥽 VR not supported','vr'));
+
+  if(arOK){ const b=ARButton.createButton(renderer,{requiredFeatures:['hit-test'],optionalFeatures:['dom-overlay'],domOverlay:{root:document.body}});
+    style(b,'ar','📱 View in AR'); btns.appendChild(b);
+    renderer.xr.addEventListener('sessionstart',()=>{ if(renderer.xr.getSession().environmentBlendMode!=='opaque') onARStart(); });
+  } else {
+    // fallback: model-viewer AR (iOS Quick Look / Android Scene Viewer) needs a GLB — link out
+    const p=new URLSearchParams(location.search); const glb=p.get('glb');
+    if(glb){ const a=document.createElement('a'); a.href='https://arvr.google.com/scene-viewer/1.0?file='+encodeURIComponent(glb)+'&mode=ar_preferred'; style(a,'ar','📱 View in AR'); btns.appendChild(a); }
+    else btns.appendChild(fake('📱 AR needs a phone/headset','ar'));
+    note.textContent = 'Tip: open this page on a WebXR-capable phone (Android Chrome) or a VR headset browser for full AR/VR. On iPhone, export a GLB and use “View in AR”.';
+  }
+  function style(el,cls,label){ el.className=cls; el.textContent=label; el.style.cssText='border:0;border-radius:24px;padding:14px 22px;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block'; }
+  function fake(label,cls){ const b=document.createElement('button'); b.className=cls+' disabled'; b.textContent=label; return b; }
+}
+buildButtons();
+$('spin').classList.add('hide');
+
+// ---- render loop (XR-aware) ----
+renderer.setAnimationLoop((t,frame)=>{
+  if(renderer.xr.isPresenting){ updateTeleport(); updateAR(frame); }
+  renderer.render(scene,camera);
+});
+function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+addEventListener('resize',resize); resize();
+</script>
+</body>
+</html>
