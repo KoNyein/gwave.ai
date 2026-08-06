@@ -29,6 +29,7 @@ class _GamesScreenState extends State<GamesScreen> {
   ///   ၁၈+ မဟုတ်သူက အဲဒီစာမျက်နှာကနေ `/restricted` ကို ရောက်သွားမယ်။
   static const _builtins = <(String, String, String, String)>[
     ("🚁", "GWAVE DRONE", "FPV drone + FPS · online", "/drone/index.html"),
+    ("🎬", "GWAVE STUDIO", "ကိုယ်ပိုင် 3D game ဆောက် · online", "/engine/studio.html"),
     ("🔫", "GWAVE STRIKE", "5v5 FPS · scan မျက်နှာနဲ့", "/strike/"),
     ("🧬", "3D Avatar", "မျက်နှာ + ကိုယ်ခန္ဓာ scan", "/profile/avatar"),
     ("🙈", "ဝှက်တမ်း", "ပုန်းတမ်း ရှာတမ်း · အားလုံး", "/games/arena"),
