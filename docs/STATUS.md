@@ -139,6 +139,20 @@
 
 ## Changelog
 
+- 2026-08-05 (engine): **gWave Game Engine MVP live at gwave.cc/engine.**
+  Uploaded gwave3d seed integrated as static pages: /engine (editor +
+  play — object palette, TransformControls gizmo, hierarchy/properties/
+  behavior panels, behaviors Rotator/Floater/MovingPlatform/Collectible/
+  Hazard/Goal/Checkpoint/TriggerZone/NPCDialogue, win conditions
+  collectAll/reachGoal/survive, HUD, kinematic physics + Rapier CDN
+  probe, GLB import incl. animated characters, save/load .gwave.json),
+  /engine/world-maker.html (world maker MVP), /engine/character-demo
+  .html (third-person controller demo), /engine/generator.html (image→
+  3D viewer; GPU TripoSR backend NOT deployed — note added, API URL
+  field manual), character schema JSONs. /engine 308 redirect route.
+  Engineering spec (ECS/Rapier/Colyseus roadmap) received — Phase 1
+  refactor to follow on top of this seed.
+
 - 2026-08-05 (metaverse): **Dedicated game rooms.** Each Game Zone
   cabinet now teleports into its game's own room and auto-joins the
   mini-game lobby on connect (pendingGameRef → onInit): 🚁 drone-race
