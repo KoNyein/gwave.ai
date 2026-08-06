@@ -1,0 +1,12 @@
+{
+  "name": "gwave-engine-server",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "ws": "^8.18.0",
+    "jose": "^5.9.6"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}

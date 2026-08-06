@@ -62,3 +62,4 @@ server/metaverse/.next/
 gwave-home/node_modules
 gwave-home/config.json
 gwave-drone-server/node_modules
+gwave-engine-server/node_modules

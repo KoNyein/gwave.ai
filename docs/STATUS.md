@@ -139,6 +139,21 @@
 
 ## Changelog
 
+- 2026-08-06 (engine): **Phase 3 — multiplayer.** New gwave-engine-server
+  workspace (plain ws matching the drone-server pattern): rooms with
+  auto-create/GC, 20Hz snapshots, envelope speed validation (teleports
+  snap back with a correct message), chat relay, /health on the same
+  :8789 port, AUTH_MODE off/gwave/dev/cognito reused from the drone
+  server's auth.js. deploy-engine-server.yml (ECR gwave-engine-server →
+  SSM rollout of the `engine-server` container, 127.0.0.1:8789).
+  Client net/net.js NetSystem: 20Hz state up (pos/ry/anim from the
+  animator), remote players as runtime capsule entities interpolated
+  100ms behind, server corrections applied to the local Transform,
+  chat via HUD. 🌐 Online button (auto-starts play; same-origin
+  wss /engine-ws default) + chat input. Local smoke: 2-client join,
+  snapshot sync, teleport rejection, chat relay all pass. EC2 pending
+  (user): Caddy /engine-ws route — deploy/gwave-engine/README.md.
+
 - 2026-08-06 (engine): **Phase 2 — animator + spatial audio + input.**
   character/animator.js: idle↔walk↔run↔jump↔fall state machine with
   crossfade, fuzzy clip aliases, graceful fallbacks, and a shared
