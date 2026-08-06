@@ -29,8 +29,11 @@
   channel offline, 3-min grace). Feed + live lists autoplay muted previews
   (app: video_player HLS; web: hls.js / Safari native). App live viewing is
   one-page TikTok-style vertical swipe. **LiveKit (browser Go Live) recording
-  still NOT configured** — needs static IAM keys for egress
-  (`LIVEKIT_EGRESS_S3_*` in `/etc/gwave-web.env`).
+  is CONFIGURED and verified** (2026-08-06): `LIVEKIT_EGRESS_S3_*` set in
+  `/etc/gwave-web.env` (bucket gwave-ivs-recordings, ap-northeast-1) and the
+  egress worker container runs on the LiveKit SFU box (52.77.195.25) with
+  local redis; `/api/metaverse/lives` self-heals recording_path without the
+  SFU webhook. Watch/replay in-metaverse via the 📺 Live & Replays hub.
 - **SOS**: reason/phone/note/photo/video/voice + optional go-live; danger
   banner on the map; tiles dial/view media; SMS+GPS fallback when offline.
   (`sos_alerts` columns applied on RDS.)
@@ -138,6 +141,53 @@
 - Old Vercel project deletion (user-side).
 
 ## Changelog
+
+- 2026-08-06 (web): **Explainer page** — user-supplied AI-presenter promo
+  at /explainer.html (3 scenes + narration); its audio CDN allow-listed in
+  media-src. PR #543.
+- 2026-08-06 (web): **LiveKit replay pipeline is LIVE end-to-end.** User
+  configured `LIVEKIT_EGRESS_S3_*` on EC2 (bucket gwave-ivs-recordings,
+  ap-northeast-1, scoped IAM user gwave-livekit-egress) and the egress
+  worker now runs on the LiveKit SFU box (52.77.195.25: redis + livekit/
+  egress container, room_composite_cpu_cost 1.5). Two test broadcasts
+  recorded to S3 with egress_complete. `/api/metaverse/lives` self-heals
+  recording_path via listEgress so the SFU webhook is not required.
+  PRs #535/#538. ⚠️ Rotate the S3 egress key AND LIVEKIT_API_SECRET —
+  both were pasted into the working chat during setup.
+- 2026-08-06 (web): **Live hub host names** — profiles has full_name, not
+  display_name; the wrong column errored the whole names query. PR #542.
+- 2026-08-06 (web): **GWAVE item economy** — G-Points shop (/items),
+  inventory (/inventory), daily reward, sell listings; atomic SQL fns
+  (fn_adjust_points/fn_buy_item/fn_claim_daily/fn_equip/fn_list_item) in
+  deploy/sql/gwave-economy.sql — **APPLIED on RDS** (8 items seeded).
+  RLS-sealed, /api/economy/* via admin client rpc. PR #540.
+- 2026-08-06 (metaverse): **Realistic Mixamo avatars replace cartoon kit
+  bodies everywhere.** 10 self-hosted bases under public/metaverse/
+  realistic/ (Remy, Character3/4/5, Michelle ×2, Clown, Granny — user FBXs
+  converted via FBX2glTF + webp — plus Soldier/Xbot from three.js). 18
+  variants with tints; hybrid animation (baked idle/walk/run where the GLB
+  has clips, measured arms-down rest pose + breathing + weapon-hold
+  overlay, procedural locomotion otherwise); facing fixed (Mixamo rigs are
+  180° off game forward). One-page **Avatar Studio** (customiser.tsx
+  rewritten): variant picker + RPM Photo Avatar + scan links + height
+  slider; config.variant roams across devices. AvatarPreview fallback is
+  the realistic Soldier. PRs #532/#537/#538/#539.
+- 2026-08-06 (metaverse): **📺 Live & Replays hub + end-of-live wrap
+  post** (golive stop() returns the ended id; saveLiveWrapPost one-tap).
+  PR #535. **📸 Photo Avatar (Ready Player Me)** — selfie → rigged GLB
+  body, synced to remotes via new "rpm" net message. PR #533.
+- 2026-08-06 (web): **🛰 3D Scanner suite** at /scan — Room/Object orbit
+  capture with LiDAR-style UI (wireframe mesh overlay, coverage %, ⏺/⏹,
+  "Pre-Process now?" dialog), IndexedDB library, drag-orbit viewer; avatar
+  scanners adopt the pro RecordButton. Nav + en/my messages. PR #536.
+- 2026-08-06 (drone): **Mobile ☰ menu + one-tap drone presets** — touch
+  drawer (fly/garage/online/leaderboard/settings), 5 preset loadouts with
+  "switch & fly", 🚁/💥 FABs, prompt() skipped on touch. PR #534.
+- 2026-08-06 (ops): PR #541 (user-merged dev→main) verified harmless —
+  the APK workflow only triggers on the dev branch, so no duplicate
+  builds; mobile/ now also exists on main. GitHub Actions runs were
+  auto-cancelled for a stretch in the evening (billing/minutes suspected;
+  user reports resolved).
 
 - 2026-08-06 (engine): **gWave Studio suite** — integrated the uploaded
   gwave3d package as pages under /engine (NOT as the standalone nginx
