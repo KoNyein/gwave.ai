@@ -25,6 +25,8 @@ import {
   type LiveScreen,
 } from "./livescreen";
 import { createMvGoLive, type MvCamMode } from "./golive";
+import { LiveHub } from "./livehub";
+import { saveLiveWrapPost } from "@/lib/actions/live";
 import { createScanFaces } from "./scanface";
 import { getMap, MAP_LIST } from "./maps";
 import { createMinimap } from "./minimap";
@@ -301,6 +303,27 @@ export function MetaverseScene() {
       void goLiveRef.current("").then(() => setMvLive("off"));
     }
   };
+  /// 📼 ခုနက ပြီးသွားတဲ့ live ရဲ့ id — replay သိမ်းပြီးကြောင်း + feed
+  /// wrap-post ခလုတ် ပြဖို့ (international "end + save" standard)
+  const [wrapId, setWrapId] = useState<string | null>(null);
+  const [wrapBusy, setWrapBusy] = useState(false);
+  const postWrap = () => {
+    if (!wrapId || wrapBusy) return;
+    setWrapBusy(true);
+    saveLiveWrapPost(wrapId, "", "").then(
+      (r) => {
+        setWrapBusy(false);
+        setWrapId(null);
+        if (!r.ok) showMvErr(r.error);
+      },
+      () => {
+        setWrapBusy(false);
+        showMvErr("Post တင်လို့ မရဘူး — ပြန်ကြိုးစားပါ");
+      },
+    );
+  };
+  /// 📺 Live & Replays hub overlay
+  const [liveHub, setLiveHub] = useState(false);
   /// 🤳 Host ကင်မရာ PiP — off → မျက်နှာ (front) → အနောက် (back) → off
   const [mvCam, setMvCam] = useState<MvCamMode>("off");
   const camRef = useRef<((m: MvCamMode) => Promise<void>) | null>(null);
@@ -862,7 +885,9 @@ export function MetaverseScene() {
     const mvGoLive = createMvGoLive(renderer.domElement);
     goLiveRef.current = async (title: string) => {
       if (mvGoLive.active) {
-        await mvGoLive.stop();
+        // 📼 ပြီးသွားတဲ့ stream id — replay သိမ်းပြီး wrap-post ခလုတ် ပြဖို့
+        const ended = await mvGoLive.stop();
+        if (ended) setWrapId(ended);
         return false;
       }
       // ★ Error ကို ဒီမှာ မမျိုဘူး — UI (toggleGoLive) က ဖမ်းပြီး toast ပြမယ်
@@ -3547,6 +3572,15 @@ export function MetaverseScene() {
                 >
                   📣
                 </button>
+                <button
+                  data-hud="1"
+                  onClick={() => setLiveHub(true)}
+                  aria-label="Live & Replays"
+                  title="Live & Replays — လွှင့်နေတာတွေ + replay တွေ ကြည့်မယ်"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/40 text-[13px] backdrop-blur"
+                >
+                  📺
+                </button>
                 {roomId === "arena" && (
                   <button
                     data-hud="1"
@@ -3924,6 +3958,10 @@ export function MetaverseScene() {
             setMenu(null);
             setRpmOpen(true);
           }}
+          onLiveHub={() => {
+            setMenu(null);
+            setLiveHub(true);
+          }}
           onMap={() => setMenu("map")}
           onGames={() => setMenu("games")}
           onBuild={() => {
@@ -3984,6 +4022,39 @@ export function MetaverseScene() {
 
       {/* ── 📸 Photo Avatar (Ready Player Me) ─────────────────────────── */}
       {rpmOpen && <RpmOverlay onClose={() => setRpmOpen(false)} />}
+
+      {/* ── 📺 Live & Replays hub ─────────────────────────────────────── */}
+      {liveHub && <LiveHub onClose={() => setLiveHub(false)} />}
+
+      {/* ── 📼 Live ပြီးပြီ — replay + feed wrap-post ─────────────────── */}
+      {wrapId && (
+        <div
+          data-hud="1"
+          className="absolute left-1/2 top-24 z-20 flex w-[min(92vw,360px)] -translate-x-1/2 flex-col gap-2 rounded-2xl border border-white/15 bg-black/80 p-4 text-white backdrop-blur"
+        >
+          <p className="text-sm font-semibold">📼 Live ပြီးပါပြီ</p>
+          <p className="text-xs text-white/60">
+            Replay ကို အလိုအလျောက် သိမ်းနေပါတယ် — ခဏအကြာမှာ 📺 Live &
+            Replays ထဲ ရောက်လာပါမယ်။ Feed မှာ replay လင့်နဲ့ post
+            တင်ထားမလား?
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={postWrap}
+              disabled={wrapBusy}
+              className="flex-1 rounded-full bg-emerald-500/85 px-3 py-2 text-xs font-semibold text-black disabled:opacity-60"
+            >
+              {wrapBusy ? "တင်နေသည်…" : "📣 Feed မှာ post တင်မယ်"}
+            </button>
+            <button
+              onClick={() => setWrapId(null)}
+              className="rounded-full border border-white/25 px-4 py-2 text-xs text-white/80"
+            >
+              မတင်တော့ဘူး
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── ယာဉ် — အနားရောက်မှ / စီးနေချိန် ─────────────────────────── */}
       {ride && (

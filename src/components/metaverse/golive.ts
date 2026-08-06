@@ -32,8 +32,9 @@ export type MvGoLive = {
   /// Live စတင် — အောင်ရင် stream id ပြန်ပေးတယ်၊ error ဆို message ပါတဲ့
   /// Error ကို throw လုပ်တယ် (UI က ဖမ်းပြီး toast ပြရမယ်)
   start(title: string): Promise<string>;
-  /// Live ရပ် — server ကို end ပြောပြီး track/room အကုန် ရှင်းတယ်
-  stop(): Promise<void>;
+  /// Live ရပ် — server ကို end ပြောပြီး track/room အကုန် ရှင်းတယ်။
+  /// ပြီးသွားတဲ့ stream id ပြန်ပေးတယ် (replay/wrap-post UI အတွက်)။
+  stop(): Promise<string | null>;
   /// ကင်မရာ ပြောင်း — live မတိုင်ခင်ရော live နေစဉ်ရော ခေါ်လို့ရတယ်။
   /// ကင်မရာခွင့် မရရင် throw (mode က off ကို ပြန်ကျတယ်)။
   setCamera(mode: MvCamMode): Promise<void>;
@@ -287,8 +288,11 @@ export function createMvGoLive(canvas: HTMLCanvasElement): MvGoLive {
     },
 
     async stop() {
-      if (!active && !streamId) return;
+      if (!active && !streamId) return null;
+      // cleanup က streamId ကို null လုပ်မှာမို့ အရင် ကူးထား
+      const ended = streamId;
       await cleanup();
+      return ended;
     },
 
     async setCamera(mode: MvCamMode) {
