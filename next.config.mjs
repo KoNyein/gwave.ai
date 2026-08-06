@@ -138,7 +138,8 @@ const csp = [
   "img-src 'self' blob: data: https: https://*.supabase.co https://lh3.googleusercontent.com https://image.mux.com https://*.tile.openstreetmap.org",
   // *.live-video.net serves Amazon IVS HLS (Low-Latency playback + Real-Time
   // composite replays).
-  `media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com https://d10t7bibe827e7.cloudfront.net https://gwave-media-8acd2816.s3.ap-southeast-1.amazonaws.com https://d2fvsrmhrcdf.cloudfront.net https://*.live-video.net${cctvHlsSrc}${audioMediaSrc}`,
+  // d8j0ntlcm91z4: AI-narration audio for /explainer.html (presenter demo)
+  `media-src 'self' blob: data: https://*.supabase.co https://stream.mux.com https://d10t7bibe827e7.cloudfront.net https://gwave-media-8acd2816.s3.ap-southeast-1.amazonaws.com https://d2fvsrmhrcdf.cloudfront.net https://d8j0ntlcm91z4.cloudfront.net https://*.live-video.net${cctvHlsSrc}${audioMediaSrc}`,
   "font-src 'self' data:",
   // *.mux.com serves HLS for live streams; *.litix.io receives Mux player QoS beacons.
   // *.live-video.net is Amazon IVS: Real-Time stage signaling (wss + https) and
