@@ -85,8 +85,18 @@
     <button id="save">Save</button><button id="load">Load</button>
     <input id="file" type="file" accept="application/json" class="hidden" />
     <a href="/engine/mvp.html" style="color:var(--muted);font-size:11px">MVP</a>
+    <button id="controls" title="rebind keys">⌨</button>
     <button class="play" id="play">▶ Play</button>
   </header>
+
+  <!-- ⌨ Controls — rebindable action map (spec §7) -->
+  <div id="controls-panel" data-ui="1" class="hidden" style="position:fixed;top:52px;right:12px;z-index:40;
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;width:230px">
+    <h3 style="margin-top:0">Controls</h3>
+    <div id="controls-list"></div>
+    <p style="font-size:11px;color:var(--muted);margin-top:8px">
+      ခလုတ်တစ်ခုနှိပ်ပြီး ကီးအသစ် နှိပ်ပါ · gamepad/touch က အလိုအလျောက်</p>
+  </div>
 
   <aside class="left" data-ui="1">
     <h3>Add object</h3>

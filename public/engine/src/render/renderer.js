@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 import { System } from "../core/ecs.js";
+import { Animator, loadAnimationLibrary } from "../character/animator.js";
 
 export const ENV_PRESETS = {
   night: { bg: 0x0e1420, fog: [40, 120], sun: 2.0 },
@@ -127,12 +128,21 @@ export class RenderSystem extends System {
           const b2 = new THREE.Box3().setFromObject(node);
           node.position.y -= b2.min.y;
           obj.add(node);
-          if (g.animations?.length) {
+          if (g.animations?.length || m.animLib) {
             const mixer = new THREE.AnimationMixer(node);
             this.mixers.set(entity.id, mixer);
-            entity.state.clips = g.animations;
+            entity.state.clips = g.animations ?? [];
             entity.state.mixer = mixer;
-            this.world.events.emit("glbReady", { entity, animations: g.animations });
+            // Phase 2 — animator state machine; shared animation-library GLB
+            // clips retarget by bone name onto same-skeleton characters
+            const animator = new Animator(mixer, entity.state.clips);
+            entity.state.animator = animator;
+            if (m.animLib) {
+              loadAnimationLibrary(m.animLib).then((clips) => {
+                if (clips.length) animator.addClips(clips);
+              });
+            }
+            this.world.events.emit("glbReady", { entity, animations: entity.state.clips });
           }
         },
         undefined,

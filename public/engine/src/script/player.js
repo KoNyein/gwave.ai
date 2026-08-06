@@ -73,8 +73,17 @@ export class PlayerControlSystem extends System {
         }
       }
 
-      // animation state machine: idle ↔ walk ↔ run ↔ jump (spec §6)
-      this._anim(e, moving, !e.state.grounded);
+      // animation state machine: idle ↔ walk ↔ run ↔ jump ↔ fall (spec §6)
+      this._anim(e, moving, !e.state.grounded, e.state.velY ?? 0);
+
+      // spatial footsteps — grounded and actually moving
+      if (moving && e.state.grounded) {
+        e.state.stepT = (e.state.stepT ?? 0) + dt * (this.input.run() ? 1.7 : 1);
+        if (e.state.stepT > 0.38) {
+          e.state.stepT = 0;
+          this.audio.playAt?.("step", t.pos);
+        }
+      }
 
       // NPC interact
       const npc = this.world.vars.npcNear;
@@ -86,22 +95,19 @@ export class PlayerControlSystem extends System {
     }
   }
 
-  _anim(e, moving, airborne) {
-    const clips = e.state.clips;
-    const mixer = e.state.mixer;
-    if (!clips?.length || !mixer) return;
-    const want = airborne ? "jump" : moving ? (this.input.run() ? "run" : "walk") : "idle";
-    if (e.state.animName === want) return;
-    const pick = (name) => {
-      const c = clips.find((a) => a.name.toLowerCase().includes(name));
-      return c ? mixer.clipAction(c) : null;
-    };
-    const action = pick(want) ?? pick("idle") ?? mixer.clipAction(clips[0]);
-    if (!action || e.state.animAction === action) return;
-    action.reset().fadeIn(0.2).play();
-    e.state.animAction?.fadeOut(0.2);
-    e.state.animAction = action;
-    e.state.animName = want;
+  _anim(e, moving, airborne, velY) {
+    const animator = e.state.animator;
+    if (!animator) return;
+    const want = airborne
+      ? velY < -2
+        ? "fall"
+        : "jump"
+      : moving
+        ? this.input.run()
+          ? "run"
+          : "walk"
+        : "idle";
+    animator.set(want);
   }
 }
 

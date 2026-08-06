@@ -2,8 +2,37 @@
 // Keyboard + touch joystick + gamepad all feed the same move axis, so game
 // code never knows which device is attached.
 
+/// Rebindable action map (spec §7) — stored per-browser; the Controls dialog
+/// in the editor header writes here.
+const DEFAULT_KEYS = {
+  forward: "KeyW",
+  back: "KeyS",
+  left: "KeyA",
+  right: "KeyD",
+  jump: "Space",
+  run: "ShiftLeft",
+  interact: "KeyE",
+};
+
+export function loadKeymap() {
+  try {
+    return { ...DEFAULT_KEYS, ...JSON.parse(localStorage.getItem("gwe:keys") || "{}") };
+  } catch {
+    return { ...DEFAULT_KEYS };
+  }
+}
+
+export function saveKeymap(map) {
+  try {
+    localStorage.setItem("gwe:keys", JSON.stringify(map));
+  } catch {
+    /* private mode */
+  }
+}
+
 export function createInput() {
   const keys = new Set();
+  let km = loadKeymap();
   addEventListener("keydown", (e) => keys.add(e.code));
   addEventListener("keyup", (e) => keys.delete(e.code));
 
@@ -51,8 +80,8 @@ export function createInput() {
       gp = navigator.getGamepads?.()[0] ?? null;
     },
     axis() {
-      let x = (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
-      let z = (keys.has("KeyS") ? 1 : 0) - (keys.has("KeyW") ? 1 : 0);
+      let x = (keys.has(km.right) ? 1 : 0) - (keys.has(km.left) ? 1 : 0);
+      let z = (keys.has(km.back) ? 1 : 0) - (keys.has(km.forward) ? 1 : 0);
       if (touch.active) {
         x = touch.x;
         z = touch.y;
@@ -68,9 +97,15 @@ export function createInput() {
       }
       return { x, z };
     },
-    jump: () => keys.has("Space") || touchJump || !!gp?.buttons?.[0]?.pressed,
-    run: () => keys.has("ShiftLeft") || keys.has("ShiftRight") || !!gp?.buttons?.[5]?.pressed,
-    interact: () => keys.has("KeyE") || !!gp?.buttons?.[2]?.pressed,
+    jump: () => keys.has(km.jump) || touchJump || !!gp?.buttons?.[0]?.pressed,
+    run: () =>
+      keys.has(km.run) || keys.has("ShiftRight") || !!gp?.buttons?.[5]?.pressed,
+    interact: () => keys.has(km.interact) || !!gp?.buttons?.[2]?.pressed,
     key: (code) => keys.has(code),
+    keymap: () => ({ ...km }),
+    setKeymap(next) {
+      km = { ...km, ...next };
+      saveKeymap(km);
+    },
   };
 }
