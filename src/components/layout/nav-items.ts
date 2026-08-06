@@ -79,6 +79,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/metaverse", labelKey: "metaverse", icon: Globe2 },
       { href: "/fpv", labelKey: "fpv", icon: Joystick },
       { href: "/scan", labelKey: "scan3d", icon: ScanLine },
+      { href: "/items", labelKey: "itemshop", icon: Gem },
       { href: "/arcade", labelKey: "arcade", icon: GraduationCap },
     ],
   },
