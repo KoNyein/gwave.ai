@@ -29,6 +29,41 @@ class Repository {
     return rows.map(Post.fromJson).toList();
   }
 
+  // ---- Global search --------------------------------------------------------
+
+  /// PostgREST `or=(...)` syntax breaks on these characters — a search term
+  /// is plain text, never operators.
+  static String _searchTerm(String q) =>
+      q.trim().replaceAll(RegExp(r'[,()*\\]'), " ").trim();
+
+  /// People, by username or full name (same fields the web navbar search uses).
+  Future<List<Profile>> searchProfiles(String q) async {
+    final t = _searchTerm(q);
+    if (t.length < 2) return [];
+    final rows = await api.select("profiles", query: {
+      "select": _profileCols,
+      "or": "(username.ilike.*$t*,full_name.ilike.*$t*)",
+      "limit": "8",
+    });
+    return rows.map(Profile.fromJson).toList();
+  }
+
+  /// Public posts whose text mentions the term, newest first.
+  Future<List<Post>> searchPosts(String q) async {
+    final t = _searchTerm(q);
+    if (t.length < 2) return [];
+    final rows = await api.select("posts", query: {
+      "select":
+          "*,author:profiles!posts_author_id_fkey($_profileCols),media:post_media(storage_path,media_type,position)",
+      "content": "ilike.*$t*",
+      "visibility": "eq.public",
+      "removed_at": "is.null",
+      "order": "created_at.desc",
+      "limit": "10",
+    });
+    return rows.map(Post.fromJson).toList();
+  }
+
   /// Create a post and attach any already-uploaded media (storage paths from
   /// [ApiClient.uploadBytes]) as ordered post_media rows.
   Future<Post?> createPost(

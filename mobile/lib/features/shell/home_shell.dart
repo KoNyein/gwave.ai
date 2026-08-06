@@ -16,8 +16,8 @@ import '../messenger/conversations_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../profile/profile_screen.dart';
 import '../reels/reels_screen.dart';
+import '../search/search_screen.dart';
 import '../shop/shop_screen.dart';
-import '../web/web_screen.dart';
 
 /// The signed-in root, laid out Facebook-style: a masthead (wordmark +
 /// round action chips) on the Home tab, then a persistent row of icon tabs
@@ -138,7 +138,11 @@ class _HomeShellState extends State<HomeShell> {
           ),
           const Spacer(),
           _chip(context, Icons.add, _openComposer),
-          _chip(context, Icons.search, () => openWeb(context, "/search")),
+          _chip(context, Icons.search, () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SearchScreen()),
+            );
+          }),
           _chip(context, Icons.chat_bubble, () {
             Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const ConversationsScreen()),
