@@ -439,6 +439,9 @@ function onBusMessage(roomId, msg, origin) {
     case "pic":
       rooms.setGhost(roomId, msg.id, { pic: msg.pic ?? null }, origin);
       break;
+    case "variant":
+      rooms.setGhost(roomId, msg.id, { v: msg.v ?? null }, origin);
+      break;
     case "chat":
     case "weather":
     case "vstate":
@@ -515,6 +518,9 @@ wss.on("connection", async (ws, req) => {
     /// 🖼 Profile ဓာတ်ပုံ URL — client က ကိုယ်တိုင် ပို့/ဖျောက်တယ်
     /// ("pic" message)၊ null = မပြဘူး (privacy default က client ဘက်မှာ)။
     pic: null,
+    /// 🧍 Avatar variant (a-r) — client ရွေးပြီး ပို့တယ်။ Everyone sees
+    /// the SAME body the owner sees (self/remote mismatch fix).
+    v: null,
     lastMoveAt: Date.now(),
     lastChatAt: 0,
     // ── persistence ───────────────────────────────────────────────────────
@@ -627,6 +633,7 @@ wss.on("connection", async (ws, req) => {
         name: player.name,
         authed: player.authed,
         pic: player.pic,
+        v: player.v,
       },
     },
     player.id,
@@ -756,6 +763,17 @@ wss.on("connection", async (ws, req) => {
             : null;
         player.pic = u;
         emit(player.room, { type: "pic", id: player.id, pic: u }, player.id);
+        break;
+      }
+
+      // 🧍 Avatar variant — a-r ကနေ တစ်လုံးတည်း၊ မဟုတ်ရင် null။
+      // Everyone renders the variant the owner chose, so what you see in
+      // the mirror is what the room sees.
+      case "variant": {
+        const v =
+          typeof msg.v === "string" && /^[a-r]$/.test(msg.v) ? msg.v : null;
+        player.v = v;
+        emit(player.room, { type: "variant", id: player.id, v }, player.id);
         break;
       }
 

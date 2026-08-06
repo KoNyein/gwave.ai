@@ -32,8 +32,11 @@ export type ScanFaces = {
 
 export function createScanFaces(): ScanFaces {
   const loader = new GLTFLoader();
-  /// userId → face URL (null = scan မရှိ) — fetch ထပ်မမေးအောင်
-  const urls = new Map<string, { url: string | null; at: number }>();
+  /// userId → face URL + body morphs (null = scan မရှိ) — fetch ထပ်မမေးအောင်
+  const urls = new Map<
+    string,
+    { url: string | null; morphs: Record<string, number> | null; at: number }
+  >();
   const models = new Map<string, CacheEntry>();
   const pending = new Set<string>();
   let disposed = false;
@@ -115,7 +118,7 @@ export function createScanFaces(): ScanFaces {
         const known = urls.get(userId);
         const now = Date.now();
         if (known && now - known.at < FETCH_TTL_MS) {
-          if (!known.url) return;
+          // cache hit — morphs/url apply below
         } else {
           pending.add(userId);
           try {
@@ -123,21 +126,33 @@ export function createScanFaces(): ScanFaces {
               `/api/avatar?userId=${encodeURIComponent(userId)}`,
             );
             const d = (await res.json().catch(() => null)) as {
-              config?: { faceGlbUrl?: string | null };
+              config?: {
+                faceGlbUrl?: string | null;
+                morphs?: Record<string, number> | null;
+              };
             } | null;
             urls.set(userId, {
               url: d?.config?.faceGlbUrl ?? null,
+              morphs: d?.config?.morphs ?? null,
               at: Date.now(),
             });
           } catch {
-            urls.set(userId, { url: null, at: Date.now() });
+            urls.set(userId, { url: null, morphs: null, at: Date.now() });
           } finally {
             pending.delete(userId);
           }
         }
-        const url = urls.get(userId)?.url;
-        if (!url || disposed) return;
-        loadAndAttach(url, avatar);
+        const entry = urls.get(userId);
+        if (!entry || disposed) return;
+        // 🧍 Body morphs — rigged avatar ရဲ့ skeleton ကို scan အချိုးအစား
+        // အတိုင်း ချိန် (setMorphs က riggedhuman ကပဲ ထောက်ပံ့တယ်)
+        if (entry.morphs) {
+          (avatar.group.userData.setMorphs as
+            | ((m: Record<string, number>) => void)
+            | undefined)?.(entry.morphs);
+        }
+        if (!entry.url) return;
+        loadAndAttach(entry.url, avatar);
       };
       void run();
     },

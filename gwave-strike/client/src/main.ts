@@ -78,7 +78,10 @@ async function boot() {
   const minimap = createMinimap(hud.root, touch ? 96 : 132);
   const scoreboard = createScoreboard(hud.root);
   createSettings(hud.root, renderer, input);
-  if (touch) attachTouchControls(hud.root, input);
+  if (touch) {
+    attachTouchControls(hud.root, input);
+    input.touchMode = true; // no pointer lock on phones — game starts live
+  }
 
   // PWA
   if ("serviceWorker" in navigator && location.protocol === "https:") {
