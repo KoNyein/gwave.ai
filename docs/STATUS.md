@@ -139,6 +139,18 @@
 
 ## Changelog
 
+- 2026-08-06 (engine): **Phase 2 — animator + spatial audio + input.**
+  character/animator.js: idle↔walk↔run↔jump↔fall state machine with
+  crossfade, fuzzy clip aliases, graceful fallbacks, and a shared
+  animation-library GLB loader (Mixamo clips retarget by bone name —
+  editor gained an "Anim GLB" field on characters, persisted in the
+  scene file, carried onto the play-mode player). audio/audio3d.js:
+  procedural SFX now play through HRTF PannerNodes with the listener
+  riding the play camera — positional coins/hurt/steps (footstep cadence
+  from the player system), UI sounds stay 2D. input: rebindable action
+  map (localStorage gwe:keys) + ⌨ Controls panel with press-to-bind
+  capture; gamepad/touch unchanged on the same action surface.
+
 - 2026-08-06 (engine): **Phase 1 — ECS core refactor shipped.** /engine
   is now the modular engine (public/engine/src/): core (World/Entity/
   System/EventBus + fixed-timestep loop with alpha interpolation),
