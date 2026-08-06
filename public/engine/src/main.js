@@ -24,7 +24,7 @@ const $ = (id) => document.getElementById(id);
 const canvas = $("c");
 
 const world = new World();
-const { renderer, scene, applyEnv, resize } = createStage(canvas);
+const { renderer, scene, applyEnv, resize, quality } = createStage(canvas);
 const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 1000);
 camera.position.set(8, 7, 10);
 
@@ -38,7 +38,11 @@ const hud = createHud(world);
 const audio = createAudio3d();
 
 const physics = await createPhysics();
-$("phys-chip").textContent = `physics: ${physics.kind}`;
+$("phys-chip").textContent = `physics: ${physics.kind} · fx: ${quality}${
+  new URLSearchParams(location.search).get("webgpu") === "1" && navigator.gpu
+    ? " · webgpu: ready (renderer WebGL2)"
+    : ""
+}`;
 
 const { run } = createActions({
   world,

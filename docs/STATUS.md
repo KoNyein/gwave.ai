@@ -139,6 +139,20 @@
 
 ## Changelog
 
+- 2026-08-06 (engine): **Phase 6 — quality tiers (roadmap complete).**
+  detectQuality(): ?lowfx=1 or coarse-pointer+dpr>2 → "low" tier
+  (pixelRatio clamp 1.5, no antialias, no shadows) so mid-range phones
+  hold 60fps; the header chip shows the tier. WebGPU: probed
+  (?webgpu=1 && navigator.gpu reports "webgpu: ready") but the render
+  path stays WebGL2 — three 0.168's WebGPURenderer isn't reliably
+  loadable through the CDN importmap; the actual renderer swap is the
+  documented §20 P6+ follow-up. Web Worker physics also deferred with
+  reason: Rapier WASM in a worker wants SharedArrayBuffer, which needs
+  COOP/COEP headers the site doesn't serve (would break embedded
+  iframes like the metaverse Game Zone scanner). Engine roadmap
+  Phases 1–6 all shipped.
+
+
 - 2026-08-06 (engine): **Phase 5 — plugin API.** window.gwaveEngine
   surface (registerBehavior/registerAction/registerSystem + world/
   events/hud/audio), plugin behaviors join the editor palette and the
