@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>gWave Metaverse — Playable Character Demo</title>
+<style>
+  :root{--accent:#5aa9ff;--accent2:#7de3c3}
+  *{box-sizing:border-box;margin:0}
+  html,body{height:100%;overflow:hidden;background:#0b0d12;color:#e7ecf5;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  #c{display:block;width:100%;height:100%}
+  .hud{position:fixed;top:14px;left:14px;background:rgba(12,15,22,.72);
+    padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.7;max-width:280px}
+  .hud b{color:var(--accent2)}
+  .hud .k{display:inline-block;background:#1b2130;border:1px solid #2a3348;border-radius:5px;
+    padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px}
+  .load{position:fixed;inset:0;display:grid;place-items:center;background:#0b0d12;z-index:10;transition:.4s}
+  .load.hide{opacity:0;pointer-events:none}
+  .spin{width:40px;height:40px;border:3px solid #222b3d;border-top-color:var(--accent);
+    border-radius:50%;animation:s 1s linear infinite}
+  @keyframes s{to{transform:rotate(360deg)}}
+  .row{position:fixed;top:14px;right:14px;display:flex;gap:8px}
+  .row input{background:#12151d;border:1px solid #242a38;color:#e7ecf5;border-radius:8px;
+    padding:8px 10px;font:inherit;width:230px}
+  .row button{background:linear-gradient(135deg,var(--accent),#3f7ee0);border:0;color:#fff;
+    border-radius:8px;padding:8px 12px;font:inherit;font-weight:600;cursor:pointer}
+  /* mobile joystick */
+  #joy{position:fixed;bottom:26px;left:26px;width:120px;height:120px;border-radius:50%;
+    background:rgba(255,255,255,.06);border:1px solid #2a3348;touch-action:none;display:none}
+  #knob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;
+    background:rgba(90,169,255,.8)}
+  #jump{position:fixed;bottom:40px;right:30px;width:78px;height:78px;border-radius:50%;
+    background:rgba(125,227,195,.85);border:0;color:#04120d;font-weight:800;font-size:15px;display:none}
+  @media (pointer:coarse){#joy,#jump{display:block}}
+</style>
+</head>
+<body>
+<div class="load" id="load"><div class="spin"></div></div>
+<canvas id="c"></canvas>
+
+<div class="hud">
+  <b>gWave Metaverse</b> — playable character<br>
+  <span class="k">W A S D</span> move · <span class="k">Shift</span> run<br>
+  <span class="k">Space</span> jump · <span class="k">Mouse</span> orbit · <span class="k">Scroll</span> zoom<br>
+  <span id="stat" style="color:#8b93a7"></span>
+</div>
+
+<div class="row">
+  <input id="url" placeholder="character .glb URL (optional)" />
+  <button id="load-btn">Load</button>
+</div>
+
+<div id="joy"><div id="knob"></div></div>
+<button id="jump">JUMP</button>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ---------------------------------------------------------------
+   CHARACTER CONFIG  — this is the "detailed settings" block.
+   Every generated/scanned asset ships with one of these
+   (see character-schema.json). The controller below reads it.
+----------------------------------------------------------------*/
+const CONFIG = {
+  name: "gWave Avatar",
+  glbUrl: "",                       // set via input, else a capsule placeholder is used
+  physics: { moveSpeed: 3.2, runSpeed: 6.0, jumpForce: 6.2, gravity: -18, turnSpeed: 12,
+             radius: 0.3, height: 1.7 },
+  camera:  { mode: "thirdPerson", distance: 5, shoulder: 0.7, height: 1.5 },
+  animations: { idle: "Idle", walk: "Walk", run: "Run", jump: "Jump" },
+  transform: { scale: 1.0, faceDirection: "+Z" }
+};
+
+// ---------------- renderer / scene ----------------
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0e1420);
+scene.fog = new THREE.Fog(0x0e1420, 30, 90);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.05).texture;
+
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 500);
+
+const sun = new THREE.DirectionalLight(0xfff2e0, 2.4);
+sun.position.set(12,18,8); sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera, { left:-30, right:30, top:30, bottom:-30, near:1, far:80 });
+scene.add(sun, new THREE.HemisphereLight(0x9fc0ff, 0x2a2a30, 0.8));
+
+// ---------------- world ----------------
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(60, 64),
+  new THREE.MeshStandardMaterial({ color:0x18243a, roughness:0.95 })
+);
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+const grid = new THREE.GridHelper(120, 120, 0x2a3a5c, 0x1a2740);
+grid.material.transparent = true; grid.material.opacity = 0.35; scene.add(grid);
+
+// scatter some obstacles / props so the world feels alive
+for (let i=0;i<14;i++){
+  const h = 1 + Math.random()*3;
+  const box = new THREE.Mesh(
+    new THREE.BoxGeometry(1+Math.random()*2, h, 1+Math.random()*2),
+    new THREE.MeshStandardMaterial({ color:new THREE.Color().setHSL(0.55+Math.random()*0.1,0.4,0.4), roughness:0.7 })
+  );
+  const a = Math.random()*Math.PI*2, r = 8+Math.random()*32;
+  box.position.set(Math.cos(a)*r, h/2, Math.sin(a)*r);
+  box.castShadow = box.receiveShadow = true; scene.add(box);
+}
+
+// ---------------- character ----------------
+const player = new THREE.Group(); scene.add(player);
+let mixer = null, actions = {}, currentAction = null, model = null;
+const clock = new THREE.Clock();
+
+function placeholderAvatar(){
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.CapsuleGeometry(CONFIG.physics.radius, CONFIG.physics.height-2*CONFIG.physics.radius, 6, 12),
+    new THREE.MeshStandardMaterial({ color:0x5aa9ff, roughness:0.4, metalness:0.1 }));
+  body.position.y = CONFIG.physics.height/2; body.castShadow = true;
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.12,0.3,12),
+    new THREE.MeshStandardMaterial({ color:0x7de3c3 }));
+  nose.rotation.x = Math.PI/2; nose.position.set(0, CONFIG.physics.height*0.7, CONFIG.physics.radius+0.1);
+  g.add(body, nose);
+  return g;
+}
+
+function fitToHeight(obj, targetH){
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3());
+  const s = targetH / (size.y || 1);
+  obj.scale.setScalar(s * CONFIG.transform.scale);
+  const box2 = new THREE.Box3().setFromObject(obj);
+  obj.position.y -= box2.min.y;           // feet on ground
+  if (CONFIG.transform.faceDirection === "-Z") obj.rotation.y = Math.PI;
+}
+
+function switchAction(name){
+  const next = actions[name];
+  if (!next || next === currentAction) return;
+  next.reset().fadeIn(0.2).play();
+  if (currentAction) currentAction.fadeOut(0.2);
+  currentAction = next;
+}
+
+function setModel(obj, gltf){
+  if (model) player.remove(model);
+  model = obj; player.add(model);
+  fitToHeight(model, CONFIG.physics.height);
+  model.traverse(o => { if (o.isMesh){ o.castShadow = true; } });
+
+  mixer = null; actions = {}; currentAction = null;
+  if (gltf && gltf.animations && gltf.animations.length){
+    mixer = new THREE.AnimationMixer(model);
+    const map = { idle:CONFIG.animations.idle, walk:CONFIG.animations.walk,
+                  run:CONFIG.animations.run, jump:CONFIG.animations.jump };
+    for (const [key, clipName] of Object.entries(map)){
+      const clip = THREE.AnimationClip.findByName(gltf.animations, clipName) ||
+                   gltf.animations.find(c => c.name.toLowerCase().includes(key));
+      if (clip) actions[key] = mixer.clipAction(clip);
+    }
+    if (!actions.idle && gltf.animations[0]) actions.idle = mixer.clipAction(gltf.animations[0]);
+    switchAction('idle');
+  }
+  document.getElementById('load').classList.add('hide');
+}
+
+const loader = new GLTFLoader();
+function loadCharacter(url){
+  if (!url){ setModel(placeholderAvatar(), null); return; }
+  document.getElementById('load').classList.remove('hide');
+  loader.load(url, g => setModel(g.scene, g),
+    undefined, err => { console.error(err); setModel(placeholderAvatar(), null); });
+}
+loadCharacter(CONFIG.glbUrl);
+
+// ---------------- input ----------------
+const keys = {};
+addEventListener('keydown', e => keys[e.code] = true);
+addEventListener('keyup',   e => keys[e.code] = false);
+
+// third-person orbit
+let camYaw = 0, camPitch = 0.35, camDist = CONFIG.camera.distance, dragging = false, px=0, py=0;
+canvas.addEventListener('pointerdown', e => { dragging = true; px=e.clientX; py=e.clientY; });
+addEventListener('pointerup',   () => dragging = false);
+addEventListener('pointermove', e => {
+  if (!dragging) return;
+  camYaw   -= (e.clientX-px)*0.005; camPitch -= (e.clientY-py)*0.005;
+  camPitch = Math.max(-0.3, Math.min(1.2, camPitch)); px=e.clientX; py=e.clientY;
+});
+addEventListener('wheel', e => { camDist = Math.max(2, Math.min(12, camDist + e.deltaY*0.01)); });
+
+// mobile joystick
+let joyVec = {x:0,y:0};
+const joy = document.getElementById('joy'), knob = document.getElementById('knob');
+joy.addEventListener('pointerdown', joyMove); joy.addEventListener('pointermove', joyMove);
+joy.addEventListener('pointerup', () => { joyVec={x:0,y:0}; knob.style.left='35px'; knob.style.top='35px'; });
+function joyMove(e){ if (e.buttons===0 && e.type==='pointermove') return;
+  const r=joy.getBoundingClientRect(); let dx=e.clientX-r.left-60, dy=e.clientY-r.top-60;
+  const d=Math.hypot(dx,dy), m=45; if (d>m){ dx=dx/d*m; dy=dy/d*m; }
+  knob.style.left=(35+dx)+'px'; knob.style.top=(35+dy)+'px'; joyVec={x:dx/m,y:dy/m}; }
+document.getElementById('jump').addEventListener('pointerdown', () => keys['Space']=true);
+document.getElementById('jump').addEventListener('pointerup',   () => keys['Space']=false);
+
+// ---------------- character controller (physics-lite) ----------------
+let velY = 0, grounded = true;
+const tmp = new THREE.Vector3();
+const stat = document.getElementById('stat');
+
+function update(dt){
+  const P = CONFIG.physics;
+  // desired move direction in camera space
+  let ix = (keys['KeyD']?1:0) - (keys['KeyA']?1:0) + joyVec.x;
+  let iz = (keys['KeyS']?1:0) - (keys['KeyW']?1:0) + joyVec.y;
+  const running = keys['ShiftLeft'] || keys['ShiftRight'];
+  const speed = running ? P.runSpeed : P.moveSpeed;
+
+  const moving = Math.abs(ix)+Math.abs(iz) > 0.01;
+  if (moving){
+    const len = Math.hypot(ix,iz); ix/=len; iz/=len;
+    // move relative to camera yaw
+    const dirX = ix*Math.cos(camYaw) - iz*Math.sin(camYaw);
+    const dirZ = ix*Math.sin(camYaw) + iz*Math.cos(camYaw);
+    player.position.x += dirX * speed * dt;
+    player.position.z += dirZ * speed * dt;
+    // face movement direction (smooth)
+    const target = Math.atan2(dirX, dirZ);
+    let d = target - player.rotation.y;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    player.rotation.y += d * Math.min(1, P.turnSpeed*dt);
+  }
+
+  // gravity + jump
+  if (grounded && keys['Space']){ velY = P.jumpForce; grounded = false; switchAction('jump'); }
+  velY += P.gravity * dt;
+  player.position.y += velY * dt;
+  if (player.position.y <= 0){ player.position.y = 0; velY = 0; grounded = true; }
+
+  // keep inside the arena
+  const r = Math.hypot(player.position.x, player.position.z);
+  if (r > 58){ player.position.x *= 58/r; player.position.z *= 58/r; }
+
+  // animation state
+  if (grounded) switchAction(moving ? (running ? 'run' : 'walk') : 'idle');
+  if (mixer) mixer.update(dt);
+
+  // camera follow (third person)
+  const cx = Math.sin(camYaw)*Math.cos(camPitch)*camDist;
+  const cy = Math.sin(camPitch)*camDist + CONFIG.camera.height;
+  const cz = Math.cos(camYaw)*Math.cos(camPitch)*camDist;
+  tmp.set(player.position.x - cx, player.position.y + cy, player.position.z - cz);
+  camera.position.lerp(tmp, 1 - Math.pow(0.001, dt));
+  camera.lookAt(player.position.x, player.position.y + CONFIG.camera.height, player.position.z);
+
+  stat.textContent = `pos ${player.position.x.toFixed(1)}, ${player.position.z.toFixed(1)} · ${grounded?(moving?(running?'run':'walk'):'idle'):'air'}`;
+}
+
+// ---------------- loop ----------------
+function resize(){
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w,h,false); camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+function tick(){
+  const dt = Math.min(clock.getDelta(), 0.05);
+  update(dt);
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+tick();
+
+// load button (paste any GLB URL from the generator's /outputs/...)
+document.getElementById('load-btn').addEventListener('click', () => {
+  const u = document.getElementById('url').value.trim();
+  CONFIG.glbUrl = u; loadCharacter(u);
+});
+</script>
+</body>
+</html>
