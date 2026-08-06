@@ -139,6 +139,24 @@
 
 ## Changelog
 
+- 2026-08-06 (engine): **Phase 1 — ECS core refactor shipped.** /engine
+  is now the modular engine (public/engine/src/): core (World/Entity/
+  System/EventBus + fixed-timestep loop with alpha interpolation),
+  physics (Rapier CDN + KinematicCharacterController with autostep/
+  snap-to-ground, AABB-lite fallback, one shared api), script (actions
+  + BehaviorSystem: Rotator/Floater/MovingPlatform(waypoints+dx/dz)/
+  Collectible(respawn)/Hazard(knockback)/Goal/Checkpoint/TriggerZone/
+  NPCDialogue), render (RenderSystem mirrors ECS→three, async GLB with
+  auto-normalize + AnimationMixer), input (kb/touch/gamepad → one axis),
+  camera (third-person spring), ui (event-bound HUD + WebAudio SFX),
+  serialize (.gwave.json v2 + v1 auto-upgrade), editor (palette,
+  raycast pick, TransformControls writing BACK into components,
+  hierarchy/properties/behavior panels, ★ player start, save/load).
+  Play = snapshot → physics bodies + player spawn + 3 play systems;
+  Stop = exact snapshot restore. Old single-file seed kept at
+  /engine/mvp.html. Next: Phase 2 animator/audio polish → Phase 3
+  Colyseus multiplayer.
+
 - 2026-08-05 (engine): **gWave Game Engine MVP live at gwave.cc/engine.**
   Uploaded gwave3d seed integrated as static pages: /engine (editor +
   play — object palette, TransformControls gizmo, hierarchy/properties/
