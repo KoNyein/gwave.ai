@@ -20,6 +20,8 @@ export function saveScene(world, meta) {
         glbUrl: m.glbUrl,
         isCharacter: m.isCharacter || undefined,
         animLib: m.animLib || undefined,
+        cullDistance: m.cullDistance || undefined,
+        lod: Array.isArray(m.lod) && m.lod.length ? m.lod : undefined,
       },
       transform: {
         pos: [...t.pos],

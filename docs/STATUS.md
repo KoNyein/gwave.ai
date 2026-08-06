@@ -139,6 +139,15 @@
 
 ## Changelog
 
+- 2026-08-06 (engine): **Phase 4 — asset pipeline.** Draco geometry
+  decompression + KTX2/Basis texture transcoding wired into the shared
+  GLTFLoader (decoders from the same three@0.168 CDN, KTX2 GPU-format
+  detection hooked from main). Distance streaming: MeshRef.cullDistance
+  hides objects beyond the radius (editor number field, persisted).
+  THREE.LOD support: MeshRef.lod = [{url, distance}] loads each GLB
+  level and switches per camera distance. RenderSystem now takes the
+  camera for LOD/culling.
+
 - 2026-08-06 (engine): **Phase 3 — multiplayer.** New gwave-engine-server
   workspace (plain ws matching the drone-server pattern): rooms with
   auto-create/GC, 20Hz snapshots, envelope speed validation (teleports
