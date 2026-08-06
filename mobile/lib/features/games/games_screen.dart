@@ -28,6 +28,10 @@ class _GamesScreenState extends State<GamesScreen> {
   ///   မကိုင်ဘူး၊ ကိုင်ရင်လည်း WebView ကို တိုက်ရိုက်ဖွင့်လို့ ကျော်လို့ရမယ်။
   ///   ၁၈+ မဟုတ်သူက အဲဒီစာမျက်နှာကနေ `/restricted` ကို ရောက်သွားမယ်။
   static const _builtins = <(String, String, String, String)>[
+    ("🚁", "GWAVE DRONE", "FPV drone + FPS · online", "/drone/index.html"),
+    ("🎬", "GWAVE STUDIO", "ကိုယ်ပိုင် 3D game ဆောက် · online", "/engine/studio.html"),
+    ("🔫", "GWAVE STRIKE", "5v5 FPS · scan မျက်နှာနဲ့", "/strike/"),
+    ("🧬", "3D Avatar", "မျက်နှာ + ကိုယ်ခန္ဓာ scan", "/profile/avatar"),
     ("🙈", "ဝှက်တမ်း", "ပုန်းတမ်း ရှာတမ်း · အားလုံး", "/games/arena"),
     ("🎯", "Assassin", "လျှို့ဝှက်ပစ်မှတ် · ၁၈+", "/games/assassin"),
     ("🚁", "Drone Champions", "FPV drone ပြိုင်ပွဲ", "/games/drone-sim"),
@@ -55,8 +59,13 @@ class _GamesScreenState extends State<GamesScreen> {
   }
 
   /// Web features open in the signed-in in-app browser — never the external
-  /// browser, where no session exists.
-  Future<void> _openWeb(String path) => openWeb(context, path);
+  /// browser, where no session exists. FPS titles get game mode: fullscreen
+  /// immersive landscape (an FPS in a portrait strip under a toolbar was
+  /// unplayable — the view never fit the screen).
+  static const _landscapeGames = ["/strike/", "/drone/index.html"];
+
+  Future<void> _openWeb(String path) =>
+      openWeb(context, path, game: _landscapeGames.contains(path));
 
   @override
   Widget build(BuildContext context) {

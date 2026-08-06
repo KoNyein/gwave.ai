@@ -7,6 +7,7 @@ import '../../core/models.dart';
 import '../../core/theme.dart';
 import '../../core/video_audio.dart';
 import '../../widgets/common.dart';
+import 'bridge/camera_bridge_screen.dart';
 
 /// Native CCTV: the user's cameras from `user_cameras`. Tapping a camera with a
 /// public HLS URL opens a full-screen live viewer.
@@ -46,7 +47,17 @@ class _CctvScreenState extends State<CctvScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("CCTV")),
+      appBar: AppBar(title: const Text("CCTV"), actions: [
+        // Camera Bridge: relay a router-less WiFi camera out to the server.
+        IconButton(
+          tooltip: "ကင်မရာတံတား",
+          icon: const Icon(Icons.podcasts),
+          onPressed: () => Navigator.of(context)
+              .push(MaterialPageRoute(
+                  builder: (_) => const CameraBridgeScreen()))
+              .then((_) => _load()),
+        ),
+      ]),
       body: RefreshIndicator(
         color: GwColors.primary,
         onRefresh: _load,
@@ -67,7 +78,8 @@ class _CctvScreenState extends State<CctvScreen> {
                         GwEmpty(
                             icon: Icons.videocam_off_outlined,
                             title: "No cameras yet",
-                            subtitle: "Add a camera on gwave.cc"),
+                            subtitle:
+                                "gwave.cc မှာ ထည့်ပါ — router မရှိတဲ့ WiFi ကင်မရာဆိုရင် ညာဘက်အပေါ်က 📡 ခလုတ်နဲ့ ကင်မရာတံတား သုံးပါ"),
                       ])
                     : GridView.builder(
                         padding: const EdgeInsets.all(14),

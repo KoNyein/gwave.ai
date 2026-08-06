@@ -172,15 +172,27 @@ class _MetaverseScreenState extends State<MetaverseScreen> {
       await android.setOnPlatformPermissionRequest((request) async {
         final wantsMic =
             request.types.contains(WebViewPermissionResourceType.microphone);
-        if (!wantsMic) {
+        // 🤳 Metaverse Go Live ရဲ့ host ကင်မရာ PiP — web က getUserMedia(video)
+        // တောင်းလာရင် ကင်မရာပါ ခွင့်ပြုပေးရမယ်။ အရင်က mic မဟုတ်တာ အကုန်
+        // deny လုပ်လို့ ကင်မရာက ဘယ်တော့မှ မရဘူး။
+        final wantsCam =
+            request.types.contains(WebViewPermissionResourceType.camera);
+        if (!wantsMic && !wantsCam) {
           await request.deny();
           return;
         }
         // ★ Android permission ကို **အရင်တောင်း** → ရမှ WebView ကို grant။
-        // တန်းပြီး grant လုပ်ရင် Android က ငြင်းပြီး voice chat က
-        // တိတ်တိတ်ကြီး အလုပ်မလုပ်ဘဲ ဖြစ်မယ်။
-        final status = await Permission.microphone.request();
-        if (status.isGranted) {
+        // တန်းပြီး grant လုပ်ရင် Android က ငြင်းပြီး voice chat / ကင်မရာက
+        // တိတ်တိတ်ကြီး အလုပ်မလုပ်ဘဲ ဖြစ်မယ်။ တောင်းတဲ့ type အားလုံး
+        // ရမှသာ grant — WebView request က တစ်စိတ်တစ်ပိုင်း grant မရဘူး။
+        var granted = true;
+        if (wantsMic) {
+          granted = (await Permission.microphone.request()).isGranted && granted;
+        }
+        if (wantsCam) {
+          granted = (await Permission.camera.request()).isGranted && granted;
+        }
+        if (granted) {
           await request.grant();
         } else {
           await request.deny();

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -15,20 +17,27 @@ import '../../core/theme.dart';
 /// cookie before loading: the web app reads exactly that cookie to recognise
 /// a session, and the token is the same ES256 JWT the app already holds.
 class WebScreen extends StatefulWidget {
-  const WebScreen({super.key, required this.path, this.title});
+  const WebScreen({super.key, required this.path, this.title, this.game = false});
 
   /// Path on gwave.cc ("/gpay") or an absolute https URL (Stripe checkout).
   final String path;
   final String? title;
+
+  /// Game mode: fullscreen immersive + landscape, no app bar — an FPS in a
+  /// portrait strip under a toolbar is unplayable. A small floating ✕ gets
+  /// the user back out.
+  final bool game;
 
   @override
   State<WebScreen> createState() => _WebScreenState();
 }
 
 /// Open [path] inside the app. Use everywhere instead of launching a browser.
-Future<void> openWeb(BuildContext context, String path, {String? title}) {
+Future<void> openWeb(BuildContext context, String path,
+    {String? title, bool game = false}) {
   return Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => WebScreen(path: path, title: title)),
+    MaterialPageRoute(
+        builder: (_) => WebScreen(path: path, title: title, game: game)),
   );
 }
 
@@ -43,7 +52,23 @@ class _WebScreenState extends State<WebScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.game) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
     _boot();
+  }
+
+  @override
+  void dispose() {
+    if (widget.game) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setPreferredOrientations([]);
+    }
+    super.dispose();
   }
 
   Future<void> _boot() async {
@@ -101,8 +126,34 @@ class _WebScreenState extends State<WebScreen> {
     // player the app hands browser broadcasts off to) instead of waiting for a
     // tap.
     if (controller.platform is AndroidWebViewController) {
-      (controller.platform as AndroidWebViewController)
-          .setMediaPlaybackRequiresUserGesture(false);
+      final android = controller.platform as AndroidWebViewController;
+      await android.setMediaPlaybackRequiresUserGesture(false);
+      // Camera/mic for web pages that capture — the 3D avatar face/body scan
+      // (/profile/avatar) is dead without this. Same order as the metaverse
+      // screen: Android runtime permission FIRST, only then grant the WebView
+      // request (granting first makes Android deny silently).
+      await android.setOnPlatformPermissionRequest((request) async {
+        final wantsMic =
+            request.types.contains(WebViewPermissionResourceType.microphone);
+        final wantsCam =
+            request.types.contains(WebViewPermissionResourceType.camera);
+        if (!wantsMic && !wantsCam) {
+          await request.deny();
+          return;
+        }
+        var granted = true;
+        if (wantsMic) {
+          granted = (await Permission.microphone.request()).isGranted && granted;
+        }
+        if (wantsCam) {
+          granted = (await Permission.camera.request()).isGranted && granted;
+        }
+        if (granted) {
+          await request.grant();
+        } else {
+          await request.deny();
+        }
+      });
     }
     if (mounted) setState(() => _web = controller);
   }
@@ -118,6 +169,45 @@ class _WebScreenState extends State<WebScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.game) {
+      // Fullscreen game surface: webview edge-to-edge, floating ↻ / ✕ only.
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop && context.mounted) Navigator.of(context).pop();
+        },
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: _web == null
+                    ? const Center(
+                        child:
+                            CircularProgressIndicator(color: GwColors.primary))
+                    : WebViewWidget(controller: _web!),
+              ),
+              // Top-LEFT, beside the games' own ⚙ gear — the top-right corner
+              // is where STRIKE's minimap lives (user screenshot: the chips
+              // sat right on top of it).
+              Positioned(
+                top: 8,
+                left: 52,
+                child: SafeArea(
+                  child: Row(
+                    children: [
+                      _gameChip(Icons.refresh, () => _web?.reload()),
+                      const SizedBox(width: 8),
+                      _gameChip(Icons.close, () => Navigator.of(context).pop()),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -154,6 +244,23 @@ class _WebScreenState extends State<WebScreen> {
             ? const Center(
                 child: CircularProgressIndicator(color: GwColors.primary))
             : WebViewWidget(controller: _web!),
+      ),
+    );
+  }
+
+  Widget _gameChip(IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.45),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Icon(icon, size: 19, color: Colors.white),
       ),
     );
   }

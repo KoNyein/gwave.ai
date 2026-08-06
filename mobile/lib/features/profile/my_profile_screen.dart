@@ -218,6 +218,23 @@ class MyProfileScreen extends StatelessWidget {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      // 3D scan avatar editor (web) — the face/body scan that
+                      // dresses the metaverse rooms AND the STRIKE soldiers.
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _openWeb(context, "/profile/avatar"),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: GwColors.primary,
+                            side: const BorderSide(color: GwColors.primary),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          icon: const Text("🧬", style: TextStyle(fontSize: 16)),
+                          label: const Text(
+                              "3D Avatar ဆောက်မယ် (မျက်နှာ + ကိုယ်ခန္ဓာ scan)"),
+                        ),
+                      ),
                       const SizedBox(height: 6),
                       Divider(color: GwColors.lineOf(context), height: 20),
                     ],
