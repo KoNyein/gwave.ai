@@ -22,7 +22,14 @@ export type AvatarConfig = {
   };
   /// ★ အများဆုံး ၃ ခု — ဒီထက်များရင် ရုပ်ပျက်ပြီး draw call လည်း တက်တယ်
   accessories: string[];
+  /// 📸 Ready Player Me avatar GLB (selfie ကနေ ထုတ်ထားတဲ့ ဓာတ်ပုံ-realistic
+  /// rigged body) — ရှိရင် room ထဲမှာ kit rig အစား ဒါကို သုံးတယ်။
+  rpmUrl?: string | null;
 };
+
+/// RPM GLB URL အစစ်သာ — မဟုတ်ရင် တခြား host က model/script တင်လို့ရသွားမယ်
+export const RPM_URL_RE =
+  /^https:\/\/models\.readyplayer\.me\/[A-Za-z0-9]+\.glb(\?[\w=&.-]*)?$/;
 
 export const MAX_ACCESSORIES = 3;
 
@@ -136,5 +143,11 @@ export function sanitizeAvatar(raw: unknown, owned: Set<string>): AvatarConfig {
     accessories: accessories
       .filter((a) => FREE_ACCESSORIES.has(a) || owned.has(a))
       .slice(0, MAX_ACCESSORIES),
+    rpmUrl:
+      typeof r.rpmUrl === "string" &&
+      r.rpmUrl.length <= 300 &&
+      RPM_URL_RE.test(r.rpmUrl)
+        ? r.rpmUrl
+        : null,
   };
 }

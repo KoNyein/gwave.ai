@@ -68,6 +68,8 @@ export function createScanFaces(): ScanFaces {
   };
 
   const attach = (avatar: Avatar, scene: THREE.Group) => {
+    // 📸 RPM photo body — မျက်နှာက GLB ထဲ ပါပြီးသားမို့ plate မတပ်ဘူး
+    if (avatar.group.userData.noScanFace) return;
     // ထပ်တပ်ပြီးသားလား — head ထဲ scanned-face ရှိရင် မတပ်တော့ဘူး
     const head = avatar.attach.head;
     if (head.getObjectByName("scanface-plate")) return;

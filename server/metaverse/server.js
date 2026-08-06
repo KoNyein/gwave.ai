@@ -442,6 +442,9 @@ function onBusMessage(roomId, msg, origin) {
     case "variant":
       rooms.setGhost(roomId, msg.id, { v: msg.v ?? null }, origin);
       break;
+    case "rpm":
+      rooms.setGhost(roomId, msg.id, { rpm: msg.rpm ?? null }, origin);
+      break;
     case "chat":
     case "weather":
     case "vstate":
@@ -521,6 +524,8 @@ wss.on("connection", async (ws, req) => {
     /// 🧍 Avatar variant (a-r) — client ရွေးပြီး ပို့တယ်။ Everyone sees
     /// the SAME body the owner sees (self/remote mismatch fix).
     v: null,
+    /// 📸 Ready Player Me GLB url — photo avatar (validated like pic)
+    rpm: null,
     lastMoveAt: Date.now(),
     lastChatAt: 0,
     // ── persistence ───────────────────────────────────────────────────────
@@ -634,6 +639,7 @@ wss.on("connection", async (ws, req) => {
         authed: player.authed,
         pic: player.pic,
         v: player.v,
+        rpm: player.rpm,
       },
     },
     player.id,
@@ -774,6 +780,19 @@ wss.on("connection", async (ws, req) => {
           typeof msg.v === "string" && /^[a-r]$/.test(msg.v) ? msg.v : null;
         player.v = v;
         emit(player.room, { type: "variant", id: player.id, v }, player.id);
+        break;
+      }
+
+      // 📸 Ready Player Me GLB — models.readyplayer.me က .glb သာ လက်ခံ
+      case "rpm": {
+        const u =
+          typeof msg.url === "string" &&
+          msg.url.length <= 300 &&
+          /^https:\/\/models\.readyplayer\.me\/[A-Za-z0-9]+\.glb(\?[\w=&.-]*)?$/.test(msg.url)
+            ? msg.url
+            : null;
+        player.rpm = u;
+        emit(player.room, { type: "rpm", id: player.id, rpm: u }, player.id);
         break;
       }
 

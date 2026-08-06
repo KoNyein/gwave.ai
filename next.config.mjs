@@ -150,10 +150,10 @@ const csp = [
   // (/drone-ws). CSP3 maps 'self' onto wss:// for the same host, but older
   // Safari didn't — the explicit entry keeps multiplayer from silently
   // failing there.
-  `connect-src 'self' wss://gwave.cc https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com https://gwave-media-8acd2816.s3.ap-southeast-1.amazonaws.com https://d10t7bibe827e7.cloudfront.net https://d2fvsrmhrcdf.cloudfront.net https://*.tile.openstreetmap.org https://*.live-video.net wss://*.live-video.net https://*.chime.aws wss://*.chime.aws${cctvHlsSrc}${livekitConnectSrc}${googleMapsConnectSrc}${kvsConnectSrc}${audioMediaSrc}${mvConnectSrc}`,
+  `connect-src 'self' wss://gwave.cc https://models.readyplayer.me https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.mux.com https://*.litix.io https://cdn.jsdelivr.net https://accounts.google.com https://gwave-media-8acd2816.s3.ap-southeast-1.amazonaws.com https://d10t7bibe827e7.cloudfront.net https://d2fvsrmhrcdf.cloudfront.net https://*.tile.openstreetmap.org https://*.live-video.net wss://*.live-video.net https://*.chime.aws wss://*.chime.aws${cctvHlsSrc}${livekitConnectSrc}${googleMapsConnectSrc}${kvsConnectSrc}${audioMediaSrc}${mvConnectSrc}`,
   // 'self' for sandboxed srcdoc iframes (/learn playground & games);
   // youtube-nocookie for embedded video lessons.
-  `frame-src 'self' https://www.youtube-nocookie.com https://accounts.google.com${cctvFrameSrc}${gameFrameSrc}${googleMapsSrc}`,
+  `frame-src 'self' https://*.readyplayer.me https://www.youtube-nocookie.com https://accounts.google.com${cctvFrameSrc}${gameFrameSrc}${googleMapsSrc}`,
   // 'self' (was 'none'): the metaverse Game Zone opens our own game pages
   // (/drone, /strike, /games/*) in a same-origin overlay iframe. Cross-origin
   // framing stays forbidden, so clickjacking protection is unchanged.
