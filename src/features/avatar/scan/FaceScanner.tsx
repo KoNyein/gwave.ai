@@ -30,7 +30,19 @@ export function FaceScanner({
   onDone: (r: { faceGlbUrl: string; faceThumbUrl: string }) => void;
   onClose: () => void;
 }) {
-  const { videoRef, state: camState, start, stop } = useCamera();
+  const {
+    videoRef,
+    state: camState,
+    facing,
+    start,
+    stop,
+    flip,
+    torchSupported,
+    torchOn,
+    setTorch,
+  } = useCamera();
+  // mirror only the selfie camera — a mirrored back camera reads backwards
+  const mirror = facing === "user" ? " -scale-x-100" : "";
   const [step, setStep] = useState<Step>("consent");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -359,17 +371,42 @@ export function FaceScanner({
         {step === "camera" && (
           <div className="space-y-3">
             <div className="relative overflow-hidden rounded-xl bg-black">
-              {/* Selfie preview — mirror ပြ (မြင်နေကျ ပုံစံ) */}
+              {/* Preview — selfie ကင်မရာမှသာ mirror ပြ (မြင်နေကျ ပုံစံ) */}
               <video
                 ref={videoRef}
-                className="aspect-[3/4] w-full -scale-x-100 object-cover"
+                className={`aspect-[3/4] w-full object-cover${mirror}`}
               />
               {/* AR overlay: live face mesh + progress ring + scan sweep —
                   same mirror + cover crop as the video so it stays aligned */}
               <canvas
                 ref={overlayRef}
-                className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100 object-cover"
+                className={`pointer-events-none absolute inset-0 h-full w-full object-cover${mirror}`}
               />
+              {/* Camera controls: 🔁 front/back (တခြားသူက ရိုက်ပေးရင် back
+                  camera က ပိုကြည်တယ်), 🔦 torch when the device has one */}
+              <div className="absolute right-2 top-2 z-10 flex flex-col gap-2">
+                <button
+                  onClick={() => void flip()}
+                  disabled={busy}
+                  title={facing === "user" ? "နောက်ကင်မရာ" : "ရှေ့ကင်မရာ"}
+                  className="rounded-full border border-white/25 bg-black/50 px-2.5 py-2 text-base backdrop-blur-sm disabled:opacity-40"
+                >
+                  🔁
+                </button>
+                {torchSupported && (
+                  <button
+                    onClick={() => void setTorch(!torchOn)}
+                    title="ဓာတ်မီး"
+                    className={`rounded-full border px-2.5 py-2 text-base backdrop-blur-sm ${
+                      torchOn
+                        ? "border-amber-300 bg-amber-400/80"
+                        : "border-white/25 bg-black/50"
+                    }`}
+                  >
+                    🔦
+                  </button>
+                )}
+              </div>
               {/* Corner brackets — scanner-viewfinder framing */}
               <div className="pointer-events-none absolute inset-3">
                 <div className="absolute left-0 top-0 h-6 w-6 rounded-tl-lg border-l-2 border-t-2 border-emerald-400/80" />
