@@ -62,6 +62,14 @@ export function createRiggedHuman(variant: string): Avatar {
   const headAttach = new THREE.Group();
   /// 🧍 Body morphs (scan) — bones ရောက်မှ တပ်မယ့် queue
   let pendingMorphs: Record<string, number> | null = null;
+  /// Normalize ပြီးနောက် inner ရဲ့ အခြေခံ scale — height morph က ဒါကို မြှောက်
+  let baseScale = KIT_SCALE;
+
+  /// 🧍 Adult proportions (user: "ခေါင်းကြီး ကိုယ်သေး ကာတွန်းဖြစ်နေတယ်")။
+  /// Kenney kit rig က chibi (~၃ ခေါင်းအမြင့်) — လူကြီးအချိုးအစား (~၇ ခေါင်း)
+  /// ဆီ ချဉ်းကပ်အောင် bone scale ပြင်တယ်: ခေါင်းချုံ့၊ ခြေထောက်/လက်/ကိုယ်
+  /// ဆန့်။ Mesh က low-poly မို့ stretch က သည်းခံနိုင်တယ်။
+  const REAL = { head: 0.55, legY: 1.5, armY: 1.3, torsoY: 1.15, torsoXZ: 0.95 };
 
   /// Anatomy-approximate bone scaling: scan morph weights → skeleton။
   /// Kit rig ရဲ့ bone နာမည်တွေ (arm-left/right, leg-left/right, head,
@@ -73,22 +81,22 @@ export function createRiggedHuman(variant: string): Avatar {
       return;
     }
     const w = (k: string) => Math.max(-1, Math.min(1, Number(m[k]) || 0));
-    inner.scale.setScalar(KIT_SCALE * (1 + w("height") * 0.08));
+    inner.scale.setScalar(baseScale * (1 + w("height") * 0.08));
     const grab = (n: string) => model?.getObjectByName(n) ?? null;
     const head = grab("head");
-    if (head) head.scale.setScalar(1 + w("headScale") * 0.15);
+    if (head) head.scale.setScalar(REAL.head * (1 + w("headScale") * 0.15));
     for (const n of ["arm-left", "arm-right"]) {
       const b = grab(n);
-      if (b) b.scale.y = 1 + w("armLength") * 0.12;
+      if (b) b.scale.y = REAL.armY * (1 + w("armLength") * 0.12);
     }
     for (const n of ["leg-left", "leg-right"]) {
       const b = grab(n);
-      if (b) b.scale.y = 1 + w("legLength") * 0.12;
+      if (b) b.scale.y = REAL.legY * (1 + w("legLength") * 0.12);
     }
     const torso = grab("torso") ?? model;
     if (torso) {
-      torso.scale.x = 1 + w("shoulderWidth") * 0.14;
-      torso.scale.z = 1 + (w("waist") + w("weight")) * 0.08;
+      torso.scale.x = REAL.torsoXZ * (1 + w("shoulderWidth") * 0.14);
+      torso.scale.z = REAL.torsoXZ * (1 + (w("waist") + w("weight")) * 0.08);
     }
   };
   group.userData.setMorphs = applyMorphs;
@@ -136,6 +144,31 @@ export function createRiggedHuman(variant: string): Avatar {
           model.getObjectByName("Head") ??
           model;
         headBone.add(headAttach);
+        // ── လူကြီးအချိုးအစား preset ──
+        const bone = (n: string) => model?.getObjectByName(n) ?? null;
+        bone("head")?.scale.setScalar(REAL.head);
+        for (const n of ["leg-left", "leg-right"]) {
+          bone(n)?.scale.set(1.02, REAL.legY, 1.02);
+        }
+        for (const n of ["arm-left", "arm-right"]) {
+          bone(n)?.scale.set(0.95, REAL.armY, 0.95);
+        }
+        bone("torso")?.scale.set(REAL.torsoXZ, REAL.torsoY, REAL.torsoXZ);
+        // အမြင့် ~1.78 unit + ခြေဖဝါး မြေပြင်ပေါ် — reshape ပြီးတိုင်း
+        // ပြန်တိုင်းပြီး ချိန်တယ် (leg ဆန့်လိုက်လို့ မြေအောက် မစူးအောင်)
+        inner.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(inner);
+        const h = box.max.y - box.min.y;
+        if (h > 0.01) {
+          const k = 1.78 / h;
+          inner.scale.multiplyScalar(k);
+          baseScale = inner.scale.x;
+          inner.updateMatrixWorld(true);
+          const box2 = new THREE.Box3().setFromObject(inner);
+          const gpos = new THREE.Vector3();
+          group.getWorldPosition(gpos);
+          inner.position.y += gpos.y - box2.min.y;
+        }
         if (pendingMorphs) {
           applyMorphs(pendingMorphs);
           pendingMorphs = null;
