@@ -30,6 +30,12 @@ export class Input {
   private keys = new Set<string>();
   private el: HTMLElement;
 
+  /// Touch devices have no pointer lock — the game is "locked" the moment
+  /// it runs. Without this, `locked` stayed false forever on phones: the
+  /// start overlay never went away and firing was gated off, so no button
+  /// appeared to do anything.
+  touchMode = false;
+
   constructor(el: HTMLElement) {
     this.el = el;
     window.addEventListener("keydown", this.onKey);
@@ -38,12 +44,13 @@ export class Input {
     window.addEventListener("mouseup", this.onMouseUp);
     window.addEventListener("mousemove", this.onMouseMove);
     el.addEventListener("click", () => {
+      if (this.touchMode) return; // no pointer lock on touch
       if (document.pointerLockElement !== el) el.requestPointerLock();
     });
   }
 
   get locked(): boolean {
-    return document.pointerLockElement === this.el;
+    return this.touchMode || document.pointerLockElement === this.el;
   }
 
   private onKey = (e: KeyboardEvent) => {
