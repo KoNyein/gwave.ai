@@ -960,11 +960,34 @@ export function MetaverseScene() {
           if (typeof d.scanFace === "string" && map.id !== "arena") {
             scanFaces.attachUrl(me, d.scanFace);
           }
-          // 🧍 Scan body morphs — rigged skeleton ကို ကိုယ့်အချိုးအစားချိန်
-          if (d.morphs && typeof d.morphs === "object") {
-            (me.group.userData.setMorphs as
-              | ((m: Record<string, number>) => void)
-              | undefined)?.(d.morphs as Record<string, number>);
+          // 🧍 Scan body morphs — rigged skeleton ကို ကိုယ့်အချိုးအစားချိန်။
+          // 📏 Studio ရဲ့ အရပ် slider (config.body.height) ကို morph ထဲ
+          // ပေါင်းတယ် — user သတ်မှတ်ချက်က scan ထက် ဦးစားပေး။
+          {
+            const hRaw = Number(d.config?.body?.height);
+            const hw =
+              Number.isFinite(hRaw) && hRaw !== 1
+                ? Math.max(-1, Math.min(1, (hRaw - 1) * 10))
+                : undefined;
+            const mm: Record<string, number> = {
+              ...((d.morphs as Record<string, number> | null) ?? {}),
+              ...(hw !== undefined ? { height: hw } : {}),
+            };
+            if (Object.keys(mm).length > 0) {
+              (me.group.userData.setMorphs as
+                | ((m: Record<string, number>) => void)
+                | undefined)?.(mm);
+            }
+          }
+          // 🧍 Variant roaming — တခြားစက်မှာ ရွေးထားတာ ဒီစက်ကို လိုက်စေ
+          // (နောက်တစ်ခါ ဝင်ချိန်/room ပြောင်းချိန် အသက်ဝင်)
+          const cv = d.config?.variant;
+          if (typeof cv === "string" && /^[a-r]$/.test(cv)) {
+            try {
+              window.localStorage.setItem("mv:soldier", cv);
+            } catch {
+              /* private mode */
+            }
           }
           // 📸 RPM photo-avatar — သိမ်းထားရင် kit body ကို လူသားရုပ်စစ်စစ်နဲ့
           // အစားထိုး (social room သာ — arena က soldier game identity)
@@ -3953,10 +3976,6 @@ export function MetaverseScene() {
             setMenu(null);
             setDressing(true);
           }}
-          onPhotoAvatar={() => {
-            setMenu(null);
-            setRpmOpen(true);
-          }}
           onLiveHub={() => {
             setMenu(null);
             setLiveHub(true);
@@ -4008,6 +4027,10 @@ export function MetaverseScene() {
       {/* ── Avatar ပြင်ဆင်ရေး ─────────────────────────────────────────── */}
       {dressing && (
         <AvatarCustomiser
+          onPhotoAvatar={() => {
+            setDressing(false);
+            setRpmOpen(true);
+          }}
           onClose={() => {
             setDressing(false);
             // ★ Game room မှာ scene ပြန်မဆောက်ဘူး — ပြန်ဆောက်ရင် WS ပြန်ချိတ်

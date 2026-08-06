@@ -46,6 +46,13 @@ const SPECS: Record<string, Spec> = {
   r: { file: "Xbot", tint: 0xd0b0ff },
 };
 
+/// Studio ရဲ့ ရုပ်ရွေးခန်းအတွက် variant စာရင်း (id + base + tint)
+export const REALISTIC_VARIANTS = Object.entries(SPECS).map(([id, s]) => ({
+  id,
+  file: s.file,
+  tint: s.tint,
+}));
+
 const B = (n: string) => `mixamorig:${n}`;
 
 export function createRealisticHuman(variant: string): Avatar {

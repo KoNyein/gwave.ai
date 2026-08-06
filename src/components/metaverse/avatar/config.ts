@@ -25,6 +25,8 @@ export type AvatarConfig = {
   /// 📸 Ready Player Me avatar GLB (selfie ကနေ ထုတ်ထားတဲ့ ဓာတ်ပုံ-realistic
   /// rigged body) — ရှိရင် room ထဲမှာ kit rig အစား ဒါကို သုံးတယ်။
   rpmUrl?: string | null;
+  /// 🧍 ရွေးထားတဲ့ realistic body variant (a-r) — device ကူးရင် လိုက်ဖို့
+  variant?: string | null;
 };
 
 /// RPM GLB URL အစစ်သာ — မဟုတ်ရင် တခြား host က model/script တင်လို့ရသွားမယ်
@@ -148,6 +150,10 @@ export function sanitizeAvatar(raw: unknown, owned: Set<string>): AvatarConfig {
       r.rpmUrl.length <= 300 &&
       RPM_URL_RE.test(r.rpmUrl)
         ? r.rpmUrl
+        : null,
+    variant:
+      typeof r.variant === "string" && /^[a-r]$/.test(r.variant)
+        ? r.variant
         : null,
   };
 }
