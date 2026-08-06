@@ -1,0 +1,190 @@
+name: Deploy GWAVE ENGINE server
+
+# The engine world server (ws+health :8789) lives on the SAME app EC2
+# box as everything else — the `engine-server` container behind Caddy's `/engine-ws`
+# and `—` routes — mirroring deploy-strike.yml's
+# ECR → SSM pipeline. Fires only when gwave-engine-server/ changes.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "gwave-engine-server/**"
+      - ".github/workflows/deploy-engine-server.yml"
+  pull_request:
+    paths:
+      - "gwave-engine-server/**"
+      - ".github/workflows/deploy-engine-server.yml"
+
+concurrency:
+  group: deploy-engine-server-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ap-southeast-1
+  ECR_REPO: gwave-engine-server
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: gwave-engine-server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      # no build step (plain ESM) — gate on syntax + a boot smoke in off/memory
+      # mode: both processes must come up and /health must answer
+      - run: for f in *.js; do node --check "$f"; done
+      - name: Boot smoke
+        run: |
+          set -euo pipefail
+          AUTH_MODE=off node server.js &
+          PID=$!
+          ok=0
+          for i in $(seq 1 15); do
+            sleep 1
+            if curl -fsS http://127.0.0.1:8789/health >/dev/null; then ok=1; break; fi
+          done
+          kill $PID || true
+          [ "$ok" = "1" ] || { echo "::error::api /health never came up"; exit 1; }
+
+  deploy:
+    # PRs never deploy — main pushes and manual dispatch only.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure the ECR repository exists
+        run: |
+          set -euo pipefail
+          aws ecr describe-repositories --repository-names "$ECR_REPO" \
+            --region "$AWS_REGION" >/dev/null 2>&1 && exit 0
+          echo "creating ECR repository $ECR_REPO"
+          aws ecr create-repository --repository-name "$ECR_REPO" \
+            --image-scanning-configuration scanOnPush=true \
+            --region "$AWS_REGION" >/dev/null
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        working-directory: gwave-engine-server
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          set -euo pipefail
+          docker build --platform linux/amd64 \
+            -t "$REGISTRY/$ECR_REPO:${{ github.sha }}" \
+            -t "$REGISTRY/$ECR_REPO:latest" .
+          docker push "$REGISTRY/$ECR_REPO:${{ github.sha }}"
+          docker push "$REGISTRY/$ECR_REPO:latest"
+
+      - name: Deploy on EC2 via SSM
+        env:
+          INSTANCE_ID: ${{ vars.APP_INSTANCE_ID }}
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          set -euo pipefail
+          [ -n "$INSTANCE_ID" ] || { echo "::error::APP_INSTANCE_ID repo variable is not set"; exit 1; }
+          IMAGE="$REGISTRY/$ECR_REPO:${{ github.sha }}"
+
+          # Same rollback shape as the strike deploy: tag the running image
+          # before swapping, health-gate the new one, put the old one back on
+          # failure. SSM runs as root under dash, so bash comes via heredoc.
+          cat > /tmp/engine-deploy.sh <<EOF
+          set -euo pipefail
+          IMAGE="$IMAGE"
+
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "$REGISTRY"
+          docker pull "\$IMAGE"
+
+          if docker inspect engine-server >/dev/null 2>&1; then
+            PREV=\$(docker inspect --format '{{.Config.Image}}' engine-server)
+            docker tag "\$PREV" engine-prev:rollback
+          else
+            PREV=""
+          fi
+
+          start() {
+            docker rm -f engine-server >/dev/null 2>&1 || true
+            docker run -d --name engine-server --restart unless-stopped \
+              -p 127.0.0.1:8789:8789 \
+              --env-file /etc/gwave-web.env \
+              "\$1"
+          }
+
+          start "\$IMAGE"
+
+          ok=0
+          for i in \$(seq 1 20); do
+            sleep 3
+            if curl -fsS http://127.0.0.1:8789/health >/dev/null; then ok=1; break; fi
+          done
+
+          if [ "\$ok" != "1" ]; then
+            echo "new image failed health check"
+            docker logs --tail 50 engine-server || true
+            if [ -n "\$PREV" ]; then
+              echo "rolling back to \$PREV"
+              start engine-prev:rollback
+            fi
+            exit 1
+          fi
+
+          curl -fsS http://127.0.0.1:8789/health
+          docker image prune -f >/dev/null 2>&1 || true
+          EOF
+
+          # ' = jq's escape for a single quote, so the generated heredoc
+          # marker is QUOTED ('ENGINEEOF') and sh expands nothing inside.
+          jq -Rs '{commands: ["bash <<\u0027ENGINEEOF\u0027\n" + . + "ENGINEEOF\n"]}' \
+            /tmp/engine-deploy.sh > /tmp/engine-params.json
+          CMD_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy $ECR_REPO:${{ github.sha }}" \
+            --parameters file:///tmp/engine-params.json \
+            --query 'Command.CommandId' --output text)
+          echo "SSM CommandId: $CMD_ID"
+
+          STATUS=InProgress
+          for i in $(seq 1 60); do
+            sleep 10
+            STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in Success|Failed|Cancelled|TimedOut) break ;; esac
+            echo "  still $STATUS (${i}0s)"
+          done
+          echo "----- stdout -----"
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query StandardOutputContent --output text
+          echo "----- stderr -----"
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query StandardErrorContent --output text
+          echo "SSM status: $STATUS"
+          [ "$STATUS" = "Success" ] || { echo "::error::engine server deploy failed (rolled back if a previous image existed)"; exit 1; }
+
+      - name: Health check through the domain
+        run: |
+          # The container is health-gated above; this checks the Caddy route.
+          # Warning (not error) because the FIRST rollout lands before the
+          # /engine-ws route exists in /etc/caddy/Caddyfile — add it, then
+          # this goes green on the next run.
+          for i in $(seq 1 10); do
+            if curl -fsS "https://gwave.cc/engine-ws/health"; then exit 0; fi
+            sleep 6
+          done
+          echo "::warning::gwave.cc/engine-ws/health not reachable — is the Caddy /engine-ws route added on the box? (deploy/gwave-engine/README.md)"

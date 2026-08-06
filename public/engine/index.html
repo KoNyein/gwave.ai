@@ -86,6 +86,7 @@
     <input id="file" type="file" accept="application/json" class="hidden" />
     <a href="/engine/mvp.html" style="color:var(--muted);font-size:11px">MVP</a>
     <button id="controls" title="rebind keys">⌨</button>
+    <button id="online" title="multiplayer">🌐 Online</button>
     <button class="play" id="play">▶ Play</button>
   </header>
 
@@ -143,6 +144,10 @@
       <div class="keyhint"><span class="k">WASD</span> move · <span class="k">Shift</span> run · <span class="k">Space</span> jump · <span class="k">E</span> interact · <span class="k">Esc</span> edit</div>
       <div id="pad"><div id="stick"></div></div>
       <button id="btn-jump" data-ui="1">JUMP</button>
+      <!-- 🌐 chat (online play) -->
+      <input id="chat" data-ui="1" placeholder="💬 Enter နှိပ်ပြီး စကားပြော…" autocomplete="off"
+        style="position:absolute;left:16px;top:12px;width:220px;pointer-events:auto;display:none;
+        background:rgba(12,15,22,.8);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:7px 10px" />
     </div>
   </main>
 

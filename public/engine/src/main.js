@@ -16,6 +16,7 @@ import { createFollowCam } from "./camera/camera.js";
 import { createHud } from "./ui/hud.js";
 import { createAudio3d } from "./audio/audio3d.js";
 import { createEditor } from "./editor/editor.js";
+import { NetSystem } from "./net/net.js";
 import { saveScene } from "./serialize/scene.js";
 
 const $ = (id) => document.getElementById(id);
@@ -212,6 +213,39 @@ $("controls").onclick = () => {
   $("controls-panel").classList.toggle("hidden");
   renderControls();
 };
+
+// ── 🌐 Online — Phase 3 multiplayer (spec §9) ──────────────────────────────
+// Joining while editing auto-starts play; the net system lives outside the
+// play-system list so a Stop/Play round-trip keeps the connection.
+const net = new NetSystem({ world, hud });
+world.addSystem(net);
+net.playerOf = () => playerEntity;
+
+$("online").onclick = () => {
+  if (net.connected) {
+    net.disconnect();
+    $("online").textContent = "🌐 Online";
+    return;
+  }
+  if (!playing) startPlay();
+  const url =
+    new URLSearchParams(location.search).get("server") ??
+    (location.hostname === "localhost"
+      ? "ws://localhost:8789"
+      : `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/engine-ws`);
+  const name = prompt("နာမည်:", "Player") ?? "Player";
+  net.connect(url, name, "world");
+  $("online").textContent = "🌐 ချိတ်ထား";
+  $("chat").style.display = "block";
+};
+$("chat").addEventListener("keydown", (e) => {
+  e.stopPropagation(); // typing must not move the character
+  if (e.code === "Enter") {
+    net.sendChat(e.target.value.trim());
+    e.target.value = "";
+    e.target.blur();
+  }
+});
 
 // starter content so the first visit isn't an empty void
 $("scene-name").value = "My Game";
