@@ -187,15 +187,20 @@ class _WebScreenState extends State<WebScreen> {
                             CircularProgressIndicator(color: GwColors.primary))
                     : WebViewWidget(controller: _web!),
               ),
+              // Top-LEFT, beside the games' own ⚙ gear — the top-right corner
+              // is where STRIKE's minimap lives (user screenshot: the chips
+              // sat right on top of it).
               Positioned(
-                top: 10,
-                right: 10,
-                child: Row(
-                  children: [
-                    _gameChip(Icons.refresh, () => _web?.reload()),
-                    const SizedBox(width: 8),
-                    _gameChip(Icons.close, () => Navigator.of(context).pop()),
-                  ],
+                top: 8,
+                left: 52,
+                child: SafeArea(
+                  child: Row(
+                    children: [
+                      _gameChip(Icons.refresh, () => _web?.reload()),
+                      const SizedBox(width: 8),
+                      _gameChip(Icons.close, () => Navigator.of(context).pop()),
+                    ],
+                  ),
                 ),
               ),
             ],
