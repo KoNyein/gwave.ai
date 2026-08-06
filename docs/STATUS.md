@@ -139,6 +139,23 @@
 
 ## Changelog
 
+- 2026-08-06 (engine): **gWave Studio suite** — integrated the uploaded
+  gwave3d package as pages under /engine (NOT as the standalone nginx
+  installer it shipped with, which would fight Caddy for port 80 and
+  violate the one-app rule): `/engine/studio.html` (full world & game
+  creator: templates, GLB/OBJ/HDRI import, GLTF export, bloom, share
+  links), `/engine/avatar.html` + `avatar-builder.js` (procedural
+  avatar customizer, localStorage `gwave_avatar`), `/engine/xr.html`
+  (WebXR VR/AR viewer of shared scenes). Studio's Colyseus multiplayer
+  was rewired to the existing gwave-engine-server plain-ws protocol
+  (/engine-ws, gw_at auth) — no second multiplayer server; its /acct
+  accounts service was replaced by the gwave session (`/api/engine/me`)
+  and cloud world saves by `/api/engine/worlds` (+ `[id]`) on the new
+  RLS-sealed `engine_worlds` table (`deploy/sql/engine-worlds.sql`,
+  admin-client + code-enforced ownership, private/public visibility).
+  The package's python accounts/scanner/TripoSR-GPU services stay
+  undeployed (gwave auth covers accounts; GPU backend documented in
+  /engine/generator.html as not deployed).
 - 2026-08-06 (engine): **Phase 6 — quality tiers (roadmap complete).**
   detectQuality(): ?lowfx=1 or coarse-pointer+dpr>2 → "low" tier
   (pixelRatio clamp 1.5, no antialias, no shadows) so mid-range phones
