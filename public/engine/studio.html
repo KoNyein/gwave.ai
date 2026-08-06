@@ -798,7 +798,13 @@ pushHistory();
     try{
       const name=$('scene-name').value||'Untitled';
       const data=JSON.parse(serialize());
-      renderer.render(scene,camera); const thumb=canvas.toDataURL('image/jpeg',0.5);
+      // thumbnail must stay tiny — a full-res canvas jpeg blows the API's
+      // size cap (and bloats every list row). 320px wide is plenty.
+      renderer.render(scene,camera);
+      const tc=document.createElement('canvas');
+      tc.width=320; tc.height=Math.max(1,Math.round(320*canvas.height/Math.max(1,canvas.width)));
+      tc.getContext('2d').drawImage(canvas,0,0,tc.width,tc.height);
+      const thumb=tc.toDataURL('image/jpeg',0.6);
       if(cloud.currentId){ await cloud.update(cloud.currentId,{name,data,thumb}); toast('Updated in cloud ✓','ok'); }
       else{ const r=await cloud.save(name,data,thumb); cloud.currentId=r.id; toast('Saved to cloud ✓','ok'); }
     }catch(e){ toast('Cloud save failed: '+e.message,'err'); }

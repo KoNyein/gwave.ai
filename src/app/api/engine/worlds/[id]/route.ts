@@ -56,7 +56,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (!profile) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
   const parsed = patchSchema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "invalid body" }, { status: 400 });
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return NextResponse.json(
+      { error: `invalid ${issue?.path.join(".") || "body"}: ${issue?.message ?? ""}` },
+      { status: 400 },
+    );
+  }
   const patch = parsed.data;
   if (
     patch.data !== undefined &&
