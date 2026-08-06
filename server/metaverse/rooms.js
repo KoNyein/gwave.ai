@@ -240,7 +240,7 @@ class Rooms {
 
   setGhost(roomId, id, state, origin) {
     const g = this.ghostRoom(roomId);
-    const cur = g.get(id) ?? { id, x: 0, y: 0, z: 0, ry: 0, name: "Gwave", emote: null, authed: false, pic: null, v: null };
+    const cur = g.get(id) ?? { id, x: 0, y: 0, z: 0, ry: 0, name: "Gwave", emote: null, authed: false, pic: null, v: null, rpm: null };
     g.set(id, { ...cur, ...state, origin, seenAt: Date.now() });
   }
 
@@ -295,6 +295,8 @@ class Rooms {
       pic: p.pic ?? null,
       /// 🧍 Avatar variant (a-r) — owner ရွေးထားတာ
       v: p.v ?? null,
+      /// 📸 Photo avatar GLB
+      rpm: p.rpm ?? null,
     });
     for (const p of this.rooms.get(roomId)?.values() ?? []) {
       if (p.id !== exceptId) out[p.id] = view(p);
@@ -319,6 +321,7 @@ class Rooms {
         authed: p.authed,
         pic: p.pic ?? null,
         v: p.v ?? null,
+        rpm: p.rpm ?? null,
       };
     }
     return out;

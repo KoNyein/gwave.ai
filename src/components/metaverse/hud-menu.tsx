@@ -134,6 +134,7 @@ export function HudMenu({
   shadows,
   onShadows,
   onAvatar,
+  onPhotoAvatar,
   onMap,
   onGames,
   onBuild,
@@ -158,6 +159,8 @@ export function HudMenu({
   shadows: boolean;
   onShadows: (on: boolean) => void;
   onAvatar: () => void;
+  /// 📸 Ready Player Me photo-avatar creator ဖွင့်
+  onPhotoAvatar: () => void;
   onMap: () => void;
   onGames: () => void;
   onBuild: () => void;
@@ -256,6 +259,7 @@ export function HudMenu({
 
           <Section title="🧑 ကိုယ်ရေး">
             <Action icon="🧑" title="Avatar ပြင်မယ်" hint="အသွင်အပြင် ရွေးချယ်" onClick={onAvatar} />
+            <Action icon="📸" title="Photo Avatar" hint="Selfie ကနေ လူသားရုပ်စစ်စစ်" onClick={onPhotoAvatar} />
           </Section>
         </div>
       )}

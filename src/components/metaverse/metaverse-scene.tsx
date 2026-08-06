@@ -17,7 +17,7 @@ import { createVoiceLines } from "./voicelines";
 import { createCombatFx, type CombatFx } from "./combatfx";
 import { createGameFx, type GameFx } from "./gamefx";
 import { GamesMenu, GamesOverlays, type GamePhase } from "./games-panel";
-import { createHuman, type Avatar, type HumanState } from "./human";
+import { type Avatar, type HumanState } from "./human";
 import { buildLandmarks, type Landmark } from "./landmarks";
 import {
   attachLiveScreen,
@@ -48,6 +48,8 @@ import {
   soldierVariantFor,
   SOLDIER_VARIANTS,
 } from "./riggedhuman";
+import { createPlayerBody } from "./rpmavatar";
+import { RpmOverlay } from "./avatar/rpm";
 import { OwnershipControl } from "./web3/ownership";
 import { buildWorld, insideCollider, resolveCollision } from "./world";
 import { isInApp, native } from "@/lib/metaverse/native";
@@ -113,18 +115,6 @@ const SHADOW_KEY = "gw.mv.shadows";
 const LOD_ANIMATE_WITHIN = 45;
 const CULL_BEYOND = 90;
 
-/// Player id ကနေ အဝတ်အရောင် — တစ်ယောက်နဲ့တစ်ယောက် ခွဲမြင်ရဖို့။
-/// Server ကနေ အရောင်မပို့ဘဲ id ကနေ တွက်တာက packet မလိုဘဲ တည်ငြိမ်တယ်
-/// (client တိုင်းမှာ id တူရင် အရောင်တူတယ်)။
-const CLOTH_COLORS = [
-  0xe94f37, 0x3f88c5, 0xf6ae2d, 0x44bba4, 0xa06cd5, 0xff8c42, 0x6cc551,
-];
-function colorFor(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return CLOTH_COLORS[h % CLOTH_COLORS.length] ?? 0x44bba4;
-}
-
 type Remote = {
   avatar: Avatar;
   /// မျက်နှာပြင်မှာ ပြနေတဲ့ နေရာ (ချောချောလိုက်တယ်)
@@ -134,6 +124,9 @@ type Remote = {
   name: string;
   emote: HumanState["emote"];
   speed: number;
+  /// 📸 RPM photo-avatar URL — variant ပြောင်းလို့ body ပြန်ဆောက်ရင်
+  /// ထပ်တပ်ဖို့ မှတ်ထား
+  rpm: string | null;
 };
 
 type ChatLine = {
@@ -218,6 +211,8 @@ export function MetaverseScene() {
   /// တစ်ပြိုင်နက် ပွင့်တယ်၊ ဒါမှ panel ချင်း ဘယ်တော့မှ မထပ်ဘူး။
   const [menu, setMenu] = useState<"map" | "games" | "voice" | "settings" | null>(null);
   const [dressing, setDressing] = useState(false);
+  /// 📸 Ready Player Me creator overlay ဖွင့်ထားလား
+  const [rpmOpen, setRpmOpen] = useState(false);
   /// ★ Avatar ပြင်ပြီးရင် scene ကို ပြန်ဆောက်တယ် — ရိုးရှင်းပြီး
   /// မှားနိုင်ခြေနည်းတယ် (attachment တွေ တစ်ခုချင်း sync လုပ်တာထက်)。
   const [avatarNonce, setAvatarNonce] = useState(0);
@@ -902,13 +897,21 @@ export function MetaverseScene() {
     // 🧍 လူသားရုပ်စစ်စစ် — room မရွေး rigged kit character (animation
     // clip အပြည့်) — box procedural ကို အနားပေးလိုက်ပြီ။ Variant ကို
     // server ကို ကြေညာလို့ **ကိုယ်မြင်တာနဲ့ သူများမြင်တာ တစ်ရုပ်တည်း**။
-    const me: Avatar = createRiggedHuman(myVariant);
+    // 📸 createPlayerBody — RPM photo-avatar ရောက်ရင် ကိုယ်ထည်ကို
+    // နေရာတွင် လဲလို့ရတဲ့ wrapper (identity မပြောင်း)။
+    const me: Avatar = createPlayerBody(myVariant);
     scene.add(me.group);
     // 🖼 ကိုယ့် profile ဓာတ်ပုံ URL — avatar API ကနေ လာတယ်။ ပြထားရင်
     // server ဆီ ပို့ပြီး တခြားသူတွေရဲ့ nametag မှာ ပေါ်တယ်။
     let myPic: string | null = null;
     const syncPic = () => {
       net?.sendPic(showPicRef.current && myPic ? myPic : null);
+    };
+    // 📸 ကိုယ့် RPM photo-avatar URL — remote client တွေ တူတူ ဆွဲနိုင်အောင်
+    // server ကို ကြေညာတယ် (arena မှာ soldier ရုပ်နဲ့ ကစားတာမို့ မသုံး)
+    let myRpm: string | null = null;
+    const syncRpm = () => {
+      if (myRpm) net?.sendRpm(myRpm);
     };
     picSendRef.current = (on) => {
       net?.sendPic(on && myPic ? myPic : null);
@@ -940,6 +943,16 @@ export function MetaverseScene() {
             (me.group.userData.setMorphs as
               | ((m: Record<string, number>) => void)
               | undefined)?.(d.morphs as Record<string, number>);
+          }
+          // 📸 RPM photo-avatar — သိမ်းထားရင် kit body ကို လူသားရုပ်စစ်စစ်နဲ့
+          // အစားထိုး (social room သာ — arena က soldier game identity)
+          const rpm = d.config?.rpmUrl;
+          if (typeof rpm === "string" && rpm && map.id !== "arena") {
+            myRpm = rpm;
+            (me.group.userData.setRpm as ((u: string) => void) | undefined)?.(
+              rpm,
+            );
+            syncRpm();
           }
           myPic = typeof d.pic === "string" ? d.pic : null;
           syncPic();
@@ -1016,21 +1029,28 @@ export function MetaverseScene() {
       // 🎖 Arena မှာ **လူသား remote တွေလည်း** rigged soldier — variant က
       // id hash နဲ့ တည်ငြိမ် (client တိုင်း တူတူမြင်)၊ ဓားပြ bot တွေက
       // သတ်မှတ်ထား variant (b/c/j)။
-      const rigged = kind === "soldier" || kind === "human";
       const avatar =
         kind === "dog"
           ? createDog(s.name?.includes("နက်") ? 0x24201c : 0xb9873c)
-          : rigged
+          : kind === "soldier"
             ? createRiggedHuman(
-                kind === "soldier"
-                  ? (["b", "c", "j"][(Number.parseInt(id.slice(4), 10) || 1) - 1] ?? "b")
-                  : typeof s.v === "string" && /^[a-r]$/.test(s.v)
-                    ? s.v
-                    : soldierVariantFor(id),
+                ["b", "c", "j"][(Number.parseInt(id.slice(4), 10) || 1) - 1] ?? "b",
               )
-            : createHuman(colorFor(id));
+            : createPlayerBody(
+                typeof s.v === "string" && /^[a-r]$/.test(s.v)
+                  ? s.v
+                  : soldierVariantFor(id),
+              );
       avatar.group.position.set(s.x ?? 0, s.y ?? 0, s.z ?? 0);
       scene.add(avatar.group);
+      // 📸 သူ့ RPM photo-avatar ရှိရင် kit body ကို အစားထိုး (social room သာ)
+      const rpm =
+        kind === "human" && map.id !== "arena" && typeof s.rpm === "string" && s.rpm
+          ? s.rpm
+          : null;
+      if (rpm) {
+        (avatar.group.userData.setRpm as ((u: string) => void) | undefined)?.(rpm);
+      }
       // 🧬 Social room က လူသား remote — သူ့ scan မျက်နှာ ရှိရင် တပ်ပေး
       // (arena မှာ soldier ရုပ်နဲ့ ကစားတာမို့ မတပ်ဘူး — game identity)
       if (kind === "human" && map.id !== "arena") scanFaces.attachFor(id, avatar);
@@ -1041,6 +1061,7 @@ export function MetaverseScene() {
         name: s.name ?? "Gwave",
         emote: (s.emote as HumanState["emote"]) ?? null,
         speed: 0,
+        rpm,
       });
       nametags?.add(id, s.name ?? "Gwave", s.authed !== false, s.pic ?? null);
       setOnline(remotes.size + 1);
@@ -1106,6 +1127,8 @@ export function MetaverseScene() {
           syncPic();
           // 🧍 ကိုယ့် avatar variant — အခန်းထဲက လူတိုင်း ဒီရုပ်နဲ့ပဲ မြင်ရ
           net?.sendVariant(myVariant);
+          // 📸 RPM avatar fetch က socket ထက် အရင်ပြီးနေရင် ဒီကနေ ကြေညာ
+          syncRpm();
         },
         onJoin: (id, s) => addRemote(id, s),
         onLeave: dropRemote,
@@ -1146,14 +1169,31 @@ export function MetaverseScene() {
           if (!r) return;
           const nv =
             typeof v === "string" && /^[a-r]$/.test(v) ? v : soldierVariantFor(id);
-          const na = createRiggedHuman(nv);
+          const na = createPlayerBody(nv);
           na.group.position.copy(r.avatar.group.position);
           na.group.rotation.copy(r.avatar.group.rotation);
           scene.add(na.group);
           scene.remove(r.avatar.group);
           r.avatar.dispose();
           r.avatar = na;
+          // 📸 RPM ရှိပြီးသားသူဆို body အသစ်မှာ ပြန်တပ်
+          if (r.rpm && map.id !== "arena") {
+            (na.group.userData.setRpm as ((u: string) => void) | undefined)?.(
+              r.rpm,
+            );
+          }
           if (map.id !== "arena") scanFaces.attachFor(id, na);
+        },
+        // 📸 တစ်ယောက်ယောက် photo-avatar သိမ်းလိုက်တယ် — kit body ကို လဲ
+        onRpm: (id, url) => {
+          const r = remotes.get(id);
+          if (!r || map.id === "arena") return;
+          if (typeof url === "string" && url) {
+            r.rpm = url;
+            (r.avatar.group.userData.setRpm as
+              | ((u: string) => void)
+              | undefined)?.(url);
+          }
         },
         onWeather: (kind, intensity, wx, wz) => {
           // ★ map က ခွင့်ပြုထားတဲ့ ရာသီဥတုကိုသာ လက်ခံတယ် — server က
@@ -3880,6 +3920,10 @@ export function MetaverseScene() {
             setMenu(null);
             setDressing(true);
           }}
+          onPhotoAvatar={() => {
+            setMenu(null);
+            setRpmOpen(true);
+          }}
           onMap={() => setMenu("map")}
           onGames={() => setMenu("games")}
           onBuild={() => {
@@ -3937,6 +3981,9 @@ export function MetaverseScene() {
           }}
         />
       )}
+
+      {/* ── 📸 Photo Avatar (Ready Player Me) ─────────────────────────── */}
+      {rpmOpen && <RpmOverlay onClose={() => setRpmOpen(false)} />}
 
       {/* ── ယာဉ် — အနားရောက်မှ / စီးနေချိန် ─────────────────────────── */}
       {ride && (
