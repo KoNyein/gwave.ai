@@ -22,28 +22,28 @@ const BASE = "/metaverse/realistic";
 
 type Spec = { file: string; tint: number | null };
 
-/// Variant table — remy (男 ပုံမှန်ဝတ်စုံ — user ပေး Mixamo FBX ကနေ
-/// ပြောင်းထား)၊ soldier (arena/စစ်ဝတ်စုံ)၊ michelle (女)၊ xbot (mannequin)
-/// ကို tint နဲ့ ခွဲထားတယ်။ Arena bot variants (b/c/j) က soldier ရုပ်။
+/// Variant table — user ပေးတဲ့ Mixamo FBX တွေ (Remy, Character3/4,
+/// Michelle2, Clown, Granny) + Soldier/Michelle/Xbot — base ၉ မျိုး။
+/// Arena bot variants (b/c/j) က soldier ရုပ်။
 const SPECS: Record<string, Spec> = {
   a: { file: "Remy", tint: null },
   b: { file: "Soldier", tint: 0x9fb4c8 },
   c: { file: "Soldier", tint: 0xa8c89f },
   d: { file: "Michelle", tint: null },
-  e: { file: "Remy", tint: 0xc8b49f },
-  f: { file: "Michelle", tint: 0x9fb4c8 },
+  e: { file: "Character3", tint: null },
+  f: { file: "Character4", tint: null },
   g: { file: "Xbot", tint: null },
-  h: { file: "Remy", tint: 0x9fd0ff },
-  i: { file: "Xbot", tint: 0x9fd0ff },
+  h: { file: "Michelle2", tint: null },
+  i: { file: "Clown", tint: null },
   j: { file: "Soldier", tint: 0xc8a89f },
-  k: { file: "Michelle", tint: 0xa8c89f },
-  l: { file: "Xbot", tint: 0xffe49f },
+  k: { file: "Granny", tint: null },
+  l: { file: "Xbot", tint: 0x9fd0ff },
   m: { file: "Soldier", tint: null },
   n: { file: "Michelle", tint: 0x9fc8c0 },
-  o: { file: "Remy", tint: 0xa8c89f },
-  p: { file: "Soldier", tint: 0x8f9fae },
-  q: { file: "Michelle", tint: 0xd8c8b8 },
-  r: { file: "Xbot", tint: 0xd0b0ff },
+  o: { file: "Remy", tint: 0xc8b49f },
+  p: { file: "Character3", tint: 0x9fb4c8 },
+  q: { file: "Character4", tint: 0xc8b49f },
+  r: { file: "Granny", tint: 0xb4c89f },
 };
 
 /// Studio ရဲ့ ရုပ်ရွေးခန်းအတွက် variant စာရင်း (id + base + tint)
