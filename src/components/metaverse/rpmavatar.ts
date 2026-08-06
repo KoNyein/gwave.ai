@@ -70,6 +70,8 @@ export function createRpmHuman(url: string): Avatar {
             (o as THREE.Mesh).frustumCulled = false; // skinned mesh pop-out ကာ
           }
         });
+        // 🧭 RPM rig လည်း Mixamo လိုပဲ game forward နဲ့ ၁၈၀° လွဲ — လှည့်ချိန်
+        model.rotation.y = Math.PI;
         // ~1.78m၊ ခြေဖဝါး မြေပေါ်
         const box = new THREE.Box3().setFromObject(model);
         const h = box.max.y - box.min.y;

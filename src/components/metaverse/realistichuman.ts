@@ -141,6 +141,9 @@ export function createRealisticHuman(variant: string): Avatar {
             }
           }
         });
+        // 🧭 Mixamo rig ရဲ့ မျက်နှာမူရာက game ရဲ့ forward နဲ့ ၁၈၀° လွဲလို့
+        // လမ်းလျှောက်ရင် နောက်ပြန်မျက်နှာ ဖြစ်နေတယ် (user report) — လှည့်ချိန်။
+        model.rotation.y = Math.PI;
         inner.add(model);
 
         // ~1.78m + ခြေဖဝါး မြေပေါ်
