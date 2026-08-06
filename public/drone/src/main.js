@@ -334,16 +334,22 @@ net.onLocalHit = (dmg, hp) => { player.hp = hp; player.takeDamage(0); player.hp 
 net.onRespawn = (pos) => { soldier.pos.set(...pos); soldier.vel.set(0, 0, 0);
   player.hp = 100; player.alive = true; };
 net.onCorrect = (pos) => soldier.pos.set(...pos);      // server envelope rejection
-// online button — ?server=ws://host:8787 param သို့ localhost default
-document.getElementById('online-btn')?.addEventListener('click', () => {
+// online toggle — ?server=ws://host:8787 param သို့ localhost default
+// (top button ရော mobile ☰ menu ကရော ခေါ်လို့ function ခွဲထား)
+function toggleOnline() {
   if (net.connected) { net.disconnect(); return; }
   // on gwave.cc the game server rides the same origin behind Caddy (/drone-ws)
   const url = new URLSearchParams(location.search).get('server')
     ?? (location.hostname === 'localhost' ? 'ws://localhost:8787'
       : (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/drone-ws');
-  const name = gwave.profile?.display_name ?? (prompt('Pilot name:', 'Pilot') ?? 'Pilot');
+  // prompt() shows nothing inside the APK WebView — touch devices go straight
+  // in with the account name (or Pilot) instead of silently failing
+  const name = gwave.profile?.display_name
+    ?? (document.body.classList.contains('touch') ? 'Pilot'
+      : (prompt('Pilot name:', 'Pilot') ?? 'Pilot'));
   net.connect(url, name, 'valley', gwave.token);
-});
+}
+document.getElementById('online-btn')?.addEventListener('click', toggleOnline);
 // PvP: remote players ကို local weapons targets ထဲထည့် (hit → server claim)
 setInterval(() => {
   for (const r of net.remotes.values()) {
@@ -413,13 +419,57 @@ addEventListener('keydown', async e => {
     const q = prompt('ဦးလှ ကို မေးမယ့်စကား:', 'drone ဘယ်လိုပျံရမလဲ');
     if (q) npc.ask(q);
   }
-  if (e.code === 'KeyL') {
-    const b = await gwave.leaderboard(5);
-    vo(b.length
-      ? '🏆 ' + b.map(r => `#${r.rank} ${r.display_name} K${r.kills}`).join(' · ')
-      : 'Leaderboard ဗလာ — api server run ထားလား?', 'wave');
-  }
+  if (e.code === 'KeyL') showBoard();
 });
+async function showBoard() {
+  const b = await gwave.leaderboard(5);
+  vo(b.length
+    ? '🏆 ' + b.map(r => `#${r.rank} ${r.display_name} K${r.kills}`).join(' · ')
+    : 'Leaderboard ဗလာ — api server run ထားလား?', 'wave');
+}
+
+// ---------- mobile ☰ menu (touch) ----------
+// Touch မှာ keyboard မရှိလို့ F/B/G/L function တွေ menu + FAB ကနေ ရအောင်
+const mmenu = document.getElementById('mmenu');
+const mmOpen = (show) => mmenu?.classList.toggle('open', show);
+document.getElementById('menu-btn')?.addEventListener('click', () => mmOpen(true));
+document.getElementById('mm-close')?.addEventListener('click', () => mmOpen(false));
+document.getElementById('mm-fly')?.addEventListener('click', () => { mmOpen(false); deployDrone(); });
+document.getElementById('mm-garage')?.addEventListener('click', () => {
+  mmOpen(false);
+  document.exitPointerLock?.();
+  garage.toggle(true);
+});
+document.getElementById('mm-online')?.addEventListener('click', () => { mmOpen(false); toggleOnline(); });
+document.getElementById('mm-board')?.addEventListener('click', () => { mmOpen(false); showBoard(); });
+document.getElementById('mm-settings')?.addEventListener('click', () => {
+  mmOpen(false);
+  document.getElementById('settings')?.classList.toggle('open');
+});
+// quick FABs — 🚁 fly/land (mode အလိုက် icon ပြောင်း), 💥 detonate (FPV သာ)
+document.getElementById('fly-btn')?.addEventListener('click', () => deployDrone());
+document.getElementById('boom-btn')?.addEventListener('click', () => {
+  if (mode === 'FPV') droneCombat.manualDetonate(physics);
+});
+function updateTouchUi() {
+  const fpv = mode === 'FPV';
+  const fly = document.getElementById('fly-btn');
+  if (fly) fly.textContent = fpv ? '🧍' : '🚁';
+  const mmFly = document.getElementById('mm-fly');
+  if (mmFly) mmFly.innerHTML = fpv
+    ? '🧍 ပြန်ဆင်းမယ် <small>F</small>' : '🚁 Drone မောင်းမယ် <small>F</small>';
+  const boom = document.getElementById('boom-btn');
+  if (boom) boom.style.display =
+    document.body.classList.contains('touch') && fpv ? 'block' : 'none';
+  const on = net.connected;
+  const mmOn = document.getElementById('mm-online');
+  if (mmOn) mmOn.textContent = on ? '🌐 Online — ထွက်မယ်' : '🌐 Online ကစားမယ်';
+  const onBtn = document.getElementById('online-btn');
+  if (onBtn) onBtn.textContent = on ? '🌐 ONLINE ✓' : '🌐 ONLINE';
+}
+// ★ first tick at 800ms — `let mode` (below) initialize ပြီးမှ ဖတ်တာ
+//   သေချာစေတယ် (module eval အတွင်း တိုက်ရိုက်ခေါ်ရင် TDZ error)
+setInterval(updateTouchUi, 800);
 // npc look at player when near
 setInterval(() => {
   const near = soldier.pos.distanceTo(npcAvatar.root.position) < 6;

@@ -94,3 +94,29 @@ export function computeBuild(build) {
       'Balanced build — အစုံသုံးလို့ကောင်း',
   };
 }
+
+// ---- one-tap drone presets ("drone ပြောင်း") ------------------------------
+// Each preset is a complete parts loadout — tap to switch the whole drone,
+// then fly. Colors are kept from the current build (pilot's paint job).
+export const DRONE_PRESETS = {
+  scout: {
+    name: '🛰 Scout 3"', desc: 'သွက် · အတွင်းပိုင်း စူးစမ်း',
+    build: { frame: 'f3', propeller: 'blade2', motor: 'kv1700', battery: 's4_1500' },
+  },
+  racer: {
+    name: '🏁 Racer 5"', desc: 'Punch ↑↑ · top speed အမြင့်ဆုံး',
+    build: { frame: 'f5', propeller: 'blade2', motor: 'kv2400', battery: 's6_1100' },
+  },
+  freestyle: {
+    name: '🤸 Freestyle 5"', desc: 'Balanced — အစုံသုံး (default)',
+    build: { frame: 'f5', propeller: 'blade3', motor: 'kv1900', battery: 's6_1100' },
+  },
+  cine: {
+    name: '🎥 Cine', desc: 'Smooth ↑↑ · ရိုက်ကူးရေး တည်ငြိမ်',
+    build: { frame: 'f5', propeller: 'blade7', motor: 'kv1700', battery: 's6_1800' },
+  },
+  longrange: {
+    name: '📡 Long-range 7"', desc: 'အဝေးပျံ · flight time ↑↑',
+    build: { frame: 'f7', propeller: 'blade3', motor: 'kv1700', battery: 's6_1800' },
+  },
+};
