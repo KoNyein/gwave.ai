@@ -103,13 +103,16 @@ export async function GET() {
   const hostIds = [...new Set([...lives, ...replays].map((s) => s.host_id))];
   const names = new Map<string, string>();
   if (hostIds.length > 0) {
+    // ★ profiles မှာ display_name ဆိုတဲ့ column မရှိ — full_name သာ။
+    //   မှားရေးမိတုန်းက query တစ်ခုလုံး error ဖြစ်ပြီး host အားလုံး
+    //   "Gwave" fallback ပြနေတယ်။
     const { data: profs } = await db
       .from("profiles")
-      .select("id, display_name, username")
+      .select("id, full_name, username")
       .in("id", hostIds)
-      .returns<{ id: string; display_name: string | null; username: string | null }[]>();
+      .returns<{ id: string; full_name: string | null; username: string | null }[]>();
     for (const p of profs ?? []) {
-      names.set(p.id, p.display_name || p.username || "Gwave");
+      names.set(p.id, p.full_name || p.username || "Gwave");
     }
   }
 
