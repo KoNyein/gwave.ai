@@ -26,7 +26,12 @@ const BASE_META: Record<string, { icon: string; label: string }> = {
   Remy: { icon: "🧑", label: "Remy" },
   Soldier: { icon: "🎖", label: "Soldier" },
   Michelle: { icon: "👩", label: "Michelle" },
+  Michelle2: { icon: "👩‍🦰", label: "Michelle ၂" },
   Xbot: { icon: "🤖", label: "X Bot" },
+  Character3: { icon: "🧔", label: "Casual ၃" },
+  Character4: { icon: "🧑‍🦱", label: "Casual ၄" },
+  Clown: { icon: "🤡", label: "လူရွှင်တော်" },
+  Granny: { icon: "👵", label: "အဘွား" },
 };
 
 function readVariant(): string {

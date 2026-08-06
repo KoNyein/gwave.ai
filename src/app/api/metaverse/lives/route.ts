@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { agoraRecordingUrl } from "@/lib/agora";
 import { ivsRecordingUrl } from "@/lib/ivs-realtime";
-import { recordingPlaybackUrl } from "@/lib/livekit";
+import { egressRecordingPath, recordingPlaybackUrl } from "@/lib/livekit";
 import { mediaUrl } from "@/lib/media-url";
 import { createAdminClient } from "@/lib/data/admin";
 
@@ -76,6 +76,28 @@ export async function GET() {
   }
   const lives = liveRes.data ?? [];
   const replays = replayRes.data ?? [];
+
+  // 🩹 Self-heal — recording စထားပြီး (egress id ရှိ) replay path မရောက်သေး
+  // တဲ့ broadcast တွေကို LiveKit ကို တိုက်ရိုက်မေးပြီး ဖြေတယ်။ Webhook
+  // မရောက်လည်း hub ဖွင့်တိုင်း replay က သူ့ဘာသာ ပေါ်လာတယ်။
+  const { data: pending } = await db
+    .from("live_streams")
+    .select(`${COLS}, recording_egress_id`)
+    .eq("status", "ended")
+    .is("recording_path", null)
+    .not("recording_egress_id", "is", null)
+    .order("started_at", { ascending: false })
+    .limit(5)
+    .returns<(Row & { recording_egress_id: string })[]>();
+  for (const s of pending ?? []) {
+    const path = await egressRecordingPath(s.recording_egress_id);
+    if (!path) continue;
+    await db
+      .from("live_streams")
+      .update({ recording_path: path })
+      .eq("id", s.id);
+    replays.unshift({ ...s, recording_path: path });
+  }
 
   // Host names — flat second query, assembled in code
   const hostIds = [...new Set([...lives, ...replays].map((s) => s.host_id))];
