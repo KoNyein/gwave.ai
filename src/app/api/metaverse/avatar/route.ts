@@ -51,7 +51,7 @@ export async function GET() {
     // မျက်နှာ GLB။ Flat query — embed မသုံးရ (CLAUDE.md)။
     admin
       .from("mv_scan_avatars")
-      .select("face_glb_url")
+      .select("face_glb_url, morphs")
       .eq("user_id", profile.id)
       .maybeSingle(),
   ]);
@@ -67,6 +67,8 @@ export async function GET() {
       pic: profile.avatar_url ?? null,
       /// 🧬 Scan မျက်နှာ GLB (ရှိရင်) — client က social room မှာ တပ်တယ်
       scanFace: scanRow?.face_glb_url ?? null,
+      /// 🧍 Scan body morphs — rigged avatar ရဲ့ skeleton ချိန်ဖို့
+      morphs: scanRow?.morphs ?? null,
     },
     { headers: { "cache-control": "no-store, private" } },
   );

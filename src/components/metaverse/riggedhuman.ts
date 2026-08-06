@@ -56,6 +56,43 @@ export function createRiggedHuman(variant: string): Avatar {
     dark: new THREE.MeshStandardMaterial({ color: 0x2b3038 }),
   };
 
+  /// 🧬 Scan-face attach point — model load ပြီးမှ head bone ထဲ ဝင်တယ်။
+  /// Load မပြီးခင် plate တပ်ထားရင်လည်း group ထဲ စောင့်နေပြီး head ရောက်မှ
+  /// အတူပေါ်တယ် (scanface.ts က attach.head ကိုပဲ သုံးလို့)။
+  const headAttach = new THREE.Group();
+  /// 🧍 Body morphs (scan) — bones ရောက်မှ တပ်မယ့် queue
+  let pendingMorphs: Record<string, number> | null = null;
+
+  /// Anatomy-approximate bone scaling: scan morph weights → skeleton။
+  /// Kit rig ရဲ့ bone နာမည်တွေ (arm-left/right, leg-left/right, head,
+  /// torso) ကို တွေ့သလောက် scale တယ် — GLB asset မှာ morph target မပါလို့
+  /// အနီးစပ်ဆုံး ကိုယ်နေဟန်ထား ပြောင်းလဲမှု။
+  const applyMorphs = (m: Record<string, number>) => {
+    if (!model) {
+      pendingMorphs = m;
+      return;
+    }
+    const w = (k: string) => Math.max(-1, Math.min(1, Number(m[k]) || 0));
+    inner.scale.setScalar(KIT_SCALE * (1 + w("height") * 0.08));
+    const grab = (n: string) => model?.getObjectByName(n) ?? null;
+    const head = grab("head");
+    if (head) head.scale.setScalar(1 + w("headScale") * 0.15);
+    for (const n of ["arm-left", "arm-right"]) {
+      const b = grab(n);
+      if (b) b.scale.y = 1 + w("armLength") * 0.12;
+    }
+    for (const n of ["leg-left", "leg-right"]) {
+      const b = grab(n);
+      if (b) b.scale.y = 1 + w("legLength") * 0.12;
+    }
+    const torso = grab("torso") ?? model;
+    if (torso) {
+      torso.scale.x = 1 + w("shoulderWidth") * 0.14;
+      torso.scale.z = 1 + (w("waist") + w("weight")) * 0.08;
+    }
+  };
+  group.userData.setMorphs = applyMorphs;
+
   let mixer: THREE.AnimationMixer | null = null;
   const actions = new Map<string, THREE.AnimationAction>();
   let current = "";
@@ -93,6 +130,16 @@ export function createRiggedHuman(variant: string): Avatar {
         inner.add(model);
         const arm = model.getObjectByName("arm-right");
         if (arm) arm.add(handR);
+        // 🧬 Head bone — scan face plate နေရာ (bone မတွေ့ရင် model root)
+        const headBone =
+          model.getObjectByName("head") ??
+          model.getObjectByName("Head") ??
+          model;
+        headBone.add(headAttach);
+        if (pendingMorphs) {
+          applyMorphs(pendingMorphs);
+          pendingMorphs = null;
+        }
         mixer = new THREE.AnimationMixer(model);
         for (const clip of gltf.animations) {
           actions.set(clip.name, mixer.clipAction(clip));
@@ -133,6 +180,8 @@ export function createRiggedHuman(variant: string): Avatar {
     if (s.speed > 5) play("sprint");
     else if (s.speed > 0.15) play("walk");
     else if (s.emote === "wave") play("emote-yes");
+    else if (s.emote === "dance")
+      play(actions.has("dance") ? "dance" : "emote-yes");
     else if (s.emote === "sit") play("sit");
     else if (s.armed) play("holding-right");
     else play("idle");
@@ -158,7 +207,7 @@ export function createRiggedHuman(variant: string): Avatar {
 
   return {
     group,
-    attach: { head: ph(), torso: ph(), hips: ph(), footL: ph(), footR: ph(), handR },
+    attach: { head: headAttach, torso: ph(), hips: ph(), footL: ph(), footR: ph(), handR },
     attachments: [],
     materials,
     update,

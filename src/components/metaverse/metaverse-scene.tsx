@@ -899,8 +899,10 @@ export function MetaverseScene() {
         return "a";
       }
     })();
-    const me: Avatar =
-      map.id === "arena" ? createRiggedHuman(myVariant) : createHuman(0x44bba4, 0xe8b088);
+    // 🧍 လူသားရုပ်စစ်စစ် — room မရွေး rigged kit character (animation
+    // clip အပြည့်) — box procedural ကို အနားပေးလိုက်ပြီ။ Variant ကို
+    // server ကို ကြေညာလို့ **ကိုယ်မြင်တာနဲ့ သူများမြင်တာ တစ်ရုပ်တည်း**။
+    const me: Avatar = createRiggedHuman(myVariant);
     scene.add(me.group);
     // 🖼 ကိုယ့် profile ဓာတ်ပုံ URL — avatar API ကနေ လာတယ်။ ပြထားရင်
     // server ဆီ ပို့ပြီး တခြားသူတွေရဲ့ nametag မှာ ပေါ်တယ်။
@@ -922,6 +924,7 @@ export function MetaverseScene() {
             config?: AvatarConfig;
             pic?: string | null;
             scanFace?: string | null;
+            morphs?: Record<string, number> | null;
           } | null,
         ) => {
           if (killed || !d) return;
@@ -931,6 +934,12 @@ export function MetaverseScene() {
           // 🧬 ကိုယ့် scan မျက်နှာ — social room မှာသာ (arena က soldier ရုပ်)
           if (typeof d.scanFace === "string" && map.id !== "arena") {
             scanFaces.attachUrl(me, d.scanFace);
+          }
+          // 🧍 Scan body morphs — rigged skeleton ကို ကိုယ့်အချိုးအစားချိန်
+          if (d.morphs && typeof d.morphs === "object") {
+            (me.group.userData.setMorphs as
+              | ((m: Record<string, number>) => void)
+              | undefined)?.(d.morphs as Record<string, number>);
           }
           myPic = typeof d.pic === "string" ? d.pic : null;
           syncPic();
@@ -1007,7 +1016,7 @@ export function MetaverseScene() {
       // 🎖 Arena မှာ **လူသား remote တွေလည်း** rigged soldier — variant က
       // id hash နဲ့ တည်ငြိမ် (client တိုင်း တူတူမြင်)၊ ဓားပြ bot တွေက
       // သတ်မှတ်ထား variant (b/c/j)။
-      const rigged = kind === "soldier" || (kind === "human" && map.id === "arena");
+      const rigged = kind === "soldier" || kind === "human";
       const avatar =
         kind === "dog"
           ? createDog(s.name?.includes("နက်") ? 0x24201c : 0xb9873c)
@@ -1015,14 +1024,16 @@ export function MetaverseScene() {
             ? createRiggedHuman(
                 kind === "soldier"
                   ? (["b", "c", "j"][(Number.parseInt(id.slice(4), 10) || 1) - 1] ?? "b")
-                  : soldierVariantFor(id),
+                  : typeof s.v === "string" && /^[a-r]$/.test(s.v)
+                    ? s.v
+                    : soldierVariantFor(id),
               )
             : createHuman(colorFor(id));
       avatar.group.position.set(s.x ?? 0, s.y ?? 0, s.z ?? 0);
       scene.add(avatar.group);
       // 🧬 Social room က လူသား remote — သူ့ scan မျက်နှာ ရှိရင် တပ်ပေး
       // (arena မှာ soldier ရုပ်နဲ့ ကစားတာမို့ မတပ်ဘူး — game identity)
-      if (kind === "human" && !rigged) scanFaces.attachFor(id, avatar);
+      if (kind === "human" && map.id !== "arena") scanFaces.attachFor(id, avatar);
       remotes.set(id, {
         avatar,
         cur: { x: s.x ?? 0, y: s.y ?? 0, z: s.z ?? 0, ry: s.ry ?? 0 },
@@ -1093,6 +1104,8 @@ export function MetaverseScene() {
           // 🖼 ပြထားရင် ကိုယ့် profile ဓာတ်ပုံကို server ဆီ ကြေညာတယ် —
           // avatar fetch က socket ထက် အရင်ပြီးနေရင် ဒီကနေ ပို့တယ်
           syncPic();
+          // 🧍 ကိုယ့် avatar variant — အခန်းထဲက လူတိုင်း ဒီရုပ်နဲ့ပဲ မြင်ရ
+          net?.sendVariant(myVariant);
         },
         onJoin: (id, s) => addRemote(id, s),
         onLeave: dropRemote,
@@ -1126,6 +1139,21 @@ export function MetaverseScene() {
         // 🖼 တစ်ယောက်ယောက် profile ဓာတ်ပုံ ပြ/ဖျောက် ပြောင်းလိုက်တယ်
         onPic: (id, pic) => {
           nametags?.setPic(id, pic);
+        },
+        // 🧍 Variant နောက်ကျ ရောက်လာရင် (join snapshot မမီခဲ့ရင်) ရုပ်ပြောင်း
+        onVariant: (id, v) => {
+          const r = remotes.get(id);
+          if (!r) return;
+          const nv =
+            typeof v === "string" && /^[a-r]$/.test(v) ? v : soldierVariantFor(id);
+          const na = createRiggedHuman(nv);
+          na.group.position.copy(r.avatar.group.position);
+          na.group.rotation.copy(r.avatar.group.rotation);
+          scene.add(na.group);
+          scene.remove(r.avatar.group);
+          r.avatar.dispose();
+          r.avatar = na;
+          if (map.id !== "arena") scanFaces.attachFor(id, na);
         },
         onWeather: (kind, intensity, wx, wz) => {
           // ★ map က ခွင့်ပြုထားတဲ့ ရာသီဥတုကိုသာ လက်ခံတယ် — server က
