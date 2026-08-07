@@ -142,6 +142,23 @@
 
 ## Changelog
 
+- 2026-08-07 (web): **Studio scan library + Movement Lab.** Scans can now be
+  renamed, exported to a single .gwscan.json (frames inlined as data URLs, no
+  zip dependency), re-imported on any device (fresh id, so a double import
+  never clobbers), and their cover downloaded as an image. New 🏃 Movement
+  tab tunes head follow, arm swing/spread, stride, knee bend, lean, breathing
+  and tempo on the REAL metaverse body with idle/walk/run preview; the tuning
+  saves to the account config (motion, sanitised 0..2 server-side) so the
+  metaverse and the Open World move the same way. Studio now has four tabs
+  and one menu entry.
+- 2026-08-07 (web+app): **One world, one studio.** /metaverse IS the Open
+  World now — the page injects the login token and renders the world client
+  itself, /world 308-redirects into it, and the old React scene is parked
+  unlisted at /metaverse/classic. gwave functions that lived outside the
+  world (Live & Replays, Games, Item Shop, Studio, full Feed) open as
+  in-world overlays from the radial menu, so nothing left the world. Menus
+  collapsed to match: one Metaverse entry (was Metaverse + Open World) and
+  one gWave Studio entry (was Avatar Scanner + 3D Scanner + Studio).
 - 2026-08-07 (web): **Open World v11 — social layer.** Emote wheel ([G],
   8 procedural emotes, multiplayer-synced so they work on scan avatars too),
   proximity voice chat ([V], WebRTC mesh with the server only relaying

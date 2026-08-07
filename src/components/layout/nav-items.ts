@@ -4,7 +4,6 @@ import {
   Boxes,
   Car,
   Earth,
-  Globe2,
   LifeBuoy,
   Mountain,
   LayoutDashboard,
@@ -17,7 +16,6 @@ import {
   Gem,
   GraduationCap,
   Joystick,
-  ScanLine,
   HeartPulse,
   Briefcase,
   Home,
@@ -39,7 +37,6 @@ import {
   Wallet,
   Sprout,
   Store,
-  UserRound,
   Users,
   Video,
   type LucideIcon,
@@ -87,16 +84,13 @@ export const NAV_SECTIONS: NavSection[] = [
     // 🌐 Metaverse & 3D — worlds, creation tools and scanners in one place
     headingKey: "sectionMetaverse",
     items: [
-      // 🌍 လောက တစ်ခုတည်း — Social Metaverse ထဲက 🌏 ဂိတ်ကနေ Open World
-      // ကို ကူးလို့ရ၊ Open World ကနေလည်း ပြန်ထွက်လို့ရ။ Open World ကို
-      // တိုက်ရိုက်ဝင်ချင်သူအတွက် သီးခြား entry ကို ချန်ထားတယ်။
-      { href: "/metaverse", labelKey: "metaverse", icon: Globe2 },
-      { href: "/world", labelKey: "world", icon: Earth },
-      // 🎛 One 3D workspace — Avatar + Scanner + World Builder are tabs of
-      // /studio now, so the menu shows the tool, not three loose routes.
-      { href: "/studio?tab=avatar", labelKey: "avatarStudio", icon: UserRound },
-      { href: "/studio?tab=scan", labelKey: "scan3d", icon: ScanLine },
-      { href: "/studio?tab=world", labelKey: "studio", icon: Boxes },
+      // 🌍 လောက တစ်ခုတည်း — /metaverse ကိုယ်တိုင်က Open World ဖြစ်သွားပြီ
+      // (/world က ဒီကို redirect)။ entry နှစ်ခု မလိုတော့ဘူး။
+      { href: "/metaverse", labelKey: "metaverse", icon: Earth },
+      // 🎛 3D အလုပ်ခုံ တစ်ခုတည်း — Avatar · Scanner · World က /studio ရဲ့
+      // tab တွေ ဖြစ်သွားပြီမို့ menu မှာ **တစ်ခုတည်း** ပြတယ် (user:
+      // "3d scanner avatar အားလုံးကို gwave studio တခုတည်းမှာ ပေါင်း")။
+      { href: "/studio", labelKey: "studio", icon: Boxes },
     ],
   },
   {

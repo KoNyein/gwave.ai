@@ -256,6 +256,10 @@ const radial = new RadialMenu([
   { icon: '🌍', label: 'ကမ္ဘာ',    action: openers.world },
   { icon: '🏛️', label: 'Meeting', action: openers.meet },
   { icon: '⚔️', label: 'Arena',   action: openers.arena },
+  // gwave.cc function များ — လောကထဲကနေ overlay အဖြစ် ပွင့်တယ်
+  { icon: '📺', label: 'Live',    action: () => openers.live() },
+  { icon: '🎮', label: 'Games',   action: () => openers.games() },
+  { icon: '🎨', label: 'Studio',  action: () => openers.studio() },
 ], hud);
 
 // 🧬 Avatar Studio — preset ၆ မျိုး + 3D scan GLB ချိတ်ခြင်း (localStorage သိမ်း)
@@ -339,29 +343,42 @@ if (meetParam) {
   const t = setInterval(() => { if (net.connected) { clearInterval(t); net.meetingJoin(meetParam); } }, 500);
 }
 
-// 🌐 Social Metaverse ဂိတ် — Open World နဲ့ gwave.cc/metaverse က
-// **တစ်ခုတည်းသော လောက**။ ?embed=1 (metaverse overlay ထဲက ဖွင့်တာ) ဆိုရင်
-// overlay ကို ပိတ်ခိုင်း၊ မဟုတ်ရင် /metaverse ကို တိုက်ရိုက် သွားတယ်။
-{
-  const embedded = params.get('embed') === '1';
-  const gate = document.createElement('button');
-  gate.textContent = embedded ? '🌐 လောကထဲ ပြန်' : '🌐 Social Metaverse';
-  gate.title = 'gwave.cc Social Metaverse';
-  gate.style.cssText =
-    'position:fixed;left:14px;bottom:64px;z-index:7;font-family:inherit;font-size:13px;' +
-    'padding:9px 14px;border-radius:10px;cursor:pointer;color:var(--ink);' +
-    'background:linear-gradient(165deg,var(--panel),rgba(11,16,38,.86));' +
-    'border:1px solid var(--line);backdrop-filter:blur(10px)';
-  gate.onclick = () => {
-    document.exitPointerLock?.();
-    if (embedded && window.parent !== window) {
-      window.parent.postMessage({ type: 'gwave:exit-world' }, location.origin);
-    } else {
-      location.href = '/metaverse';
-    }
-  };
-  document.body.appendChild(gate);
+// 🪟 In-world web overlay — gwave.cc ရဲ့ function တွေ (Live, Games, Shop,
+// Studio, Feed အပြည့်) ကို **လောကထဲကနေ** ဖွင့်တယ်။ တံခါးတစ်ပေါက်၊ လောက
+// တစ်ခုတည်း ဖြစ်သွားပြီမို့ အပြင်ကို ထွက်စရာ မလိုတော့ဘူး။
+function openWebOverlay(path, label) {
+  document.exitPointerLock?.();
+  const back = document.createElement('div');
+  back.style.cssText =
+    'position:fixed;inset:0;z-index:200;background:#060913;display:flex;flex-direction:column';
+  const bar = document.createElement('div');
+  bar.style.cssText =
+    'display:flex;align-items:center;gap:10px;padding:8px 12px;' +
+    'background:rgba(10,16,34,.9);border-bottom:1px solid var(--line);font-size:13px';
+  bar.innerHTML = `<b style="color:var(--gold)">${label}</b><span style="flex:1"></span>`;
+  const close = document.createElement('button');
+  close.textContent = '✕ လောကထဲ ပြန်';
+  close.style.cssText =
+    'font-family:inherit;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer;' +
+    'color:var(--ink);background:var(--deep);border:1px solid var(--line)';
+  close.onclick = () => back.remove();
+  bar.appendChild(close);
+  const frame = document.createElement('iframe');
+  frame.src = path;
+  frame.style.cssText = 'flex:1;width:100%;border:0';
+  frame.setAttribute('allow', 'camera; microphone; fullscreen; autoplay; clipboard-write');
+  back.append(bar, frame);
+  document.body.appendChild(back);
 }
+
+// gwave function များ — kiosk ရော radial ရော ဒီကိုပဲ ခေါ်တယ်
+Object.assign(openers, {
+  live:    () => openWebOverlay('/live', '📺 Live & Replays'),
+  games:   () => openWebOverlay('/games', '🎮 Games'),
+  items:   () => openWebOverlay('/items', '🛍️ Item Shop'),
+  studio:  () => openWebOverlay('/studio?tab=avatar', '🧬 gWave 3D Studio'),
+  social:  () => openWebOverlay('/feed', '🫂 Feed အပြည့်'),
+});
 
 // ၉။ စတင်!
 hud.hideLoading();

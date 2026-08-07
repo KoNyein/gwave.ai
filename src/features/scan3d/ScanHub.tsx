@@ -5,6 +5,12 @@ import { useCallback, useEffect, useState } from "react";
 import { ScanCapture } from "./ScanCapture";
 import { OrbitViewer } from "./OrbitViewer";
 import {
+  downloadCover,
+  exportScan,
+  importScanFile,
+  renameScan,
+} from "./exchange";
+import {
   deleteScan,
   getScan,
   listScans,
@@ -24,6 +30,8 @@ export function ScanHub() {
   const [viewing, setViewing] = useState<ScanRecord | null>(null);
   const [scans, setScans] = useState<ScanMeta[]>([]);
   const [covers, setCovers] = useState<Map<string, string>>(new Map());
+  /// Import/export လုပ်နေတုန်း ပြမယ့် စာတန်း (error လည်း ဒီမှာပဲ)
+  const [busy, setBusy] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     listScans()
@@ -79,8 +87,35 @@ export function ScanHub() {
             ပစ္စည်းပတ်လည် ရိုက်ပြီး turntable လှည့်ကြည့်မယ်
           </span>
         </button>
+        {/* 📥 ဖိုင်ကနေ ပြန်သွင်း — တခြားစက်/တခြားလူဆီက .gwscan.json */}
+        <label className="col-span-2 flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/15 p-3 text-left transition hover:bg-white/5">
+          <span className="text-xl">📥</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">Scan သွင်းမယ်</span>
+            <span className="block text-[11px] text-white/50">
+              .gwscan.json ဖိုင်ကနေ library ထဲ ပြန်ထည့် (import)
+            </span>
+          </span>
+          <input
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (!f) return;
+              setBusy("သွင်းနေသည်…");
+              importScanFile(f)
+                .then(() => {
+                  setBusy(null);
+                  refresh();
+                })
+                .catch((err: Error) => setBusy(`⚠️ ${err.message}`));
+            }}
+          />
+        </label>
         <a
-          href="/profile/avatar"
+          href="/studio?tab=avatar"
           className="col-span-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:bg-white/10"
         >
           <span className="text-2xl">🧍</span>
@@ -94,6 +129,12 @@ export function ScanHub() {
         </a>
       </div>
 
+      {busy && (
+        <p className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-center text-xs text-white/80">
+          {busy}
+        </p>
+      )}
+
       {/* library */}
       <p className="pb-2 pt-6 text-xs font-semibold uppercase tracking-wide text-white/40">
         🗂 My Scans
@@ -105,11 +146,11 @@ export function ScanHub() {
       )}
       <div className="grid grid-cols-2 gap-3">
         {scans.map((s) => (
-          <button
+          <div
             key={s.id}
-            onClick={() => open(s.id)}
-            className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 text-left"
+            className="overflow-hidden rounded-2xl border border-white/10 bg-white/5"
           >
+          <button onClick={() => open(s.id)} className="w-full text-left">
             {covers.get(s.id) ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -125,10 +166,39 @@ export function ScanHub() {
             <span className="block truncate px-3 pt-2 text-xs font-medium">
               {s.mode === "room" ? "🏠" : "📦"} {s.name}
             </span>
-            <span className="block px-3 pb-2 text-[10px] text-white/45">
+            <span className="block px-3 text-[10px] text-white/45">
               {s.frameCount} frames · {new Date(s.createdAt).toLocaleDateString()}
             </span>
           </button>
+          {/* ✏️ နာမည်ပြောင်း · 📤 ဖိုင်ထုတ် · 🖼 ပုံ download — card တစ်ခုစီ */}
+          <div className="flex gap-1 px-2 pb-2 pt-1.5">
+            <Act
+              title="နာမည်ပြောင်း"
+              icon="✏️"
+              onClick={() => {
+                const name = window.prompt("နာမည်အသစ်", s.name);
+                if (name) void renameScan(s.id, name).then(refresh);
+              }}
+            />
+            <Act
+              title="ဖိုင်အဖြစ် ထုတ်"
+              icon="📤"
+              onClick={() => {
+                setBusy("ထုတ်နေသည်…");
+                exportScan(s.id)
+                  .then(() => setBusy(null))
+                  .catch((e: Error) => setBusy(`⚠️ ${e.message}`));
+              }}
+            />
+            <Act
+              title="ပုံ download"
+              icon="🖼"
+              onClick={() => {
+                downloadCover(s.id).catch(() => setBusy("⚠️ ပုံ မရှိပါ"));
+              }}
+            />
+          </div>
+          </div>
         ))}
       </div>
 
@@ -156,5 +226,27 @@ export function ScanHub() {
         />
       )}
     </div>
+  );
+}
+
+/// Card အောက်က အသေးစား action ခလုတ် — icon + title (a11y အတွက် title)
+function Act({
+  icon,
+  title,
+  onClick,
+}: {
+  icon: string;
+  title: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className="flex-1 rounded-lg border border-white/10 bg-black/30 py-1.5 text-[13px] hover:bg-white/10"
+    >
+      {icon}
+    </button>
   );
 }

@@ -17,16 +17,22 @@ import { ScanHub } from "@/features/scan3d/ScanHub";
 ///   (CSP frame-src 'self')။ Studio/World Maker/XR/Generator variant
 ///   တွေကို ဒီ tab ထဲကပဲ ခလုတ်နဲ့ ကူးလို့ရ။
 
+const MovementLab = dynamic(
+  () => import("@/features/studio/MovementLab").then((m) => m.MovementLab),
+  { ssr: false, loading: () => <Loading label="🏃 Movement Lab ဖွင့်နေသည်…" /> },
+);
+
 const AvatarEditor = dynamic(
   () => import("@/features/avatar/editor/AvatarEditor").then((m) => m.AvatarEditor),
   { ssr: false, loading: () => <Loading label="🧬 Avatar studio ဖွင့်နေသည်…" /> },
 );
 
-type Tab = "avatar" | "scan" | "world";
+type Tab = "avatar" | "scan" | "move" | "world";
 
 const TABS: { id: Tab; icon: string; label: string; hint: string }[] = [
   { id: "avatar", icon: "🧬", label: "Avatar", hint: "မျက်နှာ/ကိုယ်ခန္ဓာ scan → ကိုယ်ပိုင်ရုပ်" },
-  { id: "scan", icon: "🛰", label: "Scanner", hint: "အခန်း · ပစ္စည်း 3D scan" },
+  { id: "scan", icon: "🛰", label: "Scanner", hint: "အခန်း · ပစ္စည်း 3D scan · သိမ်း/ထုတ်/သွင်း" },
+  { id: "move", icon: "🏃", label: "Movement", hint: "ခေါင်း/လက်/ခြေ လှုပ်ရှားမှု ချိန်ညှိ" },
   { id: "world", icon: "🧱", label: "World", hint: "ကမ္ဘာ/ဂိမ်း တည်ဆောက်ရန်" },
 ];
 
@@ -47,6 +53,17 @@ function Loading({ label }: { label: string }) {
   );
 }
 
+/// ရွေးထားတဲ့ realistic body — Movement Lab က ဒီရုပ်နဲ့ပဲ ပြရမယ်
+function readVariant(): string {
+  try {
+    const v = window.localStorage.getItem("mv:soldier");
+    if (v && /^[a-r]$/.test(v)) return v;
+  } catch {
+    /* private mode */
+  }
+  return "a";
+}
+
 export function StudioShell({
   initialTab,
   signedIn,
@@ -55,6 +72,8 @@ export function StudioShell({
   signedIn: boolean;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
+  const [variant, setVariant] = useState("a");
+  useEffect(() => setVariant(readVariant()), []);
   const [worldApp, setWorldApp] = useState("index.html");
 
   useEffect(() => {
@@ -88,6 +107,8 @@ export function StudioShell({
             </button>
           ))}
         </nav>
+        {tab === "move" && <MovementLab variant={variant} />}
+
         {tab === "world" && (
           <select
             value={worldApp}

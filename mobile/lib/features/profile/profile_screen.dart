@@ -232,20 +232,12 @@ class ProfileScreen extends StatelessWidget {
       // 🌐 Metaverse & 3D — worlds, creation tools and scanners together
       _MenuSection(tr(context, "Metaverse & 3D", "မက်တာဗာ့စ်နှင့် 3D"),
           Icons.public, const Color(0xFF8E44AD), [
+        // 🌍 လောက တစ်ခုတည်း — Metaverse ကိုယ်တိုင်က Open World ဖြစ်သွားပြီ
         _MenuEntry(Icons.public, tr(context, "Metaverse", "မက်တာဗာ့စ်"),
             native: _Native.metaverse),
-        _MenuEntry(Icons.travel_explore,
-            tr(context, "Open World", "Open World ကမ္ဘာ"),
-            web: "/world", game: true),
-        // 🎛 One 3D workspace — the three tools are tabs of /studio
-        _MenuEntry(Icons.face_retouching_natural,
-            tr(context, "Avatar Scanner", "Avatar စကင်နာ"),
-            web: "/studio?tab=avatar"),
-        _MenuEntry(Icons.document_scanner_outlined,
-            tr(context, "3D Scanner", "3D စကင်နာ"),
-            web: "/studio?tab=scan"),
+        // 🎛 3D အလုပ်ခုံ တစ်ခုတည်း — Avatar · Scanner · World က tab တွေ
         _MenuEntry(Icons.view_in_ar_outlined, "gWave Studio",
-            web: "/studio?tab=world", game: true),
+            web: "/studio", game: true),
       ]),
       // 🎮 Games — playing plus the in-game economy
       _MenuSection(tr(context, "Games", "ဂိမ်းများ"),
