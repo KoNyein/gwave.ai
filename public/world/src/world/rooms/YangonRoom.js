@@ -190,6 +190,13 @@ export class YangonRoom extends Room {
       action: 'projects', color: 0x2de1ff,
     });
 
+    // Civic Plaza — 🏛️ Meeting Hall kiosk
+    this.addStation({
+      position: new THREE.Vector3(0, 0, -12),
+      label: '🏛️ Meeting Hall — အစည်းအဝေးခန်းမ ဖန်တီး/ဝင်ရန်',
+      action: 'meet', color: 0x3ddc97,
+    });
+
     // 📰 Open Wall — ဈေးတန်းဘေး feed နံရံကြီး
     this.buildFeedWall(new THREE.Vector3(-16, 4.5, -14));
     this.addStation({

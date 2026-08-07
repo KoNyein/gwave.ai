@@ -142,6 +142,17 @@
 
 ## Changelog
 
+- 2026-08-07 (web): **Open World v11 — social layer.** Emote wheel ([G],
+  8 procedural emotes, multiplayer-synced so they work on scan avatars too),
+  proximity voice chat ([V], WebRTC mesh with the server only relaying
+  signaling; volume falls off 4m to 22m, speaking ring under the avatar) and
+  Meeting Spaces (Lagoon / Meet Hall / Rooftop, MT-XXXXX codes, ?meet=
+  invite links, 12-seat circle with a live speaker screen), plus a Yangon
+  Civic Plaza meeting kiosk and a radial entry. Server gained the voice
+  signaling relay and space create/join/presence. Our integrations were
+  re-applied again (avatar variant, same-origin ws/stats, metaverse gate,
+  real feed, jsdelivr, no Google Fonts, import map kept pure JSON).
+  Headless check: 8 radial spokes, 8 emotes, meeting panel, no page errors.
 - 2026-08-07 (web): **Open World v10 — "Yangon City OS".** Yangon is now a
   city of function kiosks (Avatar Studio, Marketplace, POS, Hall of Fame,
   Quest Board, Projects, Open Wall) you walk up to and open with E, plus a
