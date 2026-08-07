@@ -142,6 +142,27 @@
 
 ## Changelog
 
+- 2026-08-07 (web+mobile): **The old metaverse rooms are back — one room list.**
+  When /metaverse became the Open World, the Open World's own rooms (Yangon,
+  Hydro-Lab, Mae Sot, Strike) were all that remained; the ten maps from the
+  original React scene — ဂွေ့ဗ် မြို့တော်, Gwave City, စိမ်းလန်းချိုင့်ဝှမ်း,
+  နှင်းတောင်ထိပ်, ကောင်းကင်ကျွန်းများ, ဝှက်တမ်းဥယျာဉ်, ပွဲကွင်း, Drone
+  တောင်ကြား, Champions, Assassin လမ်းကြား — still existed at
+  /metaverse/classic but had no door anywhere in the UI. New
+  `public/world/src/world/RoomCatalog.js` lists all fifteen in one place and a
+  🚪 **အခန်းများ** entry (hotkey **R**) opens them from the dock: engine rooms
+  switch in place with no reload and no reconnect, your own Virtual Room loads
+  through the keyless `world_load`, and classic maps open as an in-world
+  overlay exactly like Live/Shop/Studio — which also pauses the Open World
+  renderer, so only one 3D scene is ever running. The world client also reads
+  **`?room=<id>`** for the first time: `/metaverse?room=snow` lands in Snow
+  Peak, an unknown id toasts instead of failing silently. That param was
+  already being sent by the Flutter app on every launch and ignored, so the
+  app's default room moved from `city` to `yangon` — otherwise the app would
+  now open the classic city overlay on startup instead of the world. While any
+  panel is open the touch controls hide (`body.panelOpen`), and bottom sheets
+  reserve room for the ☰ button so their last row is no longer under it.
+
 - 2026-08-07 (web): **Open World HUD → floating edge dock, centre always clear.**
   Both previous menu shapes covered the world: the radial arc cut straight
   across the middle, and the grid sheet that replaced it on touch closed off

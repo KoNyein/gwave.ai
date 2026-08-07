@@ -21,6 +21,7 @@ import { EMOTES } from './entities/Emotes.js';
 import { VoiceChat } from './net/VoiceChat.js';
 import { MeetingRoom } from './world/rooms/MeetingRoom.js';
 import { TouchControls } from './ui/TouchControls.js';
+import { ROOM_GROUPS, classicHref } from './world/RoomCatalog.js';
 
 // ၁။ အခြေခံစနစ်များ စတင်ခြင်း
 const engine  = new Engine(document.body);
@@ -168,6 +169,7 @@ engine.register({
     if (input.justPressed('KeyQ')) openers.quests();
     if (input.justPressed('KeyN')) openers.feed();
     if (input.justPressed('KeyL')) openers.board();
+    if (input.justPressed('KeyR')) openers.rooms();   // 🚪 အခန်းစာရင်း
     if (input.justPressed('KeyM')) radial.toggle();
     if (input.justPressed('KeyG')) hud.toggleEmoteWheel();   // 🎭 emote wheel
     if (input.justPressed('KeyV')) voice.toggleMute();       // 🎙️ mic
@@ -230,12 +232,23 @@ async function loadFeed() {
 }
 
 // ၈။ 🧭 Function Openers — key/station/radial menu သုံးမျိုးလုံးက ဒီကိုခေါ်
-const closeAll = () => ['#lbPanel','#walletPanel','#questPanel','#feedPanel','#avatarPanel','#projectsPanel','#meetPanel']
-  .forEach(sel => document.querySelector(sel).style.display = 'none');
+const PANELS = ['#lbPanel','#walletPanel','#questPanel','#feedPanel',
+                '#avatarPanel','#projectsPanel','#meetPanel','#roomsPanel'];
+/// Panel တစ်ခုခု ပွင့်နေလား — ဖွင့်ထားရင် touch ခလုတ်တွေ ဖျောက်တယ်
+/// (bottom sheet ရဲ့ အပေါ်မှာ joystick/mic တင်နေတာ မဖြစ်စေရ)。
+const syncPanelState = () => {
+  const any = PANELS.some(sel => document.querySelector(sel)?.style.display === 'block');
+  document.body.classList.toggle('panelOpen', any);
+};
+const closeAll = () => {
+  PANELS.forEach(sel => { const e = document.querySelector(sel); if (e) e.style.display = 'none'; });
+  syncPanelState();
+};
 function openPanel(sel, onOpen) {
   const wasOpen = document.querySelector(sel).style.display === 'block';
   closeAll();
   if (!wasOpen) { document.querySelector(sel).style.display = 'block'; onOpen?.(); }
+  syncPanelState();
 }
 const openers = {
   board:   () => openPanel('#lbPanel', () => fetchLeaderboard(currentSeason)),
@@ -253,7 +266,59 @@ const openers = {
              ? net.requestMeetings()
              : (document.querySelector('#meetContent').textContent = '🏛️ Meeting အတွက် server လိုအပ်သည် (offline)')),
   arena:   () => { world.switchTo('strike'); net.onRoomSwitch(); },
+  rooms:   () => openPanel('#roomsPanel', renderRooms),
 };
+
+/// 🚪 အခန်းစာရင်း — Open World ရဲ့ room ရော အရင် classic map ရော
+/// **တစ်စာရင်းတည်း**。 (user: "metaverse rooms အဟောင်းတွေ ပြန်ထည့်ပါ")
+///
+/// ★ kind:'world' — engine ထဲမှာပဲ ကူးတယ် (page မပြန်တင်၊ ချိတ်ဆက်မှု မပြတ်)
+/// ★ kind:'own'   — ကိုယ်ပိုင်ကမ္ဘာ (server က key မပါဘဲ load လုပ်ပေးတယ်)
+/// ★ kind:'classic' — အရင် React scene။ လောကထဲကပဲ overlay အဖြစ် ဖွင့်တယ် —
+///   Live/Shop/Studio နဲ့ တူညီတဲ့ နည်း၊ ✕ နှိပ်ရင် လောကထဲ ပြန်ရောက်တယ်။
+function renderRooms() {
+  const box = document.querySelector('#roomsContent');
+  if (!box) return;
+  const here = world.current?.id;
+  box.innerHTML = ROOM_GROUPS.map((g) => `
+    <div class="roomGroup">
+      <div class="gTitle">${g.title}</div>
+      <div class="gNote">${g.note}</div>
+      ${g.rooms.map((r) => `
+        <button class="roomRow${r.kind === 'world' && r.id === here ? ' here' : ''}"
+                data-kind="${r.kind}" data-id="${r.id}">
+          <span class="rEmo">${r.emoji}</span>
+          <span class="rBody">
+            <span class="rNm">${r.name}</span>
+            <div class="rBl">${r.blurb}</div>
+            ${r.kind === 'world' && r.id === here ? '<div class="rTag">● ခုရှိနေသည်</div>' : ''}
+          </span>
+        </button>`).join('')}
+    </div>`).join('');
+
+  box.querySelectorAll('.roomRow').forEach((el) => {
+    el.addEventListener('click', () => {
+      const kind = el.dataset.kind, id = el.dataset.id;
+      if (kind === 'classic') {
+        const r = ROOM_GROUPS.flatMap((g) => g.rooms).find((x) => x.id === id && x.kind === 'classic');
+        closeAll();
+        openWebOverlay(classicHref(id), `${r?.emoji || '🕹️'} ${r?.name || id}`);
+        return;
+      }
+      if (kind === 'own') {
+        closeAll();
+        if (net.connected) net.requestWorld();
+        else hud.addToast('🌍 ကိုယ်ပိုင်ကမ္ဘာ အတွက် server လိုအပ်သည် (offline)');
+        return;
+      }
+      // kind === 'world' — engine ထဲမှာပဲ ကူး
+      closeAll();
+      world.switchTo(id);
+      net.onRoomSwitch();
+      hud.addToast(`🚪 ${el.querySelector('.rNm')?.textContent || id} ထဲ ရောက်ပြီ`);
+    });
+  });
+}
 
 // ☰ Radial Menu — mobile-first metaverse menu (M key လည်းရ)
 const radial = new RadialMenu([
@@ -262,6 +327,7 @@ const radial = new RadialMenu([
   { icon: '🎯', label: 'Quest',   action: openers.quests },
   { icon: '📰', label: 'Feed',    action: openers.feed },
   { icon: '🏆', label: 'Board',   action: openers.board },
+  { icon: '🚪', label: 'အခန်း',   action: openers.rooms },
   { icon: '🌍', label: 'ကမ္ဘာ',    action: openers.world },
   { icon: '🏛️', label: 'Meeting', action: openers.meet },
   { icon: '⚔️', label: 'Arena',   action: openers.arena },
@@ -394,7 +460,9 @@ function openWebOverlay(path, label) {
   bar.style.cssText =
     'display:flex;align-items:center;gap:10px;padding:8px 12px;' +
     'background:rgba(10,16,34,.9);border-bottom:1px solid var(--line);font-size:13px';
-  bar.innerHTML = `<b style="color:var(--gold)">${label}</b><span style="flex:1"></span>`;
+  bar.innerHTML =
+    `<b style="color:var(--gold);min-width:0;overflow:hidden;text-overflow:ellipsis;` +
+    `white-space:nowrap">${label}</b><span style="flex:1"></span>`;
   const close = document.createElement('button');
   close.textContent = '✕ လောကထဲ ပြန်';
   close.style.cssText =
@@ -402,7 +470,7 @@ function openWebOverlay(path, label) {
     'color:var(--ink);background:var(--deep);border:1px solid var(--line);' +
     // ★ လက်ချောင်းနဲ့ လွယ်လွယ် ထိရအောင် — ဖုန်းမှာ ✕ က သေးလွန်းလို့
     //   "မပိတ်နိုင်ဘူး" ဆိုတဲ့ အစီရင်ခံစာ အများဆုံး ရတယ်။
-    'min-width:120px;min-height:44px;touch-action:manipulation';
+    'min-width:120px;min-height:44px;touch-action:manipulation;white-space:nowrap';
   close.onclick = closeWebOverlay;
   bar.appendChild(close);
   const frame = document.createElement('iframe');
@@ -477,6 +545,33 @@ function leaveWorld(href) {
   const wal = document.getElementById('walletBox');
   if (bar && wal) bar.insertBefore(tab, wal);
   else document.body.appendChild(tab);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 🚪 ?room=<id> — link/app ကနေ အခန်းတစ်ခုကို တိုက်ရိုက် ဖွင့်
+// ─────────────────────────────────────────────────────────────────────
+// Flutter app က `MetaverseScreen(room: "city")` နဲ့ ခေါ်တယ်၊ website ကလည်း
+// /metaverse?room=snow လို link မျှဝေလို့ရတယ်။ အရင်က ဒီ param ကို လောကက
+// လုံးဝ မဖတ်ဘူး — ဘယ်ကနေ ဝင်ဝင် ရန်ကုန်ကိုပဲ ရောက်နေတယ်။
+{
+  const want = params.get('room');
+  if (want) {
+    const all = ROOM_GROUPS.flatMap((g) => g.rooms);
+    const hit = all.find((r) => r.id === want && r.kind !== 'classic')
+             || all.find((r) => r.id === want);
+    if (!hit) {
+      hud.addToast(`🚪 "${want}" အခန်း မတွေ့ပါ`);
+    } else if (hit.kind === 'classic') {
+      // Classic map — ပထမ frame ပြီးမှ overlay ဖွင့်တယ် (မဟုတ်ရင် လောကက
+      // မဆောက်ရသေးဘဲ pause ဖြစ်ပြီး ပြန်ဝင်ချိန် မဲနေမယ်)。
+      setTimeout(() => openWebOverlay(classicHref(hit.id), `${hit.emoji} ${hit.name}`), 900);
+    } else if (hit.kind === 'own') {
+      setTimeout(() => { if (net.connected) net.requestWorld(); }, 900);
+    } else if (hit.id !== 'yangon') {
+      world.switchTo(hit.id);
+      net.onRoomSwitch();
+    }
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════

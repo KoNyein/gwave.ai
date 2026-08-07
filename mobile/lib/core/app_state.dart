@@ -174,7 +174,9 @@ class AppState extends ChangeNotifier {
     // ပေါ်မှာ ဖွင့်ပြီး ဘာမှမမြင်ရဘဲ ဖြစ်မယ်။
     if (uri.host == "metaverse") {
       if (status != AuthStatus.signedIn) return;
-      final room = uri.queryParameters["room"] ?? "city";
+      // ★ deep link မှာ room မပါရင် Open World ရဲ့ ပင်မ အခန်း (yangon)。
+      //   "city" က အခု classic မြို့တော် map ကို ဆိုလိုတယ်။
+      final room = uri.queryParameters["room"] ?? "yangon";
       final nav = gwNavigatorKey.currentState;
       if (nav != null) {
         nav.push(
