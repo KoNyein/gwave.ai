@@ -27,7 +27,35 @@ export type AvatarConfig = {
   rpmUrl?: string | null;
   /// 🧍 ရွေးထားတဲ့ realistic body variant (a-r) — device ကူးရင် လိုက်ဖို့
   variant?: string | null;
+  /// 🏃 Movement Lab မှာ ချိန်ထားတဲ့ လှုပ်ရှားမှု (ခေါင်း/လက်/ခြေ) —
+  /// key အားလုံး 0..2 အတွင်း၊ မသိတဲ့ key ဖယ်တယ်။
+  motion?: MotionTuning | null;
 };
+
+/// Movement Lab ရဲ့ tuning key များ — client/server နှစ်ဖက် တူညီရမယ်
+export const MOTION_KEYS = [
+  "headFollow",
+  "armSwing",
+  "armSpread",
+  "stride",
+  "kneeBend",
+  "lean",
+  "breathing",
+  "tempo",
+] as const;
+
+export type MotionTuning = Partial<Record<(typeof MOTION_KEYS)[number], number>>;
+
+/// မသိတဲ့ key ဖယ် + 0..2 clamp — user input မို့ ယုံလို့မရ
+export function sanitizeMotion(raw: unknown): MotionTuning | null {
+  if (!raw || typeof raw !== "object") return null;
+  const out: MotionTuning = {};
+  for (const k of MOTION_KEYS) {
+    const v = Number((raw as Record<string, unknown>)[k]);
+    if (Number.isFinite(v)) out[k] = Math.max(0, Math.min(2, v));
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
 
 /// RPM GLB URL အစစ်သာ — မဟုတ်ရင် တခြား host က model/script တင်လို့ရသွားမယ်
 export const RPM_URL_RE =
@@ -155,5 +183,6 @@ export function sanitizeAvatar(raw: unknown, owned: Set<string>): AvatarConfig {
       typeof r.variant === "string" && /^[a-r]$/.test(r.variant)
         ? r.variant
         : null,
+    motion: sanitizeMotion(r.motion),
   };
 }

@@ -9,7 +9,7 @@ import { StudioShell } from "@/features/studio/StudioShell";
 /// အရင်က သီးခြား ၃ ခု — Avatar editor (/profile/avatar), 3D Scanner
 /// (/scan), Game Engine (/engine/index.html) — ဘယ်ဟာက ဘယ်ဟာနဲ့ ဆက်စပ်လဲ
 /// မသိရဘဲ ကွဲနေတယ်။ အခု workspace တစ်ခုတည်း အောက်မှာ tab ၃ ခုအဖြစ်
-/// စုထားတယ်: 🧬 Avatar · 🛰 Scanner · 🧱 World Builder။
+/// စုထားတယ်: 🧬 Avatar · 🛰 Scanner · 🏃 Movement · 🧱 World Builder။
 ///
 /// ★ Login မလိုတဲ့ Scanner ကို guest လည်း သုံးလို့ရအောင် page ကို
 ///   ပိတ်မထားဘူး — Avatar tab ကသာ login တောင်းတယ် (shell ထဲမှာ)။
@@ -29,7 +29,9 @@ export default async function StudioPage({
   const profile = await getCurrentProfile();
   return (
     <StudioShell
-      initialTab={tab === "scan" || tab === "world" ? tab : "avatar"}
+      initialTab={
+        tab === "scan" || tab === "world" || tab === "move" ? tab : "avatar"
+      }
       signedIn={Boolean(profile)}
     />
   );
