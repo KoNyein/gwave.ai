@@ -130,6 +130,15 @@ export function MobileMenu({ profile }: { profile: Profile | null }) {
               ))}
               <div className="my-2 border-t" />
               <Link
+                href="/start"
+                className="flex items-center gap-3 rounded-lg px-2 py-2 font-medium transition-colors hover:bg-muted"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-primary">
+                  🚪
+                </span>
+                ဝင်ရာနေရာ ပြောင်းရန်
+              </Link>
+              <Link
                 href="/help"
                 className="flex items-center gap-3 rounded-lg px-2 py-2 font-medium transition-colors hover:bg-muted"
               >

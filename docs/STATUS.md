@@ -142,6 +142,28 @@
 
 ## Changelog
 
+- 2026-08-07 (web+mobile): **Everyone is a person, everyone faces forward, and
+  login asks where you want to go.**
+  *Backwards walking:* avatars turn with `rotation.y = atan2(dx, dz)`, which
+  aligns the model's **+Z** with travel — but measuring all ten GLBs showed
+  `Soldier.glb` faces **−Z** while the other nine face +Z. Soldier is the body
+  every remote player wears, so everyone else appeared to walk backwards.
+  Locomotion now measures each model's forward from its foot bones and rotates
+  the model 180° when it faces the wrong way, so scanner and Blender rigs stay
+  correct too.
+  *NPCs:* ဦးလှ, မစန်း, ဒေါ်စိမ်းလဲ့ and ကိုမောင်မောင် were capsules with
+  sphere heads. They now wear real rigged bodies, chosen by hashing the name so
+  ဦးလှ is the same person every visit, and they walk with the same Locomotion
+  as players. The capsule stays as a fallback if the GLB fails.
+  *Start gate:* `/` sent every signed-in user to `/metaverse`, so anyone
+  opening the app to run their shop had to walk through a 3D world first. New
+  `/start` offers eight categories (Metaverse, Social, Shop, Marketplace, POS,
+  Live, Games, Dashboard); "remember" writes a `gw_home` cookie and `/` honours
+  it, validated against the known list so it can't be used as an open redirect.
+  Changeable any time from the ☰ drawer. The Flutter app got the same thing —
+  a first-launch sheet stored in SharedPreferences, resettable from Settings →
+  ဝင်ရာနေရာ — replacing the unconditional metaverse push on every launch.
+
 - 2026-08-07 (web): **Open World gets sound, room lighting, and an honest fire
   button.** Three reports, three separate causes.
   (1) *"Can't shoot in the shooting rooms"* — the 🔫 touch button was drawn in

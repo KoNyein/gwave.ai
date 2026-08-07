@@ -1,9 +1,33 @@
 // ============================================================
 // NPC.js — Non-Player Character (AI ဇာတ်ကောင်)
 // လွတ်လပ်စွာ လမ်းလျှောက် (wander) + နာမည် label + မြန်မာစကားပြော dialogue
-// GLB model ချိတ်လိုလျှင် Avatar.js ၏ setModel ပုံစံအတိုင်း တိုးချဲ့နိုင်သည်
+//
+// 🧍 **လူ ဖြစ်ရမယ် — တုံး မဖြစ်ရ** (user: "Avatar တွေကို လူထားပါ အတုံးတွေ
+//    မထားရ — ဦးလှ၊ မချို စတဲ့ NPC များ")。
+//    ဦးလှ၊ မစန်း၊ ဒေါ်စိမ်းလဲ့၊ ကိုမောင်မောင် အားလုံး capsule + ဘောလုံး
+//    အဖြစ် ရပ်နေခဲ့တယ်။ အခု နာမည်ကနေ ရုပ်တစ်ခုကို တည်ငြိမ်စွာ ရွေးပြီး
+//    (ဝင်တိုင်း တူညီတဲ့ ရုပ်) Locomotion နဲ့ ခြေလှမ်းတယ်။
+//    GLB မရရင် capsule နဲ့ ဆက်သွားတယ် — NPC တစ်ယောက် ပျောက်သွားတာထက်
+//    တုံးအဖြစ် ရှိနေတာ ပိုကောင်းတယ်။
 // ============================================================
 import * as THREE from 'three';
+import { loadGLB } from '../core/Assets.js';
+import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
+import { Locomotion } from './Locomotion.js';
+
+/// NPC တွေ ဝတ်မယ့် ရုပ်များ — အမျိုးအစား ကွဲပြားအောင်
+const NPC_BODIES = [
+  'Character3', 'Character4', 'Character5',
+  'Granny', 'Michelle2', 'Clown', 'Remy', 'Xbot',
+];
+
+/// နာမည်ကနေ **တည်ငြိမ်တဲ့** ရုပ်ရွေးချယ်မှု — ဦးလှ က ဝင်တိုင်း ဦးလှပဲ။
+/// (Math.random() သုံးရင် ဝင်တိုင်း လူပြောင်းသွားပြီး နေရာမကျဘူး)
+function bodyFor(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return NPC_BODIES[h % NPC_BODIES.length];
+}
 
 export class NPC {
   constructor({ name, color = 0xf5c542, dialogue = [], home = new THREE.Vector3(), range = 8 }) {
@@ -26,9 +50,21 @@ export class NPC {
       new THREE.MeshStandardMaterial({ color: 0xffd9a0 })
     );
     head.position.y = 1.75;
-    this.group.add(body, head, this.makeLabel(name));
+    this.placeholder = new THREE.Group();
+    this.placeholder.add(body, head);
+    this.group.add(this.placeholder, this.makeLabel(name));
     this.group.position.copy(this.home);
     this.pickTarget();
+
+    // 🧍 တကယ့် ခန္ဓာကိုယ် — မရောက်မချင်း capsule နဲ့ ရပ်နေတယ်
+    void loadGLB(`/metaverse/realistic/${bodyFor(name)}.glb`).then((gltf) => {
+      const model = cloneSkinned(gltf.scene);
+      model.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      this.group.add(model);
+      this.model = model;
+      this.loco = new Locomotion(model, gltf.animations || []);
+      this.placeholder.visible = false;
+    }).catch(() => { /* GLB မရရင် capsule နဲ့ ဆက် */ });
   }
 
   // နာမည်ကို canvas ပေါ်ရေးပြီး Sprite အဖြစ် ခေါင်းပေါ်တင်သည်
@@ -69,7 +105,9 @@ export class NPC {
     const pos = this.group.position;
     const dir = new THREE.Vector3().subVectors(this.target, pos); dir.y = 0;
     const dist = dir.length();
+    let moving = false;
     if (dist > 0.3) {
+      moving = true;
       dir.normalize();
       pos.addScaledVector(dir, this.speed * dt);
       this.group.rotation.y = Math.atan2(dir.x, dir.z);
@@ -77,5 +115,8 @@ export class NPC {
       this.waitTimer -= dt;
       if (this.waitTimer <= 0) this.pickTarget();
     }
+    // 🚶 ခြေလှမ်း — ရပ်နေရင် idle, သွားနေရင် လှမ်း
+    this.loco?.setMotion({ speed: moving ? this.speed : 0, grounded: true });
+    this.loco?.update(dt);
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -310,6 +311,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _themeRow(context),
                 _skinRow(context),
                 _genderRow(context),
+                const Divider(height: 1, indent: 56),
+                // 🚪 ဖွင့်တာနဲ့ ဘယ်ကို သွားမလဲ — ရွေးထားတာကို ဖျက်ရင်
+                //    နောက်တစ်ခါ ဖွင့်ချိန် ပြန်မေးတယ်။
+                _row(Icons.door_front_door_outlined,
+                    tr(context, "Start screen", "ဝင်ရာနေရာ"), () async {
+                  try {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.remove('gw.home.choice');
+                  } catch (_) {
+                    // မဖျက်နိုင်ရင်လည်း ဘာမှ မပျက်စီးဘူး
+                  }
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('နောက်တစ်ခါ app ဖွင့်ရင် ပြန်မေးပါမယ်'),
+                  ));
+                }),
                 const Divider(height: 1, indent: 56),
                 _row(Icons.workspace_premium_outlined, "Membership",
                     () => _openWeb("/membership")),
