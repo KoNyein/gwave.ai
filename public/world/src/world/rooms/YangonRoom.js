@@ -7,7 +7,51 @@ import { Room } from '../Room.js';
 import { NPC } from '../../entities/NPC.js';
 
 export class YangonRoom extends Room {
-  constructor() { super('yangon', 'Cyber-Yangon ညဈေးတန်း'); }
+  constructor() { super('yangon', 'Cyber-Yangon City (ပင်မမြို့တော်)'); }
+
+  // 📰 Open Wall — Feed post များကို ကမ္ဘာထဲ 3D နံရံပေါ်တင်ပြသည်
+  buildFeedWall(position) {
+    this.feedCanvas = document.createElement('canvas');
+    this.feedCanvas.width = 1024; this.feedCanvas.height = 512;
+    this.feedTexture = new THREE.CanvasTexture(this.feedCanvas);
+    const wall = new THREE.Mesh(
+      new THREE.PlaneGeometry(16, 8),
+      new THREE.MeshBasicMaterial({ map: this.feedTexture, transparent: true })
+    );
+    wall.position.copy(position);
+    wall.rotation.y = Math.PI / 6;
+    const frame = new THREE.Mesh(
+      new THREE.BoxGeometry(16.6, 8.6, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x141b30, metalness: 0.7, roughness: 0.3 })
+    );
+    frame.position.copy(position); frame.position.z -= 0.2;
+    frame.rotation.y = Math.PI / 6;
+    this.group.add(frame, wall);
+    this.setFeedWallPosts([{ who: 'GWAVE', text: 'Open Wall — feed ကို ဒီနံရံပေါ်မှာ တိုက်ရိုက်မြင်ရမည်…' }]);
+  }
+
+  setFeedWallPosts(posts) {
+    if (!this.feedCanvas) return;
+    const ctx = this.feedCanvas.getContext('2d');
+    ctx.clearRect(0, 0, 1024, 512);
+    ctx.fillStyle = 'rgba(6,9,19,.85)'; ctx.fillRect(0, 0, 1024, 512);
+    ctx.fillStyle = '#f5c542';
+    ctx.font = 'bold 44px Padauk, sans-serif';
+    ctx.fillText('📰 GWAVE OPEN WALL', 34, 66);
+    ctx.strokeStyle = '#f5c542'; ctx.globalAlpha = .5;
+    ctx.beginPath(); ctx.moveTo(34, 86); ctx.lineTo(990, 86); ctx.stroke();
+    ctx.globalAlpha = 1;
+    let y = 150;
+    for (const post of (posts || []).slice(0, 3)) {
+      ctx.fillStyle = '#3ddc97'; ctx.font = 'bold 32px Padauk, sans-serif';
+      ctx.fillText(post.who, 34, y);
+      ctx.fillStyle = '#eaf0ff'; ctx.font = '30px Padauk, sans-serif';
+      const text = post.text.length > 52 ? post.text.slice(0, 52) + '…' : post.text;
+      ctx.fillText(text, 34, y + 44);
+      y += 120;
+    }
+    this.feedTexture.needsUpdate = true;
+  }
 
   build() {
     // မြေပြင် — မိုးရွာပြီးစ လမ်းမ အနက်ရောင်
@@ -82,6 +126,7 @@ export class YangonRoom extends Room {
         'ခရမ်းရောင်တိုင်ကို E နှိပ်ရင် Hydro-Lab ကိုရောက်မယ်။',
         'Wallet ချိတ်ထားရင် နောက်ပိုင်း ဆုတွေရနိုင်မယ်နော်!',
         'လိမ္မော်ရောင်တိုင်က မဲဆောက်၊ အနီရောင်တိုင်က STRIKE Arena!',
+        'မြို့ထဲက ရောင်စုံ kiosk လေးတွေမှာ E နှိပ်ကြည့် — function တွေ အကုန်ရှိတယ်။',
       ],
     }));
     this.addNPC(new NPC({
@@ -108,6 +153,49 @@ export class YangonRoom extends Room {
       targetRoomId: 'maesot',
       label: 'မဲဆောက် နယ်စပ်လမ်းသို့',
       color: 0xffb020,
+    });
+
+    // ============ 🏙️ City Districts — Function Stations ============
+    // Creator District (အနောက်ဘက်) — 🧬 Avatar Studio (3D scanner + presets)
+    this.addStation({
+      position: new THREE.Vector3(-8, 0, 2),
+      label: '🧬 Avatar Studio — ကိုယ်ပိုင် avatar ဖန်တီး/3D scan ချိတ်',
+      action: 'avatar', color: 0x3ddc97,
+    });
+    // Market District (အရှေ့ဘက်) — 🛍️ Marketplace + ☕ POS
+    this.addStation({
+      position: new THREE.Vector3(8, 0, 2),
+      label: '🛍️ Marketplace — skin/item ဝယ်ရန် (GP)',
+      action: 'shop', color: 0xf5c542,
+    });
+    this.addStation({
+      position: new THREE.Vector3(11, 0, -4),
+      label: '☕ Gwave Rooftop POS — GP ဖြင့် ကော်ဖီ/ဆုလဲရန်',
+      action: 'pos', color: 0xffb020,
+    });
+    // Civic Plaza — 🏆 Leaderboard + 🎯 Quest Board + 📁 Projects
+    this.addStation({
+      position: new THREE.Vector3(-4, 0, -8),
+      label: '🏆 Hall of Fame — season leaderboard',
+      action: 'board', color: 0xd8324a,
+    });
+    this.addStation({
+      position: new THREE.Vector3(4, 0, -8),
+      label: '🎯 Quest Board — နေ့စဉ်တာဝန်များ',
+      action: 'quests', color: 0x7f5cff,
+    });
+    this.addStation({
+      position: new THREE.Vector3(-11, 0, -4),
+      label: '📁 Gwave Projects — platform စီမံကိန်းများ',
+      action: 'projects', color: 0x2de1ff,
+    });
+
+    // 📰 Open Wall — ဈေးတန်းဘေး feed နံရံကြီး
+    this.buildFeedWall(new THREE.Vector3(-16, 4.5, -14));
+    this.addStation({
+      position: new THREE.Vector3(-14, 0, -10),
+      label: '📰 Open Wall — feed ဖတ်/တင်ရန်',
+      action: 'feed', color: 0x8ecbff,
     });
 
     // Portal → ကိုယ်ပိုင် Metaverse ကမ္ဘာ (create/edit)

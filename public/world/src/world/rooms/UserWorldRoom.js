@@ -72,6 +72,9 @@ export class UserWorldRoom extends Room {
     this.ghost.visible = false;
     this.group.add(this.ghost);
 
+    // 👤 Profile Board — ပိုင်ရှင့် stats ကို ကမ္ဘာထဲ billboard ဖြင့်ပြ
+    this.buildProfileBoard(new THREE.Vector3(-8, 3, 8));
+
     // Portal — Yangon hub သို့ပြန်
     this.addPortal({
       position: new THREE.Vector3(0, 0, 20),
@@ -80,6 +83,52 @@ export class UserWorldRoom extends Room {
       color: 0x7f5cff,
     });
     this.spawn.set(0, 0, 14);
+  }
+
+  // 👤 ကမ္ဘာပိုင်ရှင် profile billboard — stats API မှ XP/GP fetch ပြီးရေး
+  buildProfileBoard(position) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 768; canvas.height = 384;
+    const tex = new THREE.CanvasTexture(canvas);
+    const board = new THREE.Mesh(
+      new THREE.PlaneGeometry(9, 4.5),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+    );
+    board.position.copy(position);
+    board.rotation.y = Math.PI / 5;
+    const frame = new THREE.Mesh(
+      new THREE.BoxGeometry(9.5, 5, 0.25),
+      new THREE.MeshStandardMaterial({ color: 0x141b30, metalness: 0.7, roughness: 0.3 })
+    );
+    frame.position.copy(position); frame.position.z -= 0.16; frame.rotation.y = Math.PI / 5;
+    this.group.add(frame, board);
+
+    const draw = (stats, wallet) => {
+      const c = canvas.getContext('2d');
+      c.clearRect(0, 0, 768, 384);
+      c.fillStyle = 'rgba(6,9,19,.85)'; c.fillRect(0, 0, 768, 384);
+      c.fillStyle = '#f5c542'; c.font = 'bold 42px Padauk, sans-serif';
+      c.fillText(`👤 ${this.worldName}`, 30, 64);
+      c.strokeStyle = '#f5c542'; c.globalAlpha = .5;
+      c.beginPath(); c.moveTo(30, 86); c.lineTo(738, 86); c.stroke();
+      c.globalAlpha = 1;
+      c.font = '32px Padauk, sans-serif';
+      c.fillStyle = '#eaf0ff';
+      c.fillText(`⭐ XP: ${stats?.xp ?? '—'}   🔫 K/D: ${stats?.kills ?? 0}/${stats?.deaths ?? 0}   🎯 HS: ${stats?.headshots ?? 0}`, 30, 150);
+      c.fillStyle = '#3ddc97';
+      c.fillText(`💰 GP: ${wallet?.points ?? '—'}   🎒 Items: ${wallet?.inventory?.length ?? 0}`, 30, 210);
+      c.fillStyle = '#8a97b8'; c.font = '26px Padauk, sans-serif';
+      c.fillText(this.own ? '🔨 [B] နှိပ်ပြီး ကမ္ဘာကို ဆက်တည်ဆောက်ပါ' : '🌍 ဒီကမ္ဘာကို လာလည်နေသည်', 30, 280);
+      tex.needsUpdate = true;
+    };
+    draw(null, null);
+    const base = this.ctx.statsUrl;
+    if (base) {
+      Promise.all([
+        fetch(`${base}/player/${encodeURIComponent(this.ownerKey)}`).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(`${base}/wallet/${encodeURIComponent(this.ownerKey)}`).then(r => r.ok ? r.json() : null).catch(() => null),
+      ]).then(([stats, wallet]) => draw(stats, wallet));
+    }
   }
 
   // object data → mesh (+ collider)
