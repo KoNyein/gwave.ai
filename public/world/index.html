@@ -371,6 +371,21 @@
     #dialog{ font-size:16px; }
   }
 
+  /* ---- 📰 Feed edge tab — လောကကနေ ထွက်ဖို့ အမြဲမြင်ရတဲ့ လမ်း ---- */
+  #feedTab{ position:fixed; z-index:8; right:0;
+    top:50%; transform:translateY(-50%);
+    width:34px; height:64px; border:1px solid var(--line); border-right:0;
+    border-radius:14px 0 0 14px; cursor:pointer; font-size:18px;
+    background:linear-gradient(165deg,var(--panel),rgba(11,16,38,.9));
+    color:var(--ink); backdrop-filter:blur(8px); touch-action:manipulation;
+    display:flex; align-items:center; justify-content:center;
+    margin-right:var(--safeR); }
+  #feedTab:active, #feedTab:hover{ border-color:var(--gold); }
+  /* အလျားလိုက် ဖုန်းမှာ အလယ်က ခလုတ်တွေနဲ့ မကပ်အောင် အနည်းငယ် အပေါ်တင် */
+  @media (orientation:landscape) and (max-height:480px){
+    #feedTab{ top:34%; height:56px; }
+  }
+
   /* ---- 🏛️ Meeting panel ---- */
   #meetPanel{ left:50%; top:50%; transform:translate(-50%,-50%); width:min(480px,94vw);
     max-height:80vh; overflow-y:auto; display:none; z-index:6; }

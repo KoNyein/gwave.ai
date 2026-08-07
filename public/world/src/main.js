@@ -118,10 +118,15 @@ const visitWorld = params.get('world');
 if (visitWorld) {
   // ★ အကြိမ် ကန့်သတ် — အရင်က net မချိတ်မိရင် ဒီ timer က session
   //   တစ်ခုလုံး 500ms တိုင်း ထာဝရ ပြေးနေတယ်။
+  // ★ `?world=me` — profile ရဲ့ "🏠 ကိုယ်ပိုင် Virtual Room" ခလုတ်။ key မပါဘဲ
+  //   ပို့ရင် server က ကိုယ့်ကမ္ဘာကို load လုပ်တယ် (မရှိသေးရင် အသစ် ဆောက်)。
+  const wantOwn = visitWorld === 'me';
   let tries = 40;
   const tryVisit = setInterval(() => {
-    if (net.connected) { clearInterval(tryVisit); net.requestWorld(visitWorld); }
-    else if (--tries <= 0) clearInterval(tryVisit);
+    if (net.connected) {
+      clearInterval(tryVisit);
+      net.requestWorld(wantOwn ? null : visitWorld);
+    } else if (--tries <= 0) clearInterval(tryVisit);
   }, 500);
 }
 
@@ -418,6 +423,57 @@ Object.assign(openers, {
   studio:  () => openWebOverlay('/studio?tab=avatar', '🧬 gWave 3D Studio'),
   social:  () => openWebOverlay('/feed', '🫂 Feed အပြည့်'),
 });
+
+// ══════════════════════════════════════════════════════════════════════
+// 🧭 လောက ⇄ Feed — ပွတ်ဆွဲပြီး ထွက်လို့ရ (user: "ယာဖက်သို့ ပွတ်ဆွဲလျှင်
+//    News feed")。
+// ─────────────────────────────────────────────────────────────────────
+// ★ **လက်နှစ်ချောင်း** ဆွဲမှ အလုပ်လုပ်တယ် — လက်တစ်ချောင်းက ကင်မရာ လှည့်တာ
+//   နဲ့ joystick အတွက် ယူထားပြီးသား၊ ဝင်ယူရင် လောကထဲ ကြည့်လို့ မရတော့ဘူး။
+// ★ လောကက iframe ထဲမှာ ဆိုရင် parent (/metaverse page) ကို ပြောတယ်၊
+//   တိုက်ရိုက် ဖွင့်ထားရင် ကိုယ်တိုင် သွားတယ်။
+// ★ ခလုတ်လည်း ထားပေးတယ် — gesture မသိသူ ရှိမယ်။
+function leaveWorld(href) {
+  // 📱 App (Flutter WebView) ထဲမှာဆို route ကို pop လုပ်ရမယ် — WebView ထဲမှာ
+  //    /feed ကို load လုပ်လိုက်ရင် app ရဲ့ native Feed tab မဟုတ်ဘဲ website
+  //    တစ်ခုလုံး WebView ထဲ ဝင်လာမယ်။
+  if (window.GwaveNative?.openNative) { window.GwaveNative.openNative('back'); return; }
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'gwave:nav', href }, window.location.origin);
+    return;
+  }
+  window.location.href = href;
+}
+
+{
+  let sx = 0, sy = 0, at = 0, live = false;
+  addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 2) { live = false; return; }
+    const [a, b] = e.touches;
+    sx = (a.clientX + b.clientX) / 2;
+    sy = (a.clientY + b.clientY) / 2;
+    at = Date.now(); live = true;
+  }, { passive: true });
+  addEventListener('touchend', (e) => {
+    if (!live) return;
+    live = false;
+    if (Date.now() - at > 700) return;
+    const t = e.changedTouches[0];
+    if (!t) return;
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy) * 1.7) return;
+    if (dx > 0) leaveWorld('/feed');   // ညာဘက် ဆွဲ → သတင်းစာမျက်နှာ
+  }, { passive: true });
+
+  // 📰 ညာဘက် အနားက tab — gesture မသိလည်း တစ်ချက်နှိပ်ရုံ
+  const tab = document.createElement('button');
+  tab.id = 'feedTab';
+  tab.innerHTML = '<span>📰</span>';
+  tab.title = 'Feed (လက်နှစ်ချောင်း ညာဘက် ဆွဲ)';
+  tab.setAttribute('aria-label', 'Feed');
+  tab.onclick = () => leaveWorld('/feed');
+  document.body.appendChild(tab);
+}
 
 // ၉။ စတင်!
 hud.hideLoading();

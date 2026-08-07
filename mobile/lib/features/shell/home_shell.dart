@@ -85,6 +85,24 @@ class _HomeShellState extends State<HomeShell> {
     });
   }
 
+  /// 🧭 ဘေးပွတ်ဆွဲ — ဘယ်ဘက် = လောက, ညာဘက် = နောက် content tab。
+  ///
+  /// `primaryVelocity` က ညာဘက်ဆွဲရင် အပေါင်း၊ ဘယ်ဘက်ဆွဲရင် အနုတ်။
+  /// ၃၀၀ px/s ကို အနိမ့်ဆုံး အဖြစ် ထားတယ် — ဖြည်းဖြည်း ရွေ့တာတွေက
+  /// list ကို ဘေးတိုက် ထိမိတာ ဖြစ်တတ်လို့ tab မပြောင်းစေချင်ဘူး။
+  void _onDeckSwipe(DragEndDetails d) {
+    final v = d.primaryVelocity ?? 0;
+    if (v.abs() < 300) return;
+    if (v < 0) {
+      // ← လောကထဲ ဝင်
+      openMetaverse(context);
+    } else {
+      // → Feed → Reels → Live → Shop (စက်ဝိုင်း — Notifications/Profile က
+      //   deck ထဲ မပါဘူး၊ အဲဒါတွေက ရည်ရွယ်ချက်ရှိရှိ သွားရမယ့် နေရာတွေ)
+      _selectTab((_index + 1) % 4);
+    }
+  }
+
   Future<void> _openComposer() async {
     final created = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const ComposerScreen()),
@@ -119,11 +137,22 @@ class _HomeShellState extends State<HomeShell> {
               // strip of every screen for itself. It renders nothing when
               // nothing is loaded, and it is hidden over Reels —
               // edge-to-edge video is no place for chrome.
-              child: Stack(
-                children: [
-                  IndexedStack(index: _index, children: tabs),
-                  GwFloatingPlayer(visible: _index != 1),
-                ],
+              //
+              // 🧭 ဘေးပွတ်ဆွဲ လမ်းညွှန် (web ရဲ့ SwipeDeck နဲ့ တူညီအောင်):
+              //   ← ဘယ်ဘက်ဆွဲ → 🌍 Metaverse
+              //   → ညာဘက်ဆွဲ  → နောက် content tab (Feed→Reels→Live→Shop)
+              // ★ Detector က အပေါ်ဆုံးမှာ ရှိပေမယ့် အထဲက အလျားလိုက်
+              //   scroll (story အတန်း, carousel) က gesture arena မှာ
+              //   အနိုင်ရတယ် — သူတို့ ပိုနက်လို့။ ဒါကြောင့် ဝင်မယူဘူး။
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onHorizontalDragEnd: _onDeckSwipe,
+                child: Stack(
+                  children: [
+                    IndexedStack(index: _index, children: tabs),
+                    GwFloatingPlayer(visible: _index != 1),
+                  ],
+                ),
               ),
             ),
           ],

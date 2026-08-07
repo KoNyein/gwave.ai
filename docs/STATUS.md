@@ -142,6 +142,28 @@
 
 ## Changelog
 
+- 2026-08-07 (web+mobile): **Swipe deck + per-user virtual rooms.**
+  One gesture rule across the whole system, defined once in `src/lib/deck.ts`
+  so web and app cannot drift: **← left = 🌍 Metaverse from anywhere**,
+  **→ right = the content deck** (Feed → Reels → Live → Games, cycling),
+  **↑ up = every function in a grid sheet**, ↓ down closes it. The web
+  `SwipeDeck` mounts in AppShell (not inside the app's WebView, which has its
+  own tabs), pushes routes rather than keeping two pages mounted — a real
+  pager would leave the metaverse's 3D running behind the feed and undo the
+  perf work — and stands down over inputs, canvases, iframes, videos,
+  horizontally scrollable rows and anything marked `data-no-swipe`, plus a
+  24px dead zone at each screen edge so it never fights the browser's own
+  back gesture. Deck position shows as dots above the tab bar and the rule is
+  taught once on first run. Inside the Open World a **two-finger** right swipe
+  leaves for the feed (one finger is camera + joystick), with a 📰 edge tab for
+  anyone who does not find the gesture; it pops the native route inside the
+  APK, posts to the parent when embedded, and navigates directly otherwise.
+  The Flutter HomeShell gained the matching horizontal swipe. Every profile
+  now carries a **🏠 Virtual Room** card: enter, build (B), and a copyable
+  visit link — `/api/world/room` returns the signed-in viewer's own world key
+  only, never anyone else's, and `?world=me` loads your own world through the
+  existing keyless `world_load` path.
+
 - 2026-08-07 (web): **Mobile-responsive UI pass — Open World + site chrome.**
   The Open World HUD was laid out with fixed pixel offsets and no safe-area
   handling, so on a phone the wallet button covered the room name, the
