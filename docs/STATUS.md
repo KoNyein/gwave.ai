@@ -142,6 +142,14 @@
 
 ## Changelog
 
+- 2026-08-07 (web): **Social Metaverse + Open World are one world.** The
+  metaverse gains a 🌏 OPEN WORLD arcade gate and a ⋯ menu action that open
+  the Open World as an in-world overlay (no page leave, no token in a
+  shareable URL — /world's launcher injects the Cognito idToken itself).
+  The Open World gains a 🌐 gate back: postMessage closes the overlay when
+  embedded, plain navigation otherwise. Both now render the SAME avatar —
+  the Open World reads the realistic variant from localStorage
+  (mv:soldier) or /api/metaverse/avatar and loads that Mixamo GLB.
 - 2026-08-07 (web+app): **gWave 3D Studio — one workspace for all 3D.**
   The three separate 3D tools are now tabs of a single route `/studio`:
   🧬 Avatar (face/body scan + editor), 🛰 Scanner (room/object), 🧱 World

@@ -201,6 +201,19 @@ export function MetaverseScene() {
   /// null = ပိတ်ထား။ ဂိမ်းပွင့်နေချိန် လောကက နောက်ခံမှာ ဆက်ရှင်နေတယ် —
   /// ✕ ပိတ်တာနဲ့ ကိုယ့် avatar ရပ်နေတဲ့ နေရာမှာပဲ ချက်ချင်း ပြန်ရောက်တယ်။
   const [arcade, setArcade] = useState<{ label: string; href: string } | null>(null);
+
+  // 🌏 Open World က iframe ထဲကနေ "လောကထဲ ပြန်" နှိပ်ရင် overlay ပိတ်ပေး —
+  // လောက နှစ်ခုက player အတွက် တစ်ခုတည်း ဖြစ်နေဖို့ (same-origin သာ လက်ခံ)။
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      if ((e.data as { type?: string } | null)?.type === "gwave:exit-world") {
+        setArcade(null);
+      }
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
   /// Game room ပြောင်းပြီး ရောက်တာနဲ့ join မယ့် mini-game — onInit မှာ ပို့တယ်
   const pendingGameRef = useRef<string | null>(null);
   /// ★ Map ပြောင်းရင် scene တစ်ခုလုံး ပြန်ဆောက်တယ် (effect ရဲ့ dependency)
@@ -3979,6 +3992,11 @@ export function MetaverseScene() {
           onLiveHub={() => {
             setMenu(null);
             setLiveHub(true);
+          }}
+          onOpenWorld={() => {
+            setMenu(null);
+            document.exitPointerLock?.();
+            setArcade({ label: "OPEN WORLD", href: "/world?embed=1" });
           }}
           onMap={() => setMenu("map")}
           onGames={() => setMenu("games")}

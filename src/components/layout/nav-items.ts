@@ -87,6 +87,9 @@ export const NAV_SECTIONS: NavSection[] = [
     // 🌐 Metaverse & 3D — worlds, creation tools and scanners in one place
     headingKey: "sectionMetaverse",
     items: [
+      // 🌍 လောက တစ်ခုတည်း — Social Metaverse ထဲက 🌏 ဂိတ်ကနေ Open World
+      // ကို ကူးလို့ရ၊ Open World ကနေလည်း ပြန်ထွက်လို့ရ။ Open World ကို
+      // တိုက်ရိုက်ဝင်ချင်သူအတွက် သီးခြား entry ကို ချန်ထားတယ်။
       { href: "/metaverse", labelKey: "metaverse", icon: Globe2 },
       { href: "/world", labelKey: "world", icon: Earth },
       // 🎛 One 3D workspace — Avatar + Scanner + World Builder are tabs of

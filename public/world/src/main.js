@@ -27,8 +27,31 @@ const hud     = new HUD();
 const avatar  = new Avatar(engine, input, physics);
 new TouchControls(input); // Mobile ဖြစ်လျှင် joystick/ခလုတ်များ အလိုအလျောက်ပေါ်
 
-// GLB avatar ရှိလျှင် ဤနေရာမှာ ချိတ်ပါ (gwave 3D scanner ထွက် ဖိုင်)
-// avatar.setModel('./assets/my_avatar.glb');
+// 🧍 ရုပ်တူတစ်ခုတည်း — Social Metaverse (gwave.cc/metaverse) မှာ ရွေးထားတဲ့
+// realistic ရုပ်ကိုပဲ ဒီမှာလည်း သုံးတယ် (user: "လောက ၂ ခုကို ပေါင်းစည်း")။
+// Variant က localStorage (mv:soldier — same origin မို့ မျှသုံးလို့ရ)၊
+// မရှိရင် account config ကနေ ဆွဲတယ်။ ဆွဲမရရင် placeholder နဲ့ ဆက်သွား။
+const REALISTIC_FILES = {
+  a: 'Remy', b: 'Soldier', c: 'Soldier', d: 'Michelle', e: 'Character3',
+  f: 'Character4', g: 'Xbot', h: 'Michelle2', i: 'Clown', j: 'Soldier',
+  k: 'Granny', l: 'Xbot', m: 'Soldier', n: 'Michelle', o: 'Character5',
+  p: 'Character3', q: 'Character4', r: 'Character5',
+};
+const applyVariant = (v) => {
+  const file = REALISTIC_FILES[v];
+  if (file) void avatar.setModel(`/metaverse/realistic/${file}.glb`);
+};
+{
+  let v = null;
+  try { v = localStorage.getItem('mv:soldier'); } catch { /* private mode */ }
+  if (v && REALISTIC_FILES[v]) applyVariant(v);
+  else {
+    fetch('/api/metaverse/avatar', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d?.config?.variant) applyVariant(d.config.variant); })
+      .catch(() => undefined);
+  }
+}
 
 // ၂။ World + Rooms — room အသစ်တိုးလိုလျှင် import + register ၂ ကြောင်းသာ
 const ctx = { engine, input, avatar, hud };
@@ -149,6 +172,31 @@ engine.register({
     input.endFrame(); // frame အဆုံးမှာ click/keypress ရှင်းရန် (နောက်ဆုံးမှခေါ်ရန်)
   }
 });
+
+// 🌐 Social Metaverse ဂိတ် — Open World နဲ့ gwave.cc/metaverse က
+// **တစ်ခုတည်းသော လောက** (user: "/metaverse နဲ့ /world ကို ပေါင်းစည်း")။
+// ?embed=1 (metaverse overlay ထဲက ဖွင့်တာ) ဆိုရင် overlay ကို ပိတ်ခိုင်း၊
+// မဟုတ်ရင် /metaverse ကို တိုက်ရိုက် သွားတယ်။
+{
+  const embedded = params.get('embed') === '1';
+  const gate = document.createElement('button');
+  gate.textContent = embedded ? '🌐 လောကထဲ ပြန်' : '🌐 Social Metaverse';
+  gate.title = 'gwave.cc Social Metaverse';
+  gate.style.cssText =
+    'position:fixed;left:14px;bottom:64px;z-index:7;font-family:inherit;font-size:13px;' +
+    'padding:9px 14px;border-radius:10px;cursor:pointer;color:#eaf0ff;' +
+    'background:rgba(10,16,34,.85);border:1px solid #1d2a4d;backdrop-filter:blur(6px)';
+  gate.onclick = () => {
+    document.exitPointerLock?.();
+    if (embedded && window.parent !== window) {
+      // Metaverse overlay က ဒီ message ကို နားထောင်ပြီး iframe ပိတ်တယ်
+      window.parent.postMessage({ type: 'gwave:exit-world' }, location.origin);
+    } else {
+      location.href = '/metaverse';
+    }
+  };
+  document.body.appendChild(gate);
+}
 
 // ၆။ စတင်!
 hud.hideLoading();
