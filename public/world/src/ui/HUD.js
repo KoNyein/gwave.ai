@@ -259,3 +259,65 @@ Object.assign(HUD.prototype, {
       </div>`).join('');
   },
 });
+
+// ---------- 🎭 Emote Wheel ([G]) + 🏛️ Meeting Panel ----------
+Object.assign(HUD.prototype, {
+  buildEmoteWheel(emotes, onPick) {
+    const wrap = document.querySelector('#emoteWheel');
+    const R = 108;
+    wrap.innerHTML = '';
+    emotes.forEach((em, i) => {
+      const a = (i / emotes.length) * Math.PI * 2 - Math.PI / 2;
+      const el = document.createElement('button');
+      el.className = 'emoteItem';
+      const [icon, ...rest] = em.name_mm.split(' ');
+      el.innerHTML = `<span class="ei">${icon}</span><span class="el">${rest.join(' ')}</span>`;
+      el.style.setProperty('--tx', `${Math.cos(a) * R}px`);
+      el.style.setProperty('--ty', `${Math.sin(a) * R}px`);
+      el.addEventListener('click', () => { this.toggleEmoteWheel(false); onPick(em.id); });
+      wrap.appendChild(el);
+    });
+  },
+  toggleEmoteWheel(force) {
+    const wrap = document.querySelector('#emoteWheel');
+    const show = force !== undefined ? force : !wrap.classList.contains('open');
+    wrap.classList.toggle('open', show);
+    return show;
+  },
+  setMeetingPanel(spaces, active, onCreate, onJoin) {
+    const el = document.querySelector('#meetContent');
+    el.innerHTML =
+      `<div style="font-size:13px;color:var(--dim);margin-bottom:8px">ခန်းမရွေးပြီး အစည်းအဝေးစတင်ပါ — code ကို မျှဝေလိုက်ရုံ</div>
+       <div class="spaceGrid">` +
+      spaces.map((sp, i) => `
+        <div class="spaceCard${i === 0 ? ' active' : ''}" data-space="${sp.id}">
+          <div class="spIcon">${sp.name_mm.split(' ')[0]}</div>
+          <div class="spNm">${sp.name_mm.replace(/^\S+\s/, '')}</div>
+          <div class="spMax">အများဆုံး ${sp.max} ယောက်</div>
+        </div>`).join('') + `</div>
+      <input id="meetTitle" placeholder="အစည်းအဝေး ခေါင်းစဉ်" maxlength="40">
+      <button id="meetStart" class="bigBtn">🏛️ အစည်းအဝေး စတင်မည်</button>
+      <div style="margin:16px 0 6px;color:var(--jade);font-size:14px">🔗 Code ဖြင့် ဝင်ရန်</div>
+      <input id="meetCode" placeholder="MT-XXXXX" maxlength="12">
+      <button id="meetJoin" class="bigBtn ghost">ဝင်မည်</button>` +
+      (active?.length ? `<div style="margin:16px 0 6px;color:var(--gold);font-size:14px">🟢 လက်ရှိ အစည်းအဝေးများ</div>` +
+        active.map(m => `
+          <div class="shopItem">
+            <div class="nm">${m.title}<br><span style="opacity:.6;font-size:12px">${m.code} · ${m.count} ယောက် · host ${m.host}</span></div>
+            <button data-join="${m.code}">ဝင်မည်</button>
+          </div>`).join('') : '');
+
+    let picked = spaces[0]?.id;
+    el.querySelectorAll('.spaceCard').forEach(card =>
+      card.addEventListener('click', () => {
+        picked = card.dataset.space;
+        el.querySelectorAll('.spaceCard').forEach(c => c.classList.toggle('active', c === card));
+      }));
+    el.querySelector('#meetStart').addEventListener('click', () =>
+      onCreate(picked, el.querySelector('#meetTitle').value.trim()));
+    el.querySelector('#meetJoin').addEventListener('click', () =>
+      onJoin(el.querySelector('#meetCode').value.trim()));
+    el.querySelectorAll('button[data-join]').forEach(b =>
+      b.addEventListener('click', () => onJoin(b.dataset.join)));
+  },
+});

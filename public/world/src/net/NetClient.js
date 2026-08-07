@@ -6,6 +6,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { makeNameLabel } from '../ui/label.js';
+import { EmotePlayer } from '../entities/Emotes.js';
 
 const SEND_HZ = 15;
 
@@ -35,9 +36,29 @@ class RemotePlayer {
 
     this.targetPos = new THREE.Vector3();
     this.targetYaw = 0;
+    this.emotes = new EmotePlayer(this); // အခြားသူများ၏ emote မြင်ရရန်
+    this.speaking = false;
   }
 
-  setState(p, yaw, alive, skin) {
+  // 🎙️ စကားပြောနေချိန် နာမည်အောက် အစိမ်းရောင်ကွင်း
+  setSpeaking(on) {
+    if (this.speaking === on) return;
+    this.speaking = on;
+    if (!this.voiceRing) {
+      this.voiceRing = new THREE.Mesh(
+        new THREE.TorusGeometry(0.6, 0.05, 8, 28),
+        new THREE.MeshBasicMaterial({ color: 0x3ddc97, transparent: true, opacity: 0.85 })
+      );
+      this.voiceRing.rotation.x = Math.PI / 2;
+      this.voiceRing.position.y = 0.06;
+      this.group.add(this.voiceRing);
+    }
+    this.voiceRing.visible = on;
+  }
+
+  setState(p, yaw, alive, skin, emote) {
+    if (emote && emote !== this.lastEmote) { this.emotes.play(emote); this.lastEmote = emote; }
+    if (!emote) this.lastEmote = null;
     this.targetPos.set(p[0], p[1], p[2]);
     this.targetYaw = yaw;
     this.group.visible = alive !== 0; // သေဆုံးနေချိန် ဖျောက်
@@ -48,6 +69,7 @@ class RemotePlayer {
   }
 
   update(dt) {
+    this.emotes.update(dt);
     const k = Math.min(1, dt * 10);
     this.group.position.lerp(this.targetPos, k);
     let d = this.targetYaw - this.group.rotation.y;
@@ -177,6 +199,31 @@ export class NetClient {
           this.requestRewards();
         } else this.hud.addToast?.(`❌ ${msg.error} (လက်ကျန် ${msg.points ?? '?'} GP)`);
         break;
+      // ---------- 🎙️ Voice ----------
+      case 'voice_peers':
+        this.voice?.onPeerList(msg.ids || []);
+        break;
+      case 'voice_signal':
+        this.voice?.onSignal(msg.from, msg.data);
+        break;
+
+      // ---------- 🏛️ Meetings ----------
+      case 'meeting_spaces':
+        this.hud.setMeetingPanel?.(msg.spaces, msg.active,
+          (space, title) => this.meetingCreate(space, title),
+          (code) => this.meetingJoin(code));
+        break;
+      case 'meeting_created':
+        this.hud.addToast?.(`🏛️ အစည်းအဝေး ဖန်တီးပြီး — Code: ${msg.code} (မျှဝေပါ)`);
+        this.onMeeting?.(msg);
+        break;
+      case 'meeting_joined':
+        this.onMeeting?.(msg);
+        break;
+      case 'meeting_error':
+        this.hud.addToast?.(`❌ ${msg.error}`);
+        break;
+
       case 'trophies':
         this.hud.setTrophiesSection?.(msg.trophies || [], msg.chain_mode, (season) => {
           const addr = this.web3Address?.();
@@ -220,7 +267,8 @@ export class NetClient {
             this.world.current?.group.add(r.group);
             r.group.position.set(pl.p[0], pl.p[1], pl.p[2]);
           }
-          r.setState(pl.p, pl.y, pl.a, pl.c);
+          r.setState(pl.p, pl.y, pl.a, pl.c, pl.e);
+          r.setSpeaking(!!pl.sp);
         }
         for (const id of [...this.remotes.keys()])
           if (!seen.has(id)) this.removeRemote(id);
@@ -236,6 +284,20 @@ export class NetClient {
       if (r.group.visible) meshes.push(r.bodyMesh, r.headMesh);
     return meshes;
   }
+
+  // 🎭 Emote
+  sendEmote(id) { if (this.connected) this.ws.send(JSON.stringify({ t: 'emote', id })); }
+  // 🎙️ Voice
+  voiceReady() { if (this.connected) this.ws.send(JSON.stringify({ t: 'voice_ready' })); }
+  voiceSignal(to, data) { if (this.connected) this.ws.send(JSON.stringify({ t: 'voice_signal', to, data })); }
+  setSpeaking(on) {
+    this.localSpeaking = on;
+    if (this.connected) this.ws.send(JSON.stringify({ t: 'speaking', on }));
+  }
+  // 🏛️ Meetings
+  requestMeetings() { if (this.connected) this.ws.send(JSON.stringify({ t: 'meeting_spaces' })); }
+  meetingCreate(space, title) { if (this.connected) this.ws.send(JSON.stringify({ t: 'meeting_create', space, title })); }
+  meetingJoin(code) { if (this.connected) this.ws.send(JSON.stringify({ t: 'meeting_join', code })); }
 
   requestWallet() { if (this.connected) this.ws.send(JSON.stringify({ t: 'wallet' })); }
   requestRewards() { if (this.connected) this.ws.send(JSON.stringify({ t: 'rewards' })); }

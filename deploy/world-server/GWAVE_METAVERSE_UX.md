@@ -113,7 +113,29 @@ Preset ရွေး (၆ မျိုး) → localStorage မှတ် → ခ�
   ↘ ⛓️ NFT mint → blockchain ပိုင်ဆိုင်မှု
 ```
 
-## ၇။ Profile Room = ကိုယ်ပိုင်ကမ္ဘာ
+## ၇။ Social Layer — Emotes / Voice / Meetings (v11)
+
+### 🎭 Emote Wheel
+[G] သို့ 🎭 ခလုတ် → emote ၈ မျိုး စက်ဝိုင်းပုံပွင့် —
+👋 နှုတ်ဆက် · 🙌 အားပေး · 👏 လက်ခုပ် · 🕺 ကခုန် · 🙇 ဦးညွှတ် · 🪑 ထိုင် · 👉 လက်ညှိုးထိုး · 🤔 စဉ်းစား
+Procedural animation မို့ Mixamo clip မလို — GLB scan avatar မှာလည်း အလုပ်လုပ်။
+**Multiplayer sync** — snapshot `e` field ဖြင့် အားလုံးမြင်ရ ၊ ရွေ့လျားလျှင် အလိုအလျောက်ရပ်။
+
+### 🎙️ Proximity Voice Chat
+WebRTC mesh (P2P — server က signaling သာလုပ်၊ media မကိုင်လို့ စျေးသက်သာ)။
+[V] သို့ 🎙️ ခလုတ် → mic ဖွင့်/ပိတ်။ **အနီးရောက်လေ အသံကျယ်လေ** —
+၄m အတွင်း အပြည့် ၊ ၂၂m ကျော် အသံမကြား (WebAudio gain)။
+စကားပြောနေသူ ခြေရင်း **အစိမ်းရောင်ကွင်း** ပေါ်၊ mic ခလုတ်ပါ လင်း။
+⚠️ HTTPS (သို့ localhost) မှသာ mic ရ — deploy မှာ certbot ပြီးသားမို့ အဆင်ပြေ။
+
+### 🏛️ Meeting Spaces
+🏛️ kiosk (0,0,-12) သို့ ☰→🏛️ → ခန်းမ ၃ မျိုးထဲက ရွေး —
+🏝️ Lagoon (ရေကန်+တောင်တန်း, ၅၀) · 🏛️ Meet Hall (ရွှေတိုင် ၈ လုံး+dome, ၅၀) · 🌇 Rooftop (၃၀)
+→ **MT-XXXXX code** ထွက် → မျှဝေ → သူငယ်ချင်းတွေ code ရိုက်ဝင် (သို့ `?meet=MT-XXXXX` link)
+ခန်းမထဲ — ထိုင်ခုံ ၁၂ လုံး စက်ဝိုင်း ၊ ဗဟို screen မှာ **code/host/ပြောနေသူ live** ပြ ၊
+proximity voice + emote အလုပ်လုပ်။ Room id `meet:<CODE>` မို့ presence သီးသန့်။
+
+## ၈။ Profile Room = ကိုယ်ပိုင်ကမ္ဘာ
 
 ကမ္ဘာထဲဝင်လျှင် 👤 billboard မှာ ပိုင်ရှင်နာမည် + XP/K/D/HS + GP/Items
 (stats API မှ live fetch) ။ [B] Build Mode — block ၅ + GLB props ၃ + NPC ။

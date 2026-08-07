@@ -6,6 +6,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { loadGLB } from '../core/Assets.js';
+import { EmotePlayer } from './Emotes.js';
 
 const GRAVITY = 22, WALK = 4.2, RUN = 8, JUMP = 8.2;
 const RADIUS = 0.4, HEIGHT = 1.8, EYE = 1.6;
@@ -39,6 +40,7 @@ export class Avatar {
     this.placeholder.add(body, head);
     this.group.add(this.placeholder);
 
+    this.emotes = new EmotePlayer(this); // 🎭 gesture emotes
     engine.scene.add(this.group);
     engine.register(this);
   }
@@ -91,6 +93,7 @@ export class Avatar {
     if (input.touch) { fw += input.touch.f; side += input.touch.s; } // mobile joystick (analog)
     const mag = Math.min(1, Math.hypot(fw, side));
     if (mag > 0.05) {
+      if (this.emotes.current) this.emotes.stop(); // ရွေ့လျားလျှင် emote ရပ်
       const f = this.forward();
       const r = { x: -f.z, z: f.x }; // forward ကို 90° လှည့် = right
       let dx = f.x * fw + r.x * side;
@@ -118,6 +121,7 @@ export class Avatar {
     }
 
     this.mixer?.update(dt);
+    this.emotes.update(dt);
 
     // ၄။ ကင်မရာ (intro cinematic ချိန် ပိတ်ထားနိုင်)
     if (this.cameraEnabled === false) return;

@@ -19,6 +19,17 @@ const AUTH_MODE = process.env.AUTH_MODE || 'off'; // 'off' | 'cognito'
 const STATS_URL = process.env.STATS_URL || process.env.STATS_API_URL || ''; // ဥပမာ http://127.0.0.1:8790
 const GAME_KEY  = process.env.GAME_KEY || 'dev-key';
 
+// ---- 🏛️ Meeting Rooms (Spaces) ----
+// meetings: code → { code, host, space, title, createdAt, max }
+const MEETING_SPACES = [
+  { id: 'lagoon', name_mm: '🏝️ ရေကန်ခန်းမ (Lagoon)', max: 50 },
+  { id: 'hall',   name_mm: '🏛️ ဆွေးနွေးခန်းမ (Meet Hall)', max: 50 },
+  { id: 'rooftop',name_mm: '🌇 Gwave Rooftop', max: 30 },
+];
+const meetings = new Map();
+const meetingCode = () => 'MT-' + Array.from({ length: 5 },
+  () => 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 31)]).join('');
+
 // ---- ဂိမ်းစည်းမျဉ်း (server ကသာ ပိုင်သည့် တန်ဖိုးများ) ----
 const MAX_SPEED = 9;          // m/s (RUN 8 + ခွင့်လွှတ်ချက်)
 const SHOOT_COOLDOWN = 110;   // ms
@@ -165,6 +176,7 @@ wss.on('connection', (ws) => {
         ws, name, sub, room: 'yangon',
         p: [0, 0, 8], yaw: 0,
         hp: 100, alive: true, kills: 0, deaths: 0, streak: 0, skin: null,
+        emote: null, emoteUntil: 0, speaking: false, voice: false,
         lastT: now(), lastShot: 0, history: [],
       };
       players.set(id, me);
@@ -258,6 +270,66 @@ wss.on('connection', (ws) => {
         reportKill(me, target, headshot); // 📊 RDS game.* ထဲ မှတ်တမ်းတင်
         setTimeout(() => respawn(msg.target), RESPAWN_MS);
       }
+      return;
+    }
+
+    // ---------- 🎭 Emote ----------
+    if (msg.t === 'emote') {
+      me.emote = String(msg.id || '').slice(0, 12) || null;
+      me.emoteUntil = now() + 6000; // အများဆုံး ၆ စက္ကန့်
+      return;
+    }
+
+    // ---------- 🎙️ Voice (WebRTC signaling relay — media မဟုတ်) ----------
+    if (msg.t === 'speaking') {
+      me.speaking = !!msg.on;
+      return;
+    }
+    if (msg.t === 'voice_ready') {
+      me.voice = true;
+      // တူညီသော room ထဲက voice-ready peer စာရင်း နှစ်ဖက်ပို့
+      const peers = [...players.entries()]
+        .filter(([pid, p]) => p.voice && p.room === me.room && pid !== id)
+        .map(([pid]) => pid);
+      send(ws, { t: 'voice_peers', ids: peers });
+      for (const pid of peers) send(players.get(pid).ws, { t: 'voice_peers', ids: [id] });
+      return;
+    }
+    if (msg.t === 'voice_signal') {
+      const target = players.get(msg.to);
+      if (target) send(target.ws, { t: 'voice_signal', from: id, data: msg.data });
+      return;
+    }
+
+    // ---------- 🏛️ Meeting Rooms (Spaces) ----------
+    if (msg.t === 'meeting_spaces') {
+      send(ws, {
+        t: 'meeting_spaces', spaces: MEETING_SPACES,
+        active: [...meetings.values()].map(m => ({
+          code: m.code, title: m.title, space: m.space, host: m.host,
+          count: [...players.values()].filter(p => p.room === `meet:${m.code}`).length,
+        })),
+      });
+      return;
+    }
+    if (msg.t === 'meeting_create') {
+      const space = MEETING_SPACES.find(sp => sp.id === msg.space) || MEETING_SPACES[0];
+      const code = meetingCode();
+      meetings.set(code, {
+        code, host: me.name, space: space.id,
+        title: String(msg.title || `${me.name} ရဲ့ အစည်းအဝေး`).slice(0, 40),
+        createdAt: now(), max: space.max,
+      });
+      send(ws, { t: 'meeting_created', code, space: space.id, title: meetings.get(code).title });
+      return;
+    }
+    if (msg.t === 'meeting_join') {
+      const code = String(msg.code || '').trim().toUpperCase().replace(/^.*\//, '');
+      const m = meetings.get(code);
+      if (!m) { send(ws, { t: 'meeting_error', error: 'Meeting code မတွေ့ပါ' }); return; }
+      const count = [...players.values()].filter(p => p.room === `meet:${code}`).length;
+      if (count >= m.max) { send(ws, { t: 'meeting_error', error: 'အစည်းအဝေး ပြည့်နေပါပြီ' }); return; }
+      send(ws, { t: 'meeting_joined', code, space: m.space, title: m.title, host: m.host });
       return;
     }
 
@@ -369,9 +441,13 @@ setInterval(() => {
   const byRoom = new Map();
   for (const [id, pl] of players) {
     if (!byRoom.has(pl.room)) byRoom.set(pl.room, []);
-    byRoom.get(pl.room).push({ id, n: pl.name, p: pl.p, y: pl.yaw, hp: pl.hp, a: pl.alive ? 1 : 0, c: pl.skin || null });
+    if (pl.emote && Date.now() > pl.emoteUntil) pl.emote = null;
+    byRoom.get(pl.room).push({
+      id, n: pl.name, p: pl.p, y: pl.yaw, hp: pl.hp, a: pl.alive ? 1 : 0,
+      c: pl.skin || null, e: pl.emote || null, sp: pl.speaking ? 1 : 0,
+    });
   }
   for (const [room, list] of byRoom) toRoom(room, { t: 'snap', players: list });
 }, 1000 / TICK_HZ);
 
-console.log(`🌊 Gwave Metaverse Server v2.1 — ws://localhost:${PORT} | auth: ${AUTH_MODE} | stats: ${STATS_URL || 'off'} | tick: ${TICK_HZ}Hz`);
+console.log(`🌊 Gwave Metaverse Server v3 (emote+voice+meetings) — ws://localhost:${PORT} | auth: ${AUTH_MODE} | stats: ${STATS_URL || 'off'} | tick: ${TICK_HZ}Hz`);

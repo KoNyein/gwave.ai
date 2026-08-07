@@ -17,6 +17,9 @@ import { HUD } from './ui/HUD.js';
 import { NetClient } from './net/NetClient.js';
 import { getGwaveToken, getTokenName } from './web3/GwaveAuth.js';
 import { RadialMenu } from './ui/RadialMenu.js';
+import { EMOTES } from './entities/Emotes.js';
+import { VoiceChat } from './net/VoiceChat.js';
+import { MeetingRoom } from './world/rooms/MeetingRoom.js';
 import { TouchControls } from './ui/TouchControls.js';
 
 // ၁။ အခြေခံစနစ်များ စတင်ခြင်း
@@ -157,6 +160,8 @@ engine.register({
     if (input.justPressed('KeyN')) openers.feed();
     if (input.justPressed('KeyL')) openers.board();
     if (input.justPressed('KeyM')) radial.toggle();
+    if (input.justPressed('KeyG')) hud.toggleEmoteWheel();   // 🎭 emote wheel
+    if (input.justPressed('KeyV')) voice.toggleMute();       // 🎙️ mic
 
     input.endFrame(); // frame အဆုံးမှာ click/keypress ရှင်းရန် (နောက်ဆုံးမှခေါ်ရန်)
   }
@@ -216,7 +221,7 @@ async function loadFeed() {
 }
 
 // ၈။ 🧭 Function Openers — key/station/radial menu သုံးမျိုးလုံးက ဒီကိုခေါ်
-const closeAll = () => ['#lbPanel','#walletPanel','#questPanel','#feedPanel','#avatarPanel','#projectsPanel']
+const closeAll = () => ['#lbPanel','#walletPanel','#questPanel','#feedPanel','#avatarPanel','#projectsPanel','#meetPanel']
   .forEach(sel => document.querySelector(sel).style.display = 'none');
 function openPanel(sel, onOpen) {
   const wasOpen = document.querySelector(sel).style.display === 'block';
@@ -235,6 +240,9 @@ const openers = {
   avatar:  () => openPanel('#avatarPanel'),
   projects:() => openPanel('#projectsPanel'),
   world:   () => { if (net.connected) net.requestWorld(); else hud.addToast('🌍 server လိုအပ်သည် (offline)'); },
+  meet:    () => openPanel('#meetPanel', () => net.connected
+             ? net.requestMeetings()
+             : (document.querySelector('#meetContent').textContent = '🏛️ Meeting အတွက် server လိုအပ်သည် (offline)')),
   arena:   () => { world.switchTo('strike'); net.onRoomSwitch(); },
 };
 
@@ -246,6 +254,7 @@ const radial = new RadialMenu([
   { icon: '📰', label: 'Feed',    action: openers.feed },
   { icon: '🏆', label: 'Board',   action: openers.board },
   { icon: '🌍', label: 'ကမ္ဘာ',    action: openers.world },
+  { icon: '🏛️', label: 'Meeting', action: openers.meet },
   { icon: '⚔️', label: 'Arena',   action: openers.arena },
 ], hud);
 
@@ -300,6 +309,36 @@ setTimeout(loadFeed, 1500); // စဝင်ချိန် wall ကို feed �
 
 ctx.statsUrl = statsUrl; // Profile room stats board အတွက်
 
+// ၉။ 🎭 Emotes — wheel ([G] သို့ 🎭 ခလုတ်) ၊ multiplayer sync
+hud.buildEmoteWheel(EMOTES, (id) => {
+  avatar.emotes.play(id);
+  net.sendEmote(id); // အခြားသူများပါ မြင်ရရန်
+});
+document.querySelector('#emoteBtn').addEventListener('click', () => hud.toggleEmoteWheel());
+
+// ၁၀။ 🎙️ Proximity Voice Chat — WebRTC mesh (mic ခွင့်ပြုချက် လိုအပ်)
+const voice = new VoiceChat({ net, avatar, world, hud });
+net.voice = voice;
+ctx.voice = voice;
+engine.register({ update: () => voice.update() });
+document.querySelector('#micBtn').addEventListener('click', () => voice.toggleMute());
+
+// ၁၁။ 🏛️ Meeting Rooms — server က space/code ပြန်လျှင် room ဆောက်ပြီး ကူး
+net.onMeeting = ({ code, space, title, host }) => {
+  const roomId = `meet:${code}`;
+  world.rooms.delete(roomId);
+  world.register(new MeetingRoom(ctx, { code, space, title, host }));
+  world.switchTo(roomId);
+  net.onRoomSwitch();
+  closeAll();
+  hud.addToast(`🏛️ ${title} — Code ${code} ကို မျှဝေပါ · [V] mic ဖွင့်ပါ`);
+};
+// ?meet=MT-XXXXX ဖြင့် တိုက်ရိုက်ဝင်နိုင် (invite link)
+const meetParam = params.get('meet');
+if (meetParam) {
+  const t = setInterval(() => { if (net.connected) { clearInterval(t); net.meetingJoin(meetParam); } }, 500);
+}
+
 // 🌐 Social Metaverse ဂိတ် — Open World နဲ့ gwave.cc/metaverse က
 // **တစ်ခုတည်းသော လောက**။ ?embed=1 (metaverse overlay ထဲက ဖွင့်တာ) ဆိုရင်
 // overlay ကို ပိတ်ခိုင်း၊ မဟုတ်ရင် /metaverse ကို တိုက်ရိုက် သွားတယ်။
@@ -327,4 +366,4 @@ ctx.statsUrl = statsUrl; // Profile room stats board အတွက်
 // ၉။ စတင်!
 hud.hideLoading();
 engine.start();
-console.log('🌊 Gwave Metaverse — Yangon City OS (v10) ready');
+console.log('🌊 Gwave Metaverse Base Framework v5 — PvP + Cognito + RDS Kill/XP stats + [L] leaderboard ready');
