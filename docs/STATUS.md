@@ -161,6 +161,15 @@
   light vary so much, a **🔆 brightness control** now sits in the top bar —
   four exposure steps (1.0 / 1.25 / 1.6 / 2.0, measuring 16.7 → 28.1 mean
   luminance, 73% → 28% near-black), remembered in localStorage.
+  **Arms no longer stuck out in a T-pose:** all ten shipped GLBs are authored
+  T-posed (measured 89–90° from vertical), and procedural mode swung from that
+  rest, so eight of the ten walked like scarecrows. The rest pose is now
+  corrected at load — arms rotated down to ~8° out from vertical with a 0.22
+  rad elbow bend — and the swing starts from there. Which side is "left" is
+  read from the rig by comparing the bone's position to the spine rather than
+  assumed, because guessing it put the arm across the body. Also fixed a latent
+  crash: `restHipY` was only set in the procedural branch, so sitting in clip
+  mode (Soldier, Xbot) multiplied `undefined` and made the model vanish.
 
 - 2026-08-07 (web): **Open World avatars actually walk, stand and sit.**
   `Avatar.setModel()` played `animations[0]` on a permanent loop and never

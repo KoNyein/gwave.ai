@@ -63,6 +63,10 @@ export class Locomotion {
   constructor(model, clips = []) {
     this.model = model;
     this.bones = findBones(model);
+    // ★ mode နှစ်မျိုးလုံးမှာ လိုတယ် — ထိုင်ချိန် တင်ပါး နိမ့်ချဖို့။
+    //   အရင်က bones mode မှာပဲ သတ်မှတ်လို့ clip mode (Soldier/Xbot) မှာ
+    //   ထိုင်လိုက်ရင် undefined × ဂဏန်း = NaN ဖြစ်ပြီး ရုပ် ပျောက်သွားမယ်။
+    this.restHipY = this.bones.hips ? this.bones.hips.position.y : 0;
     this.phase = 0;
     this.blend = 0;      // 0 = ရပ်, 1 = အပြည့်လှမ်း (ချောချောကူး)
     this.sitAmt = 0;     // 0 = မတ်တပ်, 1 = ထိုင်
@@ -97,8 +101,13 @@ export class Locomotion {
       for (const [k, b] of Object.entries(this.bones)) {
         this.rest[k] = b.quaternion.clone();
       }
-      this.restHipY = this.bones.hips ? this.bones.hips.position.y : 0;
-      if (this.mode === 'bones') this._computeAxes();
+      if (this.mode === 'bones') {
+        // ★ အစီအစဉ် အရေးကြီးတယ် — လက်ကို အရင် ချ၊ ပြီးမှ ဝင်ရိုး တွက်။
+        //   ဝင်ရိုးတွေက အရိုးရဲ့ world rotation ကနေ ထုတ်တာမို့။
+        this._relaxArms();
+        this._computeAxes();
+        this._bendElbows();
+      }
       // ★ clip တစ်ခုတည်းပါတဲ့ GLB (SambaDance / agree / mixamo.com) ကို
       //   **မဖွင့်ဘူး** — ရွေ့နေတာနဲ့ မဆိုင်တဲ့ လှုပ်ရှားမှုက ခြေလှမ်းကို
       //   ဖျက်ပစ်တယ်။ လိုအပ်ရင် emote အဖြစ် သီးသန့် ဖွင့်လို့ရတယ်။
@@ -199,6 +208,79 @@ export class Locomotion {
     if (!axis) return;
     this._q.setFromAxisAngle(axis, angle);
     bone.quaternion.copy(this.rest[key]).multiply(this._q);
+  }
+
+  /// ── 🙆 T-pose ကို **လက်ချ** အနေအထား ပြောင်း ────────────────────────
+  ///
+  /// user: "T-pose ဖြစ်နေတဲ့ avatar လက်တွေ လက်ချ လမ်းလျှောက်ဟန် ထားပါ"
+  ///
+  /// GLB **၁၀ ခုစလုံး** T-pose နဲ့ ထုတ်ထားတယ် (လက် ၉၀° ဘေးဖြန့်) —
+  /// တိုင်းကြည့်ပြီး။ Clip ပါတဲ့ ဖိုင် (Soldier, Xbot) က clip ကနေ pose
+  /// ချလို့ အဆင်ပြေတယ်၊ ဒါပေမယ့် procedural mode မှာ rest pose ကနေ
+  /// ယိမ်းတာမို့ **လက်က ဘေးဖြန့်အတိုင်း** ကျန်နေတယ် — လူပုံစံ မဟုတ်တော့ဘူး။
+  ///
+  /// ဒီမှာ rest pose ကိုယ်တိုင်ကို ပြင်တယ်: လက်ကို အောက်ကို ချပြီး
+  /// ဘေးကို ၈° လောက်ပဲ ကားထားတယ် (လူ ရပ်နေတဲ့ သဘာဝ)。 ပြီးမှ အဲဒီ
+  /// အနေအထားကနေ ရှေ့/နောက် ယိမ်းတယ်။
+  _relaxArms() {
+    const model = this.model;
+    if (!model) return;
+    model.updateWorldMatrix(true, true);
+    const modelQ = new THREE.Quaternion();
+    model.getWorldQuaternion(modelQ);
+    const down = new THREE.Vector3(0, -1, 0).applyQuaternion(modelQ);
+    const OUT = 0.14; // ~8° — လက်နဲ့ ခန္ဓာကိုယ် မကပ်အောင်
+
+    const firstBoneChild = (b) => b.children.find((c) => c.isBone) || null;
+    const a = new THREE.Vector3(), c = new THREE.Vector3();
+    const qw = new THREE.Quaternion(), pw = new THREE.Quaternion();
+
+    // ★ "ဘယ်" ဆိုတာ model space ရဲ့ ဘယ်ဘက်လဲ — rig အလိုက် မတူဘူး
+    //   (Mixamo က +X၊ တချို့က −X)。 မှန်းလို့ မရဘူး — မှားရင် လက်က
+    //   ခန္ဓာကိုယ်ကို ဖြတ်ပြီး ရှေ့မှာ ကပ်နေတယ်။ ဒါကြောင့် ခန္ဓာကိုယ်ရဲ့
+    //   အလယ်တန်း (spine/hips) နဲ့ နှိုင်းပြီး **rig ကိုယ်တိုင်ဆီက** ယူတယ်။
+    const mid = new THREE.Vector3();
+    (this.bones.spine || this.bones.hips || model).getWorldPosition(mid);
+    const sideOf = (bone) => {
+      bone.getWorldPosition(a);
+      // model space ထဲ ပြန်သွင်း — model လှည့်ထားရင်ပါ မှန်အောင်
+      const rel = a.clone().sub(mid).applyQuaternion(modelQ.clone().invert());
+      return rel.x >= 0 ? 1 : -1;
+    };
+
+    for (const key of ['lArm', 'rArm']) {
+      const bone = this.bones[key];
+      const child = bone && firstBoneChild(bone);
+      if (!bone || !child) continue;
+      const sign = sideOf(bone);
+      bone.getWorldPosition(a);
+      child.getWorldPosition(c);
+      const dir = c.sub(a).normalize();
+      // ရပ်နေပြီးသား (၄၀° အောက်) ဆိုရင် မထိဘူး — အလကား မဖျက်ရ
+      if (dir.angleTo(down) < 0.7) continue;
+      const target = new THREE.Vector3(sign * Math.sin(OUT), -Math.cos(OUT), 0.05)
+        .normalize().applyQuaternion(modelQ);
+      qw.setFromUnitVectors(dir, target);
+      if (bone.parent) bone.parent.getWorldQuaternion(pw); else pw.identity();
+      // W' = qw·W ၊ W = P·L  ⇒  L' = P⁻¹·qw·P·L
+      const local = pw.clone().invert().multiply(qw).multiply(pw).multiply(bone.quaternion);
+      bone.quaternion.copy(local);
+      this.rest[key] = local.clone();
+      // ★ ကလေးအရိုးတွေ ရွေ့သွားပြီ — နောက်တစ်ဖက် တွက်ခင် matrix ပြန်update
+      model.updateWorldMatrix(true, true);
+    }
+  }
+
+  /// တံတောင် အနည်းငယ် ကွေး — ဆန့်တန်းနေတဲ့ လက်က တုတ်ချောင်းလို ဖြစ်တယ်
+  _bendElbows() {
+    for (const key of ['lForeArm', 'rForeArm']) {
+      const bone = this.bones[key], axis = this.axes?.[key];
+      if (!bone || !axis) continue;
+      const q = new THREE.Quaternion().setFromAxisAngle(axis, -0.22);
+      const local = this.rest[key].clone().multiply(q);
+      bone.quaternion.copy(local);
+      this.rest[key] = local;
+    }
   }
 
   /// အရိုးတိုင်းအတွက် "ဘယ်-ညာ ဝင်ရိုး" ကို local frame ထဲ တစ်ခါတည်း တွက်
