@@ -142,6 +142,17 @@
 
 ## Changelog
 
+- 2026-08-07 (web): **Open World v9 — "ရွှေတံခါး" theme.** Gold-led design
+  system (theme/gwave-theme.css), restyled HUD/panels, a cinematic gold-stupa
+  intro (camera orbits until "enter" is pressed), an in-world [N] feed panel,
+  and a 3D portal landing page at /world/landing.html. Adapted for gwave.cc:
+  the Google Fonts @import was dropped (CSP allows no external font host —
+  Padauk/system stack instead), unpkg swapped for jsdelivr, and the feed panel
+  now reads the REAL feed (/api/posts?scope=feed, same-origin cookie) with the
+  demo posts only as fallback. Our integrations were re-applied on top: shared
+  avatar variant, same-origin ws/stats defaults and the 🌐 metaverse gate.
+  The site homepage was deliberately NOT replaced — the landing is an extra
+  page, not the feed's replacement.
 - 2026-08-07 (web): **Social Metaverse + Open World are one world.** The
   metaverse gains a 🌏 OPEN WORLD arcade gate and a ⋯ menu action that open
   the Open World as an in-world overlay (no page leave, no token in a

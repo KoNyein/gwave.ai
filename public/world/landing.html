@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="my">
+<!-- ============================================================
+     landing/index.html — Gwave Metaverse-First Landing
+     Facebook-style feed homepage အစားထိုး — user က ဒီကနေ
+     ရွှေတံခါး (Golden Gate) ကိုဖြတ်ပြီး metaverse ထဲ တန်းဝင်သည်
+     CTA နှိပ်လျှင် camera က portal ထဲ ဖြတ်ပျံဝင်ပြီး ဂိမ်း (../index.html) သို့
+     ============================================================ -->
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GWAVE — မြန်မာ့ Metaverse</title>
+<link rel="stylesheet" href="./theme/gwave-theme.css">
+<style>
+  html, body { margin:0; height:100%; overflow:hidden; background:var(--g-void); }
+  body { font-family: var(--g-body); color: var(--g-ink); }
+  canvas { position:fixed; inset:0; display:block; }
+
+  /* Overlay UI — canvas ပေါ်က ပါးလွှာသော အလွှာ */
+  .brand {
+    position:fixed; top:22px; left:26px; display:flex; align-items:center; gap:10px;
+  }
+  .brand .mark { font-family:var(--g-display); font-weight:900; font-size:20px;
+                 letter-spacing:.1em; color:var(--g-ink); }
+  .brand .mark b { color:var(--g-shwe); text-shadow:var(--g-glow-shwe); }
+  .brand .g-live { margin-top:2px; }
+
+  .hero {
+    position:fixed; left:50%; bottom:16vh; transform:translateX(-50%);
+    text-align:center; width:min(680px, 92vw);
+  }
+  .hero .g-eyebrow { display:block; margin-bottom:10px; }
+  .hero h1 { font-family:var(--g-display); font-weight:900; font-size:clamp(26px, 5.5vw, 44px);
+             margin:0 0 6px; letter-spacing:.05em; }
+  .hero h1 b { color:var(--g-shwe); text-shadow:var(--g-glow-shwe); }
+  .hero p { color:var(--g-dim); font-size:15px; margin:0 0 22px; line-height:1.9; }
+  .hero .g-btn { font-size:17px; padding:14px 38px; }
+
+  .g-dock { z-index:3; }
+
+  /* CTA fly-through fade */
+  #flash {
+    position:fixed; inset:0; background:radial-gradient(circle at center, #fff7dd, var(--g-shwe));
+    opacity:0; pointer-events:none; transition:opacity .9s ease-in; z-index:5;
+  }
+  #flash.on { opacity:1; }
+
+  @media (prefers-reduced-motion: reduce) { #flash { transition:none; } }
+</style>
+</head>
+<body class="g-body">
+<div class="brand">
+  <div>
+    <div class="mark">G<b>WAVE</b></div>
+    <div class="g-live">METAVERSE — LIVE</div>
+  </div>
+</div>
+
+<div class="hero">
+  <span class="g-eyebrow">မြန်မာ့ပထမဆုံး AI METAVERSE</span>
+  <h1>ရွှေတံခါးကို <b>ဖြတ်ဝင်လိုက်ပါ</b></h1>
+  <p>Cyber-Yangon ညဈေးတန်း ၊ GWAVE STRIKE arena ၊ ကိုယ်ပိုင်ကမ္ဘာ တည်ဆောက်ခြင်း —
+     အားလုံးက browser ထဲမှာပဲ ၊ ဘာမှ download ဆွဲစရာမလို။</p>
+  <button class="g-btn" id="enter">🌊 Metaverse ထဲ ဝင်မည်</button>
+</div>
+
+<nav class="g-dock">
+  <a href="#" id="enter2">🎮 ကစားမည်</a>
+  <a href="/games">🏆 Leaderboard</a>
+  <a href="/feed">📰 Feed ဟောင်း</a>
+</nav>
+
+<div id="flash"></div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x060913, 30, 130);
+const camera = new THREE.PerspectiveCamera(62, innerWidth/innerHeight, .1, 300);
+camera.position.set(0, 6, 34);
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x060913);
+document.body.prepend(renderer.domElement);
+
+// ⭐ ကြယ်စင်များ — particle field
+const starGeo = new THREE.BufferGeometry();
+const N = 1600, pos = new Float32Array(N*3);
+for (let i=0;i<N;i++){ pos[i*3]=(Math.random()-.5)*220; pos[i*3+1]=Math.random()*90-8; pos[i*3+2]=(Math.random()-.5)*220; }
+starGeo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color:0x8ecbff, size:.16, transparent:true, opacity:.75 })));
+
+// 🏙️ Wireframe Yangon grid — ရွှေ/cyan edges မြို့ပြ silhouette
+scene.add(new THREE.GridHelper(240, 90, 0x1d2a4d, 0x101830));
+const cityMats = [ new THREE.LineBasicMaterial({ color:0xf5c542, transparent:true, opacity:.5 }),
+                   new THREE.LineBasicMaterial({ color:0x2de1ff, transparent:true, opacity:.35 }) ];
+for (let i=0;i<46;i++){
+  const w=2+Math.random()*4, h=4+Math.random()*22, d=2+Math.random()*4;
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w,h,d)), cityMats[i%2]);
+  const side = i%2===0?-1:1;
+  edges.position.set(side*(14+Math.random()*46), h/2, -70+Math.random()*110);
+  scene.add(edges);
+}
+
+// 🌕 ရွှေတံခါး — signature: golden portal torus
+const gate = new THREE.Group();
+const ring = new THREE.Mesh(new THREE.TorusGeometry(7, .34, 24, 90),
+  new THREE.MeshStandardMaterial({ color:0xf5c542, metalness:.9, roughness:.2, emissive:0x6b4d00, emissiveIntensity:.8 }));
+const ring2 = new THREE.Mesh(new THREE.TorusGeometry(7.9, .07, 16, 90),
+  new THREE.MeshBasicMaterial({ color:0x2de1ff, transparent:true, opacity:.55 }));
+gate.add(ring, ring2);
+gate.position.set(0, 8.5, -8);
+scene.add(gate);
+const gateLight = new THREE.PointLight(0xffcc44, 260, 70);
+gateLight.position.copy(gate.position); scene.add(gateLight);
+scene.add(new THREE.AmbientLight(0x8899ff, .5));
+
+// Mouse parallax
+let mx=0, my=0;
+addEventListener('mousemove', e => { mx=(e.clientX/innerWidth-.5); my=(e.clientY/innerHeight-.5); });
+addEventListener('resize', () => {
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// CTA — ရွှေတံခါးထဲ ဖြတ်ပျံဝင်ပြီး ဂိမ်းသို့
+let flying = false, flyT = 0;
+function enter(){
+  if (flying) return;
+  if (reduced) { location.href = '/world'; return; }
+  flying = true;
+  document.getElementById('flash').classList.add('on');
+  setTimeout(() => location.href = '/world', 950);
+}
+document.getElementById('enter').addEventListener('click', enter);
+document.getElementById('enter2').addEventListener('click', (e)=>{ e.preventDefault(); enter(); });
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
+  gate.rotation.z = t*.15; ring2.rotation.z = -t*.3;
+  if (!flying) {
+    if (!reduced) {
+      camera.position.x += ((mx*6) - camera.position.x)*.03;
+      camera.position.y += ((6 - my*3) - camera.position.y)*.03;
+    }
+    camera.lookAt(0, 7, -8);
+  } else {
+    flyT += dt;
+    camera.position.z -= (18 + flyT*40)*dt; // portal ထဲ အရှိန်တိုးဖြတ်ဝင်
+    camera.position.x *= .9; camera.position.y += (8.5-camera.position.y)*.12;
+    camera.lookAt(0, 8.5, -60);
+  }
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>

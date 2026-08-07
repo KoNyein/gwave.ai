@@ -5,81 +5,132 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gwave Metaverse — Base Framework</title>
 <style>
-  :root{ --bg:#070b18; --panel:rgba(10,16,34,.82); --line:#1d2a4d; --gold:#f5c542; --jade:#3ddc97; --ink:#eaf0ff; }
+  /* ==== GWAVE Metaverse Theme — "ရွှေတံခါး" (theme/gwave-theme.css tokens) ==== */
+  /* Google Fonts @import ဖယ်ထား — gwave.cc ရဲ့ CSP က external font host
+     ကို ခွင့်မပြုဘူး (style-src 'self' · font-src 'self' data:)။ Padauk က
+     မြန်မာဖုန်းတွေမှာ ပါပြီးသား၊ display က system fallback သုံးတယ်။ */
+  :root{ --bg:#060913; --deep:#0b1026; --panel:rgba(140,170,255,.07); --line:#1d2a4d;
+         --gold:#f5c542; --gold2:#c9932b; --jade:#3ddc97; --neon:#2de1ff; --danger:#d8324a;
+         --ink:#eaf0ff; --dim:#8a97b8;
+         --display:'Padauk','Myanmar Text',ui-sans-serif,system-ui,sans-serif; }
   *{ box-sizing:border-box; }
   body{ margin:0; overflow:hidden; background:var(--bg); color:var(--ink);
         font-family:"Padauk","Myanmar Text","Noto Sans Myanmar",system-ui,sans-serif; }
   canvas{ display:block; }
-  .panel{ position:fixed; background:var(--panel); border:1px solid var(--line);
-          border-radius:10px; padding:10px 14px; backdrop-filter:blur(6px); }
-  #roomName{ top:14px; left:14px; font-size:18px; }
+  .panel{ position:fixed; background:linear-gradient(165deg,var(--panel),rgba(11,16,38,.86));
+          border:1px solid var(--line); border-radius:12px; padding:10px 14px;
+          backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+  button{ font-family:inherit; }
+
+  /* ---- HUD ---- */
+  #roomName{ top:14px; left:14px; font-size:16px; border-top:1px solid rgba(245,197,66,.4); }
   #roomName b{ color:var(--gold); }
-  #help{ bottom:14px; left:14px; font-size:13px; line-height:1.9; opacity:.9; }
+  #help{ bottom:14px; left:14px; font-size:12.5px; line-height:1.9; color:var(--dim); }
   #walletBox{ top:14px; right:14px; text-align:right; }
-  #walletBtn{ background:var(--gold); color:#1a1200; border:0; border-radius:8px;
-              padding:8px 14px; font-family:inherit; font-size:14px; cursor:pointer; font-weight:700; }
-  #walletBtn:hover{ filter:brightness(1.1); }
-  #walletAddr{ font-size:12px; color:var(--jade); margin-top:6px; word-break:break-all; max-width:220px; }
-  #hint{ left:50%; bottom:110px; transform:translateX(-50%); font-size:15px;
-         color:var(--gold); display:none; }
+  #walletBtn{ background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#1a1200;
+              border:0; border-radius:8px; padding:8px 14px; font-size:14px; cursor:pointer;
+              font-weight:700; box-shadow:0 0 18px rgba(245,197,66,.3); }
+  #walletBtn:hover{ filter:brightness(1.08); }
+  #walletAddr{ font-size:11px; color:var(--jade); margin-top:6px; word-break:break-all; max-width:220px;
+               font-family:ui-monospace,monospace; }
+  #hint{ left:50%; bottom:110px; transform:translateX(-50%); font-size:15px; color:var(--gold);
+         display:none; border-color:rgba(245,197,66,.4); }
   #dialog{ left:50%; bottom:24px; transform:translateX(-50%); width:min(560px,92vw);
            display:none; font-size:15px; line-height:1.8; }
   #dialog .npcName{ color:var(--jade); font-weight:700; margin-bottom:4px; }
+  #gpBadge{ top:62px; right:14px; font-size:13px; color:var(--gold); display:none;
+            font-family:var(--display); letter-spacing:.04em; }
+
+  /* ---- Loading + Intro (metaverse-first entry) ---- */
   #loading{ inset:0; position:fixed; display:flex; align-items:center; justify-content:center;
             background:var(--bg); font-size:18px; z-index:10; flex-direction:column; gap:10px; }
-  #loading small{ opacity:.6 }
-  /* --- GWAVE STRIKE combat HUD --- */
+  #loading small{ color:var(--dim); }
+  #intro{ position:fixed; inset:0; z-index:9; display:flex; flex-direction:column;
+          align-items:center; justify-content:flex-end; padding-bottom:14vh; cursor:pointer;
+          background:linear-gradient(180deg, rgba(6,9,19,.15) 40%, rgba(6,9,19,.88));
+          transition:opacity .8s; }
+  #intro .eyebrow{ font-family:var(--display); font-size:11px; letter-spacing:.3em;
+                   color:var(--gold); margin-bottom:10px; }
+  #intro h1{ font-family:var(--display); font-weight:900; font-size:clamp(30px,6vw,52px);
+             margin:0 0 8px; letter-spacing:.06em; }
+  #intro h1 b{ color:var(--gold); text-shadow:0 0 24px rgba(245,197,66,.4); }
+  #intro p{ color:var(--dim); margin:0 0 22px; font-size:15px; }
+  #intro .cta{ background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#1a1200;
+               border:0; border-radius:10px; padding:14px 40px; font-size:17px; font-weight:700;
+               cursor:pointer; box-shadow:0 0 26px rgba(245,197,66,.4); animation:pulse 2.2s infinite; }
+  @keyframes pulse{ 50%{ box-shadow:0 0 40px rgba(245,197,66,.65);} }
+  #intro.fadeOut{ opacity:0; pointer-events:none; }
+
+  /* ---- Combat HUD ---- */
   #combat{ display:none; }
   #crosshair{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
               font-size:22px; color:#fff; opacity:.85; pointer-events:none; }
-  #hpBox{ bottom:14px; left:50%; transform:translateX(-50%); width:240px; }
+  #hpBox{ bottom:14px; left:50%; transform:translateX(-50%); width:240px;
+          font-family:var(--display); font-size:13px; }
   #hpBar{ height:8px; background:#2a1020; border-radius:4px; margin-top:6px; overflow:hidden; }
-  #hpFill{ height:100%; width:100%; background:linear-gradient(90deg,#d8324a,#ff8866);
+  #hpFill{ height:100%; width:100%; background:linear-gradient(90deg,var(--danger),#ff8866);
            transition:width .15s; }
-  #ammoBox{ bottom:14px; right:14px; font-size:16px; }
-  #killfeed{ position:fixed; top:96px; right:14px; display:flex; flex-direction:column;
-             gap:6px; align-items:flex-end; }
+  #ammoBox{ bottom:14px; right:14px; font-size:15px; font-family:var(--display); }
+  #killfeed{ position:fixed; top:104px; right:14px; display:flex; flex-direction:column;
+             gap:6px; align-items:flex-end; z-index:4; }
   .killItem{ position:static; font-size:13px; }
-  #dmgVignette{ position:fixed; inset:0; pointer-events:none; opacity:0;
-                transition:opacity .25s;
+  #dmgVignette{ position:fixed; inset:0; pointer-events:none; opacity:0; transition:opacity .25s;
                 background:radial-gradient(ellipse at center, transparent 45%, rgba(216,50,74,.65) 100%); }
-  /* --- Leaderboard --- */
-  #lbPanel{ left:50%; top:50%; transform:translate(-50%,-50%); width:min(420px,92vw);
-            display:none; z-index:6; }
-  #lbPanel h3{ margin:0 0 10px; color:var(--gold); font-size:16px; }
+
+  /* ---- Panels (Leaderboard / Shop / Quests / Feed) ---- */
+  #lbPanel, #walletPanel, #questPanel, #feedPanel{
+    left:50%; top:50%; transform:translate(-50%,-50%); display:none; z-index:6;
+    max-height:78vh; overflow-y:auto; }
+  #lbPanel{ width:min(440px,94vw); }
+  #walletPanel, #questPanel{ width:min(460px,94vw); }
+  #feedPanel{ width:min(480px,94vw); }
+  #lbPanel h3, #walletPanel h3, #questPanel h3, #feedPanel h3{
+    margin:0 0 10px; color:var(--gold); font-size:16px; }
   #lbPanel table{ width:100%; border-collapse:collapse; font-size:13px; }
   #lbPanel td, #lbPanel th{ padding:5px 8px; text-align:left; border-bottom:1px solid var(--line); }
   #lbPanel th{ color:var(--jade); font-weight:700; }
-  #lbPanel .xp{ color:var(--gold); text-align:right; }
-  /* --- Economy (Phase 0) --- */
-  #gpBadge{ top:60px; right:14px; font-size:13px; color:var(--gold); display:none; }
-  #walletPanel, #questPanel{ left:50%; top:50%; transform:translate(-50%,-50%);
-      width:min(460px,94vw); max-height:76vh; overflow-y:auto; display:none; z-index:6; }
-  #walletPanel h3, #questPanel h3{ margin:0 0 10px; color:var(--gold); font-size:16px; }
+  #lbPanel .xp{ color:var(--gold); text-align:right; font-family:var(--display); font-size:12px; }
+  .lbTab{ background:var(--deep); color:var(--ink); border:1px solid var(--line); border-radius:6px;
+          padding:4px 10px; font-size:12px; cursor:pointer; }
+  .lbActive{ background:var(--gold); color:#1a1200; font-weight:700; }
+
   .shopItem{ display:flex; align-items:center; gap:10px; padding:8px 0;
              border-bottom:1px solid var(--line); font-size:14px; }
   .shopItem .sw{ width:22px; height:22px; border-radius:50%; border:1px solid #445; flex:none; }
   .shopItem .nm{ flex:1; }
   .shopItem button{ background:var(--jade); color:#03150c; border:0; border-radius:6px;
-                    padding:5px 12px; font-family:inherit; cursor:pointer; font-weight:700; }
+                    padding:5px 12px; cursor:pointer; font-weight:700; }
   .shopItem button:disabled{ opacity:.4; cursor:default; }
   .owned{ color:var(--jade); font-size:12px; }
   .questRow{ padding:8px 0; border-bottom:1px solid var(--line); font-size:14px; }
   .qbar{ height:7px; background:#152040; border-radius:4px; margin-top:6px; overflow:hidden; }
   .qfill{ height:100%; background:linear-gradient(90deg,var(--jade),var(--gold)); }
   .qdone{ color:var(--jade); }
-  .lbTab{ background:#152040; color:var(--ink); border:1px solid var(--line); border-radius:6px;
-          padding:4px 10px; font-family:inherit; font-size:12px; cursor:pointer; }
-  .lbActive{ background:var(--gold); color:#1a1200; font-weight:700; }
+
+  /* ---- Feed holo cards (FB feed → metaverse ထဲ ရွှေ့) ---- */
+  .feedCard{ position:relative; background:linear-gradient(165deg,var(--panel),rgba(11,16,38,.9));
+             border:1px solid var(--line); border-radius:12px; padding:12px 14px;
+             margin-bottom:10px; overflow:hidden; }
+  .feedCard::before{ content:''; position:absolute; top:0; left:16px; right:16px; height:1px;
+                     background:linear-gradient(90deg,transparent,var(--gold),transparent); }
+  .feedCard .who{ color:var(--jade); font-weight:700; font-size:13px; }
+  .feedCard .when{ color:var(--dim); font-size:11px; float:right; }
+  .feedCard .txt{ font-size:14px; line-height:1.8; margin-top:4px; }
 </style>
 </head>
 <body>
-  <div id="loading">🌊 Gwave Metaverse — Loading...<small>three.js base framework</small></div>
+  <div id="loading">🌊 GWAVE — Loading...<small>ရွှေတံခါး ဖွင့်နေသည်…</small></div>
+  <div id="intro">
+    <span class="eyebrow">CYBER-YANGON · မြန်မာ့ AI METAVERSE</span>
+    <h1>G<b>WAVE</b></h1>
+    <p>ရွှေတံခါး ပွင့်နေပါပြီ — နှိပ်ပြီး ဝင်ရောက်ပါ</p>
+    <button class="cta">🌊 စတင်မည်</button>
+  </div>
   <div id="roomName" class="panel">📍 <b>—</b></div>
   <div id="help" class="panel">
     🖱️ Canvas ကိုနှိပ်ပြီး Mouse ဖြင့် ကြည့်ရှုပါ<br>
     ⌨️ W A S D — လမ်းလျှောက် | Space — ခုန် | Shift — ပြေး<br>
-    🔑 E — NPC/Portal | L 🏆 Board | I 🛍️ Shop | Q 🎯 Quest
+    🔑 E — NPC/Portal | L 🏆 | I 🛍️ | Q 🎯 | N 📰 Feed
   </div>
   <div id="walletBox" class="panel">
     <button id="walletBtn">🦊 Wallet ချိတ်ဆက်ရန်</button>
@@ -108,12 +159,16 @@
     <h3>🛍️ Gwave Shop + ပိုက်ဆံအိတ် <span style="float:right;opacity:.6;font-size:12px">I — ပိတ်ရန်</span></h3>
     <div id="walletContent">Loading…</div>
   </div>
+  <div id="feedPanel" class="panel">
+    <h3>📰 Gwave Feed <span style="float:right;opacity:.6;font-size:12px">N — ပိတ်ရန်</span></h3>
+    <div id="feedContent">Loading…</div>
+  </div>
   <div id="questPanel" class="panel">
     <h3>🎯 ဒီနေ့ Quest များ <span style="float:right;opacity:.6;font-size:12px">Q — ပိတ်ရန်</span></h3>
     <div id="questContent">Loading…</div>
   </div>
-  <!-- unpkg → jsdelivr: gwave.cc ရဲ့ CSP script-src က jsdelivr ကိုသာ ခွင့်ပြု -->
   <script type="importmap">
+  <!-- unpkg → jsdelivr: gwave.cc ရဲ့ CSP script-src က jsdelivr ကိုသာ ခွင့်ပြု -->
   { "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
       "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"

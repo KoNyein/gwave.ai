@@ -112,7 +112,8 @@ export class Avatar {
 
     this.mixer?.update(dt);
 
-    // ၄။ ကင်မရာ
+    // ၄။ ကင်မရာ (intro cinematic ချိန် ပိတ်ထားနိုင်)
+    if (this.cameraEnabled === false) return;
     const cam = this.engine.camera;
     if (this.mode === 'fps') {
       const p = input.pitch;

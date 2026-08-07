@@ -1,0 +1,128 @@
+/* ============================================================
+   gwave-theme.css — Gwave Metaverse Design System v1
+   "ရွှေတံခါး" (Golden Gate) theme — Cyber-Yangon identity
+   Facebook-style UI ကို အစားထိုးမည့် metaverse-era component များ
+
+   Palette — ဂိမ်းထဲက Cyber-Yangon ကမ္ဘာကနေ တိုက်ရိုက်ဆင်းသက်:
+   ရွှေ (pagoda gold) = ပင်မ accent ၊ စိမ်းလဲ့ = live/အောင်မြင် ၊
+   neon cyan = အချက်အလက် ၊ void navy = နောက်ခံ
+   ============================================================ */
+/* Google Fonts @import ဖယ်ထား — gwave.cc ရဲ့ CSP က external font host ကို
+   ခွင့်မပြုဘူး (style-src 'self' · font-src 'self' data:)။ Self-host ဖောင့်
+   ထည့်ချင်ရင် public/fonts/ ထဲထည့်ပြီး @font-face နဲ့ ခေါ်ပါ။ */
+
+:root {
+  /* Color tokens */
+  --g-void:   #060913;   /* နက်ရှိုင်းသော ညကောင်းကင် — page နောက်ခံ */
+  --g-deep:   #0b1026;   /* panel အတွင်းသား */
+  --g-line:   #1d2a4d;   /* borders */
+  --g-mist:   rgba(140, 170, 255, .07); /* glass fill */
+  --g-ink:    #eaf0ff;   /* စာသား */
+  --g-dim:    #8a97b8;   /* secondary စာသား */
+  --g-shwe:   #f5c542;   /* ★ ရွှေ — ပင်မ accent (CTA, ခေါင်းစဉ်) */
+  --g-shwe2:  #c9932b;   /* ရွှေရင့် — gradient အဆုံး */
+  --g-jade:   #3ddc97;   /* live / အောင်မြင် */
+  --g-neon:   #2de1ff;   /* အချက်အလက် / link (ချွေတာစွာသုံး) */
+  --g-danger: #d8324a;
+
+  /* Type tokens — Latin tech display + မြန်မာ body ပေါင်းစပ်မှု */
+  --g-display: 'Padauk', 'Myanmar Text', ui-sans-serif, system-ui, sans-serif;  /* GWAVE, ကိန်းဂဏန်း, KPI */
+  --g-body:    'Padauk', 'Myanmar Text', 'Noto Sans Myanmar', system-ui, sans-serif;
+  --g-mono:    'JetBrains Mono', ui-monospace, monospace; /* coords, tx hash */
+
+  --g-radius: 14px;
+  --g-glow-shwe: 0 0 24px rgba(245, 197, 66, .35);
+  --g-glow-neon: 0 0 18px rgba(45, 225, 255, .3);
+}
+
+/* ---------- Base ---------- */
+.g-body {
+  background: var(--g-void);
+  color: var(--g-ink);
+  font-family: var(--g-body);
+  margin: 0;
+}
+
+/* ---------- Glass panel (FB "card" အစားထိုး) ---------- */
+.g-panel {
+  background: linear-gradient(165deg, var(--g-mist), rgba(11, 16, 38, .85));
+  border: 1px solid var(--g-line);
+  border-radius: var(--g-radius);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* ---------- Holo card — feed post အစားထိုး ----------
+   ထိပ်မှာ ရွှေ hairline + ဘယ်ထောင့် notch = Gwave signature */
+.g-card {
+  position: relative;
+  background: linear-gradient(165deg, var(--g-mist), rgba(11, 16, 38, .9));
+  border: 1px solid var(--g-line);
+  border-radius: var(--g-radius);
+  padding: 16px 18px;
+  overflow: hidden;
+}
+.g-card::before {
+  content: '';
+  position: absolute; top: 0; left: 18px; right: 18px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--g-shwe), transparent);
+}
+.g-card::after { /* ဘယ်အောက်ထောင့် notch */
+  content: '';
+  position: absolute; bottom: -1px; left: -1px; width: 14px; height: 14px;
+  border-left: 2px solid var(--g-shwe); border-bottom: 2px solid var(--g-shwe);
+  border-bottom-left-radius: var(--g-radius);
+  opacity: .7;
+}
+
+/* ---------- Buttons ---------- */
+.g-btn {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--g-shwe), var(--g-shwe2));
+  color: #1a1200;
+  font-family: var(--g-body); font-weight: 700; font-size: 15px;
+  border: 0; border-radius: 10px; padding: 12px 26px;
+  cursor: pointer; text-decoration: none;
+  box-shadow: var(--g-glow-shwe);
+  transition: transform .15s, box-shadow .15s;
+}
+.g-btn:hover { transform: translateY(-1px); box-shadow: 0 0 34px rgba(245,197,66,.5); }
+.g-btn-ghost {
+  background: transparent; color: var(--g-ink);
+  border: 1px solid var(--g-line); box-shadow: none;
+}
+.g-btn-ghost:hover { border-color: var(--g-shwe); color: var(--g-shwe); box-shadow: none; }
+
+/* ---------- Eyebrow / labels ---------- */
+.g-eyebrow {
+  font-family: var(--g-display); font-size: 11px; font-weight: 700;
+  letter-spacing: .28em; text-transform: uppercase; color: var(--g-shwe);
+}
+.g-live { color: var(--g-jade); font-size: 12px; }
+.g-live::before { content: '● '; }
+
+/* ---------- Dock (FB navbar အစားထိုး — အောက်ခြေ floating) ---------- */
+.g-dock {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+  display: flex; gap: 8px; padding: 8px;
+  background: rgba(6, 9, 19, .7); border: 1px solid var(--g-line);
+  border-radius: 999px; backdrop-filter: blur(12px);
+}
+.g-dock a {
+  color: var(--g-dim); text-decoration: none; font-size: 14px;
+  padding: 8px 16px; border-radius: 999px; transition: all .15s;
+}
+.g-dock a:hover, .g-dock a.active { color: var(--g-shwe); background: var(--g-mist); }
+
+/* ---------- Display type ---------- */
+.g-h1 {
+  font-family: var(--g-display); font-weight: 900;
+  letter-spacing: .06em; color: var(--g-ink); margin: 0;
+}
+.g-h1 .shwe { color: var(--g-shwe); text-shadow: var(--g-glow-shwe); }
+
+/* ---------- A11y + motion ---------- */
+:focus-visible { outline: 2px solid var(--g-shwe); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

@@ -245,3 +245,17 @@ Object.assign(HUD.prototype, {
       btn.addEventListener('click', () => { btn.disabled = true; onMint(btn.dataset.season); }));
   },
 });
+
+// ---------- Gwave Feed ([N] — FB feed ကို metaverse ထဲ holo panel အဖြစ်ရွှေ့) ----------
+Object.assign(HUD.prototype, {
+  setFeedPanel(posts) {
+    const el = document.querySelector('#feedContent');
+    if (!posts?.length) { el.textContent = 'Feed ဗလာနေသေးသည် — ပထမဆုံး post တင်လိုက်ပါ!'; return; }
+    el.innerHTML = posts.map(p => `
+      <div class="feedCard">
+        <span class="when">${p.when || ''}</span>
+        <span class="who">${p.who}</span>
+        <div class="txt">${p.text}</div>
+      </div>`).join('');
+  },
+});
