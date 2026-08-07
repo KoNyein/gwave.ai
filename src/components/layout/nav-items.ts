@@ -1,6 +1,8 @@
 import {
   BadgeCheck,
+  Boxes,
   Car,
+  Earth,
   Globe2,
   Mountain,
   LayoutDashboard,
@@ -24,6 +26,7 @@ import {
   Map,
   MapPin,
   Music,
+  Plane,
   Radio,
   Rocket,
   ShoppingCart,
@@ -32,6 +35,7 @@ import {
   Wallet,
   Sprout,
   Store,
+  UserRound,
   Users,
   Video,
   type LucideIcon,
@@ -54,6 +58,11 @@ export interface NavSection {
 /**
  * The full menu, grouped by topic so long lists read as categories instead
  * of one flat wall of links.
+ *
+ * IA rules (user: "မဆိုင်မဆိုင် ခေါင်းစဉ်တွေနဲ့ မဖြစ်ပါစေနဲ့"):
+ * every item sits under the heading a first-time user would guess —
+ * health is not "Learning", SOS/map are not "Farm", ride is not "Home".
+ * One item = one place (no duplicates across sections).
  */
 export const NAV_SECTIONS: NavSection[] = [
   {
@@ -71,16 +80,25 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    // ဂိမ်းနဲ့ 3D လောက — Social ထဲ ရောထားရင် feature ကြီးနှစ်ခုက
-    // link ရှည်ကြီးတစ်ခုထဲ မြုပ်နေတယ်။
-    headingKey: "sectionEntertainment",
+    // 🌐 Metaverse & 3D — worlds, creation tools and scanners in one place
+    headingKey: "sectionMetaverse",
+    items: [
+      { href: "/metaverse", labelKey: "metaverse", icon: Globe2 },
+      { href: "/world", labelKey: "world", icon: Earth },
+      { href: "/engine", labelKey: "studio", icon: Boxes },
+      { href: "/scan", labelKey: "scan3d", icon: ScanLine },
+      { href: "/profile/avatar", labelKey: "avatarStudio", icon: UserRound },
+    ],
+  },
+  {
+    // 🎮 Games — playing + the game economy
+    headingKey: "sectionGames",
     items: [
       { href: "/games", labelKey: "games", icon: Gamepad2 },
-      { href: "/metaverse", labelKey: "metaverse", icon: Globe2 },
+      { href: "/drone", labelKey: "drone", icon: Plane },
       { href: "/fpv", labelKey: "fpv", icon: Joystick },
-      { href: "/scan", labelKey: "scan3d", icon: ScanLine },
-      { href: "/items", labelKey: "itemshop", icon: Gem },
       { href: "/arcade", labelKey: "arcade", icon: GraduationCap },
+      { href: "/items", labelKey: "itemshop", icon: Gem },
     ],
   },
   {
@@ -88,44 +106,57 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/learn", labelKey: "learn", icon: BookOpen },
       { href: "/leaderboard", labelKey: "leaderboard", icon: Trophy },
-      { href: "/wellness", labelKey: "wellness", icon: Flower2 },
-      { href: "/health", labelKey: "health", icon: HeartPulse },
     ],
   },
   {
-    headingKey: "sectionFarm",
+    // 🏥 Health & wellness — split out of "Learning" where it never belonged
+    headingKey: "sectionHealth",
     items: [
-      // Grow-operation monitoring → verified adults only.
-      { href: "/farm", labelKey: "farm", icon: Sprout, adultOnly: true },
+      { href: "/health", labelKey: "health", icon: HeartPulse },
+      { href: "/wellness", labelKey: "wellness", icon: Flower2 },
+    ],
+  },
+  {
+    // 🏠 Smart home & safety — devices, cameras, family location, SOS
+    headingKey: "sectionHome",
+    items: [
       { href: "/home", labelKey: "smartHome", icon: Lightbulb },
       { href: "/cameras", labelKey: "cameras", icon: Video },
       { href: "/family", labelKey: "family", icon: MapPin },
       { href: "/map", labelKey: "map", icon: Map },
       // Emergency SOS lives on the map; surface it directly for fast access.
       { href: "/map", labelKey: "sos", icon: Siren },
-      { href: "/ride", labelKey: "ride", icon: Car },
     ],
   },
   {
-    headingKey: "sectionBusiness",
+    // 💰 Money — wallet/banking/membership split from shopping
+    headingKey: "sectionFinance",
     items: [
-      { href: "/shop", labelKey: "shop", icon: Store },
-      { href: "/jobs", labelKey: "jobs", icon: Briefcase },
-      { href: "/pos", labelKey: "pos", icon: ShoppingCart },
-      { href: "/boost", labelKey: "boost", icon: Rocket },
       { href: "/gpay", labelKey: "gpay", icon: Wallet },
       { href: "/finance", labelKey: "finance", icon: Landmark },
       { href: "/membership", labelKey: "membership", icon: BadgeCheck },
     ],
   },
   {
+    // 🛍 Commerce & services
+    headingKey: "sectionBusiness",
+    items: [
+      { href: "/shop", labelKey: "shop", icon: Store },
+      { href: "/jobs", labelKey: "jobs", icon: Briefcase },
+      { href: "/pos", labelKey: "pos", icon: ShoppingCart },
+      { href: "/boost", labelKey: "boost", icon: Rocket },
+      { href: "/ride", labelKey: "ride", icon: Car },
+    ],
+  },
+  {
     headingKey: "sectionKnowledge",
     items: [
-      // Strain database covers cannabis → verified adults only.
-      { href: "/strains", labelKey: "strains", icon: Leaf, adultOnly: true },
+      { href: "/tools", labelKey: "tools", icon: Calculator },
       { href: "/minerals", labelKey: "minerals", icon: Gem },
       { href: "/metals", labelKey: "metals", icon: Mountain },
-      { href: "/tools", labelKey: "tools", icon: Calculator },
+      // Grow-operation monitoring + strain database → verified adults only.
+      { href: "/farm", labelKey: "farm", icon: Sprout, adultOnly: true },
+      { href: "/strains", labelKey: "strains", icon: Leaf, adultOnly: true },
     ],
   },
 ];

@@ -54,7 +54,16 @@
     "metals": "Mine sites",
     "ride": "Ride",
     "menu": "All features",
-    "sectionEntertainment": "Games & Metaverse"
+    "sectionEntertainment": "Games & Metaverse",
+    "sectionMetaverse": "Metaverse & 3D",
+    "sectionGames": "Games",
+    "sectionHealth": "Health & Wellness",
+    "sectionHome": "Smart Home & Safety",
+    "sectionFinance": "Finance",
+    "world": "Open World",
+    "studio": "gWave Studio",
+    "avatarStudio": "Avatar Scanner",
+    "drone": "GWAVE Drone"
   },
   "auth": {
     "login": "Log in",
