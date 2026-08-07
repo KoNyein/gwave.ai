@@ -22,7 +22,7 @@ import { DEFAULT_AVATAR, type AvatarConfig } from "./config";
 /// ★ Variant က localStorage (mv:soldier) + config.variant နှစ်နေရာ သိမ်း —
 ///   ဒီစက်မှာ ချက်ချင်း၊ တခြားစက်မှာ config ကနေ လိုက်တယ်။
 
-const BASE_META: Record<string, { icon: string; label: string }> = {
+export const BASE_META: Record<string, { icon: string; label: string }> = {
   Remy: { icon: "🧑", label: "Remy" },
   Soldier: { icon: "🎖", label: "Soldier" },
   Michelle: { icon: "👩", label: "Michelle" },

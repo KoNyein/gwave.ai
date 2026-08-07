@@ -183,6 +183,44 @@ export async function captureBody(
   };
 }
 
+/// 📸 Multi-frame body capture — frame ~12 ချပ် ဖမ်းပြီး ratio တစ်ခုစီရဲ့
+/// **median** ယူတယ်။ Frame တစ်ချပ်တည်းက landmark jitter နဲ့ ခဏတုန်တဲ့
+/// လက်ခြေကြောင့် အချိုးအစား ±10% လွဲနိုင်တယ် — median က outlier frame
+/// (လှုပ်နေတုန်း မိတာ) ကို လုံးဝ ဖယ်ပေးတယ်။
+export async function captureBodyStable(
+  video: HTMLVideoElement,
+  onProgress?: (done: number, total: number) => void,
+): Promise<(BodyMeasurements & { sampleCount: number }) | { error: string }> {
+  const TOTAL = 12;
+  const GAP_MS = 110;
+  const samples: BodyMeasurements[] = [];
+  let lastError =
+    "ကိုယ်ခန္ဓာ မတွေ့ပါ — 2-3 မီတာ ခွာပြီး တစ်ကိုယ်လုံး ပေါ်အောင် ရပ်ပါ";
+  for (let i = 0; i < TOTAL; i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, GAP_MS));
+    onProgress?.(i + 1, TOTAL);
+    const m = await captureBody(video);
+    if ("error" in m) {
+      lastError = m.error;
+      continue;
+    }
+    samples.push(m);
+  }
+  if (samples.length < 5) return { error: lastError };
+  const median = (key: keyof BodyMeasurements) => {
+    const vs = samples.map((s) => s[key]).sort((a, b) => a - b);
+    return vs[Math.floor(vs.length / 2)] ?? 0;
+  };
+  return {
+    shoulderRatio: median("shoulderRatio"),
+    hipRatio: median("hipRatio"),
+    torsoRatio: median("torsoRatio"),
+    armRatio: median("armRatio"),
+    legRatio: median("legRatio"),
+    sampleCount: samples.length,
+  };
+}
+
 /// ── Measurements → morph weights (spec §5.2) ─────────────────────────
 /// Reference ratio တွေက ပျမ်းမျှလူ (anthropometric averages) — measured
 /// ratio ကို reference နဲ့ နှိုင်းပြီး [-1,1] morph weight ထုတ်တယ်။

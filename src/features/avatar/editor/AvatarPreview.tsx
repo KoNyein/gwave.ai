@@ -4,31 +4,54 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
-import type { AvatarConfig } from "../types";
+import type { Avatar } from "@/components/metaverse/human";
+import { createRealisticHuman } from "@/components/metaverse/realistichuman";
+import type { AvatarConfig, MorphWeights } from "../types";
+import { MORPH_KEYS } from "../types";
 
-/// 🧬 Editor preview — turntable + idle animation (spec §8)။
+/// 🧬 Editor preview v3 — realistic Mixamo body + physics feel။
 ///
-/// ★ Phase 1 placeholder body = kit character GLB (27-clip rigged)။
-///   Morph slider တွေက **placeholder mapping** — height/weight/headScale
-///   ကို scale နဲ့ ခန့်မှန်းပြတယ်၊ ကျန်တာ config ထဲ သိမ်းပြီး Phase 1
-///   asset (11-morph base body) ရောက်မှ တကယ့် morph target ဖြစ်မယ်။
-/// ★ GLB ကို config.outfitId ပြောင်းမှသာ ပြန်ဆွဲတယ် — slider လှုပ်တိုင်း
-///   ပြန်ဆွဲရင် editor က လေးသွားမယ်။
+/// v2 complaint: "UI UX နဲ့ 3D quality အရမ်းနိမ့်တယ်" — အရင် preview က
+/// Soldier GLB ကို scale ၃ ချက်နဲ့ ခန့်မှန်းပြတာ။ အခု —
+/// ★ Body = createRealisticHuman — metaverse ထဲမှာ တကယ်သုံးမယ့် rig အစစ်၊
+///   အသက်ရှူ idle / လမ်းလျှောက် / emote အကုန်ပါ — WYSIWYG။
+/// ★ Morph ၁၁ ခုလုံး bone-level သက်ရောက် (setMorphs) — slider တစ်ချက်ချင်း
+///   spring-damped ဖြစ်ပြီး တဖြည်းဖြည်း ပြောင်းတယ် (snap မဖြစ်)။
+/// ★ Physics: turntable မှာ drag inertia (လွှတ်ရင် အရှိန်နဲ့ ဆက်လည်ပြီး
+///   friction နဲ့ ရပ်)၊ zoom spring၊ shadow အစစ်။
+/// ★ Scan face GLB — head bone မှာ rigid attach (metaverse scanface.ts နဲ့
+///   သဘောတူ) — body နဲ့အတူ လှုပ်တယ်။
 
-// 🧍 Realistic Mixamo body — cartoon kit အစား (user: "cartoon မသုံးတော့ဘူး")
-const FALLBACK_GLB = "/metaverse/realistic/Soldier.glb";
+export type PreviewMotion = "idle" | "walk" | "run" | "wave" | "dance";
+
+function readVariant(): string {
+  try {
+    const v = window.localStorage.getItem("mv:soldier");
+    if (v && /^[a-r]$/.test(v)) return v;
+  } catch {
+    /* private mode */
+  }
+  return "a";
+}
 
 export function AvatarPreview({
   config,
   bodyGlbUrl,
+  variant,
+  motion = "idle",
 }: {
   config: AvatarConfig;
+  /// Legacy outfit-asset override — null ဆို realistic body (default)
   bodyGlbUrl: string | null;
+  /// realistichuman variant (a–r) — မပေးရင် localStorage (mv:soldier)
+  variant?: string | null;
+  /// လှုပ်ရှားဟန် စမ်းကြည့် — idle/walk/run/wave/dance
+  motion?: PreviewMotion;
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
-  /// morph/skin update တွေက three ဘက်ကို ref တစ်ခုတည်းနဲ့ ရောက်တယ် —
-  /// React re-render မလို
   const applyRef = useRef<((c: AvatarConfig) => void) | null>(null);
+  const motionRef = useRef<PreviewMotion>(motion);
+  motionRef.current = motion;
 
   useEffect(() => {
     applyRef.current?.(config);
@@ -40,53 +63,94 @@ export function AvatarPreview({
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x10141d);
+    scene.fog = new THREE.Fog(0x10141d, 6, 14);
     const camera = new THREE.PerspectiveCamera(
-      38,
+      36,
       mount.clientWidth / Math.max(1, mount.clientHeight),
       0.1,
       50,
     );
-    camera.position.set(0, 1.5, 3.4);
-    camera.lookAt(0, 1, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
 
-    // Light rig — key + fill + rim (spec §8 preview)
-    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-    const key = new THREE.DirectionalLight(0xffffff, 1.6);
-    key.position.set(2, 3, 2);
+    // Studio light rig — key(shadow) + hemi fill + rim
+    scene.add(new THREE.HemisphereLight(0xdfe9f5, 0x2a3040, 0.9));
+    const key = new THREE.DirectionalLight(0xffffff, 1.7);
+    key.position.set(2, 4, 2.5);
+    key.castShadow = true;
+    key.shadow.mapSize.set(1024, 1024);
+    key.shadow.camera.near = 0.5;
+    key.shadow.camera.far = 12;
+    key.shadow.camera.left = -2;
+    key.shadow.camera.right = 2;
+    key.shadow.camera.top = 3;
+    key.shadow.camera.bottom = -1;
     scene.add(key);
-    const rim = new THREE.DirectionalLight(0x88aaff, 0.7);
+    const rim = new THREE.DirectionalLight(0x88aaff, 0.8);
     rim.position.set(-2, 2, -2);
     scene.add(rim);
+
     const floor = new THREE.Mesh(
-      new THREE.CircleGeometry(1.4, 40),
-      new THREE.MeshStandardMaterial({ color: 0x1b2230, roughness: 0.9 }),
+      new THREE.CircleGeometry(2.2, 48),
+      new THREE.MeshStandardMaterial({ color: 0x1b2230, roughness: 0.92 }),
     );
     floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
     scene.add(floor);
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(1.18, 1.22, 64),
+      new THREE.MeshBasicMaterial({ color: 0x34d399, transparent: true, opacity: 0.25 }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.005;
+    scene.add(ring);
 
     const holder = new THREE.Group();
     scene.add(holder);
 
-    let mixer: THREE.AnimationMixer | null = null;
     let disposed = false;
-    let dragging = false;
-    let lastX = 0;
-    const spin = 0.35; // auto-turntable rad/s — drag ရင် ရပ်
-
-    const tintMats: THREE.MeshStandardMaterial[] = [];
-    let modelRoot: THREE.Object3D | null = null;
-    let headBone: THREE.Object3D | null = null;
+    let avatar: Avatar | null = null;
+    let legacyMixer: THREE.AnimationMixer | null = null;
+    let legacyRoot: THREE.Object3D | null = null;
     let facePlate: THREE.Object3D | null = null;
     let faceUrlLoaded: string | null = null;
+    const loader = new GLTFLoader();
 
-    /// 🧬 Scan face GLB ကို ခေါင်း node မှာ rigid attach (spec §6 HeadSocket
-    /// သဘော — placeholder body မှာ socket မပါလို့ head node ကို တိုက်ရိုက်)
+    // ── Physics state ────────────────────────────────────────────────────
+    let dragging = false;
+    let lastX = 0;
+    let spinVel = 0.4; // rad/s — idle turntable; drag က override
+    let zoomTarget = 3.3;
+    let zoom = 3.3;
+    /// Morph spring — display value → target ကို critically-damped ဆွဲ
+    const morphNow: Record<string, number> = {};
+    let morphTarget: MorphWeights = {};
+    let tintColor = new THREE.Color("#ffffff");
+    let lastCfg: AvatarConfig | null = null;
+
+    const applyTint = () => {
+      const root = avatar?.group ?? legacyRoot;
+      if (!root) return;
+      root.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        for (const m of mats) {
+          if (!(m instanceof THREE.MeshStandardMaterial)) continue;
+          const store = m.userData as { origColor?: THREE.Color };
+          store.origColor ??= m.color.clone();
+          m.color.copy(store.origColor).multiply(tintColor);
+        }
+      });
+    };
+
+    /// 🧬 Scan face GLB → head attach (world-scale ချေဖျက်ပြီး မျက်နှာအရွယ်မှန်)
     const loadFacePlate = (url: string | null) => {
       if (url === faceUrlLoaded) return;
       faceUrlLoaded = url;
@@ -94,21 +158,21 @@ export function AvatarPreview({
         facePlate.parent?.remove(facePlate);
         facePlate = null;
       }
-      if (!url || !modelRoot) return;
+      if (!url) return;
       loader.load(
         url,
         (g) => {
-          if (disposed || url !== faceUrlLoaded || !modelRoot) return;
+          if (disposed || url !== faceUrlLoaded) return;
+          const host = avatar?.attach.head ?? legacyRoot;
+          if (!host) return;
           facePlate = g.scene;
-          const host = headBone ?? modelRoot;
           host.add(facePlate);
-          // Head node ရဲ့ world scale ကို ချေဖျက်ပြီး မျက်နှာအရွယ် မှန်အောင်
+          host.updateWorldMatrix(true, false);
           const ws = new THREE.Vector3();
           host.getWorldScale(ws);
-          const inv = ws.x !== 0 ? 1 / ws.x : 1;
+          const inv = ws.x > 1e-6 ? 1 / ws.x : 1;
           facePlate.scale.setScalar(inv);
-          // ခေါင်းရှေ့ဘက် အနည်းငယ် — kit head က ~0.12m radius လောက်
-          facePlate.position.set(0, 0.02 * inv, 0.09 * inv);
+          facePlate.position.set(0, 0.03 * inv, 0.1 * inv);
         },
         undefined,
         () => {
@@ -118,90 +182,111 @@ export function AvatarPreview({
     };
 
     const applyConfig = (c: AvatarConfig) => {
-      if (!modelRoot) return;
-      const m = c.morphs;
-      // Placeholder morph mapping (Phase 1) — scale approximations
-      const h = 1 + 0.12 * (m.height ?? 0);
-      const w = 1 + 0.1 * (m.weight ?? 0) + 0.05 * (m.muscle ?? 0);
-      modelRoot.scale.set(w, h, w);
-      if (headBone) {
-        const hs = 1 + 0.18 * (m.headScale ?? 0);
-        headBone.scale.setScalar(hs);
-      }
-      // Skin tint — kit texture ပေါ် အနုစား multiply
-      const tint = new THREE.Color(c.skinColor).lerp(new THREE.Color("#ffffff"), 0.55);
-      for (const mat of tintMats) mat.color.copy(tint);
-      // 🧬 Scan မျက်နှာ — URL ပြောင်းမှသာ ပြန်ဆွဲ
+      lastCfg = c;
+      morphTarget = c.morphs;
+      tintColor = new THREE.Color(c.skinColor).lerp(new THREE.Color("#ffffff"), 0.6);
+      applyTint();
       loadFacePlate(c.faceGlbUrl);
     };
-    applyRef.current = (c) => applyConfig(c);
+    applyRef.current = applyConfig;
 
-    const loader = new GLTFLoader();
-    const url = bodyGlbUrl || FALLBACK_GLB;
-    loader.load(
-      url,
-      (gltf) => {
-        if (disposed) return;
-        holder.clear();
-        tintMats.length = 0;
-        modelRoot = gltf.scene;
-        modelRoot.scale.setScalar(1);
-        // Kit character တွေက scale ကြီး — bounding box နဲ့ ~1.7m ဖြစ်အောင် ညှိ
-        const box = new THREE.Box3().setFromObject(modelRoot);
-        const size = box.getSize(new THREE.Vector3());
-        const s = size.y > 0 ? 1.7 / size.y : 1;
-        modelRoot.scale.setScalar(s);
-        const box2 = new THREE.Box3().setFromObject(modelRoot);
-        modelRoot.position.y -= box2.min.y;
-        holder.add(modelRoot);
-
-        modelRoot.traverse((o) => {
-          if (o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial) {
-            // Clone — asset cache ကို မညစ်အောင်
-            o.material = o.material.clone();
-            tintMats.push(o.material as THREE.MeshStandardMaterial);
+    // ── Body ─────────────────────────────────────────────────────────────
+    if (bodyGlbUrl) {
+      // Legacy outfit asset path — GLB ကို တိုက်ရိုက် (idle clip ရှိရင် ဖွင့်)
+      loader.load(
+        bodyGlbUrl,
+        (gltf) => {
+          if (disposed) return;
+          legacyRoot = gltf.scene;
+          const box = new THREE.Box3().setFromObject(legacyRoot);
+          const size = box.getSize(new THREE.Vector3());
+          const s = size.y > 0 ? 1.7 / size.y : 1;
+          legacyRoot.scale.setScalar(s);
+          const box2 = new THREE.Box3().setFromObject(legacyRoot);
+          legacyRoot.position.y -= box2.min.y;
+          legacyRoot.traverse((o) => {
+            if ((o as THREE.Mesh).isMesh) o.castShadow = true;
+          });
+          holder.add(legacyRoot);
+          const idle =
+            gltf.animations.find((a) => a.name.toLowerCase().includes("idle")) ??
+            gltf.animations[0];
+          if (idle) {
+            legacyMixer = new THREE.AnimationMixer(legacyRoot);
+            legacyMixer.clipAction(idle).play();
           }
-          const n = o.name.toLowerCase();
-          if (!headBone && (n === "head" || n.endsWith("head"))) headBone = o;
-        });
+          if (lastCfg) applyConfig(lastCfg);
+        },
+        undefined,
+        () => undefined,
+      );
+    } else {
+      avatar = createRealisticHuman(variant ?? readVariant());
+      holder.add(avatar.group);
+      // Model load က async — materials ရောက်လာမှ tint/morph ပြန်စမ်းဖို့
+      // frame loop ထဲမှာ dirty-check လုပ်တယ် (အောက် tick)။
+    }
 
-        const idle =
-          gltf.animations.find((a) => a.name.toLowerCase().includes("idle")) ??
-          gltf.animations[0];
-        if (idle) {
-          mixer = new THREE.AnimationMixer(modelRoot);
-          mixer.clipAction(idle).play();
-        }
-        applyConfig(config);
-      },
-      undefined,
-      () => {
-        /* GLB ဆွဲမရ — မျက်နှာပြင် မည်းနေမယ့်အစား placeholder box */
-        if (disposed) return;
-        const ph = new THREE.Mesh(
-          new THREE.CapsuleGeometry(0.3, 1, 6, 12),
-          new THREE.MeshStandardMaterial({ color: 0x334455 }),
-        );
-        ph.position.y = 0.85;
-        holder.add(ph);
-      },
-    );
-
+    // ── Input: drag inertia + wheel/pinch zoom ───────────────────────────
+    const el = renderer.domElement;
+    el.style.touchAction = "none";
+    const pointers = new Map<number, { x: number; y: number }>();
+    let pinchDist = 0;
     const onDown = (e: PointerEvent) => {
-      dragging = true;
-      lastX = e.clientX;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      el.setPointerCapture(e.pointerId);
+      if (pointers.size === 1) {
+        dragging = true;
+        lastX = e.clientX;
+        spinVel = 0;
+      } else if (pointers.size === 2) {
+        dragging = false;
+        const [a, b] = [...pointers.values()];
+        pinchDist = Math.hypot(a!.x - b!.x, a!.y - b!.y);
+      }
     };
     const onMove = (e: PointerEvent) => {
+      const p = pointers.get(e.pointerId);
+      if (!p) return;
+      p.x = e.clientX;
+      p.y = e.clientY;
+      if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()];
+        const d = Math.hypot(a!.x - b!.x, a!.y - b!.y);
+        if (pinchDist > 0) {
+          zoomTarget = THREE.MathUtils.clamp(
+            zoomTarget * (pinchDist / Math.max(1, d)),
+            1.6,
+            5,
+          );
+        }
+        pinchDist = d;
+        return;
+      }
       if (!dragging) return;
-      holder.rotation.y += (e.clientX - lastX) * 0.01;
+      const dx = e.clientX - lastX;
+      holder.rotation.y += dx * 0.011;
+      spinVel = dx * 0.011 * 60; // drag velocity → release inertia
       lastX = e.clientX;
     };
-    const onUp = () => {
-      dragging = false;
+    const onUp = (e: PointerEvent) => {
+      pointers.delete(e.pointerId);
+      if (pointers.size < 2) pinchDist = 0;
+      if (pointers.size === 0) dragging = false;
     };
-    renderer.domElement.addEventListener("pointerdown", onDown);
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      zoomTarget = THREE.MathUtils.clamp(
+        zoomTarget * (1 + Math.sign(e.deltaY) * 0.12),
+        1.6,
+        5,
+      );
+    };
+    el.addEventListener("pointerdown", onDown);
+    el.addEventListener("pointermove", onMove);
+    el.addEventListener("pointerup", onUp);
+    el.addEventListener("pointercancel", onUp);
+    el.addEventListener("wheel", onWheel, { passive: false });
 
     const onResize = () => {
       camera.aspect = mount.clientWidth / Math.max(1, mount.clientHeight);
@@ -212,11 +297,60 @@ export function AvatarPreview({
 
     const clock = new THREE.Clock();
     let raf = 0;
+    let materialsSeen = 0;
     const tick = () => {
       raf = requestAnimationFrame(tick);
-      const dt = clock.getDelta();
-      if (!dragging) holder.rotation.y += spin * dt;
-      mixer?.update(dt);
+      const dt = Math.min(clock.getDelta(), 0.05);
+
+      // Turntable inertia — drag လွှတ်ရင် အရှိန်ကျန်ပြီး friction နဲ့ နှေး
+      if (!dragging) {
+        holder.rotation.y += spinVel * dt;
+        spinVel = THREE.MathUtils.damp(spinVel, 0.4, 1.2, dt);
+      }
+      // Zoom spring
+      zoom = THREE.MathUtils.damp(zoom, zoomTarget, 8, dt);
+      camera.position.set(0, 1.05 + zoom * 0.16, zoom);
+      camera.lookAt(0, 0.95, 0);
+
+      // Morph spring — display → target တဖြည်းဖြည်း (bone scale တွေ ချော)
+      if (avatar) {
+        let dirty = false;
+        for (const k of MORPH_KEYS) {
+          const t = morphTarget[k] ?? 0;
+          const cur = morphNow[k] ?? 0;
+          if (Math.abs(t - cur) > 0.001) {
+            morphNow[k] = THREE.MathUtils.damp(cur, t, 10, dt);
+            dirty = true;
+          }
+        }
+        if (dirty) {
+          (avatar.group.userData.setMorphs as
+            | ((m: Record<string, number>) => void)
+            | undefined)?.(morphNow);
+        }
+        // Model async load ပြီးမှ materials ပေါ်လာတယ် — အသစ်တွေ့ရင် tint ပြန်ထည့်
+        let count = 0;
+        avatar.group.traverse((o) => {
+          if ((o as THREE.Mesh).isMesh) count++;
+        });
+        if (count !== materialsSeen) {
+          materialsSeen = count;
+          applyTint();
+          if (faceUrlLoaded) {
+            const u = faceUrlLoaded;
+            faceUrlLoaded = null;
+            loadFacePlate(u);
+          }
+        }
+        const m = motionRef.current;
+        avatar.update(dt, {
+          speed: m === "walk" ? 2.2 : m === "run" ? 6 : 0,
+          running: m === "run",
+          airborne: false,
+          emote: m === "wave" ? "wave" : m === "dance" ? "dance" : null,
+        });
+      }
+      legacyMixer?.update(dt);
       renderer.render(scene, camera);
     };
     tick();
@@ -225,11 +359,14 @@ export function AvatarPreview({
       disposed = true;
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      renderer.domElement.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointerup", onUp);
+      el.removeEventListener("pointercancel", onUp);
+      el.removeEventListener("wheel", onWheel);
+      avatar?.dispose();
       renderer.dispose();
-      mount.removeChild(renderer.domElement);
+      if (el.parentNode === mount) mount.removeChild(el);
       scene.traverse((o) => {
         if (o instanceof THREE.Mesh) {
           o.geometry.dispose();
@@ -238,10 +375,10 @@ export function AvatarPreview({
         }
       });
     };
-    // config intentionally excluded — applyRef effect handles live updates;
-    // rebuilding the whole scene per slider tick would stutter
+    // config intentionally excluded — applyRef effect streams live updates;
+    // rebuilding the scene per slider tick would stutter
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bodyGlbUrl]);
+  }, [bodyGlbUrl, variant]);
 
   return <div ref={mountRef} className="h-full w-full" />;
 }

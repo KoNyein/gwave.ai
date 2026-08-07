@@ -22,9 +22,39 @@ export type BuiltFace = {
   texture: HTMLCanvasElement;
 };
 
-const TEX_SIZE = 1024;
 /// Avatar ခေါင်းအရွယ်နဲ့ လိုက်အောင် မျက်နှာအကျယ် (metres)
 const FACE_WIDTH_M = 0.16;
+/// MediaPipe ရဲ့ z (depth) က xy ထက် သိသိသာသာ ပြားတယ် — relief မြှင့်မှ
+/// နှာခေါင်း/မေးရိုး 3D ကျတယ်။ 1.25 က likeness မပျက်ဘဲ depth ရတဲ့ ချိန်ခွင်။
+const DEPTH_BOOST = 1.25;
+
+/// 🪞 z-only Laplacian smoothing — depth noise (landmark jitter) က z မှာ
+/// အများဆုံး။ xy ကို မထိဘူး (likeness ပျက်မယ်)၊ z ကိုပဲ triangle
+/// neighbour ပျမ်းမျှဆီ λ နဲ့ ဆွဲတယ် — မျက်နှာပြင် ချောသွားတယ်။
+function smoothDepth(pos: Float32Array, tris: number[], iterations = 2) {
+  const n = pos.length / 3;
+  const adj: number[][] = Array.from({ length: n }, () => []);
+  for (let t = 0; t < tris.length; t += 3) {
+    const a = tris[t]!, b = tris[t + 1]!, c = tris[t + 2]!;
+    adj[a]!.push(b, c);
+    adj[b]!.push(a, c);
+    adj[c]!.push(a, b);
+  }
+  const z = new Float32Array(n);
+  for (let it = 0; it < iterations; it++) {
+    for (let i = 0; i < n; i++) {
+      const nb = adj[i]!;
+      if (nb.length === 0) {
+        z[i] = pos[i * 3 + 2]!;
+        continue;
+      }
+      let s = 0;
+      for (const j of nb) s += pos[j * 3 + 2]!;
+      z[i] = pos[i * 3 + 2]! * 0.65 + (s / nb.length) * 0.35;
+    }
+    for (let i = 0; i < n; i++) pos[i * 3 + 2] = z[i]!;
+  }
+}
 
 export async function buildFaceMesh(capture: FaceCapture): Promise<BuiltFace> {
   const { landmarks, frame, width, height } = capture;
@@ -50,11 +80,16 @@ export async function buildFaceMesh(capture: FaceCapture): Promise<BuiltFace> {
   const cropY = Math.max(0, (minY - spanY * pad) * height);
   const cropW = Math.min(width - cropX, spanX * (1 + pad * 2) * width);
   const cropH = Math.min(height - cropY, spanY * (1 + pad * 2) * height);
+  // Texture resolution — source crop ကြည်ရင် 2048² အထိ တက် (1080p ကင်မရာ
+  // + တိုးကပ်ရိုက်ရင် ရတယ်)၊ မကြည်ရင် 1024² — upscale အလကား မလုပ်ဘူး။
+  const TEX_SIZE = cropW >= 900 ? 2048 : 1024;
   const texture = document.createElement("canvas");
   texture.width = TEX_SIZE;
   texture.height = TEX_SIZE;
   const tc = texture.getContext("2d");
   if (!tc) throw new Error("canvas unavailable");
+  tc.imageSmoothingEnabled = true;
+  tc.imageSmoothingQuality = "high";
   tc.drawImage(frame, cropX, cropY, cropW, cropH, 0, 0, TEX_SIZE, TEX_SIZE);
 
   // ── Geometry ──────────────────────────────────────────────────────────
@@ -74,11 +109,13 @@ export async function buildFaceMesh(capture: FaceCapture): Promise<BuiltFace> {
     // y: normalized coord တွေက axis တစ်ခုစီ pixel scale ကွဲလို့ frame
     // aspect (height/width) နဲ့ ပြန်ညှိမှ မျက်နှာက မပြားမရှည် မှန်တယ်
     pos[i * 3 + 1] = (cy - p.y) * scale * (height / width);
-    pos[i * 3 + 2] = -(p.z ?? 0) * scale;
+    pos[i * 3 + 2] = -(p.z ?? 0) * scale * DEPTH_BOOST;
     // UV — crop ထဲက နေရာ (v axis လှန်)
     uv[i * 2] = (p.x * width - cropX) / Math.max(1e-6, cropW);
     uv[i * 2 + 1] = 1 - (p.y * height - cropY) / Math.max(1e-6, cropH);
   }
+
+  smoothDepth(pos, tris);
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
