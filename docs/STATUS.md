@@ -142,6 +142,19 @@
 
 ## Changelog
 
+- 2026-08-07 (web): **Hash deep links into the Open World.**
+  `/metaverse#shop`, `#rooms`, `#feed`, `#quests`, `#board`, `#arena`, `#live`
+  … open that panel (or switch that room) directly. The handler reads the
+  `openers` map rather than a hardcoded list, so all sixteen openers work and
+  new ones are covered automatically; unknown hashes are ignored. `hashchange`
+  is handled too, so links work without a reload. Idea taken from the uploaded
+  `gwavemetaversebasev12` base — **the rest of v12 was NOT integrated: every
+  file in it predates PRs #561–#570** (its `main.js` is 17.8 KB vs our 40.8 KB,
+  it has no `Sfx.js` / `Locomotion.js` / `RoomCatalog.js`, and its rooms still
+  inline lights instead of using `addRoomLighting`). Its `hub/index.html`
+  duplicates `/start`; its `auth/index.html` would be a second login surface
+  next to Cognito. Do not merge a vN drop wholesale without this size check.
+
 - 2026-08-07 (web+mobile): **Everyone is a person, everyone faces forward, and
   login asks where you want to go.**
   *Backwards walking:* avatars turn with `rotation.y = atan2(dx, dz)`, which
