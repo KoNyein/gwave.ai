@@ -24,13 +24,22 @@ import '../../core/theme.dart';
 class MetaverseScreen extends StatefulWidget {
   const MetaverseScreen({
     super.key,
-    this.room = "city",
+    // 🚪 ပင်မ အခန်း = Open World ရဲ့ 'yangon'。
+    // အရင်က "city" ဆိုပေမယ့် လောကက ?room= ကို လုံးဝ မဖတ်လို့ ဘယ်ဟာ
+    // ပို့ပို့ ရန်ကုန်ကိုပဲ ရောက်နေတယ်။ အခု ?room= က တကယ် အလုပ်လုပ်ပြီ
+    // ("city" ဆိုရင် classic မြို့တော် map ပွင့်မယ်) — ဒါကြောင့် default ကို
+    // ရှင်းရှင်း 'yangon' လို့ ရေးရမယ်၊ မဟုတ်ရင် app ဖွင့်တိုင်း classic
+    // overlay တက်လာမယ်။
+    this.room = "yangon",
     this.path,
     this.loadingLabel,
     this.errorLabel,
   });
 
-  /// city / farm / snow / sky / vip
+  /// အခန်း id — Open World ရဲ့ room (yangon / farm / maesot / strike) ဒါမှမဟုတ်
+  /// classic map (city / gwave-city / snow / sky / hide-1 / arena / drone-race /
+  /// champions / assassin-alley)。 Classic ဆိုရင် လောကထဲက overlay အဖြစ် ပွင့်တယ်။
+  /// စာရင်း အပြည့်: public/world/src/world/RoomCatalog.js
   final String room;
 
   /// Any other full-screen three.js experience on the same site — the FPV
@@ -47,7 +56,7 @@ class MetaverseScreen extends StatefulWidget {
 }
 
 /// Open the metaverse from anywhere in the app.
-Future<void> openMetaverse(BuildContext context, {String room = "city"}) {
+Future<void> openMetaverse(BuildContext context, {String room = "yangon"}) {
   return Navigator.of(context).push(
     MaterialPageRoute(builder: (_) => MetaverseScreen(room: room)),
   );
