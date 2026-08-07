@@ -142,6 +142,26 @@
 
 ## Changelog
 
+- 2026-08-07 (web): **Runtime cost audit — background work stopped.** The app
+  ran ~40 always-on timers and 13 unguarded rAF loops that kept working while
+  the tab/app was in the background, which is what made phones hot. Now: a
+  shared `useVisibleInterval` hook (clears the timer outright while hidden,
+  re-runs once on return) covers 5 pollers; 27 further timers/loops carry a
+  `document.hidden` guard (reels watch-tick, ride tracking, GPS family share,
+  CCTV motion+face detection, screen-time sync, metaverse peer/board/clock
+  polls, arena clock, scan turntable, smart-home timers, voice level meter).
+  Live-stage 700ms aspect polls now stop as soon as the video ratio settles
+  (max 20 ticks instead of forever). A shared `gpu-budget` helper caps touch
+  devices at pixelRatio 1.5 and turns off antialias + shadow maps across all
+  6 remaining three.js canvases (~44% fewer shaded pixels). The Open World
+  engine gained a blocker-counted `setPaused()`: it renders zero frames while
+  hidden or while a function overlay covers it, the overlay is now
+  single-instance (a second one used to stack and wedge the pause counter),
+  closes on Escape, has a 44px touch target and blanks its iframe on close so
+  the page inside is genuinely torn down. Two `setInterval` retry loops in the
+  world client that could spin for the whole session are now capped at 40
+  tries.
+
 - 2026-08-07 (web): **Studio scan library + Movement Lab.** Scans can now be
   renamed, exported to a single .gwscan.json (frames inlined as data URLs, no
   zip dependency), re-imported on any device (fresh id, so a double import

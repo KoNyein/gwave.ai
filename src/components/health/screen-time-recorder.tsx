@@ -66,7 +66,12 @@ export function ScreenTimeRecorder() {
     }
 
     const tickId = setInterval(tick, TICK_MS);
-    const syncId = setInterval(() => void sync(), SYNC_EVERY_MS);
+    // 🔋 မမြင်ရချိန် တွက်စရာ အသစ် မရှိလို့ server ကို မပို့ဘူး —
+    // hide ဖြစ်တဲ့ အခိုက်မှာ တစ်ခါ sync လုပ်ပြီးသား (onHide)。
+    const syncId = setInterval(() => {
+      if (document.hidden) return;
+      void sync();
+    }, SYNC_EVERY_MS);
     const onHide = () => {
       if (document.visibilityState === "hidden") void sync();
     };

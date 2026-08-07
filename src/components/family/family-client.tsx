@@ -88,7 +88,12 @@ export function FamilyClient({
       }
     }
     void publish();
-    const id = setInterval(() => void publish(), REFRESH_MS);
+    // 🔋 tab နောက်ကွယ် ရောက်ချိန် GPS မဖတ်ဘူး — ဖုန်း ဘက်ထရီ အကုန်ဆုံး
+    // အရာက နောက်ကွယ်က GPS ပါ။
+    const id = setInterval(() => {
+      if (document.hidden) return;
+      void publish();
+    }, REFRESH_MS);
     return () => {
       cancelled = true;
       clearInterval(id);

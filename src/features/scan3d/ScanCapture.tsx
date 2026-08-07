@@ -58,6 +58,8 @@ export function ScanCapture({
     let overlay: ReturnType<typeof createMeshOverlay> | null = null;
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
+      // 🔋 မမြင်ရချိန် frame မပုံဖော်ဘူး (WebView/PWA မှာ rAF က မရပ်ဘူး)
+      if (document.hidden) return;
       if (now - last < 66) return;
       last = now;
       const video = cam.videoRef.current;

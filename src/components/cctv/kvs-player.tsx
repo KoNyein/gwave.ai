@@ -309,6 +309,9 @@ export function KvsPlayer({
     let decay: ReturnType<typeof setTimeout> | null = null;
 
     const timer = setInterval(() => {
+      // 🔋 မမြင်ရချိန် frame မဆွဲဘူး — getImageData က app ထဲမှာ အလေးဆုံး
+      // poll ဖြစ်ပြီး နောက်ကွယ်မှာ ဆက်ပြေးလို့ ဖုန်း ပူတယ်။
+      if (document.hidden) return;
       const video = videoRef.current;
       if (!video || !video.videoWidth || !ctx) return;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -350,6 +353,7 @@ export function KvsPlayer({
     if (status !== "live" || !faceDetectionSupported()) return;
     let stop = false;
     const timer = setInterval(async () => {
+      if (document.hidden) return;
       const video = videoRef.current;
       if (!video || !video.videoWidth || stop) return;
       const count = await countFaces(video);

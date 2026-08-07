@@ -26,6 +26,7 @@ function useStageAspect(container: React.RefObject<HTMLDivElement | null>): stri
   const [aspect, setAspect] = React.useState(portraitInit ? "9 / 16" : "16 / 9");
 
   React.useEffect(() => {
+    let settled = false;
     const measure = () => {
       const video = container.current?.querySelector("video");
       let ratio: number | null = null;
@@ -36,11 +37,20 @@ function useStageAspect(container: React.RefObject<HTMLDivElement | null>): stri
       }
       if (ratio) {
         const clamped = Math.min(16 / 9, Math.max(9 / 16, ratio));
+        if (video) settled = true;
         setAspect(`${clamped.toFixed(4)} / 1`);
       }
     };
     measure();
-    const id = window.setInterval(measure, 700);
+    // 🔋 ဗီဒီယို အချိုးအစား ရပြီးတာနဲ့ 700ms poll ရပ်တယ် — အရင်က live page
+    // ဖွင့်ထားသရွေ့ တစ်စက္ကန့် ၁.၄ ခါ DOM ကို အဆက်မပြတ် တိုင်းနေတယ်။
+    // နောက်ပိုင်း ပြောင်းလဲမှုကို orientationchange/resize က ဖမ်းတယ်။
+    let left = 20;
+    const id = window.setInterval(() => {
+      if (document.hidden) return;
+      measure();
+      if (--left <= 0 || settled) window.clearInterval(id);
+    }, 700);
     window.addEventListener("orientationchange", measure);
     window.addEventListener("resize", measure);
     return () => {

@@ -116,8 +116,12 @@ net.onWorld = ({ key, name, data, own }) => {
 // ?world=<key> ဖြင့် သူများကမ္ဘာ တိုက်ရိုက်လည်ပတ်နိုင်
 const visitWorld = params.get('world');
 if (visitWorld) {
+  // ★ အကြိမ် ကန့်သတ် — အရင်က net မချိတ်မိရင် ဒီ timer က session
+  //   တစ်ခုလုံး 500ms တိုင်း ထာဝရ ပြေးနေတယ်။
+  let tries = 40;
   const tryVisit = setInterval(() => {
     if (net.connected) { clearInterval(tryVisit); net.requestWorld(visitWorld); }
+    else if (--tries <= 0) clearInterval(tryVisit);
   }, 500);
 }
 
@@ -340,14 +344,44 @@ net.onMeeting = ({ code, space, title, host }) => {
 // ?meet=MT-XXXXX ဖြင့် တိုက်ရိုက်ဝင်နိုင် (invite link)
 const meetParam = params.get('meet');
 if (meetParam) {
-  const t = setInterval(() => { if (net.connected) { clearInterval(t); net.meetingJoin(meetParam); } }, 500);
+  let meetTries = 40;
+  const t = setInterval(() => {
+    if (net.connected) { clearInterval(t); net.meetingJoin(meetParam); }
+    else if (--meetTries <= 0) clearInterval(t);
+  }, 500);
 }
 
 // 🪟 In-world web overlay — gwave.cc ရဲ့ function တွေ (Live, Games, Shop,
 // Studio, Feed အပြည့်) ကို **လောကထဲကနေ** ဖွင့်တယ်။ တံခါးတစ်ပေါက်၊ လောက
 // တစ်ခုတည်း ဖြစ်သွားပြီမို့ အပြင်ကို ထွက်စရာ မလိုတော့ဘူး။
+/// 🪟 လောကထဲက gwave function overlay — **တစ်ခါ တစ်ခုပဲ**。
+///
+/// အရင်က radial ကနေ နှစ်ခါ နှိပ်လိုက်ရင် overlay နှစ်ထပ် ထပ်ဖွင့်ဖြစ်ပြီး
+/// (၁) iframe နှစ်ခု တစ်ပြိုင်နက် run နေတယ်၊ (၂) ✕ တစ်ခါနှိပ်တာနဲ့ အပေါ်
+/// တစ်ထပ်ပဲ ပိတ်လို့ အောက်ကတစ်ခုက ပိတ်လို့ မရတော့ဘူး၊ (၃) pause blocker
+/// က ၂ တက်ပြီး ၁ ပဲ ပြန်ကျလို့ လောကက ထာဝရ ရပ်နေတယ်။ အခု တစ်ခုပဲ ရှိတယ်။
+let overlayEl = null;
+function closeWebOverlay() {
+  if (!overlayEl) return;
+  // ★ iframe ရဲ့ src ကို ဖြုတ်မှ အထဲက page ရဲ့ timer/rAF/media အားလုံး
+  //   တကယ် သေတယ် — remove() ချည်းနဲ့ browser တချို့မှာ မသေဘူး။
+  const f = overlayEl.querySelector('iframe');
+  if (f) f.src = 'about:blank';
+  overlayEl.remove();
+  overlayEl = null;
+  document.removeEventListener('keydown', onOverlayKey);
+  engine.setPaused(false, 'overlay');
+}
+function onOverlayKey(e) {
+  if (e.key === 'Escape') { e.preventDefault(); closeWebOverlay(); }
+}
 function openWebOverlay(path, label) {
   document.exitPointerLock?.();
+  // တစ်ခု ဖွင့်ထားပြီးသားဆိုရင် အရင်တစ်ခုကို ပိတ်မှ အသစ် ဖွင့်တယ်
+  closeWebOverlay();
+  // ⏸ Overlay က မျက်နှာပြင် အပြည့်ဖုံးထားချိန် 3D ကို ဆက်မပုံဖော်ဘူး —
+  // အရင်က နောက်ကွယ်မှာ ဆက်ပြေးနေလို့ ဖုန်း ပူတာ/battery ကုန်တာ ဖြစ်တယ်။
+  engine.setPaused(true, 'overlay');
   const back = document.createElement('div');
   back.style.cssText =
     'position:fixed;inset:0;z-index:200;background:#060913;display:flex;flex-direction:column';
@@ -359,9 +393,12 @@ function openWebOverlay(path, label) {
   const close = document.createElement('button');
   close.textContent = '✕ လောကထဲ ပြန်';
   close.style.cssText =
-    'font-family:inherit;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer;' +
-    'color:var(--ink);background:var(--deep);border:1px solid var(--line)';
-  close.onclick = () => back.remove();
+    'font-family:inherit;font-size:14px;padding:10px 14px;border-radius:9px;cursor:pointer;' +
+    'color:var(--ink);background:var(--deep);border:1px solid var(--line);' +
+    // ★ လက်ချောင်းနဲ့ လွယ်လွယ် ထိရအောင် — ဖုန်းမှာ ✕ က သေးလွန်းလို့
+    //   "မပိတ်နိုင်ဘူး" ဆိုတဲ့ အစီရင်ခံစာ အများဆုံး ရတယ်။
+    'min-width:120px;min-height:44px;touch-action:manipulation';
+  close.onclick = closeWebOverlay;
   bar.appendChild(close);
   const frame = document.createElement('iframe');
   frame.src = path;
@@ -369,6 +406,8 @@ function openWebOverlay(path, label) {
   frame.setAttribute('allow', 'camera; microphone; fullscreen; autoplay; clipboard-write');
   back.append(bar, frame);
   document.body.appendChild(back);
+  overlayEl = back;
+  document.addEventListener('keydown', onOverlayKey);
 }
 
 // gwave function များ — kiosk ရော radial ရော ဒီကိုပဲ ခေါ်တယ်

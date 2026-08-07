@@ -2,6 +2,8 @@ import * as THREE from "three";
 
 import { ARENA, type ArenaMap, type CoverKind } from "@/lib/arena/map";
 
+import { applyGpuBudget } from "@/lib/gpu-budget";
+
 /// Arena ရဲ့ 3D မြင်ကွင်း (Arena spec အပိုင်း ၃)。
 ///
 /// ★ စွမ်းဆောင်ရည် ရည်မှန်းချက်က **ဖုန်းအလယ်အလတ်မှာ 30fps, draw call
@@ -54,8 +56,9 @@ export function createArenaScene(
     antialias: false,
     powerPreference: "high-performance",
   });
-  // ★ ဖုန်းအဟောင်းမှာ devicePixelRatio ၃ ဆိုတာ pixel ၉ ဆ — ၂ မှာ ကန့်သတ်တယ်
-  renderer.setPixelRatio(Math.min(2, typeof window === "undefined" ? 1 : window.devicePixelRatio));
+  // ★ ဖုန်းအဟောင်းမှာ devicePixelRatio ၃ ဆိုတာ pixel ၉ ဆ — touch စက်မှာ
+  //   1.5၊ desktop မှာ ၂ မှာ ကန့်သတ်တယ် (shading အလုပ် ~44% ကျ)。
+  applyGpuBudget(renderer, { shadows: false });
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xbcd9ea);

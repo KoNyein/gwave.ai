@@ -80,7 +80,10 @@ function ReelItem({ reel }: { reel: ReelWithAuthor }) {
   // stop/unmount so partial watch time is still credited.
   React.useEffect(() => {
     if (!playing) return;
+    // 🔋 tab မမြင်ရချိန် ဗီဒီယိုက ဆက်မကြည့်ဘူး — စက္ကန့် မတွက်ဘူး၊
+    // watch-flush server call လည်း မလုပ်ဘူး။
     const iv = window.setInterval(() => {
+      if (document.hidden) return;
       pendingSeconds.current += 1;
       if (pendingSeconds.current >= 10) flushWatch();
     }, 1000);

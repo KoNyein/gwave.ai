@@ -83,7 +83,10 @@ export function AvatarCustomiser({
     if (!mount) return;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // 🔋 MOBILE_GPU — ဖုန်းမှာ pixel ratio 1.5 ကန့်သတ် (2 ဆိုရင် pixel
+    // လေးဆ)၊ antialias/shadow ပိတ် — ဖုန်း ပူတာ/battery ကုန်တာ အဓိက
+    const mobileGpu = matchMedia("(hover: none), (max-width: 820px)").matches;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobileGpu ? 1.5 : 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     mount.appendChild(renderer.domElement);
 
@@ -138,6 +141,10 @@ export function AvatarCustomiser({
     let raf = 0;
     const tick = () => {
       raf = requestAnimationFrame(tick);
+      // 🔋 Tab/app နောက်ကွယ် ရောက်ရင် frame မပုံဖော်ဘူး — preview တစ်ခုစီက
+      // ဖုန်း GPU ကို အချည်းနှီး စားနေတာ ရပ်တယ် (loop ကတော့ ဆက်ရှင်နေတယ်
+      // မို့ ပြန်ပေါ်တာနဲ့ ချက်ချင်း ဆက်တယ်)။
+      if (document.hidden) return;
       const dt = Math.min(clock.getDelta(), 0.05);
       avatarRef.current?.update(dt, {
         speed: 0,

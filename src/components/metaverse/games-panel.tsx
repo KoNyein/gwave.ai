@@ -6,6 +6,8 @@ import type { GameInfo, GameRanking, GameScore } from "./net";
 
 import { ARCADE_GAMES, type ArcadeGame } from "./landmarks";
 
+import { useVisibleInterval } from "@/lib/use-visible-interval";
+
 /// Mini-game ရဲ့ HUD (Phase 16)。
 ///
 /// ★ ဒီ component က **အမှတ် တစ်လုံးမှ မတွက်ဘူး** — server ပို့တဲ့
@@ -135,11 +137,11 @@ export function GamesOverlays({
   /// Lobby ရဲ့ ရေတွက်ချိန် — 1Hz မှာ ပြန်ဆွဲတယ်
   const [now, setNow] = useState(() => Date.now());
 
-  useEffect(() => {
-    if (phase.kind !== "lobby") return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [phase.kind]);
+  // 🔋 lobby မှာ ရှိမှ + tab မြင်ရမှ ၁ စက္ကန့်တိုင်း rerender
+  useVisibleInterval(
+    () => setNow(Date.now()),
+    phase.kind === "lobby" ? 1000 : null,
+  );
 
   const playing = phase.kind === "playing" && phase.playing;
 

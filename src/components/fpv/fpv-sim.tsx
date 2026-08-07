@@ -30,6 +30,8 @@ import { buildFpvMap, FPV_MAPS } from "@/lib/fpv/maps";
 import { createState, respawn, speedKmh, updateDrone, type Sticks } from "@/lib/fpv/physics";
 import { questEvent, syncBest } from "@/lib/quests";
 
+import { gpuRendererOptions } from "@/lib/gpu-budget";
+
 const WS_URL = process.env.NEXT_PUBLIC_MV_WS_URL || "";
 function wsCandidates(): string[] {
   const out: string[] = [];
@@ -583,7 +585,7 @@ export function FpvSim() {
     scene.add(sun);
 
     const camera = new THREE.PerspectiveCamera(105, 1, 0.05, 600);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    const renderer = new THREE.WebGLRenderer(gpuRendererOptions());
     const coarse = window.matchMedia("(pointer: coarse)").matches;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, coarse ? 1 : 1.75));
     mount.appendChild(renderer.domElement);
