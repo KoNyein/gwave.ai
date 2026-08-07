@@ -142,6 +142,30 @@
 
 ## Changelog
 
+- 2026-08-07 (web): **Open World HUD → floating edge dock, centre always clear.**
+  Both previous menu shapes covered the world: the radial arc cut straight
+  across the middle, and the grid sheet that replaced it on touch closed off
+  the bottom half behind a scrim. The menu is now a slim **floating dock on
+  the left edge** — round icon buttons with no panel behind them, so the world
+  shows through the gaps, no scrim at all. Labels appear beside the icons on
+  wide screens, icons alone under 760px, and three icon columns in landscape.
+  It is anchored under the top bar and stops above the touch-control zone, so
+  it can never reach the joystick, and it scrolls itself with a fade at the
+  bottom rather than growing into the view. The keyboard help block collapsed
+  into a **?** chip (was three lines pinned open in the corner), the room name
+  became a shrink-to-fit chip instead of a full-width bar, the wallet is an
+  icon until 1200px, and the 📰 Feed button moved from the right edge into the
+  top bar, where it can no longer collide with the mic/emote rail — which
+  itself moved to the right edge, since the left now belongs to the dock.
+  Panels (leaderboard, shop, quests, feed, avatar, meeting) dock to the right
+  edge on wide screens and are capped at 62vh on phones instead of opening in
+  the middle. New **idle fade**: four seconds without input drops the HUD to
+  22% opacity (touch controls to 50%) and any input restores it instantly.
+  A headless probe now asserts a protected centre box (x 24–76%, y 16–70%) is
+  free of HUD at 390×844, 360×780, 932×430, 1024×768 and 1440×900 — all clear,
+  zero element overlaps. With the menu **open** the HUD covers 22% of a phone
+  screen (was over half); at rest it is 16% on a phone and 2.8% on desktop.
+
 - 2026-08-07 (web+mobile): **Swipe deck + per-user virtual rooms.**
   One gesture rule across the whole system, defined once in `src/lib/deck.ts`
   so web and app cannot drift: **← left = 🌍 Metaverse from anywhere**,
