@@ -28,9 +28,8 @@ const avatar  = new Avatar(engine, input, physics);
 new TouchControls(input); // Mobile ဖြစ်လျှင် joystick/ခလုတ်များ အလိုအလျောက်ပေါ်
 
 // 🧍 ရုပ်တူတစ်ခုတည်း — Social Metaverse (gwave.cc/metaverse) မှာ ရွေးထားတဲ့
-// realistic ရုပ်ကိုပဲ ဒီမှာလည်း သုံးတယ် (user: "လောက ၂ ခုကို ပေါင်းစည်း")။
-// Variant က localStorage (mv:soldier — same origin မို့ မျှသုံးလို့ရ)၊
-// မရှိရင် account config ကနေ ဆွဲတယ်။ ဆွဲမရရင် placeholder နဲ့ ဆက်သွား။
+// realistic ရုပ်ကိုပဲ ဒီမှာလည်း သုံးတယ်။ Variant က localStorage (mv:soldier —
+// same origin မို့ မျှသုံးလို့ရ)၊ မရှိရင် account config ကနေ ဆွဲတယ်။
 const REALISTIC_FILES = {
   a: 'Remy', b: 'Soldier', c: 'Soldier', d: 'Michelle', e: 'Character3',
   f: 'Character4', g: 'Xbot', h: 'Michelle2', i: 'Clown', j: 'Soldier',
@@ -81,8 +80,7 @@ const serverUrl =
   (isHttps ? `wss://${location.host}/world-ws` : 'ws://localhost:8787');
 net.connect(serverUrl, { name: playerName, token });
 
-// 📊 Stats API — URL တစ်ခုတည်း (seasons fetch ရော StatsAPI helper ရော) —
-// ?api=https://... ဖြင့် ပြောင်းနိုင်
+// 📊 Stats API — URL တစ်ခုတည်း (seasons fetch ရော StatsAPI helper ရော)
 const statsUrl =
   params.get('api') || params.get('stats') ||
   (isHttps ? `${location.origin}/world-stats` : 'http://localhost:8788');
@@ -165,18 +163,84 @@ engine.register({
       }
     }
 
+    // [N] — Gwave Feed (holo panel)
+    if (input.justPressed('KeyN')) {
+      if (hud.togglePanel('#feedPanel')) loadFeed();
+    }
+
     // [L] — Leaderboard (alltime/weekly/monthly seasons)
     if (input.justPressed('KeyL')) {
       if (hud.toggleLeaderboard()) fetchLeaderboard(currentSeason);
+    }
+
+    // [L] — Leaderboard ဖွင့်/ပိတ် (RDS game.* မှ ဖတ်)
+    if (input.justPressed('KeyL')) {
+      if (hud.leaderboardVisible()) hud.hideLeaderboard();
+      else stats.leaderboard(10)
+        .then((rows) => hud.showLeaderboard(rows, playerName))
+        .catch(() => hud.addToast('📊 Stats API မချိတ်နိုင်ပါ (?api=... စစ်ပါ)'));
     }
     input.endFrame(); // frame အဆုံးမှာ click/keypress ရှင်းရန် (နောက်ဆုံးမှခေါ်ရန်)
   }
 });
 
+// ၆။ Cinematic Intro — ရွှေစေတီပတ် ကင်မရာလှည့်ပြီး "စတင်မည်" နှိပ်မှ ထိန်းချုပ်ခွင့်ရ
+const introEl = document.querySelector('#intro');
+if (introEl) {
+  avatar.cameraEnabled = false;
+  let introAng = 0;
+  const introCam = {
+    update(dt) {
+      introAng += dt * 0.1;
+      const r = 36;
+      engine.camera.position.set(Math.sin(introAng) * r, 15, -45 + Math.cos(introAng) * r);
+      engine.camera.lookAt(0, 11, -45); // ရွှေစေတီထိပ်ကို ကြည့်
+    },
+  };
+  engine.register(introCam);
+  introEl.addEventListener('click', () => {
+    introEl.classList.add('fadeOut');
+    setTimeout(() => introEl.remove(), 850);
+    engine.unregister(introCam);
+    avatar.cameraEnabled = true;
+  }, { once: true });
+}
+
+// ၇။ [N] Feed — FB-style feed ကို metaverse ထဲ holo panel အဖြစ် ရွှေ့ထား
+const DEMO_FEED = [
+  { who: 'GWAVE Official', when: 'ယခုလေးတင်', text: '🏆 ဒီအပတ် season — ထိပ်ဆုံး ၃ ယောက်ကို GP 500/300/150 ဆုချမည်။ [L] နှိပ်ပြီး အဆင့်ကြည့်ပါ!' },
+  { who: 'KoNyein', when: '၂ နာရီအကြာ', text: '🌍 ကျွန်တော့်ကမ္ဘာအသစ်မှာ ဈေးဆိုင်စင်တွေ ထည့်ပြီးပြီ — လာလည်ကြပါဦး!' },
+  { who: 'GWAVE Rooftop', when: 'ဒီနေ့', text: '☕ GP 500 = ကော်ဖီ ၁ ခွက် အခမဲ့ — [I] ထဲက 🎁 မှာ code လဲပြီး ဆိုင်မှာပြပါ။' },
+];
+// gwave.cc ရဲ့ feed အစစ် — same-origin မို့ login cookie ပါပြီးသား။
+// Guest (401) ဒါမှမဟုတ် ဆွဲမရရင် DEMO_FEED နဲ့ ဆက်ပြတယ် — panel က
+// ဘယ်တော့မှ ဗလာ မဖြစ်ဘူး။
+const feedUrl = params.get('feed') || '/api/posts?scope=feed';
+const timeAgoMy = (iso) => {
+  const m = Math.max(0, (Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 1) return 'ယခုလေးတင်';
+  if (m < 60) return `${Math.floor(m)} မိနစ်အကြာ`;
+  if (m < 1440) return `${Math.floor(m / 60)} နာရီအကြာ`;
+  return `${Math.floor(m / 1440)} ရက်အကြာ`;
+};
+async function loadFeed() {
+  try {
+    const res = await fetch(feedUrl, { cache: 'no-store' });
+    if (!res.ok) throw new Error('feed');
+    const d = await res.json();
+    const rows = d.posts || d.items || d;
+    if (!Array.isArray(rows) || rows.length === 0) throw new Error('empty');
+    hud.setFeedPanel(rows.slice(0, 12).map(p => ({
+      who: p.who || p.author?.full_name || p.author?.username || 'Gwave',
+      when: p.when || (p.created_at ? timeAgoMy(p.created_at) : ''),
+      text: p.text || p.content || '',
+    })));
+  } catch { hud.setFeedPanel(DEMO_FEED); }
+}
+
 // 🌐 Social Metaverse ဂိတ် — Open World နဲ့ gwave.cc/metaverse က
-// **တစ်ခုတည်းသော လောက** (user: "/metaverse နဲ့ /world ကို ပေါင်းစည်း")။
-// ?embed=1 (metaverse overlay ထဲက ဖွင့်တာ) ဆိုရင် overlay ကို ပိတ်ခိုင်း၊
-// မဟုတ်ရင် /metaverse ကို တိုက်ရိုက် သွားတယ်။
+// **တစ်ခုတည်းသော လောက**။ ?embed=1 (metaverse overlay ထဲက ဖွင့်တာ) ဆိုရင်
+// overlay ကို ပိတ်ခိုင်း၊ မဟုတ်ရင် /metaverse ကို တိုက်ရိုက် သွားတယ်။
 {
   const embedded = params.get('embed') === '1';
   const gate = document.createElement('button');
@@ -184,12 +248,12 @@ engine.register({
   gate.title = 'gwave.cc Social Metaverse';
   gate.style.cssText =
     'position:fixed;left:14px;bottom:64px;z-index:7;font-family:inherit;font-size:13px;' +
-    'padding:9px 14px;border-radius:10px;cursor:pointer;color:#eaf0ff;' +
-    'background:rgba(10,16,34,.85);border:1px solid #1d2a4d;backdrop-filter:blur(6px)';
+    'padding:9px 14px;border-radius:10px;cursor:pointer;color:var(--ink);' +
+    'background:linear-gradient(165deg,var(--panel),rgba(11,16,38,.86));' +
+    'border:1px solid var(--line);backdrop-filter:blur(10px)';
   gate.onclick = () => {
     document.exitPointerLock?.();
     if (embedded && window.parent !== window) {
-      // Metaverse overlay က ဒီ message ကို နားထောင်ပြီး iframe ပိတ်တယ်
       window.parent.postMessage({ type: 'gwave:exit-world' }, location.origin);
     } else {
       location.href = '/metaverse';
@@ -198,7 +262,7 @@ engine.register({
   document.body.appendChild(gate);
 }
 
-// ၆။ စတင်!
+// ၈။ စတင်!
 hud.hideLoading();
 engine.start();
 console.log('🌊 Gwave Metaverse Base Framework v5 — PvP + Cognito + RDS Kill/XP stats + [L] leaderboard ready');
