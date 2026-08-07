@@ -3,6 +3,8 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
+import { BASE_META } from "@/components/metaverse/avatar/customiser";
+import { REALISTIC_VARIANTS } from "@/components/metaverse/realistichuman";
 import { useAvatarStore } from "../store/avatarStore";
 import {
   MORPH_KEYS,
@@ -10,7 +12,7 @@ import {
   SKIN_SWATCHES,
   type AvatarAsset,
 } from "../types";
-import { AvatarPreview } from "./AvatarPreview";
+import { AvatarPreview, type PreviewMotion } from "./AvatarPreview";
 
 /// Scanner ကို dynamic — MediaPipe WASM ~12MB က scan နှိပ်မှသာ ဆွဲရမယ်
 const FaceScanner = dynamic(
@@ -29,8 +31,18 @@ const BodyScanner = dynamic(
 type Tab = "scan" | "body" | "skin" | "style";
 
 export function AvatarEditor() {
-  const { config, dirty, saving, error, load, save, setMorph, patch, resetError } =
-    useAvatarStore();
+  const {
+    config,
+    updatedAt,
+    dirty,
+    saving,
+    error,
+    load,
+    save,
+    setMorph,
+    patch,
+    resetError,
+  } = useAvatarStore();
   // Scan is the whole point — land there, not on sliders.
   const [tab, setTab] = useState<Tab>("scan");
   const [assets, setAssets] = useState<AvatarAsset[]>([]);
@@ -40,9 +52,17 @@ export function AvatarEditor() {
   const [guide, setGuide] = useState(false);
   /// Scan ကရလာတဲ့ morph မိတ္တူ — "Reset to scan" အတွက် (spec §5.2)
   const [hasScanMorphs, setHasScanMorphs] = useState(false);
+  /// 🧍 Metaverse body variant (a–r) — metaverse config DB နဲ့ ချိတ်ထား
+  const [variant, setVariant] = useState("a");
+  /// Metaverse config တစ်ခုလုံး — save မှာ variant ပဲ ပြောင်းပြီး ပြန်ပို့
+  const [mvCfg, setMvCfg] = useState<Record<string, unknown> | null>(null);
+  /// Preview လှုပ်ရှားဟန် — idle/walk/run/wave/dance
+  const [motion, setMotion] = useState<PreviewMotion>("idle");
   useEffect(() => {
     try {
       setHasScanMorphs(!!window.localStorage.getItem("mv:scanmorphs"));
+      const v = window.localStorage.getItem("mv:soldier");
+      if (v && /^[a-r]$/.test(v)) setVariant(v);
       // First visit: nobody knows what this screen IS — show the guide once.
       if (!window.localStorage.getItem("mv:avatar-guide-seen")) {
         setGuide(true);
@@ -51,6 +71,24 @@ export function AvatarEditor() {
     } catch {
       /* private mode */
     }
+  }, []);
+
+  // Metaverse config (variant + rpmUrl) — DB က ဖတ်ပြီး preview ကို ချိတ်
+  useEffect(() => {
+    let alive = true;
+    void fetch("/api/metaverse/avatar", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { config?: Record<string, unknown> & { variant?: string | null } } | null) => {
+        if (!alive || !d?.config) return;
+        setMvCfg(d.config);
+        if (typeof d.config.variant === "string" && /^[a-r]$/.test(d.config.variant)) {
+          setVariant(d.config.variant);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -80,6 +118,18 @@ export function AvatarEditor() {
 
   const onSave = async () => {
     const ok = await save();
+    // 🧍 Variant ကို metaverse config DB ထဲပါ ချိတ်သိမ်း — profile page နဲ့
+    // metaverse Avatar Studio နှစ်နေရာလုံး ရုပ်တစ်မျိုးတည်း ဖြစ်နေဖို့။
+    try {
+      window.localStorage.setItem("mv:soldier", variant);
+    } catch {
+      /* private mode */
+    }
+    void fetch("/api/metaverse/avatar", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ config: { ...(mvCfg ?? {}), variant } }),
+    }).catch(() => undefined);
     if (ok) {
       setSavedFlash(true);
       window.setTimeout(() => setSavedFlash(false), 2500);
@@ -130,11 +180,41 @@ export function AvatarEditor() {
           }}
         />
       )}
-      {/* ── Preview ── */}
+      {/* ── Preview — realistic body + physics turntable ── */}
       <div className="relative min-h-[45dvh] flex-1 overflow-hidden rounded-2xl border border-white/10 bg-black/40 md:min-h-0">
-        <AvatarPreview config={config} bodyGlbUrl={bodyGlbUrl} />
-        <p className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-[11px] text-white/60 backdrop-blur">
-          ဆွဲလှည့်ကြည့်လို့ရတယ်
+        <AvatarPreview
+          config={config}
+          bodyGlbUrl={bodyGlbUrl}
+          variant={variant}
+          motion={motion}
+        />
+        {/* 🎬 လှုပ်ရှားဟန် စမ်းကြည့် — anatomy/animation ကို preview မှာပဲ စစ် */}
+        <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
+          {(
+            [
+              ["idle", "🧍"],
+              ["walk", "🚶"],
+              ["run", "🏃"],
+              ["wave", "👋"],
+              ["dance", "💃"],
+            ] as [PreviewMotion, string][]
+          ).map(([m, icon]) => (
+            <button
+              key={m}
+              onClick={() => setMotion(m)}
+              title={m}
+              className={`rounded-full border px-2.5 py-1.5 text-sm backdrop-blur ${
+                motion === m
+                  ? "border-emerald-400/70 bg-emerald-500/30"
+                  : "border-white/20 bg-black/40 hover:bg-white/10"
+              }`}
+            >
+              {icon}
+            </button>
+          ))}
+        </div>
+        <p className="pointer-events-none absolute right-2 top-2 rounded-full bg-black/50 px-3 py-1 text-[10px] text-white/55 backdrop-blur">
+          ↔ ဆွဲလှည့် · 🤏 ချုံ့ချဲ့
         </p>
       </div>
 
@@ -261,6 +341,55 @@ export function AvatarEditor() {
                 🔒 Biometric — frame တွေ ဖုန်းထဲမှာပဲ process လုပ်တယ်၊
                 နောက်ဆုံး 3D file ပဲ upload တက်တယ်၊ ဘယ်အချိန်မဆို ဖျက်လို့ရတယ်။
               </p>
+              {/* 🗄 DB linkage status — ဘယ် database ထဲ ဘာသိမ်းထားပြီး
+                  ဘယ် feature တွေဆီ စီးဆင်းနေလဲ တစ်ချက်တည်း မြင်ရ */}
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-[12px]">
+                <p className="mb-1.5 font-semibold text-white/75">
+                  🗄 သိမ်းဆည်းမှု အခြေအနေ (database)
+                </p>
+                <div className="space-y-1 text-white/60">
+                  <p>
+                    📄 Avatar config:{" "}
+                    <span className="text-white/85">v{config.version}</span>
+                    {updatedAt && (
+                      <span className="text-white/45">
+                        {" · "}
+                        {new Date(updatedAt).toLocaleString("my-MM", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </span>
+                    )}
+                    {" · "}
+                    <span
+                      className={
+                        config.scanSource !== "none"
+                          ? "text-emerald-300"
+                          : "text-white/40"
+                      }
+                    >
+                      scan: {config.scanSource === "none" ? "မလုပ်ရသေး" : config.scanSource}
+                    </span>
+                  </p>
+                  <p>
+                    📐 ခန္ဓာအချိုးအစား (morphs):{" "}
+                    <span className="text-white/85">
+                      {Object.keys(config.morphs).length} ခု
+                    </span>
+                    {" · "}🧍 ရုပ်:{" "}
+                    <span className="text-white/85">
+                      {BASE_META[
+                        REALISTIC_VARIANTS.find((v) => v.id === variant)?.file ?? ""
+                      ]?.label ?? variant}
+                    </span>
+                  </p>
+                  <p className="text-white/45">
+                    🔗 ချိတ်ဆက်မှု: Scan → ကိုယ့် account DB → Metaverse avatar
+                    + STRIKE စစ်သား — သိမ်းလိုက်တာနဲ့ နေရာတိုင်း အလိုအလျောက်
+                    ရောက်တယ်။
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -356,6 +485,49 @@ export function AvatarEditor() {
 
           {tab === "style" && (
             <div className="space-y-3">
+              {/* 🧍 Metaverse body ရွေး — realistic variant 18 (DB-linked) */}
+              <div>
+                <p className="mb-1.5 text-[12px] font-semibold text-white/70">
+                  🧍 ကိုယ်ခန္ဓာရုပ် — Metaverse/STRIKE မှာ သုံးမယ့် လူသားရုပ်
+                </p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {REALISTIC_VARIANTS.map((v) => {
+                    const meta = BASE_META[v.file] ?? { icon: "🧍", label: v.file };
+                    return (
+                      <button
+                        key={v.id}
+                        onClick={() => {
+                          setVariant(v.id);
+                          // dirty flag ဖွင့် — 💾 ခလုတ် ပွင့်ပြီး save မှာ
+                          // metaverse config ထဲပါ ရောက်သွားမယ်
+                          patch({});
+                        }}
+                        className={`flex items-center gap-1 rounded-lg border px-1.5 py-1.5 text-left text-[11px] ${
+                          variant === v.id
+                            ? "border-emerald-400 bg-emerald-500/20 text-emerald-100"
+                            : "border-white/15 bg-white/5 text-white/70 hover:bg-white/10"
+                        }`}
+                      >
+                        <span>{meta.icon}</span>
+                        <span className="min-w-0 flex-1 truncate">{meta.label}</span>
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/30"
+                          style={{
+                            background:
+                              v.tint === null
+                                ? "#e8e8e8"
+                                : `#${v.tint.toString(16).padStart(6, "0")}`,
+                          }}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-1 text-[11px] text-white/40">
+                  ရွေးပြီး「💾 သိမ်းမယ်」နှိပ်ရင် Metaverse config DB ထဲပါ
+                  တစ်ပြိုင်တည်း သိမ်းတယ် — game ထဲ ချက်ချင်း ပြောင်းတယ်။
+                </p>
+              </div>
               {assets.length === 0 ? (
                 <p className="text-sm text-white/50">
                   ပုံစံစာရင်း ဆွဲနေသည်… (server မှာ avatar_assets migration

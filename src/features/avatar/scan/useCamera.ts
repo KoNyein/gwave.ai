@@ -55,8 +55,10 @@ export function useCamera() {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: face,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          // 1080p ideal — scan texture ကြည်ဖို့။ မတတ်နိုင်တဲ့စက်က သူ့အမြင့်ဆုံးနဲ့
+          // fallback ဆင်းတယ် (ideal constraint မို့ ဘယ်တော့မှ fail မဖြစ်)။
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
         },
         audio: false,
       });

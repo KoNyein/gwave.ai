@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AvatarPreview } from "../editor/AvatarPreview";
 import {
-  captureBody,
+  captureBodyStable,
   detectPose,
   measurementsToMorphs,
   POSE_BONES,
@@ -61,6 +61,9 @@ export function BodyScanner({
   const [morphs, setMorphs] = useState<MorphWeights | null>(null);
   const [ready, setReady] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+  /// Multi-frame တိုင်းနေချိန် "3/12" progress + ရလဒ်မှာ frame အရေအတွက်
+  const [measureNote, setMeasureNote] = useState<string | null>(null);
+  const [sampleCount, setSampleCount] = useState(0);
 
   useEffect(() => stop, [stop]);
   useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
@@ -137,11 +140,14 @@ export function BodyScanner({
     setBusy(true);
     setErr(null);
     try {
-      const m = await captureBody(v);
+      // Multi-frame capture — ratio တစ်ခုစီ median (outlier frame ကာ)
+      const m = await captureBodyStable(v, (d, t) => setMeasureNote(`${d}/${t}`));
+      setMeasureNote(null);
       if ("error" in m) {
         setErr(m.error);
         return;
       }
+      setSampleCount(m.sampleCount);
       const h = Number(heightCm);
       const weights = sanitizeMorphs(
         measurementsToMorphs(m, Number.isFinite(h) && h > 0 ? h : null),
@@ -330,7 +336,9 @@ export function BodyScanner({
                   countdown !== null
                     ? `⏱ ${countdown}…`
                     : busy
-                      ? "တိုင်းနေသည်…"
+                      ? measureNote
+                        ? `📸 ${measureNote} ဖမ်းနေ…`
+                        : "တိုင်းနေသည်…"
                       : "⏱ 5s ပြီး တိုင်းမယ်"
                 }
               />
@@ -349,6 +357,11 @@ export function BodyScanner({
           <div className="space-y-3">
             <p className="text-sm text-emerald-300">
               ✓ တိုင်းတာမှု ရပါပြီ — 3D ခန္ဓာကိုယ်မှာ ချက်ချင်း သက်ရောက်ပြီး
+              {sampleCount > 0 && (
+                <span className="ml-1 text-[11px] text-white/45">
+                  (frame {sampleCount} ချပ် ပျမ်းမျှ — တိကျမှုမြင့်)
+                </span>
+              )}
             </p>
             {/* Live mesh with the measured morphs applied */}
             <div className="h-64 overflow-hidden rounded-xl border border-white/10">

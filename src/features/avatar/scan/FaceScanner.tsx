@@ -5,7 +5,7 @@ import * as THREE from "three";
 
 import { buildFaceMesh, type BuiltFace } from "../build/faceMeshBuilder";
 import { exportGlb, uploadScanFile } from "../build/glbExport";
-import { captureFace, getFaceLandmarker } from "./faceLandmarks";
+import { captureFaceStable, getFaceLandmarker } from "./faceLandmarks";
 import { useCamera } from "./useCamera";
 import { RecordButton } from "@/features/scan3d/RecordButton";
 
@@ -280,7 +280,10 @@ export function FaceScanner({
     setBusy(true);
     setErr(null);
     try {
-      const cap = await captureFace(v);
+      // Multi-frame HQ capture — landmark ပျမ်းမျှ + sharpest frame texture
+      const cap = await captureFaceStable(v, (d, t) =>
+        setHint(`📸 Frame ${d}/${t} ဖမ်းနေသည် — ငြိမ်ငြိမ်နေပါ`),
+      );
       if ("error" in cap) {
         setErr(cap.error);
         return;

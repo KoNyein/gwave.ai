@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
   const { data: row } = await admin
     .from("mv_scan_avatars")
     .select(
-      "face_glb_url, face_thumb_url, body_type, morphs, skin_color, hair_id, hair_color, outfit_id, accessories, scan_source, version",
+      "face_glb_url, face_thumb_url, body_type, morphs, skin_color, hair_id, hair_color, outfit_id, accessories, scan_source, version, updated_at",
     )
     .eq("user_id", targetId)
     .maybeSingle();
@@ -120,6 +120,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(
     {
       config: row ? rowToConfig(row as Row) : DEFAULT_SCAN_AVATAR,
+      updatedAt: (row as { updated_at?: string } | null)?.updated_at ?? null,
       ...(ownId ? { userId: ownId } : {}),
     },
     {
@@ -178,7 +179,7 @@ export async function PUT(request: NextRequest) {
       { onConflict: "user_id" },
     )
     .select(
-      "face_glb_url, face_thumb_url, body_type, morphs, skin_color, hair_id, hair_color, outfit_id, accessories, scan_source, version",
+      "face_glb_url, face_thumb_url, body_type, morphs, skin_color, hair_id, hair_color, outfit_id, accessories, scan_source, version, updated_at",
     )
     .single();
 
@@ -187,7 +188,11 @@ export async function PUT(request: NextRequest) {
   }
 
   return NextResponse.json(
-    { ok: true, config: rowToConfig(saved as Row) },
+    {
+      ok: true,
+      config: rowToConfig(saved as Row),
+      updatedAt: (saved as { updated_at?: string }).updated_at ?? null,
+    },
     { headers: { "cache-control": "no-store, private" } },
   );
 }

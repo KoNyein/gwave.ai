@@ -18,6 +18,8 @@ import {
 
 type AvatarStore = {
   config: AvatarConfig;
+  /// DB row ရဲ့ updated_at — "နောက်ဆုံးသိမ်းချိန်" DB panel အတွက်
+  updatedAt: string | null;
   dirty: boolean;
   loading: boolean;
   saving: boolean;
@@ -32,6 +34,7 @@ type AvatarStore = {
 
 export const useAvatarStore = create<AvatarStore>((set, get) => ({
   config: DEFAULT_SCAN_AVATAR,
+  updatedAt: null,
   dirty: false,
   loading: false,
   saving: false,
@@ -42,8 +45,16 @@ export const useAvatarStore = create<AvatarStore>((set, get) => ({
     try {
       const res = await fetch("/api/avatar", { cache: "no-store" });
       if (!res.ok) throw new Error("avatar load failed");
-      const d = (await res.json()) as { config: AvatarConfig };
-      set({ config: d.config, dirty: false, loading: false });
+      const d = (await res.json()) as {
+        config: AvatarConfig;
+        updatedAt?: string | null;
+      };
+      set({
+        config: d.config,
+        updatedAt: d.updatedAt ?? null,
+        dirty: false,
+        loading: false,
+      });
     } catch {
       // Load မရလည်း default နဲ့ ဆက်ပြင်လို့ရတယ် — offline-first
       set({ loading: false, error: "Avatar ဖတ်လို့ မရသေးပါ" });
@@ -60,12 +71,17 @@ export const useAvatarStore = create<AvatarStore>((set, get) => ({
         body: JSON.stringify({ config }),
       });
       const d = (await res.json().catch(() => null)) as
-        | { config?: AvatarConfig; error?: string }
+        | { config?: AvatarConfig; updatedAt?: string | null; error?: string }
         | null;
       if (!res.ok || !d?.config) {
         throw new Error(d?.error ?? "သိမ်းလို့ မရပါ");
       }
-      set({ config: d.config, dirty: false, saving: false });
+      set({
+        config: d.config,
+        updatedAt: d.updatedAt ?? null,
+        dirty: false,
+        saving: false,
+      });
       return true;
     } catch (err) {
       set({

@@ -139,10 +139,28 @@ export function createRealisticHuman(variant: string): Avatar {
       const b = model.getObjectByName(B(n));
       if (b) b.scale.y = 1 + w("legLength") * 0.1;
     }
+    // တင်ပါး — Hips bone ကို ချဲ့ရင် subtree တစ်ခုလုံး (spine ပါ) ပါသွားလို့
+    // spine.x ကို ပြန်စား — ပခုံးက shoulderWidth သီးခြား ထိန်းထားတယ်။
+    const hipsW = 1 + w("hips") * 0.1;
+    const hips = model.getObjectByName(B("Hips"));
+    if (hips) hips.scale.x = hipsW;
     const spine = model.getObjectByName(B("Spine"));
     if (spine) {
-      spine.scale.x = 1 + w("shoulderWidth") * 0.12;
-      spine.scale.z = 1 + (w("waist") + w("weight")) * 0.08;
+      spine.scale.x = (1 + w("shoulderWidth") * 0.12) / hipsW;
+      spine.scale.z =
+        1 + (w("waist") + w("weight")) * 0.08 + w("chestDepth") * 0.06;
+    }
+    const neck = model.getObjectByName(B("Neck"));
+    if (neck) neck.scale.y = 1 + w("neckLength") * 0.15;
+    // ကြွက်သား/ကိုယ်ချိန် — လက်မောင်း/ပေါင် အထူ (y=အလျား က length morph ပိုင်)
+    const thick = 1 + w("muscle") * 0.12 + w("weight") * 0.05;
+    for (const n of ["LeftArm", "RightArm", "LeftForeArm", "RightForeArm",
+                     "LeftUpLeg", "RightUpLeg", "LeftLeg", "RightLeg"]) {
+      const b = model.getObjectByName(B(n));
+      if (b) {
+        b.scale.x = thick;
+        b.scale.z = thick;
+      }
     }
   };
   group.userData.setMorphs = applyMorphs;
