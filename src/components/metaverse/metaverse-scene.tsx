@@ -4131,7 +4131,7 @@ export function MetaverseScene() {
             onClick={() => {
               // 🧬 Scan Studio ကနေ ပြန်ထွက်ရင် scan အသစ်ကို avatar ပေါ်
               // ချက်ချင်း တင်ပေးတယ် — dressing overlay ပိတ်တဲ့ flow အတိုင်း
-              const wasAvatar = arcade.href.startsWith("/profile/avatar");
+              const wasAvatar = arcade.href.startsWith("/studio?tab=avatar");
               setArcade(null);
               if (wasAvatar) {
                 if (inGameRoom) applyAvatarRef.current?.();

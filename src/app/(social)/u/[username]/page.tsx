@@ -195,7 +195,7 @@ export default async function ProfilePage(
                 {/* The scan-avatar editor had no entry point anywhere — this
                     is the one place every user already visits. */}
                 <Link
-                  href="/profile/avatar"
+                  href="/studio?tab=avatar"
                   className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-500"
                 >
                   🧬 3D Avatar ဆောက်မယ်

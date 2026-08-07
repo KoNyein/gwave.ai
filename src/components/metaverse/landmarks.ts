@@ -83,7 +83,7 @@ export const ARCADE_GAMES: ArcadeGame[] = [
     emoji: "🏁", accent: "#3f88c5", tagMy: "ပြိုင်ကွင်း room · checkpoint",
   },
   {
-    id: "arc-avatar", label: "3D AVATAR", href: "/profile/avatar",
+    id: "arc-avatar", label: "3D AVATAR", href: "/studio?tab=avatar",
     x: 12, z: 20, radius: 3.4, act: { kind: "overlay" },
     emoji: "🧬", accent: "#b18cff", tagMy: "မျက်နှာ + ကိုယ်ခန္ဓာ scan",
   },
