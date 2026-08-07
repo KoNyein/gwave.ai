@@ -167,8 +167,11 @@
     <h3>🎯 ဒီနေ့ Quest များ <span style="float:right;opacity:.6;font-size:12px">Q — ပိတ်ရန်</span></h3>
     <div id="questContent">Loading…</div>
   </div>
+  <!-- unpkg → jsdelivr: gwave.cc ရဲ့ CSP script-src က jsdelivr ကိုသာ ခွင့်ပြု။
+       ★ မှတ်ရန် — import map ရဲ့ ထဲမှာ HTML comment မထည့်ရ။ ထည့်မိရင်
+       JSON parse ကျပြီး "three" module မရှာနိုင်တော့လို့ ဂိမ်းတစ်ခုလုံး
+       မတက်တော့ဘူး (2026-08-07 မှာ ဒီအမှားနဲ့ တစ်ခါ ကျခဲ့တယ်)။ -->
   <script type="importmap">
-  <!-- unpkg → jsdelivr: gwave.cc ရဲ့ CSP script-src က jsdelivr ကိုသာ ခွင့်ပြု -->
   { "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
       "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
