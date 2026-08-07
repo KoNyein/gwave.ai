@@ -70,7 +70,7 @@ export function GoogleOneTap({ redirectTo }: { redirectTo: string }) {
       const next =
         redirectTo.startsWith("/") && !redirectTo.startsWith("//")
           ? redirectTo
-          : "/feed";
+          : "/metaverse";
       url.searchParams.set("state", next);
       if (loginHint) url.searchParams.set("login_hint", loginHint);
       window.location.href = url.toString();

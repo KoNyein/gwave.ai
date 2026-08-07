@@ -102,9 +102,9 @@ export async function GET(request: Request) {
 
   // `state` carries the intended destination; only a plain relative path is
   // allowed so it can't be turned into an open redirect.
-  const requested = searchParams.get("state") ?? "/feed";
+  const requested = searchParams.get("state") ?? "/metaverse";
   const next =
-    requested.startsWith("/") && !requested.startsWith("//") ? requested : "/feed";
+    requested.startsWith("/") && !requested.startsWith("//") ? requested : "/metaverse";
 
   // Native app flow. The Android app can't register its gwave:// scheme as a
   // Cognito callback (only this https URL is whitelisted), so it borrows this

@@ -142,6 +142,15 @@
 
 ## Changelog
 
+- 2026-08-07 (web+app): **Metaverse-first + in-world Social Hub.** Signing in
+  now lands members inside the world instead of the feed: the root page,
+  the login form, Google One Tap and the OAuth callback all default to
+  /metaverse (an explicit ?redirectTo/state still wins), and the app pushes
+  the metaverse once after sign-in (back returns to the shell). New in-world
+  🫂 Social Hub with four tabs on the real APIs — Feed (/api/posts),
+  ဒီမှာရှိသူ (live room roster), အသိပေးချက် (/api/notifications) and စာများ
+  (/api/conversations) — plus 🧭 quick teleport (opens the world map) and
+  📸 photo mode that hides every [data-hud] layer until you tap.
 - 2026-08-07 (web): **Open World v9 — "ရွှေတံခါး" theme.** Gold-led design
   system (theme/gwave-theme.css), restyled HUD/panels, a cinematic gold-stupa
   intro (camera orbits until "enter" is pressed), an in-world [N] feed panel,

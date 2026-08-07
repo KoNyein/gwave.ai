@@ -136,6 +136,9 @@ export function HudMenu({
   onAvatar,
   onLiveHub,
   onOpenWorld,
+  onSocial,
+  onTeleport,
+  onPhoto,
   onMap,
   onGames,
   onBuild,
@@ -164,6 +167,12 @@ export function HudMenu({
   onLiveHub: () => void;
   /// 🌏 Open World overlay ဖွင့် (metaverse ထဲကနေ တိုက်ရိုက်)
   onOpenWorld: () => void;
+  /// 🫂 Social Hub — feed / ဒီမှာရှိသူ / အသိပေးချက် / စာများ
+  onSocial: () => void;
+  /// 🧭 နေရာရွေးပြီး ချက်ချင်း ရောက် (landmark quick travel)
+  onTeleport: () => void;
+  /// 📸 HUD ဖျောက်ပြီး ဓာတ်ပုံရိုက်ဖို့ အဆင်သင့်
+  onPhoto: () => void;
   onMap: () => void;
   onGames: () => void;
   onBuild: () => void;
@@ -268,6 +277,16 @@ export function HudMenu({
             />
           </Section>
 
+          <Section title="🫂 လူမှုရေး">
+            {/* Metaverse standard — feed/မိတ်ဆွေ/စာ အားလုံး လောကထဲကနေ */}
+            <Action
+              icon="🫂"
+              title="Social"
+              hint="Feed · ဒီမှာရှိသူ · အသိပေးချက် · စာများ"
+              onClick={onSocial}
+            />
+          </Section>
+
           <Section title="🧑 ကိုယ်ရေး">
             {/* 📸 Photo Avatar / Scan / ရုပ်ရွေး — Studio တစ်ခုတည်းထဲ စုထား */}
             <Action
@@ -275,6 +294,18 @@ export function HudMenu({
               title="Avatar Studio"
               hint="ရုပ်ရွေး · Photo Avatar · Scan — တစ်နေရာတည်း"
               onClick={onAvatar}
+            />
+            <Action
+              icon="🧭"
+              title="နေရာခုန်"
+              hint="မှတ်တိုင်ရွေးပြီး ချက်ချင်းရောက်"
+              onClick={onTeleport}
+            />
+            <Action
+              icon="📸"
+              title="ဓာတ်ပုံ mode"
+              hint="HUD ဖျောက် — ရိုက်ပြီးရင် တစ်ချက်နှိပ်ပြန်ပေါ်"
+              onClick={onPhoto}
             />
           </Section>
         </div>

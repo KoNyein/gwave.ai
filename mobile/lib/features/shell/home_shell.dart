@@ -11,6 +11,7 @@ import '../../widgets/common.dart';
 import '../audio/floating_player.dart';
 import '../feed/composer_screen.dart';
 import '../feed/feed_screen.dart';
+import '../metaverse/metaverse_screen.dart';
 import '../live/live_list_screen.dart';
 import '../messenger/conversations_screen.dart';
 import '../notifications/notifications_screen.dart';
@@ -36,9 +37,21 @@ class _HomeShellState extends State<HomeShell> {
   int _unread = 0;
   Timer? _unreadPoll;
 
+  /// 🌍 Metaverse-first — login ဝင်ပြီးတာနဲ့ လောကထဲ တစ်ခါ ဝင်ပေးတယ်
+  /// (user: "login ဝင်လိုက်တာနဲ့ Metaverse room ထဲ ရောက်ပါ")။ Back နှိပ်ရင်
+  /// app ထဲ ပြန်ရောက်တယ် — app က ပျောက်မသွားဘူး။ App တစ်ခါဖွင့်ရင်
+  /// တစ်ခါပဲ — အခန်းထဲက ထွက်ပြီးတိုင်း ပြန်မဆွဲဘူး။
+  static bool _worldShown = false;
+
   @override
   void initState() {
     super.initState();
+    if (!_worldShown) {
+      _worldShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) openMetaverse(context);
+      });
+    }
     _loadUnread();
     // Keep the bell badge fresh the way the presence dots are.
     _unreadPoll =
