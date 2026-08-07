@@ -203,6 +203,7 @@ export function SmartHome({
   React.useEffect(() => {
     if (Object.keys(timers).length === 0) return;
     const iv = setInterval(() => {
+      if (document.hidden) return;
       forceTick((n) => n + 1);
       const now = Date.now();
       const due = Object.entries(timers).filter(([, at]) => now >= at);

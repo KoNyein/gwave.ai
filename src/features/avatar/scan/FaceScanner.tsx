@@ -9,6 +9,8 @@ import { captureFaceStable, getFaceLandmarker } from "./faceLandmarks";
 import { useCamera } from "./useCamera";
 import { RecordButton } from "@/features/scan3d/RecordButton";
 
+import { applyGpuBudget, gpuRendererOptions } from "@/lib/gpu-budget";
+
 /// 📷 Face Scanner modal (spec §4.1) — Phase 2 v1: front capture။
 ///
 /// Flow: consent → camera → capture (quality gates) → 3D preview →
@@ -69,8 +71,8 @@ export function FaceScanner({
       10,
     );
     camera.position.set(0, 0, 0.35);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const renderer = new THREE.WebGLRenderer(gpuRendererOptions());
+    applyGpuBudget(renderer);
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
@@ -86,6 +88,8 @@ export function FaceScanner({
     const clock = new THREE.Clock();
     const tick = () => {
       raf = requestAnimationFrame(tick);
+      // 🔋 မမြင်ရချိန် frame မပုံဖော်ဘူး (WebView/PWA မှာ rAF က မရပ်ဘူး)
+      if (document.hidden) return;
       holder.rotation.y = Math.sin(clock.getElapsedTime() * 0.8) * 0.6;
       renderer.render(scene, camera);
     };

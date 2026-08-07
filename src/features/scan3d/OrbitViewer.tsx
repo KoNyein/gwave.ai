@@ -40,7 +40,11 @@ export function OrbitViewer({
   // auto-rotate — object turntable သဘော
   useEffect(() => {
     if (!auto || urls.length < 2) return;
-    const t = window.setInterval(() => setIdx((i) => (i + 1) % urls.length), 260);
+    // 🔋 မမြင်ရချိန် turntable မလှည့်ဘူး (260ms × frame ချည်း ဖြုန်းတာ)
+    const t = window.setInterval(() => {
+      if (document.hidden) return;
+      setIdx((i) => (i + 1) % urls.length);
+    }, 260);
     return () => window.clearInterval(t);
   }, [auto, urls.length]);
 

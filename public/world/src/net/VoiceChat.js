@@ -40,6 +40,15 @@ export class VoiceChat {
     }
   }
 
+  /// 🎙️ Mic ပိတ် — stream track တွေ ရပ်ပြီး level meter ကိုပါ ဖျက်တယ်
+  disable() {
+    if (this._meter) { clearInterval(this._meter); this._meter = null; }
+    this.stream?.getTracks().forEach(t => t.stop());
+    this.stream = null;
+    this.enabled = false;
+    for (const id of [...this.peers.keys()]) this.removePeer(id);
+  }
+
   setMuted(m) {
     this.muted = m;
     this.stream?.getAudioTracks().forEach(t => (t.enabled = !m));
@@ -61,7 +70,17 @@ export class VoiceChat {
     analyser.fftSize = 512;
     src.connect(analyser);
     const data = new Uint8Array(analyser.frequencyBinCount);
-    setInterval(() => {
+    // 🔋 mic ပိတ်ထားချိန်/tab မမြင်ရချိန် FFT မတွက်ဘူး — 200ms တိုင်း
+    // frequency analysis က mic ဖွင့်ထားတဲ့ session တစ်ခုလုံး ပြေးနေတယ်။
+    this._meter = setInterval(() => {
+      if (document.hidden || this.muted) {
+        if (this.localSpeaking) {
+          this.localSpeaking = false;
+          this.net.setSpeaking(false);
+          document.querySelector('#micBtn')?.classList.remove('micTalk');
+        }
+        return;
+      }
       analyser.getByteFrequencyData(data);
       const avg = data.reduce((a, b) => a + b, 0) / data.length;
       const speaking = !this.muted && avg > 12;

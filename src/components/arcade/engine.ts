@@ -8,6 +8,8 @@
 
 import * as THREE from "three";
 
+import { applyGpuBudget, gpuRendererOptions } from "@/lib/gpu-budget";
+
 /// Emoji ကို canvas texture အဖြစ် ဆွဲတယ်
 export function emojiTexture(emoji: string, size = 256): THREE.CanvasTexture {
   const c = document.createElement("canvas");
@@ -127,8 +129,8 @@ export function createArcade(mount: HTMLElement): Arcade {
   camera.position.set(0, 3.2, 10);
   camera.lookAt(0, 1.6, 0);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const renderer = new THREE.WebGLRenderer(gpuRendererOptions());
+  applyGpuBudget(renderer);
   mount.appendChild(renderer.domElement);
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0x334466, 1.0));
@@ -216,6 +218,8 @@ export function createArcade(mount: HTMLElement): Arcade {
   let t = 0;
   const tick = () => {
     raf = requestAnimationFrame(tick);
+    // 🔋 မမြင်ရချိန် frame မပုံဖော်ဘူး (WebView/PWA မှာ rAF က မရပ်ဘူး)
+    if (document.hidden) return;
     const dt = Math.min(clock.getDelta(), 0.05);
     t += dt;
     // Camera က ဖြည်းဖြည်း လူးလာနေတယ် — static ဖြစ်မနေအောင်

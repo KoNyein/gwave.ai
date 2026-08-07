@@ -10,6 +10,8 @@ import { createGroundSampler, loadMap, type LoadedMap } from "./map-loader";
 import { createSfx, type Sfx } from "./sfx";
 import { buildArena, createToonFighter, createWeaponModel, type Fighter } from "./toon";
 
+import { applyGpuBudget, gpuRendererOptions } from "@/lib/gpu-budget";
+
 /// Gwave Assassin — ၁၈+ multiplayer mini-game (three.js)。
 ///
 /// ★ ကစားနည်း — လူတိုင်းမှာ လျှို့ဝှက်ပစ်မှတ် တစ်ယောက်စီ။ ကိုယ့်ကို ဘယ်သူ
@@ -103,9 +105,9 @@ export function AssassinGame({ room }: { room: string }) {
     scene.background = new THREE.Color(0x9ec9e8);
     scene.fog = new THREE.Fog(0x9ec9e8, 45, 95);
     const camera = new THREE.PerspectiveCamera(72, 1, 0.1, 400);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
-    renderer.shadowMap.enabled = true;
+    const renderer = new THREE.WebGLRenderer(gpuRendererOptions());
+    // 🔋 ဖုန်းမှာ pixel ratio 1.5 + shadow/antialias ပိတ်
+    applyGpuBudget(renderer);
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
 
@@ -455,6 +457,8 @@ export function AssassinGame({ room }: { room: string }) {
 
     const tick = () => {
       raf = requestAnimationFrame(tick);
+      // 🔋 မမြင်ရချိန် frame မပုံဖော်ဘူး (WebView/PWA မှာ rAF က မရပ်ဘူး)
+      if (document.hidden) return;
       const now = performance.now();
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;

@@ -56,6 +56,8 @@ import { isInApp, native } from "@/lib/metaverse/native";
 import { snap, type BuildType } from "@/lib/metaverse/build";
 import { questEvent } from "@/lib/quests";
 
+import { gpuRendererOptions, isMobileGpu } from "@/lib/gpu-budget";
+
 /// Gwave Metaverse ရဲ့ အဓိက client component။
 ///
 /// ★ စည်းမျဉ်း ၂ ခု — ဒီ ၂ ခုက performance ရဲ့ အခြေခံ:
@@ -349,7 +351,10 @@ export function MetaverseScene() {
     if (!socialHub) return;
     const tick = () => setPeers(peersRef.current());
     tick();
-    const iv = window.setInterval(tick, 2000);
+    const iv = window.setInterval(() => {
+      if (document.hidden) return;
+      tick();
+    }, 2000);
     return () => window.clearInterval(iv);
   }, [socialHub]);
   /// 🤳 Host ကင်မရာ PiP — off → မျက်နှာ (front) → အနောက် (back) → off
@@ -495,7 +500,10 @@ export function MetaverseScene() {
   const [nowSec, setNowSec] = useState(() => Date.now());
   useEffect(() => {
     if (roomId !== "hide-1") return;
-    const t = setInterval(() => setNowSec(Date.now()), 1000);
+    const t = setInterval(() => {
+      if (document.hidden) return;
+      setNowSec(Date.now());
+    }, 1000);
     return () => clearInterval(t);
   }, [roomId]);
   /// ★ Loading overlay — ပထမဆုံး "live" မဖြစ်မချင်း Gwave branding ပြတယ်။
@@ -679,18 +687,18 @@ export function MetaverseScene() {
     const inApp = isInApp();
 
     // ── Renderer ──────────────────────────────────────────────────────────
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      powerPreference: "high-performance",
-    });
+    /// 🔋 ဖုန်း browser (WebView မဟုတ်တောင်) မှာလည်း ဖုန်းပါပဲ — antialias
+    /// ပိတ်ပြီး low-power GPU တောင်းတယ်။
+    const phone = inApp || isMobileGpu();
+    const renderer = new THREE.WebGLRenderer(gpuRendererOptions());
     // ★ devicePixelRatio ကို ၂ မှာ ကန့်သတ် — iPhone က 3 ပြန်ပေးတယ်၊
     // pixel ၉ ဆ ဆွဲရတာက ဘက်ထရီကုန်ပြီး frame ကျတယ်။
     // ★ App (WebView) ထဲမှာ pixelRatio ကို 1 — WebView က browser ထက်
     // နှေးပြီး ဖုန်းက ပူလွယ်တယ်။ ရုပ်ထွက် အနည်းငယ် လျော့ပေမယ့် frame
     // တည်ငြိမ်တာက ပိုအရေးကြီးတယ် (spec 17.4)。
-    renderer.setPixelRatio(inApp ? 1 : Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(inApp ? 1 : Math.min(window.devicePixelRatio, phone ? 1.5 : 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
-    renderer.shadowMap.enabled = !inApp;
+    renderer.shadowMap.enabled = !phone;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
     renderer.domElement.style.touchAction = "none";
@@ -736,7 +744,7 @@ export function MetaverseScene() {
         renderer.setPixelRatio(1);
         applyShadows(false);
       } else if (!degradedRef.current) {
-        renderer.setPixelRatio(inApp ? 1 : Math.min(window.devicePixelRatio, 2));
+        renderer.setPixelRatio(inApp ? 1 : Math.min(window.devicePixelRatio, phone ? 1.5 : 2));
         applyShadows(window.localStorage.getItem(SHADOW_KEY) !== "0");
       }
     };
@@ -926,7 +934,7 @@ export function MetaverseScene() {
     camRef.current = (m: MvCamMode) => mvGoLive.setCamera(m);
 
     restoreRef.current = () => {
-      renderer.setPixelRatio(inApp ? 1 : Math.min(window.devicePixelRatio, 2));
+      renderer.setPixelRatio(inApp ? 1 : Math.min(window.devicePixelRatio, phone ? 1.5 : 2));
       postfx.setSize(mount.clientWidth, mount.clientHeight);
       quality.reset();
     };
@@ -2403,7 +2411,10 @@ export function MetaverseScene() {
         });
     };
     pollBoard();
-    const boardTimer = window.setInterval(pollBoard, 60000);
+    const boardTimer = window.setInterval(() => {
+      if (document.hidden) return;
+      pollBoard();
+    }, 60000);
 
     // ── Render loop ───────────────────────────────────────────────────────
     const frameClock = new THREE.Clock();

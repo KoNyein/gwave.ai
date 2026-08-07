@@ -74,6 +74,8 @@ export function BodyScanner({
     let last = 0;
     const tick = async (t: number) => {
       rafRef.current = requestAnimationFrame(tick);
+      // 🔋 မမြင်ရချိန် frame မပုံဖော်ဘူး (WebView/PWA မှာ rAF က မရပ်ဘူး)
+      if (document.hidden) return;
       if (t - last < 120 || busyRef.current) return; // ~8fps is plenty
       last = t;
       const v = videoRef.current;

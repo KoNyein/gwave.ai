@@ -106,6 +106,8 @@ export function DroneSim() {
 
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
+      // 🔋 မမြင်ရချိန် frame မပုံဖော်ဘူး (WebView/PWA မှာ rAF က မရပ်ဘူး)
+      if (document.hidden) return;
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext("2d");

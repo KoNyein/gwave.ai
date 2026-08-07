@@ -52,6 +52,8 @@ export function TrackBoard({ token, initial }: { token: string; initial: Trip })
     if (!live) return;
     let cancelled = false;
     const timer = setInterval(async () => {
+      // 🔋 tab နောက်ကွယ်ရောက်ရင် poll မလုပ်ဘူး — ပြန်မြင်တာနဲ့ ဆက်တယ်။
+      if (document.hidden) return;
       try {
         const res = await fetch(`/api/ride/track/${token}`, { cache: "no-store" });
         if (res.status === 410 || res.status === 404) {

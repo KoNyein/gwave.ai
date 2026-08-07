@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { useVisibleInterval } from "@/lib/use-visible-interval";
+
 /// 🏠 Gwave Home PLATFORM dashboard — trait-driven UI over the /api/home
 /// proxy. The client never knows a device's brand: it renders whatever the
 /// device's declared traits say it can do (Google-Home style).
@@ -98,9 +100,10 @@ export function PlatformDashboard() {
 
   useEffect(() => {
     void load();
-    const t = window.setInterval(() => void load(), 12000);
-    return () => window.clearInterval(t);
   }, [load]);
+  // 🔋 tab မမြင်ရချိန် device poll ရပ် — အရင်က နောက်ကွယ်မှာ ၁၂ စက္ကန့်တိုင်း
+  // device အားလုံးကို ဆက်ဆွဲနေတယ်။
+  useVisibleInterval(() => void load(), 12000);
 
   useEffect(() => {
     if (!chartFor) return;

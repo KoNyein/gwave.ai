@@ -367,7 +367,10 @@ export default function ArenaGame({ room = "hide-1" }: { room?: string }) {
       setClock(`${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`);
     };
     tick();
-    const id = setInterval(tick, 500);
+    const id = setInterval(() => {
+      if (document.hidden) return;
+      tick();
+    }, 500);
     return () => clearInterval(id);
   }, [state.state, state.endsAt, state.countdownEndsAt]);
 

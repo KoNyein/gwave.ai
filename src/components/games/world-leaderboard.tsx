@@ -12,6 +12,8 @@
 // ============================================================
 import { useEffect, useState } from 'react';
 
+import { useVisibleInterval } from '@/lib/use-visible-interval';
+
 type Row = { player_key: string; name: string; kills: number; deaths: number; headshots: number; xp: number };
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -36,9 +38,16 @@ export default function LeaderboardWidget({
         .then(d => { if (alive) { setRows(d.leaderboard || []); setError(false); } })
         .catch(() => { if (alive) setError(true); });
     load();
-    const iv = setInterval(load, refreshMs);
-    return () => { alive = false; clearInterval(iv); };
-  }, [statsBase, limit, refreshMs, season]);
+    return () => { alive = false; };
+  }, [statsBase, limit, season]);
+
+  // 🔋 tab မမြင်ရချိန် leaderboard poll ရပ်
+  useVisibleInterval(() => {
+    fetch(`${statsBase}/leaderboard?limit=${limit}&season=${season}`)
+      .then(r => r.json())
+      .then(d => { setRows(d.leaderboard || []); setError(false); })
+      .catch(() => setError(true));
+  }, refreshMs);
 
   const S: Record<string, React.CSSProperties> = {
     card: {

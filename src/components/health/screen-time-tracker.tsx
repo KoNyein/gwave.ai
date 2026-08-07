@@ -10,6 +10,7 @@ import {
   readScreenSeconds,
   screenTimeDayKey,
 } from "@/components/health/screen-time-recorder";
+import { useVisibleInterval } from "@/lib/use-visible-interval";
 
 /**
  * Display card for today's Gwave screen time. Recording happens app-wide in
@@ -21,16 +22,17 @@ export function ScreenTimeTracker() {
   const mm = prefersMyanmarScript(useLocale());
   const [seconds, setSeconds] = React.useState<number | null>(null);
 
+  const refresh = React.useCallback(
+    () => setSeconds(readScreenSeconds(screenTimeDayKey())),
+    [],
+  );
   React.useEffect(() => {
-    const refresh = () => setSeconds(readScreenSeconds(screenTimeDayKey()));
     refresh();
-    const id = setInterval(refresh, 5_000);
     window.addEventListener("storage", refresh);
-    return () => {
-      clearInterval(id);
-      window.removeEventListener("storage", refresh);
-    };
-  }, []);
+    return () => window.removeEventListener("storage", refresh);
+  }, [refresh]);
+  // 🔋 tab မမြင်ရချိန် localStorage ကို ၅ စက္ကန့်တိုင်း ဖတ်နေစရာ မလိုဘူး
+  useVisibleInterval(refresh, 5_000);
 
   const mins = seconds != null ? Math.floor(seconds / 60) : null;
 

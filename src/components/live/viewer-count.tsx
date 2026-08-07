@@ -4,6 +4,7 @@ import * as React from "react";
 import { Eye } from "lucide-react";
 
 import { createClient } from "@/lib/data/client";
+import { useVisibleInterval } from "@/lib/use-visible-interval";
 
 /**
  * Live viewer count — from both places viewers actually come from.
@@ -30,6 +31,12 @@ export function ViewerCount({
 }) {
   const [presenceCount, setPresenceCount] = React.useState(1);
   const [heartbeatCount, setHeartbeatCount] = React.useState(0);
+  const beatRef = React.useRef<(() => void) | null>(null);
+
+  // 🔋 The RPC counts viewers seen in the last ~25s, so beat well inside that
+  // window — but only while the tab is actually visible. A backgrounded tab is
+  // not a viewer, and beating from it kept phones awake and inflated the count.
+  useVisibleInterval(() => beatRef.current?.(), 15000);
 
   React.useEffect(() => {
     const db = createClient();
@@ -49,6 +56,7 @@ export function ViewerCount({
         () => undefined,
       );
     };
+    beatRef.current = heartbeat;
 
     channel
       .on("presence", { event: "sync" }, () => {
@@ -63,11 +71,8 @@ export function ViewerCount({
         }
       });
 
-    // The RPC counts viewers seen in the last ~25s, so beat well inside that window.
-    const timer = setInterval(heartbeat, 15000);
-
     return () => {
-      clearInterval(timer);
+      beatRef.current = null;
       void db.removeChannel(channel);
     };
   }, [streamId, viewerId]);
