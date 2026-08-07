@@ -141,3 +141,107 @@ Object.assign(HUD.prototype, {
         `<td>${r.headshots}</td><td class="xp">${r.xp}</td></tr>`).join('') + '</table>';
   },
 });
+
+// ---------- Economy Panels (Phase 0 — GP / Shop / Quests) ----------
+Object.assign(HUD.prototype, {
+  setPoints(points) {
+    const b = document.querySelector('#gpBadge');
+    b.style.display = 'block';
+    document.querySelector('#gpVal').textContent = points;
+  },
+  togglePanel(sel) {
+    const p = document.querySelector(sel);
+    const show = p.style.display !== 'block';
+    p.style.display = show ? 'block' : 'none';
+    return show;
+  },
+  setWalletPanel(wallet, shop, onBuy, nft = null) {
+    const el = document.querySelector('#walletContent');
+    if (!wallet) { el.textContent = '📊 Stats API မချိတ်နိုင်ပါ'; return; }
+    this.setPoints(wallet.points);
+    const ownedIds = new Set((wallet.inventory || []).map(i => i.item_id));
+    el.innerHTML =
+      `<div style="margin-bottom:10px">💰 လက်ကျန် — <b style="color:var(--gold)">${wallet.points} GP</b>
+       <span style="opacity:.6;font-size:12px">(kill/quest များမှ ရယူပါ)</span></div>` +
+      shop.map(it => `
+        <div class="shopItem">
+          ${it.color ? `<div class="sw" style="background:${it.color}"></div>` : '<div class="sw">🏷️</div>'}
+          <div class="nm">${it.name_mm}<br><span style="opacity:.6;font-size:12px">${it.price} GP</span></div>
+          ${ownedIds.has(it.id)
+            ? (nft && it.type === 'skin'
+                ? `<span class="owned">✅</span> <button data-nft="${it.id}" style="background:#7f5cff;color:#fff">⛓️ NFT</button>`
+                : '<span class="owned">✅ ပိုင်ဆိုင်ပြီး</span>')
+            : `<button data-item="${it.id}">ဝယ်ရန်</button>`}
+        </div>`).join('');
+    el.querySelectorAll('button[data-item]').forEach(btn =>
+      btn.addEventListener('click', () => { btn.disabled = true; onBuy(btn.dataset.item); }));
+    if (nft) el.querySelectorAll('button[data-nft]').forEach(btn =>
+      btn.addEventListener('click', () => { btn.disabled = true; nft(btn.dataset.nft); }));
+  },
+  setQuestsPanel(quests) {
+    const el = document.querySelector('#questContent');
+    if (!quests?.length) { el.textContent = '📊 Stats API မချိတ်နိုင်ပါ'; return; }
+    el.innerHTML = quests.map(q => `
+      <div class="questRow">
+        <div>${q.claimed ? '✅' : '⬜'} ${q.name_mm}
+          <span style="float:right" class="${q.claimed ? 'qdone' : ''}">
+            ${q.claimed ? `+${q.reward} GP ရပြီး` : `${q.progress}/${q.target} — ဆု ${q.reward} GP`}
+          </span>
+        </div>
+        <div class="qbar"><div class="qfill" style="width:${Math.round(100 * q.progress / q.target)}%"></div></div>
+      </div>`).join('');
+  },
+});
+
+// ---------- POS Rewards ([I] panel အောက်ပိုင်း) + NFT ----------
+Object.assign(HUD.prototype, {
+  setRewardsPanel(catalog, redemptions, onRedeem) {
+    let el = document.querySelector('#rewardsContent');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'rewardsContent';
+      document.querySelector('#walletContent').after(el);
+    }
+    el.innerHTML =
+      `<h3 style="margin:14px 0 8px;color:var(--gold);font-size:15px">🎁 ဆိုင်မှာလဲရန် (GP → လက်တွေ့ဆု)</h3>` +
+      catalog.map(r => `
+        <div class="shopItem">
+          <div class="nm">${r.name_mm}<br><span style="opacity:.6;font-size:12px">${r.cost} GP</span></div>
+          <button data-reward="${r.id}">လဲမည်</button>
+        </div>`).join('') +
+      (redemptions.length ? `<h3 style="margin:14px 0 6px;color:var(--jade);font-size:14px">🎟️ ကိုယ့် Code များ</h3>` +
+        redemptions.map(r => `
+          <div style="font-size:13px;padding:4px 0">
+            <b style="color:var(--gold)">${r.code}</b> — ${r.status === 'claimed' ? '✅ သုံးပြီး' : '⏳ ဆိုင်မှာပြရန်'}
+          </div>`).join('') : '');
+    el.querySelectorAll('button[data-reward]').forEach(btn =>
+      btn.addEventListener('click', () => { btn.disabled = true; onRedeem(btn.dataset.reward); }));
+  },
+});
+
+// ---------- Season Trophy NFTs ([I] panel) ----------
+Object.assign(HUD.prototype, {
+  setTrophiesSection(trophies, chainMode, onMint) {
+    let el = document.querySelector('#trophiesContent');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'trophiesContent';
+      (document.querySelector('#rewardsContent') || document.querySelector('#walletContent')).after(el);
+    }
+    if (!trophies.length) { el.innerHTML = ''; return; }
+    const medal = (r) => ['🥇', '🥈', '🥉'][r - 1] || '🏅';
+    el.innerHTML =
+      `<h3 style="margin:14px 0 8px;color:var(--gold);font-size:15px">🏆 Season Trophy NFT များ</h3>` +
+      trophies.map(t => `
+        <div class="shopItem">
+          <div class="nm">${medal(t.rank)} ${t.season} — အဆင့် ${t.rank} (+${t.gp} GP ရခဲ့)</div>
+          ${t.minted
+            ? '<span class="owned">⛓️ Mint ပြီး</span>'
+            : (chainMode === 'off'
+                ? '<span style="opacity:.5;font-size:12px">NFT ပိတ်ထား</span>'
+                : `<button data-season="${t.season}" style="background:#7f5cff;color:#fff">⛓️ Trophy ထုတ်</button>`)}
+        </div>`).join('');
+    el.querySelectorAll('button[data-season]').forEach(btn =>
+      btn.addEventListener('click', () => { btn.disabled = true; onMint(btn.dataset.season); }));
+  },
+});

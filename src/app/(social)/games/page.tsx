@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 
 import { GameCatalog } from "@/components/games/game-catalog";
 import { MyGameCard } from "@/components/games/my-game-card";
+import WorldLeaderboard from "@/components/games/world-leaderboard";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -135,6 +136,11 @@ export default async function GamesPage() {
             </Link>
           ))}
         </div>
+      </section>
+
+      {/* 🏆 Open World live leaderboard — weekly season, links into /world */}
+      <section className="space-y-2">
+        <WorldLeaderboard />
       </section>
 
       {/* Educational HTML5 games */}

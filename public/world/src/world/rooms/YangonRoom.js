@@ -110,6 +110,14 @@ export class YangonRoom extends Room {
       color: 0xffb020,
     });
 
+    // Portal → ကိုယ်ပိုင် Metaverse ကမ္ဘာ (create/edit)
+    this.addPortal({
+      position: new THREE.Vector3(12, 0, 8),
+      targetRoomId: 'myworld',
+      label: '🌍 ကိုယ်ပိုင်ကမ္ဘာသို့ (Build Mode ပါ)',
+      color: 0x3ddc97,
+    });
+
     // Portal → GWAVE STRIKE Arena (FPS)
     this.addPortal({
       position: new THREE.Vector3(0, 0, 16),

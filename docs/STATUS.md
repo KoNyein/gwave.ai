@@ -142,6 +142,21 @@
 
 ## Changelog
 
+- 2026-08-07 (web): **Open World v8 — GP economy + worlds + seasons.**
+  Upgraded /world (user-authored metaverse-base v6→v8): GP point economy
+  (game.wallets/point_ledger/inventory — kill/streak/quest GP, [I] shop
+  with 4 skins + VIP tag, skins sync to all players), [Q] daily quests
+  (auto-claim), kill streaks (Triple Kill/Rampage broadcasts), leaderboard
+  seasons (all-time/weekly/monthly tabs, hourly auto-finalize pays
+  500/300/150 GP), GP↔POS redeem (GW-XXXXXX codes, staff page at
+  /world/pos-claim.html, POS_KEY env auto-generated on deploy), personal
+  buildable worlds ([B] build mode: 5 blocks + 3 GLB props + custom NPCs,
+  server-validated, world:<key> rooms are multiplayer, ?world= visits),
+  and an NFT scaffold (GwaveSkins.sol + custodial mint, CHAIN_MODE=off by
+  default — TESTNET_CHECKLIST.md in deploy/world-server when ready).
+  Games hub now shows the live Open World weekly leaderboard widget.
+  Adaptations re-applied: jsdelivr importmap, same-origin /world-ws +
+  /world-stats, single [L] handler, PG* envs, per-process container PORTs.
 - 2026-08-07 (web): **Avatar scanner pro** (/profile/avatar) — multi-frame
   HQ capture (face: 12-frame landmark mean + sharpest-frame texture, 1080p
   camera, adaptive 2048² texture, z-smoothing + depth boost; body: 12-frame

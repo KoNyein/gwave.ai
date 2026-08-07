@@ -11,6 +11,7 @@ import { YangonRoom } from './world/rooms/YangonRoom.js';
 import { FarmRoom } from './world/rooms/FarmRoom.js';
 import { MaeSotRoom } from './world/rooms/MaeSotRoom.js';
 import { StrikeRoom } from './world/rooms/StrikeRoom.js';
+import { UserWorldRoom } from './world/rooms/UserWorldRoom.js';
 import { Wallet } from './web3/Wallet.js';
 import { HUD } from './ui/HUD.js';
 import { NetClient } from './net/NetClient.js';
@@ -57,11 +58,45 @@ const serverUrl =
   (isHttps ? `wss://${location.host}/world-ws` : 'ws://localhost:8787');
 net.connect(serverUrl, { name: playerName, token });
 
-// Stats API — Kill/XP leaderboard ([L] ဖြင့်ဖွင့်/ပိတ်) ။ ?api=https://... ဖြင့်ပြောင်းနိုင်
-const stats = new StatsAPI(
-  params.get('api') ||
-    (isHttps ? `${location.origin}/world-stats` : 'http://localhost:8788'),
-);
+// 📊 Stats API — URL တစ်ခုတည်း (seasons fetch ရော StatsAPI helper ရော) —
+// ?api=https://... ဖြင့် ပြောင်းနိုင်
+const statsUrl =
+  params.get('api') || params.get('stats') ||
+  (isHttps ? `${location.origin}/world-stats` : 'http://localhost:8788');
+const stats = new StatsAPI(statsUrl);
+
+// 🏆 Leaderboard seasons
+let currentSeason = 'alltime';
+function fetchLeaderboard(season) {
+  fetch(`${statsUrl}/leaderboard?limit=10&season=${season}`)
+    .then(r => r.json())
+    .then(d => hud.setLeaderboard(d.leaderboard))
+    .catch(() => hud.setLeaderboard(null, '📊 Stats API မချိတ်နိုင်ပါ (api/ ကို run ထားပါ)'));
+}
+document.querySelectorAll('#lbTabs .lbTab').forEach(btn =>
+  btn.addEventListener('click', () => {
+    currentSeason = btn.dataset.season;
+    document.querySelectorAll('#lbTabs .lbTab').forEach(b => b.classList.toggle('lbActive', b === btn));
+    fetchLeaderboard(currentSeason);
+  }));
+
+// 🌍 ကိုယ်ပိုင်ကမ္ဘာ — server က world data ပြန်ပို့လျှင် room ဆောက်ပြီး ကူး
+net.onWorld = ({ key, name, data, own }) => {
+  const roomId = `world:${key}`;
+  const room = new UserWorldRoom(ctx, { key, name, data, own });
+  world.rooms.delete(roomId); // update ဖြစ်လျှင် အသစ်ပြန်ဆောက်
+  world.register(room);
+  world.switchTo(roomId);
+  net.onRoomSwitch();
+  if (own) hud.addToast('🌍 ကိုယ်ပိုင်ကမ္ဘာ — [B] နှိပ်ပြီး တည်ဆောက်ပါ');
+};
+// ?world=<key> ဖြင့် သူများကမ္ဘာ တိုက်ရိုက်လည်ပတ်နိုင်
+const visitWorld = params.get('world');
+if (visitWorld) {
+  const tryVisit = setInterval(() => {
+    if (net.connected) { clearInterval(tryVisit); net.requestWorld(visitWorld); }
+  }, 500);
+}
 
 // ၄။ Web3 Wallet
 const wallet = new Wallet();
@@ -71,6 +106,7 @@ hud.walletBtn.addEventListener('click', async () => {
   hud.setWallet(result.address, wallet.short());
 });
 wallet.onChange = () => hud.setWallet(wallet.address, wallet.short());
+net.web3Address = () => wallet.address; // NFT mint အတွက် MetaMask address
 
 // ၅။ Interaction Loop — portal hint + NPC စကားပြော (E key)
 engine.register({
@@ -83,16 +119,32 @@ engine.register({
     else          hud.hideHint();
 
     if (input.justPressed('KeyE')) {
-      if (portal) { world.switchTo(portal.targetRoomId); net.onRoomSwitch(); }
+      if (portal) {
+        if (portal.targetRoomId === 'myworld') {
+          if (net.connected) net.requestWorld(); // server ကနေ ကိုယ့်ကမ္ဘာ load
+          else hud.addToast('🌍 ကိုယ်ပိုင်ကမ္ဘာအတွက် server လိုအပ်သည် (offline)');
+        } else { world.switchTo(portal.targetRoomId); net.onRoomSwitch(); }
+      }
       else if (npc) hud.showDialogue(npc.name, npc.nextLine());
     }
 
-    // [L] — Leaderboard ဖွင့်/ပိတ် (RDS game.* မှ ဖတ်)
+    // [I] — Shop + ပိုက်ဆံအိတ် | [Q] — Daily Quests (Phase 0 economy)
+    if (input.justPressed('KeyI')) {
+      if (hud.togglePanel('#walletPanel')) {
+        if (net.connected) { net.requestWallet(); net.requestRewards(); net.requestTrophies(); }
+        else hud.setWalletPanel(null);
+      }
+    }
+    if (input.justPressed('KeyQ')) {
+      if (hud.togglePanel('#questPanel')) {
+        if (net.connected) net.requestQuests();
+        else hud.setQuestsPanel(null);
+      }
+    }
+
+    // [L] — Leaderboard (alltime/weekly/monthly seasons)
     if (input.justPressed('KeyL')) {
-      if (hud.leaderboardVisible()) hud.hideLeaderboard();
-      else stats.leaderboard(10)
-        .then((rows) => hud.showLeaderboard(rows, playerName))
-        .catch(() => hud.addToast('📊 Stats API မချိတ်နိုင်ပါ (?api=... စစ်ပါ)'));
+      if (hud.toggleLeaderboard()) fetchLeaderboard(currentSeason);
     }
     input.endFrame(); // frame အဆုံးမှာ click/keypress ရှင်းရန် (နောက်ဆုံးမှခေါ်ရန်)
   }

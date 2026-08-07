@@ -37,10 +37,14 @@ class RemotePlayer {
     this.targetYaw = 0;
   }
 
-  setState(p, yaw, alive) {
+  setState(p, yaw, alive, skin) {
     this.targetPos.set(p[0], p[1], p[2]);
     this.targetYaw = yaw;
     this.group.visible = alive !== 0; // သေဆုံးနေချိန် ဖျောက်
+    if (skin && this.skin !== skin) { // ဆိုင်ကဝယ်ထားသော skin — အားလုံးမြင်ရ
+      this.skin = skin;
+      this.bodyMesh.material.color.set(skin);
+    }
   }
 
   update(dt) {
@@ -131,6 +135,79 @@ export class NetClient {
           this.avatar.teleport(new THREE.Vector3(msg.p[0], msg.p[1], msg.p[2]));
         }
         break;
+      // ---------- Economy (Phase 0) ----------
+      case 'points':
+        if (msg.earnedTotal > 0) this.hud.addToast?.(`💰 +${msg.earnedTotal} GP (လက်ကျန် ${msg.balance})`);
+        this.hud.setPoints?.(msg.balance);
+        break;
+      case 'quest_done':
+        this.hud.addToast?.(`✅ Quest ပြီးဆုံး: ${msg.name_mm} +${msg.reward} GP`);
+        break;
+      case 'streak':
+        this.hud.addToast?.(`${msg.label} — ${msg.name} (${msg.streak} kills ဆက်တိုက်)`);
+        break;
+      case 'wallet':
+        this.hud.setWalletPanel?.(msg.wallet, msg.shop,
+          (itemId) => this.sendBuy(itemId),
+          (itemId) => { // ⛓️ NFT mint — MetaMask address လိုအပ်
+            const addr = this.web3Address?.();
+            if (!addr) { this.hud.addToast?.('🦊 အရင် Wallet ချိတ်ပါ (ညာဘက်အပေါ်ခလုတ်)'); return; }
+            this.sendNftMint(itemId, addr);
+          });
+        break;
+      case 'quests':
+        this.hud.setQuestsPanel?.(msg.quests);
+        break;
+      case 'toast':
+        this.hud.addToast?.(msg.text);
+        break;
+      case 'world':
+        this.onWorld?.(msg); // main.js က room ဆောက်ပြီး ကူးပေးမည်
+        break;
+      case 'world_save_result':
+        this.hud.addToast?.(msg.ok ? '✅ ကမ္ဘာ သိမ်းပြီးပါပြီ' : `❌ သိမ်း၍မရ — ${msg.error || ''}`);
+        break;
+      case 'rewards':
+        this.hud.setRewardsPanel?.(msg.catalog, msg.redemptions, (id) => this.sendRedeem(id));
+        break;
+      case 'redeem_result':
+        if (msg.ok) {
+          this.hud.addToast?.(`🎁 ${msg.reward.name_mm} — Code: ${msg.code} (ဆိုင်မှာပြပါ)`);
+          this.hud.setPoints?.(msg.points);
+          this.requestRewards();
+        } else this.hud.addToast?.(`❌ ${msg.error} (လက်ကျန် ${msg.points ?? '?'} GP)`);
+        break;
+      case 'trophies':
+        this.hud.setTrophiesSection?.(msg.trophies || [], msg.chain_mode, (season) => {
+          const addr = this.web3Address?.();
+          if (!addr) { this.hud.addToast?.('🦊 အရင် Wallet ချိတ်ပါ'); return; }
+          this.ws.send(JSON.stringify({ t: 'trophy_mint', season, wallet: addr }));
+        });
+        break;
+      case 'trophy_result':
+        if (msg.ok) {
+          this.hud.addToast?.(`🏆 Season Trophy NFT ထုတ်ပြီး! ${msg.item_id} — Token #${msg.token_id}` +
+            (msg.explorer ? ` — ${msg.explorer}` : ''));
+          this.requestTrophies();
+        } else this.hud.addToast?.(`❌ ${msg.error}`);
+        break;
+      case 'nft_result':
+        if (msg.ok) {
+          this.hud.addToast?.(`⛓️ NFT ထုတ်ပြီး! Token #${msg.token_id}` +
+            (msg.mode === 'mock' ? ' (mock)' : '') + (msg.explorer ? ` — ${msg.explorer}` : ''));
+          this.requestWallet();
+        } else this.hud.addToast?.(`❌ ${msg.error}`);
+        break;
+      case 'buy_result':
+        if (msg.ok) {
+          this.hud.addToast?.(`🛍️ ${msg.item.name_mm} ဝယ်ပြီး (−${msg.item.price} GP, လက်ကျန် ${msg.points})`);
+          this.hud.setPoints?.(msg.points);
+          if (msg.equipped_skin) this.avatar.setSkin?.(msg.equipped_skin);
+          this.requestWallet(); // panel ပြန် refresh
+        } else {
+          this.hud.addToast?.(`❌ ${msg.error || 'ဝယ်၍မရပါ'} (လက်ကျန် ${msg.points ?? '?'} GP)`);
+        }
+        break;
       case 'snap': {
         const seen = new Set();
         for (const pl of msg.players) {
@@ -143,7 +220,7 @@ export class NetClient {
             this.world.current?.group.add(r.group);
             r.group.position.set(pl.p[0], pl.p[1], pl.p[2]);
           }
-          r.setState(pl.p, pl.y, pl.a);
+          r.setState(pl.p, pl.y, pl.a, pl.c);
         }
         for (const id of [...this.remotes.keys()])
           if (!seen.has(id)) this.removeRemote(id);
@@ -159,6 +236,16 @@ export class NetClient {
       if (r.group.visible) meshes.push(r.bodyMesh, r.headMesh);
     return meshes;
   }
+
+  requestWallet() { if (this.connected) this.ws.send(JSON.stringify({ t: 'wallet' })); }
+  requestRewards() { if (this.connected) this.ws.send(JSON.stringify({ t: 'rewards' })); }
+  requestTrophies() { if (this.connected) this.ws.send(JSON.stringify({ t: 'trophies' })); }
+  sendRedeem(rewardId) { if (this.connected) this.ws.send(JSON.stringify({ t: 'redeem', reward_id: rewardId })); }
+  requestWorld(key = null) { if (this.connected) this.ws.send(JSON.stringify({ t: 'world_load', key })); }
+  saveWorld(name, data) { if (this.connected) this.ws.send(JSON.stringify({ t: 'world_save', name, data })); }
+  sendNftMint(itemId, wallet) { if (this.connected) this.ws.send(JSON.stringify({ t: 'nft_mint', item_id: itemId, wallet })); }
+  requestQuests() { if (this.connected) this.ws.send(JSON.stringify({ t: 'quests' })); }
+  sendBuy(itemId) { if (this.connected) this.ws.send(JSON.stringify({ t: 'buy', item_id: itemId })); }
 
   // Server ဆီ hit claim ပို့ — အပြီးသတ်ဆုံးဖြတ်ချက်က server ဘက်မှာ
   sendShoot(targetId, origin, dir) {

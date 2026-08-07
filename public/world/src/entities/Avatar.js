@@ -28,6 +28,7 @@ export class Avatar {
       new THREE.MeshStandardMaterial({ color: 0x3ddc97, roughness: 0.5 })
     );
     body.position.y = 0.95; body.castShadow = true;
+    this.bodyMat = body.material; // Skin (ဆိုင်ကဝယ်) အရောင်ပြောင်းရန်
     const head = new THREE.Mesh(
       new THREE.SphereGeometry(0.22, 16, 16),
       new THREE.MeshStandardMaterial({ color: 0xffd9a0 })
@@ -54,6 +55,11 @@ export class Avatar {
         this.mixer.clipAction(gltf.animations[0]).play();
       }
     } catch (e) { console.warn('Avatar GLB မတွေ့ပါ — placeholder ဖြင့်ဆက်သွားမည်', e); }
+  }
+
+  // ဆိုင်ကဝယ်ထားသော skin အရောင် — '#f5c542' စသည်
+  setSkin(colorHex) {
+    if (colorHex) this.bodyMat.color.set(colorHex);
   }
 
   setMode(mode) {
