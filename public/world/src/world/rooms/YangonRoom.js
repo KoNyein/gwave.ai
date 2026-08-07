@@ -57,17 +57,30 @@ export class YangonRoom extends Room {
     // မြေပြင် — မိုးရွာပြီးစ လမ်းမ အနက်ရောင်
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(140, 140),
-      new THREE.MeshStandardMaterial({ color: 0x0d1220, roughness: 0.35, metalness: 0.4 })
+      new THREE.MeshStandardMaterial({ color: 0x1a2238, roughness: 0.45, metalness: 0.25 })
     );
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
     this.group.add(ground);
-    this.group.add(new THREE.GridHelper(140, 70, 0x1d2a4d, 0x131c36));
+    this.group.add(new THREE.GridHelper(140, 70, 0x39508c, 0x22304f));
 
     // အလင်းရောင် — ညအလင်း + neon
-    this.group.add(new THREE.AmbientLight(0x8899ff, 0.35));
-    const moon = new THREE.DirectionalLight(0xaabbff, 0.6);
+    //
+    // ★ အရင်က ambient 0.35 + moon 0.6 ပဲ ရှိလို့ မြို့တစ်ခုလုံး မဲနေတယ်
+    //   (user: "Cyber-Yangon room က အရမ်း မှောင်လွန်းတယ်")。 Hemisphere က
+    //   ကောင်းကင်/မြေ နှစ်ဘက်ကနေ အလင်းပြန်ပေးလို့ ညအလင်းကို မဖျက်ဘဲ
+    //   ပုံသဏ္ဌာန်တွေ မြင်ရစေတယ် — flat ambient ကို တင်လိုက်တာထက် ပိုကောင်း။
+    this.group.add(new THREE.HemisphereLight(0x5c6ea8, 0x1a2036, 1.0));
+    this.group.add(new THREE.AmbientLight(0x8899ff, 0.5));
+    const moon = new THREE.DirectionalLight(0xbcc9ff, 1.15);
     moon.position.set(-30, 50, 20); moon.castShadow = true;
     this.group.add(moon);
+    // ★ လမ်းမီး — ကစားသမား လမ်းလျှောက်ရာ လမ်းကြောင်းကို ချထားတယ်၊
+    //   ဒါမှ ခြေထောက်နဲ့ မြေပြင် တကယ် မြင်ရတယ်။
+    for (let i = -1; i <= 3; i++) {
+      const lamp = new THREE.PointLight(0xffd9a0, 26, 34, 2);
+      lamp.position.set(0, 7, i * -18 + 10);
+      this.group.add(lamp);
+    }
 
     // ရွှေရောင် စေတီ (landmark) — ဘယ် room ကနေမဆို မြင်ရအောင် အမြင့်ထား
     const pagoda = new THREE.Group();
@@ -99,7 +112,7 @@ export class YangonRoom extends Room {
       const w = 3 + Math.random() * 4, h = 5 + Math.random() * 14, d = 3 + Math.random() * 4;
       const bld = new THREE.Mesh(
         new THREE.BoxGeometry(w, h, d),
-        new THREE.MeshStandardMaterial({ color: 0x141b30, roughness: 0.8 })
+        new THREE.MeshStandardMaterial({ color: 0x232d4a, roughness: 0.75 })
       );
       const side = i % 2 === 0 ? -1 : 1;
       bld.position.set(side * (9 + Math.random() * 22), h / 2, -40 + (i * 3.2));

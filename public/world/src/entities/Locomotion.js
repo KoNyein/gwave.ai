@@ -98,6 +98,7 @@ export class Locomotion {
         this.rest[k] = b.quaternion.clone();
       }
       this.restHipY = this.bones.hips ? this.bones.hips.position.y : 0;
+      if (this.mode === 'bones') this._computeAxes();
       // ★ clip တစ်ခုတည်းပါတဲ့ GLB (SambaDance / agree / mixamo.com) ကို
       //   **မဖွင့်ဘူး** — ရွေ့နေတာနဲ့ မဆိုင်တဲ့ လှုပ်ရှားမှုက ခြေလှမ်းကို
       //   ဖျက်ပစ်တယ်။ လိုအပ်ရင် emote အဖြစ် သီးသန့် ဖွင့်လို့ရတယ်။
@@ -153,39 +154,73 @@ export class Locomotion {
     // ဒါမှ ဖြည်းဖြည်းသွားရင် ဖြည်းဖြည်း လှမ်းတယ် (ရေပေါ်လျှောသလို မဖြစ်)。
     this.phase += dt * (2.2 + st.speed * 0.9) * (this.blend > 0.02 ? 1 : 0);
 
-    const q = new THREE.Quaternion();
-    const e = new THREE.Euler();
-    const set = (key, x = 0, y = 0, z = 0) => {
-      const bone = b[key];
-      if (!bone) return;
-      e.set(x, y, z);
-      q.setFromEuler(e);
-      bone.quaternion.copy(this.rest[key]).multiply(q);
-    };
-
     const s = Math.sin(this.phase), c = Math.cos(this.phase);
-    const amp = 0.62 * this.blend * (st.running ? 1.25 : 1);
-    const armAmp = 0.45 * this.blend * (st.running ? 1.3 : 1);
+    // ★ လူ့ခြေလှမ်း အတိုင်းအတာ — တင်ပါး ~24°、ဒူး ~28°、လက် ~18°。
+    //   အရင်က 0.62rad (35°) ထားလို့ ခြေထောက် ဆွဲကားထားသလို ဖြစ်တယ်။
+    const amp = 0.42 * this.blend * (st.running ? 1.3 : 1);
+    const armAmp = 0.32 * this.blend * (st.running ? 1.35 : 1);
 
-    // ခြေထောက် — ဘယ်နဲ့ညာ ဆန့်ကျင်ဘက်
-    set('lUpLeg', s * amp);
-    set('rUpLeg', -s * amp);
+    // ခြေထောက် — ဘယ်နဲ့ညာ ဆန့်ကျင်ဘက် (ရှေ့/နောက် ယိမ်း)
+    this._swing('lUpLeg', s * amp);
+    this._swing('rUpLeg', -s * amp);
     // ဒူး — ရှေ့ဆွဲချိန်မှာသာ ကွေးတယ် (နောက်ပြန် မကွေးရ)
-    set('lLeg', Math.max(0, -c) * amp * 1.15);
-    set('rLeg', Math.max(0, c) * amp * 1.15);
+    this._swing('lLeg', Math.max(0, -c) * amp * 1.2);
+    this._swing('rLeg', Math.max(0, c) * amp * 1.2);
     // လက် — ခြေထောက်နဲ့ ဆန့်ကျင်ဘက် (လူ့သဘာဝ)
-    set('lArm', -s * armAmp, 0, 0.14);
-    set('rArm', s * armAmp, 0, -0.14);
-    set('lForeArm', -Math.abs(s) * armAmp * 0.5);
-    set('rForeArm', -Math.abs(s) * armAmp * 0.5);
+    this._swing('lArm', -s * armAmp);
+    this._swing('rArm', s * armAmp);
+    this._swing('lForeArm', -Math.abs(s) * armAmp * 0.45);
+    this._swing('rForeArm', -Math.abs(s) * armAmp * 0.45);
 
     // ခန္ဓာကိုယ် အသက်ရှူ + လှမ်းချိန် အနည်းငယ် တက်ဆင်း
     if (b.hips) {
-      const bob = Math.abs(Math.sin(this.phase * 2)) * 0.035 * this.blend;
-      const breathe = Math.sin(performance.now() * 0.0016) * 0.006 * (1 - this.blend);
+      const bob = Math.abs(Math.sin(this.phase * 2)) * 0.03 * this.blend;
+      const breathe = Math.sin(performance.now() * 0.0016) * 0.005 * (1 - this.blend);
       b.hips.position.y = this.restHipY + bob + breathe;
     }
     if (this.sitAmt > 0.01) this._applySit();
+  }
+
+  /// ── အရိုးတစ်ချောင်းကို **ခန္ဓာကိုယ်ရဲ့ ဘယ်-ညာ ဝင်ရိုး**ပတ် ယိမ်းစေတယ် ──
+  ///
+  /// `rotation.x` တိုက်ရိုက် ပေးတာက **အရိုးရဲ့ ကိုယ်ပိုင် X ဝင်ရိုး** ပတ်
+  /// လှည့်တာ — rig တစ်ခုနဲ့တစ်ခု မတူဘူး။ ဒီမှာတော့ ခန္ဓာကိုယ်ရဲ့ ညာဘက်
+  /// ဝင်ရိုး (model space X) ကို အရိုးရဲ့ local frame ထဲ ပြောင်းပြီး
+  /// အဲဒီဝင်ရိုးပတ်ပဲ လှည့်တယ်။
+  ///
+  /// ★ လက်ရှိ GLB ၁၀ ခုမှာ ခြေရိုးတွေက local-X ရော body-X ရော တူညီနေတယ်
+  ///   (တိုင်းကြည့်ပြီး) — ဒါပေမယ့် အဲဒါက ကံကောင်းတာ။ scanner ကထွက်တဲ့
+  ///   rig ဒါမှမဟုတ် Blender ကနေ တင်တဲ့ rig တွေမှာ မတူတော့ရင် ဒီနည်းက
+  ///   ဆက်မှန်နေမယ်။
+  _swing(key, angle) {
+    const bone = this.bones[key];
+    if (!bone) return;
+    const axis = this.axes[key];
+    if (!axis) return;
+    this._q.setFromAxisAngle(axis, angle);
+    bone.quaternion.copy(this.rest[key]).multiply(this._q);
+  }
+
+  /// အရိုးတိုင်းအတွက် "ဘယ်-ညာ ဝင်ရိုး" ကို local frame ထဲ တစ်ခါတည်း တွက်
+  _computeAxes() {
+    this.axes = {};
+    this._q = new THREE.Quaternion();
+    const parentWorld = new THREE.Quaternion();
+    const boneWorld = new THREE.Quaternion();
+    const inv = new THREE.Quaternion();
+    // ခန္ဓာကိုယ်ရဲ့ ညာဘက် (world) — model ကို လှည့်ထားရင်ပါ မှန်အောင်
+    this.model.updateWorldMatrix(true, true);
+    const modelQ = new THREE.Quaternion();
+    this.model.getWorldQuaternion(modelQ);
+    const rightWorld = new THREE.Vector3(1, 0, 0).applyQuaternion(modelQ);
+    for (const [k, bone] of Object.entries(this.bones)) {
+      bone.getWorldQuaternion(boneWorld);
+      if (bone.parent) bone.parent.getWorldQuaternion(parentWorld);
+      else parentWorld.identity();
+      // အရိုးရဲ့ rest world frame ရဲ့ ပြောင်းပြန် → world ဝင်ရိုးကို local သို့
+      inv.copy(boneWorld).invert();
+      this.axes[k] = rightWorld.clone().applyQuaternion(inv).normalize();
+    }
   }
 
   /// 🪑 ထိုင် pose — clip mode ရော bones mode ရော တူညီတယ်
@@ -193,13 +228,14 @@ export class Locomotion {
   _applySit() {
     const b = this.bones, k = this.sitAmt;
     if (!b.lUpLeg || !b.rUpLeg) return;
-    const q = new THREE.Quaternion();
-    const e = new THREE.Euler();
+    // ★ ထိုင်တာလည်း **ဘယ်-ညာ ဝင်ရိုး**ပတ်ပဲ ကွေးရမယ် — မဟုတ်ရင်
+    //   ခြေထောက် ဘေးကို ဆွဲကားပြီး ထိုင်သလို မဖြစ်ဘူး။
+    if (!this.axes) this._computeAxes();
+    const q = this._q || (this._q = new THREE.Quaternion());
     const blendTo = (key, x) => {
       const bone = b[key];
-      if (!bone) return;
-      e.set(x * k, 0, 0);
-      q.setFromEuler(e);
+      if (!bone || !this.axes[key]) return;
+      q.setFromAxisAngle(this.axes[key], x * k);
       // clip mode မှာ mixer က pose ချထားပြီးသား — အပေါ်က ထပ်ထည့်တယ်
       bone.quaternion.multiply(q);
     };
@@ -208,7 +244,9 @@ export class Locomotion {
     blendTo('lLeg', 1.5);
     blendTo('rLeg', 1.5);
     blendTo('spine', 0.12);
-    if (b.hips) b.hips.position.y = this.restHipY - 0.42 * k;
+    // ★ တင်ပါး နိမ့်ချမှုကို **တင်ပါးအမြင့်ရဲ့ ရာခိုင်နှုန်း**နဲ့ တွက်တယ် —
+    //   px အသေ ထားရင် cm ယူနစ်နဲ့ ဆောက်ထားတဲ့ rig မှာ လုံးဝ မထိရောက်ဘူး။
+    if (b.hips) b.hips.position.y = this.restHipY * (1 - 0.4 * k);
   }
 
   /** GLB ထဲက clip တစ်ခုကို emote အဖြစ် တစ်ခါ ဖွင့် (ရှိမှ) */

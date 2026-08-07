@@ -142,6 +142,26 @@
 
 ## Changelog
 
+- 2026-08-07 (web): **Walk stride corrected + Cyber-Yangon made visible.**
+  The first locomotion pass swung hips 0.62 rad (35°) each with a 1.15×
+  knee multiplier, so the avatar walked in a near-splits stance, and the arm
+  swing carried a constant ±0.14 rad sideways offset that pushed arms outward
+  on T-posed rigs. Stride is now 0.42 rad hip / 0.32 rad arm with no lateral
+  offset — a normal human gait. Bone swings also rotate about the **body's**
+  left-right axis converted into each bone's local frame rather than about the
+  bone's own X; the ten shipped GLBs happen to agree, but scanner and Blender
+  rigs will not, and this keeps them correct. The sit crouch now drops the
+  hips by 40% of hip height instead of a fixed 0.42 units, so it works on rigs
+  authored at any scale. Lighting: the room had only a 0.35 ambient and a 0.6
+  directional, which with no tone mapping rendered as a near-black void. Added
+  ACES filmic tone mapping, a hemisphere light, brighter moon, a row of street
+  lamps down the main axis, and lifted the road, buildings, grid, background
+  and fog off pure black. Mean screen luminance went from 11/255 to 19.2/255
+  and near-black pixels from 84.2% to 65.9%. Because phone screens and ambient
+  light vary so much, a **🔆 brightness control** now sits in the top bar —
+  four exposure steps (1.0 / 1.25 / 1.6 / 2.0, measuring 16.7 → 28.1 mean
+  luminance, 73% → 28% near-black), remembered in localStorage.
+
 - 2026-08-07 (web): **Open World avatars actually walk, stand and sit.**
   `Avatar.setModel()` played `animations[0]` on a permanent loop and never
   looked at movement, so Soldier idled while sliding (its Walk and Run clips
