@@ -54,7 +54,16 @@
     "metals": "သတ္တုတွင်းများ",
     "ride": "ခရီးသွား",
     "menu": "Feature အားလုံး",
-    "sectionEntertainment": "ဂိမ်းနှင့် မက်တာဗာ့စ်"
+    "sectionEntertainment": "ဂိမ်းနှင့် မက်တာဗာ့စ်",
+    "sectionMetaverse": "မက်တာဗာ့စ်နှင့် 3D",
+    "sectionGames": "ဂိမ်းများ",
+    "sectionHealth": "ကျန်းမာရေး",
+    "sectionHome": "စမတ်အိမ်နှင့် လုံခြုံရေး",
+    "sectionFinance": "ငွေကြေး",
+    "world": "Open World ကမ္ဘာ",
+    "studio": "gWave Studio",
+    "avatarStudio": "Avatar Scanner",
+    "drone": "GWAVE ဒရုန်း"
   },
   "auth": {
     "login": "ဝင်ရန်",
