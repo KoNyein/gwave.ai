@@ -591,6 +591,32 @@ function leaveWorld(href) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// 🔗 Hash deep links — #shop, #feed, #arena, #rooms … (base v12)
+// ─────────────────────────────────────────────────────────────────────
+// လောကထဲက function တစ်ခုကို link တစ်ခုတည်းနဲ့ ဖွင့်လို့ရတယ်:
+//     gwave.cc/metaverse#shop      → 🛍️ ဆိုင် panel
+//     gwave.cc/metaverse#rooms     → 🚪 အခန်းစာရင်း
+//     gwave.cc/metaverse#arena     → ⚔️ STRIKE Arena
+// ★ `openers` ကနေ တိုက်ရိုက် ယူတယ် — စာရင်း သီးသန့် မထားဘူး၊ ဒါမှ opener
+//   အသစ် ထည့်တိုင်း deep link ပါ အလိုအလျောက် ရတယ် (မမေ့နိုင်ဘူး)。
+// ★ hashchange ကိုပါ နားထောင်တယ် — page ပြန်မတင်ဘဲ link ကူးလို့ရတယ်။
+{
+  const runHash = () => {
+    const key = location.hash.replace('#', '').trim().toLowerCase();
+    if (!key) return;
+    const fn = openers[key];
+    if (typeof fn !== 'function') return;   // မသိတဲ့ hash — တိတ်တိတ် လျစ်လျူ
+    // Intro overlay ရှိရင် ကျော်ပြီး တန်းသွား
+    document.querySelector('#intro')?.click();
+    // လောက ဆောက်ပြီးမှ ဖွင့်ရမယ် — room ကူးတာက ပိုကြာလို့ ပိုစောင့်တယ်
+    const wait = key === 'arena' || key === 'world' ? 450 : 950;
+    setTimeout(() => fn(), wait);
+  };
+  setTimeout(runHash, 1200);
+  addEventListener('hashchange', runHash);
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // 🚪 ?room=<id> — link/app ကနေ အခန်းတစ်ခုကို တိုက်ရိုက် ဖွင့်
 // ─────────────────────────────────────────────────────────────────────
 // Flutter app က `MetaverseScreen(room: "city")` နဲ့ ခေါ်တယ်၊ website ကလည်း
