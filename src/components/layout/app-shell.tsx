@@ -1,6 +1,7 @@
 import { LeftSidebar } from "@/components/layout/left-sidebar";
 import { RightSidebar } from "@/components/layout/right-sidebar";
 import { SiteMobileNav, SiteNavbar } from "@/components/layout/site-chrome";
+import { SwipeDeck } from "@/components/layout/swipe-deck";
 import { ChatDock } from "@/components/messenger/chat-dock";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { getCurrentProfile } from "@/lib/auth";
@@ -28,6 +29,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         <RightSidebar />
       </div>
       <SiteMobileNav />
+      {/* 🧭 ပွတ်ဆွဲ လမ်းညွှန် — ← Metaverse · → Feed/Reels/Live/Games · ↑
+          function အားလုံး။ App ရဲ့ WebView ထဲမှာ မထည့်ဘူး — app မှာ
+          ကိုယ်ပိုင် tab နဲ့ ကိုယ်ပိုင် swipe ရှိပြီးသား။ */}
+      {embedded ? null : <SwipeDeck />}
       {embedded ? null : <InstallPrompt />}
       {/* ★ ChatDock (အောက်ညာက စကားပြောပူဖောင်း) ကိုလည်း app ထဲမှာ မပြဘူး
           — app မှာ Messenger tab ရှိပြီးသား ဖြစ်လို့ ထပ်နေတယ်။ */}

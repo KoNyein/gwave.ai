@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 /// 🌍 Gwave Metaverse — **လောက တစ်ခုတည်း** (user: "metaverse နဲ့ open world
 /// ကို ခုထဲ ဖြစ်အောင်လုပ်ပါ")။
@@ -17,8 +18,26 @@ import { useEffect, useState } from "react";
 /// ★ လောကထဲ မရှိသေးတဲ့ gwave function တွေ (Live, Games, Shop, Studio) က
 ///   ဂိမ်းထဲက kiosk/radial ကနေ overlay အဖြစ် ပွင့်တယ် — အပြင်မထွက်ရဘူး။
 export default function MetaversePage() {
+  const router = useRouter();
   const [src, setSrc] = useState<string | null>(null);
   const [note, setNote] = useState("🌍 လောကကို ဖွင့်နေသည်…");
+
+  /// 🧭 လောကထဲက ပွတ်ဆွဲ (လက်နှစ်ချောင်း ညာဘက်) ဒါမှမဟုတ် 📰 tab နှိပ်ရင်
+  /// ဂိမ်း iframe က ဒီကို ပြောတယ် — iframe ထဲက touch က parent ဆီ မရောက်လို့
+  /// postMessage ကလွဲပြီး တခြားနည်း မရှိဘူး။
+  /// ★ origin ကို စစ်တယ် — ကြော်ငြာ iframe တစ်ခုက page ကို လွှဲပစ်လို့ မရ။
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      const d = e.data as { type?: string; href?: string } | null;
+      if (d?.type !== "gwave:nav" || typeof d.href !== "string") return;
+      // ကိုယ့် site ထဲက လမ်းကြောင်းသာ (open redirect မဖြစ်စေရ)
+      if (!d.href.startsWith("/") || d.href.startsWith("//")) return;
+      router.push(d.href);
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [router]);
 
   useEffect(() => {
     let alive = true;

@@ -22,6 +22,7 @@ import {
 } from "@/lib/db/friends";
 import { LevelBadge } from "@/components/learn/level-badge";
 import { getCertificatesForUser } from "@/lib/db/certificates";
+import { VirtualRoomCard } from "@/components/metaverse/virtual-room-card";
 import { getLearningPoints, getProjectsForUser } from "@/lib/db/learn";
 import { getProfilePhotos, getProfilePosts } from "@/lib/db/posts";
 import { PRESENCE } from "@/lib/presence";
@@ -304,6 +305,17 @@ export default async function ProfilePage(
             </div>
           </CardContent>
         </Card>
+      ) : null}
+
+      {/* 🏠 ကိုယ်ပိုင် virtual room — profile တိုင်းမှာ တစ်ခန်း
+          (user: "user တိုင်း virtual room များ profile မှာ ထည့်ပေးပါ")。
+          ကိုယ့် profile မှာသာ ပြတယ် — အခန်း key က ကိုယ်ပိုင် ဒေတာမို့
+          တခြားသူရဲ့ profile ကနေ မထုတ်ပြဘူး၊ သူတို့ မျှဝေတဲ့ link
+          ကနေပဲ ရောက်ရမယ်။ */}
+      {isSelf ? (
+        <VirtualRoomCard
+          displayName={profile.full_name ?? profile.username ?? "သင်"}
+        />
       ) : null}
 
       {/* My learning projects (own profile only) */}
