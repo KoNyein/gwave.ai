@@ -16,6 +16,12 @@ export class Room {
     this.colliders = [];  // Physics အတွက် Box3 collision box များ
     this.spawn = new THREE.Vector3(0, 0, 6); // ကစားသမား ဝင်ရောက်မည့်နေရာ
     this.cameraMode = 'tps';   // 'tps' (နောက်ကလိုက်ကြည့်) | 'fps' (ပထမလူမြင်ကွင်း)
+    /// ⚔️ ဒီအခန်းမှာ လက်နက် ရှိလား — StrikeRoom ကပဲ true。
+    /// ★ ဒါက အရေးကြီးတယ်: touch ခလုတ်တန်းက 🔫 ကို **အခန်းတိုင်း**မှာ
+    ///   ပြနေတယ်၊ ဒါပေမယ့် StrikeRoom ကလွဲရင် ဘယ်အခန်းမှာမှ weapon မရှိဘူး။
+    ///   ဒါကြောင့် ရန်ကုန်/လယ်ကွင်း/မဲဆောက်မှာ 🔫 နှိပ်လည်း ဘာမှ မဖြစ်ဘူး —
+    ///   "သေနတ်ပစ်မရဘူး" ဆိုတာ ဒါ။ ခု combat မဟုတ်ရင် ခလုတ်ကို ဖျောက်တယ်။
+    this.combat = false;
     this.background = null;    // ဥပမာ 0x7fb7d9 — မထည့်လျှင် မူလညရောင်
     this.built = false;
   }
@@ -89,4 +95,56 @@ export class Room {
       st.holo.position.y = 1.55 + Math.sin(time * 2 + st.position.x) * 0.08;
     }
   }
+}
+
+// ============================================================
+// 💡 addRoomLighting — အခန်းတိုင်းအတွက် တစ်ခုတည်းသော အလင်း စနစ်
+//
+// user: "room တွေက အမှောင် အရမ်းများတယ် လင်းတွေ သေချာထည့်ပါ"
+//
+// အရင်က အခန်းတိုင်းက ambient တစ်ခု + directional တစ်ခုပဲ ထားတယ် —
+// အဲဒါက ပုံသဏ္ဌာန်တွေကို ပြားနေစေပြီး အရိပ်ထဲက အရာတွေ လုံးဝ မဲသွားတယ်။
+// Hemisphere light က ကောင်းကင်နဲ့ မြေ နှစ်ဘက်ကနေ အလင်းပြန်ပေးလို့ ည
+// ခံစားချက် မပျက်ဘဲ မြင်ရတယ် — ambient ကို အတင်း တင်လိုက်တာထက် ကောင်းတယ်။
+//
+// preset: 'day' | 'night' | 'indoor' | 'neon'
+//
+// ★ Room ကို ပေးရင် နောက်ခံအရောင်ပါ ချိန်ပေးတယ်။ ဒါ မလုပ်ရင် အလင်း
+//   ဘယ်လောက် ထည့်ထည့် WorldManager က နောက်ခံကို မူလ ည အရောင် (0x070b18)
+//   နဲ့ ချလိုက်လို့ နေ့ခင်း အခန်းတွေတောင် မဲနေတယ် — STRIKE Arena က
+//   အဲဒီအတိုင်း ဖြစ်နေတာ။
+// ============================================================
+export function addRoomLighting(target, preset = 'day', opts = {}) {
+  const room = target && target.group ? target : null;
+  const group = room ? room.group : target;
+  const P = {
+    day:    { sky: 0xbcd7f5, ground: 0x6b6255, hemi: 1.05, amb: 0.45,
+              key: 0xfff2d9, keyI: 1.5, fill: 0x9fc0ff, fillI: 0.35, bg: 0x9fc4e8 },
+    night:  { sky: 0x5c6ea8, ground: 0x1a2036, hemi: 1.0,  amb: 0.5,
+              key: 0xbcc9ff, keyI: 1.15, fill: 0x7f8fd0, fillI: 0.3, bg: 0x0d1428 },
+    indoor: { sky: 0xdfe6f2, ground: 0x4a4034, hemi: 0.95, amb: 0.55,
+              key: 0xfff0d8, keyI: 1.1, fill: 0xcfd8ff, fillI: 0.4, bg: 0x243044 },
+    neon:   { sky: 0x7a5cff, ground: 0x161a2e, hemi: 0.9,  amb: 0.5,
+              key: 0xffd9f0, keyI: 1.0, fill: 0x2de1ff, fillI: 0.45, bg: 0x1a1330 },
+  }[preset] || {};
+  const c = { ...P, ...opts };
+
+  group.add(new THREE.HemisphereLight(c.sky, c.ground, c.hemi));
+  group.add(new THREE.AmbientLight(0xffffff, c.amb));
+
+  const key = new THREE.DirectionalLight(c.key, c.keyI);
+  key.position.set(-28, 46, 22);
+  key.castShadow = true;
+  group.add(key);
+
+  // ★ Fill — key ရဲ့ ဆန့်ကျင်ဘက်။ ဒါ မပါရင် အရိပ်ဘက်ခြမ်းက မဲကွက်
+  //   ဖြစ်ပြီး ပုံသဏ္ဌာန် လုံးဝ မမြင်ရဘူး။ အရိပ် မချဘူး (ဖုန်း အတွက်)。
+  const fill = new THREE.DirectionalLight(c.fill, c.fillI);
+  fill.position.set(24, 18, -20);
+  group.add(fill);
+
+  // အခန်းက ကိုယ်တိုင် နောက်ခံ မသတ်မှတ်ထားရင် preset ရဲ့ကို သုံး
+  if (room && room.background == null) room.background = c.bg;
+
+  return { key, fill, background: c.bg };
 }

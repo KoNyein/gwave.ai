@@ -3,7 +3,7 @@
 // Gwave ၏ hydroponic စိုက်ပျိုးရေး နည်းပညာကို ဂိမ်းထဲ သွင်းထားသော Room
 // ============================================================
 import * as THREE from 'three';
-import { Room } from '../Room.js';
+import {Room, addRoomLighting } from '../Room.js';
 import { NPC } from '../../entities/NPC.js';
 
 export class FarmRoom extends Room {
@@ -19,10 +19,8 @@ export class FarmRoom extends Room {
     this.group.add(ground);
 
     // Lab အလင်း — စိုက်ပျိုးရေးမီး ပန်းရောင်ခပ်ခပ် (grow lights)
-    this.group.add(new THREE.AmbientLight(0xffffff, 0.55));
-    const growLight = new THREE.DirectionalLight(0xff88cc, 0.7);
-    growLight.position.set(0, 25, 0);
-    this.group.add(growLight);
+    // 💡 အလင်း စနစ် — Room.js ရဲ့ တစ်ခုတည်းသော preset (hemisphere+key+fill)
+    addRoomLighting(this, 'indoor');
 
     // Hydroponic စင်တန်းများ — စင် + အပင်စိမ်းလေးများ
     const plantMat = new THREE.MeshStandardMaterial({

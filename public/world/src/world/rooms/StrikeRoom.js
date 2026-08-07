@@ -6,13 +6,15 @@
 //  Room class တစ်ခုအဖြစ် ထုပ်ပိုးပြီး အစားထိုးချိတ်ဆက်နိုင်သည်)
 // ============================================================
 import * as THREE from 'three';
-import { Room } from '../Room.js';
+import {Room, addRoomLighting } from '../Room.js';
 import { Weapon } from '../../game/Weapon.js';
 import { EnemyBot } from '../../game/EnemyBot.js';
+import { sfx } from '../../core/Sfx.js';
 
 export class StrikeRoom extends Room {
   constructor(ctx) {
     super('strike', 'GWAVE STRIKE Arena ⚔️');
+    this.combat = true; // ဒီအခန်းမှာပဲ လက်နက် ရှိတယ် → 🔫 ခလုတ် ပေါ်တယ်
     this.ctx = ctx; // { engine, input, avatar, hud }
     this.cameraMode = 'fps';
     this.playerHP = 100;
@@ -25,20 +27,17 @@ export class StrikeRoom extends Room {
     // ကြမ်းပြင် — စစ်မြေပြင် ကွန်ကရစ်
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(70, 70),
-      new THREE.MeshStandardMaterial({ color: 0x2a2d33, roughness: 0.9 })
+      new THREE.MeshStandardMaterial({ color: 0x6a6f57, roughness: 0.95 })
     );
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
     this.group.add(ground);
     this.group.add(new THREE.GridHelper(70, 35, 0x3a3f48, 0x30343c));
 
     // အလင်း
-    this.group.add(new THREE.AmbientLight(0xffffff, 0.45));
-    const sun = new THREE.DirectionalLight(0xffe8c0, 1.1);
-    sun.position.set(25, 40, 15); sun.castShadow = true;
-    this.group.add(sun);
+    addRoomLighting(this, 'day');
 
     // ပတ်လည်နံရံ ၄ ခု (collision ပါ — arena ပြင်ပ မထွက်နိုင်)
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x3d434e, roughness: 0.8 });
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x8d939c, roughness: 0.85 });
     const walls = [
       { size: [70, 5, 1], pos: [0, 2.5, -35] },
       { size: [70, 5, 1], pos: [0, 2.5, 35] },
@@ -133,6 +132,11 @@ export class StrikeRoom extends Room {
       const net = this.ctx.net;
       if (net?.connected) meshes.push(...net.getTargetMeshes()); // PvP ပစ်မှတ်များ
       const hit = this.weapon.shoot(meshes);
+      // 🔫 ပစ်သံ — weapon.shoot() က null ပြန်ရင် (cooldown/ကျည်ကုန်) မမြည်ဘူး
+      if (hit !== null) sfx.shot({ weapon: 'rifle' });
+      else if (this.weapon.ammo <= 0) sfx.ui({ up: false }); // ကျည်ကုန်ပြီ
+      if (hit?.bot || hit?.netId != null) sfx.hit({ head: !!hit.headshot });
+      if (hit?.died) sfx.explosion({ vol: 0.7 });
       hud.setAmmo(this.weapon.ammo, this.weapon.magSize);
       if (hit?.died) {
         this.score++;
@@ -145,6 +149,7 @@ export class StrikeRoom extends Room {
     }
     if (input.justPressed('KeyR')) {
       this.weapon.startReload();
+      sfx.reload();
       hud.addKill('🔄 ကျည်ထည့်နေသည်…');
     }
     this.weapon.update(dt, hud);
@@ -153,6 +158,9 @@ export class StrikeRoom extends Room {
     for (const bot of this.bots) {
       const fired = bot.update(dt, playerPos, playerHead);
       if (fired) {
+        // 🔫 bot ရဲ့ ပစ်သံ — အကွာအဝေးအလိုက် ဖျော့တယ် (ဘေးကနေ ပစ်တာ ကြားရ)
+        const d = bot.position.distanceTo(playerPos);
+        sfx.shot({ vol: Math.max(0.12, 1 - d / 45), weapon: 'pistol' });
         // Tracer — bot မှ ကစားသမားဆီ
         const from = new THREE.Vector3(bot.position.x, bot.position.y + 1.5, bot.position.z);
         const geo = new THREE.BufferGeometry().setFromPoints([from, playerHead]);

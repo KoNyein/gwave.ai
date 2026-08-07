@@ -13,7 +13,7 @@
 //   X     — အနီးဆုံး block ဖျက်
 // ============================================================
 import * as THREE from 'three';
-import { Room } from '../Room.js';
+import {Room, addRoomLighting } from '../Room.js';
 import { NPC } from '../../entities/NPC.js';
 import { loadGLB } from '../../core/Assets.js';
 
@@ -56,10 +56,7 @@ export class UserWorldRoom extends Room {
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
     this.group.add(ground);
     this.group.add(new THREE.GridHelper(100, 100, 0x335533, 0x2a3a2a));
-    this.group.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const sun = new THREE.DirectionalLight(0xfff2d9, 1.2);
-    sun.position.set(25, 40, 15); sun.castShadow = true;
-    this.group.add(sun);
+    addRoomLighting(this, 'day');
 
     // သိမ်းထားသော object များ ပြန်တည်ဆောက်
     for (const obj of d.objects || []) this.spawnObject(obj);
