@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -37,20 +39,22 @@ class _HomeShellState extends State<HomeShell> {
   int _unread = 0;
   Timer? _unreadPoll;
 
-  /// 🌍 Metaverse-first — login ဝင်ပြီးတာနဲ့ လောကထဲ တစ်ခါ ဝင်ပေးတယ်
-  /// (user: "login ဝင်လိုက်တာနဲ့ Metaverse room ထဲ ရောက်ပါ")။ Back နှိပ်ရင်
-  /// app ထဲ ပြန်ရောက်တယ် — app က ပျောက်မသွားဘူး။ App တစ်ခါဖွင့်ရင်
-  /// တစ်ခါပဲ — အခန်းထဲက ထွက်ပြီးတိုင်း ပြန်မဆွဲဘူး။
-  static bool _worldShown = false;
+  /// 🚪 ဝင်ရာ နေရာ — app ဖွင့်တာနဲ့ **ဘယ်ကို သွားမလဲ** user ကိုယ်တိုင်
+  /// ရွေးတယ် (user: "ဝင်ဝင်ချင်း category တွေ ရွေးဝင်လို့ရအောင်")。
+  ///
+  /// အရင်က ဖွင့်တိုင်း Metaverse ကို အတင်း ဆွဲထည့်တယ် — ဈေးရောင်းဖို့/
+  /// POS ဖွင့်ဖို့ ဖွင့်တဲ့သူက 3D လောကတစ်ခု ဖြတ်ရတယ်။ အခု ပထမဆုံး
+  /// ဖွင့်တဲ့အခါ ရွေးခိုင်းပြီး ရွေးထားတာကို မှတ်တယ်၊ Profile ကနေ
+  /// ပြန်ပြောင်းလို့ရတယ်။ Web ရဲ့ /start နဲ့ တူညီတဲ့ key တွေ သုံးတယ်။
+  static const _homeKey = 'gw.home.choice';
+  static bool _startupDone = false;
 
   @override
   void initState() {
     super.initState();
-    if (!_worldShown) {
-      _worldShown = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) openMetaverse(context);
-      });
+    if (!_startupDone) {
+      _startupDone = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openStartChoice());
     }
     _loadUnread();
     // Keep the bell badge fresh the way the presence dots are.
@@ -83,6 +87,92 @@ class _HomeShellState extends State<HomeShell> {
       // clear the badge in step with it.
       if (i == 4) _unread = 0;
     });
+  }
+
+  /// 🚪 ဖွင့်တာနဲ့ ဘယ်ကို သွားမလဲ — မှတ်ထားရင် တန်းသွား၊ မမှတ်ရင် မေးတယ်။
+  Future<void> _openStartChoice() async {
+    if (!mounted) return;
+    String? choice;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      choice = prefs.getString(_homeKey);
+    } catch (_) {
+      // prefs မရရင် မေးတယ် — ကျမသွားစေရ
+    }
+    if (!mounted) return;
+    if (choice == null) {
+      choice = await _askHomeChoice();
+      if (choice == null) return; // ပိတ်လိုက်တယ် — Feed မှာ ဆက်နေမယ်
+    }
+    _applyHomeChoice(choice);
+  }
+
+  /// အခန်းကဏ္ဍ ရွေးတဲ့ sheet — web ရဲ့ /start နဲ့ တူညီတဲ့ စာရင်း
+  Future<String?> _askHomeChoice() {
+    const items = <List<String>>[
+      ['metaverse', '🌍', 'Metaverse', '3D လောကထဲ ဝင်'],
+      ['feed', '📰', 'Social', 'သတင်းစာမျက်နှာ, သူငယ်ချင်း'],
+      ['shop', '🛍️', 'Shop', 'ပစ္စည်းများ ဝယ်ယူ'],
+      ['live', '📺', 'Live', 'တိုက်ရိုက်လွှင့် / ကြည့်'],
+    ];
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 18, 20, 4),
+              child: Text('ဘယ်ကို သွားမလဲ?',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 10),
+              child: Text('Profile ထဲက "ဝင်ရာနေရာ" ကနေ အမြဲ ပြောင်းလို့ရပါတယ်',
+                  style: TextStyle(fontSize: 12.5, color: Colors.grey)),
+            ),
+            for (final it in items)
+              ListTile(
+                leading: Text(it[1], style: const TextStyle(fontSize: 28)),
+                title: Text(it[2],
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: Text(it[3]),
+                onTap: () => Navigator.of(ctx).pop(it[0]),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    ).then((v) async {
+      if (v != null) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_homeKey, v);
+        } catch (_) {
+          // မှတ်လို့ မရရင်လည်း ဒီတစ်ခေါက် အလုပ်လုပ်ရမယ်
+        }
+      }
+      return v;
+    });
+  }
+
+  void _applyHomeChoice(String key) {
+    switch (key) {
+      case 'metaverse':
+        openMetaverse(context);
+        break;
+      case 'shop':
+        _selectTab(3);
+        break;
+      case 'live':
+        _selectTab(2);
+        break;
+      case 'feed':
+      default:
+        _selectTab(0);
+    }
   }
 
   /// 🧭 ဘေးပွတ်ဆွဲ — ဘယ်ဘက် = လောက, ညာဘက် = နောက် content tab。

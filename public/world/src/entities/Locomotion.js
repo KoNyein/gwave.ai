@@ -67,6 +67,9 @@ export class Locomotion {
     //   အရင်က bones mode မှာပဲ သတ်မှတ်လို့ clip mode (Soldier/Xbot) မှာ
     //   ထိုင်လိုက်ရင် undefined × ဂဏန်း = NaN ဖြစ်ပြီး ရုပ် ပျောက်သွားမယ်။
     this.restHipY = this.bones.hips ? this.bones.hips.position.y : 0;
+    // ★ အရင်ဆုံး — ရုပ်ရဲ့ မျက်နှာမူရာကို ညှိ (အောက်က တွက်ချက်မှု အားလုံးက
+    //   ဒီ အနေအထားပေါ် မူတည်တယ်)。
+    this._faceForward();
     this.phase = 0;
     this.blend = 0;      // 0 = ရပ်, 1 = အပြည့်လှမ်း (ချောချောကူး)
     this.sitAmt = 0;     // 0 = မတ်တပ်, 1 = ထိုင်
@@ -208,6 +211,52 @@ export class Locomotion {
     if (!axis) return;
     this._q.setFromAxisAngle(axis, angle);
     bone.quaternion.copy(this.rest[key]).multiply(this._q);
+  }
+
+  /// ── 🧭 ရုပ်ရဲ့ မျက်နှာမူရာကို **+Z** ဖြစ်အောင် ညှိ ──────────────────
+  ///
+  /// user: "လမ်းပြောင်းပြန်ရှောက်တဲ့သူတွေ ရှိတယ်"
+  ///
+  /// Avatar/NPC တွေက ရွေ့ရာဘက်ကို `rotation.y = atan2(dx, dz)` နဲ့ လှည့်တယ် —
+  /// အဲဒါက ရုပ်ရဲ့ **+Z** ကို ရွေ့ရာဘက် ချိန်တာ။ ဒါပေမယ့် GLB တိုင်း +Z
+  /// ကို မမူဘူး:
+  ///     Soldier.glb → **−Z**   ·   ကျန် ၉ ခု → +Z   (တိုင်းကြည့်ပြီး)
+  /// ဒါကြောင့် Soldier ဝတ်ထားသူတိုင်း **နောက်ပြန် လျှောက်နေတယ်** — ပြီးတော့
+  /// Soldier က remote player အားလုံးရဲ့ ခန္ဓာကိုယ် ဖြစ်နေတယ်၊ ဒါကြောင့်
+  /// "သူများတွေ" ဆိုတာ အားလုံး နောက်ပြန် ဖြစ်နေတာ။
+  ///
+  /// ဖိုင်တစ်ခုချင်း ကိုယ်တိုင် စစ်ပြီး ညှိတယ် — စာရင်း hardcode မလုပ်ဘူး၊
+  /// scanner ကထွက်တဲ့ ရုပ်တွေလည်း မှန်ရမယ်။
+  _faceForward() {
+    const m = this.model;
+    if (!m) return;
+    m.updateWorldMatrix(true, true);
+    const fwd = this._modelForward();
+    if (!fwd) return;
+    // မျက်နှာက −Z ဘက် ဆိုရင် ၁၈၀° လှည့် (group မဟုတ်ဘဲ **ရုပ်ကိုယ်တိုင်**၊
+    // ဒါမှ ရွေ့လျားမှု/ကင်မရာ တွက်ချက်မှုတွေ မထိခိုက်ဘူး)
+    if (fwd.z < -0.4) {
+      m.rotation.y += Math.PI;
+      m.updateWorldMatrix(true, true);
+      this.flipped = true;
+    }
+  }
+
+  /// ရုပ်ရဲ့ ရှေ့ဘက် — ခြေဖဝါး (ဖနောင့်→ခြေချောင်း) က အယုံကြည်ရဆုံး
+  _modelForward() {
+    const THREE_ = THREE;
+    let toe = null, foot = null;
+    this.model.traverse((o) => {
+      if (!o.isBone) return;
+      if (!toe && /(left|right).?toe/i.test(o.name)) toe = o;
+      if (!foot && /(left|right).?foot/i.test(o.name)) foot = o;
+    });
+    if (!toe || !foot) return null;
+    const a = new THREE_.Vector3(), c = new THREE_.Vector3();
+    toe.getWorldPosition(a); foot.getWorldPosition(c);
+    const d = a.sub(c); d.y = 0;
+    if (d.lengthSq() < 1e-6) return null;
+    return d.normalize();
   }
 
   /// ── 🙆 T-pose ကို **လက်ချ** အနေအထား ပြောင်း ────────────────────────
