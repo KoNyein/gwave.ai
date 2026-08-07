@@ -24,6 +24,22 @@ on:
       - "mobile/**"
       - ".github/workflows/build-flutter-apk.yml"
 
+# ★ APK build တစ်ခုတည်းသာ တစ်ချိန်တည်း ပြေးရမယ်。
+#
+# `mobile-latest` က **rolling release တစ်ခုတည်း** — run နှစ်ခု တစ်ပြိုင်နက်
+# publish လုပ်ရင် asset တွေ ရောထွေးတယ်။ 2026-08-07 မှာ တကယ် ဖြစ်ခဲ့တယ်:
+# commit တစ်ခုတည်းအတွက် push (run 299) နဲ့ workflow_dispatch (run 300)
+# နှစ်ခုလုံး ပြေးပြီး — APK တွေက run 300 ကလာ၊ version.json က run 299 ကလာ၊
+# x86_64 asset က လုံးဝ ပျောက်သွားတယ်၊ ပြီးတော့ run 299 ရဲ့ publish step က
+# ကျတယ်။ App ထဲက update banner က version.json ကို ဖတ်လို့ ဖုန်းတွေမှာ
+# မှားနေမယ့် ဗားရှင်း ပြမယ်。
+#
+# `cancel-in-progress: true` — နောက်ဆုံး တောင်းဆိုမှုက အနိုင်ရတယ်၊
+# publisher တစ်ယောက်တည်းပဲ ရှိတယ်။
+concurrency:
+  group: flutter-apk-release
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
