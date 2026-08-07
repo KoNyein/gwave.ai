@@ -34,6 +34,7 @@ export class Avatar {
       new THREE.MeshStandardMaterial({ color: 0xffd9a0 })
     );
     head.position.y = 1.75;
+    this.headMat = head.material; // Avatar Studio preset အတွက်
     this.placeholder = new THREE.Group();
     this.placeholder.add(body, head);
     this.group.add(this.placeholder);
@@ -60,6 +61,12 @@ export class Avatar {
   // ဆိုင်ကဝယ်ထားသော skin အရောင် — '#f5c542' စသည်
   setSkin(colorHex) {
     if (colorHex) this.bodyMat.color.set(colorHex);
+  }
+
+  // 🧬 Avatar Studio preset — body + head အရောင်တွဲ
+  applyPreset({ body, head }) {
+    if (body) this.bodyMat.color.set(body);
+    if (head) this.headMat.color.set(head);
   }
 
   setMode(mode) {

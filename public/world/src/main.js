@@ -16,7 +16,7 @@ import { Wallet } from './web3/Wallet.js';
 import { HUD } from './ui/HUD.js';
 import { NetClient } from './net/NetClient.js';
 import { getGwaveToken, getTokenName } from './web3/GwaveAuth.js';
-import { StatsAPI } from './net/StatsAPI.js';
+import { RadialMenu } from './ui/RadialMenu.js';
 import { TouchControls } from './ui/TouchControls.js';
 
 // ၁။ အခြေခံစနစ်များ စတင်ခြင်း
@@ -80,11 +80,10 @@ const serverUrl =
   (isHttps ? `wss://${location.host}/world-ws` : 'ws://localhost:8787');
 net.connect(serverUrl, { name: playerName, token });
 
-// 📊 Stats API — URL တစ်ခုတည်း (seasons fetch ရော StatsAPI helper ရော)
+// 📊 Stats API base — leaderboard fetch ရော profile board ရော ဒါကိုသုံး
 const statsUrl =
   params.get('api') || params.get('stats') ||
   (isHttps ? `${location.origin}/world-stats` : 'http://localhost:8788');
-const stats = new StatsAPI(statsUrl);
 
 // 🏆 Leaderboard seasons
 let currentSeason = 'alltime';
@@ -133,11 +132,13 @@ net.web3Address = () => wallet.address; // NFT mint အတွက် MetaMask add
 engine.register({
   update() {
     const portal = world.nearestPortal();
+    const station = world.nearestStation();
     const npc = world.nearestNPC();
 
-    if (portal)   hud.showHint(`⏎ E — ${portal.label}`);
-    else if (npc) hud.showHint(`⏎ E — ${npc.name} နှင့် စကားပြောရန်`);
-    else          hud.hideHint();
+    if (portal)        hud.showHint(`⏎ E — ${portal.label}`);
+    else if (station)  hud.showHint(`⏎ E — ${station.label}`);
+    else if (npc)      hud.showHint(`⏎ E — ${npc.name} နှင့် စကားပြောရန်`);
+    else               hud.hideHint();
 
     if (input.justPressed('KeyE')) {
       if (portal) {
@@ -146,40 +147,17 @@ engine.register({
           else hud.addToast('🌍 ကိုယ်ပိုင်ကမ္ဘာအတွက် server လိုအပ်သည် (offline)');
         } else { world.switchTo(portal.targetRoomId); net.onRoomSwitch(); }
       }
+      else if (station) openers[station.action]?.();
       else if (npc) hud.showDialogue(npc.name, npc.nextLine());
     }
 
-    // [I] — Shop + ပိုက်ဆံအိတ် | [Q] — Daily Quests (Phase 0 economy)
-    if (input.justPressed('KeyI')) {
-      if (hud.togglePanel('#walletPanel')) {
-        if (net.connected) { net.requestWallet(); net.requestRewards(); net.requestTrophies(); }
-        else hud.setWalletPanel(null);
-      }
-    }
-    if (input.justPressed('KeyQ')) {
-      if (hud.togglePanel('#questPanel')) {
-        if (net.connected) net.requestQuests();
-        else hud.setQuestsPanel(null);
-      }
-    }
+    // Hotkeys — I/Q/N/L/M (function openers)
+    if (input.justPressed('KeyI')) openers.shop();
+    if (input.justPressed('KeyQ')) openers.quests();
+    if (input.justPressed('KeyN')) openers.feed();
+    if (input.justPressed('KeyL')) openers.board();
+    if (input.justPressed('KeyM')) radial.toggle();
 
-    // [N] — Gwave Feed (holo panel)
-    if (input.justPressed('KeyN')) {
-      if (hud.togglePanel('#feedPanel')) loadFeed();
-    }
-
-    // [L] — Leaderboard (alltime/weekly/monthly seasons)
-    if (input.justPressed('KeyL')) {
-      if (hud.toggleLeaderboard()) fetchLeaderboard(currentSeason);
-    }
-
-    // [L] — Leaderboard ဖွင့်/ပိတ် (RDS game.* မှ ဖတ်)
-    if (input.justPressed('KeyL')) {
-      if (hud.leaderboardVisible()) hud.hideLeaderboard();
-      else stats.leaderboard(10)
-        .then((rows) => hud.showLeaderboard(rows, playerName))
-        .catch(() => hud.addToast('📊 Stats API မချိတ်နိုင်ပါ (?api=... စစ်ပါ)'));
-    }
     input.endFrame(); // frame အဆုံးမှာ click/keypress ရှင်းရန် (နောက်ဆုံးမှခေါ်ရန်)
   }
 });
@@ -213,8 +191,7 @@ const DEMO_FEED = [
   { who: 'GWAVE Rooftop', when: 'ဒီနေ့', text: '☕ GP 500 = ကော်ဖီ ၁ ခွက် အခမဲ့ — [I] ထဲက 🎁 မှာ code လဲပြီး ဆိုင်မှာပြပါ။' },
 ];
 // gwave.cc ရဲ့ feed အစစ် — same-origin မို့ login cookie ပါပြီးသား။
-// Guest (401) ဒါမှမဟုတ် ဆွဲမရရင် DEMO_FEED နဲ့ ဆက်ပြတယ် — panel က
-// ဘယ်တော့မှ ဗလာ မဖြစ်ဘူး။
+// Guest (401) ဒါမှမဟုတ် ဆွဲမရရင် DEMO_FEED နဲ့ ဆက်ပြတယ်။
 const feedUrl = params.get('feed') || '/api/posts?scope=feed';
 const timeAgoMy = (iso) => {
   const m = Math.max(0, (Date.now() - new Date(iso).getTime()) / 60000);
@@ -237,6 +214,91 @@ async function loadFeed() {
     })));
   } catch { hud.setFeedPanel(DEMO_FEED); }
 }
+
+// ၈။ 🧭 Function Openers — key/station/radial menu သုံးမျိုးလုံးက ဒီကိုခေါ်
+const closeAll = () => ['#lbPanel','#walletPanel','#questPanel','#feedPanel','#avatarPanel','#projectsPanel']
+  .forEach(sel => document.querySelector(sel).style.display = 'none');
+function openPanel(sel, onOpen) {
+  const wasOpen = document.querySelector(sel).style.display === 'block';
+  closeAll();
+  if (!wasOpen) { document.querySelector(sel).style.display = 'block'; onOpen?.(); }
+}
+const openers = {
+  board:   () => openPanel('#lbPanel', () => fetchLeaderboard(currentSeason)),
+  shop:    () => openPanel('#walletPanel', () => {
+             if (net.connected) { net.requestWallet(); net.requestRewards(); net.requestTrophies(); }
+             else hud.setWalletPanel(null);
+           }),
+  pos:     () => openers.shop(), // POS = shop panel ရဲ့ 🎁 အပိုင်း
+  quests:  () => openPanel('#questPanel', () => net.connected ? net.requestQuests() : hud.setQuestsPanel(null)),
+  feed:    () => openPanel('#feedPanel', loadFeed),
+  avatar:  () => openPanel('#avatarPanel'),
+  projects:() => openPanel('#projectsPanel'),
+  world:   () => { if (net.connected) net.requestWorld(); else hud.addToast('🌍 server လိုအပ်သည် (offline)'); },
+  arena:   () => { world.switchTo('strike'); net.onRoomSwitch(); },
+};
+
+// ☰ Radial Menu — mobile-first metaverse menu (M key လည်းရ)
+const radial = new RadialMenu([
+  { icon: '🧬', label: 'Avatar',  action: openers.avatar },
+  { icon: '🛍️', label: 'Shop',    action: openers.shop },
+  { icon: '🎯', label: 'Quest',   action: openers.quests },
+  { icon: '📰', label: 'Feed',    action: openers.feed },
+  { icon: '🏆', label: 'Board',   action: openers.board },
+  { icon: '🌍', label: 'ကမ္ဘာ',    action: openers.world },
+  { icon: '⚔️', label: 'Arena',   action: openers.arena },
+], hud);
+
+// 🧬 Avatar Studio — preset ၆ မျိုး + 3D scan GLB ချိတ်ခြင်း (localStorage သိမ်း)
+const AVATAR_PRESETS = [
+  { id: 'jade',  nm: 'စိမ်းလဲ့',   body: '#3ddc97', head: '#ffd9a0' },
+  { id: 'gold',  nm: 'ရွှေ',      body: '#f5c542', head: '#ffd9a0' },
+  { id: 'ruby',  nm: 'ပတ္တမြား',  body: '#d8324a', head: '#ffd9a0' },
+  { id: 'cyber', nm: 'Cyber',    body: '#7f5cff', head: '#e8d5ff' },
+  { id: 'sky',   nm: 'မိုးပြာ',    body: '#2d9bf0', head: '#ffd9a0' },
+  { id: 'night', nm: 'ညမှောင်',   body: '#2a2f3a', head: '#c9b48a' },
+];
+const avGrid = document.querySelector('#avGrid');
+const savedPreset = localStorage.getItem('gwave_avatar_preset');
+AVATAR_PRESETS.forEach(pr => {
+  const el = document.createElement('div');
+  el.className = 'avCard' + (pr.id === savedPreset ? ' active' : '');
+  el.innerHTML = `<div class="cap" style="background:${pr.body};--hd:${pr.head}"></div><div class="nm">${pr.nm}</div>`;
+  el.addEventListener('click', () => {
+    avatar.applyPreset(pr);
+    localStorage.setItem('gwave_avatar_preset', pr.id);
+    document.querySelectorAll('.avCard').forEach(c => c.classList.toggle('active', c === el));
+    hud.addToast(`🧬 Avatar — ${pr.nm} preset`);
+  });
+  avGrid.appendChild(el);
+});
+const saved = AVATAR_PRESETS.find(pr => pr.id === savedPreset);
+if (saved) avatar.applyPreset(saved);
+document.querySelector('#avScanFile').addEventListener('change', (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  avatar.setModel(URL.createObjectURL(f));
+  hud.addToast('📷 3D scan avatar ချိတ်နေသည်…');
+});
+
+// 📁 Projects panel content
+document.querySelector('#projectsContent').innerHTML = [
+  { t: '🌊 gwave.cc', d: 'Social + metaverse platform — ယခု သင်ရောက်နေသောနေရာ' },
+  { t: '⚔️ GWAVE STRIKE', d: 'PvP FPS arena — server-authoritative, seasons, NFT skins' },
+  { t: '🚁 Drone Simulator', d: 'FPV/kamikaze drone physics simulator + garage' },
+  { t: '🌱 Hydro-Lab', d: 'Smart farm နည်းပညာ — hydroponics + sensors' },
+  { t: '🧬 3D Scanner', d: 'လူကို GLB avatar အဖြစ် scan — Avatar Studio မှာချိတ်နိုင်' },
+].map(pj => `<div class="feedCard"><span class="who">${pj.t}</span><div class="txt">${pj.d}</div></div>`).join('');
+
+// Open Wall (in-world feed) — feed data ရလျှင် Yangon နံရံပေါ်ပါ တင်
+const _setFeed = hud.setFeedPanel.bind(hud);
+hud.setFeedPanel = (posts) => {
+  _setFeed(posts);
+  world.rooms.get('yangon')?.setFeedWallPosts?.(posts);
+};
+setTimeout(loadFeed, 1500); // စဝင်ချိန် wall ကို feed ဖြည့်
+
+ctx.statsUrl = statsUrl; // Profile room stats board အတွက်
 
 // 🌐 Social Metaverse ဂိတ် — Open World နဲ့ gwave.cc/metaverse က
 // **တစ်ခုတည်းသော လောက**။ ?embed=1 (metaverse overlay ထဲက ဖွင့်တာ) ဆိုရင်
@@ -262,7 +324,7 @@ async function loadFeed() {
   document.body.appendChild(gate);
 }
 
-// ၈။ စတင်!
+// ၉။ စတင်!
 hud.hideLoading();
 engine.start();
-console.log('🌊 Gwave Metaverse Base Framework v5 — PvP + Cognito + RDS Kill/XP stats + [L] leaderboard ready');
+console.log('🌊 Gwave Metaverse — Yangon City OS (v10) ready');

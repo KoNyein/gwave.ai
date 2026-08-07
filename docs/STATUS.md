@@ -142,6 +142,16 @@
 
 ## Changelog
 
+- 2026-08-07 (web): **Open World v10 — "Yangon City OS".** Yangon is now a
+  city of function kiosks (Avatar Studio, Marketplace, POS, Hall of Fame,
+  Quest Board, Projects, Open Wall) you walk up to and open with E, plus a
+  radial menu ([M], 7 spokes), an in-world avatar preset picker with Gwave
+  3D Scanner GLB upload, a 3D open-wall feed billboard and a profile-room
+  stats billboard. Our integrations were re-applied on the new files:
+  shared avatar variant, same-origin ws/stats, metaverse gate, the real
+  feed API, jsdelivr instead of unpkg and no Google Fonts (CSP). The dead
+  StatsAPI instance and the duplicate [L] handler were dropped. Verified in
+  a headless browser: 7 radial spokes, 6 panels, feed cards, gate present.
 - 2026-08-07 (web+app): **Metaverse-first + in-world Social Hub.** Signing in
   now lands members inside the world instead of the feed: the root page,
   the login form, Google One Tap and the OAuth callback all default to

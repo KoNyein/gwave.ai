@@ -56,6 +56,18 @@ export class WorldManager {
     return best;
   }
 
+  // ကစားသမားနှင့် အနီးဆုံး function station
+  nearestStation(maxDist = 2.4) {
+    if (!this.current) return null;
+    const p = this.avatar.group.position;
+    let best = null, bestD = maxDist;
+    for (const st of this.current.stations || []) {
+      const d = st.position.distanceTo(p);
+      if (d < bestD) { best = st; bestD = d; }
+    }
+    return best;
+  }
+
   // ကစားသမားနှင့် အနီးဆုံး NPC (စကားပြောရန်)
   nearestNPC(maxDist = 2.5) {
     if (!this.current) return null;
