@@ -50,10 +50,18 @@ export class EmotePlayer {
     if (this.inner) { this.inner.rotation.set(0, 0, 0); this.inner.position.y = 0; }
   }
 
-  // Avatar ရဲ့ ခန္ဓာကိုယ်အလွှာ (placeholder သို့ GLB model) ကို ရွေ့မည်
+  // Avatar ရဲ့ ခန္ဓာကိုယ်အလွှာ ကို ရွေ့မည်
+  //
+  // ★ အရင်က `children[0]` ကို ယူတယ် — ဒါက **placeholder capsule**。
+  //   setModel() က placeholder ကို `visible=false` ပဲ လုပ်ပြီး မဖြုတ်လို့
+  //   GLB avatar ရှိသူတွေမှာ emote က မမြင်ရတဲ့ capsule ကိုပဲ လှုပ်နေတယ် —
+  //   တကယ့် ခန္ဓာကိုယ်က ငြိမ်နေတယ် (user: "ထိုင်တာ ထတာ မလုပ်ဘူး")。
+  //   အခု **မြင်ရတဲ့** အလွှာကို ရွေးတယ်။
   get inner() {
     const g = this.target.group;
-    return g?.children?.[0] || null;
+    if (!g?.children?.length) return null;
+    if (this.target.model) return this.target.model;
+    return g.children.find((c) => c.visible && !c.isSprite) || g.children[0];
   }
 
   update(dt) {
@@ -73,7 +81,10 @@ export class EmotePlayer {
       case 'dance':  inner.rotation.z = s(6) * 0.28; inner.rotation.y = s(3) * 0.5;
                      inner.position.y = Math.abs(s(6)) * 0.2; break;
       case 'bow':    inner.rotation.x = Math.sin(Math.min(1, p * 2) * Math.PI) * 0.75; break;
-      case 'sit':    inner.position.y = -0.42; inner.rotation.x = 0.12; break;
+      // 🪑 ထိုင်တာက gesture မဟုတ်ဘူး — အနေအထား (posture)。 Skeleton ရှိရင်
+      // Locomotion က ခြေထောက် ကွေးပေးတယ် (Avatar.setSitting)၊ ဒီက
+      // placeholder capsule အတွက်သာ။
+      case 'sit':    if (!this.target.loco) { inner.position.y = -0.42; inner.rotation.x = 0.12; } break;
       case 'point':  inner.rotation.y = 0.4; inner.rotation.z = -0.2 - s(5) * 0.05; break;
       case 'think':  inner.rotation.x = 0.12; inner.rotation.y = s(1.5) * 0.22; break;
     }

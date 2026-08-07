@@ -7,6 +7,13 @@
 import * as THREE from 'three';
 import { makeNameLabel } from '../ui/label.js';
 import { EmotePlayer } from '../entities/Emotes.js';
+import { Locomotion } from '../entities/Locomotion.js';
+import { loadGLB } from '../core/Assets.js';
+import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
+
+/// အခြားသူများ ဝတ်မယ့် ခန္ဓာကိုယ် — Idle/Walk/Run clip အပြည့်ပါတဲ့ ဖိုင်။
+/// (Character3/4/5 မှာ clip တစ်ခုမှ မရှိလို့ remote အတွက် မသင့်တော်ဘူး)
+const REMOTE_BODY = '/metaverse/realistic/Soldier.glb';
 
 const SEND_HZ = 15;
 
@@ -38,6 +45,30 @@ class RemotePlayer {
     this.targetYaw = 0;
     this.emotes = new EmotePlayer(this); // အခြားသူများ၏ emote မြင်ရရန်
     this.speaking = false;
+    this.sitting = false;
+    this._prev = new THREE.Vector3();
+    this._speed = 0;
+    this.lodFar = false;
+    this._lodTick = 0;
+
+    // 🚶 တကယ့် ခန္ဓာကိုယ် — အရင်က capsule + ဘောလုံး ပဲ ဖြစ်လို့ သူများတွေက
+    //    ခြေမလှမ်းဘဲ လျှောသွားနေတယ် (user: "ခြေလှမ်းတာ မလုပ်ဘူး")。
+    //    ★ SkeletonUtils.clone — SkinnedMesh ကို ရိုးရိုး clone() လုပ်လို့
+    //      မရဘူး (အရိုးတွေ မျှသုံးမိပြီး အားလုံး တစ်ထပ်တည်း လှုပ်မယ်)。
+    //    ★ Load မရရင် capsule နဲ့ပဲ ဆက်သွားတယ် — ကျမသွားစေရ။
+    void loadGLB(REMOTE_BODY).then((gltf) => {
+      const model = cloneSkinned(gltf.scene);
+      model.traverse((o) => {
+        if (o.isMesh) { o.castShadow = true; o.userData.netId = id; }
+      });
+      this.group.add(model);
+      this.model = model;
+      this.loco = new Locomotion(model, gltf.animations || []);
+      // ခန္ဓာကိုယ် ရောက်ပြီ — placeholder ဖျောက်တယ် (raycast အတွက် ကျန်ထား၊
+      // မမြင်ရအောင်သာ)
+      this.bodyMesh.visible = false;
+      this.headMesh.visible = false;
+    }).catch(() => { /* capsule ပဲ ဆက်သုံး */ });
   }
 
   // 🎙️ စကားပြောနေချိန် နာမည်အောက် အစိမ်းရောင်ကွင်း
@@ -57,7 +88,12 @@ class RemotePlayer {
   }
 
   setState(p, yaw, alive, skin, emote) {
-    if (emote && emote !== this.lastEmote) { this.emotes.play(emote); this.lastEmote = emote; }
+    // 🪑 ထိုင်တာက gesture မဟုတ်ဘဲ အနေအထား — Locomotion က ကိုင်တယ်
+    this.sitting = emote === 'sit';
+    if (emote && emote !== 'sit' && emote !== this.lastEmote) {
+      this.emotes.play(emote);
+      this.lastEmote = emote;
+    }
     if (!emote) this.lastEmote = null;
     this.targetPos.set(p[0], p[1], p[2]);
     this.targetYaw = yaw;
@@ -75,6 +111,29 @@ class RemotePlayer {
     let d = this.targetYaw - this.group.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     this.group.rotation.y += d * k;
+
+    // ── ခြေလှမ်း — ဖန်သားပြင်ပေါ်မှာ တကယ် ရွေ့နေတဲ့ အမြန်နှုန်းကနေ ─────
+    // ★ target ဆီက အကွာအဝေး မဟုတ်ဘူး — packet တစ်ခု နောက်ကျရင်
+    //   ရုတ်တရက် ပြေးသလို ဖြစ်မယ်။ တကယ် ရွေ့ခဲ့တာကိုပဲ တိုင်းတယ်။
+    const g = this.group.position;
+    const moved = Math.hypot(g.x - this._prev.x, g.z - this._prev.z);
+    this._prev.copy(g);
+    const inst = dt > 0 ? moved / dt : 0;
+    // အနည်းငယ် ချောစေတယ် — network jitter က ခြေလှမ်းကို တုန်မစေရ
+    this._speed += (inst - this._speed) * Math.min(1, dt * 6);
+    this.loco?.setMotion({
+      speed: this._speed,
+      running: this._speed > 6,
+      grounded: true,
+      sitting: this.sitting,
+    });
+    // 🔋 အဝေးက လူတွေရဲ့ animation မတွက်ဘူး — ရုပ်က မမြင်သာလောက်တဲ့
+    //    အကွာအဝေးမှာ mixer/bone တွက်ချက်မှုက ဖုန်း CPU ကို အလကား စားတယ်။
+    //    နေရာကတော့ ဆက်လိုက်တယ် (မဟုတ်ရင် အနားရောက်လာချိန် ခုန်မယ်)。
+    if (dt > 0 && (!this.lodFar || this._lodTick-- <= 0)) {
+      this.loco?.update(this.lodFar ? dt * 4 : dt);
+      if (this.lodFar) this._lodTick = 3;
+    }
   }
 }
 
@@ -333,7 +392,12 @@ export class NetClient {
   onRoomSwitch() { this.clearRemotes(); }
 
   update(dt) {
-    for (const r of this.remotes.values()) r.update(dt);
+    // အကွာအဝေး LOD — ကင်မရာနဲ့ ၃၅m ကျော်ရင် animation ကို လျှော့တွက်
+    const cam = this.engine?.camera?.position;
+    for (const r of this.remotes.values()) {
+      if (cam) r.lodFar = r.group.position.distanceToSquared(cam) > 35 * 35;
+      r.update(dt);
+    }
     if (!this.connected) return;
     this.sendTimer -= dt;
     if (this.sendTimer <= 0) {

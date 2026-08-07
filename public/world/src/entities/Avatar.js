@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { loadGLB } from '../core/Assets.js';
 import { EmotePlayer } from './Emotes.js';
+import { Locomotion } from './Locomotion.js';
 
 const GRAVITY = 22, WALK = 4.2, RUN = 8, JUMP = 8.2;
 const RADIUS = 0.4, HEIGHT = 1.8, EYE = 1.6;
@@ -22,6 +23,8 @@ export class Avatar {
     this.velY = 0;
     this.grounded = true;
     this.camDist = 6;
+    this._lastX = 0; this._lastZ = 0;
+    this.sitting = false;
 
     // မူလ placeholder ခန္ဓာကိုယ် (GLB မချိတ်ရသေးလျှင် ဒီအတိုင်းမြင်ရမည်)
     const body = new THREE.Mesh(
@@ -46,19 +49,29 @@ export class Avatar {
   }
 
   // GLB avatar ချိတ်ရန် — ဥပမာ: avatar.setModel('./assets/my_scan.glb')
+  //
+  // ★ အရင်က clip[0] ကို ထာဝရ ဖွင့်ထားလို့ ရွေ့နေတုန်း Idle ပြနေတာ/
+  //   ကနေတာ ဖြစ်တယ်။ အခု Locomotion က အမြန်နှုန်းအလိုက် idle⇄walk⇄run
+  //   ကူးတယ်၊ clip မရှိရင် အရိုးတွေကို ကိုယ်တိုင် လှုပ်တယ်။
+  // ★ Model ဟောင်း ရှိရင် ဖြုတ်တယ် — variant ပြောင်းတိုင်း ခန္ဓာကိုယ်
+  //   ထပ်နေတာ မဖြစ်စေရ။
   async setModel(url) {
     try {
       const gltf = await loadGLB(url);
+      if (this.model) { this.group.remove(this.model); this.model = null; }
       this.placeholder.visible = false;
       const model = gltf.scene;
       model.traverse(o => { if (o.isMesh) o.castShadow = true; });
       this.group.add(model);
-      if (gltf.animations?.length) {
-        this.mixer = new THREE.AnimationMixer(model);
-        this.mixer.clipAction(gltf.animations[0]).play();
-      }
+      this.model = model;
+      this.loco = new Locomotion(model, gltf.animations || []);
+      this.mixer = null; // Locomotion က ကိုယ်တိုင် ကိုင်တယ်
     } catch (e) { console.warn('Avatar GLB မတွေ့ပါ — placeholder ဖြင့်ဆက်သွားမည်', e); }
   }
+
+  /// 🪑 ထိုင်/ထ — emote wheel ရဲ့ 'sit' ရော kiosk ရော ဒီကို ခေါ်တယ်
+  setSitting(on) { this.sitting = !!on; }
+  toggleSit() { this.sitting = !this.sitting; return this.sitting; }
 
   // ဆိုင်ကဝယ်ထားသော skin အရောင် — '#f5c542' စသည်
   setSkin(colorHex) {
@@ -120,6 +133,21 @@ export class Avatar {
       this.grounded = false;
     }
 
+    // ── လှုပ်ရှားမှု state ကို animation ဆီ ပို့ ─────────────────────
+    // ★ တကယ် ရွေ့သွားတဲ့ အကွာအဝေးကနေ တွက်တယ် — input ကနေ မဟုတ်ဘူး။
+    //   နံရံနဲ့ တိုက်ပြီး မရွေ့တဲ့အခါ ခြေလှမ်း ဆက်နေတာ (ရေပေါ်လျှောသလို)
+    //   မဖြစ်စေရ။
+    const moved = Math.hypot(pos.x - this._lastX, pos.z - this._lastZ);
+    this._lastX = pos.x; this._lastZ = pos.z;
+    const groundSpeed = dt > 0 ? moved / dt : 0;
+    if (this.sitting && groundSpeed > 0.4) this.sitting = false; // လှုပ်ရင် ထ
+    this.loco?.setMotion({
+      speed: groundSpeed,
+      running: groundSpeed > (WALK + RUN) / 2,
+      grounded: this.grounded,
+      sitting: !!this.sitting,
+    });
+    this.loco?.update(dt);
     this.mixer?.update(dt);
     this.emotes.update(dt);
 
