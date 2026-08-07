@@ -100,28 +100,35 @@ jobs:
             echo "bootstrapped /etc/gwave-world.env"
           fi
 
-          # ── One-time Caddy routes — anchored next to the existing
-          # /strike/* handler so they land inside the gwave.cc site block.
-          if ! grep -q '/world-ws' /etc/caddy/Caddyfile; then
+          # ── Caddy routes — SELF-CORRECTING: strip any previous world blocks
+          # (an earlier deploy inserted ones pointing at the drone server's
+          # 8787/8788 — host ports are 8797/8798 now), then re-insert fresh,
+          # anchored next to the existing /strike/* handler so they land
+          # inside the gwave.cc site block.
+          if ! grep -q 'reverse_proxy 127.0.0.1:8797' /etc/caddy/Caddyfile \
+             || ! grep -q 'reverse_proxy 127.0.0.1:8798' /etc/caddy/Caddyfile; then
             cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak-world
             awk '
-              /handle_path \/strike\/\*/ && !done {
+              /handle \/world-ws \{/      { skip = 3 }
+              /handle_path \/world-stats/ { skip = 3 }
+              skip > 0 { skip--; next }
+              /handle_path \/strike\/\*/ && !ins {
                 print "\thandle /world-ws {"
-                print "\t\treverse_proxy 127.0.0.1:8787"
+                print "\t\treverse_proxy 127.0.0.1:8797"
                 print "\t}"
                 print "\thandle_path /world-stats* {"
-                print "\t\treverse_proxy 127.0.0.1:8788"
+                print "\t\treverse_proxy 127.0.0.1:8798"
                 print "\t}"
-                done=1
+                ins = 1
               }
               { print }
             ' /etc/caddy/Caddyfile.bak-world > /etc/caddy/Caddyfile
             if caddy validate --config /etc/caddy/Caddyfile >/dev/null 2>&1; then
               systemctl reload caddy
-              echo "caddy routes /world-ws + /world-stats added"
+              echo "caddy routes /world-ws(8797) + /world-stats(8798) in place"
             else
               cp /etc/caddy/Caddyfile.bak-world /etc/caddy/Caddyfile
-              echo "caddy validate failed — routes NOT added (restored backup)"
+              echo "caddy validate failed — routes NOT changed (restored backup)"
               exit 1
             fi
           fi
@@ -139,8 +146,10 @@ jobs:
 
           start() {
             docker rm -f world >/dev/null 2>&1 || true
+            # Host ports 8797/8798 — 8787/8788 belong to the drone server.
+            # Container-internal ports stay 8787/8788 (the code's defaults).
             docker run -d --name world --restart unless-stopped \
-              -p 127.0.0.1:8787:8787 -p 127.0.0.1:8788:8788 \
+              -p 127.0.0.1:8797:8787 -p 127.0.0.1:8798:8788 \
               --env-file /etc/gwave-world.env \
               "\$1"
           }
@@ -150,7 +159,7 @@ jobs:
           ok=0
           for i in \$(seq 1 20); do
             sleep 3
-            if curl -fsS http://127.0.0.1:8788/health >/dev/null; then ok=1; break; fi
+            if curl -fsS http://127.0.0.1:8798/health >/dev/null; then ok=1; break; fi
           done
 
           if [ "\$ok" != "1" ]; then
@@ -163,7 +172,7 @@ jobs:
             exit 1
           fi
 
-          curl -fsS http://127.0.0.1:8788/health
+          curl -fsS http://127.0.0.1:8798/health
           docker image prune -f >/dev/null 2>&1 || true
           EOF
 
