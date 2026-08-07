@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gwave Metaverse — Base Framework</title>
+<style>
+  :root{ --bg:#070b18; --panel:rgba(10,16,34,.82); --line:#1d2a4d; --gold:#f5c542; --jade:#3ddc97; --ink:#eaf0ff; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; overflow:hidden; background:var(--bg); color:var(--ink);
+        font-family:"Padauk","Myanmar Text","Noto Sans Myanmar",system-ui,sans-serif; }
+  canvas{ display:block; }
+  .panel{ position:fixed; background:var(--panel); border:1px solid var(--line);
+          border-radius:10px; padding:10px 14px; backdrop-filter:blur(6px); }
+  #roomName{ top:14px; left:14px; font-size:18px; }
+  #roomName b{ color:var(--gold); }
+  #help{ bottom:14px; left:14px; font-size:13px; line-height:1.9; opacity:.9; }
+  #walletBox{ top:14px; right:14px; text-align:right; }
+  #walletBtn{ background:var(--gold); color:#1a1200; border:0; border-radius:8px;
+              padding:8px 14px; font-family:inherit; font-size:14px; cursor:pointer; font-weight:700; }
+  #walletBtn:hover{ filter:brightness(1.1); }
+  #walletAddr{ font-size:12px; color:var(--jade); margin-top:6px; word-break:break-all; max-width:220px; }
+  #hint{ left:50%; bottom:110px; transform:translateX(-50%); font-size:15px;
+         color:var(--gold); display:none; }
+  #dialog{ left:50%; bottom:24px; transform:translateX(-50%); width:min(560px,92vw);
+           display:none; font-size:15px; line-height:1.8; }
+  #dialog .npcName{ color:var(--jade); font-weight:700; margin-bottom:4px; }
+  #loading{ inset:0; position:fixed; display:flex; align-items:center; justify-content:center;
+            background:var(--bg); font-size:18px; z-index:10; flex-direction:column; gap:10px; }
+  #loading small{ opacity:.6 }
+  /* --- GWAVE STRIKE combat HUD --- */
+  #combat{ display:none; }
+  #crosshair{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+              font-size:22px; color:#fff; opacity:.85; pointer-events:none; }
+  #hpBox{ bottom:14px; left:50%; transform:translateX(-50%); width:240px; }
+  #hpBar{ height:8px; background:#2a1020; border-radius:4px; margin-top:6px; overflow:hidden; }
+  #hpFill{ height:100%; width:100%; background:linear-gradient(90deg,#d8324a,#ff8866);
+           transition:width .15s; }
+  #ammoBox{ bottom:14px; right:14px; font-size:16px; }
+  #killfeed{ position:fixed; top:96px; right:14px; display:flex; flex-direction:column;
+             gap:6px; align-items:flex-end; }
+  .killItem{ position:static; font-size:13px; }
+  #dmgVignette{ position:fixed; inset:0; pointer-events:none; opacity:0;
+                transition:opacity .25s;
+                background:radial-gradient(ellipse at center, transparent 45%, rgba(216,50,74,.65) 100%); }
+  /* --- Leaderboard --- */
+  #lbPanel{ left:50%; top:50%; transform:translate(-50%,-50%); width:min(420px,92vw);
+            display:none; z-index:6; }
+  #lbPanel h3{ margin:0 0 10px; color:var(--gold); font-size:16px; }
+  #lbPanel table{ width:100%; border-collapse:collapse; font-size:13px; }
+  #lbPanel td, #lbPanel th{ padding:5px 8px; text-align:left; border-bottom:1px solid var(--line); }
+  #lbPanel th{ color:var(--jade); font-weight:700; }
+  #lbPanel .xp{ color:var(--gold); text-align:right; }
+</style>
+</head>
+<body>
+  <div id="loading">🌊 Gwave Metaverse — Loading...<small>three.js base framework</small></div>
+  <div id="roomName" class="panel">📍 <b>—</b></div>
+  <div id="help" class="panel">
+    🖱️ Canvas ကိုနှိပ်ပြီး Mouse ဖြင့် ကြည့်ရှုပါ<br>
+    ⌨️ W A S D — လမ်းလျှောက် | Space — ခုန် | Shift — ပြေး<br>
+    🔑 E — NPC/Portal | L — Leaderboard 🏆
+  </div>
+  <div id="walletBox" class="panel">
+    <button id="walletBtn">🦊 Wallet ချိတ်ဆက်ရန်</button>
+    <div id="walletAddr"></div>
+  </div>
+  <div id="hint" class="panel"></div>
+  <div id="dialog" class="panel"><div class="npcName"></div><div class="npcText"></div></div>
+  <div id="combat">
+    <div id="crosshair">+</div>
+    <div id="hpBox" class="panel">❤️ HP <span id="hpVal">100</span><div id="hpBar"><div id="hpFill"></div></div></div>
+    <div id="ammoBox" class="panel">🔫 <span id="ammoVal">30 / 30</span> — R ကျည်ထည့် | Click ပစ်</div>
+    <div id="dmgVignette"></div>
+  </div>
+  <div id="killfeed"></div>
+  <div id="lbPanel" class="panel">
+    <h3>🏆 Gwave Leaderboard <span style="float:right;opacity:.6;font-size:12px">L — ပိတ်ရန်</span></h3>
+    <div id="lbContent">Loading…</div>
+  </div>
+  <!-- unpkg → jsdelivr: gwave.cc ရဲ့ CSP script-src က jsdelivr ကိုသာ ခွင့်ပြု -->
+  <script type="importmap">
+  { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  } }
+  </script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

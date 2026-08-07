@@ -1,0 +1,75 @@
+// ============================================================
+// WorldManager.js — Room များအားလုံးကို စီမံသည့် World Map စနစ်
+// register() ဖြင့် room ထည့် → switchTo() ဖြင့် ကူးပြောင်း
+// Room ကူးတိုင်း — colliders, camera mode, background, onEnter/onExit
+// အားလုံးကို အလိုအလျောက် ချိတ်ဆက်ပေးသည်
+// ============================================================
+export class WorldManager {
+  constructor(ctx) {
+    // ctx = { engine, input, avatar, hud } — room များသို့လည်း ဆက်ပေးမည်
+    this.ctx = ctx;
+    this.engine = ctx.engine;
+    this.avatar = ctx.avatar;
+    this.hud = ctx.hud;
+    this.rooms = new Map();
+    this.current = null;
+    this.time = 0;
+    this.engine.register(this);
+  }
+
+  register(room) { this.rooms.set(room.id, room); }
+
+  switchTo(roomId) {
+    const next = this.rooms.get(roomId);
+    if (!next) { console.warn('Room မတွေ့ပါ:', roomId); return; }
+
+    if (this.current) {
+      this.current.onExit(this.ctx);
+      this.engine.scene.remove(this.current.group);
+    }
+    if (!next.built) { next.build(); next.built = true; }
+
+    this.engine.scene.add(next.group);
+
+    // Physics + Camera + နောက်ခံရောင် ကို room အလိုက် ချိတ်
+    this.avatar.physics.setColliders(next.colliders);
+    this.avatar.setMode(next.cameraMode || 'tps');
+    const bg = next.background ?? 0x070b18;
+    this.engine.scene.background.set(bg);
+    this.engine.scene.fog.color.set(bg);
+
+    this.avatar.teleport(next.spawn);
+    this.current = next;
+    this.hud?.setRoom(next.title);
+    next.onEnter(this.ctx);
+  }
+
+  // ကစားသမားနှင့် အနီးဆုံး portal (E နှိပ်ရန် hint အတွက်)
+  nearestPortal(maxDist = 2.2) {
+    if (!this.current) return null;
+    const p = this.avatar.group.position;
+    let best = null, bestD = maxDist;
+    for (const portal of this.current.portals) {
+      const d = portal.position.distanceTo(p);
+      if (d < bestD) { best = portal; bestD = d; }
+    }
+    return best;
+  }
+
+  // ကစားသမားနှင့် အနီးဆုံး NPC (စကားပြောရန်)
+  nearestNPC(maxDist = 2.5) {
+    if (!this.current) return null;
+    const p = this.avatar.group.position;
+    let best = null, bestD = maxDist;
+    for (const npc of this.current.npcs) {
+      const d = npc.group.position.distanceTo(p);
+      if (d < bestD) { best = npc; bestD = d; }
+    }
+    return best;
+  }
+
+  update(dt) {
+    this.time += dt;
+    this.current?.update(dt, this.time);
+  }
+}
