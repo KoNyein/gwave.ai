@@ -465,14 +465,41 @@ function leaveWorld(href) {
     if (dx > 0) leaveWorld('/feed');   // ညာဘက် ဆွဲ → သတင်းစာမျက်နှာ
   }, { passive: true });
 
-  // 📰 ညာဘက် အနားက tab — gesture မသိလည်း တစ်ချက်နှိပ်ရုံ
+  // 📰 ထိပ်တန်းထဲက chip — gesture မသိလည်း တစ်ချက်နှိပ်ရုံ။ Wallet ရဲ့
+  //    ဘေးမှာ ထည့်တယ် (flex တန်းထဲ ဖြစ်လို့ ဘာနဲ့မှ မထပ်နိုင်ဘူး)。
   const tab = document.createElement('button');
   tab.id = 'feedTab';
-  tab.innerHTML = '<span>📰</span>';
+  tab.textContent = '📰';
   tab.title = 'Feed (လက်နှစ်ချောင်း ညာဘက် ဆွဲ)';
   tab.setAttribute('aria-label', 'Feed');
   tab.onclick = () => leaveWorld('/feed');
-  document.body.appendChild(tab);
+  const bar = document.getElementById('topBar');
+  const wal = document.getElementById('walletBox');
+  if (bar && wal) bar.insertBefore(tab, wal);
+  else document.body.appendChild(tab);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 🫥 Idle fade + ? help — "နေရာမယူတဲ့ UI"
+// ─────────────────────────────────────────────────────────────────────
+// ဘာမှ မထိတာ ၄ စက္ကန့် ကြာရင် HUD က ဖျော့သွားတယ် (ဖျောက်တာ မဟုတ်ဘူး —
+// ဖျောက်ရင် ခလုတ် ဘယ်မှာလဲ မသိတော့ဘူး)。 ထိလိုက်တာနဲ့ ချက်ချင်း ပြန်ပြည့်။
+{
+  let idleT = 0;
+  const wake = () => {
+    document.body.classList.remove('hudIdle');
+    clearTimeout(idleT);
+    idleT = setTimeout(() => document.body.classList.add('hudIdle'), 4000);
+  };
+  for (const ev of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart']) {
+    addEventListener(ev, wake, { passive: true });
+  }
+  wake();
+
+  // ? — ခလုတ်ညွှန်ကြားချက်ကို ခေါက်/ဖြန့် (PC သီးသန့်၊ CSS က ဖုန်းမှာ ဖျောက်)
+  const hb = document.getElementById('helpBtn');
+  const hp = document.getElementById('help');
+  hb?.addEventListener('click', () => hp?.classList.toggle('show'));
 }
 
 // ၉။ စတင်!

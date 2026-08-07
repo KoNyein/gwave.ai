@@ -1,13 +1,14 @@
 // ============================================================
 // RadialMenu.js — Metaverse System Menu (☰ / [M])
 //
-// 📐 ပုံစံ နှစ်မျိုး — CSS က `body.touch` ကို ကြည့်ပြီး ရွေးတယ်:
-//   · 🖥️ PC   — radial arc (gesture wheel)。 radius ကို item အရေအတွက်ကနေ
-//               တွက်တယ် — အရင်က R=118px အသေ ထားလို့ item ၁၁ ခုက အချင်းချင်း
-//               ထပ်ပြီး joystick/ခလုတ်တွေပေါ်ပါ တက်နေတယ်။
-//   · 📱 ဖုန်း — arc လုံးဝ မသုံးဘူး၊ **၄ ကော်လံ grid sheet**。 item တိုင်း
-//               74px မြင့်၊ label အပြည့် ဖတ်ရ၊ scroll လုပ်လို့ရ၊ ဘာနဲ့မှ မထပ်
-//               (user: "menu button အရမ်းကြပ်အောင် မလုပ်ပါ")。
+// 📐 **ဘေးအနားကပ် floating dock** — မျက်နှာပြင် အလယ်ကို ဘယ်တော့မှ မဖုံးဘူး
+//    (user: "အလယ်မှာ view အရမ်းကွယ်လွန်းတယ် … နေရာမယူတဲ့ UI မျိုး")。
+//
+//    အရင် ပုံစံ ၂ ခုစလုံး လောကကို ဖုံးခဲ့တယ် — arc က အလယ်ကို ဖြတ်၊ grid
+//    sheet က အောက်တစ်ဝက်ကို ပိတ်။ အခု ဘယ်ဘက် အနားမှာ ခလုတ်တန်း တစ်တန်း၊
+//    နောက်ခံ မရှိ၊ scrim မရှိ — ခလုတ်ကြားက လောကကို ဆက်မြင်ရတယ်။
+//    နေရာချမှုက CSS မှာ (index.html: #radialWrap) — ကျဉ်းရင် icon ချည်း၊
+//    အလျားလိုက်ဆို ၂ ကော်လံ။
 // ============================================================
 export class RadialMenu {
   constructor(items, hud) {
@@ -31,23 +32,17 @@ export class RadialMenu {
     this.wrap.id = 'radialWrap';
     document.body.appendChild(this.wrap);
 
-    // ── PC arc ရဲ့ radius — item တွေ မထပ်အောင် တွက် ────────────────────
-    // Item တစ်ခု 64px + ကြား 20px = 84px。 arc တစ်ခုမှာ n ခု ထည့်ဖို့
-    // arc အရှည် = 84(n-1) လိုတယ် → R = 84(n-1)/span。 (span က π မဟုတ်ဘူး —
-    // 0.95π..0.05π ဆိုတော့ 0.9π ပဲ ရှိတယ်၊ အဲဒါ မတွက်လို့ ထပ်နေခဲ့တာ)。
-    // ★ ဖန်သားပြင် ဘောင်ထဲ ကျန်အောင် အပေါ်က ကန့်သတ်တယ်။
-    const n = Math.max(items.length, 2);
-    const start = Math.PI * 0.95, end = Math.PI * 0.05; // အပေါ်ဘက် ခြမ်းဝိုင်း
-    const span = Math.abs(end - start);
-    const fit = Math.max(140, Math.floor(window.innerWidth / 2 - 44));
-    const R = Math.min(fit, Math.max(120, Math.ceil((84 * (n - 1)) / span)));
-    items.forEach((item, i) => {
-      const a = start + (end - start) * (i / (n - 1));
+    // ── Dock items ───────────────────────────────────────────────────
+    // ★ Arc မဟုတ်တော့ဘူး — --tx/--ty နဲ့ နေရာ တွက်စရာ မလိုတော့ဘူး။
+    //   CSS grid က ဘေးအနားမှာ တန်းစီပေးတယ်၊ ကျဉ်းရင် icon ချည်း၊
+    //   အလျားလိုက်ဆို ၂ ကော်လံ — အလယ်ကို ဘယ်တော့မှ မဝင်ဘူး။
+    items.forEach((item) => {
       const el = document.createElement('button');
       el.className = 'radialItem';
-      el.innerHTML = `<span class="ri">${item.icon}</span><span class="rl">${item.label}</span>`;
-      el.style.setProperty('--tx', `${Math.cos(a) * R}px`);
-      el.style.setProperty('--ty', `${-Math.sin(a) * R}px`);
+      el.title = item.label;
+      el.setAttribute('aria-label', item.label);
+      el.innerHTML =
+        `<span class="ri">${item.icon}</span><span class="rl">${item.label}</span>`;
       el.addEventListener('click', () => { this.toggle(false); item.action(); });
       this.wrap.appendChild(el);
     });
