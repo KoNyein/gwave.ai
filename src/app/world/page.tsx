@@ -15,16 +15,23 @@ export default function WorldLauncher() {
 
   useEffect(() => {
     let alive = true;
+    // ?embed=1 — metaverse overlay ထဲက ဖွင့်တာ။ Open World ရဲ့ HUD မှာ
+    // "လောကထဲ ပြန်" ခလုတ် ပေါ်ဖို့ ဆက်ပို့တယ် (တစ်ခုတည်းသော လောက)။
+    const embed = new URLSearchParams(window.location.search).get("embed");
     void fetch("/api/world/token", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null)
       .then((d: { token?: string; name?: string } | null) => {
         if (!alive) return;
         if (!d?.token) setNote("🌏 Guest အဖြစ် ဝင်နေသည်…");
-        const q = d?.token
-          ? `?token=${encodeURIComponent(d.token)}&name=${encodeURIComponent(d.name ?? "")}`
-          : "";
-        window.location.replace(`/world/index.html${q}`);
+        const q = new URLSearchParams();
+        if (d?.token) {
+          q.set("token", d.token);
+          if (d.name) q.set("name", d.name);
+        }
+        if (embed) q.set("embed", "1");
+        const qs = q.toString();
+        window.location.replace(`/world/index.html${qs ? `?${qs}` : ""}`);
       });
     return () => {
       alive = false;

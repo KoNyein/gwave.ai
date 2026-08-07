@@ -135,6 +135,7 @@ export function HudMenu({
   onShadows,
   onAvatar,
   onLiveHub,
+  onOpenWorld,
   onMap,
   onGames,
   onBuild,
@@ -161,6 +162,8 @@ export function HudMenu({
   onAvatar: () => void;
   /// 📺 Live & Replays hub ဖွင့်
   onLiveHub: () => void;
+  /// 🌏 Open World overlay ဖွင့် (metaverse ထဲကနေ တိုက်ရိုက်)
+  onOpenWorld: () => void;
   onMap: () => void;
   onGames: () => void;
   onBuild: () => void;
@@ -256,6 +259,13 @@ export function HudMenu({
             <Action icon="🎮" title="ပွဲများ" hint="ဝင်ကြေး မယူပါ" onClick={onGames} />
             <Action icon="🏗" title="ဆောက်မယ်" hint="ကိုယ်ပိုင်ကွက်ပေါ်မှာသာ" onClick={onBuild} />
             <Action icon="📺" title="Live & Replays" hint="လွှင့်နေတာ + replay များ" onClick={onLiveHub} />
+            {/* 🌏 Open World — တစ်ခုတည်းသော လောက ရဲ့ နောက်တစ်ပိုင်း */}
+            <Action
+              icon="🌏"
+              title="Open World"
+              hint="Cyber-Yangon · မဲဆောက် · STRIKE PvP"
+              onClick={onOpenWorld}
+            />
           </Section>
 
           <Section title="🧑 ကိုယ်ရေး">
