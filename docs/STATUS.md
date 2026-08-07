@@ -142,6 +142,16 @@
 
 ## Changelog
 
+- 2026-08-07 (web+app): **APK ↔ website feature parity.** The app menu and
+  the web sidebar now carry the SAME nine categories with the same members.
+  App gained every web-only feature (Open World, gWave Studio, 3D Scanner,
+  Avatar Scanner, GWAVE Drone, Item Shop, Inventory — 3D ones open
+  fullscreen); the web nav gained the app-only web routes (Live class,
+  Replays, Inventory, Help). Left app-only on purpose: phone-sensor tools
+  (light meter, radar, storage cleaner) and features with no web page yet
+  (dating, market, books) — each filed under its true category. Automated
+  cross-check: 0 web features unreachable in the app, 0 app web-routes
+  missing from the web nav.
 - 2026-08-07 (web): **Open World v8 — GP economy + worlds + seasons.**
   Upgraded /world (user-authored metaverse-base v6→v8): GP point economy
   (game.wallets/point_ledger/inventory — kill/streak/quest GP, [I] shop

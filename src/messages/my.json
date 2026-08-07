@@ -63,7 +63,11 @@
     "world": "Open World ကမ္ဘာ",
     "studio": "gWave Studio",
     "avatarStudio": "Avatar Scanner",
-    "drone": "GWAVE ဒရုန်း"
+    "drone": "GWAVE ဒရုန်း",
+    "inventory": "ပစ္စည်းအိတ်",
+    "liveClass": "တိုက်ရိုက်အတန်း",
+    "replays": "ပြန်ကြည့်ရန်",
+    "help": "အကူအညီ"
   },
   "auth": {
     "login": "ဝင်ရန်",
