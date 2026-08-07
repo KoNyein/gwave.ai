@@ -32,6 +32,14 @@ export default async function GamesPage() {
 
   const builtins = [
     {
+      href: "/world",
+      emoji: "🌏",
+      title: "Gwave Open World",
+      description:
+        "Cyber-Yangon ညဈေးတန်း · Hydro-Lab · မဲဆောက် · STRIKE PvP arena — multiplayer open world",
+      show: true,
+    },
+    {
       href: "/games/drone-sim",
       emoji: "🚁",
       title: "Drone Champions",

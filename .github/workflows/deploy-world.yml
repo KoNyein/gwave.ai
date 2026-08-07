@@ -1,0 +1,207 @@
+name: Deploy Gwave Open World
+
+# Open World (public/world client) talks to a ws game server (:8787) and a
+# stats REST API (:8788) that live on the SAME app EC2 box, one container
+# (`world`) behind Caddy's /world-ws + /world-stats routes — mirroring
+# deploy-strike.yml's ECR → SSM pipeline. First deploy also bootstraps
+# /etc/gwave-world.env (Cognito ids + RDS creds from files already on the
+# box) and inserts the Caddy routes next to the existing /strike/* handler.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "deploy/world-server/**"
+      - ".github/workflows/deploy-world.yml"
+
+concurrency:
+  group: deploy-world-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ap-southeast-1
+  ECR_REPO: gwave-world
+
+jobs:
+  deploy:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure the ECR repository exists
+        run: |
+          set -euo pipefail
+          aws ecr describe-repositories --repository-names "$ECR_REPO" \
+            --region "$AWS_REGION" >/dev/null 2>&1 && exit 0
+          echo "creating ECR repository $ECR_REPO"
+          aws ecr create-repository --repository-name "$ECR_REPO" \
+            --image-scanning-configuration scanOnPush=true \
+            --region "$AWS_REGION" >/dev/null
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        working-directory: deploy/world-server
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          set -euo pipefail
+          docker build --platform linux/amd64 \
+            -t "$REGISTRY/$ECR_REPO:${{ github.sha }}" \
+            -t "$REGISTRY/$ECR_REPO:latest" .
+          docker push "$REGISTRY/$ECR_REPO:${{ github.sha }}"
+          docker push "$REGISTRY/$ECR_REPO:latest"
+
+      - name: Deploy on EC2 via SSM
+        env:
+          INSTANCE_ID: ${{ vars.APP_INSTANCE_ID }}
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          set -euo pipefail
+          [ -n "$INSTANCE_ID" ] || { echo "::error::APP_INSTANCE_ID repo variable is not set"; exit 1; }
+          IMAGE="$REGISTRY/$ECR_REPO:${{ github.sha }}"
+
+          cat > /tmp/world-deploy.sh <<EOF
+          set -euo pipefail
+          IMAGE="$IMAGE"
+
+          # ── One-time env bootstrap — everything needed already lives on the
+          # box (web env + DB password file), so no manual step and no secret
+          # ever leaves the machine.
+          if [ ! -f /etc/gwave-world.env ]; then
+            CID=\$(grep -m1 '^COGNITO_CLIENT_ID=' /etc/gwave-web.env | cut -d= -f2-)
+            POOL=\$(grep -m1 '^COGNITO_USER_POOL_ID=' /etc/gwave-web.env | cut -d= -f2-)
+            DBP=\$(cat /root/gwaveadmin_newpw.txt)
+            {
+              echo "AUTH_MODE=cognito"
+              echo "AWS_REGION=$AWS_REGION"
+              echo "COGNITO_USER_POOL_ID=\$POOL"
+              echo "COGNITO_CLIENT_ID=\$CID"
+              echo "STATS_URL=http://127.0.0.1:8788"
+              echo "GAME_KEY=\$(openssl rand -hex 16)"
+              echo "PGHOST=gwave-db.c5w6wyccw6bo.ap-southeast-1.rds.amazonaws.com"
+              echo "PGPORT=5432"
+              echo "PGDATABASE=gwave"
+              echo "PGUSER=gwaveadmin"
+              echo "PGPASSWORD=\$DBP"
+            } > /etc/gwave-world.env
+            chmod 600 /etc/gwave-world.env
+            echo "bootstrapped /etc/gwave-world.env"
+          fi
+
+          # ── One-time Caddy routes — anchored next to the existing
+          # /strike/* handler so they land inside the gwave.cc site block.
+          if ! grep -q '/world-ws' /etc/caddy/Caddyfile; then
+            cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak-world
+            awk '
+              /handle_path \/strike\/\*/ && !done {
+                print "\thandle /world-ws {"
+                print "\t\treverse_proxy 127.0.0.1:8787"
+                print "\t}"
+                print "\thandle_path /world-stats* {"
+                print "\t\treverse_proxy 127.0.0.1:8788"
+                print "\t}"
+                done=1
+              }
+              { print }
+            ' /etc/caddy/Caddyfile.bak-world > /etc/caddy/Caddyfile
+            if caddy validate --config /etc/caddy/Caddyfile >/dev/null 2>&1; then
+              systemctl reload caddy
+              echo "caddy routes /world-ws + /world-stats added"
+            else
+              cp /etc/caddy/Caddyfile.bak-world /etc/caddy/Caddyfile
+              echo "caddy validate failed — routes NOT added (restored backup)"
+              exit 1
+            fi
+          fi
+
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "$REGISTRY"
+          docker pull "\$IMAGE"
+
+          if docker inspect world >/dev/null 2>&1; then
+            PREV=\$(docker inspect --format '{{.Config.Image}}' world)
+            docker tag "\$PREV" world-prev:rollback
+          else
+            PREV=""
+          fi
+
+          start() {
+            docker rm -f world >/dev/null 2>&1 || true
+            docker run -d --name world --restart unless-stopped \
+              -p 127.0.0.1:8787:8787 -p 127.0.0.1:8788:8788 \
+              --env-file /etc/gwave-world.env \
+              "\$1"
+          }
+
+          start "\$IMAGE"
+
+          ok=0
+          for i in \$(seq 1 20); do
+            sleep 3
+            if curl -fsS http://127.0.0.1:8788/health >/dev/null; then ok=1; break; fi
+          done
+
+          if [ "\$ok" != "1" ]; then
+            echo "new image failed health check"
+            docker logs --tail 50 world || true
+            if [ -n "\$PREV" ]; then
+              echo "rolling back to \$PREV"
+              start world-prev:rollback
+            fi
+            exit 1
+          fi
+
+          curl -fsS http://127.0.0.1:8788/health
+          docker image prune -f >/dev/null 2>&1 || true
+          EOF
+
+          # ' = jq's escape for a single quote, so the generated heredoc
+          # marker is QUOTED ('WORLDEOF') and sh expands nothing inside.
+          jq -Rs '{commands: ["bash <<\u0027WORLDEOF\u0027\n" + . + "WORLDEOF\n"]}' \
+            /tmp/world-deploy.sh > /tmp/world-params.json
+          CMD_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy $ECR_REPO:${{ github.sha }}" \
+            --parameters file:///tmp/world-params.json \
+            --query 'Command.CommandId' --output text)
+          echo "SSM CommandId: $CMD_ID"
+
+          STATUS=InProgress
+          for i in $(seq 1 60); do
+            sleep 10
+            STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in Success|Failed|Cancelled|TimedOut) break ;; esac
+            echo "  still $STATUS (${i}0s)"
+          done
+          echo "----- stdout -----"
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query StandardOutputContent --output text
+          echo "----- stderr -----"
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query StandardErrorContent --output text
+          echo "SSM status: $STATUS"
+          [ "$STATUS" = "Success" ] || { echo "::error::world deploy failed (rolled back if a previous image existed)"; exit 1; }
+
+      - name: Health check through the domain
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 10); do
+            sleep 3
+            if curl -fsS https://gwave.cc/world-stats/health >/dev/null; then
+              echo "world stats healthy through the domain"
+              exit 0
+            fi
+          done
+          echo "::error::https://gwave.cc/world-stats/health not reachable"
+          exit 1
