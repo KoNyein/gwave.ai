@@ -164,8 +164,11 @@
   egress container, room_composite_cpu_cost 1.5). Two test broadcasts
   recorded to S3 with egress_complete. `/api/metaverse/lives` self-heals
   recording_path via listEgress so the SFU webhook is not required.
-  PRs #535/#538. ⚠️ Rotate the S3 egress key AND LIVEKIT_API_SECRET —
-  both were pasted into the working chat during setup.
+  PRs #535/#538. ✅ 2026-08-07: both the S3 egress key and
+  LIVEKIT_API_SECRET were ROTATED (new key live-tested against S3 before
+  swap; SFU livekit.yaml + egress.yaml + web env updated together and all
+  services restarted). Owner still has to delete the old deactivated
+  access key in the IAM console.
 - 2026-08-06 (web): **Live hub host names** — profiles has full_name, not
   display_name; the wrong column errored the whole names query. PR #542.
 - 2026-08-06 (web): **GWAVE item economy** — G-Points shop (/items),
