@@ -189,11 +189,19 @@ class ProfileScreen extends StatelessWidget {
         ),
       );
 
-  /// The full Gwave menu, grouped exactly like the web sidebar
-  /// (`src/components/layout/nav-items.ts`) but rendered as a modern super-app
-  /// launcher: each category is its own card with a color-accented header and a
-  /// 4-up grid of tinted icon tiles. Tabbed entries switch the bottom tab;
-  /// Farm + Cameras are native; everything else opens the web app.
+  /// The full Gwave menu, in the SAME nine categories as the web sidebar
+  /// (`src/components/layout/nav-items.ts`), rendered as a super-app
+  /// launcher: each category is a card with a color-accented header and a
+  /// 4-up grid of tinted icon tiles.
+  ///
+  /// ★ App ↔ website parity (user: "APK မှာပါတဲ့ function တွေ website မှာ
+  ///   မပါဘူး၊ website မှာပါရင် app မှာ မပါဘူး")။ Every web feature is
+  ///   reachable here — native screen where the app has one, web view
+  ///   otherwise — and the web sidebar carries the app-only web routes
+  ///   (Live class, Replays, Inventory, Help). What is left app-only is
+  ///   only what needs phone hardware (light meter, radar, cleaner) or has
+  ///   no web page yet (dating, market, books) — each still filed under the
+  ///   category it belongs to, never in a mismatched one.
   List<Widget> _sections(BuildContext context) {
     final sections = <_MenuSection>[
       _MenuSection(tr(context, "Social", "လူမှုကွန်ရက်"),
@@ -221,48 +229,74 @@ class ProfileScreen extends StatelessWidget {
         _MenuEntry(Icons.favorite_outline, tr(context, "Dating", "ချိန်းတွေ့"),
             native: _Native.dating),
       ]),
-      // Games and the 3D world get their own category — buried at the end
-      // of Social, the two biggest entertainment features were invisible.
-      _MenuSection(tr(context, "Games & Metaverse", "ဂိမ်းနှင့် မက်တာဗာ့စ်"),
-          Icons.sports_esports_outlined, const Color(0xFF8E44AD), [
+      // 🌐 Metaverse & 3D — worlds, creation tools and scanners together
+      _MenuSection(tr(context, "Metaverse & 3D", "မက်တာဗာ့စ်နှင့် 3D"),
+          Icons.public, const Color(0xFF8E44AD), [
+        _MenuEntry(Icons.public, tr(context, "Metaverse", "မက်တာဗာ့စ်"),
+            native: _Native.metaverse),
+        _MenuEntry(Icons.travel_explore,
+            tr(context, "Open World", "Open World ကမ္ဘာ"),
+            web: "/world", game: true),
+        _MenuEntry(Icons.view_in_ar_outlined, "gWave Studio",
+            web: "/engine", game: true),
+        _MenuEntry(Icons.document_scanner_outlined,
+            tr(context, "3D Scanner", "3D စကင်နာ"),
+            web: "/scan"),
+        _MenuEntry(Icons.face_retouching_natural,
+            tr(context, "Avatar Scanner", "Avatar စကင်နာ"),
+            web: "/profile/avatar"),
+      ]),
+      // 🎮 Games — playing plus the in-game economy
+      _MenuSection(tr(context, "Games", "ဂိမ်းများ"),
+          Icons.sports_esports_outlined, const Color(0xFFB1466E), [
         _MenuEntry(Icons.sports_esports_outlined,
             tr(context, "Games", "ဂိမ်းများ"),
             native: _Native.games),
-        _MenuEntry(Icons.public, tr(context, "Metaverse", "မက်တာဗာ့စ်"),
-            native: _Native.metaverse),
+        _MenuEntry(Icons.airplanemode_active_outlined,
+            tr(context, "GWAVE Drone", "GWAVE ဒရုန်း"),
+            web: "/drone", game: true),
         _MenuEntry(Icons.flight_takeoff, tr(context, "FPV drone", "FPV ဒရုန်း"),
             native: _Native.fpv),
         _MenuEntry(Icons.extension_outlined,
             tr(context, "Edu Arcade", "ပညာရေးဂိမ်း"),
             native: _Native.arcade),
+        _MenuEntry(Icons.diamond_outlined,
+            tr(context, "Item Shop", "Item ဆိုင်"),
+            web: "/items"),
+        _MenuEntry(Icons.backpack_outlined,
+            tr(context, "Inventory", "ပစ္စည်းအိတ်"),
+            web: "/inventory"),
       ]),
-      _MenuSection(tr(context, "Learning", "ပညာရေး"), Icons.school_outlined,
+      _MenuSection(tr(context, "Learning", "သင်ယူရေး"), Icons.school_outlined,
           const Color(0xFF2E7DB1), [
         _MenuEntry(Icons.menu_book_outlined, tr(context, "Learn", "သင်ယူရန်"),
             native: _Native.learn),
         _MenuEntry(Icons.emoji_events_outlined,
             tr(context, "Leaderboard", "အဆင့်ဇယား"),
             web: "/leaderboard"),
-        _MenuEntry(Icons.monitor_heart_outlined,
-            tr(context, "Health", "ကျန်းမာရေး"),
-            native: _Native.health),
-        _MenuEntry(Icons.self_improvement_outlined,
-            tr(context, "Wellness", "စိတ်ကျန်းမာ"),
-            native: _Native.wellness),
         _MenuEntry(Icons.cast_for_education_outlined,
             tr(context, "Live class", "တိုက်ရိုက်အတန်း"),
             web: "/meet"),
         _MenuEntry(Icons.play_circle_outline,
             tr(context, "Replays", "ပြန်ကြည့်ရန်"),
             web: "/recordings"),
+        _MenuEntry(Icons.local_library_outlined,
+            tr(context, "Books", "စာအုပ်ဆိုင်"),
+            native: _Native.books),
       ]),
-      _MenuSection(tr(context, "Farm & Home", "စိုက်ပျိုးရေးနှင့် အိမ်"),
-          Icons.eco_outlined, const Color(0xFF2E9E5B), [
-        _MenuEntry(Icons.agriculture_outlined, tr(context, "Farm", "ခြံ"),
-            native: _Native.farm),
-        _MenuEntry(Icons.wb_sunny_outlined,
-            tr(context, "Light meter", "အလင်းရောင်တိုင်း"),
-            native: _Native.lightMeter),
+      // 🏥 Health — split out of Learning, where it never belonged
+      _MenuSection(tr(context, "Health & Wellness", "ကျန်းမာရေး"),
+          Icons.monitor_heart_outlined, const Color(0xFFC0563F), [
+        _MenuEntry(Icons.monitor_heart_outlined,
+            tr(context, "Health", "ကျန်းမာရေး"),
+            native: _Native.health),
+        _MenuEntry(Icons.self_improvement_outlined,
+            tr(context, "Wellness", "စိတ်ကျန်းမာ"),
+            native: _Native.wellness),
+      ]),
+      // 🏠 Smart home & safety — devices, cameras, family, SOS
+      _MenuSection(tr(context, "Smart Home & Safety", "စမတ်အိမ်နှင့် လုံခြုံရေး"),
+          Icons.home_work_outlined, const Color(0xFF2E9E5B), [
         _MenuEntry(Icons.lightbulb_outline,
             tr(context, "Smart Home", "စမတ်အိမ်"),
             web: "/home"),
@@ -273,16 +307,21 @@ class ProfileScreen extends StatelessWidget {
             native: _Native.family),
         _MenuEntry(Icons.map_outlined, tr(context, "Map", "မြေပုံ"),
             native: _Native.map),
-        _MenuEntry(Icons.local_taxi_outlined, tr(context, "Ride", "ကားခေါ်ရန်"),
-            native: _Native.ride),
-        _MenuEntry(Icons.drive_eta_outlined,
-            tr(context, "Drive", "ကားမောင်းရန်"),
-            native: _Native.driver),
-        _MenuEntry(Icons.radar, tr(context, "Radar", "ရေဒါ"),
-            native: _Native.drone),
         _MenuEntry(Icons.emergency_outlined, "SOS", native: _Native.map),
       ]),
-      _MenuSection(tr(context, "Shop & Business", "ဈေးဝယ်နှင့် စီးပွား"),
+      // 💰 Money — wallet/banking/membership, separate from shopping
+      _MenuSection(tr(context, "Finance", "ငွေကြေး"),
+          Icons.account_balance_outlined, const Color(0xFF1F7A8C), [
+        _MenuEntry(Icons.account_balance_wallet_outlined, "G-Pay",
+            native: _Native.gpay),
+        _MenuEntry(Icons.account_balance_outlined,
+            tr(context, "Finance", "ငွေရေးကြေးရေး"),
+            native: _Native.finance),
+        _MenuEntry(Icons.workspace_premium_outlined,
+            tr(context, "Member", "အသင်းဝင်"),
+            web: "/membership"),
+      ]),
+      _MenuSection(tr(context, "Business & Services", "ဈေးဝယ်နှင့် ဝန်ဆောင်မှု"),
           Icons.storefront_outlined, const Color(0xFF7A4DD6), [
         _MenuEntry(Icons.storefront_outlined, tr(context, "Shop", "ဆိုင်"),
             tab: 3),
@@ -293,21 +332,16 @@ class ProfileScreen extends StatelessWidget {
         _MenuEntry(Icons.point_of_sale_outlined, "POS", native: _Native.pos),
         _MenuEntry(Icons.rocket_launch_outlined, "Boost",
             native: _Native.boost),
-        _MenuEntry(Icons.account_balance_wallet_outlined, "G-Pay",
-            native: _Native.gpay),
-        _MenuEntry(Icons.account_balance_outlined,
-            tr(context, "Finance", "ငွေရေးကြေးရေး"),
-            native: _Native.finance),
-        _MenuEntry(Icons.workspace_premium_outlined,
-            tr(context, "Member", "အသင်းဝင်"),
-            web: "/membership"),
+        _MenuEntry(Icons.local_taxi_outlined, tr(context, "Ride", "ကားခေါ်ရန်"),
+            native: _Native.ride),
+        _MenuEntry(Icons.drive_eta_outlined,
+            tr(context, "Drive", "ကားမောင်းရန်"),
+            native: _Native.driver),
       ]),
-      _MenuSection(tr(context, "Knowledge & Tools", "ဗဟုသုတနှင့် ကိရိယာ"),
+      _MenuSection(tr(context, "Knowledge & Tools", "အချက်အလက်နှင့် Tools"),
           Icons.auto_stories_outlined, const Color(0xFF139C9C), [
-        _MenuEntry(Icons.menu_book_outlined, tr(context, "Books", "စာအုပ်ဆိုင်"),
-            native: _Native.books),
-        _MenuEntry(Icons.eco_outlined, tr(context, "Strains", "မျိုးကွဲများ"),
-            native: _Native.strains),
+        _MenuEntry(Icons.calculate_outlined, tr(context, "Tools", "ကိရိယာများ"),
+            native: _Native.tools),
         _MenuEntry(Icons.diamond_outlined,
             tr(context, "Minerals", "ဓာတ်သတ္တု"),
             native: _Native.minerals),
@@ -317,8 +351,16 @@ class ProfileScreen extends StatelessWidget {
         _MenuEntry(Icons.trending_up,
             tr(context, "Metal prices", "သတ္တုဈေးနှုန်း"),
             native: _Native.metalPrices),
-        _MenuEntry(Icons.calculate_outlined, tr(context, "Tools", "ကိရိယာများ"),
-            native: _Native.tools),
+        _MenuEntry(Icons.agriculture_outlined, tr(context, "Farm", "ခြံ"),
+            native: _Native.farm),
+        _MenuEntry(Icons.eco_outlined, tr(context, "Strains", "မျိုးကွဲများ"),
+            native: _Native.strains),
+        // Phone-sensor tools — no web equivalent is possible
+        _MenuEntry(Icons.wb_sunny_outlined,
+            tr(context, "Light meter", "အလင်းရောင်တိုင်း"),
+            native: _Native.lightMeter),
+        _MenuEntry(Icons.radar, tr(context, "Radar", "ရေဒါ"),
+            native: _Native.drone),
         _MenuEntry(Icons.cleaning_services_outlined,
             tr(context, "Storage cleaner", "နေရာရှင်းလင်း"),
             native: _Native.cleaner),
@@ -604,16 +646,15 @@ class ProfileScreen extends StatelessWidget {
       case null:
         break;
     }
-    if (e.web != null) _openWeb(context, e.web!);
+    // 3D/game routes open edge-to-edge (no chrome) — the same fullscreen
+    // surface the metaverse and drone already use.
+    if (e.web != null) openWeb(context, e.web!, game: e.game);
   }
 
   void _push(BuildContext context, Widget screen) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 
-  /// Web features open in the signed-in in-app browser.
-  Future<void> _openWeb(BuildContext context, String path) =>
-      openWeb(context, path);
 }
 
 /// A native screen a menu entry can push directly (no web hand-off).
@@ -668,10 +709,15 @@ class _MenuSection {
 /// One menu row. Exactly one destination is set: [tab] switches the bottom
 /// tab, [native] pushes a native screen, [web] opens the web app.
 class _MenuEntry {
-  const _MenuEntry(this.icon, this.label, {this.tab, this.native, this.web});
+  const _MenuEntry(this.icon, this.label,
+      {this.tab, this.native, this.web, this.game = false});
   final IconData icon;
   final String label;
   final int? tab;
   final _Native? native;
   final String? web;
+
+  /// Web entry that is a 3D/game surface — opens fullscreen without the
+  /// in-app browser chrome.
+  final bool game;
 }

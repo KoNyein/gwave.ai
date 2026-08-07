@@ -63,7 +63,11 @@
     "world": "Open World",
     "studio": "gWave Studio",
     "avatarStudio": "Avatar Scanner",
-    "drone": "GWAVE Drone"
+    "drone": "GWAVE Drone",
+    "inventory": "Inventory",
+    "liveClass": "Live class",
+    "replays": "Replays",
+    "help": "Help & guide"
   },
   "auth": {
     "login": "Log in",

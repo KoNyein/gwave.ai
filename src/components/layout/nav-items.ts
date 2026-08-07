@@ -1,9 +1,11 @@
 import {
   BadgeCheck,
+  Backpack,
   Boxes,
   Car,
   Earth,
   Globe2,
+  LifeBuoy,
   Mountain,
   LayoutDashboard,
   BookOpen,
@@ -27,6 +29,8 @@ import {
   MapPin,
   Music,
   Plane,
+  PlayCircle,
+  Presentation,
   Radio,
   Rocket,
   ShoppingCart,
@@ -99,6 +103,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/fpv", labelKey: "fpv", icon: Joystick },
       { href: "/arcade", labelKey: "arcade", icon: GraduationCap },
       { href: "/items", labelKey: "itemshop", icon: Gem },
+      { href: "/inventory", labelKey: "inventory", icon: Backpack },
     ],
   },
   {
@@ -106,6 +111,9 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/learn", labelKey: "learn", icon: BookOpen },
       { href: "/leaderboard", labelKey: "leaderboard", icon: Trophy },
+      // Both shipped in the app menu long before the web sidebar listed them.
+      { href: "/meet", labelKey: "liveClass", icon: Presentation },
+      { href: "/recordings", labelKey: "replays", icon: PlayCircle },
     ],
   },
   {
@@ -154,6 +162,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/tools", labelKey: "tools", icon: Calculator },
       { href: "/minerals", labelKey: "minerals", icon: Gem },
       { href: "/metals", labelKey: "metals", icon: Mountain },
+      { href: "/help", labelKey: "help", icon: LifeBuoy },
       // Grow-operation monitoring + strain database → verified adults only.
       { href: "/farm", labelKey: "farm", icon: Sprout, adultOnly: true },
       { href: "/strains", labelKey: "strains", icon: Leaf, adultOnly: true },
