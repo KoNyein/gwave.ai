@@ -3,7 +3,7 @@
 // မြန်မာ့မြို့ပြ + Sci-fi neon ပေါင်းစပ်ထားသော ပင်မ Room
 // ============================================================
 import * as THREE from 'three';
-import { Room } from '../Room.js';
+import {Room, addRoomLighting } from '../Room.js';
 import { NPC } from '../../entities/NPC.js';
 
 export class YangonRoom extends Room {
@@ -69,11 +69,7 @@ export class YangonRoom extends Room {
     //   (user: "Cyber-Yangon room က အရမ်း မှောင်လွန်းတယ်")。 Hemisphere က
     //   ကောင်းကင်/မြေ နှစ်ဘက်ကနေ အလင်းပြန်ပေးလို့ ညအလင်းကို မဖျက်ဘဲ
     //   ပုံသဏ္ဌာန်တွေ မြင်ရစေတယ် — flat ambient ကို တင်လိုက်တာထက် ပိုကောင်း။
-    this.group.add(new THREE.HemisphereLight(0x5c6ea8, 0x1a2036, 1.0));
-    this.group.add(new THREE.AmbientLight(0x8899ff, 0.5));
-    const moon = new THREE.DirectionalLight(0xbcc9ff, 1.15);
-    moon.position.set(-30, 50, 20); moon.castShadow = true;
-    this.group.add(moon);
+    addRoomLighting(this, 'night');
     // ★ လမ်းမီး — ကစားသမား လမ်းလျှောက်ရာ လမ်းကြောင်းကို ချထားတယ်၊
     //   ဒါမှ ခြေထောက်နဲ့ မြေပြင် တကယ် မြင်ရတယ်။
     for (let i = -1; i <= 3; i++) {

@@ -6,7 +6,7 @@
 // Space themes ၃ မျိုး — lagoon / hall / rooftop
 // ============================================================
 import * as THREE from 'three';
-import { Room } from '../Room.js';
+import {Room, addRoomLighting } from '../Room.js';
 
 export class MeetingRoom extends Room {
   constructor(ctx, { code, space, title, host }) {
@@ -35,10 +35,7 @@ export class MeetingRoom extends Room {
     this.group.add(floor);
 
     // အလင်း
-    this.group.add(new THREE.AmbientLight(0xffffff, isLagoon ? 0.75 : 0.5));
-    const key = new THREE.DirectionalLight(isLagoon ? 0xfff0d0 : 0xaabbff, 1.1);
-    key.position.set(15, 30, 10); key.castShadow = true;
-    this.group.add(key);
+    addRoomLighting(this, isLagoon ? 'day' : 'indoor');
 
     if (isLagoon) {
       // ရေပြင် + တောင်တန်း silhouette

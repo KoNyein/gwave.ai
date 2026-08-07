@@ -22,6 +22,7 @@ import { VoiceChat } from './net/VoiceChat.js';
 import { MeetingRoom } from './world/rooms/MeetingRoom.js';
 import { TouchControls } from './ui/TouchControls.js';
 import { ROOM_GROUPS, classicHref } from './world/RoomCatalog.js';
+import { sfx } from './core/Sfx.js';
 
 // ၁။ အခြေခံစနစ်များ စတင်ခြင်း
 const engine  = new Engine(document.body);
@@ -314,6 +315,7 @@ function renderRooms() {
       // kind === 'world' — engine ထဲမှာပဲ ကူး
       closeAll();
       world.switchTo(id);
+      sfx.whoosh();
       net.onRoomSwitch();
       hud.addToast(`🚪 ${el.querySelector('.rNm')?.textContent || id} ထဲ ရောက်ပြီ`);
     });
@@ -568,6 +570,24 @@ function leaveWorld(href) {
     hud.addToast(`🔆 အလင်း ${Math.round(v * 100)}%`);
   };
   if (bar && wal) bar.insertBefore(dim, wal);
+
+  // 🔊 အသံ ဖွင့်/ပိတ် — ပစ်သံ/ဗုံးသံ/ခြေသံ အားလုံး ဒီကနေ
+  const snd = document.createElement('button');
+  snd.id = 'sfxBtn';
+  const paint = () => {
+    snd.textContent = sfx.enabled ? '🔊' : '🔇';
+    snd.classList.toggle('off', !sfx.enabled);
+    snd.title = sfx.enabled ? 'အသံ ပိတ်ရန်' : 'အသံ ဖွင့်ရန်';
+  };
+  snd.setAttribute('aria-label', 'Sound');
+  snd.onclick = () => {
+    const on = sfx.toggle();
+    paint();
+    if (on) sfx.ui();
+    hud.addToast(on ? '🔊 အသံ ဖွင့်ပြီ' : '🔇 အသံ ပိတ်ပြီ');
+  };
+  paint();
+  if (bar && wal) bar.insertBefore(snd, wal);
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -618,6 +638,23 @@ function leaveWorld(href) {
   const hb = document.getElementById('helpBtn');
   const hp = document.getElementById('help');
   hb?.addEventListener('click', () => hp?.classList.toggle('show'));
+}
+
+// 👟 ခြေသံ — တကယ် ရွေ့သွားတဲ့ အကွာအဝေးကနေ တွက်တယ် (နံရံနဲ့ တိုက်နေရင်
+//    ခြေသံ မမြည်ဘူး)。 လှမ်းတိုင်း တစ်ချက် — ၀.၉ မီတာ တစ်လှမ်း။
+{
+  let acc = 0;
+  let lx = 0, lz = 0;
+  engine.register({
+    update() {
+      const p = avatar.group.position;
+      const d = Math.hypot(p.x - lx, p.z - lz);
+      lx = p.x; lz = p.z;
+      if (!avatar.grounded || avatar.sitting) { acc = 0; return; }
+      acc += d;
+      if (acc >= 0.9) { acc = 0; sfx.step({ vol: 0.9 }); }
+    },
+  });
 }
 
 // 🔧 Debug handle — console ကနေ လောကရဲ့ အစိတ်အပိုင်းတွေ စစ်လို့ရအောင်

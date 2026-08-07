@@ -410,6 +410,15 @@
     width:62px; height:62px; font-size:24px; }
   #tcE{ right:calc(var(--safeR) + 108px); bottom:calc(var(--safeB) + 112px);
     width:62px; height:62px; font-size:22px; }
+  /* ⚔️ 🔫 က **လက်နက်ရှိတဲ့ အခန်း**မှာသာ ပေါ်တယ် (WorldManager က body ကို
+     .combat တပ်တယ်)。 အရင်က အခန်းတိုင်းမှာ ပေါ်နေပြီး StrikeRoom ကလွဲရင်
+     နှိပ်လည်း ဘာမှ မဖြစ်ဘူး — ခလုတ်တစ်ခု ရှိပြီး အလုပ်မလုပ်တာက
+     မရှိတာထက် ဆိုးတယ်။ လက်နက် မရှိရင် E က 🔫 ရဲ့ နေရာကို ရွှေ့တယ်။ */
+  #tcFire{ display:none; }
+  body.combat #tcFire{ display:flex; }
+  body:not(.combat) #tcE{ right:calc(var(--safeR) + 18px);
+    bottom:calc(var(--safeB) + 88px); width:72px; height:72px; font-size:24px; }
+  body:not(.combat) #tcJump{ bottom:calc(var(--safeB) + 172px); }
   /* ကျဉ်းတဲ့ ဖုန်း — အားလုံး နည်းနည်း သေးပြီး ကပ်တယ် (ထပ်တာ မဖြစ်စေရ) */
   @media (max-width:360px){
     body.touch{ --ctrl: 214px; }
@@ -434,6 +443,15 @@
     #radialFab{ bottom:calc(var(--safeB) + 10px); width:52px; height:52px; font-size:22px; }
     body.touch #radialWrap{ max-height:calc(100dvh - var(--safeT) - 60px);
       grid-template-columns:repeat(6, minmax(0,1fr)); padding-bottom:calc(70px + var(--safeB)); }
+  }
+
+  /* လက်နက်မရှိတဲ့ အခန်း × အလျားလိုက် — အထက်က portrait တန်ဖိုးတွေက
+     specificity ပိုမြင့်လို့ landscape ကို ကျော်ပြီး mic/emote rail နဲ့
+     ထပ်တယ်။ ဒါကြောင့် landscape အတွက် သီးသန့် ပြန်ချရမယ်။ */
+  @media (orientation:landscape) and (max-height:520px){
+    body:not(.combat) #tcE{ right:calc(var(--safeR) + 18px);
+      bottom:calc(var(--safeB) + 54px); width:64px; height:64px; font-size:22px; }
+    body:not(.combat) #tcJump{ bottom:calc(var(--safeB) + 126px); }
   }
 
   /* ---- 🖥️ PC view — ကျယ်တဲ့ဖန်သားပြင်မှာ HUD က ပိုကြီးလို့ ရတယ် ---- */
@@ -464,6 +482,15 @@
     display:flex; align-items:center; justify-content:center;
     transition:opacity .5s, border-color .15s; }
   #dimBtn:active, #dimBtn:hover{ border-color:var(--gold); }
+  /* 🔊 အသံ ဖွင့်/ပိတ် — 🔆 နဲ့ တူညီတဲ့ ပုံစံ */
+  #sfxBtn{ flex:0 0 auto; width:42px; height:42px; border-radius:50%;
+    border:1px solid var(--line); cursor:pointer; font-size:17px;
+    background:linear-gradient(165deg,var(--panel),rgba(11,16,38,.9));
+    color:var(--ink); backdrop-filter:blur(8px); touch-action:manipulation;
+    display:flex; align-items:center; justify-content:center;
+    transition:opacity .5s, border-color .15s; }
+  #sfxBtn:active, #sfxBtn:hover{ border-color:var(--gold); }
+  #sfxBtn.off{ opacity:.45; }
 
 
   /* ══════════════════════════════════════════════════════════════════
@@ -478,7 +505,8 @@
   body.hudIdle #topBar,
   body.hudIdle #feedTab,
   body.hudIdle #actionBar,
-  body.hudIdle #helpBtn, body.hudIdle #dimBtn{ opacity:.22; }
+  body.hudIdle #helpBtn, body.hudIdle #dimBtn,
+  body.hudIdle #sfxBtn{ opacity:.22; }
   body.hudIdle #radialFab{ opacity:.42; }
   /* Touch ခလုတ်တွေက ကစားဖို့ လိုတယ် — အနည်းငယ်ပဲ ဖျော့တယ် */
   body.hudIdle #tcStick, body.hudIdle #tcFire,

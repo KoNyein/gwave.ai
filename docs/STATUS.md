@@ -142,6 +142,29 @@
 
 ## Changelog
 
+- 2026-08-07 (web): **Open World gets sound, room lighting, and an honest fire
+  button.** Three reports, three separate causes.
+  (1) *"Can't shoot in the shooting rooms"* — the 🔫 touch button was drawn in
+  **every** room, but only StrikeRoom has a weapon at all, so in Yangon, Farm
+  and Mae Sot pressing it did nothing. Rooms now declare `combat`, the button
+  only appears where a weapon exists, and E/jump take its place otherwise.
+  Shooting in StrikeRoom was verified working on both touch and desktop, so
+  that was never the failure.
+  (2) *"No gun or bomb sounds"* — the Open World had **no sound at all**: not
+  one AudioContext outside voice chat. New `Sfx.js` synthesises gunshot,
+  explosion, hit, reload, footstep, UI blip and room-change whoosh in WebAudio
+  — no audio files, so nothing to download and no silent first shot — with a
+  🔊 toggle in the top bar, an autoplay-policy unlock on first touch and a
+  suspend when the tab is hidden. Wired to player fire, bot fire (attenuated
+  by distance), kills, reloads, footsteps and room switches.
+  (3) *"Rooms are far too dark"* — every room had one flat ambient plus one
+  directional. Worse, `WorldManager` fell back to a night background for any
+  room that didn't set one, so the **daylight** STRIKE arena rendered against
+  a near-black sky. A shared `addRoomLighting(room, preset)` now gives every
+  room hemisphere + ambient + key + fill and sets a matching background.
+  Mean screen luminance: STRIKE **21.7 → 128.1**, Cyber-Yangon 19 → 24.8
+  (near-black 68.3% → 34.6%), Mae Sot 119 → 129, Farm 120 → 131.
+
 - 2026-08-07 (web): **Walk stride corrected + Cyber-Yangon made visible.**
   The first locomotion pass swung hips 0.62 rad (35°) each with a 1.15×
   knee multiplier, so the avatar walked in a near-splits stance, and the arm

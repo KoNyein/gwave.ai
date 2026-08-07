@@ -6,7 +6,7 @@
 // ၄) main.js မှာ import + world.register() လုပ်
 // ============================================================
 import * as THREE from 'three';
-import { Room } from '../Room.js';
+import {Room, addRoomLighting } from '../Room.js';
 import { NPC } from '../../entities/NPC.js';
 
 export class TemplateRoom extends Room {
@@ -22,10 +22,7 @@ export class TemplateRoom extends Room {
     this.group.add(ground);
 
     // အလင်းရောင် (မထည့်လျှင် အမည်းရောင်သာ မြင်ရမည်)
-    this.group.add(new THREE.AmbientLight(0xffffff, 0.5));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.2);
-    sun.position.set(20, 30, 10); sun.castShadow = true;
-    this.group.add(sun);
+    addRoomLighting(this, 'day');
 
     // NPC နမူနာ
     this.addNPC(new NPC({

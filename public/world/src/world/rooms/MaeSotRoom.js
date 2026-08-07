@@ -5,7 +5,7 @@
 // ကိုယ်ပိုင် Blender GLB ဖြင့် အစားထိုးရန် — BLENDER_GUIDE.md ကိုကြည့်ပါ
 // ============================================================
 import * as THREE from 'three';
-import { Room } from '../Room.js';
+import {Room, addRoomLighting } from '../Room.js';
 import { NPC } from '../../entities/NPC.js';
 import { loadCityMap } from '../MapLoader.js';
 
@@ -25,10 +25,7 @@ export class MaeSotRoom extends Room {
     this.group.add(ground);
 
     // နေ့ခင်း အလင်း
-    this.group.add(new THREE.AmbientLight(0xffffff, 0.65));
-    const sun = new THREE.DirectionalLight(0xfff2d9, 1.4);
-    sun.position.set(30, 45, 20); sun.castShadow = true;
-    this.group.add(sun);
+    addRoomLighting(this, 'day');
 
     // ★ GLB မြို့ကွက် Load — collision များ အလိုအလျောက်ရ ★
     loadCityMap(this, './assets/maesot_block.glb', {

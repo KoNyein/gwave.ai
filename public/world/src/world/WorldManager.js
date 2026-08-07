@@ -34,13 +34,17 @@ export class WorldManager {
     // Physics + Camera + နောက်ခံရောင် ကို room အလိုက် ချိတ်
     this.avatar.physics.setColliders(next.colliders);
     this.avatar.setMode(next.cameraMode || 'tps');
-    const bg = next.background ?? 0x070b18;
+    // ★ Fallback ကို အနည်းငယ် လင်းစေတယ် — အခန်းအများစုက ကိုယ်ပိုင်
+    //   background ကို addRoomLighting ကနေ ရပြီးသား ဖြစ်တယ်။
+    const bg = next.background ?? 0x0d1428;
     this.engine.scene.background.set(bg);
     this.engine.scene.fog.color.set(bg);
 
     this.avatar.teleport(next.spawn);
     this.current = next;
     this.hud?.setRoom(next.title);
+    // ⚔️ ခလုတ်တန်းက ဒီ class ကို ကြည့်ပြီး 🔫 ကို ပြ/ဖျောက်တယ်
+    document.body.classList.toggle('combat', !!next.combat);
     next.onEnter(this.ctx);
   }
 
