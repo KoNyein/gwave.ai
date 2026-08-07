@@ -390,6 +390,15 @@ ctx.statsUrl = statsUrl; // Profile room stats board အတွက်
 
 // ၉။ 🎭 Emotes — wheel ([G] သို့ 🎭 ခလုတ်) ၊ multiplayer sync
 hud.buildEmoteWheel(EMOTES, (id) => {
+  // 🪑 ထိုင်တာက gesture မဟုတ်ဘူး — အနေအထား။ ထပ်နှိပ်ရင် ပြန်ထတယ်၊
+  //    လမ်းလျှောက်ရင်လည်း အလိုအလျောက် ထတယ် (Avatar.update)。
+  if (id === 'sit') {
+    const on = avatar.toggleSit();
+    hud.addToast(on ? '🪑 ထိုင်လိုက်ပြီ — ထပ်နှိပ်ရင် ထမယ်' : '🧍 ထလိုက်ပြီ');
+    net.sendEmote(on ? 'sit' : null);
+    return;
+  }
+  avatar.setSitting(false);
   avatar.emotes.play(id);
   net.sendEmote(id); // အခြားသူများပါ မြင်ရရန်
 });
@@ -596,6 +605,11 @@ function leaveWorld(href) {
   const hp = document.getElementById('help');
   hb?.addEventListener('click', () => hp?.classList.toggle('show'));
 }
+
+// 🔧 Debug handle — console ကနေ လောကရဲ့ အစိတ်အပိုင်းတွေ စစ်လို့ရအောင်
+//    (headless test တွေကလည်း ဒီကနေ avatar/loco ကို စစ်တယ်)。
+//    ဖတ်ဖို့သာ ရည်ရွယ်တယ် — behaviour ဘာမှ မပြောင်းဘူး။
+window.__gwave = { engine, world, avatar, net, hud, radial };
 
 // ၉။ စတင်!
 hud.hideLoading();

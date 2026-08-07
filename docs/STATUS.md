@@ -142,6 +142,27 @@
 
 ## Changelog
 
+- 2026-08-07 (web): **Open World avatars actually walk, stand and sit.**
+  `Avatar.setModel()` played `animations[0]` on a permanent loop and never
+  looked at movement, so Soldier idled while sliding (its Walk and Run clips
+  were never touched), Xbot nodded forever, Michelle danced forever, and
+  Character3/4/5 — which ship **zero** clips — were frozen statues. Remote
+  players had no model at all: a capsule and a sphere gliding across the
+  ground. New `Locomotion.js` picks idle/walk/run out of the GLB by name and
+  cross-fades on measured ground speed, and when a file has no usable clips it
+  animates the `mixamorig` leg/arm bones directly, so every one of the ten
+  avatar files now takes steps. Speed comes from distance actually travelled
+  rather than key state, so walking into a wall no longer moon-walks on the
+  spot. Remote players get the same rigged body (`SkeletonUtils.clone`, shared
+  cached GLB) and derive their gait from interpolated screen movement, with
+  animation throttled past 35m. Sitting became a posture instead of a
+  2.4-second gesture: it holds until you press it again or start walking.
+  Emotes were also targeting `group.children[0]` — the placeholder capsule
+  that `setModel` only hides — so on any GLB avatar every emote was animating
+  an invisible object while the real body stood still; they now target the
+  visible model. Verified against all ten GLBs: leg bones animate, idle pose
+  differs from walk pose, sit pose differs from idle, no page errors.
+
 - 2026-08-07 (web+mobile): **The old metaverse rooms are back — one room list.**
   When /metaverse became the Open World, the Open World's own rooms (Yangon,
   Hydro-Lab, Mae Sot, Strike) were all that remained; the ten maps from the
