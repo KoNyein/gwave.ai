@@ -142,6 +142,18 @@
 
 ## Changelog
 
+- 2026-08-07 (web): **Avatar scanner pro** (/profile/avatar) — multi-frame
+  HQ capture (face: 12-frame landmark mean + sharpest-frame texture, 1080p
+  camera, adaptive 2048² texture, z-smoothing + depth boost; body: 12-frame
+  median), preview rebuilt on createRealisticHuman with motion try-out
+  buttons, drag inertia, pinch-zoom spring, spring-damped morphs, soft
+  shadows; realistichuman setMorphs now maps all 11 morphs; editor gets an
+  18-variant grid + DB status card, and syncs variant through
+  /api/metaverse/avatar so profile + metaverse studio are one identity
+  (/api/avatar returns updated_at). PR #544. APK build #283 published to
+  mobile-latest. Also merged dependabot #483 (postcss 8.5.23) and #499
+  (gwave-strike vite 6.4.3 — full workspace build verified locally before
+  merge).
 - 2026-08-06 (web): **Explainer page** — user-supplied AI-presenter promo
   at /explainer.html (3 scenes + narration); its audio CDN allow-listed in
   media-src. PR #543.
