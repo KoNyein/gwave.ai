@@ -14,7 +14,7 @@ COPY api/package.json api/package-lock.json api/
 RUN cd api && npm ci --omit=dev
 
 COPY server/server.js server/
-COPY api/server.js api/
+COPY api/server.js api/chain.js api/
 
 ENV NODE_ENV=production
 EXPOSE 8787 8788

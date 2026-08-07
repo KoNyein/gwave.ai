@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="my">
+<!-- pos-claim.html — Gwave Rooftop ဆိုင်ကောင်တာ POS page
+     ဝန်ထမ်းက ကစားသမားပြတဲ့ code ကို ရိုက်စစ်ပြီး claim လုပ်ရန်
+     Deploy: metaverse.gwave.cc/gwave-web/pos-claim.html (ဖုန်း/tablet မှာဖွင့်) -->
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gwave POS — Code စစ်ဆေးရန်</title>
+<style>
+  body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+        background:#0b1026; color:#eaf0ff;
+        font-family:'Padauk','Myanmar Text','Noto Sans Myanmar',system-ui,sans-serif; }
+  .card{ background:#131c36; border:1px solid #1d2a4d; border-radius:16px;
+         padding:26px; width:min(420px,92vw); }
+  h2{ margin:0 0 4px; color:#f5c542; font-size:20px; }
+  .sub{ opacity:.6; font-size:13px; margin-bottom:18px; }
+  input{ width:100%; box-sizing:border-box; background:#0b1026; color:#eaf0ff;
+         border:1px solid #2a3a66; border-radius:10px; padding:12px 14px;
+         font-size:18px; font-family:inherit; margin-bottom:10px; letter-spacing:1px; }
+  button{ width:100%; background:#f5c542; color:#1a1200; border:0; border-radius:10px;
+          padding:13px; font-size:16px; font-weight:700; font-family:inherit; cursor:pointer; }
+  #result{ margin-top:16px; padding:14px; border-radius:10px; font-size:15px;
+           line-height:1.7; display:none; }
+  .ok{ background:#0e2a1c; border:1px solid #3ddc97; }
+  .bad{ background:#2a0e14; border:1px solid #d8324a; }
+  .keyRow{ margin-top:14px; font-size:12px; opacity:.55; }
+  .keyRow input{ font-size:13px; margin:6px 0 0; letter-spacing:0; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>☕ Gwave POS</h2>
+  <div class="sub">ကစားသမားပြသော ဆုလဲ code ကို စစ်ဆေး/claim လုပ်ရန်</div>
+  <input id="code" placeholder="GW-XXXXXX" autocomplete="off" autocapitalize="characters">
+  <button onclick="claim()">✅ စစ်ဆေးပြီး ပေးအပ်မည်</button>
+  <div id="result"></div>
+  <div class="keyRow">
+    POS Key (ဆိုင်တာဝန်ခံထံမှ ရယူပါ — တစ်ကြိမ်ရိုက်လျှင် မှတ်ထားမည်)
+    <input id="poskey" placeholder="pos key">
+  </div>
+</div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const statsBase = q.get('stats') || `${location.origin}/world-stats`;
+  const keyEl = document.getElementById('poskey');
+  keyEl.value = localStorage.getItem('gwave_pos_key') || '';
+  keyEl.addEventListener('change', () => localStorage.setItem('gwave_pos_key', keyEl.value.trim()));
+
+  async function claim() {
+    const code = document.getElementById('code').value.trim().toUpperCase();
+    const el = document.getElementById('result');
+    el.style.display = 'block'; el.className = ''; el.textContent = 'စစ်ဆေးနေသည်…';
+    try {
+      const r = await fetch(`${statsBase}/pos/claim`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-pos-key': keyEl.value.trim() },
+        body: JSON.stringify({ code }),
+      });
+      if (r.status === 401) { el.className = 'bad'; el.textContent = '🔐 POS key မမှန်ပါ'; return; }
+      const d = await r.json();
+      if (d.ok) {
+        el.className = 'ok';
+        el.innerHTML = `✅ <b>အောင်မြင်!</b><br>🎁 ${d.reward.name_mm}<br>` +
+          `🧾 Code: <b>${d.redemption.code}</b><br>⏰ ${new Date().toLocaleString('my-MM')}` +
+          `<br><span style="opacity:.7;font-size:13px">ဆုကို ယခု ပေးအပ်နိုင်ပါပြီ</span>`;
+        document.getElementById('code').value = '';
+      } else {
+        el.className = 'bad'; el.textContent = '❌ ' + d.error;
+      }
+    } catch { el.className = 'bad'; el.textContent = '❌ Server မချိတ်နိုင်ပါ'; }
+  }
+</script>
+</body>
+</html>

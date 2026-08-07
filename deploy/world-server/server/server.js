@@ -25,7 +25,8 @@ const SHOOT_COOLDOWN = 110;   // ms
 const SHOOT_RANGE = 60;       // m
 const REWIND_MS = 150;        // lag compensation
 const BODY_RADIUS = 0.85, HEAD_RADIUS = 0.38;
-const DMG_BODY = 34, RESPAWN_MS = 4000;
+const DMG_BODY = 34;
+const RESPAWN_MS = parseInt(process.env.RESPAWN_MS) || 4000;
 const STRIKE_SPAWNS = [[0,0,26],[-25,0,-25],[25,0,-25],[-25,0,25],[25,0,25],[0,0,-28]];
 
 // ---- Cognito JWT verifier (AUTH_MODE=cognito ဖြစ်မှသာ) ----
@@ -96,20 +97,45 @@ function respawn(id) {
   send(pl.ws, { t: 'respawn', id, p: pl.p });
 }
 
-// ---- Kill → Stats API (RDS game.*) — fire-and-forget ----
-// Cognito sub ရှိလျှင် sub ကို key အဖြစ်သုံး (account တစ်ခု = stats တစ်ခု)
-// dev mode မှာ dev:<name> — server ပြန် run လည်း RDS ထဲ stats မပျောက်
-function reportKill(killer, victim, headshot) {
-  if (!STATS_URL) return;
-  fetch(`${STATS_URL}/report/kill`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-game-key': GAME_KEY },
-    body: JSON.stringify({
-      killer: { key: killer.sub || `dev:${killer.name}`, name: killer.name },
-      victim: { key: victim.sub || `dev:${victim.name}`, name: victim.name },
-      headshot, room: 'strike',
-    }),
-  }).catch(e => console.warn('stats report fail:', e.message));
+// ---- Stats/Economy API ချိတ်ဆက်မှုများ ----
+// Cognito sub ရှိလျှင် sub ကို key အဖြစ်သုံး (account တစ်ခု = stats/wallet တစ်ခု)
+const playerKey = (pl) => pl.sub || `dev:${pl.name}`;
+
+async function api(path, body, method, putBody) {
+  if (!STATS_URL) return null;
+  const payload = putBody || body;
+  try {
+    const r = await fetch(`${STATS_URL}${path}`, {
+      method: method || (body ? 'POST' : 'GET'),
+      headers: { 'content-type': 'application/json', 'x-game-key': GAME_KEY },
+      body: payload ? JSON.stringify(payload) : undefined,
+    });
+    return await r.json();
+  } catch (e) { console.warn('stats api fail:', path, e.message); return null; }
+}
+
+// Kill → XP+GP+streak bonus+quests — ရလဒ်ကို killer ဆီ toast ပြန်ပို့
+async function reportKill(killer, victim, headshot) {
+  const out = await api('/report/kill', {
+    killer: { key: playerKey(killer), name: killer.name },
+    victim: { key: playerKey(victim), name: victim.name },
+    headshot, room: 'strike', streak: killer.streak,
+  });
+  if (!out?.ok) return;
+  const total = (out.earned || []).reduce((s, e) => s + e.amount, 0);
+  send(killer.ws, { t: 'points', balance: out.points, earnedTotal: total, earned: out.earned });
+  for (const q of out.completedQuests || [])
+    send(killer.ws, { t: 'quest_done', name_mm: q.name_mm, reward: q.reward });
+}
+
+// Login → daily_login quest + equipped skin ပြန်ယူ
+async function reportLogin(pl, id) {
+  const out = await api('/report/login', { player: { key: playerKey(pl), name: pl.name } });
+  if (!out?.ok) return;
+  if (out.equipped_skin) pl.skin = out.equipped_skin; // snapshot ထဲ ပါသွားမည်
+  send(pl.ws, { t: 'points', balance: out.points, earnedTotal: 0 });
+  for (const q of out.completedQuests || [])
+    send(pl.ws, { t: 'quest_done', name_mm: q.name_mm, reward: q.reward });
 }
 
 wss.on('connection', (ws) => {
@@ -138,12 +164,13 @@ wss.on('connection', (ws) => {
       me = {
         ws, name, sub, room: 'yangon',
         p: [0, 0, 8], yaw: 0,
-        hp: 100, alive: true, kills: 0, deaths: 0,
+        hp: 100, alive: true, kills: 0, deaths: 0, streak: 0, skin: null,
         lastT: now(), lastShot: 0, history: [],
       };
       players.set(id, me);
       send(ws, { t: 'welcome', id, name, auth: AUTH_MODE });
       toRoom(me.room, { t: 'join', id, name }, id);
+      reportLogin(me, id); // 📊 daily_login quest + skin
       console.log(`[+] #${id} ${name}${sub ? ' (cognito)' : ''} — online: ${players.size}`);
       return;
     }
@@ -218,6 +245,9 @@ wss.on('connection', (ws) => {
       if (target.hp <= 0) {
         target.alive = false;
         target.deaths++; me.kills++;
+        me.streak++; target.streak = 0; // 🔥 kill streak
+        if (me.streak === 3) toRoom('strike', { t: 'streak', name: me.name, streak: 3, label: '🔥 Triple Kill!' });
+        if (me.streak === 5) toRoom('strike', { t: 'streak', name: me.name, streak: 5, label: '⚡ Rampage!' });
         toRoom('strike', {
           t: 'kill', by: id, byName: me.name,
           target: msg.target, targetName: target.name, headshot,
@@ -228,6 +258,100 @@ wss.on('connection', (ws) => {
         reportKill(me, target, headshot); // 📊 RDS game.* ထဲ မှတ်တမ်းတင်
         setTimeout(() => respawn(msg.target), RESPAWN_MS);
       }
+      return;
+    }
+
+    // ---------- Economy (Phase 0) — wallet / quests / buy ----------
+    if (msg.t === 'wallet') {
+      const [w, shop] = await Promise.all([
+        api(`/wallet/${encodeURIComponent(playerKey(me))}`),
+        api('/shop'),
+      ]);
+      send(ws, { t: 'wallet', wallet: w, shop: shop?.items || [] });
+      return;
+    }
+    if (msg.t === 'quests') {
+      const q = await api(`/quests/${encodeURIComponent(playerKey(me))}`);
+      send(ws, { t: 'quests', quests: q?.quests || [] });
+      return;
+    }
+    if (msg.t === 'buy') {
+      const out = await api('/shop/buy', {
+        player: { key: playerKey(me), name: me.name }, item_id: msg.item_id,
+      });
+      if (out?.ok && out.equipped_skin) me.skin = out.equipped_skin; // snapshot → အားလုံးမြင်
+      send(ws, { t: 'buy_result', ...out });
+      return;
+    }
+
+    // ---------- POS Redeem (GP ↔ ကော်ဖီဆိုင်) ----------
+    if (msg.t === 'rewards') {
+      const [cat, mine] = await Promise.all([
+        api('/rewards'),
+        api(`/redemptions/${encodeURIComponent(playerKey(me))}`),
+      ]);
+      send(ws, { t: 'rewards', catalog: cat?.rewards || [], redemptions: mine?.redemptions || [] });
+      return;
+    }
+    if (msg.t === 'redeem') {
+      const out = await api('/redeem', {
+        player: { key: playerKey(me), name: me.name }, reward_id: msg.reward_id,
+      });
+      send(ws, { t: 'redeem_result', ...out });
+      return;
+    }
+
+    // ---------- Personal Worlds (ကိုယ်ပိုင် metaverse ကမ္ဘာ) ----------
+    if (msg.t === 'world_load') {
+      const key = msg.key || playerKey(me); // key မပါလျှင် ကိုယ့်ကမ္ဘာ
+      let w = await api(`/world/${encodeURIComponent(key)}`);
+      if (w?.error && key === playerKey(me)) {
+        // ကမ္ဘာအသစ် — မူလလွတ်လပ်သော starter world
+        w = { owner_key: key, name: `${me.name} ရဲ့ကမ္ဘာ`,
+              data: { ground: '#2c4a2e', sky: '#87b7d9', objects: [] } };
+      }
+      if (w?.owner_key) send(ws, { t: 'world', key: w.owner_key, name: w.name, data: w.data, own: key === playerKey(me) });
+      else send(ws, { t: 'toast', text: '🌍 အဲဒီကမ္ဘာ မတွေ့ပါ' });
+      return;
+    }
+    if (msg.t === 'world_save') {
+      const out = await api('/world', null, 'PUT', {
+        owner: { key: playerKey(me), name: me.name }, name: msg.name, data: msg.data,
+      });
+      send(ws, { t: 'world_save_result', ok: !!out?.ok, error: out?.error });
+      return;
+    }
+    if (msg.t === 'worlds_recent') {
+      const out = await api('/worlds/recent');
+      send(ws, { t: 'worlds_recent', worlds: out?.worlds || [] });
+      return;
+    }
+
+    // ---------- NFT Mint (Web3 Phase 1) ----------
+    if (msg.t === 'nft_mint') {
+      const out = await api('/nft/mint', {
+        player: { key: playerKey(me), name: me.name },
+        item_id: msg.item_id, wallet: msg.wallet,
+      });
+      send(ws, { t: 'nft_result', ...out });
+      return;
+    }
+    if (msg.t === 'trophies') {
+      const out = await api(`/trophies/${encodeURIComponent(playerKey(me))}`);
+      send(ws, { t: 'trophies', ...out });
+      return;
+    }
+    if (msg.t === 'trophy_mint') {
+      const out = await api('/trophy/mint', {
+        player: { key: playerKey(me), name: me.name },
+        season: msg.season, wallet: msg.wallet,
+      });
+      send(ws, { t: 'trophy_result', ...out });
+      return;
+    }
+    if (msg.t === 'nft_list') {
+      const out = await api(`/nft/${encodeURIComponent(playerKey(me))}`);
+      send(ws, { t: 'nft_list', mints: out?.mints || [], chain_mode: out?.chain_mode || 'off' });
       return;
     }
   });
@@ -245,7 +369,7 @@ setInterval(() => {
   const byRoom = new Map();
   for (const [id, pl] of players) {
     if (!byRoom.has(pl.room)) byRoom.set(pl.room, []);
-    byRoom.get(pl.room).push({ id, n: pl.name, p: pl.p, y: pl.yaw, hp: pl.hp, a: pl.alive ? 1 : 0 });
+    byRoom.get(pl.room).push({ id, n: pl.name, p: pl.p, y: pl.yaw, hp: pl.hp, a: pl.alive ? 1 : 0, c: pl.skin || null });
   }
   for (const [room, list] of byRoom) toRoom(room, { t: 'snap', players: list });
 }, 1000 / TICK_HZ);

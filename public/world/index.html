@@ -51,6 +51,26 @@
   #lbPanel td, #lbPanel th{ padding:5px 8px; text-align:left; border-bottom:1px solid var(--line); }
   #lbPanel th{ color:var(--jade); font-weight:700; }
   #lbPanel .xp{ color:var(--gold); text-align:right; }
+  /* --- Economy (Phase 0) --- */
+  #gpBadge{ top:60px; right:14px; font-size:13px; color:var(--gold); display:none; }
+  #walletPanel, #questPanel{ left:50%; top:50%; transform:translate(-50%,-50%);
+      width:min(460px,94vw); max-height:76vh; overflow-y:auto; display:none; z-index:6; }
+  #walletPanel h3, #questPanel h3{ margin:0 0 10px; color:var(--gold); font-size:16px; }
+  .shopItem{ display:flex; align-items:center; gap:10px; padding:8px 0;
+             border-bottom:1px solid var(--line); font-size:14px; }
+  .shopItem .sw{ width:22px; height:22px; border-radius:50%; border:1px solid #445; flex:none; }
+  .shopItem .nm{ flex:1; }
+  .shopItem button{ background:var(--jade); color:#03150c; border:0; border-radius:6px;
+                    padding:5px 12px; font-family:inherit; cursor:pointer; font-weight:700; }
+  .shopItem button:disabled{ opacity:.4; cursor:default; }
+  .owned{ color:var(--jade); font-size:12px; }
+  .questRow{ padding:8px 0; border-bottom:1px solid var(--line); font-size:14px; }
+  .qbar{ height:7px; background:#152040; border-radius:4px; margin-top:6px; overflow:hidden; }
+  .qfill{ height:100%; background:linear-gradient(90deg,var(--jade),var(--gold)); }
+  .qdone{ color:var(--jade); }
+  .lbTab{ background:#152040; color:var(--ink); border:1px solid var(--line); border-radius:6px;
+          padding:4px 10px; font-family:inherit; font-size:12px; cursor:pointer; }
+  .lbActive{ background:var(--gold); color:#1a1200; font-weight:700; }
 </style>
 </head>
 <body>
@@ -59,7 +79,7 @@
   <div id="help" class="panel">
     🖱️ Canvas ကိုနှိပ်ပြီး Mouse ဖြင့် ကြည့်ရှုပါ<br>
     ⌨️ W A S D — လမ်းလျှောက် | Space — ခုန် | Shift — ပြေး<br>
-    🔑 E — NPC/Portal | L — Leaderboard 🏆
+    🔑 E — NPC/Portal | L 🏆 Board | I 🛍️ Shop | Q 🎯 Quest
   </div>
   <div id="walletBox" class="panel">
     <button id="walletBtn">🦊 Wallet ချိတ်ဆက်ရန်</button>
@@ -76,7 +96,21 @@
   <div id="killfeed"></div>
   <div id="lbPanel" class="panel">
     <h3>🏆 Gwave Leaderboard <span style="float:right;opacity:.6;font-size:12px">L — ပိတ်ရန်</span></h3>
+    <div id="lbTabs" style="display:flex;gap:6px;margin-bottom:8px">
+      <button data-season="alltime" class="lbTab lbActive">အားလုံး</button>
+      <button data-season="weekly" class="lbTab">📅 ဒီအပတ်</button>
+      <button data-season="monthly" class="lbTab">🗓️ ဒီလ</button>
+    </div>
     <div id="lbContent">Loading…</div>
+  </div>
+  <div id="gpBadge" class="panel">💰 <span id="gpVal">0</span> GP</div>
+  <div id="walletPanel" class="panel">
+    <h3>🛍️ Gwave Shop + ပိုက်ဆံအိတ် <span style="float:right;opacity:.6;font-size:12px">I — ပိတ်ရန်</span></h3>
+    <div id="walletContent">Loading…</div>
+  </div>
+  <div id="questPanel" class="panel">
+    <h3>🎯 ဒီနေ့ Quest များ <span style="float:right;opacity:.6;font-size:12px">Q — ပိတ်ရန်</span></h3>
+    <div id="questContent">Loading…</div>
   </div>
   <!-- unpkg → jsdelivr: gwave.cc ရဲ့ CSP script-src က jsdelivr ကိုသာ ခွင့်ပြု -->
   <script type="importmap">

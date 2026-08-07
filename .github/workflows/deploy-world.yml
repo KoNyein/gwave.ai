@@ -100,6 +100,12 @@ jobs:
             echo "bootstrapped /etc/gwave-world.env"
           fi
 
+          # ── v8 keys — ရှိပြီးသား env file မှာ မရှိသေးရင် ဖြည့် (idempotent)
+          grep -q '^POS_KEY=' /etc/gwave-world.env || \
+            echo "POS_KEY=\$(openssl rand -hex 12)" >> /etc/gwave-world.env
+          grep -q '^CHAIN_MODE=' /etc/gwave-world.env || \
+            echo "CHAIN_MODE=off" >> /etc/gwave-world.env
+
           # ── Caddy routes — SELF-CORRECTING: strip any previous world blocks
           # (an earlier deploy inserted ones pointing at the drone server's
           # 8787/8788 — host ports are 8797/8798 now), then re-insert fresh,
