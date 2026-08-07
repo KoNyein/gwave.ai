@@ -57,7 +57,8 @@ function GoogleLogo() {
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const t = useTranslations("auth");
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirectTo") ?? "/feed";
+  // Metaverse-first landing — ?redirectTo= ရှိရင် အဲဒါက ဦးစားပေး
+  const redirectTo = searchParams.get("redirectTo") ?? "/metaverse";
   const oauthError = searchParams.get("error");
   const oauthReason = searchParams.get("reason");
 

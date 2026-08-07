@@ -26,6 +26,7 @@ import {
 } from "./livescreen";
 import { createMvGoLive, type MvCamMode } from "./golive";
 import { LiveHub } from "./livehub";
+import { SocialHub } from "./social-hub";
 import { saveLiveWrapPost } from "@/lib/actions/live";
 import { createScanFaces } from "./scanface";
 import { getMap, MAP_LIST } from "./maps";
@@ -334,6 +335,23 @@ export function MetaverseScene() {
   };
   /// 📺 Live & Replays hub overlay
   const [liveHub, setLiveHub] = useState(false);
+  /// 🫂 Social Hub — feed / ဒီမှာရှိသူ / အသိပေးချက် / စာများ (metaverse
+  /// standard: လောကထဲက မထွက်ဘဲ လူမှုလုပ်ငန်း အားလုံး လုပ်နိုင်ရမယ်)
+  const [socialHub, setSocialHub] = useState(false);
+  /// 📸 ဓာတ်ပုံ mode — HUD အားလုံး ဖျောက်ပြီး လောကချည်း ကြည့်ရအောင်။
+  /// မျက်နှာပြင် တစ်နေရာရာ နှိပ်ရင် ပြန်ပေါ်တယ်။
+  const [photoMode, setPhotoMode] = useState(false);
+  /// အခန်းထဲ ခုရှိနေသူများ — remotes map ကနေ ၂ စက္ကန့်တစ်ခါ ကူးထားတယ်
+  /// (render loop ထဲကနေ တိုက်ရိုက် state ချရင် frame တိုင်း re-render ဖြစ်မယ်)
+  const [peers, setPeers] = useState<{ id: string; name: string }[]>([]);
+  const peersRef = useRef<() => { id: string; name: string }[]>(() => []);
+  useEffect(() => {
+    if (!socialHub) return;
+    const tick = () => setPeers(peersRef.current());
+    tick();
+    const iv = window.setInterval(tick, 2000);
+    return () => window.clearInterval(iv);
+  }, [socialHub]);
   /// 🤳 Host ကင်မရာ PiP — off → မျက်နှာ (front) → အနောက် (back) → off
   const [mvCam, setMvCam] = useState<MvCamMode>("off");
   const camRef = useRef<((m: MvCamMode) => Promise<void>) | null>(null);
@@ -1060,6 +1078,13 @@ export function MetaverseScene() {
 
     // ── Multiplayer ───────────────────────────────────────────────────────
     const remotes = new Map<string, Remote>();
+    // 🫂 Social Hub ရဲ့ "ဒီမှာရှိသူ" tab — remotes map ကို ref တစ်ခုနဲ့ ထုတ်ပေး
+    // (map က ဒီ effect ထဲမှာပဲ ရှိတယ်၊ React state မဟုတ်ဘူး)
+    peersRef.current = () =>
+      [...remotes.entries()].map(([id, r]) => ({
+        id,
+        name: r.name || "Gwave",
+      }));
     /// 🧬 Scan-face plates — social room avatar ခေါင်းတွေမှာ တကယ့်မျက်နှာ
     const scanFaces = createScanFaces();
     /// 🤝 ကိုယ် မိတ်ဆွေဖွဲ့ပြီးသား NPC id များ — 「မိတ်ဆွေဖွဲ့မယ်」 context
@@ -2967,7 +2992,14 @@ export function MetaverseScene() {
   }, [roomId, avatarNonce, setAdsBoth]);
 
   return (
-    <div ref={mountRef} className="relative h-full w-full">
+    <div
+      ref={mountRef}
+      className={`relative h-full w-full${photoMode ? " mv-photo" : ""}`}
+    >
+      {/* 📸 Photo mode — HUD တစ်ခုလုံး ဖျောက် (data-photo ပါတဲ့ overlay ကလွဲ
+          ပြီး)။ HUD element တိုင်းမှာ data-hud="1" ရှိပြီးသားမို့ selector
+          တစ်ကြောင်းနဲ့ ရတယ်။ */}
+      <style>{`.mv-photo [data-hud="1"]:not([data-photo]){display:none!important}`}</style>
       {/* နာမည်တံဆိပ်တွေ ကပ်တဲ့နေရာ — 3D မဟုတ်ဘဲ DOM (nametags.ts) */}
       <div
         ref={tagsRef}
@@ -3998,6 +4030,17 @@ export function MetaverseScene() {
             document.exitPointerLock?.();
             setArcade({ label: "OPEN WORLD", href: "/world?embed=1" });
           }}
+          onSocial={() => {
+            setMenu(null);
+            document.exitPointerLock?.();
+            setSocialHub(true);
+          }}
+          onTeleport={() => setMenu("map")}
+          onPhoto={() => {
+            setMenu(null);
+            document.exitPointerLock?.();
+            setPhotoMode(true);
+          }}
           onMap={() => setMenu("map")}
           onGames={() => setMenu("games")}
           onBuild={() => {
@@ -4064,7 +4107,32 @@ export function MetaverseScene() {
       {rpmOpen && <RpmOverlay onClose={() => setRpmOpen(false)} />}
 
       {/* ── 📺 Live & Replays hub ─────────────────────────────────────── */}
+      {/* 📸 ဓာတ်ပုံ mode — HUD အားလုံးဖျောက်၊ ဘယ်နေရာနှိပ်နှိပ် ပြန်ပေါ် */}
+      {photoMode && (
+        <div
+          data-hud="1"
+          data-photo="1"
+          onClick={() => setPhotoMode(false)}
+          className="fixed inset-0 z-[130] cursor-pointer bg-transparent"
+        >
+          <p className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-pulse rounded-full bg-black/60 px-4 py-1.5 text-[12px] text-white/80 backdrop-blur">
+            📸 ဓာတ်ပုံရိုက်ပါ — ပြီးရင် တစ်ချက်နှိပ်ပြီး ပြန်ထွက်ပါ
+          </p>
+        </div>
+      )}
+
       {liveHub && <LiveHub onClose={() => setLiveHub(false)} />}
+      {socialHub && (
+        <SocialHub
+          peers={peers}
+          onClose={() => setSocialHub(false)}
+          onDm={(path) => {
+            setSocialHub(false);
+            document.exitPointerLock?.();
+            setArcade({ label: "GWAVE", href: path });
+          }}
+        />
+      )}
 
       {/* ── 📼 Live ပြီးပြီ — replay + feed wrap-post ─────────────────── */}
       {wrapId && (
