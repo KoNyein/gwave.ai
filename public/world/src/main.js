@@ -554,6 +554,20 @@ function leaveWorld(href) {
   const wal = document.getElementById('walletBox');
   if (bar && wal) bar.insertBefore(tab, wal);
   else document.body.appendChild(tab);
+
+  // 🔆 အလင်း ချိန်ခလုတ် — ည scene တွေက ဖုန်းအလိုက် မတူညီစွာ မှောင်တယ်
+  //    (user: "Cyber-Yangon room က အရမ်း မှောင်လွန်းတယ်")。 ရွေးချယ်မှု
+  //    ကို localStorage မှာ သိမ်းလို့ နောက်တစ်ခါ ဝင်ရင် ပြန်ရတယ်။
+  const dim = document.createElement('button');
+  dim.id = 'dimBtn';
+  dim.textContent = '🔆';
+  dim.title = 'အလင်း ချိန်ရန်';
+  dim.setAttribute('aria-label', 'Brightness');
+  dim.onclick = () => {
+    const v = engine.cycleExposure();
+    hud.addToast(`🔆 အလင်း ${Math.round(v * 100)}%`);
+  };
+  if (bar && wal) bar.insertBefore(dim, wal);
 }
 
 // ══════════════════════════════════════════════════════════════════════

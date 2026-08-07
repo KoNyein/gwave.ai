@@ -8,8 +8,8 @@ export class Engine {
   constructor(container = document.body) {
     // Scene = 3D ကမ္ဘာကြီး (အရာအားလုံးထည့်မည့် ဗူးခွံ)
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x070b18);
-    this.scene.fog = new THREE.Fog(0x070b18, 45, 170);
+    this.scene.background = new THREE.Color(0x0d1428);
+    this.scene.fog = new THREE.Fog(0x0d1428, 55, 190);
 
     // Camera = ကစားသမား၏ မျက်လုံး
     this.camera = new THREE.PerspectiveCamera(
@@ -26,6 +26,19 @@ export class Engine {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.5 : 2));
     this.renderer.shadowMap.enabled = !mobile;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // 🌗 Tone mapping — မထည့်ရင် linear→sRGB အတိအကျ ဖြစ်ပြီး ညအလင်း
+    //    နည်းတဲ့ scene တွေက မဲတောင့်တောင့် ဖြစ်တယ် (user: "Cyber-Yangon
+    //    room က အရမ်း မှောင်လွန်းတယ်")。 ACES က အမှောင်ပိုင်းကို ဆွဲတင်ပြီး
+    //    neon အလင်းတွေ မလျှံစေဘူး — ညရဲ့ ခံစားချက် မပျက်ဘဲ မြင်ရတယ်။
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    // ★ ဖန်သားပြင် အလင်း — ဖုန်းတစ်လုံးနဲ့တစ်လုံး၊ နေရောင်အောက်နဲ့ အိမ်ထဲ
+    //   အရမ်း ကွာတယ်။ ဒါကြောင့် user ကိုယ်တိုင် ချိန်လို့ရအောင် ထားပြီး
+    //   ရွေးချယ်မှုကို သိမ်းတယ် (🔆 ခလုတ်)。
+    this.exposureSteps = [1.0, 1.25, 1.6, 2.0];
+    let saved = 1;
+    try { saved = Number(localStorage.getItem('gw.world.exposure')) || 1; } catch { /* private */ }
+    this.exposureIdx = Math.max(0, Math.min(this.exposureSteps.length - 1, saved));
+    this.renderer.toneMappingExposure = this.exposureSteps[this.exposureIdx];
     container.appendChild(this.renderer.domElement);
 
     this.clock = new THREE.Clock();
@@ -40,6 +53,14 @@ export class Engine {
     // Tab/app နောက်ကွယ် ရောက်ရင် ချက်ချင်း ရပ် — ပြန်ပေါ်မှ ဆက်
     document.addEventListener('visibilitychange', () =>
       this.setPaused(document.hidden, 'hidden'));
+  }
+
+  /// 🔆 အလင်း တစ်ဆင့် တိုး — အဆုံးရောက်ရင် အစကို ပြန်လှည့်
+  cycleExposure() {
+    this.exposureIdx = (this.exposureIdx + 1) % this.exposureSteps.length;
+    this.renderer.toneMappingExposure = this.exposureSteps[this.exposureIdx];
+    try { localStorage.setItem('gw.world.exposure', String(this.exposureIdx)); } catch { /* private */ }
+    return this.exposureSteps[this.exposureIdx];
   }
 
   onResize() {
