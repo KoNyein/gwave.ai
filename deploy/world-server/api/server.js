@@ -164,6 +164,6 @@ async function main() {
     res.json({ ok: true, db: !!(process.env.DATABASE_URL || process.env.PGHOST) }));
 
   app.listen(PORT, () =>
-    console.log(`📊 Gwave Stats API — http://localhost:${PORT} | db: ${process.env.DATABASE_URL ? 'RDS' : 'memory'}`));
+    console.log(`📊 Gwave Stats API — http://localhost:${PORT} | db: ${process.env.DATABASE_URL || process.env.PGHOST ? 'RDS' : 'memory'}`));
 }
 main().catch(e => { console.error(e); process.exit(1); });

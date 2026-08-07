@@ -20,5 +20,7 @@ ENV NODE_ENV=production
 EXPOSE 8787 8788
 
 # Both processes in one container — either dying kills the container so
-# docker's restart policy brings the pair back together.
-CMD ["sh", "-c", "node api/server.js & node server/server.js & wait -n"]
+# docker's restart policy brings the pair back together. PORT is set
+# per-process (api's default is 8790 — a shared PORT env would make the
+# two processes fight over one port).
+CMD ["sh", "-c", "PORT=8788 node api/server.js & PORT=8787 node server/server.js & wait -n"]
