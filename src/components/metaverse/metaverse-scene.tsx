@@ -4028,7 +4028,7 @@ export function MetaverseScene() {
           onOpenWorld={() => {
             setMenu(null);
             document.exitPointerLock?.();
-            setArcade({ label: "OPEN WORLD", href: "/world?embed=1" });
+            setArcade({ label: "METAVERSE", href: "/metaverse" });
           }}
           onSocial={() => {
             setMenu(null);

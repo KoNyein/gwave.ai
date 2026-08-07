@@ -91,7 +91,7 @@ export const ARCADE_GAMES: ArcadeGame[] = [
   // လောက ဖြစ်ရမယ် (user: "/metaverse နဲ့ /world ကို ပေါင်းစည်း")။ /world
   // launcher က login token ကို သူ့ဘာသာ ထည့်ပေးလို့ URL ထဲ token မပါဘူး။
   {
-    id: "arc-openworld", label: "OPEN WORLD", href: "/world?embed=1",
+    id: "arc-openworld", label: "OPEN WORLD", href: "/metaverse",
     x: 18, z: 20, radius: 3.4, act: { kind: "overlay" },
     emoji: "🌏", accent: "#4fd1c5",
     tagMy: "Cyber-Yangon · Hydro-Lab · မဲဆောက် · STRIKE PvP",

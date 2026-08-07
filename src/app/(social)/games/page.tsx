@@ -33,9 +33,9 @@ export default async function GamesPage() {
 
   const builtins = [
     {
-      href: "/world",
+      href: "/metaverse",
       emoji: "🌏",
-      title: "Gwave Open World",
+      title: "Gwave Metaverse",
       description:
         "Cyber-Yangon ညဈေးတန်း · Hydro-Lab · မဲဆောက် · STRIKE PvP arena — multiplayer open world",
       show: true,
