@@ -285,7 +285,7 @@ export function AvatarCustomiser({
             )}
             <div className="grid grid-cols-2 gap-2">
               <a
-                href="/profile/avatar"
+                href="/studio?tab=avatar"
                 className="flex min-h-[48px] items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 text-xs text-white/80 transition hover:bg-white/10"
               >
                 <span className="text-base">🙂</span>
@@ -295,7 +295,7 @@ export function AvatarCustomiser({
                 </span>
               </a>
               <a
-                href="/profile/avatar"
+                href="/studio?tab=avatar"
                 className="flex min-h-[48px] items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 text-xs text-white/80 transition hover:bg-white/10"
               >
                 <span className="text-base">🧍</span>

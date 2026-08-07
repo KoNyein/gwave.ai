@@ -142,6 +142,15 @@
 
 ## Changelog
 
+- 2026-08-07 (web+app): **gWave 3D Studio — one workspace for all 3D.**
+  The three separate 3D tools are now tabs of a single route `/studio`:
+  🧬 Avatar (face/body scan + editor), 🛰 Scanner (room/object), 🧱 World
+  (the public/engine builder framed, with an Engine/Studio/World Maker/
+  Generator/XR picker). Each tab mounts its heavy three.js bundle only
+  when selected, and the tab is reflected in ?tab= so links are shareable.
+  /scan, /profile/avatar and /engine now 308-redirect into it, and every
+  in-app link (web nav, mobile menu, metaverse arcade landmark, profile
+  page, metaverse Avatar Studio) points at the merged route.
 - 2026-08-07 (web+app): **APK ↔ website feature parity.** The app menu and
   the web sidebar now carry the SAME nine categories with the same members.
   App gained every web-only feature (Open World, gWave Studio, 3D Scanner,

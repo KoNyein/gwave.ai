@@ -89,9 +89,11 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/metaverse", labelKey: "metaverse", icon: Globe2 },
       { href: "/world", labelKey: "world", icon: Earth },
-      { href: "/engine", labelKey: "studio", icon: Boxes },
-      { href: "/scan", labelKey: "scan3d", icon: ScanLine },
-      { href: "/profile/avatar", labelKey: "avatarStudio", icon: UserRound },
+      // 🎛 One 3D workspace — Avatar + Scanner + World Builder are tabs of
+      // /studio now, so the menu shows the tool, not three loose routes.
+      { href: "/studio?tab=avatar", labelKey: "avatarStudio", icon: UserRound },
+      { href: "/studio?tab=scan", labelKey: "scan3d", icon: ScanLine },
+      { href: "/studio?tab=world", labelKey: "studio", icon: Boxes },
     ],
   },
   {
