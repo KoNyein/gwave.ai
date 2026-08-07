@@ -6,7 +6,9 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { NAV_SECTIONS, visibleNav } from "@/components/layout/nav-items";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ageBandOf } from "@/lib/age";
 import { cn } from "@/lib/utils";
@@ -84,7 +86,14 @@ export function MobileMenu({ profile }: { profile: Profile | null }) {
             aria-hidden
           />
           {/* Panel */}
-          <div className="absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col overflow-y-auto bg-background shadow-xl">
+          <div
+            className="absolute inset-y-0 left-0 flex w-[86%] max-w-xs flex-col overflow-y-auto overscroll-contain bg-background shadow-xl"
+            style={{
+              paddingTop: "env(safe-area-inset-top)",
+              paddingBottom: "env(safe-area-inset-bottom)",
+              paddingLeft: "env(safe-area-inset-left)",
+            }}
+          >
             <div className="flex items-center justify-between border-b px-3 py-3">
               <Link
                 href="/profile"
@@ -129,6 +138,16 @@ export function MobileMenu({ profile }: { profile: Profile | null }) {
                 </span>
                 အကူအညီ (Help)
               </Link>
+
+              {/* ⚙️ အသွင်အပြင် + ဘာသာစကား — header က ဖုန်းမှာ ကြပ်လွန်းလို့
+                  ဒီထဲ ရွှေ့ထားတယ် (desktop header မှာတော့ ရှိနေဆဲ)。 */}
+              <div className="my-2 border-t" />
+              {/* ★ label မထည့်ဘူး — ဘာသာစကား ၁၂ ခုစလုံးမှာ မရှိတဲ့ key ကို
+                  သုံးရင် အဲဒီ locale တွေ ကျမယ်။ icon နှစ်ခုက သူ့ဘာသာ ရှင်းတယ်။ */}
+              <div className="flex items-center gap-2 px-2 py-2">
+                <ThemeToggle />
+                <LocaleSwitcher />
+              </div>
             </nav>
           </div>
         </div>

@@ -142,6 +142,27 @@
 
 ## Changelog
 
+- 2026-08-07 (web): **Mobile-responsive UI pass — Open World + site chrome.**
+  The Open World HUD was laid out with fixed pixel offsets and no safe-area
+  handling, so on a phone the wallet button covered the room name, the
+  keyboard help panel sat under the mic/emote buttons, and the 11-spoke radial
+  menu (R=118px, arc only 371px long for 682px of items) overlapped itself and
+  the joystick/fire buttons. Rebuilt around three zones: a flex `#topBar`
+  (room name truncates, wallet becomes a 46px icon button under 520px), a
+  middle band that always sits above `--ctrl`, and a touch-control zone with
+  ≥12px between every button. The menu is now a 4-column grid sheet on touch
+  (3 columns ≤360px, 6 in landscape) and a correctly-sized arc on desktop —
+  the radius is computed from the item count and the real angular span, and
+  clamped to the viewport. Touch controls moved from inline styles to CSS
+  classes so safe-area insets and media queries reach them; they also handle
+  `touchcancel` so a button no longer sticks down when a notification
+  interrupts. Verified headlessly at 390×844, 360×780, 844×390 and 1440×900:
+  zero HUD overlaps, zero menu-item overlaps, nothing offscreen. Site chrome:
+  header takes `env(safe-area-inset-top)`, theme + language moved out of the
+  cramped mobile header into the ☰ drawer (5 icon buttons → 3), drawer gets
+  safe-area padding, and the metaverse arcade overlay now has its own title
+  bar instead of floating a ✕ over the embedded page's own top-right controls.
+
 - 2026-08-07 (web): **Runtime cost audit — background work stopped.** The app
   ran ~40 always-on timers and 13 unguarded rAF loops that kept working while
   the tab/app was in the background, which is what made phones hot. Now: a

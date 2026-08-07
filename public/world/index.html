@@ -2,7 +2,7 @@
 <html lang="my">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
 <title>Gwave Metaverse — Base Framework</title>
 <style>
   /* ==== GWAVE Metaverse Theme — "ရွှေတံခါး" (theme/gwave-theme.css tokens) ==== */
@@ -20,24 +20,80 @@
           backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
   button{ font-family:inherit; }
 
-  /* ---- HUD ---- */
-  #roomName{ top:14px; left:14px; font-size:16px; border-top:1px solid rgba(245,197,66,.4); }
+  /* ══════════════════════════════════════════════════════════════════
+     📐 Responsive layout system — PC view နဲ့ Mobile view နှစ်မျိုး
+     ─────────────────────────────────────────────────────────────────
+     ★ ဖုန်းမှာ HUD တွေက touch ခလုတ်တွေနဲ့ ထပ်နေတယ် (room name ကို wallet
+       က ဖုံး၊ keyboard help ကို mic/emote က ဖုံး၊ radial menu က joystick
+       ပေါ် တက်နေ)。 ဒါကို "ဇုန်" သုံးခုနဲ့ ဖြေရှင်းတယ်:
+         · ထိပ်တန်း (#topBar)  — safe-area အောက်၊ flex တစ်တန်း၊ မထပ်နိုင်
+         · အလယ်ပိုင်း          — hint/dialog/panel များ၊ --ctrl အထက်မှာသာ
+         · အောက်ဇုန် (--ctrl)  — touch ခလုတ်များ သီးသန့်၊ တခြားဘာမှ မထား
+     ★ safe-area inset တွေကို variable ထဲ ထည့်ထားလို့ notch/home-indicator
+       ရှိတဲ့ ဖုန်းတွေမှာ ဘာမှ မပြတ်ဘူး။ */
+  :root{
+    --safeT: env(safe-area-inset-top, 0px);
+    --safeB: env(safe-area-inset-bottom, 0px);
+    --safeL: env(safe-area-inset-left, 0px);
+    --safeR: env(safe-area-inset-right, 0px);
+    /* အောက်ခြေ ခလုတ်ဇုန် အမြင့် — desktop မှာ ခလုတ် မရှိလို့ သေးတယ် */
+    --ctrl: 84px;
+    --edge: 14px;
+  }
+  /* Touch စက်မှာ joystick(130) + အောက်နား(92) = ~230 */
+  body.touch{ --ctrl: 236px; --edge: 12px; }
+
+  /* ---- ထိပ်တန်း — room name · GP · wallet (ဘယ်တော့မှ မထပ်) ---- */
+  #topBar{
+    position:fixed; z-index:8;
+    top:calc(var(--safeT) + var(--edge));
+    left:calc(var(--safeL) + var(--edge));
+    right:calc(var(--safeR) + var(--edge));
+    display:flex; align-items:flex-start; gap:8px;
+    pointer-events:none; }
+  #topBar > *{ pointer-events:auto; }
+  /* ★ position:static — .panel က fixed လို့ ဒီမှာ ပြန်ဖျက်ရတယ် */
+  #roomName, #walletBox, #gpBadge{ position:static; }
+  #roomName{
+    flex:1 1 auto; min-width:0; font-size:15px; line-height:1.4;
+    border-top:1px solid rgba(245,197,66,.4);
+    /* ရှည်တဲ့ အခန်းနာမည်က wallet ခလုတ်ကို မတိုးရ */
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #roomName b{ color:var(--gold); }
-  #help{ bottom:14px; left:14px; font-size:12.5px; line-height:1.9; color:var(--dim); }
-  #walletBox{ top:14px; right:14px; text-align:right; }
+  #walletBox{ flex:0 0 auto; text-align:right; max-width:46vw; }
   #walletBtn{ background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#1a1200;
-              border:0; border-radius:8px; padding:8px 14px; font-size:14px; cursor:pointer;
-              font-weight:700; box-shadow:0 0 18px rgba(245,197,66,.3); }
+              border:0; border-radius:10px; padding:9px 14px; font-size:14px; cursor:pointer;
+              font-weight:700; box-shadow:0 0 18px rgba(245,197,66,.3);
+              min-height:44px; white-space:nowrap; touch-action:manipulation; }
   #walletBtn:hover{ filter:brightness(1.08); }
-  #walletAddr{ font-size:11px; color:var(--jade); margin-top:6px; word-break:break-all; max-width:220px;
-               font-family:ui-monospace,monospace; }
-  #hint{ left:50%; bottom:110px; transform:translateX(-50%); font-size:15px; color:var(--gold);
-         display:none; border-color:rgba(245,197,66,.4); }
-  #dialog{ left:50%; bottom:24px; transform:translateX(-50%); width:min(560px,92vw);
-           display:none; font-size:15px; line-height:1.8; }
+  #walletBtn .wIcon{ margin-right:6px; }
+  /* 📱 ကျဉ်းတဲ့ ဖန်သားပြင် — icon-only 44px ခလုတ် (အခန်းနာမည် နေရာ ရအောင်) */
+  @media (max-width:520px){
+    #walletBtn .wTxt{ display:none; }
+    #walletBtn .wIcon{ margin-right:0; font-size:20px; }
+    #walletBtn{ width:46px; min-width:46px; padding:0; border-radius:50%; }
+    #walletAddr{ max-width:130px; font-size:10px; }
+  }
+  #walletAddr{ font-size:11px; color:var(--jade); margin-top:6px; word-break:break-all;
+               max-width:200px; margin-left:auto; font-family:ui-monospace,monospace; }
+  #gpBadge{ flex:0 0 auto; font-size:13px; color:var(--gold); display:none;
+            font-family:var(--display); letter-spacing:.04em; align-self:center;
+            padding:8px 12px; white-space:nowrap; }
+
+  /* ---- Keyboard help — PC သီးသန့် (ဖုန်းမှာ keyboard မရှိ) ---- */
+  #help{ bottom:calc(var(--safeB) + var(--edge)); left:calc(var(--safeL) + var(--edge));
+         font-size:12.5px; line-height:1.9; color:var(--dim); max-width:min(460px,60vw); }
+  body.touch #help{ display:none; }
+
+  /* ---- အလယ်ဇုန် — ခလုတ်ဇုန် (--ctrl) အထက်မှာသာ ---- */
+  #hint{ left:50%; bottom:calc(var(--safeB) + var(--ctrl) + 14px); transform:translateX(-50%);
+         font-size:15px; color:var(--gold); display:none; text-align:center;
+         width:max-content; max-width:min(560px,92vw);
+         border-color:rgba(245,197,66,.4); }
+  #dialog{ left:50%; bottom:calc(var(--safeB) + var(--ctrl) + 14px); transform:translateX(-50%);
+           width:min(560px,92vw); display:none; font-size:15px; line-height:1.8;
+           max-height:38vh; overflow-y:auto; }
   #dialog .npcName{ color:var(--jade); font-weight:700; margin-bottom:4px; }
-  #gpBadge{ top:62px; right:14px; font-size:13px; color:var(--gold); display:none;
-            font-family:var(--display); letter-spacing:.04em; }
 
   /* ---- Loading + Intro (metaverse-first entry) ---- */
   #loading{ inset:0; position:fixed; display:flex; align-items:center; justify-content:center;
@@ -63,25 +119,51 @@
   #combat{ display:none; }
   #crosshair{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
               font-size:22px; color:#fff; opacity:.85; pointer-events:none; }
-  #hpBox{ bottom:14px; left:50%; transform:translateX(-50%); width:240px;
+  #hpBox{ bottom:calc(var(--safeB) + var(--ctrl) + 14px); left:50%;
+          transform:translateX(-50%); width:min(240px,60vw);
           font-family:var(--display); font-size:13px; }
   #hpBar{ height:8px; background:#2a1020; border-radius:4px; margin-top:6px; overflow:hidden; }
   #hpFill{ height:100%; width:100%; background:linear-gradient(90deg,var(--danger),#ff8866);
            transition:width .15s; }
-  #ammoBox{ bottom:14px; right:14px; font-size:15px; font-family:var(--display); }
-  #killfeed{ position:fixed; top:104px; right:14px; display:flex; flex-direction:column;
-             gap:6px; align-items:flex-end; z-index:4; }
-  .killItem{ position:static; font-size:13px; }
+  #ammoBox{ bottom:calc(var(--safeB) + var(--ctrl) + 14px);
+            right:calc(var(--safeR) + var(--edge)); font-size:15px;
+            font-family:var(--display); max-width:min(340px,70vw); }
+  /* ဖုန်းမှာ "R ကျည်ထည့် | Click ပစ်" က keyboard ညွှန်ကြားချက် — မလို */
+  body.touch #ammoBox .kbd{ display:none; }
+  /* Killfeed/toast — ထိပ်တန်းရဲ့ အောက်ကနေ စတယ် (wallet ခလုတ်ကို မဖုံးရ) */
+  #killfeed{ position:fixed; top:calc(var(--safeT) + 78px);
+             right:calc(var(--safeR) + var(--edge)); left:calc(var(--safeL) + var(--edge));
+             display:flex; flex-direction:column; gap:6px; align-items:flex-end;
+             z-index:4; pointer-events:none; }
+  .killItem{ position:static; font-size:13px; max-width:min(420px,86vw);
+             text-align:right; }
   #dmgVignette{ position:fixed; inset:0; pointer-events:none; opacity:0; transition:opacity .25s;
                 background:radial-gradient(ellipse at center, transparent 45%, rgba(216,50,74,.65) 100%); }
 
   /* ---- Panels (Leaderboard / Shop / Quests / Feed) ---- */
   #lbPanel, #walletPanel, #questPanel, #feedPanel{
     left:50%; top:50%; transform:translate(-50%,-50%); display:none; z-index:6;
-    max-height:78vh; overflow-y:auto; }
+    max-height:78vh; overflow-y:auto; overscroll-behavior:contain; }
   #lbPanel{ width:min(440px,94vw); }
   #walletPanel, #questPanel{ width:min(460px,94vw); }
   #feedPanel{ width:min(480px,94vw); }
+
+  /* 📱 ဖုန်းမှာ panel အားလုံးက **အောက်က ဆွဲတင် sheet** — အလယ်မှာ ပေါက်နေရင်
+     ခလုတ်တွေ ဖုံးပြီး လက်နဲ့လည်း မလှမ်းမီဘူး။ */
+  @media (max-width:640px){
+    #lbPanel, #walletPanel, #questPanel, #feedPanel,
+    #avatarPanel, #projectsPanel, #meetPanel{
+      left:0; right:0; top:auto; bottom:0; transform:none;
+      width:auto; max-width:none; border-radius:18px 18px 0 0;
+      border-left:0; border-right:0; border-bottom:0;
+      max-height:min(80vh, calc(100dvh - var(--safeT) - 56px));
+      padding-bottom:calc(14px + var(--safeB)); }
+    /* sheet ရဲ့ ဆွဲမှတ် */
+    #lbPanel::before, #walletPanel::before, #questPanel::before, #feedPanel::before,
+    #avatarPanel::before, #projectsPanel::before, #meetPanel::before{
+      content:''; display:block; width:42px; height:4px; border-radius:2px;
+      background:var(--line); margin:-2px auto 10px; }
+  }
   #lbPanel h3, #walletPanel h3, #questPanel h3, #feedPanel h3{
     margin:0 0 10px; color:var(--gold); font-size:16px; }
   #lbPanel table{ width:100%; border-collapse:collapse; font-size:13px; }
@@ -114,27 +196,73 @@
   .feedCard .who{ color:var(--jade); font-weight:700; font-size:13px; }
   .feedCard .when{ color:var(--dim); font-size:11px; float:right; }
   .feedCard .txt{ font-size:14px; line-height:1.8; margin-top:4px; }
-  /* ---- Radial Menu (☰ / M) ---- */
-  #radialFab{ position:fixed; left:50%; bottom:86px; transform:translateX(-50%);
-    width:58px; height:58px; border-radius:50%; z-index:7; cursor:pointer;
+  /* ══════════════════════════════════════════════════════════════════
+     ☰ Menu — PC မှာ radial arc၊ ဖုန်းမှာ **grid sheet**
+     ─────────────────────────────────────────────────────────────────
+     အရင်က spoke ၁၁ ခုကို R=118px စက်ဝိုင်းခြမ်းပေါ် ချထားတယ် — arc အရှည်
+     က π×118 ≈ 371px ပဲ ရှိပြီး item တွေက 62px × ၁၁ = 682px လိုတယ်။ ဒါကြောင့်
+     spoke တွေ အချင်းချင်း ထပ်ပြီး joystick/E/🔫 ခလုတ်တွေပေါ်ပါ တက်နေတယ်
+     (user: "menu button အရမ်းကြပ်")。
+     ★ PC — radius ကို item အရေအတွက်ကနေ တွက်တယ် (JS က --R ထည့်ပေး)。
+     ★ ဖုန်း — arc လုံးဝ မသုံးတော့ဘူး၊ ၄ ကော်လံ grid sheet ဖြစ်သွားတယ်။
+       item တိုင်း 72px မြင့်၊ label အပြည့် ဖတ်ရတယ်၊ scroll လုပ်လို့ရတယ်။ */
+  /* ★ z-index 10 — sheet (#radialWrap, z9) က FAB ကို ဖုံးလို့ မှိန်သွားပြီး
+     နှိပ်လို့လည်း မရဖြစ်တယ် (ပွင့်ပြီးရင် ပြန်မပိတ်နိုင်တာ ဒါကြောင့်)。 */
+  #radialFab{ position:fixed; left:50%; bottom:calc(var(--safeB) + 18px);
+    transform:translateX(-50%);
+    width:62px; height:62px; border-radius:50%; z-index:10; cursor:pointer;
     background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#1a1200;
-    border:0; font-size:24px; font-weight:700; box-shadow:0 0 24px rgba(245,197,66,.4);
-    transition:transform .2s; }
+    border:0; font-size:26px; font-weight:700; box-shadow:0 0 24px rgba(245,197,66,.4);
+    touch-action:manipulation; transition:transform .2s; }
   #radialFab.open{ transform:translateX(-50%) rotate(90deg); }
-  #radialWrap{ position:fixed; left:50%; bottom:115px; z-index:7; pointer-events:none; }
+  /* PC မှာ ခလုတ်ဇုန် မရှိလို့ နည်းနည်း အောက်မှာ ထားလို့ရတယ် */
+  body:not(.touch) #radialFab{ bottom:22px; }
+
+  /* backdrop — sheet ပွင့်ချိန် အပြင်ဘက် နှိပ်ရင် ပိတ်တယ် */
+  #radialBack{ position:fixed; inset:0; z-index:8; background:rgba(6,9,19,.55);
+    backdrop-filter:blur(2px); opacity:0; pointer-events:none; transition:opacity .2s; }
+  #radialBack.open{ opacity:1; pointer-events:auto; }
+
+  /* ---- PC: arc ---- */
+  #radialWrap{ position:fixed; left:50%; bottom:96px; z-index:9; pointer-events:none; }
   .radialItem{ position:absolute; left:0; bottom:0; transform:translate(-50%,50%) scale(.3);
-    opacity:0; pointer-events:none; width:62px; height:62px; border-radius:50%;
+    opacity:0; pointer-events:none; width:64px; height:64px; border-radius:50%;
     background:linear-gradient(165deg,var(--panel),rgba(11,16,38,.92));
     border:1px solid var(--line); color:var(--ink); cursor:pointer;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     backdrop-filter:blur(8px); transition:all .22s cubic-bezier(.2,1.4,.4,1); }
-  .radialItem .ri{ font-size:20px; }
-  .radialItem .rl{ font-size:9px; color:var(--dim); margin-top:1px; }
+  .radialItem .ri{ font-size:21px; line-height:1; }
+  .radialItem .rl{ font-size:9px; color:var(--dim); margin-top:3px; }
   #radialWrap.open .radialItem{
     transform:translate(calc(-50% + var(--tx)), calc(50% + var(--ty))) scale(1);
     opacity:1; pointer-events:auto; }
   .radialItem:hover{ border-color:var(--gold); }
   .radialItem:hover .rl{ color:var(--gold); }
+
+  /* ---- 📱 Touch: grid sheet (arc ကို လုံးဝ အစားထိုး) ---- */
+  body.touch #radialWrap{
+    left:0; right:0; bottom:0; transform:none;
+    display:grid; grid-template-columns:repeat(4, minmax(0,1fr));
+    gap:10px; padding:16px 14px calc(96px + var(--safeB));
+    background:linear-gradient(180deg, rgba(6,9,19,0), rgba(6,9,19,.94) 22%);
+    max-height:min(64vh, calc(100dvh - var(--safeT) - 90px));
+    overflow-y:auto; overscroll-behavior:contain;
+    opacity:0; pointer-events:none; transform:translateY(14px);
+    transition:opacity .2s, transform .2s; }
+  body.touch #radialWrap.open{ opacity:1; pointer-events:auto; transform:none; }
+  body.touch .radialItem{
+    position:static; width:auto; height:auto; min-height:74px; border-radius:16px;
+    transform:none !important; opacity:1; pointer-events:auto;
+    padding:10px 4px; gap:2px; }
+  body.touch .radialItem .ri{ font-size:26px; }
+  body.touch .radialItem .rl{ font-size:11px; color:var(--ink); margin-top:4px;
+    line-height:1.25; text-align:center; max-width:100%;
+    overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  body.touch .radialItem:active{ border-color:var(--gold); background:rgba(245,197,66,.12); }
+  /* အလွန်ကျဉ်းတဲ့ ဖုန်း (≤360px) — ၃ ကော်လံ */
+  @media (max-width:360px){
+    body.touch #radialWrap{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+  }
 
   /* ---- Avatar Studio + Projects panels ---- */
   #avatarPanel, #projectsPanel{ left:50%; top:50%; transform:translate(-50%,-50%);
@@ -153,7 +281,7 @@
   /* ---- 🎭 Emote Wheel ([G]) ---- */
   #emoteWheel{ position:fixed; left:50%; top:50%; z-index:7; pointer-events:none; }
   .emoteItem{ position:absolute; left:0; top:0; transform:translate(-50%,-50%) scale(.3);
-    opacity:0; pointer-events:none; width:74px; height:74px; border-radius:50%;
+    opacity:0; pointer-events:none; width:72px; height:72px; border-radius:50%;
     background:linear-gradient(165deg,var(--panel),rgba(11,16,38,.94));
     border:1px solid var(--line); color:var(--ink); cursor:pointer;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -167,15 +295,81 @@
   .emoteItem:hover .el{ color:var(--gold); }
 
   /* ---- 🎙️ Mic + 🎭 Emote buttons (mobile action bar) ---- */
+  /* ---- 🎙️ Mic + 🎭 Emote ----
+     အရင်က `margin-left:78px` hack နဲ့ အောက်အလယ်မှာ ထားလို့ ☰ FAB ရော
+     keyboard help ရော ခလုတ်တွေရော ထပ်နေတယ်။ အခု:
+       · PC   — အောက်အလယ်၊ ☰ ရဲ့ ညာဘက် (နေရာ လွတ်တယ်)
+       · ဖုန်း — **ဘယ်ဘက် ထောင်လိုက် rail**၊ joystick ရဲ့ အပေါ် (နေရာ လွတ်၊
+                လက်မနဲ့ လှမ်းမီ၊ ဘာနဲ့မှ မထပ်) */
   #actionBar{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
-    display:flex; gap:10px; z-index:7; margin-left:78px; }
+    display:flex; gap:10px; z-index:7; margin-left:104px; }
+  body.touch #actionBar{
+    left:calc(var(--safeL) + 18px); right:auto; transform:none; margin-left:0;
+    bottom:calc(var(--safeB) + var(--ctrl) + 12px);
+    flex-direction:column; gap:12px; }
   .actBtn{ width:52px; height:52px; border-radius:50%; cursor:pointer;
     background:linear-gradient(165deg,var(--panel),rgba(11,16,38,.9));
     border:1px solid var(--line); color:var(--ink); font-size:21px;
-    backdrop-filter:blur(8px); transition:all .15s; }
+    backdrop-filter:blur(8px); transition:all .15s; touch-action:manipulation; }
+  body.touch .actBtn{ width:50px; height:50px; }
   .actBtn:hover{ border-color:var(--gold); }
   #micBtn.micOn{ border-color:var(--jade); color:var(--jade); }
   #micBtn.micTalk{ box-shadow:0 0 20px rgba(61,220,151,.7); background:rgba(61,220,151,.16); }
+
+
+  /* ══════════════════════════════════════════════════════════════════
+     🎮 Touch control zone — ခလုတ်တွေ အချင်းချင်း အနည်းဆုံး 12px ကွာတယ်
+     (TouchControls.js က ဒီ class တွေကိုပဲ သုံးတယ် — inline style မရှိတော့ဘူး
+      ဆိုတော့ safe-area နဲ့ media query တွေ အလုပ်လုပ်တယ်) */
+  .tcBtn{ position:fixed; z-index:5; border-radius:50%;
+    background:rgba(10,16,34,.72); border:1px solid #2a3a66; color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    user-select:none; -webkit-user-select:none; touch-action:none;
+    font-family:inherit; backdrop-filter:blur(6px); }
+  .tcBtn:active{ border-color:var(--gold); background:rgba(245,197,66,.16); }
+  #tcStick{ position:fixed; z-index:5; left:calc(var(--safeL) + 18px);
+    bottom:calc(var(--safeB) + 92px); width:130px; height:130px; border-radius:50%;
+    background:rgba(10,16,34,.42); border:1px solid #2a3a66; touch-action:none; }
+  #tcKnob{ position:absolute; left:41px; top:41px; width:48px; height:48px;
+    border-radius:50%; background:rgba(245,197,66,.85); pointer-events:none; }
+  #tcFire{ right:calc(var(--safeR) + 18px); bottom:calc(var(--safeB) + 88px);
+    width:78px; height:78px; font-size:28px; }
+  #tcJump{ right:calc(var(--safeR) + 26px); bottom:calc(var(--safeB) + 178px);
+    width:62px; height:62px; font-size:24px; }
+  #tcE{ right:calc(var(--safeR) + 108px); bottom:calc(var(--safeB) + 112px);
+    width:62px; height:62px; font-size:22px; }
+  /* ကျဉ်းတဲ့ ဖုန်း — အားလုံး နည်းနည်း သေးပြီး ကပ်တယ် (ထပ်တာ မဖြစ်စေရ) */
+  @media (max-width:360px){
+    body.touch{ --ctrl: 214px; }
+    #tcStick{ width:116px; height:116px; bottom:calc(var(--safeB) + 84px); }
+    #tcKnob{ left:36px; top:36px; width:44px; height:44px; }
+    #tcFire{ width:70px; height:70px; bottom:calc(var(--safeB) + 82px); }
+    #tcJump{ width:56px; height:56px; bottom:calc(var(--safeB) + 162px); }
+    #tcE{ width:56px; height:56px; right:calc(var(--safeR) + 96px);
+          bottom:calc(var(--safeB) + 102px); }
+    #radialFab{ width:56px; height:56px; font-size:23px; }
+    body.touch .actBtn{ width:46px; height:46px; font-size:19px; }
+  }
+  /* အလျားလိုက် (landscape) — အမြင့် နည်းလို့ ခလုတ်ဇုန် တိုတယ် */
+  @media (orientation:landscape) and (max-height:480px){
+    body.touch{ --ctrl: 168px; }
+    #tcStick{ width:112px; height:112px; bottom:calc(var(--safeB) + 54px); }
+    #tcKnob{ left:34px; top:34px; width:44px; height:44px; }
+    #tcFire{ width:68px; height:68px; bottom:calc(var(--safeB) + 54px); }
+    #tcJump{ width:54px; height:54px; bottom:calc(var(--safeB) + 128px); }
+    #tcE{ width:54px; height:54px; bottom:calc(var(--safeB) + 66px);
+          right:calc(var(--safeR) + 96px); }
+    #radialFab{ bottom:calc(var(--safeB) + 10px); width:52px; height:52px; font-size:22px; }
+    body.touch #radialWrap{ max-height:calc(100dvh - var(--safeT) - 60px);
+      grid-template-columns:repeat(6, minmax(0,1fr)); padding-bottom:calc(70px + var(--safeB)); }
+  }
+
+  /* ---- 🖥️ PC view — ကျယ်တဲ့ဖန်သားပြင်မှာ HUD က ပိုကြီးလို့ ရတယ် ---- */
+  @media (min-width:1280px){
+    #roomName{ font-size:17px; }
+    #help{ font-size:13.5px; }
+    #dialog{ font-size:16px; }
+  }
 
   /* ---- 🏛️ Meeting panel ---- */
   #meetPanel{ left:50%; top:50%; transform:translate(-50%,-50%); width:min(480px,94vw);
@@ -205,22 +399,28 @@
     <p>ရွှေတံခါး ပွင့်နေပါပြီ — နှိပ်ပြီး ဝင်ရောက်ပါ</p>
     <button class="cta">🌊 စတင်မည်</button>
   </div>
-  <div id="roomName" class="panel">📍 <b>—</b></div>
+  <!-- 📐 ထိပ်တန်း — room name · GP · wallet ကို flex တစ်တန်းထဲ ထည့်ထားလို့
+       ဘယ်တော့မှ အချင်းချင်း မဖုံးတော့ဘူး (အရင်က wallet က room name ကို
+       ဖုံးထားတယ် — ဖုန်းမှာ အခန်းနာမည် တစ်ဝက် ပြတ်နေတယ်)。 -->
+  <div id="topBar">
+    <div id="roomName" class="panel">📍 <b>—</b></div>
+    <div id="gpBadge" class="panel">💰 <span id="gpVal">0</span> GP</div>
+    <div id="walletBox" class="panel">
+      <button id="walletBtn"><span class="wIcon">🦊</span><span class="wTxt">Wallet ချိတ်ဆက်ရန်</span></button>
+      <div id="walletAddr"></div>
+    </div>
+  </div>
   <div id="help" class="panel">
     🖱️ Canvas ကိုနှိပ်ပြီး Mouse ဖြင့် ကြည့်ရှုပါ<br>
     ⌨️ W A S D — လမ်းလျှောက် | Space — ခုန် | Shift — ပြေး<br>
     🔑 E — kiosk/NPC/Portal | ☰ (M) Menu | 🎭 G emote | 🎙️ V mic
-  </div>
-  <div id="walletBox" class="panel">
-    <button id="walletBtn">🦊 Wallet ချိတ်ဆက်ရန်</button>
-    <div id="walletAddr"></div>
   </div>
   <div id="hint" class="panel"></div>
   <div id="dialog" class="panel"><div class="npcName"></div><div class="npcText"></div></div>
   <div id="combat">
     <div id="crosshair">+</div>
     <div id="hpBox" class="panel">❤️ HP <span id="hpVal">100</span><div id="hpBar"><div id="hpFill"></div></div></div>
-    <div id="ammoBox" class="panel">🔫 <span id="ammoVal">30 / 30</span> — R ကျည်ထည့် | Click ပစ်</div>
+    <div id="ammoBox" class="panel">🔫 <span id="ammoVal">30 / 30</span><span class="kbd"> — R ကျည်ထည့် | Click ပစ်</span></div>
     <div id="dmgVignette"></div>
   </div>
   <div id="killfeed"></div>
@@ -233,7 +433,6 @@
     </div>
     <div id="lbContent">Loading…</div>
   </div>
-  <div id="gpBadge" class="panel">💰 <span id="gpVal">0</span> GP</div>
   <div id="walletPanel" class="panel">
     <h3>🛍️ Gwave Shop + ပိုက်ဆံအိတ် <span style="float:right;opacity:.6;font-size:12px">I — ပိတ်ရန်</span></h3>
     <div id="walletContent">Loading…</div>

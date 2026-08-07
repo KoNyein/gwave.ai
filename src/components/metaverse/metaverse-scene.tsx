@@ -4216,14 +4216,19 @@ export function MetaverseScene() {
           အလိုအလျောက် ပါပြီးသား (frame-ancestors 'self')။ ✕ ပိတ်ရင်
           iframe ပျက်သွားပြီး လောကထဲ ချက်ချင်း ပြန်ရောက်တယ်။ */}
       {arcade && (
-        <div data-hud="1" className="fixed inset-0 z-[120] bg-black">
-          <iframe
-            src={arcade.href}
-            title={arcade.label}
-            className="h-full w-full border-0"
-            allow="camera; microphone; fullscreen; gamepad; xr-spatial-tracking; accelerometer; gyroscope; autoplay"
-            allowFullScreen
-          />
+        // 📐 ✕ ခလုတ်ကို iframe **အပေါ်မှာ မတင်တော့ဘူး** — အထဲက page ရဲ့
+        // ကိုယ်ပိုင် ထိပ်တန်း (wallet / room name) ကို ဖုံးနေတယ်။ အခု
+        // ကိုယ်ပိုင် bar တစ်တန်း ယူပြီး iframe ကို အောက်ကို တွန်းတယ်၊
+        // safe-area (notch) ကိုပါ လိုက်တယ်။
+        <div
+          data-hud="1"
+          className="fixed inset-0 z-[120] flex flex-col bg-black"
+          style={{ paddingTop: "env(safe-area-inset-top)" }}
+        >
+          <div className="flex items-center gap-2 border-b border-white/10 bg-black/80 px-3 py-2">
+            <span className="min-w-0 flex-1 truncate text-sm text-white/80">
+              {arcade.label}
+            </span>
           <button
             onClick={() => {
               // 🧬 Scan Studio ကနေ ပြန်ထွက်ရင် scan အသစ်ကို avatar ပေါ်
@@ -4235,10 +4240,18 @@ export function MetaverseScene() {
                 else setAvatarNonce((n) => n + 1);
               }
             }}
-            className="absolute right-3 top-3 z-[121] rounded-full border border-white/30 bg-black/70 px-4 py-2 text-sm text-white backdrop-blur transition hover:bg-black/90"
+            className="min-h-11 shrink-0 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/20"
           >
-            ✕ Metaverse ထဲ ပြန်မယ်
+            ✕ Metaverse
           </button>
+          </div>
+          <iframe
+            src={arcade.href}
+            title={arcade.label}
+            className="w-full flex-1 border-0"
+            allow="camera; microphone; fullscreen; gamepad; xr-spatial-tracking; accelerometer; gyroscope; autoplay"
+            allowFullScreen
+          />
         </div>
       )}
 

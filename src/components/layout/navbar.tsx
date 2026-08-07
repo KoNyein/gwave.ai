@@ -22,14 +22,23 @@ export function Navbar({ profile }: { profile: Profile | null }) {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background">
+    // 📐 viewportFit:"cover" မို့ standalone PWA မှာ status bar က header ကို
+    // ဖုံးတယ် — safe-area ကို header ကိုယ်တိုင် ယူထားတယ်။
+    <header
+      className="sticky top-0 z-40 border-b bg-background"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
       {profile ? <TimezoneSync /> : null}
-      <div className="flex h-14 items-center gap-2 px-3 sm:px-4">
+      <div className="flex h-14 items-center gap-1 px-2 sm:gap-2 sm:px-4">
         {/* Left: menu (mobile) + logo + search */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
           <MobileMenu profile={profile} />
-          <Link href="/feed" className="flex items-center gap-1.5 text-primary">
-            <Leaf className="h-8 w-8" />
+          <Link
+            href="/feed"
+            aria-label="Gwave"
+            className="flex shrink-0 items-center gap-1.5 text-primary"
+          >
+            <Leaf className="h-7 w-7 sm:h-8 sm:w-8" />
             <span className="hidden text-lg font-bold sm:inline">Gwave</span>
           </Link>
           <GlobalSearch />
@@ -57,10 +66,16 @@ export function Navbar({ profile }: { profile: Profile | null }) {
           })}
         </nav>
 
-        {/* Right: actions */}
-        <div className="ml-auto flex items-center gap-1">
-          <ThemeToggle />
-          <LocaleSwitcher />
+        {/* Right: actions
+            📐 ဖုန်းမှာ icon ခလုတ် ၅ ခုက အရမ်း ကြပ်တယ် (360px ဖုန်းမှာ
+            ခလုတ်တွေ အချင်းချင်း ကပ်နေပြီး မှားနှိပ်တတ်တယ်)。 အသွင်အပြင်နဲ့
+            ဘာသာစကားက ခဏခဏ သုံးတာ မဟုတ်လို့ ☰ drawer ထဲ ရွှေ့လိုက်တယ် —
+            ဖုန်းမှာ ခလုတ် ၃ ခုပဲ ကျန်တယ်။ */}
+        <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <div className="hidden items-center gap-1 sm:flex">
+            <ThemeToggle />
+            <LocaleSwitcher />
+          </div>
           <Button
             variant="ghost"
             size="icon"

@@ -422,4 +422,13 @@ Object.assign(openers, {
 // ၉။ စတင်!
 hud.hideLoading();
 engine.start();
+
+// 📱 ဖုန်းမှာ keyboard help (#help) ကို ဖျောက်ထားလို့ touch ညွှန်ကြားချက်ကို
+// toast အဖြစ် တစ်ခါပဲ ပြတယ် — မျက်နှာပြင် အမြဲ မဖုံးတော့ဘူး။
+if (document.body.classList.contains('touch')) {
+  setTimeout(() => {
+    hud.addToast('🕹️ ဘယ်ဘက် stick — လမ်းလျှောက် · ညာဘက် ဆွဲ — ကြည့်');
+    setTimeout(() => hud.addToast('☰ ကို နှိပ်ပြီး function အားလုံး ဖွင့်ပါ'), 2600);
+  }, 1200);
+}
 console.log('🌊 Gwave Metaverse Base Framework v5 — PvP + Cognito + RDS Kill/XP stats + [L] leaderboard ready');

@@ -27,14 +27,15 @@ export class HUD {
     this.dialogTimer = setTimeout(() => { this.dialogEl.style.display = 'none'; }, 4500);
   }
 
+  /// 📐 Icon နဲ့ စာသားကို သီးသန့် span ခွဲထားတယ် — ကျဉ်းတဲ့ ဖုန်းမှာ CSS က
+  /// စာသားကို ဖျောက်ပြီး icon-only ခလုတ် (44px) ဖြစ်သွားလို့ အခန်းနာမည်ကို
+  /// မဖုံးတော့ဘူး။
   setWallet(address, short) {
-    if (address) {
-      this.walletBtn.textContent = '✅ ချိတ်ဆက်ပြီး';
-      this.walletAddr.textContent = short;
-    } else {
-      this.walletBtn.textContent = '🦊 Wallet ချိတ်ဆက်ရန်';
-      this.walletAddr.textContent = '';
-    }
+    const icon = address ? '✅' : '🦊';
+    const text = address ? 'ချိတ်ဆက်ပြီး' : 'Wallet ချိတ်ဆက်ရန်';
+    this.walletBtn.innerHTML =
+      `<span class="wIcon">${icon}</span><span class="wTxt">${text}</span>`;
+    this.walletAddr.textContent = address ? short : '';
   }
 
   hideLoading() { document.querySelector('#loading')?.remove(); }
@@ -264,7 +265,14 @@ Object.assign(HUD.prototype, {
 Object.assign(HUD.prototype, {
   buildEmoteWheel(emotes, onPick) {
     const wrap = document.querySelector('#emoteWheel');
-    const R = 108;
+    // 📐 Radius ကို emote အရေအတွက် **နှင့်** ဖန်သားပြင် အကျယ်ကနေ တွက်တယ်။
+    // item တစ်ခု 72px ⇒ စက်ဝိုင်းအပြည့် (2π) မှာ n ခု ထည့်ဖို့ R = 72n/2π。
+    // ကျဉ်းတဲ့ ဖုန်းမှာ ဝိုင်းက ဘောင်ကျော်မထွက်အောင် အပေါ်က ကန့်သတ်တယ်။
+    const vw = Math.min(window.innerWidth, window.innerHeight);
+    const R = Math.min(
+      Math.max(96, Math.round((72 * emotes.length) / (2 * Math.PI))),
+      Math.round(vw / 2 - 56),
+    );
     wrap.innerHTML = '';
     emotes.forEach((em, i) => {
       const a = (i / emotes.length) * Math.PI * 2 - Math.PI / 2;
