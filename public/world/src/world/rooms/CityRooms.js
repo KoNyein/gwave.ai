@@ -75,10 +75,19 @@ export class CityRoom extends Room {
     //   ဖြတ်ကူးဖို့** — အဲဒါ မလုပ်ရင် object က အလုပ် မလုပ်တာပဲ。
     // ★ အခု ဂိတ်တိုင်းက တကယ့် နယ်စပ် ဖြတ်ကူးရာ ဖြစ်ပြီး ဈေးက shop,
     //   ကုန်သွယ်ရေး ရုံးက job board ကို ဖွင့်တယ်။
+    // ★ ဂိတ် တစ်ခုကို tuple `[to, x, z, label, colour]` နဲ့ရော object နဲ့ရော
+    //   ရေးလို့ရတယ် — object က `gate` (တိုင်+ဆိုင်းဘုတ်) နဲ့ `arrive`
+    //   (ဟိုဘက် ဘယ်နေရာ ချမလဲ) ကို ပေးနိုင်တယ်။ tuple တွေက ရှိပြီးသား
+    //   ဂိတ်တွေ မထိရအောင် အတိုင်း ကျန်နေတယ်။
     for (const g of (s.gates || [])) {
+      const o = Array.isArray(g)
+        ? { to: g[0], x: g[1], z: g[2], label: g[3], colour: g[4] }
+        : g;
       this.addPortal({
-        position: new THREE.Vector3(g[1], 0, g[2]),
-        targetRoomId: g[0], label: g[3], color: g[4] ?? 0xffb020,
+        position: new THREE.Vector3(o.x, 0, o.z),
+        targetRoomId: o.to, label: o.label, color: o.colour ?? 0xffb020,
+        gate: o.gate ?? null,
+        arrive: o.arrive ? new THREE.Vector3(...o.arrive) : null,
       });
     }
     for (const st of (s.stations || [])) {
@@ -136,7 +145,11 @@ const CITY_SPECS = [
     },
     // 🌉 ဂိတ်က တကယ် ဖြတ်ကူးလို့ရတယ် — မြဝတီ ↔ မဲဆောက် (တံတား ၂)
     gates: [['maesot', 0, -44, 'မဲဆောက် (ထိုင်း) သို့ — နယ်စပ် ဂိတ်', 0xffb020],
-            ['three-pagodas', 0, 62, 'ဘုရားသုံးဆူ သို့ — တောင်ကြားလမ်း', 0x9ad3ff]],
+            ['three-pagodas', 0, 62, 'ဘုရားသုံးဆူ သို့ — တောင်ကြားလမ်း', 0x9ad3ff],
+            // 🚕 တက္ကစီမြို့က ဒီကို ဂိတ် ချထားတယ် — ဒါက **ပြန်လာဖို့** ဂိတ်။
+            //    မရှိရင် တစ်ဖက်သွား ဖြစ်ပြီး menu ကနေပဲ ပြန်ရတယ်။
+            { to: 'taxi-district', x: 0, z: 26, gate: 'x', colour: 0xffd479,
+              label: '🚕 တက္ကစီမြို့သို့', arrive: [41, 0, -21] }],
     // 🏪 ဈေးတန်း = ဈေးဆိုင်, ကုန်သွယ်ရေး ရုံး = အလုပ်/ကုန်ပစ္စည်း ဘုတ်
     stations: [['shop', -8, 24, '🏪 နယ်စပ်ဈေး — ဝယ်/ရောင်း', 0x3ddc97],
                ['board', 8, 24, '📋 ကုန်သွယ်ရေး ဘုတ် — အလုပ်/ကုန်စည်', 0xd8324a],

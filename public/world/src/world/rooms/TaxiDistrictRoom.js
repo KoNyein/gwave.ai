@@ -44,9 +44,12 @@ const TAXIS = [
 /// ရှိတဲ့ အခန်းနဲ့ ကိုက်အောင် ချိတ်ထားတယ် (pad နာမည်အတိုင်း မဟုတ်)。
 const GATES = [
   { x: -47, z: -21, to: 'yangon', label: '🛕 Cyber-Yangon သို့', arrive: [26, 0, 0] },
-  { x: -47, z: 21, to: 'maesot', label: '🛖 မဲဆောက် နယ်စပ်လမ်းသို့', arrive: [0, 0, 12] },
-  { x: 47, z: -21, to: 'myawaddy', label: '🚧 မြဝတီ သို့', arrive: null },
-  { x: 47, z: 21, to: 'farm', label: '🏛️ Gwave Hydro-Lab သို့', arrive: null },
+  // ★ `arrive` က ဟိုဘက်မှာ **ဒီကို ပြန်လာဖို့ ဂိတ်ရဲ့ ရှေ့** — အဲဒီဂိတ်တွေကို
+  //   မဲဆောက်/မြဝတီ/Hydro-Lab မှာ ထည့်ထားတယ်။ မရှိရင် ဒီဂိတ်တွေက
+  //   **တစ်ဖက်သွား** ဖြစ်ပြီး ပြန်လာဖို့ menu ကိုပဲ သုံးရမယ်။
+  { x: -47, z: 21, to: 'maesot', label: '🛖 မဲဆောက် နယ်စပ်လမ်းသို့', arrive: [12, 0, 14] },
+  { x: 47, z: -21, to: 'myawaddy', label: '🚧 မြဝတီ သို့', arrive: [0, 0, 30] },
+  { x: 47, z: 21, to: 'farm', label: '🏛️ Gwave Hydro-Lab သို့', arrive: [12, 0, 16] },
 ];
 
 export class TaxiDistrictRoom extends Room {
