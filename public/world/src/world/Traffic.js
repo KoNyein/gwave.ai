@@ -504,11 +504,223 @@ export function updateBuses(room, dt) {
       const t = (bus.s - seg.start) / seg.len;
       const x = seg.a[0] + (seg.b[0] - seg.a[0]) * t;
       const z = seg.a[1] + (seg.b[1] - seg.a[1]) * t;
-      bus.mesh.position.set(x, 0, z);
+      bus.mesh.position.set(x, bus.lockY ?? 0, z);
       bus.mesh.rotation.y = Math.atan2(seg.b[0] - seg.a[0], seg.b[1] - seg.a[1]);
       // မှတ်တိုင် ရောက်ရင် ရပ် — အပိုင်း အဆုံးနား (၉၅%) ရောက်မှ
       const idx = line.segs.indexOf(seg);
       if (line.stops.includes(idx) && t > 0.95 && bus.wait <= 0) bus.wait = 3;
     }
   }
+}
+
+/**
+ * 🌊 **မြစ်** — မြို့တောင်ဘက်က ရေကြောင်း (ရန်ကုန်မြစ်)。
+ *
+ * user: "မြစ် ထည့်ပါ ကမ်းနားလမ်းထည့်ပါ"
+ *
+ * ★ အင်းလျားကန်နဲ့ တူတူ — ရေမျက်နှာပြင်ကို **လမ်းထက် အပေါ်** ထားတယ်
+ *   (y ၀.၂)。 အောက်မှာ ထားရင် ကမ်းနားလမ်းရဲ့ အနားသတ်တွေ ရေထဲက
+ *   ပေါ်နေမယ်။
+ * ★ ရေထဲ ဝင်လို့ မရအောင် **ကမ်းစောင်း နံရံ** နှစ်ဖက် ထားတယ် — ကန်လို
+ *   လက်ရန်း မဟုတ်ဘဲ ကွန်ကရစ် ကမ်းထိန်းနံရံ (မြစ်ဆိုတော့ အဲဒါ မှန်တယ်)。
+ *   တံတား ဖြတ်ရာမှာတော့ ဟာ ချန်ထားတယ် — မဟုတ်ရင် တံတားပေါ် တက်လို့
+ *   ရပေမယ့် ဟိုဘက် ဆင်းလို့ မရဘူး。
+ */
+export function river(room, { z0 = 340, z1 = 430, x0 = -520, x1 = 520,
+                              gaps = [] } = {}) {
+  const g = room.group;
+  const w = x1 - x0, d = z1 - z0;
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(w, d),
+    new THREE.MeshStandardMaterial({
+      color: 0x2a6d93, emissive: 0x0c2436, emissiveIntensity: 0.9,
+      roughness: 0.3, metalness: 0.28,
+    }));
+  water.rotation.x = -Math.PI / 2;
+  water.position.set((x0 + x1) / 2, 0.2, (z0 + z1) / 2);
+  water.receiveShadow = true;
+  g.add(water);
+
+  // ကမ်းထိန်း နံရံ — နှစ်ဖက်、တံတား ဖြတ်ရာမှာ ဟာ ချန်
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x77716a, roughness: 0.95 });
+  for (const bankZ of [z0, z1]) {
+    let cursor = x0;
+    const cuts = [...gaps].sort((a, b) => a[0] - b[0]);
+    for (const [cx0, cx1] of [...cuts, [x1, x1]]) {
+      if (cx0 > cursor) {
+        const len = cx0 - cursor;
+        // ★ အမြင့် ၁.၆ m — ၁.၁ နဲ့ဆို **ကားတွေ ကျော်ဖြတ်သွားတယ်**。
+        //   Vehicle.js က လမ်းရှင်းမရှင်း စစ်တဲ့အခါ probe ကို y ၀.၆ မှာ
+        //   ထားတယ်၊ physics က `max.y <= pos.y + 0.55` ဆိုရင် ကြမ်းပြင်လို့
+        //   သဘောထားလို့ ၁.၁ က ၁.၁၅ အောက် ဖြစ်နေတယ် — ကျော်သွားတာ။
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(len, 1.6, 1.2), wallMat);
+        wall.position.set(cursor + len / 2, 0.8, bankZ);
+        g.add(wall);
+        room.colliders.push(new THREE.Box3(
+          new THREE.Vector3(cursor, 0, bankZ - 0.7),
+          new THREE.Vector3(cx0, 1.6, bankZ + 0.7)));
+      }
+      cursor = Math.max(cursor, cx1);
+    }
+  }
+  return water;
+}
+
+/**
+ * 🌉 **ကြိုးတံတား** — ကြိုးဆွဲ တံတား, လမ်းလျှောက်ဖြတ်လို့ ရတယ်。
+ *
+ * user: "ကြိုးတံတားထည့်ပါ"
+ *
+ * ★ **တကယ် ဖြတ်လို့ ရရမယ်** — ဒါက အလှဆင် မဟုတ်ဘူး၊ ဟိုဘက်ကမ်းက
+ *   မြို့တွေဆီ သွားဖို့ တစ်ခုတည်းသော လမ်း။ ဒါကြောင့်:
+ *     · ကုန်းပတ်လမ်းက **လှေကားထစ်လိုက်** တက်တယ် (တစ်ထစ် ၀.၃၅ m) —
+ *       physics က မြေအဖြစ် လက်ခံဖို့ ၀.၅၅ m အောက် ဖြစ်ရမယ်, စောင်းလမ်း
+ *       ချောချော လုပ်ရင် box က နံရံ ဖြစ်သွားမယ် (Shwedagon လှေကားမှာ
+ *       သင်ခန်းစာ ရခဲ့ပြီး)。
+ *     · ကုန်းပတ်တွေက collider ရှိတယ်၊ ကြိုးတွေက မရှိဘူး。
+ */
+export function cableBridge(room, { x = 0, z0 = 340, z1 = 430, width = 16,
+                                    deck = 4.2, ramp = 44 } = {}) {
+  const g = room.group;
+  const road = new THREE.MeshStandardMaterial({ color: 0x2b2f38, roughness: 0.9 });
+  const steel = new THREE.MeshStandardMaterial({ color: 0xb9c3d0, metalness: 0.7, roughness: 0.35 });
+  const cableMat = new THREE.MeshStandardMaterial({ color: 0xdfe6f2, metalness: 0.5, roughness: 0.5 });
+
+  // ── ကုန်းပတ်လမ်း — နှစ်ဖက်、လှေကားထစ်လိုက် ─────────────────────────
+  const STEPS = Math.ceil(deck / 0.35);
+  const run = ramp / STEPS;
+  for (const [zStart, dir] of [[z0 - ramp, 1], [z1 + ramp, -1]]) {
+    for (let i = 0; i < STEPS; i++) {
+      const y = ((i + 1) / STEPS) * deck;
+      const zc = zStart + dir * (i * run + run / 2);
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(width, y, run + 0.4), road);
+      slab.position.set(x, y / 2, zc);
+      g.add(slab);
+      room.colliders.push(new THREE.Box3(
+        new THREE.Vector3(x - width / 2, 0, zc - run / 2 - 0.2),
+        new THREE.Vector3(x + width / 2, y, zc + run / 2 + 0.2)));
+    }
+  }
+
+  // ── တံတား ကြမ်းခင်း ───────────────────────────────────────────────
+  const span = z1 - z0;
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(width, 0.8, span + 2), road);
+  slab.position.set(x, deck - 0.4, (z0 + z1) / 2);
+  g.add(slab);
+  room.colliders.push(new THREE.Box3(
+    new THREE.Vector3(x - width / 2, 0, z0 - 1),
+    new THREE.Vector3(x + width / 2, deck, z1 + 1)));
+
+  // ── တိုင်ကြီး ၂ ခု + ကြိုးများ ────────────────────────────────────
+  const H = 34;
+  const pylonZ = [z0 + span * 0.22, z1 - span * 0.22];
+  const cables = [];
+  for (const pz of pylonZ) {
+    for (const sx of [-width / 2 + 1, width / 2 - 1]) {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(1.6, H, 1.6), steel);
+      p.position.set(x + sx, deck + H / 2, pz);
+      g.add(p);
+      room.colliders.push(new THREE.Box3(
+        new THREE.Vector3(x + sx - 0.9, 0, pz - 0.9),
+        new THREE.Vector3(x + sx + 0.9, deck + H, pz + 0.9)));
+      // ကြိုး — တိုင်ထိပ်ကနေ ကြမ်းခင်းဆီ ပန်ကာပုံ
+      for (let k = 1; k <= 6; k++) {
+        for (const dir of [-1, 1]) {
+          const tz = pz + dir * k * (span * 0.13);
+          if (tz < z0 - 2 || tz > z1 + 2) continue;
+          const dy = deck + H - deck, dz = tz - pz;
+          const len = Math.hypot(dy, dz);
+          cables.push([x + sx, deck + (H) / 2, (pz + tz) / 2, len, Math.atan2(dz, dy)]);
+        }
+      }
+    }
+  }
+  const cGeo = new THREE.BoxGeometry(0.12, 1, 0.12);
+  const cMesh = new THREE.InstancedMesh(cGeo, cableMat, cables.length);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+  cables.forEach(([cx, cy, cz, len, ang], i) => {
+    e.set(ang, 0, 0); q.setFromEuler(e);
+    m.compose(new THREE.Vector3(cx, cy, cz), q, new THREE.Vector3(1, len, 1));
+    cMesh.setMatrixAt(i, m);
+  });
+  cMesh.instanceMatrix.needsUpdate = true;
+  g.add(cMesh);
+  trackQuality(cMesh, 'detail');
+
+  // ── လက်ရန်း ───────────────────────────────────────────────────────
+  for (const sx of [-width / 2, width / 2]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.1, span + 2), steel);
+    rail.position.set(x + sx, deck + 0.55, (z0 + z1) / 2);
+    g.add(rail);
+    room.colliders.push(new THREE.Box3(
+      new THREE.Vector3(x + sx - 0.3, 0, z0 - 1),
+      new THREE.Vector3(x + sx + 0.3, deck + 1.1, z1 + 1)));
+  }
+  return { deck, x, width };
+}
+
+// ============================================================
+// ⛴️ **မြစ်ထဲက လှေ / သင်္ဘောများ**
+//
+// user: "မြစ်ထဲမှာ လှေများ သဘော်များရှိမယ်"
+//
+// ★ ဘတ်စ်ကား စနစ်ကိုပဲ ပြန်သုံးတယ် — `room.buses` ရဲ့ ပုံစံ အတူတူပဲမို့
+//   `updateBuses` က လှေတွေကိုပါ ရွှေ့ပေးတယ်။ code ထပ်ရေးစရာ မလိုဘူး。
+// ★ collider မထည့်ဘူး — လှေက ရေပေါ်မှာ, ကစားသမားက ကမ်းပေါ်မှာ။
+//   ရေထဲ ဝင်လို့ မရတော့ ဘယ်တော့မှ မထိဘူး。
+// ============================================================
+const BOAT_KINDS = {
+  /// ⛴️ ဒလ ကူးတို့ — အဖြူရောင် ခရီးသည်တင်
+  ferry: { hull: [7, 2.2, 18], cabin: [5.5, 2.4, 9], colour: 0xe8eef5, roof: 0x2d6f9e, funnel: false },
+  /// 🚢 ကုန်တင် သင်္ဘော — အနီရောင်, မီးခိုးခေါင်းတိုင် ပါ
+  cargo: { hull: [11, 3.4, 40], cabin: [8, 4.5, 11], colour: 0x8a3b3b, roof: 0xd8dbe2, funnel: true },
+  /// 🛶 သမ္ပန် — သစ်သားလှေ သေးသေး
+  sampan: { hull: [2.4, 1.1, 8], cabin: [2, 1.1, 3], colour: 0x6b5a44, roof: 0x3f6b3a, funnel: false },
+};
+
+function makeBoat(kind) {
+  const K = BOAT_KINDS[kind] || BOAT_KINDS.sampan;
+  const g = new THREE.Group();
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(...K.hull),
+    new THREE.MeshStandardMaterial({ color: K.colour, roughness: 0.7, metalness: 0.15 }));
+  hull.position.y = K.hull[1] / 2; g.add(hull);
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(...K.cabin),
+    new THREE.MeshStandardMaterial({
+      color: K.roof, emissive: 0x1a2a38, emissiveIntensity: 0.7, roughness: 0.55,
+    }));
+  cabin.position.set(0, K.hull[1] + K.cabin[1] / 2, -K.hull[2] * 0.12);
+  g.add(cabin);
+  if (K.funnel) {
+    const fn = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.9, 4, 8),
+      new THREE.MeshStandardMaterial({ color: 0x2b3040, roughness: 0.6 }));
+    fn.position.set(0, K.hull[1] + K.cabin[1] + 2, -K.hull[2] * 0.12);
+    g.add(fn);
+  }
+  return g;
+}
+
+/**
+ * ⛴️ လှေ လမ်းကြောင်း တစ်ခု — ဘတ်စ်ကားလိုပဲ ပတ်တယ်。
+ * @param o.kind — 'ferry' | 'cargo' | 'sampan'
+ * @param o.y    — ရေမျက်နှာပြင် အမြင့် (မြစ်က ၀.၂)
+ */
+export function boatLine(room, { points, kind = 'sampan', count = 2,
+                                 speed = 5, y = 0.2, stops = [] } = {}) {
+  if (!points || points.length < 2) return;
+  const segs = [];
+  let total = 0;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i], b = points[(i + 1) % points.length];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    segs.push({ a, b, len, start: total });
+    total += len;
+  }
+  const buses = [];
+  for (let i = 0; i < count; i++) {
+    const mesh = makeBoat(kind);
+    mesh.position.y = y;
+    room.group.add(mesh);
+    trackQuality(mesh, 'detail');
+    buses.push({ mesh, s: (total / count) * i, wait: 0, lockY: y });
+  }
+  (room.buses ||= []).push({ segs, total, buses, speed, stops, label: kind });
 }

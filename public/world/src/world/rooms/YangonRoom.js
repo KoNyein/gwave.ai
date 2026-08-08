@@ -9,7 +9,7 @@ import { addManor, addKit, manorSpot } from '../Kit.js';
 import { addBuilding, buildPagoda, pagodaColliders, stupaColliders } from '../Buildings.js';
 import { NPC } from '../../entities/NPC.js';
 import { roadGrid, roadPath, trafficLight, streetLamps, grassField, treeRow, lake,
-         fillerBlocks, busLine } from '../Traffic.js';
+         fillerBlocks, busLine, river, cableBridge, boatLine } from '../Traffic.js';
 import { shophouse, tower, smallStupa, marketStall, palm } from '../CityKit.js';
 import { trackQuality } from '../../core/Quality.js';
 
@@ -101,7 +101,11 @@ export class YangonRoom extends Room {
     addTerrain(this, {
       ground: 500, extent: 1200, palette: 'night', seed: 11, peak: 120, hill: 14,
       // 🛕 စေတီတော် တည်ရာ — တောင်တန်းက အထဲကနေ ထိုးမထွက်အောင် ပြားထားတယ်
-      flatSpots: [{ x: 0, z: -250, r: 140, blend: 70 }, manor.flatSpot],
+      // ★ တောင်ဘက်ကို ပြားအောင် ထားရမယ် — မြစ်, ကမ်းနားလမ်း, ဒလ,
+      //   သံလျှင် အားလုံး z ၃၀၀–၅၂၀ မှာ ရှိတယ်။ မပြားရင် ရေမျက်နှာပြင်
+      //   (ပြားတဲ့ plane) က တောင်စောင်းထဲ မြုပ်သွားမယ်။
+      flatSpots: [{ x: 0, z: -250, r: 140, blend: 70 }, manor.flatSpot,
+                  { x: 0, z: 430, r: 280, blend: 80 }],
     });
     void addManor(this, { position: manor.position, rotation: manor.rotation });
     // ★ လမ်းမီး — ကစားသမား လမ်းလျှောက်ရာ လမ်းကြောင်းကို ချထားတယ်၊
@@ -598,6 +602,101 @@ export class YangonRoom extends Room {
       action: 'quests', color: 0x2d9bf0,
     });
 
+    // ══════════════════════════════════════════════════════════════
+    // 🌊 **ရန်ကုန်မြစ်, ကမ်းနားလမ်း, ကြိုးတံတား, ဟိုဘက်ကမ်း မြို့ ၂ ခု**
+    //
+    // user: "ကမ်းနားလမ်း ဗိုလ်တစ်ထောင် ဆူးလေထည့်ပါ / မြစ်ထည့်ပါ
+    //        ကြိုးတံတားထည့်ပါ ဒလမြို့ သံလျှင်မြို့များထည့်ပါ"
+    // ══════════════════════════════════════════════════════════════
+
+    // 🛣️ **ကမ်းနားလမ်း** — မြစ်ကမ်းတစ်လျှောက် အရှည်ဆုံး လမ်း
+    roadPath(this, [[-330, 320], [330, 320]], { width: 18 });
+    for (const c of LINES) roadPath(this, [[c, 240], [c, 320]], { width: 12 });
+
+    // 🌊 မြစ် — တံတား ဖြတ်ရာမှာ ကမ်းနံရံ ဟာ ချန်ထားတယ်
+    river(this, { z0: 340, z1: 430, x0: -520, x1: 520, gaps: [[150, 182]] });
+
+    // 🌉 ကြိုးတံတား — သံလျှင်ဘက် ကူးဖို့。 ကုန်းပတ်လမ်းက လှေကားထစ်လိုက်
+    //    တက်တာမို့ လမ်းလျှောက် ဖြတ်လို့ ရတယ်။
+    cableBridge(this, { x: 166, z0: 340, z1: 430, width: 16, deck: 4.2, ramp: 44 });
+    roadPath(this, [[166, 240], [166, 296]], { width: 14 });
+
+    // ⛴️ ဒလ ကူးတို့ ဆိပ် — ဒလကို တံတား မရှိဘူး (တကယ့်လိုပဲ ကူးတို့နဲ့)
+    for (const [jx, jz] of [[-170, 332], [-170, 438]]) {
+      const jetty = new THREE.Mesh(new THREE.BoxGeometry(18, 1.0, 22),
+        new THREE.MeshStandardMaterial({ color: 0x6b5a44, roughness: 0.95 }));
+      jetty.position.set(jx, 0.5, jz);
+      this.group.add(jetty);
+      this.colliders.push(new THREE.Box3(
+        new THREE.Vector3(jx - 9, 0, jz - 11), new THREE.Vector3(jx + 9, 1, jz + 11)));
+    }
+    this.addStation({
+      position: new THREE.Vector3(-170, 0, 316),
+      label: '⛴️ ဒလ ကူးတို့ဆိပ် — ခရီးစဉ် ရွေးရန်',
+      action: 'rooms', color: 0x8ecbff,
+    });
+
+    // ⛴️ **မြစ်ထဲက ရေယာဉ်များ** — ကူးတို့, ကုန်တင်သင်္ဘော, သမ္ပန်
+    //    ★ ဘတ်စ်ကား စနစ်ကိုပဲ ပြန်သုံးတယ် (`room.buses`) — ရွေ့တာ
+    //      အတူတူပဲမို့ update code ထပ်မလိုဘူး。 `lockY` နဲ့ ရေမျက်နှာပြင်
+    //      အမြင့်မှာ ထိန်းထားတယ်。
+    boatLine(this, {           // ဒလ ကူးတို့ — ကမ်းနှစ်ဖက် အသွားအပြန်
+      kind: 'ferry', count: 2, speed: 6, y: 0.35,
+      points: [[-170, 348], [-170, 424], [-186, 424], [-186, 348]],
+    });
+    boatLine(this, {           // ကုန်တင် သင်္ဘော — မြစ်အလျားလိုက်
+      kind: 'cargo', count: 3, speed: 7, y: 0.5,
+      points: [[-480, 372], [480, 372], [480, 398], [-480, 398]],
+    });
+    boatLine(this, {           // သမ္ပန် — ကမ်းနားမှာ ဖြေးဖြေး
+      kind: 'sampan', count: 5, speed: 3.2, y: 0.3,
+      points: [[-300, 352], [80, 356], [300, 350], [300, 418], [-60, 414], [-300, 420]],
+    });
+
+    // 🛕 **ဆူးလေဘုရား** — မြို့လယ် လမ်းဆုံ ဝိုင်း (မြို့ရဲ့ အလယ်ချက်)
+    smallStupa(this, { x: 0, z: 200, h: 26 });
+    for (let i = 0; i < 20; i++) {
+      const a = (i / 20) * Math.PI * 2;
+      roadPath(this, [[Math.cos(a) * 30, 200 + Math.sin(a) * 30],
+                      [Math.cos((i + 1) / 20 * Math.PI * 2) * 30,
+                       200 + Math.sin((i + 1) / 20 * Math.PI * 2) * 30]], { width: 11 });
+    }
+    roadPath(this, [[0, 160], [0, 170]], { width: 12 });
+
+    // 🛕 **ဗိုလ်တစ်ထောင်ဘုရား** — မြစ်ကမ်းနား, အရှေ့ဘက်
+    smallStupa(this, { x: 250, z: 296, h: 30 });
+    roadPath(this, [[250, 320], [250, 306]], { width: 12 });
+
+    // 🏘️ **ဒလမြို့** (အနောက်တောင်) နဲ့ **သံလျှင်မြို့** (အရှေ့တောင်)
+    //    ★ ဟိုဘက်ကမ်းက မြို့တွေက သေးတယ် — ဆိုင်ခန်းတန်း + ခြေတံရှည်အိမ်。
+    //      ကျန်တာက filler block တွေနဲ့ ဖြည့်တယ် (draw call ၂ ခုပဲ)。
+    for (const [tx, tz, label] of [[-190, 480, 'ဒလမြို့'], [200, 480, 'သံလျှင်မြို့']]) {
+      roadPath(this, [[tx - 90, tz], [tx + 90, tz]], { width: 14 });
+      roadPath(this, [[tx, tz - 50], [tx, tz + 50]], { width: 12 });
+      for (let i = 0; i < 6; i++) {
+        shophouse(this, { x: tx - 60 + i * 24, z: tz - 22, rot: 0,
+                          w: 10, d: 10, h: 7, storeys: 2,
+                          wall: 0x2f3a58, roof: 0x8a4a3c });
+      }
+      for (const sx of [-70, -30, 30, 70]) {
+        void addBuilding(this, {
+          kind: 'stilt', position: new THREE.Vector3(tx + sx, 0, tz + 34),
+          rotation: Math.PI, hollow: { side: '+z', width: 4, step: 2.2 },
+        });
+      }
+      smallStupa(this, { x: tx + 78, z: tz - 46, h: 15 });
+      const fill = [];
+      for (let i = 0; i < 12; i++) {
+        fill.push([tx - 84 + (i % 6) * 30, tz + (i < 6 ? -56 : 62), 20, 18, 8 + (i % 3) * 4]);
+      }
+      fillerBlocks(this, fill);
+      grassField(this, { x: tx, z: tz + 78, w: 120, d: 26 });
+      void label;
+    }
+    // ဒလ ↔ တံတား ချိတ်တဲ့ ဟိုဘက်ကမ်း လမ်း
+    roadPath(this, [[-190, 438], [-190, 480], [200, 480]], { width: 14 });
+    roadPath(this, [[166, 474], [166, 480]], { width: 14 });
+
     // ══ 🧍 မြို့ခံများ ═══════════════════════════════════════════════
     //
     // ★ NPC တိုင်းက **တကယ့် အလုပ်တစ်ခု** ရှိတယ် — ရဲက လမ်းညွှန်,
@@ -638,6 +737,15 @@ export class YangonRoom extends Room {
       ['ကားပြင်ဆရာ ကိုစိန်', 0x9aa0ab, [-96, 20], 5, [
         'ကားတွေ ဒီနားမှာ ရပ်ထားလို့ရတယ်။',
         'ဘီးလေထိုးချင်ရင် ပြောပါ — အလကားပဲ။',
+      ]],
+      ['လှေဆရာ ဦးဘကြီး', 0x8ecbff, [-170, 314], 4, [
+        'ဒလကို ကူးမလား? ကူးတို့က ၁၅ မိနစ်တစ်စီး။',
+        'မြစ်ထဲက အနီရောင် ကြီးကြီးတွေက ကုန်တင် သင်္ဘောတွေ။',
+        'သံလျှင်ကိုတော့ ကြိုးတံတားကနေ လျှောက်ဖြတ်လို့ရတယ်။',
+      ]],
+      ['ကမ်းနားလမ်း ဈေးသည် မအေး', 0xf5c542, [40, 312], 5, [
+        'ကမ်းနားလမ်းက မြို့ရဲ့ အရှည်ဆုံး လမ်းပါ။',
+        'အရှေ့ဘက် ဗိုလ်တစ်ထောင်, အလယ်မှာ ဆူးလေ။',
       ]],
       ['ဘတ်စ်ကား စပယ်ယာ ကိုတင်', 0xd8324a, [-74, -156], 4, [
         'YBS တစ်လိုင်း! လှည်းတန်း — စေတီလမ်း, မှတ်တိုင်မှာ ရပ်ပေးမယ်။',
