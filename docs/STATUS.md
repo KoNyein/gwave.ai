@@ -63,21 +63,50 @@
 - **Open World rooms (`public/world/`)**: Cyber-Yangon, the farm, Mae Sot,
   the Strike arena and five new city rooms — Myawaddy, Three Pagodas Pass,
   Chiang Mai, Bangkok, Phuket (`world/rooms/CityRooms.js`, driven by a
-  `CITY_SPECS` table). Every building is **hollow with a real doorway**:
-  colliders are one AABB per wall, never one box around the model, because a
-  single AABB cannot express "hollow with a door" — this is the rule to keep.
-  `world/CityKit.js` builds them procedurally; `world/Buildings.js`
-  `hollowShell()` does the same for the GLB houses. Doors swing (`world/
-  Door.js`, pivot-hinged, collider spliced out of `room.colliders` while
-  open); cars are drivable (`entities/Vehicle.js`, E to enter/exit); terrain
-  is noise-generated with a flat play area (`world/Terrain.js`); ambient
-  sound is synthesised per room (`core/Sfx.js` `ambient()`), no audio files
-  anywhere. Quality is auto/high/mid/low (`core/Quality.js`) — pixelRatio is
-  the strongest lever, `heavy` meshes hide at mid, `detail` at low.
-  Colliders must be built **after** the parent group has a transform, or
-  `setFromObject` returns boxes at the world origin and nothing blocks.
-  The app reaches all of this through the same `/metaverse?room=<id>`
+  `CITY_SPECS` table). Every building is **hollow with a real doorway** and
+  every gate is a working border crossing (Myawaddy ↔ Mae Sot, chaining on
+  through Three Pagodas, Chiang Mai, Bangkok, Phuket); markets, trade boards,
+  POS counters and temples are stations.
+
+  **Collider rules — the expensive lessons, in order:**
+  1. One AABB per wall, never one box around a model. A single AABB cannot
+     express "hollow with a door".
+  2. For a GLB, build the walls from the **model's own triangles**, not its
+     bounding box — `world/Occupancy.js` rasterises them into a 0.35 m grid
+     and merges each run of occupied cells into one Box3. A bounding-box
+     shell put the stilt house's walls 5.9 m outside the real ones, so the
+     house was thin air.
+  3. The uploaded models ship with their **doors closed**, so there is no gap
+     to find. `cutDoorway()` picks the wall that borders interior space,
+     clears a 2.4 m opening and our hinged leaf (`world/Door.js`) fills it.
+  4. Enterable buildings must be rotated in multiples of 90°. The grid is
+     axis-aligned; a house at 69° gets a staircase of boxes and a door that
+     misses its own wall.
+  5. Colliders must be built **after** the parent group has a transform, or
+     `setFromObject` returns boxes at the world origin and nothing blocks.
+  6. A raised floor is a **thin platform**, not a solid slab, or the physics
+     reads it as a wall (`b.max.y <= pos.y + 0.55` fails).
+
+  `resolveHorizontal` runs **twice** per frame: one pass resolves in array
+  order, so being pushed out of box A can leave you inside box B.
+
+  Terrain is noise-generated with an exactly flat play area
+  (`world/Terrain.js`) and is **walkable** — physics samples its height as
+  ground with a 0.8 m/step slope limit, and the invisible wall sits at the
+  terrain rim, so the hills can be climbed (528 m out, 121 m up). Cars are
+  drivable (`entities/Vehicle.js`, E to enter/exit) with hinged doors; the
+  pickup model faces **−Z**, so it is wrapped in a group turned 180°.
+  Ambient sound is synthesised per room (`core/Sfx.js` `ambient()`), no audio
+  files anywhere. Quality is auto/high/mid/low (`core/Quality.js`) —
+  pixelRatio is the strongest lever, `heavy` meshes hide at mid, `detail` at
+  low. The app reaches all of this through the same `/metaverse?room=<id>`
   WebView, so world work needs no APK rebuild.
+
+  ⚠️ **Measuring clipping**: a sweep that counts "avatar centre inside mesh
+  triangles" mostly counts *flush contact*, not pass-through — sealing more
+  geometry makes the number go **up**. Trust the direct test instead: run at
+  each wall at 8 m/s and check you are blocked, then open the door and check
+  you get inside.
 - **Metaverse/FPV/Assassin server**: the `metaverse` container on the app EC2
   box (127.0.0.1:8090, behind Caddy at `/mv/*`), not ECS. It **deploys
   automatically** now — `.github/workflows/metaverse-server.yml` builds to ECR
@@ -160,6 +189,40 @@
   account owner can remove the old one.
 
 ## Changelog
+
+- 2026-08-08 (web, PR #576): **Solid buildings, climbable hills, a car that
+  drives the right way.** Five reported problems; three turned out to be
+  caused by earlier work here, and each was measured before being called
+  fixed.
+  · *Walking through houses.* The GLB colliders came from the model's
+    bounding box: `x[-50.0,-29.9]` against real walls at `x[-44.1,-31.9]` —
+    5.9 m out, so the house was thin air. That was the previous "can't enter
+    buildings" fix; it opened the door by deleting the house. New
+    `world/Occupancy.js` rasterises the model's triangles into a 0.35 m grid
+    and emits one box per run of occupied cells. Every side of every house is
+    now blocked at 8 m/s.
+  · That sealed them completely, because the models ship with doors closed —
+    printing the grid showed the front wall as an unbroken run of `#`. The
+    doorway is now **cut** into the wall that borders interior space and
+    filled with our hinged leaf: 3.3–5.0 m inside with the door open. Two
+    bugs on the way, both found by printing a map rather than reading code:
+    the "is there a room behind this wall" score counted free cells *outside*
+    the building, and the inward direction was written `-step` when the wall
+    had been found scanning in the `step` direction.
+  · *Props with no collider at all*: every NPC in every room, all 18 Phuket
+    palms, every small stupa's body (only the plinth was solid), and
+    Cyber-Yangon's 16.6 × 8.6 m Open Wall (0.00 m push at its centre).
+  · *Mountains were unreachable* — terrain had no collision and the invisible
+    wall sat at the edge of the flat area. Terrain now exposes its height
+    function, physics samples it with a 0.8 m/step slope limit, and the wall
+    moved to the terrain rim. City centres stay exactly flat.
+  · *The pickup drove backwards with its doors open* — rendering it from +Z
+    and −Z showed the grille on −Z and both doors modelled swung open.
+    Wrapped 180°, doors hinged at the body seam, closed at rest.
+  · *All five cities had zero portals and zero stations* — the
+    friendship-bridge gate was scenery.
+  Physics 0.015 → 0.10 ms per frame, colliders 85 → 648 in Cyber-Yangon:
+  0.6% of a 60 fps budget.
 
 - 2026-08-08 (web, PR #574): **Five cities, buildings you can enter, cars you
   can drive, doors that swing.** Myawaddy, Three Pagodas Pass, Chiang Mai,
