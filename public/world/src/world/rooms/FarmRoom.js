@@ -23,6 +23,7 @@ export class FarmRoom extends Room {
     // Lab အလင်း — စိုက်ပျိုးရေးမီး ပန်းရောင်ခပ်ခပ် (grow lights)
     // 💡 အလင်း စနစ် — Room.js ရဲ့ တစ်ခုတည်းသော preset (hemisphere+key+fill)
     addRoomLighting(this, 'indoor');
+    this.ambient = 'wind';   // 🎧 ကွင်းပြင် လေသံ
 
     // 🏔️ စိုက်ခင်းကို ဝိုင်းထားတဲ့ စိမ်းလန်းချိုင့်ဝှမ်း — တောင် နိမ့်နိမ့်
     addTerrain(this, { ground: 90, palette: 'lush', seed: 23, peak: 62, hill: 10 });
@@ -30,13 +31,16 @@ export class FarmRoom extends Room {
     // 🏠 စိုက်ခင်း အိမ် — ကွင်းစွန်းက ထင်းအိမ် (lab ရဲ့ တာဝန်ခံ နေတဲ့ အိမ်)
     void addBuilding(this, {
       kind: 'stilt', position: new THREE.Vector3(-30, 0, -26), rotation: Math.PI / 3,
+      hollow: { side: '+x', width: 4, step: 2.2 },
     });
 
     // 🛻 စိုက်ခင်း ကုန်တင်ကား — အိမ်ဘေးမှာ ရပ်ထား
     void addBuilding(this, {
       // ★ အိမ်ရဲ့ AABB က x -၄၃.၇…-၁၆.၃ ဖြစ်လို့ x -၁၆ မှာ ထားရင်
       //   အိမ်ထဲ ဝင်နေတယ် (တိုင်းတာပြီး တွေ့ခဲ့)。 အိမ်ဘေး ထွက်ထားတယ်။
-      kind: 'pickup', position: new THREE.Vector3(-9, 0, -30), rotation: Math.PI / 5,
+      // ★ အိမ်ရဲ့ လှေကားထစ်တွေက +x ဘက် ထွက်နေလို့ ကားကို ပိုခွာထားရတယ်
+      //   (တိုင်းတာပြီး တွေ့ခဲ့ — ၁.၂×၁.၄ ထပ်နေတယ်)。
+      kind: 'pickup', position: new THREE.Vector3(2, 0, -34), rotation: Math.PI / 5,
       paint: { name: 'MAT_Body_Paint', color: 0x4a7c3a },
     });
 

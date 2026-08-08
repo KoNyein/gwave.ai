@@ -1,3 +1,4 @@
+import { sfx } from '../core/Sfx.js';
 // ============================================================
 // WorldManager.js — Room များအားလုံးကို စီမံသည့် World Map စနစ်
 // register() ဖြင့် room ထည့် → switchTo() ဖြင့် ကူးပြောင်း
@@ -44,6 +45,10 @@ export class WorldManager {
     this.engine.scene.fog.near = next.fogNear ?? 55;
     this.engine.scene.fog.far = next.fogFar ?? 190;
 
+    // 🎧 ပတ်ဝန်းကျင် အသံ — အခန်းအလိုက် (မြို့ ဟိန်းသံ / ပင်လယ် / တောင်လေ)
+    sfx.ambient(next.ambient || 'none');
+    // 🛻 ကားစနစ်ကို အခန်းအသစ် ပြောပြ — ဟောင်းအခန်းက ကားတွေ မကျန်စေရ
+    this.ctx.vehicles?.setRoom(next);
     this.avatar.teleport(next.spawn);
     this.current = next;
     this.hud?.setRoom(next.title);

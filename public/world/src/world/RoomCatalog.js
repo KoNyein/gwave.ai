@@ -1,3 +1,5 @@
+import { CITY_ENTRIES } from './rooms/CityRooms.js';
+
 // ============================================================
 // RoomCatalog.js — Metaverse ရဲ့ **အခန်း အားလုံး တစ်နေရာတည်း**
 //
@@ -37,6 +39,11 @@ export const ROOM_GROUPS = [
       { kind: 'own', id: 'me', emoji: '🏠', name: 'ကိုယ်ပိုင် Virtual Room',
         blurb: 'ကိုယ့်ကမ္ဘာ — [B] နှိပ်ပြီး တည်ဆောက်၊ link နဲ့ သူငယ်ချင်း ခေါ်' },
     ],
+  },
+  {
+    title: '🏙️ မြန်မာ – ထိုင်း မြို့များ',
+    note: 'ချက်ချင်း ကူးတယ် — အဆောက်အအုံတိုင်း တံခါးဝ ပါပြီး ဝင်လို့ရတယ်',
+    rooms: CITY_ENTRIES,
   },
   {
     title: '🕹️ Classic အခန်းများ',

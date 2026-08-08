@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
 import { addTerrain } from '../Terrain.js';
-import { addBuilding, buildPagoda } from '../Buildings.js';
+import { addBuilding, buildPagoda, pagodaColliders } from '../Buildings.js';
 import { NPC } from '../../entities/NPC.js';
 
 export class YangonRoom extends Room {
@@ -72,6 +72,7 @@ export class YangonRoom extends Room {
     //   ကောင်းကင်/မြေ နှစ်ဘက်ကနေ အလင်းပြန်ပေးလို့ ညအလင်းကို မဖျက်ဘဲ
     //   ပုံသဏ္ဌာန်တွေ မြင်ရစေတယ် — flat ambient ကို တင်လိုက်တာထက် ပိုကောင်း။
     addRoomLighting(this, 'night');
+    this.ambient = 'city';   // 🎧 မြို့ ဟိန်းသံ
 
     // 🏔️ ပတ်ဝန်းကျင် — ညမြို့တော်ကို ဝိုင်းထားတဲ့ တောင်တန်း
     //    (user: "environment ကို ပြေပြင်အစစ် တောင်ကုန်း တောင်တန်း ထည့်ပါ")
@@ -93,37 +94,30 @@ export class YangonRoom extends Room {
     //     ငှက်မြတ်နာ, ထီးတော်, ထိပ်ဖျား စိန်။ ဖိုင် တစ်ခုမှ မဆွဲဘူး။)
     const pagoda = buildPagoda({ position: new THREE.Vector3(0, 0, -45) });
     this.group.add(pagoda);
-    // စေတီ ရင်ပြင် — ဖြတ်မထွက်နိုင် (အောက်ခြေ အကျယ် ၁၄m)
-    this.colliders.push(new THREE.Box3(
-      new THREE.Vector3(-11.5, 0, -56.5), new THREE.Vector3(11.5, 26, -33.5),
-    ));
+    // 🛕 စေတီ ရင်ပြင် — **ပေါ်တက်လို့ရတယ်** (လှေကား ၃ ထစ် + ကြမ်းပြင်)
+    pagodaColliders(this, new THREE.Vector3(0, 0, -45));
 
-    // 🛕 ရွှေတိဂုံ စေတီတော် — မြို့ရဲ့ မြောက်ဘက် တောင်ကုန်းပေါ်
+    // 🗑️ ရွှေတိဂုံ စေတီတော် အစုအဝေး (၂၆၄m) ကို **ဖယ်လိုက်ပြီ**
     //
-    // ★ ၂၆၄m ကျယ်လို့ ကစားကွင်း (၁၄၀m) ထဲ မဆံ့ဘူး — ဒါကြောင့် ကွင်းပြင်
-    //   ပြင်ပ ၂၅၀m အကွာမှာ ချထားတယ်။ ရန်ကုန်မြို့လယ်ကနေ ရွှေတိဂုံကို
-    //   မော့ကြည့်ရသလိုပဲ။ collider မထည့်ဘူး — နယ်နိမိတ်နံရံက ကာထားပြီးသား
-    //   ဖြစ်လို့ ဘယ်တော့မှ မရောက်နိုင်ဘူး၊ box ပိုစစ်စရာ မလိုဘူး။
-    void addBuilding(this, {
-      kind: 'stupa', position: new THREE.Vector3(0, 0, -250),
-      rotation: Math.PI * 0.12, collide: false, tier: 'heavy',
-    });
+    // user: "သုံးမရတဲ့ Standard မရှိတဲ့ ဆောက်ဦး အကုန် ဖယ်ပါ"
+    //
+    // အဲဒါက ကွင်းပြင် အပြင် ၂၅၀m မှာ ရှိပြီး နယ်နိမိတ်နံရံက ကာထားလို့
+    // **ဘယ်တော့မှ မရောက်နိုင်ဘူး** — ကြည့်ရုံသက်သက် ၁၅၅,၈၄၄ တြိဂံ။
+    // ဝင်လို့ရတဲ့ အဆောက်အအုံ မဟုတ်လို့ ဖယ်လိုက်တယ်။ မြို့လယ်က
+    // ထစ်ခွင်စေတီ (ပေါ်တက်လို့ရတယ်) က ဆက်ရှိတယ်။
 
     // 🏛️🛖 အဆောက်အအုံ အစစ် — မြို့လယ်ရဲ့ နှစ်ဖက်စွန်း
     //
     // ★ Async — GLB ရောက်မှ ထည့်တယ်၊ အခန်း ဆောက်တာကို မစောင့်ဘူး။
     //   ကစားသမားက အလယ် (0,0,6) မှာ စတာမို့ အဆောက်အအုံတွေက အနားမှာ
     //   မဟုတ်ဘဲ လမ်းအစွန်းမှာ — ဝင်ဝင်ချင်း တိုးမိမှာ မဟုတ်ဘူး။
-    void addBuilding(this, {                    // ကိုလိုနီ သုံးထပ်တိုက်
-      kind: 'colonial', position: new THREE.Vector3(-42, 0, -18),
-      rotation: Math.PI / 2, tier: 'heavy',
-    });
     // ★ x ≥ ၄၈ — neon တိုက်တွေက |x| ၃၄ အထိ ရောက်တယ် (ဗဟို ၃၁ + အကျယ်
     //   တစ်ဝက်)。 ၄၂ မှာ ထားတော့ တိုက်တစ်လုံးနဲ့ ၂.၃×၁.၄ ထပ်နေတယ်
     //   (တိုင်းတာပြီး တွေ့ခဲ့)。 အိမ်က ၂၀m ကျယ်လို့ ဗဟို ၄၈ ဆို min.x = ၃၈။
     void addBuilding(this, {                    // 🏠 ကိုယ့်အိမ် — ထင်းအိမ်
       kind: 'stilt', position: new THREE.Vector3(48, 0, -16),
       rotation: -Math.PI / 2,
+      hollow: { side: '-x', width: 4, step: 2.2 },   // ခြေတံရှည် — လှေကား ပါ
     });
     void addBuilding(this, {                    // ရပ်ကွက်ထဲက နောက်တစ်လုံး
       kind: 'stilt', position: new THREE.Vector3(50, 0, 18),
@@ -170,62 +164,45 @@ export class YangonRoom extends Room {
     pagodaGlow.position.set(0, 14, -45);
     this.group.add(pagodaGlow);
 
-    // ဆိုင်ခန်း/တိုက်တာများ — neon ပြတင်းပေါက်များနှင့်
+    // 🏙️ လမ်းဘေး အဆောက်အအုံများ — **အစစ်ချည်းပဲ**
     //
-    // ⚠️ ဒီတိုက်တွေက `Math.random()` နဲ့ ချထားတယ် — **ဝင်တိုင်း နေရာ
-    //    ပြောင်း**တယ်။ ဒါကြောင့် တိုက်တစ်လုံးက စေတီရင်ပြင်, ကိုလိုနီအိမ်,
-    //    ထင်းအိမ်, station တိုင်, ရပ်ထားတဲ့ ကား — ဘယ်ဟာနဲ့မဆို ထပ်သွား
-    //    နိုင်တယ် (တိုင်းတာတိုင်း တစ်မျိုးစီ တွေ့ခဲ့တယ်)。
+    // user: "Cyber-Yangon ထဲက သုံးမရတဲ့ အတွင်းသွားလို့မရတဲ့ တိုက်တွေ
+    //        အကုန် ဖယ်ပါ"
     //
-    // ★ နေရာ တစ်ခုချင်း လိုက်ရွှေ့တာ **အဖြေ မဟုတ်ဘူး** — random seed
-    //   ပြောင်းတာနဲ့ နောက်တစ်ခု ထပ်လာမယ်။ ဒါကြောင့် **ကြိုတင် သီးသန့်
-    //   ထားတဲ့ ဇုန်များ** သတ်မှတ်ပြီး အဲဒီထဲ ကျရင် ချန်ထားလိုက်တယ်။
-    const RESERVED = [
-      { x0: -22, z0: -68, x1: 22, z1: -24 },   // 🛕 စေတီ ရင်ပြင်
-      { x0: -55, z0: -31, x1: -29, z1: -5 },   // 🏛️ ကိုလိုနီအိမ်
-      { x0: 35, z0: -29, x1: 61, z1: -3 },     // 🛖 ထင်းအိမ် (ကိုယ့်အိမ်)
-      { x0: 36, z0: 4, x1: 64, z1: 32 },       // 🛖 ထင်းအိမ် ၂
-      { x0: -20, z0: -18, x1: 20, z1: 22 },    // 🎯 station/portal လမ်းလယ်
-      { x0: -28, z0: 40, x1: 29, z1: 66 },     // 🛻 ကား ရပ်နားရာ
-    ];
-    const hits = (x, z, w, d) => RESERVED.some((r) =>
-      x + w / 2 > r.x0 && x - w / 2 < r.x1 && z + d / 2 > r.z0 && z - d / 2 < r.z1);
-
-    const neonColors = [0xff2d78, 0x2de1ff, 0x7f5cff, 0x3ddc97, 0xffb020];
-    const placed = [];   // တိုက်အချင်းချင်းလည်း မထပ်စေရ
-    for (let i = 0; i < 26; i++) {
-      const w = 3 + Math.random() * 4, h = 5 + Math.random() * 14, d = 3 + Math.random() * 4;
-      const side = i % 2 === 0 ? -1 : 1;
-      const z = -40 + (i * 3.2);
-      // ★ x ကို ၈ ကြိမ် ထိ ပြန်စမ်းတယ် — မရရင် အဲဒီတိုက် မဆောက်တော့ဘူး။
-      //   "မရှိတာ" က "အထဲ ဝင်နေတာ" ထက် အမြဲ ပိုကောင်းတယ်။
-      let x = null;
-      for (let t = 0; t < 8; t++) {
-        const cand = side * (9 + Math.random() * 22);
-        if (hits(cand, z, w, d)) continue;
-        if (placed.some((q) => Math.abs(q.x - cand) < (q.w + w) / 2 + 0.6 &&
-                               Math.abs(q.z - z) < (q.d + d) / 2 + 0.6)) continue;
-        x = cand; break;
-      }
-      if (x === null) continue;
-      placed.push({ x, z, w, d });
-
-      const bld = new THREE.Mesh(
-        new THREE.BoxGeometry(w, h, d),
-        new THREE.MeshStandardMaterial({ color: 0x232d4a, roughness: 0.75 })
-      );
-      bld.position.set(x, h / 2, z);
-      bld.castShadow = true;
-      this.group.add(bld);
-      this.addCollider(bld); // အဆောက်အအုံတိုင်း collision ပါ
-
-      // neon ဆိုင်းဘုတ်
-      const neon = new THREE.Mesh(
-        new THREE.BoxGeometry(w * 0.7, 0.5, 0.2),
-        new THREE.MeshBasicMaterial({ color: neonColors[i % neonColors.length] })
-      );
-      neon.position.set(bld.position.x, h * 0.7, bld.position.z + d / 2 + 0.15);
-      this.group.add(neon);
+    // အရင်က ဒီနေရာမှာ `BoxGeometry` သေတ္တာ ၂၆ လုံး ရှိတယ် — neon
+    // ဆိုင်းဘုတ် ကပ်ထားပေမယ့် တံခါး မရှိ, ပြတင်းပေါက် မရှိ, အထဲ ဝင်လို့
+    // မရဘူး၊ အနီးရောက်လေ တုံးလို ဖြစ်လေပဲ။ **အားလုံး ဖယ်လိုက်ပြီ**
+    // (သေတ္တာ ၂၆ + ဆိုင်းဘုတ် ၂၆ = mesh ၅၂, collider ၂၆)。
+    //
+    // အစားထိုး — မော်ဒယ် အစစ် ၅ လုံး ထပ်ချတယ်။ တံခါး, ပြတင်းပေါက်,
+    // ဝရံတာ, အမိုးအားလုံး ပါတယ်။
+    //
+    // ★ နေရာတွေက **အသေ** — random မဟုတ်တော့ဘူး။ အရင် သေတ္တာတွေက
+    //   ကျပန်း ဖြစ်လို့ ဝင်တိုင်း တစ်နေရာစီ ရောက်ပြီး တခြားအရာတွေနဲ့
+    //   ထပ်နေတယ် (တိုင်းတာတိုင်း တစ်မျိုးစီ တွေ့ခဲ့တယ်)。 အသေ ချထားရင်
+    //   တစ်ခါ စစ်ရုံနဲ့ ထာဝရ မှန်တယ်။
+    // ★ ကိုလိုနီအိမ်က တြိဂံ ၅၆k မို့ `heavy` — ဂရပ်ဖစ် အလယ်/အနိမ့်မှာ
+    //   ဖျောက်တယ်။ ထင်းအိမ်က ၉.၇k ပဲမို့ `detail`。
+    // ★ ကိုလိုနီအိမ်ကို **တစ်လုံးပဲ** ထပ်ထည့်တယ် — တစ်လုံးက တြိဂံ ၅၆k မို့
+    //   သုံးလုံး ဆိုရင် ရန်ကုန်က ၅၃၄k ရောက်သွားတယ် (တိုင်းတာပြီး တွေ့ခဲ့)。
+    //   အသေးစိတ် လျှော့တဲ့ LOD လုပ်ကြည့်ပေမယ့် ၅၆k → ၄၅k ပဲ ကျလို့
+    //   မထူးဘူး — အဲဒီ မော်ဒယ်က အသေးလေးတွေ မဟုတ်ဘဲ နံရံကိုယ်တိုင်က
+    //   အသေးစိတ်တာ။ ဒါကြောင့် အရေအတွက်နဲ့ပဲ ချိန်တယ်။
+    // ★ ကိုလိုနီအိမ် အသစ်က ၃၀ × ၃၈ m — အရင်ဟာထက် အများကြီး ကြီးပြီး
+    //   တြိဂံက ၅၆,၄၈၈ → **၁၅,၁၆၀** ပဲ (mesh ၂,၁၀၃ → ၁၃)。 ဒါကြောင့်
+    //   'heavy' မဟုတ်တော့ဘူး၊ အကွာအဝေးလည်း ပိုလိုတယ် (၄၀ m ခြား)。
+    for (const [kind, x, z, rot, tier] of [
+      ['colonial', -48, -30, Math.PI / 2, 'detail'],
+      ['colonial', -48, 12, Math.PI / 2, 'detail'],
+      ['colonial', -48, 54, Math.PI / 2, 'detail'],
+      ['stilt', 48, -44, -Math.PI / 2, 'detail'],
+      ['stilt', 48, 44, -Math.PI / 2.6, 'detail'],
+    ]) {
+      void addBuilding(this, {
+        kind, position: new THREE.Vector3(x, 0, z), rotation: rot, tier,
+        // 🚪 အားလုံး ဝင်လို့ရရမယ် — ရှေ့မျက်နှာက ဘယ်ဘက်လှည့်နေလဲ အလိုက်
+        hollow: { side: x < 0 ? '+x' : '-x', width: 5, step: kind === 'stilt' ? 2.2 : 0 },
+      });
     }
 
     // NPC များ — မြန်မာအသိုင်းအဝိုင်း
