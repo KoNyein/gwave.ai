@@ -53,6 +53,18 @@ export const BUILDINGS = {
   colonial: '/world/assets/colonial_house.glb',
   /// 🛻 ပစ်ကပ် ကား — ၄.၁ × ၁.၉ × ၅.၄ m (mesh ၁၂၈ → ၁၁, တြိဂံ ၂,၇၂၄)
   pickup: '/world/assets/pickup.glb',
+  /// 🚕 အငှားကား — ၂.၁ × ၂.၂ × ၄.၈ m (mesh ၆၀ → ၂၁, တြိဂံ ၁,၀၅၂)
+  ///    ယာဉ်မောင်း ရုပ်ပါ ပါတယ် — ရပ်ထားချိန် ကားထဲမှာ လူရှိတယ်လို့
+  ///    မြင်ရပြီး၊ ကိုယ်တိုင် မောင်းချိန်မှာလည်း avatar ကို ဖျောက်ထားလို့
+  ///    ထပ်နေတာ မဖြစ်ဘူး။
+  taxi: '/world/assets/taxi.glb',
+};
+
+/// 🚗 **စီးလို့ရတဲ့ kind များ** — မော်ဒယ်နှစ်ခုစလုံး ရှေ့က −Z မှာ ဆိုတော့
+///    ၁၈၀° လှည့်တဲ့ အခွံ လိုတယ်၊ ပြီးရင် `room.cars` ထဲ ထည့်ရတယ်။
+export const VEHICLE_LABELS = {
+  pickup: '🛻 ပစ်ကပ်ကား',
+  taxi: '🚕 အငှားကား',
 };
 
 /**
@@ -103,7 +115,7 @@ export async function addBuilding(room, {
   //    လှည့်ထားတဲ့ အခွံတစ်ခုထဲ ထည့်လိုက်တာက အသန့်ရှင်းဆုံး — အပြင်ဘက်က
   //    ကြည့်ရင် ကားရဲ့ ရှေ့က +Z ဖြစ်သွားပြီ၊ ကျန်တဲ့ code ဘာမှ မထိရဘူး။
   let obj = inner;
-  if (kind === 'pickup') {
+  if (VEHICLE_LABELS[kind]) {
     obj = new THREE.Group();
     inner.rotation.y = Math.PI;
     obj.add(inner);
@@ -137,10 +149,10 @@ export async function addBuilding(room, {
     else room.colliders.push(box);
     // 🛻 ကားဆိုရင် **စီးလို့ရတဲ့ ယာဉ်** အဖြစ် စာရင်းသွင်း — VehicleSystem က
     //    အခန်းကူးတိုင်း `room.cars` ကို ဖတ်တယ် (async ရောက်လာလည်း မှီတယ်)。
-    if (kind === 'pickup') {
+    if (VEHICLE_LABELS[kind]) {
       const rig = rigVehicle(inner);
       (room.cars ||= []).push({
-        mesh: obj, box, label: '🛻 ပစ်ကပ်ကား',
+        mesh: obj, box, label: VEHICLE_LABELS[kind],
         doors: rig.doors, wheels: rig.wheels, wheelR: rig.radius,
         seat: rig.seat, camPose: rig.cam,
       });

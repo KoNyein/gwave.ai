@@ -165,6 +165,24 @@ export class YangonRoom extends Room {
       ],
     }));
 
+    // 🧍 စေတီ ရင်ပြင်က ဂေါပက — မြန်မာအမျိုးသား ရုပ် (ဂေါင်းပေါင်း,
+    //    တိုက်ပုံ, ပုဆိုး)。 မသီတာနဲ့ အတူ ရင်ပြင်မှာ တွဲရပ်တယ်။
+    //
+    // ★ ဒီရုပ်မှာလည်း **အရိုး မပါဘူး** — registry က `"rigged": true` နဲ့
+    //   motion ၇ မျိုး ဆိုပေမယ့် export ထဲမှာ skin ၀, animation ၀ ပဲ
+    //   ပါလာတယ် (ဖတ်စစ်ပြီး)。 ဒါကြောင့် ရပ်နေတဲ့ ဇာတ်ကောင်ပဲ ဖြစ်တယ်။
+    this.addNPC(new NPC({
+      name: 'ဦးဘသိန်း',
+      staticBody: '/world/assets/myanmar_man.glb',
+      home: new THREE.Vector3(-13, 0, -28),
+      faceYaw: -Math.PI * 0.1,
+      dialogue: [
+        'မင်္ဂလာပါ ကွယ် — ဒီစေတီက ဒီမြို့ရဲ့ အသည်းနှလုံးပါပဲ။',
+        'ကျွန်တော်က ဂေါပက အဖွဲ့ဝင် — လှေကားထစ်တွေက တောင်ဘက်မှာ ရှိတယ်။',
+        'အနောက်ဘက် ဂိတ်ကနေ မဲဆောက်ကို သွားလို့ရတယ်နော်။',
+      ],
+    }));
+
     // 🛻 ကားများ — လမ်းဘေး ရပ်ထားတဲ့ ပစ်ကပ်များ (အရောင်စုံ)
     //
     // ★ ဖိုင် တစ်ခုတည်းကနေ အရောင် ၆ မျိုး — `paint` က body material ကိုပဲ
@@ -276,6 +294,19 @@ export class YangonRoom extends Room {
       color: 0xffb020,
       gate: 'x',
       arrive: new THREE.Vector3(0, 0, 12),   // မဲဆောက် ဂိတ်ရှေ့
+    });
+
+    // 🚕 ဂိတ် → တက္ကစီမြို့ — မြို့အသစ်က menu ကနေပဲ ရောက်လို့ရရင်
+    //    လောကထဲမှာ **တံခါး မရှိသလိုပဲ**။ (၂၂, ၀) က ဘယ် collider နဲ့မှ
+    //    မထိဘူး၊ တခြား portal နဲ့လည်း ၁၀ m ကျော် ဝေးတယ် (grid scan နဲ့
+    //    ရွေးထားတယ်)。
+    this.addPortal({
+      position: new THREE.Vector3(22, 0, 0),
+      targetRoomId: 'taxi-district',
+      label: '🚕 တက္ကစီမြို့သို့',
+      color: 0xffd479,
+      gate: 'z',
+      arrive: new THREE.Vector3(-40, 0, -21),  // ရန်ကုန် ဂိတ်ရှေ့
     });
 
     // ============ 🏙️ City Districts — Function Stations ============

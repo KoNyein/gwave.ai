@@ -71,6 +71,18 @@ export class MaeSotRoom extends Room {
       ],
     }));
 
+    // 🧍 ရွာသား — ဒေါ်မြင့်နဲ့ ထင်းအိမ် ရှေ့မှာ တွဲရပ် (အရိုးမပါလို့ မလျှောက်)
+    this.addNPC(new NPC({
+      name: 'ဦးစိုးဝင်း',
+      staticBody: '/world/assets/myanmar_man.glb',
+      home: new THREE.Vector3(-22, 0, -20),
+      faceYaw: Math.PI / 2,
+      dialogue: [
+        'နယ်စပ်ကို လာလည်တာလား? ကျေးဇူးပါပဲ။',
+        'တောင်ဘက် ဂိတ်ကနေ မြဝတီဘက် ကူးလို့ရတယ်၊ မြောက်ဘက်က ရန်ကုန်။',
+      ],
+    }));
+
     // ★ GLB မြို့ကွက် Load — collision များ အလိုအလျောက်ရ ★
     loadCityMap(this, './assets/maesot_block.glb', {
       position: new THREE.Vector3(0, 0, -18),
