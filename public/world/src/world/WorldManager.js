@@ -20,7 +20,9 @@ export class WorldManager {
 
   register(room) { this.rooms.set(room.id, room); }
 
-  switchTo(roomId) {
+  /// @param arriveAt — ဟိုဘက်မှာ ချမယ့် နေရာ (portal က ပေးတယ်)。
+  ///   မပါရင် အခန်းရဲ့ မူလ spawn (menu ကနေ ခုန်တာ အဲဒါပဲ)。
+  switchTo(roomId, arriveAt = null) {
     const next = this.rooms.get(roomId);
     if (!next) { console.warn('Room မတွေ့ပါ:', roomId); return; }
 
@@ -52,7 +54,7 @@ export class WorldManager {
     sfx.ambient(next.ambient || 'none');
     // 🛻 ကားစနစ်ကို အခန်းအသစ် ပြောပြ — ဟောင်းအခန်းက ကားတွေ မကျန်စေရ
     this.ctx.vehicles?.setRoom(next);
-    this.avatar.teleport(next.spawn);
+    this.avatar.teleport(arriveAt || next.spawn);
     this.current = next;
     this.hud?.setRoom(next.title);
     // ⚔️ ခလုတ်တန်းက ဒီ class ကို ကြည့်ပြီး 🔫 ကို ပြ/ဖျောက်တယ်

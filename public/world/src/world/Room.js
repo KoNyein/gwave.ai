@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { updateDoors } from './Door.js';
 import { updateManors } from './Kit.js';
+import { makeNameLabel } from '../ui/label.js';
 
 export class Room {
   constructor(id, title) {
@@ -61,7 +62,15 @@ export class Room {
   }
 
   // Portal = ရောင်စဉ်တိုင် — အနီးရောက်ပြီး E နှိပ်လျှင် targetRoomId သို့ကူးမည်
-  addPortal({ position, targetRoomId, label, color = 0x7f5cff }) {
+  //
+  // ★ `arrive` — ဟိုဘက်အခန်းမှာ **ဘယ်နေရာ ချမလဲ**。 မပေးရင် အခန်းရဲ့
+  //   မူလ spawn。 နယ်စပ် ဂိတ်လို အတွဲလိုက် portal တွေမှာ ဒါ မရှိရင်
+  //   ဂိတ်ဖြတ်ပြီး ပြန်လာတိုင်း မြို့လယ် spawn မှာ ချလိုက်လို့ မြို့နှစ်ခုက
+  //   **ဆက်စပ်နေတယ်လို့ လုံးဝ မခံစားရဘူး** (user: "မဲဆောက်–ရန်ကုန်
+  //   ချိတ်ပေးပါ")。 အခု ဂိတ်ဖြတ်ရင် ဟိုဘက် ဂိတ်ရှေ့မှာပဲ ရောက်တယ်။
+  // ★ `gate` — 'x' | 'z' — တိုင်နှစ်ခု + ဘောင် + ဆိုင်းဘုတ် ထည့်ပေးတယ်။
+  //   ရောင်စဉ်တိုင် သက်သက်က အဝေးကနေ မမြင်ရလို့ ရှာမတွေ့ဘူး။
+  addPortal({ position, targetRoomId, label, color = 0x7f5cff, arrive = null, gate = null }) {
     const mesh = new THREE.Mesh(
       new THREE.CylinderGeometry(0.9, 0.9, 3.4, 24, 1, true),
       new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, side: THREE.DoubleSide })
@@ -73,7 +82,11 @@ export class Room {
     );
     ring.rotation.x = Math.PI / 2; ring.position.copy(position); ring.position.y = 0.06;
     this.group.add(mesh, ring);
-    this.portals.push({ position: position.clone(), targetRoomId, label, mesh });
+    if (gate) this.group.add(gateArch(position, label, color, gate));
+    this.portals.push({
+      position: position.clone(), targetRoomId, label, mesh,
+      arrive: arrive ? arrive.clone() : null,
+    });
   }
 
   // Station = Function kiosk — အနီးရောက်ပြီး E နှိပ်လျှင် action ပွင့်မည်
@@ -113,6 +126,38 @@ export class Room {
       st.holo.position.y = 1.55 + Math.sin(time * 2 + st.position.x) * 0.08;
     }
   }
+}
+
+// ============================================================
+// 🚧 gateArch — နယ်စပ် ဂိတ် အခွံ (တိုင် ၂ ခု + ဘောင် + ဆိုင်းဘုတ်)
+//
+// ★ **collider မထည့်ဘူး** — ဂိတ်တိုင်တွေက pad ရဲ့ ဘေး ၂.၂ m မှာ ရှိတယ်၊
+//   collider ထည့်လိုက်ရင် ဂိတ်ကို ဖြတ်ဖို့ လမ်းကြောင်း ကျဉ်းသွားပြီး
+//   "ဝင်လို့ မရဘူး" ဆိုတဲ့ ပြဿနာ ပြန်ဖြစ်မယ်။ ဒါက ဆိုင်းဘုတ်ပါတဲ့
+//   အလှဆင် အခွံပဲ — အလုပ်လုပ်တာက portal ကိုယ်တိုင်။
+// ============================================================
+function gateArch(position, label, color, axis = 'x') {
+  const g = new THREE.Group();
+  g.position.copy(position);
+  const off = axis === 'z' ? new THREE.Vector3(0, 0, 2.4) : new THREE.Vector3(2.4, 0, 0);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x2a3450, metalness: 0.4, roughness: 0.6 });
+  for (const s of [-1, 1]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4.4, 0.3), mat);
+    post.position.copy(off).multiplyScalar(s); post.position.y = 2.2;
+    g.add(post);
+  }
+  const span = new THREE.Mesh(
+    new THREE.BoxGeometry(axis === 'z' ? 0.36 : 5.4, 0.36, axis === 'z' ? 5.4 : 0.36), mat);
+  span.position.y = 4.4; g.add(span);
+  const glow = new THREE.Mesh(
+    new THREE.BoxGeometry(axis === 'z' ? 0.16 : 5.0, 0.1, axis === 'z' ? 5.0 : 0.16),
+    new THREE.MeshBasicMaterial({ color })
+  );
+  glow.position.y = 4.16; g.add(glow);
+  const sign = makeNameLabel(label, '#ffd479');
+  sign.position.y = 5.2; sign.scale.set(5.2, 1.3, 1);
+  g.add(sign);
+  return g;
 }
 
 // ============================================================
