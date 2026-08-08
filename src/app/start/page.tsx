@@ -1,19 +1,20 @@
 import { redirect } from "next/navigation";
 
-import { getCurrentProfile } from "@/lib/auth";
-
-import { StartPicker } from "./start-picker";
+import { WelcomeHub } from "@/components/home/welcome-hub";
+import { getCurrentProfile, isAdultProfile } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Gwave — ဘယ်ကို သွားမလဲ?" };
 
-/// 🚪 ဝင်ရာ တံခါး — login ပြီးရင် category ရွေးတဲ့ စာမျက်နှာ။
-/// `/` က ရွေးချယ်မှု မမှတ်ထားရင် ဒီကို ပို့တယ်။
+/// 🚪 ပင်မ ကြိုဆိုစာမျက်နှာ။ `/` ကလည်း ဒီ component ကိုပဲ ပြတယ် —
+/// စာမျက်နှာ နှစ်ခု မထားဘူး၊ တစ်ခုတည်းကို လမ်းကြောင်း နှစ်ခုက ညွှန်တယ်။
 export default async function StartPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/welcome");
   return (
-    <StartPicker
+    <WelcomeHub
       name={profile.full_name ?? profile.username ?? ""}
+      isAdult={isAdultProfile(profile)}
     />
   );
 }

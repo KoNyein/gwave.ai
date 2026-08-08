@@ -23,6 +23,8 @@ import { MeetingRoom } from './world/rooms/MeetingRoom.js';
 import { TouchControls } from './ui/TouchControls.js';
 import { ROOM_GROUPS, classicHref } from './world/RoomCatalog.js';
 import { sfx } from './core/Sfx.js';
+import * as Quality from './core/Quality.js';
+const { cycleMode, getMode, getQuality, onAutoChange, LABELS: QLABEL, ICONS: QICON } = Quality;
 
 // ၁။ အခြေခံစနစ်များ စတင်ခြင်း
 const engine  = new Engine(document.body);
@@ -590,6 +592,41 @@ function leaveWorld(href) {
   };
   if (bar && wal) bar.insertBefore(dim, wal);
 
+  // 🎚️ ဂရပ်ဖစ် အဆင့် — အလို / မြင့် / အလယ် / နိမ့်
+  //
+  // user: "ဂရပ်ဖစ် အနိမ့် ခလုတ် ထည့်ပါ" + "auto ပြောင်းပေးပါ"
+  //
+  // ★ Default က **အလို** — ဖုန်း တစ်လုံးနဲ့တစ်လုံး စွမ်းအား အရမ်းကွာလို့
+  //   စက်ကို ကိုယ်တိုင် တိုင်းပြီး ချိန်တာ အကောင်းဆုံး။ ကိုယ်တိုင်
+  //   ချိန်ချင်သူအတွက် အသေ ၃ ဆင့်လည်း ရွေးလို့ရတယ်။
+  const gfx = document.createElement('button');
+  gfx.id = 'gfxBtn';
+  const paintGfx = () => {
+    const m = getMode();
+    gfx.textContent = QICON[m];
+    gfx.classList.toggle('low', getQuality() === 'low');
+    gfx.title = m === 'auto'
+      ? `ဂရပ်ဖစ်: အလို (ယခု ${QLABEL[getQuality()]})`
+      : `ဂရပ်ဖစ်: ${QLABEL[m]}`;
+  };
+  gfx.setAttribute('aria-label', 'Graphics quality');
+  gfx.onclick = () => {
+    const m = cycleMode();
+    paintGfx();
+    hud.addToast(m === 'auto'
+      ? `⚙️ ဂရပ်ဖစ် အလို — စက်အလိုက် ချိန်ပါမယ် (ယခု ${QLABEL[getQuality()]})`
+      : `🎚️ ဂရပ်ဖစ် ${QLABEL[m]}`);
+  };
+  paintGfx();
+  if (bar && wal) bar.insertBefore(gfx, wal);
+  // အလိုအလျောက် ပြောင်းသွားရင် ခလုတ်ရော user ရော သိရမယ်
+  onAutoChange((lv, fps, dir) => {
+    paintGfx();
+    hud.addToast(dir === 'down'
+      ? `⚙️ ဂရပ်ဖစ် ${QLABEL[lv]} သို့ လျှော့လိုက်ပါတယ် (${fps} FPS)`
+      : `⚙️ ဂရပ်ဖစ် ${QLABEL[lv]} သို့ တင်လိုက်ပါတယ် (${fps} FPS)`);
+  });
+
   // 🔊 အသံ ဖွင့်/ပိတ် — ပစ်သံ/ဗုံးသံ/ခြေသံ အားလုံး ဒီကနေ
   const snd = document.createElement('button');
   snd.id = 'sfxBtn';
@@ -708,7 +745,7 @@ function leaveWorld(href) {
 // 🔧 Debug handle — console ကနေ လောကရဲ့ အစိတ်အပိုင်းတွေ စစ်လို့ရအောင်
 //    (headless test တွေကလည်း ဒီကနေ avatar/loco ကို စစ်တယ်)。
 //    ဖတ်ဖို့သာ ရည်ရွယ်တယ် — behaviour ဘာမှ မပြောင်းဘူး။
-window.__gwave = { engine, world, avatar, net, hud, radial };
+window.__gwave = { engine, world, avatar, net, hud, radial, quality: Quality };
 
 // ၉။ စတင်!
 hud.hideLoading();

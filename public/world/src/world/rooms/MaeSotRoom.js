@@ -6,6 +6,8 @@
 // ============================================================
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
+import { addTerrain } from '../Terrain.js';
+import { addBuilding } from '../Buildings.js';
 import { NPC } from '../../entities/NPC.js';
 import { loadCityMap } from '../MapLoader.js';
 
@@ -26,6 +28,40 @@ export class MaeSotRoom extends Room {
 
     // နေ့ခင်း အလင်း
     addRoomLighting(this, 'day');
+
+    // 🏔️ နယ်စပ် တောင်တန်း — မဲဆောက်က တောင်ကြားထဲက မြို့
+    addTerrain(this, { ground: 120, palette: 'green', seed: 37, peak: 110, hill: 16 });
+
+    // 🛖 နယ်စပ် ရွာ — ခြေတံရှည် ထင်းအိမ်များ (မဲဆောက်ရဲ့ အမှန်တကယ် ပုံစံ)
+    //    GLB မြေပုံ (maesot_block.glb) က အလယ်မှာ ရှိလို့ အိမ်တွေကို
+    //    ဘေးနှစ်ဖက် လမ်းတစ်လျှောက် ချထားတယ်။
+    for (const [x, z, rot] of [[-34, -22, Math.PI / 2], [-34, 8, Math.PI / 2],
+                               [34, -10, -Math.PI / 2], [34, 20, -Math.PI / 2]]) {
+      void addBuilding(this, { kind: 'stilt', position: new THREE.Vector3(x, 0, z), rotation: rot });
+    }
+
+    // 🛻 နယ်စပ် ကုန်တင် ပစ်ကပ်များ — လမ်းဘေးမှာ
+    for (const [x, z, rot, col] of [
+      [-16, 6, Math.PI / 2, 0xb8863b], [-16, 26, Math.PI / 2, 0x2f6f4e],
+      [16, -4, -Math.PI / 2, 0xd8324a],
+    ]) {
+      void addBuilding(this, {
+        kind: 'pickup', position: new THREE.Vector3(x, 0, z), rotation: rot,
+        paint: { name: 'MAT_Body_Paint', color: col },
+      });
+    }
+
+    // 🧍‍♀️ ရွာသူ — ထင်းအိမ် ရှေ့မှာ ရပ်နေတယ် (အရိုးမပါတဲ့ ရုပ်မို့ မလျှောက်ဘူး)
+    this.addNPC(new NPC({
+      name: 'ဒေါ်မြင့်',
+      staticBody: '/world/assets/myanmar_woman.glb',
+      home: new THREE.Vector3(-26, 0, -20),
+      faceYaw: Math.PI / 2,
+      dialogue: [
+        'မင်္ဂလာပါ — မဲဆောက် နယ်စပ်လမ်းကို ရောက်လာတာ ဝမ်းသာပါတယ်။',
+        'ဒီအိမ်တွေက ခြေတံရှည် — မိုးရာသီ ရေကြီးရင် အောက်ကနေ စီးသွားတယ်။',
+      ],
+    }));
 
     // ★ GLB မြို့ကွက် Load — collision များ အလိုအလျောက်ရ ★
     loadCityMap(this, './assets/maesot_block.glb', {

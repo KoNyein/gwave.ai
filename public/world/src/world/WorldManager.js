@@ -39,6 +39,10 @@ export class WorldManager {
     const bg = next.background ?? 0x0d1428;
     this.engine.scene.background.set(bg);
     this.engine.scene.fog.color.set(bg);
+    // 🌫️ မြူ အကွာအဝေးကိုပါ အခန်းအလိုက် — အပြင်ဘက် အခန်းတွေက တောင်တန်း
+    //    မြင်ရဖို့ ဝေးဝေး လိုတယ်၊ အတွင်းခန်းတွေက အနီးမှာပဲ ကောင်းတယ်။
+    this.engine.scene.fog.near = next.fogNear ?? 55;
+    this.engine.scene.fog.far = next.fogFar ?? 190;
 
     this.avatar.teleport(next.spawn);
     this.current = next;
