@@ -36,6 +36,7 @@ export class StrikeRoom extends Room {
 
     // အလင်း
     addRoomLighting(this, 'day');
+    this.ambient = 'wind';
 
     // 🏔️ ပွဲကွင်းပတ်လည် ကျောက်တောင်တန်း — arena က တောင်ကြားထဲမှာ
     // ★ `wall: false` — ဒီအခန်းမှာ ကွန်ကရစ်နံရံ ၄ ခု ရှိပြီးသား (အောက်မှာ)。
