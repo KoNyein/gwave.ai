@@ -22,6 +22,7 @@ import * as THREE from 'three';
 import { Room, addRoomLighting } from '../Room.js';
 import { addTerrain } from '../Terrain.js';
 import { addBuilding } from '../Buildings.js';
+import { addManor, manorSpot } from '../Manor.js';
 import { NPC } from '../../entities/NPC.js';
 import { shophouse, tower, palm, water, road, gateArch, smallStupa, marketStall } from '../CityKit.js';
 
@@ -50,12 +51,18 @@ export class CityRoom extends Room {
     this.ambient = s.ambient || 'city';   // 🎧 ပတ်ဝန်းကျင် အသံ
 
     // 🏔️ ပတ်ဝန်းကျင် — မြို့တိုင်းက ပြေပြင်အစစ်ထဲမှာ ရှိရမယ်
+    // 🏛️ အိမ်တော် ခြံဝန်းက မြို့ အပြင်မှာ — အဲဒီနေရာကို ပြားထားရမယ်
+    const manor = manorSpot(s.ground);
     addTerrain(this, {
       ground: s.ground, palette: s.terrain, seed: s.seed,
       peak: s.peak, hill: s.hill,
+      flatSpots: [manor.flatSpot],
     });
 
     s.build(this);
+
+    // 🏛️ GreenWave Manor — မြို့တိုင်းမှာ ရှိတယ် (မြို့ အနားက ခြံဝန်း)
+    void addManor(this, { position: manor.position, rotation: manor.rotation });
 
     // ══ 🚦 **အလုပ်လုပ်တဲ့ object များ** ══════════════════════════════
     //

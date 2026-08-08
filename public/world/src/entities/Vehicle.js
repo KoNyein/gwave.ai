@@ -28,7 +28,13 @@ import * as THREE from 'three';
 const MAX_SPEED = 16;        // m/s (~၅၈ km/h)
 const ACCEL = 9;
 const BRAKE = 18;
-const DRAG = 1.6;
+// ★ ဆွဲငင်အား — **MAX_SPEED ကို တကယ် ရောက်ဖို့** ချိန်ထားရမယ်。
+//   `speed -= speed * DRAG * dt` ဆိုတော့ အမြင့်ဆုံး အရှိန်က ACCEL/DRAG。
+//   DRAG ၁.၆ ဆိုရင် ၉/၁.၆ = **၅.၆ m/s** ပဲ ရတယ် — MAX_SPEED ၁၆ ဆိုတာ
+//   ဘယ်တော့မှ မရောက်ဘူး၊ ကားက လမ်းလျှောက်တာထက် နည်းနည်းပဲ မြန်တယ်။
+//   (user: "လိုရာ မရောက်ဘူး")。 ၀.၅၅ ဆိုရင် ၉/၀.၅၅ ≈ ၁၆.၄ — MAX_SPEED နဲ့
+//   ကိုက်တယ်၊ လက်လွှတ်ရင်လည်း ~၂ စက္ကန့်နဲ့ ရပ်တယ်။
+const DRAG = 0.55;
 const TURN = 1.9;            // rad/s — အမြန်နှုန်း မြင့်လေ ကွေ့နိုင်လေ နည်း
 
 export class Vehicle {
@@ -111,6 +117,9 @@ export class VehicleSystem {
       if (i >= 0) list.splice(i, 1);
     }
     this.avatar.group.visible = false;
+    // ★ avatar ရဲ့ ကိုယ်ပိုင် update ကို ရပ် — ကင်မရာ ရော လှုပ်ရှားမှု ရော
+    //   နှစ်ခု ပြိုင်တူ ရေးနေရင် တုန်တယ် (Avatar.js မှာ ရှင်းပြထားတယ်)。
+    this.avatar.driving = true;
     this.hud?.addToast(`${v.label} — မောင်းရန် joystick, ဆင်းရန် E`);
     this.sfx?.ui({ up: true });
     this._startEngineSound();
@@ -128,6 +137,11 @@ export class VehicleSystem {
     const p = v.mesh.position.clone().addScaledVector(side, 3.2);
     this.avatar.group.position.set(p.x, 0, p.z);
     this.avatar.group.visible = true;
+    this.avatar.driving = false;
+    // ★ ဆင်းတဲ့နေရာက နံရံထဲ ဖြစ်နေရင် ဖယ်ထုတ် — မဟုတ်ရင် အဆောက်အအုံထဲ
+    //   ညပ်နေတယ် (ကားက အဆောက်အအုံနဲ့ ကပ်ရပ်ထားရင် ဖြစ်တတ်တယ်)。
+    this.avatar.physics.resolveHorizontal(this.avatar.group.position, 0.4, 1.8);
+    this.avatar.physics.resolveHorizontal(this.avatar.group.position, 0.4, 1.8);
     // collider ပြန်ထည့် — ကားရဲ့ အခု တည်နေရာနဲ့
     if (v.box) {
       v.box.setFromObject(v.mesh);
@@ -197,23 +211,40 @@ export class VehicleSystem {
     // ရှေ့သို့ ရွေ့ — မော်ဒယ်ရဲ့ ရှေ့က +Z
     const dir = new THREE.Vector3(0, 0, 1).applyAxisAngle(
       new THREE.Vector3(0, 1, 0), v.mesh.rotation.y);
-    const next = v.mesh.position.clone().addScaledVector(dir, v.speed * dt);
 
-    // အဆောက်အအုံ တိုက်မိရင် ရပ် — ကားကို capsule လို သဘောထားပြီး စစ်
+    // ── အဆောက်အအုံ တိုက်မိရင် **ဘေးလျှော သွား** (ပြန်မကန်ဘူး) ─────────
     //
-    // ⚠️ **အလျားလိုက်ပဲ** နှိုင်းရမယ်။ probe ကို y=၀.၆ တင်ထားပြီး
-    //    `distanceTo(next)` (next.y ≈ ၀.၀၃) နဲ့ နှိုင်းရင် အမြဲ ၀.၅၇
-    //    ကျော်နေလို့ **တိုက်မိတယ်လို့ အမြဲ ထင်ပြီး ကား တစ်လှမ်းမှ မရွေ့ဘူး**
-    //    (တိုင်းတာချက်: W ၂ စက္ကန့် ဖိလည်း ၀.၀၀ m)。
-    const probe = next.clone();
-    probe.y = 0.6;
-    this.avatar.physics.resolveHorizontal(probe, 1.6, 1.4);
-    const blocked = Math.hypot(probe.x - next.x, probe.z - next.z);
-    if (blocked > 0.05) {
-      v.speed *= -0.15;                 // တိုက်မိ — ပြန်ကန်ပြီး ရပ်
-      this.sfx?.hit({ vol: 0.5 });
+    // user: "လိုရာ မရောက်ဘူး၊ လယ်နေတယ်"
+    //
+    // ★ အရင်က တိုက်မိတိုင်း `v.speed *= -0.15` — ရှေ့မှာ ဘာများများ
+    //   ရှိတိုင်း ကားက ပြန်ကန်ထွက်တယ်။ NPC, ထန်းပင်, နံရံ collider တွေ
+    //   အများကြီး ထည့်ပြီးကတည်းက ဒါက ကားကို လုံးဝ မမောင်းနိုင်အောင်
+    //   လုပ်ပစ်တယ် — ရှေ့တိုး/နောက်ကန် အလှည့်ကျ ဖြစ်ပြီး "လယ်နေတယ်"。
+    // ★ အခု တကယ့်ကားလိုပဲ: ရှေ့တည့်တည့် မရရင် **X ချည်း / Z ချည်း**
+    //   စမ်းတယ် — နံရံနဲ့ စောင်းတိုက်ရင် ဘေးလျှောပြီး ဆက်သွားလို့ရတယ်။
+    //   နှစ်ခုစလုံး မရမှ ရပ်တယ် (ပြန်မကန်ဘူး, အရှိန်ကိုပဲ ဖြတ်တယ်)。
+    // ★ **အလျားလိုက်ပဲ** နှိုင်းရမယ် — probe ကို y=၀.၆ တင်ထားပြီး
+    //   `distanceTo(next)` (next.y ≈ ၀.၀၃) နဲ့ နှိုင်းရင် အမြဲ ၀.၅၇
+    //   ကျော်နေလို့ တိုက်မိတယ်လို့ အမြဲ ထင်တယ်။
+    const step = v.speed * dt;
+    const free = (nx, nz) => {
+      const probe = new THREE.Vector3(nx, 0.6, nz);
+      this.avatar.physics.resolveHorizontal(probe, 1.5, 1.2);
+      return Math.hypot(probe.x - nx, probe.z - nz) < 0.05;
+    };
+    const px = v.mesh.position.x, pz = v.mesh.position.z;
+    const tx = px + dir.x * step, tz = pz + dir.z * step;
+    if (free(tx, tz)) {
+      v.mesh.position.set(tx, v.mesh.position.y, tz);
+    } else if (free(tx, pz)) {
+      v.mesh.position.x = tx;                 // ဘေးလျှော — X ဘက် ဆက်သွား
+      v.speed *= 0.86;
+    } else if (free(px, tz)) {
+      v.mesh.position.z = tz;                 // ဘေးလျှော — Z ဘက် ဆက်သွား
+      v.speed *= 0.86;
     } else {
-      v.mesh.position.set(next.x, v.mesh.position.y, next.z);
+      v.speed *= 0.2;                         // တကယ် ပိတ်နေပြီ — ရပ်
+      if (Math.abs(step) > 0.08) this.sfx?.hit({ vol: 0.35 });
     }
 
     // ── ကင်မရာ — ကားနောက်က လိုက် ──────────────────────────────────

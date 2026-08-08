@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
 import { addTerrain } from '../Terrain.js';
+import { addManor, manorSpot } from '../Manor.js';
 import { addBuilding } from '../Buildings.js';
 import { NPC } from '../../entities/NPC.js';
 
@@ -26,7 +27,11 @@ export class FarmRoom extends Room {
     this.ambient = 'wind';   // 🎧 ကွင်းပြင် လေသံ
 
     // 🏔️ စိုက်ခင်းကို ဝိုင်းထားတဲ့ စိမ်းလန်းချိုင့်ဝှမ်း — တောင် နိမ့်နိမ့်
-    addTerrain(this, { ground: 90, palette: 'lush', seed: 23, peak: 62, hill: 10 });
+    // 🏛️ အိမ်တော် ခြံဝန်း — လယ်ကွင်း အပြင်ဘက်၊ မြေပြားပေါ်
+    const manor = manorSpot(90);
+    addTerrain(this, { ground: 90, palette: 'lush', seed: 23, peak: 62, hill: 10,
+                       flatSpots: [manor.flatSpot] });
+    void addManor(this, { position: manor.position, rotation: manor.rotation });
 
     // 🏠 စိုက်ခင်း အိမ် — ကွင်းစွန်းက ထင်းအိမ် (lab ရဲ့ တာဝန်ခံ နေတဲ့ အိမ်)
     void addBuilding(this, {
