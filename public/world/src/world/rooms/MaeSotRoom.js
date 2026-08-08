@@ -6,6 +6,7 @@
 // ============================================================
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
+import { addTerrain } from '../Terrain.js';
 import { NPC } from '../../entities/NPC.js';
 import { loadCityMap } from '../MapLoader.js';
 
@@ -26,6 +27,9 @@ export class MaeSotRoom extends Room {
 
     // နေ့ခင်း အလင်း
     addRoomLighting(this, 'day');
+
+    // 🏔️ နယ်စပ် တောင်တန်း — မဲဆောက်က တောင်ကြားထဲက မြို့
+    addTerrain(this, { ground: 120, palette: 'green', seed: 37, peak: 110, hill: 16 });
 
     // ★ GLB မြို့ကွက် Load — collision များ အလိုအလျောက်ရ ★
     loadCityMap(this, './assets/maesot_block.glb', {

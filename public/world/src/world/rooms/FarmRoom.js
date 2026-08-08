@@ -4,6 +4,7 @@
 // ============================================================
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
+import { addTerrain } from '../Terrain.js';
 import { NPC } from '../../entities/NPC.js';
 
 export class FarmRoom extends Room {
@@ -21,6 +22,9 @@ export class FarmRoom extends Room {
     // Lab အလင်း — စိုက်ပျိုးရေးမီး ပန်းရောင်ခပ်ခပ် (grow lights)
     // 💡 အလင်း စနစ် — Room.js ရဲ့ တစ်ခုတည်းသော preset (hemisphere+key+fill)
     addRoomLighting(this, 'indoor');
+
+    // 🏔️ စိုက်ခင်းကို ဝိုင်းထားတဲ့ စိမ်းလန်းချိုင့်ဝှမ်း — တောင် နိမ့်နိမ့်
+    addTerrain(this, { ground: 90, palette: 'lush', seed: 23, peak: 62, hill: 10 });
 
     // Hydroponic စင်တန်းများ — စင် + အပင်စိမ်းလေးများ
     const plantMat = new THREE.MeshStandardMaterial({

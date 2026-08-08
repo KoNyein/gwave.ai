@@ -4,6 +4,7 @@
 // ============================================================
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
+import { addTerrain } from '../Terrain.js';
 import { NPC } from '../../entities/NPC.js';
 
 export class YangonRoom extends Room {
@@ -70,6 +71,10 @@ export class YangonRoom extends Room {
     //   ကောင်းကင်/မြေ နှစ်ဘက်ကနေ အလင်းပြန်ပေးလို့ ညအလင်းကို မဖျက်ဘဲ
     //   ပုံသဏ္ဌာန်တွေ မြင်ရစေတယ် — flat ambient ကို တင်လိုက်တာထက် ပိုကောင်း။
     addRoomLighting(this, 'night');
+
+    // 🏔️ ပတ်ဝန်းကျင် — ညမြို့တော်ကို ဝိုင်းထားတဲ့ တောင်တန်း
+    //    (user: "environment ကို ပြေပြင်အစစ် တောင်ကုန်း တောင်တန်း ထည့်ပါ")
+    addTerrain(this, { ground: 140, palette: 'night', seed: 11, peak: 100, hill: 12 });
     // ★ လမ်းမီး — ကစားသမား လမ်းလျှောက်ရာ လမ်းကြောင်းကို ချထားတယ်၊
     //   ဒါမှ ခြေထောက်နဲ့ မြေပြင် တကယ် မြင်ရတယ်။
     for (let i = -1; i <= 3; i++) {
