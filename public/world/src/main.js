@@ -206,7 +206,7 @@ engine.register({
         if (portal.targetRoomId === 'myworld') {
           if (net.connected) net.requestWorld(); // server ကနေ ကိုယ့်ကမ္ဘာ load
           else hud.addToast('🌍 ကိုယ်ပိုင်ကမ္ဘာအတွက် server လိုအပ်သည် (offline)');
-        } else { world.switchTo(portal.targetRoomId); net.onRoomSwitch(); }
+        } else { world.switchTo(portal.targetRoomId, portal.arrive); net.onRoomSwitch(); }
       }
       else if (station) openers[station.action]?.();
       else if (npc) hud.showDialogue(npc.name, npc.nextLine());
