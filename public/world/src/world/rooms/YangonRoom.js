@@ -170,62 +170,40 @@ export class YangonRoom extends Room {
     pagodaGlow.position.set(0, 14, -45);
     this.group.add(pagodaGlow);
 
-    // ဆိုင်ခန်း/တိုက်တာများ — neon ပြတင်းပေါက်များနှင့်
+    // 🏙️ လမ်းဘေး အဆောက်အအုံများ — **အစစ်ချည်းပဲ**
     //
-    // ⚠️ ဒီတိုက်တွေက `Math.random()` နဲ့ ချထားတယ် — **ဝင်တိုင်း နေရာ
-    //    ပြောင်း**တယ်။ ဒါကြောင့် တိုက်တစ်လုံးက စေတီရင်ပြင်, ကိုလိုနီအိမ်,
-    //    ထင်းအိမ်, station တိုင်, ရပ်ထားတဲ့ ကား — ဘယ်ဟာနဲ့မဆို ထပ်သွား
-    //    နိုင်တယ် (တိုင်းတာတိုင်း တစ်မျိုးစီ တွေ့ခဲ့တယ်)。
+    // user: "Cyber-Yangon ထဲက သုံးမရတဲ့ အတွင်းသွားလို့မရတဲ့ တိုက်တွေ
+    //        အကုန် ဖယ်ပါ"
     //
-    // ★ နေရာ တစ်ခုချင်း လိုက်ရွှေ့တာ **အဖြေ မဟုတ်ဘူး** — random seed
-    //   ပြောင်းတာနဲ့ နောက်တစ်ခု ထပ်လာမယ်။ ဒါကြောင့် **ကြိုတင် သီးသန့်
-    //   ထားတဲ့ ဇုန်များ** သတ်မှတ်ပြီး အဲဒီထဲ ကျရင် ချန်ထားလိုက်တယ်။
-    const RESERVED = [
-      { x0: -22, z0: -68, x1: 22, z1: -24 },   // 🛕 စေတီ ရင်ပြင်
-      { x0: -55, z0: -31, x1: -29, z1: -5 },   // 🏛️ ကိုလိုနီအိမ်
-      { x0: 35, z0: -29, x1: 61, z1: -3 },     // 🛖 ထင်းအိမ် (ကိုယ့်အိမ်)
-      { x0: 36, z0: 4, x1: 64, z1: 32 },       // 🛖 ထင်းအိမ် ၂
-      { x0: -20, z0: -18, x1: 20, z1: 22 },    // 🎯 station/portal လမ်းလယ်
-      { x0: -28, z0: 40, x1: 29, z1: 66 },     // 🛻 ကား ရပ်နားရာ
-    ];
-    const hits = (x, z, w, d) => RESERVED.some((r) =>
-      x + w / 2 > r.x0 && x - w / 2 < r.x1 && z + d / 2 > r.z0 && z - d / 2 < r.z1);
-
-    const neonColors = [0xff2d78, 0x2de1ff, 0x7f5cff, 0x3ddc97, 0xffb020];
-    const placed = [];   // တိုက်အချင်းချင်းလည်း မထပ်စေရ
-    for (let i = 0; i < 26; i++) {
-      const w = 3 + Math.random() * 4, h = 5 + Math.random() * 14, d = 3 + Math.random() * 4;
-      const side = i % 2 === 0 ? -1 : 1;
-      const z = -40 + (i * 3.2);
-      // ★ x ကို ၈ ကြိမ် ထိ ပြန်စမ်းတယ် — မရရင် အဲဒီတိုက် မဆောက်တော့ဘူး။
-      //   "မရှိတာ" က "အထဲ ဝင်နေတာ" ထက် အမြဲ ပိုကောင်းတယ်။
-      let x = null;
-      for (let t = 0; t < 8; t++) {
-        const cand = side * (9 + Math.random() * 22);
-        if (hits(cand, z, w, d)) continue;
-        if (placed.some((q) => Math.abs(q.x - cand) < (q.w + w) / 2 + 0.6 &&
-                               Math.abs(q.z - z) < (q.d + d) / 2 + 0.6)) continue;
-        x = cand; break;
-      }
-      if (x === null) continue;
-      placed.push({ x, z, w, d });
-
-      const bld = new THREE.Mesh(
-        new THREE.BoxGeometry(w, h, d),
-        new THREE.MeshStandardMaterial({ color: 0x232d4a, roughness: 0.75 })
-      );
-      bld.position.set(x, h / 2, z);
-      bld.castShadow = true;
-      this.group.add(bld);
-      this.addCollider(bld); // အဆောက်အအုံတိုင်း collision ပါ
-
-      // neon ဆိုင်းဘုတ်
-      const neon = new THREE.Mesh(
-        new THREE.BoxGeometry(w * 0.7, 0.5, 0.2),
-        new THREE.MeshBasicMaterial({ color: neonColors[i % neonColors.length] })
-      );
-      neon.position.set(bld.position.x, h * 0.7, bld.position.z + d / 2 + 0.15);
-      this.group.add(neon);
+    // အရင်က ဒီနေရာမှာ `BoxGeometry` သေတ္တာ ၂၆ လုံး ရှိတယ် — neon
+    // ဆိုင်းဘုတ် ကပ်ထားပေမယ့် တံခါး မရှိ, ပြတင်းပေါက် မရှိ, အထဲ ဝင်လို့
+    // မရဘူး၊ အနီးရောက်လေ တုံးလို ဖြစ်လေပဲ။ **အားလုံး ဖယ်လိုက်ပြီ**
+    // (သေတ္တာ ၂၆ + ဆိုင်းဘုတ် ၂၆ = mesh ၅၂, collider ၂၆)。
+    //
+    // အစားထိုး — မော်ဒယ် အစစ် ၅ လုံး ထပ်ချတယ်။ တံခါး, ပြတင်းပေါက်,
+    // ဝရံတာ, အမိုးအားလုံး ပါတယ်။
+    //
+    // ★ နေရာတွေက **အသေ** — random မဟုတ်တော့ဘူး။ အရင် သေတ္တာတွေက
+    //   ကျပန်း ဖြစ်လို့ ဝင်တိုင်း တစ်နေရာစီ ရောက်ပြီး တခြားအရာတွေနဲ့
+    //   ထပ်နေတယ် (တိုင်းတာတိုင်း တစ်မျိုးစီ တွေ့ခဲ့တယ်)。 အသေ ချထားရင်
+    //   တစ်ခါ စစ်ရုံနဲ့ ထာဝရ မှန်တယ်။
+    // ★ ကိုလိုနီအိမ်က တြိဂံ ၅၆k မို့ `heavy` — ဂရပ်ဖစ် အလယ်/အနိမ့်မှာ
+    //   ဖျောက်တယ်။ ထင်းအိမ်က ၉.၇k ပဲမို့ `detail`。
+    // ★ ကိုလိုနီအိမ်ကို **တစ်လုံးပဲ** ထပ်ထည့်တယ် — တစ်လုံးက တြိဂံ ၅၆k မို့
+    //   သုံးလုံး ဆိုရင် ရန်ကုန်က ၅၃၄k ရောက်သွားတယ် (တိုင်းတာပြီး တွေ့ခဲ့)。
+    //   အသေးစိတ် လျှော့တဲ့ LOD လုပ်ကြည့်ပေမယ့် ၅၆k → ၄၅k ပဲ ကျလို့
+    //   မထူးဘူး — အဲဒီ မော်ဒယ်က အသေးလေးတွေ မဟုတ်ဘဲ နံရံကိုယ်တိုင်က
+    //   အသေးစိတ်တာ။ ဒါကြောင့် အရေအတွက်နဲ့ပဲ ချိန်တယ်။
+    for (const [kind, x, z, rot, tier] of [
+      ['colonial', -42, 14, Math.PI / 2, 'heavy'],
+      ['stilt', -46, -46, Math.PI / 2.2, 'detail'],
+      ['stilt', -46, 40, Math.PI / 2.4, 'detail'],
+      ['stilt', 48, -44, -Math.PI / 2, 'detail'],
+      ['stilt', 48, 44, -Math.PI / 2.6, 'detail'],
+    ]) {
+      void addBuilding(this, {
+        kind, position: new THREE.Vector3(x, 0, z), rotation: rot, tier,
+      });
     }
 
     // NPC များ — မြန်မာအသိုင်းအဝိုင်း
