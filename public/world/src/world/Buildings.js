@@ -116,8 +116,14 @@ export async function addBuilding(room, {
   //    ကြည့်ရင် ကားရဲ့ ရှေ့က +Z ဖြစ်သွားပြီ၊ ကျန်တဲ့ code ဘာမှ မထိရဘူး။
   let obj = inner;
   if (VEHICLE_LABELS[kind]) {
+    // ★ ဘယ်ဘက်က ရှေ့လဲ ဆိုတာ **မော်ဒယ်က ကိုယ်တိုင် ပြောတယ်** — ပစ်ကပ်ရဲ့
+    //   extras မှာ `"forward": "-Z"` ပါတယ်။ မပါရင် −Z လို့ ယူဆတယ်
+    //   (တက္ကစီမှာ မပါဘူး၊ ဒါပေမယ့် ရှေ့ဘီး ၂ လုံးက z −1.45 မှာ ရှိလို့
+    //   −Z ဖြစ်တာ တိုင်းစစ်ပြီးသား)。
+    const fwdAxis = inner.children[0]?.userData?.forward
+                 || inner.userData?.forward || '-Z';
     obj = new THREE.Group();
-    inner.rotation.y = Math.PI;
+    inner.rotation.y = fwdAxis === '+Z' ? 0 : Math.PI;
     obj.add(inner);
   }
   obj.position.copy(position);
@@ -155,6 +161,12 @@ export async function addBuilding(room, {
         mesh: obj, box, label: VEHICLE_LABELS[kind],
         doors: rig.doors, wheels: rig.wheels, wheelR: rig.radius,
         seat: rig.seat, camPose: rig.cam,
+        head: rig.head, tail: rig.tail,
+        // 🚕 မော်ဒယ်က ကိုယ်ပိုင် အချက်အလက် ပေးထားရင် ယူတယ် — တက္ကစီမှာ
+        //    `{ seats: 4, fareBase: 500, farePerKm: 450 }` ပါလာတယ်။
+        //    ★ extras က scene root မှာလား ပထမ child မှာလား ဆိုတာ
+        //      loader/export ပေါ် မူတည်တယ် — နှစ်ခုစလုံး ပေါင်းယူတယ်။
+        spec: { ...(inner.children[0]?.userData || {}), ...(inner.userData || {}) },
       });
     }
   }
@@ -186,8 +198,36 @@ export async function addBuilding(room, {
 function rigVehicle(root) {
   const wheels = [];
   const doors = [];
+  const head = [], tail = [];
   let seat = null, cam = null;
+  // 💡 **မီးများ** — ZIP ထဲက `vehicle-system.js` က `LIGHT_Head_L/R` နဲ့
+  //    `LIGHT_Tail_L/R` ကို emissive တင်/ချ လုပ်တယ်။ မော်ဒယ် နှစ်မျိုးက
+  //    နည်းနှစ်မျိုးနဲ့ ပေးထားတယ်:
+  //      ပစ်ကပ် — material နာမည် (`MAT_Light_Head` / `MAT_Light_Tail`)
+  //      တက္ကစီ — node နာမည် (`LIGHT_Head_*` / `LIGHT_Tail_*`)
+  //    ဒါကြောင့် နှစ်မျိုးလုံး လက်ခံတယ်။
+  // ★ material ကို **clone မဖြစ်မနေ လုပ်ရမယ်** — `scene.clone(true)` က
+  //   material ကို မျှသုံးတယ်၊ မ clone ဘဲ emissive ပြောင်းရင် အဲဒီဖိုင်ကနေ
+  //   ဆောက်ထားတဲ့ **ကားအားလုံး** ဘရိတ်မီး တစ်ပြိုင်နက် တောက်သွားမယ်။
+  const lampsOf = (o) => {
+    if (!o.isMesh || !o.material) return;
+    const mn = o.material.name || '';
+    let bucket = null;
+    for (let q = o; q; q = q.parent) {
+      const qn = q.name || '';
+      if (qn.startsWith('LIGHT_Head')) { bucket = head; break; }
+      if (qn.startsWith('LIGHT_Tail')) { bucket = tail; break; }
+    }
+    if (!bucket) {
+      if (mn === 'MAT_Light_Head') bucket = head;
+      else if (mn === 'MAT_Light_Tail') bucket = tail;
+    }
+    if (!bucket) return;
+    o.material = o.material.clone();
+    bucket.push(o.material);
+  };
   root.traverse((o) => {
+    lampsOf(o);
     const n = o.name || '';
     if (/^WHEEL_(FL|FR|RL|RR)$/.test(n)) {
       wheels.push({ node: o, front: n[6] === 'F', spin: 0 });
@@ -201,7 +241,9 @@ function rigVehicle(root) {
   });
   // ဘီး အချင်းဝက် — ဝင်ရိုး အမြင့်ကနေ (မြေနဲ့ ထိတဲ့ အချက်)
   const radius = wheels.length ? Math.abs(wheels[0].node.position.y) || 0.38 : 0.38;
-  return { wheels, doors, radius, seat, cam };
+  // မီး မထွန်းခင် အခြေအနေကို မှတ်ထား — ပြန်ပိတ်တဲ့အခါ ဒီတန်ဖိုးကို ပြန်သွား
+  for (const m of [...head, ...tail]) m.userData.baseEmissive = m.emissiveIntensity ?? 1;
+  return { wheels, doors, radius, seat, cam, head, tail };
 }
 
 /**
