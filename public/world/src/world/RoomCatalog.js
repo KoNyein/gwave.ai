@@ -34,6 +34,8 @@ export const ROOM_GROUPS = [
         blurb: 'ရေမြေဆီ စိုက်ခင်း lab — စိမ်းလန်းပြီး ငြိမ်သက်တဲ့ အခန်း' },
       { kind: 'world', id: 'maesot', emoji: '🏘️', name: 'မဲဆောက် နယ်စပ်လမ်း',
         blurb: 'GLB မြို့ပြ မြေပုံ — အဆောက်အဦ အစစ်အမှန် အချိုးအစားနဲ့' },
+      { kind: 'world', id: 'mandalay', emoji: '🏯', name: 'မန္တလေးမြို့',
+        blurb: '၂.၄ km မြို့ — နန်းတော်+ကျုံး, မန္တလေးတောင်, ဈေးချို, လက်မှုရပ်ကွက်' },
       { kind: 'world', id: 'taxi-district', emoji: '🚕', name: 'တက္ကစီမြို့ (Taxi District)',
         blurb: 'ကွင်းပတ်လမ်း, ၉ ထပ်တိုက် ၁၂ လုံး — ကား ၃ စီး ကိုယ်တိုင် မောင်းလို့ရ' },
       { kind: 'world', id: 'strike', emoji: '⚔️', name: 'GWAVE STRIKE Arena',
