@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
 import { addTerrain } from '../Terrain.js';
-import { addManor, manorSpot } from '../Manor.js';
+import { addManor, addKit, manorSpot } from '../Kit.js';
 import { addBuilding, buildPagoda, pagodaColliders, stupaColliders } from '../Buildings.js';
 import { NPC } from '../../entities/NPC.js';
 
@@ -214,17 +214,17 @@ export class YangonRoom extends Room {
     // ★ ကိုလိုနီအိမ် အသစ်က ၃၀ × ၃၈ m — အရင်ဟာထက် အများကြီး ကြီးပြီး
     //   တြိဂံက ၅၆,၄၈၈ → **၁၅,၁၆၀** ပဲ (mesh ၂,၁၀၃ → ၁၃)。 ဒါကြောင့်
     //   'heavy' မဟုတ်တော့ဘူး၊ အကွာအဝေးလည်း ပိုလိုတယ် (၄၀ m ခြား)。
-    for (const [kind, x, z, rot, tier] of [
-      ['colonial', -48, -30, Math.PI / 2, 'detail'],
-      ['colonial', -48, 12, Math.PI / 2, 'detail'],
-      ['colonial', -48, 54, Math.PI / 2, 'detail'],
-      ['stilt', 48, -44, -Math.PI / 2, 'detail'],
-      ['stilt', 48, 44, -Math.PI / 2, 'detail'],
-    ]) {
+    // 🏛️ ကိုလိုနီအိမ် — **မော်ဒယ်က ကိုယ်တိုင် သတ်မှတ်ချက် ပါလာပြီ**
+    //   (TRIGGER_Door_Main/Gate_Main, SPAWN_Floor_1..3, COL_Stair_1/2)。
+    //   ဒါကြောင့် `addKit` က ဖတ်ပြီး တံခါး/ဂိတ်/လှေကား အလိုအလျောက်
+    //   တပ်ပေးတယ် — အရင်လို occupancy grid နဲ့ ခန့်မှန်းစရာ မလိုတော့ဘူး。
+    for (const z of [-30, 12, 54]) {
+      void addKit(this, { kit: 'colonial', position: new THREE.Vector3(-48, 0, z) });
+    }
+    for (const z of [-44, 44]) {
       void addBuilding(this, {
-        kind, position: new THREE.Vector3(x, 0, z), rotation: rot, tier,
-        // 🚪 အားလုံး ဝင်လို့ရရမယ် — ရှေ့မျက်နှာက ဘယ်ဘက်လှည့်နေလဲ အလိုက်
-        hollow: { side: x < 0 ? '+x' : '-x', width: 5, step: kind === 'stilt' ? 2.2 : 0 },
+        kind: 'stilt', position: new THREE.Vector3(48, 0, z), rotation: -Math.PI / 2,
+        hollow: { side: '-x', width: 5, step: 2.2 },
       });
     }
 

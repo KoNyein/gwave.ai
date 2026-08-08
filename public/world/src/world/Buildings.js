@@ -138,8 +138,11 @@ export async function addBuilding(room, {
     // 🛻 ကားဆိုရင် **စီးလို့ရတဲ့ ယာဉ်** အဖြစ် စာရင်းသွင်း — VehicleSystem က
     //    အခန်းကူးတိုင်း `room.cars` ကို ဖတ်တယ် (async ရောက်လာလည်း မှီတယ်)。
     if (kind === 'pickup') {
+      const rig = rigVehicle(inner);
       (room.cars ||= []).push({
-        mesh: obj, box, label: '🛻 ပစ်ကပ်ကား', doors: hingeCarDoors(inner),
+        mesh: obj, box, label: '🛻 ပစ်ကပ်ကား',
+        doors: rig.doors, wheels: rig.wheels, wheelR: rig.radius,
+        seat: rig.seat, camPose: rig.cam,
       });
     }
   }
@@ -147,45 +150,46 @@ export async function addBuilding(room, {
 }
 
 /**
- * 🚗 **ကား တံခါး ၂ ချပ်ကို ပတ္တာ တပ်ပေးတယ်**
+ * 🚗 **ကားရဲ့ ရွေ့လျားတဲ့ အစိတ်အပိုင်းများ** — ဘီး ၄ လုံး, တံခါး ၂ ချပ်
  *
- * user: "ကား တံခါး အဖွင့်အပိတ်"
+ * user: "ကား တံခါး အဖွင့်အပိတ်" / ZIP ထဲက generator suite
  *
- * ★ တင်လာတဲ့ မော်ဒယ်မှာ တံခါးတွေက **ပွင့်ပြီးသား** ပုံသေ ဖြစ်နေတယ် —
- *   ဘေးကို ၉၀° ထောင်ထွက်နေတာ (render မှာ ရှင်းရှင်း မြင်ရတယ်)。 ဒါကြောင့်
- *   မောင်းနေတဲ့ ကားက တံခါး ၂ ဖက် ဟထားပြီး ပြေးနေသလို ဖြစ်တယ်။
+ * ★ မော်ဒယ် အသစ်မှာ **သတ်မှတ်ချက် (convention) ပါလာပြီ** — ခန့်မှန်းစရာ
+ *   မလိုတော့ဘူး (`world-registry.json` က ဒီလို ပြောထားတယ်):
+ *       WHEEL_FL/FR/RL/RR — ဘီး၊ pivot က ဝင်ရိုးမှာ, လည်ရိုး = local X
+ *       DOOR_L / DOOR_R   — တံခါး၊ pivot က ပတ္တာမှာ
+ *       SEAT_Driver/Pass* — ထိုင်ခုံ (ဆင်းတဲ့နေရာ တွက်ဖို့)
+ *       CAM_Third         — နောက်ကလိုက် ကင်မရာ အနေအထား
  *
- * ★ material အလိုက် ပေါင်းထားတဲ့ ဖိုင်ဖြစ်ပေမယ့် တံခါး ၂ ချပ်က
- *   `MAT_Interior_Trim` (ဘယ်, x −2.00…−0.94) နဲ့ `MAT_Interior_Trim_0`
- *   (ညာ, x +0.94…+2.00) ဆိုတဲ့ **သီးသန့် mesh ၂ ခု**။ တစ်ခုချင်း
- *   ဖျောက်ကြည့်ပြီး အတည်ပြုထားတယ် — ဖျောက်လိုက်ရင် ထောင်ထွက်နေတဲ့
- *   ပြားကြီး ၂ ခု ပျောက်သွားတယ်။
+ * ★ အရင် မော်ဒယ်မှာ တံခါးက material နာမည် (`MAT_Interior_Trim`) နဲ့ပဲ
+ *   ရှာလို့ရတယ်၊ pivot ကို လက်နဲ့ တွက်ရတယ် (x ±0.94, z −1.0)。 အခု
+ *   မော်ဒယ်က pivot ကို ကိုယ်တိုင် ပေးထားတယ် — ပိုတိကျပြီး မော်ဒယ်
+ *   ပြောင်းလည်း အလုပ်လုပ်တယ်。
  *
- * ★ ပတ္တာက ကားကိုယ်ထည်နဲ့ ဆုံတဲ့ အနား (x = ±0.94, z = −1.0)。 အဲဒီမှာ
- *   pivot ထားပြီး ၉၀° လှည့်လိုက်ရင် တံခါးက ကားဘေးနဲ့ အပ်သွားတယ် = ပိတ်။
+ * ★ `COL_*` node တွေလည်း ပါပေမယ့် **geometry မပါဘူး** (loader မှာ
+ *   Object3D သက်သက် ဖြစ်နေတယ် — တိုင်းစစ်ပြီး တွေ့ခဲ့)。 ဒါကြောင့်
+ *   collider ကို bounding box ကနေပဲ ဆက်ယူတယ် — ကားက ဘောက်စ်ပုံစံမို့
+ *   အဲဒါနဲ့ လုံလောက်တယ်。
  */
-function hingeCarDoors(root) {
-  const HINGE_X = 0.94, HINGE_Z = -1.0;
-  const out = [];
-  const found = [];
-  root.traverse((m) => {
-    const n = m.material?.name;
-    if (m.isMesh && (n === 'MAT_Interior_Trim' || n === 'MAT_Interior_Trim_0')) found.push(m);
+function rigVehicle(root) {
+  const wheels = [];
+  const doors = [];
+  let seat = null, cam = null;
+  root.traverse((o) => {
+    const n = o.name || '';
+    if (/^WHEEL_(FL|FR|RL|RR)$/.test(n)) {
+      wheels.push({ node: o, front: n[6] === 'F', spin: 0 });
+    } else if (n === 'DOOR_L' || n === 'DOOR_R') {
+      // ★ မော်ဒယ်ထဲမှာ တံခါးက **ပိတ်ပြီးသား** ဖြစ်နေတယ် (အရင်ဟာက
+      //   ပွင့်ပြီးသား)。 ပိတ်တာက ၀, ပွင့်တာက အပြင်ဘက် ၈၀°。
+      const side = n === 'DOOR_L' ? -1 : 1;
+      doors.push({ node: o, closed: 0, open: side * 1.4, angle: 0, target: 0 });
+    } else if (n === 'SEAT_Driver') seat = o;
+    else if (n === 'CAM_Third') cam = o;
   });
-  for (const m of found) {
-    const b = new THREE.Box3().setFromBufferAttribute(m.geometry.attributes.position);
-    const sign = (b.min.x + b.max.x) / 2 < 0 ? -1 : 1;   // ဘယ် / ညာ
-    const pivot = new THREE.Group();
-    pivot.position.set(sign * HINGE_X, 0, HINGE_Z);
-    (m.parent || root).add(pivot);
-    pivot.add(m);
-    m.position.set(-sign * HINGE_X, 0, -HINGE_Z);
-    // ★ မော်ဒယ်ထဲက အနေအထား = ပွင့်နေတာ (angle 0)。 ပိတ်တာက ±၉၀°。
-    const closed = sign < 0 ? Math.PI / 2 : -Math.PI / 2;
-    pivot.rotation.y = closed;
-    out.push({ pivot, closed, angle: closed, target: closed });
-  }
-  return out;
+  // ဘီး အချင်းဝက် — ဝင်ရိုး အမြင့်ကနေ (မြေနဲ့ ထိတဲ့ အချက်)
+  const radius = wheels.length ? Math.abs(wheels[0].node.position.y) || 0.38 : 0.38;
+  return { wheels, doors, radius, seat, cam };
 }
 
 /**
