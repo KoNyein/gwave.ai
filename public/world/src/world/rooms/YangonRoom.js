@@ -118,12 +118,15 @@ export class YangonRoom extends Room {
       kind: 'colonial', position: new THREE.Vector3(-42, 0, -18),
       rotation: Math.PI / 2, tier: 'heavy',
     });
+    // ★ x ≥ ၄၈ — neon တိုက်တွေက |x| ၃၄ အထိ ရောက်တယ် (ဗဟို ၃၁ + အကျယ်
+    //   တစ်ဝက်)。 ၄၂ မှာ ထားတော့ တိုက်တစ်လုံးနဲ့ ၂.၃×၁.၄ ထပ်နေတယ်
+    //   (တိုင်းတာပြီး တွေ့ခဲ့)。 အိမ်က ၂၀m ကျယ်လို့ ဗဟို ၄၈ ဆို min.x = ၃၈။
     void addBuilding(this, {                    // 🏠 ကိုယ့်အိမ် — ထင်းအိမ်
-      kind: 'stilt', position: new THREE.Vector3(42, 0, -16),
+      kind: 'stilt', position: new THREE.Vector3(48, 0, -16),
       rotation: -Math.PI / 2,
     });
     void addBuilding(this, {                    // ရပ်ကွက်ထဲက နောက်တစ်လုံး
-      kind: 'stilt', position: new THREE.Vector3(46, 0, 16),
+      kind: 'stilt', position: new THREE.Vector3(50, 0, 18),
       rotation: -Math.PI / 2.4,
     });
 
@@ -145,26 +148,73 @@ export class YangonRoom extends Room {
       ],
     }));
 
+    // 🛻 ကားများ — လမ်းဘေး ရပ်ထားတဲ့ ပစ်ကပ်များ (အရောင်စုံ)
+    //
+    // ★ ဖိုင် တစ်ခုတည်းကနေ အရောင် ၆ မျိုး — `paint` က body material ကိုပဲ
+    //   clone လုပ်ပြီး အရောင် ပြောင်းတယ် (တစ်လုံးတည်း ဆွဲရုံ, ၂,၇၂၄ တြိဂံ)。
+    // ★ လမ်းအလယ် မဟုတ်ဘဲ ဘေးမှာ — ကစားသမား လမ်းလျှောက်ရာကို မပိတ်စေရ။
+    // ★ z ≥ ၄၆ မှာသာ — neon တိုက်တွေက z ၄၀ အထိ ရှိပြီး x ၉–၃၁ ကြားမှာ
+    //   ကျပန်း ချထားလို့ အဲဒီအထဲ ကား ထားရင် တိုက်ထဲ ဝင်နေတယ်
+    //   (တိုင်းတာပြီး တွေ့ခဲ့တာ — ကား တစ်စီး တိုက်နဲ့ ၄.၁×၁.၀ ထပ်နေတယ်)。
+    for (const [x, z, rot, col] of [
+      [-20, 48, 0, 0xd8324a], [-20, 58, 0, 0x2de1ff], [-10, 48, 0, 0xf5c542],
+      [12, 50, Math.PI, 0x3ddc97], [21, 48, Math.PI, 0xe8eef5], [21, 58, Math.PI, 0x7f5cff],
+    ]) {
+      void addBuilding(this, {
+        kind: 'pickup', position: new THREE.Vector3(x, 0, z), rotation: rot,
+        paint: { name: 'MAT_Body_Paint', color: col },
+      });
+    }
+
     const pagodaGlow = new THREE.PointLight(0xffcc44, 60, 60);
     pagodaGlow.position.set(0, 14, -45);
     this.group.add(pagodaGlow);
 
     // ဆိုင်ခန်း/တိုက်တာများ — neon ပြတင်းပေါက်များနှင့်
+    //
+    // ⚠️ ဒီတိုက်တွေက `Math.random()` နဲ့ ချထားတယ် — **ဝင်တိုင်း နေရာ
+    //    ပြောင်း**တယ်။ ဒါကြောင့် တိုက်တစ်လုံးက စေတီရင်ပြင်, ကိုလိုနီအိမ်,
+    //    ထင်းအိမ်, station တိုင်, ရပ်ထားတဲ့ ကား — ဘယ်ဟာနဲ့မဆို ထပ်သွား
+    //    နိုင်တယ် (တိုင်းတာတိုင်း တစ်မျိုးစီ တွေ့ခဲ့တယ်)。
+    //
+    // ★ နေရာ တစ်ခုချင်း လိုက်ရွှေ့တာ **အဖြေ မဟုတ်ဘူး** — random seed
+    //   ပြောင်းတာနဲ့ နောက်တစ်ခု ထပ်လာမယ်။ ဒါကြောင့် **ကြိုတင် သီးသန့်
+    //   ထားတဲ့ ဇုန်များ** သတ်မှတ်ပြီး အဲဒီထဲ ကျရင် ချန်ထားလိုက်တယ်။
+    const RESERVED = [
+      { x0: -22, z0: -68, x1: 22, z1: -24 },   // 🛕 စေတီ ရင်ပြင်
+      { x0: -55, z0: -31, x1: -29, z1: -5 },   // 🏛️ ကိုလိုနီအိမ်
+      { x0: 35, z0: -29, x1: 61, z1: -3 },     // 🛖 ထင်းအိမ် (ကိုယ့်အိမ်)
+      { x0: 36, z0: 4, x1: 64, z1: 32 },       // 🛖 ထင်းအိမ် ၂
+      { x0: -20, z0: -18, x1: 20, z1: 22 },    // 🎯 station/portal လမ်းလယ်
+      { x0: -28, z0: 40, x1: 29, z1: 66 },     // 🛻 ကား ရပ်နားရာ
+    ];
+    const hits = (x, z, w, d) => RESERVED.some((r) =>
+      x + w / 2 > r.x0 && x - w / 2 < r.x1 && z + d / 2 > r.z0 && z - d / 2 < r.z1);
+
     const neonColors = [0xff2d78, 0x2de1ff, 0x7f5cff, 0x3ddc97, 0xffb020];
+    const placed = [];   // တိုက်အချင်းချင်းလည်း မထပ်စေရ
     for (let i = 0; i < 26; i++) {
       const w = 3 + Math.random() * 4, h = 5 + Math.random() * 14, d = 3 + Math.random() * 4;
+      const side = i % 2 === 0 ? -1 : 1;
+      const z = -40 + (i * 3.2);
+      // ★ x ကို ၈ ကြိမ် ထိ ပြန်စမ်းတယ် — မရရင် အဲဒီတိုက် မဆောက်တော့ဘူး။
+      //   "မရှိတာ" က "အထဲ ဝင်နေတာ" ထက် အမြဲ ပိုကောင်းတယ်။
+      let x = null;
+      for (let t = 0; t < 8; t++) {
+        const cand = side * (9 + Math.random() * 22);
+        if (hits(cand, z, w, d)) continue;
+        if (placed.some((q) => Math.abs(q.x - cand) < (q.w + w) / 2 + 0.6 &&
+                               Math.abs(q.z - z) < (q.d + d) / 2 + 0.6)) continue;
+        x = cand; break;
+      }
+      if (x === null) continue;
+      placed.push({ x, z, w, d });
+
       const bld = new THREE.Mesh(
         new THREE.BoxGeometry(w, h, d),
         new THREE.MeshStandardMaterial({ color: 0x232d4a, roughness: 0.75 })
       );
-      const side = i % 2 === 0 ? -1 : 1;
-      bld.position.set(side * (9 + Math.random() * 22), h / 2, -40 + (i * 3.2));
-      // 🛕 စေတီ ရင်ပြင်ထဲ တိုက်တာ မဝင်ရ — ရင်ပြင်က ၁၄m အချင်းဝက် ရှိပြီး
-      //    တိုက်တွေက z ≈ -၄၀ ကနေ စလို့ ပထမ တစ်ချို့က ရင်ပြင်ထဲ ဝင်နေတယ်
-      //    (collider ထပ်ပြီး စေတီထဲ တိုက်ခံရသလို ဖြစ်တယ်)。
-      // ★ ရွှေ့မယ့်အစား **ချန်ထားတယ်** — ရွှေ့လိုက်ရင် တခြားတိုက်တွေနဲ့
-      //   သွားထပ်တယ် (တိုင်းတာပြီး တွေ့ခဲ့တာ)。 ရင်ပြင်က ဟင်းလင်း ဖြစ်ရမယ်။
-      if (Math.hypot(bld.position.x, bld.position.z + 45) < 20) continue;
+      bld.position.set(x, h / 2, z);
       bld.castShadow = true;
       this.group.add(bld);
       this.addCollider(bld); // အဆောက်အအုံတိုင်း collision ပါ
@@ -270,7 +320,7 @@ export class YangonRoom extends Room {
     // Portal → ကိုယ်ပိုင် Metaverse ကမ္ဘာ (create/edit)
     // 🏠 အိမ် — ထင်းအိမ် ရှေ့မှာ တံခါး။ ကိုယ့်ကမ္ဘာ (Build Mode) ကို ဖွင့်တယ်
     this.addPortal({
-      position: new THREE.Vector3(30, 0, -16),
+      position: new THREE.Vector3(36, 0, -16),
       targetRoomId: 'myworld',
       label: '🏠 ကိုယ့်အိမ် — ကိုယ်ပိုင်ကမ္ဘာသို့ ဝင်ရန်',
       color: 0xf5c542,

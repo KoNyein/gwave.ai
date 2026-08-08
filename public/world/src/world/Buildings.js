@@ -49,6 +49,8 @@ export const BUILDINGS = {
   stilt: '/world/assets/stilt_house.glb',
   /// 🏛️ ကိုလိုနီခေတ် သုံးထပ်တိုက် — ၁၈ × ၁၄ × ၁၉ m
   colonial: '/world/assets/colonial_house.glb',
+  /// 🛻 ပစ်ကပ် ကား — ၄.၁ × ၁.၉ × ၅.၄ m (mesh ၁၂၈ → ၁၁, တြိဂံ ၂,၇၂၄)
+  pickup: '/world/assets/pickup.glb',
 };
 
 /**
@@ -72,6 +74,9 @@ export async function addBuilding(room, {
   /// 🎚️ ဂရပ်ဖစ် အဆင့် — 'heavy' က အလယ်ကတည်းက ဖျောက်တယ်၊
   ///    'detail' က အနိမ့်မှ ဖျောက်တယ်။
   tier = 'detail',
+  /// 🎨 material တစ်ခုကို အရောင် ပြောင်း — { name, color }。
+  ///    ကားတွေကို အရောင်စုံ ထားဖို့ (တစ်လုံးတည်း ဖိုင်ကနေ)。
+  paint = null,
 } = {}) {
   const url = BUILDINGS[kind];
   if (!url) return null;
@@ -96,6 +101,13 @@ export async function addBuilding(room, {
     if (!o.isMesh) return;
     o.castShadow = false;     // 🔋 ဖုန်း — အဆောက်အအုံ အရိပ် မလို
     o.receiveShadow = false;
+    // 🎨 ★ clone() က material ကို **မျှသုံး**တယ် — အရောင် ပြောင်းရင်
+    //   အဲဒီ ဖိုင်ကနေ ဆောက်ထားတဲ့ အားလုံး လိုက်ပြောင်းသွားမယ်။ ဒါကြောင့်
+    //   ပြောင်းမယ့် material ကိုပဲ သီးသန့် clone လုပ်ရတယ်။
+    if (paint && o.material && o.material.name === paint.name) {
+      o.material = o.material.clone();
+      o.material.color.setHex(paint.color);
+    }
   });
   room.group.add(obj);
   obj.updateMatrixWorld(true);

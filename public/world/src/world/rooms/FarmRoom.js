@@ -32,6 +32,14 @@ export class FarmRoom extends Room {
       kind: 'stilt', position: new THREE.Vector3(-30, 0, -26), rotation: Math.PI / 3,
     });
 
+    // 🛻 စိုက်ခင်း ကုန်တင်ကား — အိမ်ဘေးမှာ ရပ်ထား
+    void addBuilding(this, {
+      // ★ အိမ်ရဲ့ AABB က x -၄၃.၇…-၁၆.၃ ဖြစ်လို့ x -၁၆ မှာ ထားရင်
+      //   အိမ်ထဲ ဝင်နေတယ် (တိုင်းတာပြီး တွေ့ခဲ့)。 အိမ်ဘေး ထွက်ထားတယ်။
+      kind: 'pickup', position: new THREE.Vector3(-9, 0, -30), rotation: Math.PI / 5,
+      paint: { name: 'MAT_Body_Paint', color: 0x4a7c3a },
+    });
+
     // 🧍‍♀️ စိုက်ခင်း တာဝန်ခံ — အိမ်ရှေ့မှာ ရပ်နေတယ်
     this.addNPC(new NPC({
       name: 'မခင်လှ',

@@ -40,6 +40,17 @@ export class MaeSotRoom extends Room {
       void addBuilding(this, { kind: 'stilt', position: new THREE.Vector3(x, 0, z), rotation: rot });
     }
 
+    // 🛻 နယ်စပ် ကုန်တင် ပစ်ကပ်များ — လမ်းဘေးမှာ
+    for (const [x, z, rot, col] of [
+      [-16, 6, Math.PI / 2, 0xb8863b], [-16, 26, Math.PI / 2, 0x2f6f4e],
+      [16, -4, -Math.PI / 2, 0xd8324a],
+    ]) {
+      void addBuilding(this, {
+        kind: 'pickup', position: new THREE.Vector3(x, 0, z), rotation: rot,
+        paint: { name: 'MAT_Body_Paint', color: col },
+      });
+    }
+
     // 🧍‍♀️ ရွာသူ — ထင်းအိမ် ရှေ့မှာ ရပ်နေတယ် (အရိုးမပါတဲ့ ရုပ်မို့ မလျှောက်ဘူး)
     this.addNPC(new NPC({
       name: 'ဒေါ်မြင့်',
