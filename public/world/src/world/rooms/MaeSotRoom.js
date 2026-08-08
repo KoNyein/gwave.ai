@@ -114,6 +114,17 @@ export class MaeSotRoom extends Room {
       arrive: new THREE.Vector3(-12, 0, -23),
     });
 
+    // 🚕 ဂိတ် → တက္ကစီမြို့ — **ပြန်လာဖို့** ဂိတ်။ တက္ကစီမြို့က ဒီကို
+    //    ဂိတ် ချထားပေမယ့် ဒီဘက်မှာ မရှိရင် တစ်ဖက်သွား ဖြစ်နေတယ်။
+    this.addPortal({
+      position: new THREE.Vector3(12, 0, 10),
+      targetRoomId: 'taxi-district',
+      label: '🚕 တက္ကစီမြို့သို့',
+      color: 0xffd479,
+      gate: 'x',
+      arrive: new THREE.Vector3(-41, 0, 21),
+    });
+
     // 🌉 နယ်စပ် ဂိတ် → မြဝတီ — မဲဆောက်နဲ့ မြဝတီက ချစ်ကြည်ရေးတံတား
     //    တစ်ဖက်စီပါ။ မြဝတီဘက်က ဂိတ်နဲ့ တွဲထားတယ် (နှစ်ဖက်စလုံး ဖြတ်လို့ရ)。
     this.addPortal({

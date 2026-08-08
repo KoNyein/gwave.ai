@@ -113,6 +113,16 @@ export class FarmRoom extends Room {
       color: 0xffb020,
     });
 
+    // 🚕 ဂိတ် → တက္ကစီမြို့ — **ပြန်လာဖို့** ဂိတ် (တစ်ဖက်သွား မဖြစ်စေရ)
+    this.addPortal({
+      position: new THREE.Vector3(12, 0, 12),
+      targetRoomId: 'taxi-district',
+      label: '🚕 တက္ကစီမြို့သို့',
+      color: 0xffd479,
+      gate: 'x',
+      arrive: new THREE.Vector3(41, 0, 21),
+    });
+
     this.spawn.set(0, 0, 12);
   }
 
