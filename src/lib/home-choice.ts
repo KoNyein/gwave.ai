@@ -14,6 +14,13 @@
  *   သက်သက်ပါ၊ လုံခြုံရေးနဲ့ မဆိုင်လို့ httpOnly မလိုဘူး။
  */
 
+/// 🍪 ဝင်ရာနေရာ cookie。
+///
+/// ★ **website က ဒါကို မဖတ်တော့ဘူး** — ဖွင့်တိုင်း ကြိုဆိုစာမျက်နှာကို
+///   ရောက်တယ် (user: "/start ကို main welcome page အဖြစ် ထားပေးပါ")。
+///   အလိုအလျောက် ပို့လိုက်ရင် ကြိုဆိုစာမျက်နှာ ဆိုတာ မရှိတော့ဘူး။
+/// ★ နာမည်ကို ဆက်ထားတယ် — Flutter app ရဲ့ "ဝင်ရာနေရာ" ရွေးချယ်မှုက
+///   ဒီ key နဲ့ တစ်သားတည်း ဖြစ်နေတယ် (`gw.home.choice` prefs)。
 export const HOME_COOKIE = "gw_home";
 
 export interface HomeChoice {
@@ -85,7 +92,8 @@ export const HOME_CHOICES: HomeChoice[] = [
   },
 ];
 
-/** cookie ထဲက တန်ဖိုးက တရားဝင်လား — မဟုတ်ရင် null (open redirect ကာကွယ်) */
+/** key က တရားဝင်လား — မဟုတ်ရင် null (open redirect ကာကွယ်)。
+ *  ★ စာရင်းထဲက href ကိုပဲ ပြန်ပေးလို့ ပြင်ပ URL ဘယ်တော့မှ မထွက်နိုင်ဘူး။ */
 export function homeHrefFor(key: string | undefined | null): string | null {
   if (!key) return null;
   return HOME_CHOICES.find((c) => c.key === key)?.href ?? null;

@@ -136,7 +136,7 @@ export function MobileMenu({ profile }: { profile: Profile | null }) {
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-primary">
                   🚪
                 </span>
-                ဝင်ရာနေရာ ပြောင်းရန်
+                ပင်မ စာမျက်နှာ
               </Link>
               <Link
                 href="/help"
