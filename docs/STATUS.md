@@ -208,6 +208,24 @@
 
 ## Changelog
 
+- 2026-08-08 (web, PR pending): **A sky in every room, plus Naypyidaw and
+  Taunggyi.** `world/Sky.js` adds a gradient dome, sun or moon with a soft
+  halo, a starfield and drifting clouds, hooked into `addRoomLighting` so
+  every room gets one from its existing light preset (`indoor` skips it).
+  ★ The dome needs `fog: false` — inside the fog it collapses to one flat
+  colour. ★ It also has to **follow the player in x/z**, or you walk out
+  from under it at the city edge. ★ `PointsMaterial` with no map draws
+  **square** stars; a 64 px canvas radial gradient (no file) fixes the stars
+  and the sun halo at once.
+  Two new cities in `CITY_SPECS`: နေပြည်တော် (four parallel boulevards,
+  Uppatasanti, government blocks) and တောင်ကြီး (hill town, Shan market,
+  hot-air balloons). Gates now chain Yangon ↔ Naypyidaw ↔ Taunggyi ↔
+  Mae Sot / Myawaddy — all eight legs verified with 0 collider overlaps.
+  The uploaded 3-storey colonial house replaces the old one (199 → 22
+  meshes, same 15,160 tris, 0.71 MB) and now carries per-floor doors, a
+  fence and gate posts; it stands in Yangon, Mae Sot, Myawaddy, Naypyidaw
+  and Taunggyi. Same footprint, so every existing placement still fits.
+
 - 2026-08-08 (web, PR pending): **Regression sweep after the engine and
   terrain changes.** Camera near/far went 0.1/600 → 0.25/1250 and the
   terrain height field stopped being mirrored, both of which touch every

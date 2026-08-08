@@ -329,6 +329,17 @@ export class YangonRoom extends Room {
       arrive: new THREE.Vector3(-40, 0, -21),  // ရန်ကုန် ဂိတ်ရှေ့
     });
 
+    // 🏛️ ဂိတ် → နေပြည်တော် — မြို့တော်ဆီ。 (−၂၂, ၀) က grid scan နဲ့
+    //    ရွေးထားတဲ့ လွတ်တဲ့နေရာ (collider နဲ့ မထိ, တခြား portal နဲ့ ၁၀ m ကျော် ဝေး)。
+    this.addPortal({
+      position: new THREE.Vector3(-22, 0, 0),
+      targetRoomId: 'naypyidaw',
+      label: '🏛️ နေပြည်တော် သို့ — မြို့တော် အမြန်လမ်း',
+      color: 0x7f5cff,
+      gate: 'z',
+      arrive: new THREE.Vector3(0, 0, 68),
+    });
+
     // ============ 🏙️ City Districts — Function Stations ============
     // Creator District (အနောက်ဘက်) — 🧬 Avatar Studio (3D scanner + presets)
     this.addStation({

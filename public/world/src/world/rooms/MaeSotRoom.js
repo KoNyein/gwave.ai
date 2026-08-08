@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
 import { addTerrain } from '../Terrain.js';
-import { addManor, manorSpot } from '../Kit.js';
+import { addManor, addKit, manorSpot } from '../Kit.js';
 import { addBuilding } from '../Buildings.js';
 import { NPC } from '../../entities/NPC.js';
 import { loadCityMap } from '../MapLoader.js';
@@ -124,6 +124,20 @@ export class MaeSotRoom extends Room {
       gate: 'x',
       arrive: new THREE.Vector3(-41, 0, 21),
     });
+
+    // 🎈 ဂိတ် → တောင်ကြီး — ရှမ်းကုန်းဆီ
+    this.addPortal({
+      position: new THREE.Vector3(-12, 0, 10),
+      targetRoomId: 'taunggyi',
+      label: '🎈 တောင်ကြီး သို့ — ရှမ်းကုန်း လမ်း',
+      color: 0x9ad3ff,
+      gate: 'x',
+      arrive: new THREE.Vector3(0, 0, 58),
+    });
+
+    // 🏛️ ကိုလိုနီ အိမ် — နယ်စပ်မြို့မှာလည်း ကိုလိုနီခေတ် အဆောက်အအုံ ရှိတယ်။
+    //    မော်ဒယ် အသစ်က ထပ်တိုင်း တံခါး + ခြံစည်းရိုး + ဂိတ် ပါလာတယ်။
+    void addKit(this, { kit: 'colonial', position: new THREE.Vector3(-44, 0, 34) });
 
     // 🌉 နယ်စပ် ဂိတ် → မြဝတီ — မဲဆောက်နဲ့ မြဝတီက ချစ်ကြည်ရေးတံတား
     //    တစ်ဖက်စီပါ။ မြဝတီဘက်က ဂိတ်နဲ့ တွဲထားတယ် (နှစ်ဖက်စလုံး ဖြတ်လို့ရ)。

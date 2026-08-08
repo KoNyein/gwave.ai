@@ -22,7 +22,7 @@ import * as THREE from 'three';
 import { Room, addRoomLighting } from '../Room.js';
 import { addTerrain } from '../Terrain.js';
 import { addBuilding } from '../Buildings.js';
-import { addManor, manorSpot } from '../Kit.js';
+import { addManor, addKit, manorSpot } from '../Kit.js';
 import { NPC } from '../../entities/NPC.js';
 import { shophouse, tower, palm, water, road, gateArch, smallStupa, marketStall } from '../CityKit.js';
 
@@ -141,6 +141,9 @@ const CITY_SPECS = [
       void addBuilding(r, { kind: 'stilt', position: new THREE.Vector3(-40, 0, -34),
                             rotation: Math.PI / 2,
                             hollow: { side: '+x', width: 4, step: 2.2 } });
+      // 🏛️ ကိုလိုနီ အိမ် — နယ်စပ် ကုန်သွယ်ရေးမြို့မှာ ကိုလိုနီခေတ်
+      //    ကုန်သည်အိမ်။ မော်ဒယ် အသစ်မှာ ထပ်တိုင်း တံခါး + ဂိတ် ပါတယ်။
+      void addKit(r, { kit: 'colonial', position: new THREE.Vector3(-44, 0, 40) });
       smallStupa(r, { x: 42, z: -40, h: 17 });
     },
     // 🌉 ဂိတ်က တကယ် ဖြတ်ကူးလို့ရတယ် — မြဝတီ ↔ မဲဆောက် (တံတား ၂)
@@ -149,7 +152,9 @@ const CITY_SPECS = [
             // 🚕 တက္ကစီမြို့က ဒီကို ဂိတ် ချထားတယ် — ဒါက **ပြန်လာဖို့** ဂိတ်။
             //    မရှိရင် တစ်ဖက်သွား ဖြစ်ပြီး menu ကနေပဲ ပြန်ရတယ်။
             { to: 'taxi-district', x: 0, z: 26, gate: 'x', colour: 0xffd479,
-              label: '🚕 တက္ကစီမြို့သို့', arrive: [41, 0, -21] }],
+              label: '🚕 တက္ကစီမြို့သို့', arrive: [41, 0, -21] },
+            { to: 'taunggyi', x: 8, z: 4, gate: 'z', colour: 0x9ad3ff,
+              label: '🎈 တောင်ကြီး သို့ — ရှမ်းကုန်း လမ်း', arrive: [58, 0, 0] }],
     // 🏪 ဈေးတန်း = ဈေးဆိုင်, ကုန်သွယ်ရေး ရုံး = အလုပ်/ကုန်ပစ္စည်း ဘုတ်
     stations: [['shop', -8, 24, '🏪 နယ်စပ်ဈေး — ဝယ်/ရောင်း', 0x3ddc97],
                ['board', 8, 24, '📋 ကုန်သွယ်ရေး ဘုတ် — အလုပ်/ကုန်စည်', 0xd8324a],
@@ -344,7 +349,119 @@ const CITY_SPECS = [
       ['မမြင့်', -24, -20, 7, ['ဒီမှာ မြန်မာ အလုပ်သမား အများကြီး ရှိတယ် ရှင်။']],
     ],
   },
+
+  // ── 🇲🇲 နေပြည်တော် — မြို့တော် (လမ်းမကြီး ၂၀ လမ်း, ဥပ္ပါတသန္တိ) ──────
+  //
+  // user: "မြဝတီနဲ ချိတ် မဲဆောက် တောင်ကြီး နေပြည်တော် metaverse များနဲ
+  //        ချိတ်ပါ"
+  //
+  // ★ နေပြည်တော်ရဲ့ အထင်ရှားဆုံးက **အလွန်ကျယ်တဲ့ လမ်းမကြီး**နဲ့ လူရှင်း
+  //   တဲ့ ရုံးစိုက်ရာ ဇုန်။ ဒါကြောင့် အဆောက်အအုံတွေကို ဝေးဝေး ချထားပြီး
+  //   အလယ်မှာ လမ်း ၄ ခု ယှဉ်ထားတယ် — မြို့ရဲ့ ခံစားချက်က အဲဒါပဲ。
+  {
+    id: 'naypyidaw', ambient: 'city', title: 'နေပြည်တော် (မြို့တော်)',
+    emoji: '🏛️', ground: 170, groundColour: 0x7d7a68, light: 'day',
+    background: 0x9fc4e0, terrain: 'green', seed: 211, peak: 88, hill: 10,
+    blurb: 'လမ်းမကြီး ၂၀ လမ်း, ဥပ္ပါတသန္တိ စေတီ, ရုံးစိုက်ရာ ဇုန်, ကိုလိုနီ ဧည့်ရိပ်သာ',
+    spawnZ: 22,
+    build(r) {
+      // 🛣️ လမ်းမကြီး — ၄ ခု ယှဉ်ထား (နေပြည်တော်ရဲ့ အမှတ်အသား)
+      for (const x of [-21, -7, 7, 21]) road(r.group, { x, z: 0, w: 11, d: 170 });
+      road(r.group, { x: 0, z: -56, w: 170, d: 12, rot: Math.PI / 2 });
+      // 🛕 ဥပ္ပါတသန္တိ — မြို့တော်ရဲ့ စေတီ (ရွှေတိဂုံပုံစံ)
+      smallStupa(r, { x: 0, z: -76, h: 34 });
+      gateArch(r, { x: 0, z: -34, w: 26, h: 13, colour: 0xe8e2d0 });
+      // 🏢 ရုံးစိုက်ရာ ဇုန် — ဝေးဝေး, ညီညာ (မြို့တော် ပုံစံ)
+      for (const [x, z] of [[-56, -40], [-56, 0], [-56, 40], [56, -40], [56, 0], [56, 40]]) {
+        tower(r, { x, z, w: 22, d: 16, h: 22, colour: 0xd8d2c0 });
+      }
+      // 🏛️ ကိုလိုနီ ဧည့်ရိပ်သာ — အထဲ ဝင်လို့ရ (တံခါး/ဂိတ် ပါ)
+      void addKit(r, { kit: 'colonial', position: new THREE.Vector3(-40, 0, 66) });
+      void addKit(r, { kit: 'colonial', position: new THREE.Vector3(40, 0, 66),
+                       rotation: Math.PI });
+      for (let i = 0; i < 6; i++) marketStall(r, { x: -34 + i * 14, z: 34, colour: 0xc9a24f });
+      for (const [x, z] of [[-70, 70], [70, 70], [-70, -70], [70, -70]]) palm(r.group, x, z, 1.3, r);
+    },
+    gates: [
+      { to: 'yangon', x: 0, z: 76, label: 'Cyber-Yangon သို့ — တောင်ပိုင်း အမြန်လမ်း',
+        colour: 0x7f5cff, gate: 'x', arrive: [-26, 0, 0] },
+      { to: 'taunggyi', x: 76, z: 0, label: 'တောင်ကြီး သို့ — ရှမ်းကုန်း လမ်း',
+        colour: 0xffb020, gate: 'z', arrive: [-58, 0, 0] },
+    ],
+    stations: [['projects', -14, 22, '🏛️ အစိုးရ ရုံး — စီမံကိန်းများ', 0x7f5cff],
+               ['board', 14, 22, '🏆 နိုင်ငံတော် ဂုဏ်ပြုစာရင်း', 0xd8324a],
+               ['meet', 0, 44, '🏛️ ညီလာခံ ခန်းမ', 0x3ddc97]],
+    npcs: [
+      ['ဦးကျော်မင်း', -10, 16, 7, ['နေပြည်တော်ကို ကြိုဆိုပါတယ်။',
+                                    'ဒီလမ်းက ၂၀ လမ်း ရှိတယ် — ကားက ရှင်းတယ်။',
+                                    'မြောက်ဘက်မှာ ဥပ္ပါတသန္တိ စေတီ ရှိတယ်။']],
+      ['ဒေါ်နီလာ', 12, 30, 6, ['ရုံးဇုန်က အရှေ့နဲ့ အနောက် နှစ်ဖက်စလုံးမှာ။',
+                                'ကိုလိုနီ ဧည့်ရိပ်သာက တောင်ဘက် — ဝင်ကြည့်လို့ရတယ်။']],
+      ['ကားဆရာ ကိုလှ', -24, 40, 8, ['ရန်ကုန်ကို တောင်ဘက် ဂိတ်ကနေ, တောင်ကြီးကို အရှေ့ဘက်။']],
+    ],
+  },
+
+  // ── 🇲🇲 တောင်ကြီး — ရှမ်းပြည် တောင်ပေါ်မြို့ ────────────────────────
+  //
+  // ★ တောင်ကြီးက **တောင်ပေါ်မြို့** — `peak` ကို မြင့်မြင့် (၁၄၀) ထားပြီး
+  //   ကွင်းပြင်ကို သေးသေး (၁၃၀) ထားတော့ မြို့က ချိုင့်ဝှမ်းထဲမှာ ဝိုင်းရံ
+  //   ခံထားရသလို ဖြစ်တယ် — တကယ့် တောင်ကြီးလိုပဲ。
+  {
+    id: 'taunggyi', ambient: 'wind', title: 'တောင်ကြီး (ရှမ်းပြည်နယ်)',
+    emoji: '🎈', ground: 130, groundColour: 0x6f6a52, light: 'day',
+    background: 0x8fb8dc, terrain: 'green', seed: 233, peak: 140, hill: 18,
+    blurb: 'တောင်ပေါ်မြို့, မီးပုံးပျံပွဲ, ရှမ်းဈေး, ရွှေဖုန်းတော် စေတီ',
+    spawnZ: 18,
+    build(r) {
+      road(r.group, { x: 0, z: 0, w: 13, d: 130 });
+      road(r.group, { x: 0, z: 0, w: 130, d: 12, rot: Math.PI / 2 });
+      // 🛕 ရွှေဖုန်းတော် ပုံစံ စေတီ — တောင်ကုန်းပေါ်
+      smallStupa(r, { x: -46, z: -46, h: 26 });
+      // 🏪 ရှမ်းဈေး — လမ်းနှစ်ဖက်
+      for (let i = 0; i < 5; i++) {
+        shophouse(r, { x: -18, z: -28 + i * 15, rot: Math.PI / 2, w: 9, d: 9, h: 7,
+                       wall: 0xe2d8c0, roof: 0x8a4a3c, storeys: 2 });
+        shophouse(r, { x: 18, z: -22 + i * 15, rot: -Math.PI / 2, w: 9, d: 9, h: 7,
+                       wall: 0xd6ccb4, roof: 0x6f4a2f, storeys: 2 });
+      }
+      for (let i = 0; i < 6; i++) marketStall(r, { x: -6, z: -30 + i * 12, colour: 0xd06a3a });
+      // 🏛️ ကိုလိုနီ အိမ် — တောင်ကြီးမှာ ကိုလိုနီခေတ် အိမ်တွေ အများကြီး ရှိတယ်
+      void addKit(r, { kit: 'colonial', position: new THREE.Vector3(-52, 0, 30) });
+      // 🎈 မီးပုံးပျံ — တောင်ကြီးရဲ့ အထင်ရှားဆုံး ပွဲတော်
+      for (const [x, y, z, col] of [[-30, 46, 26, 0xd8324a], [26, 58, -14, 0xf5c542],
+                                    [8, 68, 40, 0x3ddc97], [-44, 52, -20, 0x8ecbff]]) {
+        const b = new THREE.Mesh(new THREE.SphereGeometry(6, 12, 10),
+          new THREE.MeshStandardMaterial({ color: col, emissive: col,
+                                           emissiveIntensity: 0.5, roughness: 0.6 }));
+        b.position.set(x, y, z); b.scale.y = 1.25; r.group.add(b);
+        const basket = new THREE.Mesh(new THREE.BoxGeometry(2, 1.6, 2),
+          new THREE.MeshStandardMaterial({ color: 0x6b5a44, roughness: 0.95 }));
+        basket.position.set(x, y - 9, z); r.group.add(basket);
+      }
+      for (const [x, z] of [[-60, 60], [60, 60], [-60, -60], [60, -60]]) palm(r.group, x, z, 1.1, r);
+    },
+    gates: [
+      { to: 'naypyidaw', x: -64, z: 0, label: 'နေပြည်တော် သို့ — တောင်ပေါ် လမ်း',
+        colour: 0x7f5cff, gate: 'z', arrive: [58, 0, 0] },
+      { to: 'maesot', x: 0, z: 64, label: 'မဲဆောက် သို့ — တောင်ပိုင်း လမ်း',
+        colour: 0xffb020, gate: 'x', arrive: [-12, 0, 14] },
+      { to: 'myawaddy', x: 64, z: 0, label: 'မြဝတီ သို့ — အရှေ့ဘက် လမ်း',
+        colour: 0x9ad3ff, gate: 'z', arrive: [8, 0, 8] },
+    ],
+    stations: [['shop', -10, 26, '🧺 ရှမ်းဈေး — ပစ္စည်း ဝယ်/ရောင်း', 0x3ddc97],
+               ['quests', 10, 26, '🎈 မီးပုံးပျံ ပွဲတော် — quest', 0xf5c542]],
+    npcs: [
+      ['ဆရာမ နန်းခမ်း', -8, 12, 7, ['မိုင်းလုံးခမ်းဗျာ — တောင်ကြီးကို ကြိုဆိုပါတယ်။',
+                                     'တောင်ပေါ်မို့ အေးတယ်၊ ညဆို ပိုအေးတယ်။',
+                                     'မီးပုံးပျံပွဲက တန်ဆောင်တိုင်မှာ။']],
+      ['ဦးစိုင်းလုံ', 14, -8, 6, ['ရှမ်းခေါက်ဆွဲ စားပြီးပြီလား?',
+                                  'ဈေးက လမ်းရဲ့ နှစ်ဖက်လုံးမှာ ရှိတယ်။']],
+      ['မီးပုံးပျံ ဆရာ ကိုအောင်', -26, 34, 8, ['မီးပုံးပျံ ဆောက်တာ ရက် ၂၀ ကြာတယ်။',
+                                                'အပေါ်ကို ကြည့်လိုက် — ပျံနေတာ မြင်ရမယ်။']],
+    ],
+  },
 ];
+
 
 /// အခန်း အားလုံး တစ်ခါတည်း ဆောက်ဖို့
 export function createCityRooms() {
