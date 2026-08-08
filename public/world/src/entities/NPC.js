@@ -131,6 +131,35 @@ export class NPC {
     return line;
   }
 
+  /**
+   * 🧍 **ခန္ဓာကိုယ် collider** — ဒီ NPC ကို ဖြတ်လျှောက်လို့ မရအောင်။
+   *
+   * user: "လူတွေကို ဖောက်ထွင်း သွားလာလို့ မရအောင်"
+   *
+   * ★ NPC က လမ်းလျှောက်တာမို့ box က **frame တိုင်း လိုက်ရွေ့ရ**မယ်။
+   *   `room.colliders` ထဲက box ကို နေရာချိန်းလိုက်ရုံပဲ — physics က
+   *   array ကို reference အနေနဲ့ ကိုင်ထားလို့ ချက်ချင်း အလုပ်လုပ်တယ်။
+   * ★ အချင်းဝက် ၀.၃၅ — လူတစ်ယောက်စာ။ ဒီထက် ကြီးရင် ကျဉ်းတဲ့
+   *   လမ်းကြားမှာ NPC က လမ်းပိတ်နေမယ်။
+   */
+  attachCollider(room) {
+    const p = this.group.position;
+    this.box = new THREE.Box3(
+      new THREE.Vector3(p.x - 0.35, 0, p.z - 0.35),
+      new THREE.Vector3(p.x + 0.35, 1.8, p.z + 0.35));
+    room.colliders.push(this.box);
+    return this.box;
+  }
+
+  /// collider ကို လက်ရှိ တည်နေရာဆီ ရွှေ့
+  _syncCollider() {
+    const b = this.box;
+    if (!b) return;
+    const p = this.group.position;
+    b.min.set(p.x - 0.35, p.y, p.z - 0.35);
+    b.max.set(p.x + 0.35, p.y + 1.8, p.z + 0.35);
+  }
+
   update(dt) {
     // 🧍‍♀️ ရပ်နေတဲ့ ဇာတ်ကောင် — ရွေ့စရာ မရှိ၊ frame တိုင်း တွက်စရာလည်း မရှိ
     if (this.staticBody) return;
@@ -150,5 +179,6 @@ export class NPC {
     // 🚶 ခြေလှမ်း — ရပ်နေရင် idle, သွားနေရင် လှမ်း
     this.loco?.setMotion({ speed: moving ? this.speed : 0, grounded: true });
     this.loco?.update(dt);
+    this._syncCollider();
   }
 }

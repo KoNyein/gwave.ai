@@ -24,6 +24,7 @@ export class Avatar {
     this.grounded = true;
     this.camDist = 6;
     this._lastX = 0; this._lastZ = 0;
+    this._from = new THREE.Vector3();   // 🧗 တောင်စောင်း စစ်ဖို့ မရွှေ့ခင် နေရာ
     this.sitting = false;
 
     // မူလ placeholder ခန္ဓာကိုယ် (GLB မချိတ်ရသေးလျှင် ဒီအတိုင်းမြင်ရမည်)
@@ -105,6 +106,8 @@ export class Avatar {
     let side = (input.down('KeyD') ? 1 : 0) - (input.down('KeyA') ? 1 : 0);
     if (input.touch) { fw += input.touch.f; side += input.touch.s; } // mobile joystick (analog)
     const mag = Math.min(1, Math.hypot(fw, side));
+    // 🧗 မရွှေ့ခင် နေရာ — တောင်စောင်း မတ်လွန်းရင် ဒီကို ပြန်တွန်းမယ်
+    this._from.set(pos.x, pos.y, pos.z);
     if (mag > 0.05) {
       if (this.emotes.current) this.emotes.stop(); // ရွေ့လျားလျှင် emote ရပ်
       const f = this.forward();
@@ -120,7 +123,15 @@ export class Avatar {
     }
 
     // ၂။ Collision — နံရံများမှ တွန်းထုတ်
+    //
+    // ★ **၂ ကြိမ်** ဖြေရှင်းတယ်။ တစ်ကြိမ်တည်းဆိုရင် box A ကနေ တွန်းထုတ်
+    //   လိုက်တာက box B ထဲ ဝင်သွားနိုင်ပြီး၊ B က array ထဲမှာ အရင်ရောက်ခဲ့ရင်
+    //   ပြန်မစစ်တော့ဘူး — ထောင့်တွေမှာ နံရံထဲ ညပ်/ဖောက်ထွက်တာ ဒါကြောင့်။
     physics.resolveHorizontal(pos, RADIUS, HEIGHT);
+    physics.resolveHorizontal(pos, RADIUS, HEIGHT);
+    // 🧗 တောင်စောင်း — မတ်လွန်းရင် တက်လို့ မရဘူး (နံရံ မဟုတ်တဲ့ တောင်
+    //    ဆိုပေမယ့် ဒေါင်လိုက် ကျောက်ဆောင်ကို လျှောက်တက်လို့ မရစေရ)
+    physics.resolveSlope(this._from, pos);
 
     // ၃။ ခုန်ခြင်း + ဆွဲငင်အား + box ပေါ်ရပ်ခြင်း
     const groundY = physics.groundHeight(pos, RADIUS);

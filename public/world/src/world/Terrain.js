@@ -168,6 +168,27 @@ export function addTerrain(room, {
   const blend = 70;                 // ပြားရာကနေ ကုန်းဖြစ်လာတဲ့ အကူးအပြောင်း
   const rimR = SIZE * 0.5;
 
+  // ★ **အမြင့်ကို function တစ်ခုတည်းက တွက်တယ်** — mesh ဆောက်တာရော
+  //   physics ရော ဒီတစ်ခုတည်းကို သုံးတယ်။ နှစ်နေရာ သီးသန့် ရေးရင်
+  //   တစ်နေရာ ပြင်လိုက်တိုင်း မြေနဲ့ ခြေထောက် ကွဲသွားမယ်။
+  const heightAt = (x, z) => {
+    const d = Math.hypot(x, z);
+    const mask = step01(flatR, flatR + blend, d);        // အလယ် = ၀
+    // ★ ဝေးလေ ထောင်လေ — ဒါပေမယ့် **မြန်မြန်**。 rim (၃၅၀m) အထိ ဖြန့်ရင်
+    //   တောင်တန်းက မြူထဲ ရောက်သွားပြီး မမြင်ရတော့ဘူး။ ကစားကွင်း အနားကနေ
+    //   ၁၄၀m အတွင်း အမြင့်ဆုံး ရောက်စေတယ် — ချိုင့်ဝှမ်းထဲ ရောက်နေသလို။
+    const far = step01(flatR + blend * 0.4, flatR + blend + 140, d);
+    const hills = fbm(x * 0.0065, z * 0.0065, seed, 4);
+    const crest = ridged(x * 0.0026, z * 0.0026, seed + 61, 3);
+    let h = mask * (hills * hill + Math.pow(far, 1.25) * Math.pow(crest, 1.5) * peak);
+    // 🛕 ပြားနေရမယ့် နေရာများ — အလယ်မှာ ၀, အနားမှာ ဖြည်းဖြည်း ပြန်တက်
+    for (const sp of flatSpots) {
+      h *= step01(sp.r, sp.r + (sp.blend ?? 60), Math.hypot(x - sp.x, z - sp.z));
+    }
+    return h;
+  };
+  room.terrainHeight = heightAt;
+
   const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
   const pos = geo.attributes.position;
   const colours = new Float32Array(pos.count * 3);
@@ -177,21 +198,7 @@ export function addTerrain(room, {
     // PlaneGeometry က XY ပေါ်မှာ — rotateX(-90°) လုပ်တော့ y → z ဖြစ်တယ်
     const x = pos.getX(i);
     const z = pos.getY(i);
-    const d = Math.hypot(x, z);
-
-    const mask = step01(flatR, flatR + blend, d);        // အလယ် = ၀
-    // ★ ဝေးလေ ထောင်လေ — ဒါပေမယ့် **မြန်မြန်**。 rim (၃၅၀m) အထိ ဖြန့်ရင်
-    //   တောင်တန်းက မြူထဲ ရောက်သွားပြီး မမြင်ရတော့ဘူး။ ကစားကွင်း အနားကနေ
-    //   ၁၄၀m အတွင်း အမြင့်ဆုံး ရောက်စေတယ် — ချိုင့်ဝှမ်းထဲ ရောက်နေသလို။
-    const far = step01(flatR + blend * 0.4, flatR + blend + 140, d);
-
-    const hills = fbm(x * 0.0065, z * 0.0065, seed, 4);
-    const crest = ridged(x * 0.0026, z * 0.0026, seed + 61, 3);
-    let h = mask * (hills * hill + Math.pow(far, 1.25) * Math.pow(crest, 1.5) * peak);
-    // 🛕 ပြားနေရမယ့် နေရာများ — အလယ်မှာ ၀, အနားမှာ ဖြည်းဖြည်း ပြန်တက်
-    for (const sp of flatSpots) {
-      h *= step01(sp.r, sp.r + (sp.blend ?? 60), Math.hypot(x - sp.x, z - sp.z));
-    }
+    const h = heightAt(x, z);
 
     pos.setZ(i, h);   // rotateX မလုပ်ခင် — Z က အမြင့်
 
@@ -230,17 +237,19 @@ export function addTerrain(room, {
   mesh.renderOrder = -1;        // ကြမ်းပြင်တွေရဲ့ အရင် ဆွဲ
   room.group.add(mesh);
 
-  // ── မမြင်ရတဲ့ နံရံ — တောင်ထဲ လျှောက်ဝင်လို့ မရအောင် ──────────────
+  // ── မမြင်ရတဲ့ နံရံ — လောကရဲ့ **အစွန်း**မှာ ────────────────────────
   //
-  // အရင်က ကြမ်းပြင် အစွန်းကျော်ရင် ဟင်းလင်းပြင်ထဲ ဆက်လျှောက်လို့ ရတယ်။
-  // အခု တောင်တွေ ရှိလာတော့ ကျော်လျှောက်ရင် တောင်ထဲ နစ်ဝင်သွားမယ်။
-  // ကြမ်းပြင် အနားလေးဖက်မှာ AABB နံရံ ထားလိုက်တယ် — အထဲက ဘာမှ
-  // မပြောင်းဘူး (နံရံရဲ့ အတွင်းမျက်နှာက ကြမ်းပြင် အနား အတိအကျ)。
+  // ★ အရင်က နံရံက ကစားကွင်း အနား (ground/2) မှာ ရှိတယ် — တောင်တန်းတွေက
+  //   အပြင်မှာ ဖြစ်လို့ **ဘယ်တော့မှ မရောက်နိုင်ဘူး**။ ကြည့်ဖို့ပဲ ရှိတာ။
+  //   user: "တောင်တန်းများပေါ် တက်တတ်ရအောင်"。
+  //   အခု နံရံကို terrain mesh ရဲ့ အစွန်းအထိ တွန်းထုတ်လိုက်တယ် — မြို့ကနေ
+  //   ထွက်ပြီး ကုန်းတွေ တောင်တွေ ပေါ် တက်လို့ ရပြီ။ ကစားကွင်း အလယ်က
+  //   ပြားနေတာ မပြောင်းဘူး (mask က အဲဒီမှာ ၀)。
   if (wall) {
-    const e = ground / 2;         // ကြမ်းပြင် အနား
-    const t = 4;                  // နံရံ ထူ
-    const H = 60;                 // မြင့် — ခုန်ကျော်လို့ မရ
-    const W = ground / 2 + t;     // ရှည် — ထောင့်တွေ ပိတ်ဖို့
+    const e = rimR - 6;           // terrain အစွန်းနဲ့ ၆ m ခွာ
+    const t = 6;
+    const H = 200;                // တောင်ထက် မြင့်ရမယ်
+    const W = e + t;
     const boxes = [
       [-W, -e - t, W, -e],        // မြောက်
       [-W, e, W, e + t],          // တောင်

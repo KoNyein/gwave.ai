@@ -30,7 +30,7 @@ export class FarmRoom extends Room {
 
     // 🏠 စိုက်ခင်း အိမ် — ကွင်းစွန်းက ထင်းအိမ် (lab ရဲ့ တာဝန်ခံ နေတဲ့ အိမ်)
     void addBuilding(this, {
-      kind: 'stilt', position: new THREE.Vector3(-30, 0, -26), rotation: Math.PI / 3,
+      kind: 'stilt', position: new THREE.Vector3(-30, 0, -26), rotation: Math.PI / 2,
       hollow: { side: '+x', width: 4, step: 2.2 },
     });
 

@@ -34,6 +34,9 @@ export class WorldManager {
 
     // Physics + Camera + နောက်ခံရောင် ကို room အလိုက် ချိတ်
     this.avatar.physics.setColliders(next.colliders);
+    // 🏔️ တောင်တန်း — အခန်းမှာ terrain ရှိရင် အဲဒီ အမြင့်ကို မြေပြင် အဖြစ်
+    //    ယူတယ် (မရှိရင် null — ပြားနေတဲ့ အခန်းတွေ အရင်အတိုင်း)。
+    this.avatar.physics.setTerrain(next.terrainHeight || null);
     this.avatar.setMode(next.cameraMode || 'tps');
     // ★ Fallback ကို အနည်းငယ် လင်းစေတယ် — အခန်းအများစုက ကိုယ်ပိုင်
     //   background ကို addRoomLighting ကနေ ရပြီးသား ဖြစ်တယ်။
