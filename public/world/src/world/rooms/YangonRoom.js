@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
 import { addTerrain } from '../Terrain.js';
+import { addBuilding, buildPagoda } from '../Buildings.js';
 import { NPC } from '../../entities/NPC.js';
 
 export class YangonRoom extends Room {
@@ -83,26 +84,34 @@ export class YangonRoom extends Room {
       this.group.add(lamp);
     }
 
-    // ရွှေရောင် စေတီ (landmark) — ဘယ် room ကနေမဆို မြင်ရအောင် အမြင့်ထား
-    const pagoda = new THREE.Group();
-    const base = new THREE.Mesh(
-      new THREE.CylinderGeometry(7, 9, 3, 8),
-      new THREE.MeshStandardMaterial({ color: 0xc9a13b, metalness: 0.7, roughness: 0.3 })
-    );
-    base.position.y = 1.5;
-    const spire = new THREE.Mesh(
-      new THREE.ConeGeometry(6, 16, 8),
-      new THREE.MeshStandardMaterial({
-        color: 0xf5c542, metalness: 0.85, roughness: 0.2,
-        emissive: 0x664400, emissiveIntensity: 0.4
-      })
-    );
-    spire.position.y = 11;
-    pagoda.add(base, spire);
-    pagoda.position.set(0, 0, -45);
+    // 🛕 စေတီ (landmark) — မြို့တစ်မြို့လုံးက မြင်ရတဲ့ ရွှေရောင် ထစ်ခွင်စေတီ
+    //    (အရင်က ဆလင်ဒါ + ကွန်း နှစ်ခုပဲ — အခု ထစ်ခွင် ၄ ဆင့်, ခေါင်းလောင်း,
+    //     ငှက်မြတ်နာ, ထီးတော်, ထိပ်ဖျား စိန်။ ဖိုင် တစ်ခုမှ မဆွဲဘူး။)
+    const pagoda = buildPagoda({ position: new THREE.Vector3(0, 0, -45) });
     this.group.add(pagoda);
-    pagoda.updateMatrixWorld(true);
-    this.addCollider(base); // စေတီအောက်ခြေ — ဖြတ်မထွက်နိုင်
+    // စေတီ ရင်ပြင် — ဖြတ်မထွက်နိုင် (အောက်ခြေ အကျယ် ၁၄m)
+    this.colliders.push(new THREE.Box3(
+      new THREE.Vector3(-11.5, 0, -56.5), new THREE.Vector3(11.5, 26, -33.5),
+    ));
+
+    // 🏛️🛖 အဆောက်အအုံ အစစ် — မြို့လယ်ရဲ့ နှစ်ဖက်စွန်း
+    //
+    // ★ Async — GLB ရောက်မှ ထည့်တယ်၊ အခန်း ဆောက်တာကို မစောင့်ဘူး။
+    //   ကစားသမားက အလယ် (0,0,6) မှာ စတာမို့ အဆောက်အအုံတွေက အနားမှာ
+    //   မဟုတ်ဘဲ လမ်းအစွန်းမှာ — ဝင်ဝင်ချင်း တိုးမိမှာ မဟုတ်ဘူး။
+    void addBuilding(this, {                    // ကိုလိုနီ သုံးထပ်တိုက်
+      kind: 'colonial', position: new THREE.Vector3(-42, 0, -18),
+      rotation: Math.PI / 2,
+    });
+    void addBuilding(this, {                    // 🏠 ကိုယ့်အိမ် — ထင်းအိမ်
+      kind: 'stilt', position: new THREE.Vector3(42, 0, -16),
+      rotation: -Math.PI / 2,
+    });
+    void addBuilding(this, {                    // ရပ်ကွက်ထဲက နောက်တစ်လုံး
+      kind: 'stilt', position: new THREE.Vector3(46, 0, 16),
+      rotation: -Math.PI / 2.4,
+    });
+
     const pagodaGlow = new THREE.PointLight(0xffcc44, 60, 60);
     pagodaGlow.position.set(0, 14, -45);
     this.group.add(pagodaGlow);
@@ -117,6 +126,12 @@ export class YangonRoom extends Room {
       );
       const side = i % 2 === 0 ? -1 : 1;
       bld.position.set(side * (9 + Math.random() * 22), h / 2, -40 + (i * 3.2));
+      // 🛕 စေတီ ရင်ပြင်ထဲ တိုက်တာ မဝင်ရ — ရင်ပြင်က ၁၄m အချင်းဝက် ရှိပြီး
+      //    တိုက်တွေက z ≈ -၄၀ ကနေ စလို့ ပထမ တစ်ချို့က ရင်ပြင်ထဲ ဝင်နေတယ်
+      //    (collider ထပ်ပြီး စေတီထဲ တိုက်ခံရသလို ဖြစ်တယ်)。
+      // ★ ရွှေ့မယ့်အစား **ချန်ထားတယ်** — ရွှေ့လိုက်ရင် တခြားတိုက်တွေနဲ့
+      //   သွားထပ်တယ် (တိုင်းတာပြီး တွေ့ခဲ့တာ)。 ရင်ပြင်က ဟင်းလင်း ဖြစ်ရမယ်။
+      if (Math.hypot(bld.position.x, bld.position.z + 45) < 20) continue;
       bld.castShadow = true;
       this.group.add(bld);
       this.addCollider(bld); // အဆောက်အအုံတိုင်း collision ပါ
@@ -220,6 +235,14 @@ export class YangonRoom extends Room {
     });
 
     // Portal → ကိုယ်ပိုင် Metaverse ကမ္ဘာ (create/edit)
+    // 🏠 အိမ် — ထင်းအိမ် ရှေ့မှာ တံခါး။ ကိုယ့်ကမ္ဘာ (Build Mode) ကို ဖွင့်တယ်
+    this.addPortal({
+      position: new THREE.Vector3(30, 0, -16),
+      targetRoomId: 'myworld',
+      label: '🏠 ကိုယ့်အိမ် — ကိုယ်ပိုင်ကမ္ဘာသို့ ဝင်ရန်',
+      color: 0xf5c542,
+    });
+
     this.addPortal({
       position: new THREE.Vector3(12, 0, 8),
       targetRoomId: 'myworld',

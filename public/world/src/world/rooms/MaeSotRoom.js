@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
 import { addTerrain } from '../Terrain.js';
+import { addBuilding } from '../Buildings.js';
 import { NPC } from '../../entities/NPC.js';
 import { loadCityMap } from '../MapLoader.js';
 
@@ -30,6 +31,14 @@ export class MaeSotRoom extends Room {
 
     // 🏔️ နယ်စပ် တောင်တန်း — မဲဆောက်က တောင်ကြားထဲက မြို့
     addTerrain(this, { ground: 120, palette: 'green', seed: 37, peak: 110, hill: 16 });
+
+    // 🛖 နယ်စပ် ရွာ — ခြေတံရှည် ထင်းအိမ်များ (မဲဆောက်ရဲ့ အမှန်တကယ် ပုံစံ)
+    //    GLB မြေပုံ (maesot_block.glb) က အလယ်မှာ ရှိလို့ အိမ်တွေကို
+    //    ဘေးနှစ်ဖက် လမ်းတစ်လျှောက် ချထားတယ်။
+    for (const [x, z, rot] of [[-34, -22, Math.PI / 2], [-34, 8, Math.PI / 2],
+                               [34, -10, -Math.PI / 2], [34, 20, -Math.PI / 2]]) {
+      void addBuilding(this, { kind: 'stilt', position: new THREE.Vector3(x, 0, z), rotation: rot });
+    }
 
     // ★ GLB မြို့ကွက် Load — collision များ အလိုအလျောက်ရ ★
     loadCityMap(this, './assets/maesot_block.glb', {

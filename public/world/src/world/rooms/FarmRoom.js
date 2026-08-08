@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
 import { addTerrain } from '../Terrain.js';
+import { addBuilding } from '../Buildings.js';
 import { NPC } from '../../entities/NPC.js';
 
 export class FarmRoom extends Room {
@@ -25,6 +26,11 @@ export class FarmRoom extends Room {
 
     // 🏔️ စိုက်ခင်းကို ဝိုင်းထားတဲ့ စိမ်းလန်းချိုင့်ဝှမ်း — တောင် နိမ့်နိမ့်
     addTerrain(this, { ground: 90, palette: 'lush', seed: 23, peak: 62, hill: 10 });
+
+    // 🏠 စိုက်ခင်း အိမ် — ကွင်းစွန်းက ထင်းအိမ် (lab ရဲ့ တာဝန်ခံ နေတဲ့ အိမ်)
+    void addBuilding(this, {
+      kind: 'stilt', position: new THREE.Vector3(-30, 0, -26), rotation: Math.PI / 3,
+    });
 
     // Hydroponic စင်တန်းများ — စင် + အပင်စိမ်းလေးများ
     const plantMat = new THREE.MeshStandardMaterial({
