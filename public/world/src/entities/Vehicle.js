@@ -43,7 +43,8 @@ export class Vehicle {
    * @param o.box    — အဲဒီကားရဲ့ collider Box3 (မောင်းချိန် ဖြုတ်ဖို့)
    * @param o.label  — HUD မှာ ပြမယ့် နာမည်
    */
-  constructor({ mesh, box, label = '🛻 ကား', doors = [], wheels = [], wheelR = 0.38, seat = null, camPose = null }) {
+  constructor({ mesh, box, label = '🛻 ကား', doors = [], wheels = [], wheelR = 0.38,
+                seat = null, camPose = null, head = [], tail = [], spec = {} }) {
     this.mesh = mesh;
     this.box = box;
     this.label = label;
@@ -55,6 +56,10 @@ export class Vehicle {
     this.seat = seat;           // SEAT_Driver — ဆင်းတဲ့နေရာ တွက်ဖို့
     this.camPose = camPose;     // CAM_Third — မော်ဒယ်က ပေးထားတဲ့ ကင်မရာ
     this.doorHold = 0;          // ပွင့်ထားမယ့် ကျန်ချိန် (စက္ကန့်)
+    this.head = head;           // 💡 ရှေ့မီး material များ (clone ပြီးသား)
+    this.tail = tail;           // 🔴 နောက်မီး / ဘရိတ်မီး
+    this.spec = spec;           // မော်ဒယ်က ပေးထားတဲ့ အချက်အလက် (fare …)
+    this.odometer = 0;          // 🚕 မောင်းခဲ့တဲ့ အကွာအဝေး (မီတာ)
   }
 
   /// ကားရဲ့ လက်ရှိ တည်နေရာ
@@ -111,6 +116,14 @@ export class VehicleSystem {
     this.sfx?.ui({ up: true });
   }
 
+  /// 💡 မီး ထွန်း/ပိတ် — `emissiveIntensity` ကိုပဲ ထိတယ် (light object
+  ///    မထည့်ဘူး — ကား ၆ စီးမှာ PointLight ၂၄ လုံး ဆိုရင် ဖုန်း မခံဘူး)。
+  _lamps(list, on, level = 2.4) {
+    for (const m of list || []) {
+      m.emissiveIntensity = on ? level : (m.userData.baseEmissive ?? 1);
+    }
+  }
+
   enter(v) {
     if (!v || this.active) return;
     this.active = v;
@@ -129,6 +142,10 @@ export class VehicleSystem {
     this.hud?.addToast(`${v.label} — မောင်းရန် joystick, ဆင်းရန် E`);
     this.sfx?.ui({ up: true });
     this._startEngineSound();
+    this._lamps(v.head, true, 2.2);          // 💡 ရှေ့မီး ထွန်း
+    this._lamps(v.tail, true, 0.9);          // 🔴 နောက်မီး ဖျော့ဖျော့
+    v.odometer = 0;
+    v.mesh.rotation.order = 'YXZ';           // ★ အောက်က ယိမ်းတာအတွက်
   }
 
   exit() {
@@ -155,6 +172,15 @@ export class VehicleSystem {
       v.box.setFromObject(v.mesh);
       v.box.min.y = 0;
       this.avatar.physics.colliders.push(v.box);
+    }
+    this._lamps(v.head, false);
+    this._lamps(v.tail, false);
+    v.mesh.rotation.x = 0; v.mesh.rotation.z = 0;   // ယိမ်းထားတာ ပြန်ဖြောင့်
+    // 🚕 တက္ကစီဆိုရင် ကားခ တွက်ပြ — မော်ဒယ်က ကိုယ်တိုင် ပေးထားတဲ့ နှုန်း
+    const fb = v.spec?.fareBase, fk = v.spec?.farePerKm;
+    if (fb && fk && v.odometer > 20) {
+      const fare = Math.round((fb + (v.odometer / 1000) * fk) / 50) * 50;
+      this.hud?.addToast(`🚕 ${(v.odometer / 1000).toFixed(2)} km — ကားခ ${fare} ကျပ်`);
     }
     this.hud?.addToast('🚶 ကားပေါ်က ဆင်းပြီ');
     this.sfx?.ui({ up: false });
@@ -272,6 +298,26 @@ export class VehicleSystem {
       v.speed *= 0.2;                         // တကယ် ပိတ်နေပြီ — ရပ်
       if (Math.abs(step) > 0.08) this.sfx?.hit({ vol: 0.35 });
     }
+
+    // ── 🚗 **ကိုယ်ထည် ယိမ်းခြင်း** — ကွေ့ရင် စောင်း, ဘရိတ်ရင် ငိုက် ──────
+    //
+    // ZIP ထဲက `vehicle-system.js` ရဲ့ weight transfer ကို ယူထားတယ်။
+    // ★ `rotation.order` ကို **YXZ** ထားရမယ် (enter မှာ ချထားတယ်) —
+    //   မူလ XYZ ဆိုရင် ဦးတည်ချက် (Y) ကို နောက်မှ တွက်လို့ ကွေ့ရင်
+    //   စောင်းတာ ဝင်ရိုး လွဲသွားတယ်။ YXZ က yaw → pitch → roll —
+    //   ကားရဲ့ ကိုယ်ပိုင် ဝင်ရိုးအတိုင်း မှန်တယ်။
+    const lean = -turn * Math.min(1, Math.abs(v.speed) / MAX_SPEED) * 0.16;
+    const dive = -(fwd < -0.05 && v.speed > 0 ? 1 : 0) * 0.05
+               + (fwd > 0.05 ? -0.02 : 0);
+    v.mesh.rotation.z += (lean - v.mesh.rotation.z) * Math.min(1, dt * 6);
+    v.mesh.rotation.x += (dive - v.mesh.rotation.x) * Math.min(1, dt * 6);
+
+    // 🔴 ဘရိတ်မီး — နောက်ပြန် နှိပ်ပြီး ရှေ့သွားနေတုန်း ဆိုရင် ဘရိတ်။
+    //    မနင်းချိန်မှာလည်း ဖျော့ဖျော့ ထွန်းထားတယ် (မောင်းနေတုန်း မီး ပိတ်
+    //    မထားဘူး) — ဒါကြောင့် on/off မဟုတ်ဘဲ အလင်း ၂ ဆင့်။
+    const braking = fwd < -0.05 && v.speed > 0.3;
+    this._lamps(v.tail, true, braking ? 2.6 : 0.9);
+    v.odometer += Math.abs(v.speed) * dt;
 
     // ── ကင်မရာ — ကားနောက်က လိုက် ──────────────────────────────────
     const cam = this.engine.camera;

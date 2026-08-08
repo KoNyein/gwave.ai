@@ -190,6 +190,24 @@
 
 ## Changelog
 
+- 2026-08-08 (web, PR pending): **Vehicles read the rest of their contract —
+  lights, body lean, taxi fare.** Taken from the uploaded package's own
+  `vehicle-system.js`, which we had only partly used. ★ The two models
+  express lights **differently** — the pickup by material (`MAT_Light_Head`
+  / `MAT_Light_Tail`), the taxi by node (`LIGHT_Head_*` / `LIGHT_Tail_*`) —
+  so `rigVehicle()` accepts both. ★ Light materials **must be cloned per
+  car**: `scene.clone(true)` shares them, so without the clone one car
+  braking lights up every car built from that file (verified
+  `sharedMaterial: false`). ★ `rotation.order` must be `YXZ` before leaning:
+  under the default XYZ the heading is applied after the roll and the car
+  leans about the wrong axis. Also reads `forward` from the model's extras
+  instead of hard-coding the 180° shell (pickup says `"-Z"`; the taxi omits
+  it and defaults to the same). Taxi exit prints the fare from the model's
+  own `fareBase` 500 / `farePerKm` 450.
+  ★ Kept **our** speed tuning, not the model's: extras ask for `maxSpeed:
+  42` (151 km/h), which is wrong for a city street and would undo the
+  handling fix from PR #576.
+
 - 2026-08-08 (web, PR #581): **Taxi District — a ring-road city with three
   taxis you can drive.** The uploaded `npc-taxi.glb` packed the city block,
   three taxis and four portal pads into one ~400-mesh scene. A car buried
