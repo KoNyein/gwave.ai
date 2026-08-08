@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
 import { addTerrain } from '../Terrain.js';
+import { addManor, manorSpot } from '../Manor.js';
 import { Weapon } from '../../game/Weapon.js';
 import { EnemyBot } from '../../game/EnemyBot.js';
 import { sfx } from '../../core/Sfx.js';
@@ -41,7 +42,10 @@ export class StrikeRoom extends Room {
     // 🏔️ ပွဲကွင်းပတ်လည် ကျောက်တောင်တန်း — arena က တောင်ကြားထဲမှာ
     // ★ `wall: false` — ဒီအခန်းမှာ ကွန်ကရစ်နံရံ ၄ ခု ရှိပြီးသား (အောက်မှာ)。
     //   ထပ်ထည့်ရင် collider ထပ်ပြီး ပစ်ခတ်မှု LoS ကို ထိခိုက်နိုင်တယ်။
-    addTerrain(this, { ground: 70, palette: 'arid', seed: 53, peak: 105, hill: 12, wall: false });
+    const manor = manorSpot(70);
+    addTerrain(this, { ground: 70, palette: 'arid', seed: 53, peak: 105, hill: 12, wall: false,
+                       flatSpots: [manor.flatSpot] });
+    void addManor(this, { position: manor.position, rotation: manor.rotation });
 
     // ပတ်လည်နံရံ ၄ ခု (collision ပါ — arena ပြင်ပ မထွက်နိုင်)
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x8d939c, roughness: 0.85 });

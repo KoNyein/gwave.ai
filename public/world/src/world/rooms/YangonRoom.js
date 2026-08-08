@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
 import { addTerrain } from '../Terrain.js';
+import { addManor, manorSpot } from '../Manor.js';
 import { addBuilding, buildPagoda, pagodaColliders } from '../Buildings.js';
 import { NPC } from '../../entities/NPC.js';
 
@@ -84,11 +85,14 @@ export class YangonRoom extends Room {
 
     // 🏔️ ပတ်ဝန်းကျင် — ညမြို့တော်ကို ဝိုင်းထားတဲ့ တောင်တန်း
     //    (user: "environment ကို ပြေပြင်အစစ် တောင်ကုန်း တောင်တန်း ထည့်ပါ")
+    // 🏛️ အိမ်တော် ခြံဝန်း — မြို့ အပြင်ဘက်၊ မြေပြားပေါ်
+    const manor = manorSpot(140);
     addTerrain(this, {
       ground: 140, palette: 'night', seed: 11, peak: 100, hill: 12,
       // 🛕 စေတီတော် တည်ရာ — တောင်တန်းက အထဲကနေ ထိုးမထွက်အောင် ပြားထားတယ်
-      flatSpots: [{ x: 0, z: -250, r: 140, blend: 70 }],
+      flatSpots: [{ x: 0, z: -250, r: 140, blend: 70 }, manor.flatSpot],
     });
+    void addManor(this, { position: manor.position, rotation: manor.rotation });
     // ★ လမ်းမီး — ကစားသမား လမ်းလျှောက်ရာ လမ်းကြောင်းကို ချထားတယ်၊
     //   ဒါမှ ခြေထောက်နဲ့ မြေပြင် တကယ် မြင်ရတယ်။
     for (let i = -1; i <= 3; i++) {

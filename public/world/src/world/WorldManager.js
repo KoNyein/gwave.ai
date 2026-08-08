@@ -98,6 +98,8 @@ export class WorldManager {
 
   update(dt) {
     this.time += dt;
-    this.current?.update(dt, this.time);
+    // 🏛️ ကစားသမား တည်နေရာ ပါ ပို့တယ် — အိမ်တော် တံခါးက အနီးရောက်မှ
+    //    အလိုအလျောက် ပွင့်တာမို့ လိုတယ်။
+    this.current?.update(dt, this.time, this.avatar?.group?.position);
   }
 }

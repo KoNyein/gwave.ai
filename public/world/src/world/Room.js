@@ -5,6 +5,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { updateDoors } from './Door.js';
+import { updateManors } from './Manor.js';
 
 export class Room {
   constructor(id, title) {
@@ -102,8 +103,9 @@ export class Room {
   }
 
   // frame တိုင်း — NPC + portal effect update
-  update(dt, time) {
+  update(dt, time, playerPos) {
     updateDoors(this, dt);          // 🚪 ဖွင့်/ပိတ် လှုပ်ရှားမှု
+    updateManors(this, dt, playerPos); // 🏛️ အိမ်တော် — အနီးရောက်ရင် တံခါး ပွင့်
     for (const npc of this.npcs) npc.update(dt);
     for (const p of this.portals) p.mesh.rotation.y = time * 0.8;
     for (const st of this.stations) {
