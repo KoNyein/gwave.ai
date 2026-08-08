@@ -32,6 +32,7 @@ import * as THREE from 'three';
 import { loadGLB } from '../core/Assets.js';
 import { trackQuality } from '../core/Quality.js';
 import { addDoor } from './Door.js';
+import { occupancyGrid, boxesFromGrid, cutDoorway } from './Occupancy.js';
 
 export const BUILDINGS = {
   /// 🛕 ရွှေတိဂုံပုံစံ စေတီတော် အစုအဝေး — ၂၆၄ × ၁၂၆ × ၂၆၄ m
@@ -94,7 +95,19 @@ export async function addBuilding(room, {
   // ★ cache က gltf တစ်ခုတည်းကို ပြန်ပေးတယ် — အလုံးနှစ်လုံး ချရင်
   //   clone မလုပ်ဘဲ ထည့်လိုက်ရင် ဒုတိယတစ်လုံးက ပထမကို ဆွဲရွှေ့သွားမယ်။
   //   အရိုးမပါလို့ ရိုးရိုး clone နဲ့ လုံလောက်တယ် (SkeletonUtils မလို)。
-  const obj = gltf.scene.clone(true);
+  const inner = gltf.scene.clone(true);
+  // 🛻 ★ **ကား မော်ဒယ်ရဲ့ ရှေ့က −Z ဘက်** — မီးကြီး, ဂရစ်, ဘွန်နက်
+  //    အားလုံး −Z မှာ (render ၂ ခု ဘေးချင်းယှဉ်ပြီး တိုင်းထားတယ်)。
+  //    Vehicle.js က မော်ဒယ်ရှေ့ကို +Z လို့ ယူဆထားလို့ **ကားက နောက်ပြန်
+  //    မောင်းပြီး ကွေ့တာလည်း ပြောင်းပြန်** ဖြစ်နေတယ်။ မော်ဒယ်ကို ၁၈၀°
+  //    လှည့်ထားတဲ့ အခွံတစ်ခုထဲ ထည့်လိုက်တာက အသန့်ရှင်းဆုံး — အပြင်ဘက်က
+  //    ကြည့်ရင် ကားရဲ့ ရှေ့က +Z ဖြစ်သွားပြီ၊ ကျန်တဲ့ code ဘာမှ မထိရဘူး။
+  let obj = inner;
+  if (kind === 'pickup') {
+    obj = new THREE.Group();
+    inner.rotation.y = Math.PI;
+    obj.add(inner);
+  }
   obj.position.copy(position);
   // 📐 ၃ စင်တီ မြှင့် — မော်ဒယ်ရဲ့ ကိုယ်ပိုင် မြေခုံနဲ့ အခန်းကြမ်းပြင်
   //    z-fight မဖြစ်အောင်
@@ -120,15 +133,59 @@ export async function addBuilding(room, {
   if (collide) {
     const box = new THREE.Box3().setFromObject(obj);
     box.min.y = 0;
-    if (hollow) hollowShell(room, box, hollow);
+    if (hollow) hollowShell(room, box, { ...hollow, object: obj });
     else room.colliders.push(box);
     // 🛻 ကားဆိုရင် **စီးလို့ရတဲ့ ယာဉ်** အဖြစ် စာရင်းသွင်း — VehicleSystem က
     //    အခန်းကူးတိုင်း `room.cars` ကို ဖတ်တယ် (async ရောက်လာလည်း မှီတယ်)。
     if (kind === 'pickup') {
-      (room.cars ||= []).push({ mesh: obj, box, label: '🛻 ပစ်ကပ်ကား' });
+      (room.cars ||= []).push({
+        mesh: obj, box, label: '🛻 ပစ်ကပ်ကား', doors: hingeCarDoors(inner),
+      });
     }
   }
   return obj;
+}
+
+/**
+ * 🚗 **ကား တံခါး ၂ ချပ်ကို ပတ္တာ တပ်ပေးတယ်**
+ *
+ * user: "ကား တံခါး အဖွင့်အပိတ်"
+ *
+ * ★ တင်လာတဲ့ မော်ဒယ်မှာ တံခါးတွေက **ပွင့်ပြီးသား** ပုံသေ ဖြစ်နေတယ် —
+ *   ဘေးကို ၉၀° ထောင်ထွက်နေတာ (render မှာ ရှင်းရှင်း မြင်ရတယ်)。 ဒါကြောင့်
+ *   မောင်းနေတဲ့ ကားက တံခါး ၂ ဖက် ဟထားပြီး ပြေးနေသလို ဖြစ်တယ်။
+ *
+ * ★ material အလိုက် ပေါင်းထားတဲ့ ဖိုင်ဖြစ်ပေမယ့် တံခါး ၂ ချပ်က
+ *   `MAT_Interior_Trim` (ဘယ်, x −2.00…−0.94) နဲ့ `MAT_Interior_Trim_0`
+ *   (ညာ, x +0.94…+2.00) ဆိုတဲ့ **သီးသန့် mesh ၂ ခု**။ တစ်ခုချင်း
+ *   ဖျောက်ကြည့်ပြီး အတည်ပြုထားတယ် — ဖျောက်လိုက်ရင် ထောင်ထွက်နေတဲ့
+ *   ပြားကြီး ၂ ခု ပျောက်သွားတယ်။
+ *
+ * ★ ပတ္တာက ကားကိုယ်ထည်နဲ့ ဆုံတဲ့ အနား (x = ±0.94, z = −1.0)。 အဲဒီမှာ
+ *   pivot ထားပြီး ၉၀° လှည့်လိုက်ရင် တံခါးက ကားဘေးနဲ့ အပ်သွားတယ် = ပိတ်။
+ */
+function hingeCarDoors(root) {
+  const HINGE_X = 0.94, HINGE_Z = -1.0;
+  const out = [];
+  const found = [];
+  root.traverse((m) => {
+    const n = m.material?.name;
+    if (m.isMesh && (n === 'MAT_Interior_Trim' || n === 'MAT_Interior_Trim_0')) found.push(m);
+  });
+  for (const m of found) {
+    const b = new THREE.Box3().setFromBufferAttribute(m.geometry.attributes.position);
+    const sign = (b.min.x + b.max.x) / 2 < 0 ? -1 : 1;   // ဘယ် / ညာ
+    const pivot = new THREE.Group();
+    pivot.position.set(sign * HINGE_X, 0, HINGE_Z);
+    (m.parent || root).add(pivot);
+    pivot.add(m);
+    m.position.set(-sign * HINGE_X, 0, -HINGE_Z);
+    // ★ မော်ဒယ်ထဲက အနေအထား = ပွင့်နေတာ (angle 0)。 ပိတ်တာက ±၉၀°。
+    const closed = sign < 0 ? Math.PI / 2 : -Math.PI / 2;
+    pivot.rotation.y = closed;
+    out.push({ pivot, closed, angle: closed, target: closed });
+  }
+  return out;
 }
 
 /**
@@ -152,7 +209,9 @@ export async function addBuilding(room, {
  *                  ထုတ်ပေးတယ် — physics က ၀.၅၅ m အထိ တက်နိုင်လို့
  *                  အဲဒီအောက် ထစ်တွေ ခွဲထားတယ်။
  */
-export function hollowShell(room, box, { side = '+z', width = 3, step = 0, wall = 0.5 } = {}) {
+export function hollowShell(room, box, {
+  side = '+z', width = 3, step = 0, wall = 0.5, object = null,
+} = {}) {
   const { min, max } = box;
   const top = max.y;
   const push = (x0, z0, x1, z1, y0 = 0, y1 = top) => room.colliders.push(
@@ -164,38 +223,92 @@ export function hollowShell(room, box, { side = '+z', width = 3, step = 0, wall 
   // ခြေတံရှည်အိမ် — နံရံတွေက **ကြမ်းပြင် အထက်မှာမှ** စတယ်၊ အောက်က
   // အခန်းလွတ်က ဖြတ်လျှောက်လို့ ရရမယ် (တိုင်တွေပဲ ရှိတာ)。
   const wallBase = step > 0.05 ? step : 0;
-  for (const face of ['+x', '-x', '+z', '-z']) {
-    const isDoor = face === side;
-    if (face === '+z' || face === '-z') {
-      const z0 = face === '+z' ? max.z - wall : min.z;
-      const z1 = face === '+z' ? max.z : min.z + wall;
-      if (!isDoor) { push(min.x, z0, max.x, z1, wallBase); continue; }
-      push(min.x, z0, cx - width / 2, z1, wallBase);
-      push(cx + width / 2, z0, max.x, z1, wallBase);
-    } else {
-      const x0 = face === '+x' ? max.x - wall : min.x;
-      const x1 = face === '+x' ? max.x : min.x + wall;
-      if (!isDoor) { push(x0, min.z, x1, max.z, wallBase); continue; }
-      push(x0, min.z, x1, cz - width / 2, wallBase);
-      push(x0, cz + width / 2, x1, max.z, wallBase);
+
+  // ── ① နံရံ — မော်ဒယ်ရဲ့ **တကယ့် တြိဂံ**ကနေ ────────────────────────
+  //
+  // ★ ဒါက ကျွန်တော့် ဒုတိယ အမှားကို ပြင်တာ။ ပထမတစ်ခါက အိမ်တစ်လုံးလုံးကို
+  //   box တစ်ခုနဲ့ ဖုံးမိလို့ **ဝင်လို့ မရ**ဖြစ်ခဲ့တယ်။ ပြင်တဲ့အခါ နံရံ ၄ ချပ်ကို
+  //   bounding box ရဲ့ **အနား**မှာ ချလိုက်တယ် — ဒါက မော်ဒယ်ရဲ့ နံရံအစစ်
+  //   ဘယ်မှာ ရှိတယ်ဆိုတာကို လုံးဝ မကြည့်ဘူး။
+  //   တိုင်းတာချက် (မြဝတီ ခြေတံရှည်အိမ်): bounding box x[-50.0,-29.9] ဖြစ်ပြီး
+  //   နံရံအစစ် (timber) က x[-44.1,-31.9] — collider က နံရံကနေ **၅.၉ m
+  //   အပြင်မှာ**။ ဆိုလိုတာက အိမ်ရဲ့ နံရံအစစ်ကို ဖြတ်လျှောက်လို့ ရနေတယ်။
+  //
+  //   အခု တြိဂံတွေကို ဇယားကွက်ပေါ် ပုံနှိပ်ပြီး နံရံရှိတဲ့ အကွက်တိုင်းကို
+  //   collider လုပ်တယ် — ပုံသဏ္ဌာန် အတိအကျ လိုက်တယ်၊ တံခါးဝနဲ့
+  //   ပြတင်းပေါက်အောက် အလိုအလျောက် ပွင့်နေတယ်။
+  let grid = null;
+  let gap = null;
+  if (object) {
+    grid = occupancyGrid(object, {
+      // ★ ၀.၃၅ m — တံခါးဝ ၁.၅ m လောက်ကို ၄ ကွက်နဲ့ ဖမ်းနိုင်တယ်။
+      //   ၀.၅ ဆိုရင် ၂ ကွက်ပဲ ရပြီး နံရံက အပေါက်ထဲ တိုးဝင်လာလို့
+      //   အဝင်လမ်း ကျဉ်းသွားတယ်။
+      cell: 0.35,
+      bandFrom: wallBase + 0.5,
+      bandTo: wallBase + 1.7,
+    });
+    // 🚪 တံခါးဝ — box မထုတ်ခင် **ဖောက်ရမယ်**
+    gap = cutDoorway(grid, side, Math.max(2.2, width));
+    for (const b of boxesFromGrid(grid, { floorY: wallBase, minTop: 1.0 })) {
+      room.colliders.push(b);
+    }
+    // 🪵 ခြေတံရှည်အိမ် — **အောက်က တိုင်တွေ**。 နံရံက ကြမ်းပြင် အထက်မှာ
+    //    စလို့ အောက်ပိုင်းမှာ ဘာမှ မရှိခဲ့ဘူး — တိုင်တွေကို ဖြတ်လျှောက်
+    //    လို့ ရနေတယ် (မျဉ်းဖြောင့် ပြေးစမ်းသပ်: ဘုရားသုံးဆူမှာ ခြေလှမ်း
+    //    ၁၁၀ ခု တိုင်ထဲ ရောက်နေတယ်)。 တိုင်ကြားက ဆက်လျှောက်လို့ရတယ်။
+    if (wallBase > 0.05) {
+      const under = occupancyGrid(object, {
+        cell: 0.5, bandFrom: 0.6, bandTo: Math.max(0.9, wallBase - 0.3),
+      });
+      for (const b of boxesFromGrid(under, { floorY: 0, minTop: 0.9 })) {
+        // ★ **တိုင်တွေကိုပဲ** ယူတယ်၊ ကျယ်တဲ့ အပိုင်းတွေ မယူဘူး။
+        //   မယူဘဲ အကုန်ထည့်ကြည့်တော့ ခြေတံရှည်အိမ်ရဲ့ **အောက်တစ်ခုလုံး
+        //   ပိတ်သွားတယ်** (မြေပြင် မြေပုံ ပုံနှိပ်တော့ ၁၁×၁၁ အကွက်လုံး `#`)。
+        //   အဲဒါက ခြေတံရှည်အိမ်ရဲ့ အောက်က ဖြတ်လျှောက်လို့ရတဲ့ သဘောကို
+        //   ဖျက်ပစ်တယ် — မော်ဒယ်မှာ အောက်ခြေ အကာအရံ ပါလာလို့။
+        if (b.max.x - b.min.x > 0.8) continue;
+        b.max.y = Math.min(b.max.y, wallBase);
+        room.colliders.push(b);
+      }
+    }
+  } else {
+    // မော်ဒယ် မပါရင် (စမ်းသပ်မှု/အဟောင်း) — bounding box အခွံ
+    for (const face of ['+x', '-x', '+z', '-z']) {
+      const isDoor = face === side;
+      if (face === '+z' || face === '-z') {
+        const z0 = face === '+z' ? max.z - wall : min.z;
+        const z1 = face === '+z' ? max.z : min.z + wall;
+        if (!isDoor) { push(min.x, z0, max.x, z1, wallBase); continue; }
+        push(min.x, z0, cx - width / 2, z1, wallBase);
+        push(cx + width / 2, z0, max.x, z1, wallBase);
+      } else {
+        const x0 = face === '+x' ? max.x - wall : min.x;
+        const x1 = face === '+x' ? max.x : min.x + wall;
+        if (!isDoor) { push(x0, min.z, x1, max.z, wallBase); continue; }
+        push(x0, min.z, x1, cz - width / 2, wallBase);
+        push(x0, cz + width / 2, x1, max.z, wallBase);
+      }
     }
   }
 
-  // 🚪 တံခါး — တံခါးဝ အလယ်မှာ။ ခြေတံရှည်အိမ်ဆိုရင် ကြမ်းပြင် အမြင့်မှာ
-  {
-    const dx = side === '+x' ? max.x : side === '-x' ? min.x : cx;
-    const dz = side === '+z' ? max.z : side === '-z' ? min.z : cz;
-    const dr = addDoor(room, {
-      x: dx, z: dz, facing: side, width: width - 0.2, height: 2.3,
-      label: '🚪 အိမ် တံခါး',
-    });
-    // ခြေတံရှည် — တံခါးက ကြမ်းပြင် အထက်မှာ ရှိရမယ်
-    if (step > 0.05) {
-      dr.pivot.position.y = step;
-      dr.box.min.y = step; dr.box.max.y = step + 2.3;
-      dr.position.y = step;
-    }
+  // ── ② 🚪 တံခါး — ဖောက်ထားတဲ့ အပေါက်ကို ဖုံးအုပ် ─────────────────────
+  const dx = gap ? gap.x : (side === '+x' ? max.x : side === '-x' ? min.x : cx);
+  const dz = gap ? gap.z : (side === '+z' ? max.z : side === '-z' ? min.z : cz);
+  const dw = gap ? gap.width : width;
+  const dr = addDoor(room, {
+    x: dx, z: dz, facing: gap ? gap.facing : side,
+    width: Math.max(1.2, dw - 0.15), height: 2.3,
+    label: '🚪 အိမ် တံခါး',
+  });
+  // ခြေတံရှည် — တံခါးက ကြမ်းပြင် အထက်မှာ ရှိရမယ်
+  if (step > 0.05) {
+    dr.pivot.position.y = step;
+    dr.box.min.y = step; dr.box.max.y = step + 2.3;
+    dr.position.y = step;
   }
+  // လှေကားက တံခါးဝ ရှေ့မှာမှ ရှိရမယ် — မဟုတ်ရင် နံရံကို တက်ရမယ်
+  const doorAt = axisZ ? dx : dz;
 
   // 🪜 ခြေတံရှည်အိမ် — အထဲက ကြမ်းပြင်က မြင့်နေလို့ လှေကား လိုတယ်
   if (step > 0.05) {
@@ -208,21 +321,49 @@ export function hollowShell(room, box, { side = '+z', width = 3, step = 0, wall 
     // ★ ပါးလွှာတဲ့ ခုံ ဆိုရင် အောက်မှာ ရပ်ချိန် `b.min.y >= pos.y + height`
     //   ဖြစ်လို့ **ခေါင်းပေါ်** အဖြစ် ကျော်သွားတယ် — အောက် လျှောက်လို့ရ၊
     //   လှေကားတက်ရင် အပေါ် ရပ်လို့ရ။
-    push(min.x + wall, min.z + wall, max.x - wall, max.z - wall, step - 0.2, step);
+    //
+    // ★ ကြမ်းပြင်က **နံရံအစစ်ရဲ့ အတွင်း**မှာမှ ရှိရမယ်။ bounding box
+    //   ကနေ ယူရင် အိမ်ရဲ့ ၆ m အပြင်အထိ ကြမ်းပြင် ထွက်နေမယ် — လေထဲမှာ
+    //   ရပ်လို့ ရနေမယ်။ occupancy grid ကနေ နံရံရဲ့ အစွန်း အစစ်ကို ယူတယ်။
+    const f = grid ? gridFootprint(grid) : null;
+    const fx0 = f ? f.minX : min.x + wall, fx1 = f ? f.maxX : max.x - wall;
+    const fz0 = f ? f.minZ : min.z + wall, fz1 = f ? f.maxZ : max.z - wall;
+    push(fx0 + wall, fz0 + wall, fx1 - wall, fz1 - wall, step - 0.2, step);
     // လှေကားထစ် — တစ်ထစ် ၀.၄ m (physics က ၀.၅၅ အထိ တက်နိုင်တယ်)
+    // ★ တံခါးဝ ရှေ့မှာမှ — အလယ်မှာ ချရင် နံရံကို တက်ခိုင်းသလို ဖြစ်မယ်
     const n = Math.ceil(step / 0.4);
     for (let i = 1; i <= n; i++) {
       const y = (step * i) / n;
       const off = (n - i + 1) * 1.1;      // အောက်ထစ်လေ ရှေ့ထွက်လေ
       if (axisZ) {
-        const z = side === '+z' ? max.z + off : min.z - off;
-        push(cx - width / 2, z - 0.6, cx + width / 2, z + 0.6, 0, y);
+        const z = side === '+z' ? fz1 + off : fz0 - off;
+        push(doorAt - width / 2, z - 0.6, doorAt + width / 2, z + 0.6, 0, y);
       } else {
-        const x = side === '+x' ? max.x + off : min.x - off;
-        push(x - 0.6, cz - width / 2, x + 0.6, cz + width / 2, 0, y);
+        const x = side === '+x' ? fx1 + off : fx0 - off;
+        push(x - 0.6, doorAt - width / 2, x + 0.6, doorAt + width / 2, 0, y);
       }
     }
   }
+}
+
+/// occupancy grid ထဲက **တကယ် ရှိတဲ့** အကွက်တွေရဲ့ အစွန်း — မော်ဒယ်ရဲ့
+/// bounding box မဟုတ်ဘူး (အဲဒါက အလှဆင် ပစ္စည်း/ခြံဝင်း အထိ ပါတတ်တယ်)。
+function gridFootprint({ cols, rows, cell, minX, minZ, occ }) {
+  let c0 = cols, c1 = -1, r0 = rows, r1 = -1;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (!occ[r * cols + c]) continue;
+      if (c < c0) c0 = c;
+      if (c > c1) c1 = c;
+      if (r < r0) r0 = r;
+      if (r > r1) r1 = r;
+    }
+  }
+  if (c1 < 0) return null;
+  return {
+    minX: minX + c0 * cell, maxX: minX + (c1 + 1) * cell,
+    minZ: minZ + r0 * cell, maxZ: minZ + (r1 + 1) * cell,
+  };
 }
 
 /**

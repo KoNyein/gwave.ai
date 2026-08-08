@@ -181,7 +181,10 @@ export function tower(room, {
 }
 
 /// 🌴 ထန်းပင် — ဖူးခက်/ကမ်းခြေ အတွက်
-export function palm(group, x, z, scale = 1) {
+///
+/// ★ `room` ပေးရင် ပင်စည်ကို collider ထည့်တယ်။ ဖူးခက်မှာ ထန်းပင် ၁၈ ပင်
+///   collider မဲ့နေလို့ အကုန် ဖြတ်လျှောက်လို့ ရနေခဲ့တယ်။
+export function palm(group, x, z, scale = 1, room = null) {
   const g = new THREE.Group();
   const trunk = new THREE.Mesh(
     new THREE.CylinderGeometry(0.18, 0.3, 6.5, 6), mat(0x7a5c3a));
@@ -198,6 +201,11 @@ export function palm(group, x, z, scale = 1) {
   g.position.set(x, 0, z);
   g.scale.setScalar(scale);
   group.add(g);
+  if (room) {
+    const r = 0.45 * scale;
+    room.colliders.push(new THREE.Box3(
+      new THREE.Vector3(x - r, 0, z - r), new THREE.Vector3(x + r, 6 * scale, z + r)));
+  }
   return g;
 }
 
@@ -257,9 +265,20 @@ export function smallStupa(room, { x = 0, z = 0, h = 14, gold = true } = {}) {
   spire.position.y = y + (h - y) / 2; g.add(spire);
   g.position.set(x, 0, z);
   room.group.add(g);
-  // ရင်ပြင်ကိုပဲ collider — အပေါ်ပိုင်းက ခေါင်းအထက်မှာ ရှိလို့ မလို
+  // ရင်ပြင် — **ပါးလွှာတဲ့ ခုံ**၊ ပေါ်တက်လို့ရတယ်
   room.colliders.push(new THREE.Box3(
-    new THREE.Vector3(x - 4.6, 0, z - 4.6), new THREE.Vector3(x + 4.6, 0.8, z + 4.6)));
+    new THREE.Vector3(x - 4.6, 0.6, z - 4.6), new THREE.Vector3(x + 4.6, 0.8, z + 4.6)));
+  // 🪜 ရင်ပြင် ပေါ်တက်ဖို့ ထစ် ၂ ထစ် (physics က ၀.၅၅ m အထိ တက်နိုင်)
+  for (let i = 1; i <= 2; i++) {
+    const y = (0.8 * i) / 2, off = 4.6 + (3 - i) * 0.9;
+    room.colliders.push(new THREE.Box3(
+      new THREE.Vector3(x - 2, 0, z + off - 0.9), new THREE.Vector3(x + 2, y, z + off)));
+  }
+  // ★ စေတီရဲ့ **ကိုယ်ထည်** — ဒါ ကျန်ခဲ့လို့ ဖြတ်လျှောက်လို့ ရနေခဲ့တယ်
+  //   (တိုင်းတာချက်: မြဝတီ/ဘန်ကောက်/ချင်းမိုင် တိုင်းမှာ mesh ၃-၄ ခု
+  //   collider မဲ့နေတယ်)。 ထစ်ခွင်နဲ့ ခေါင်းလောင်းက အခိုင်အမာ ဖြစ်ရမယ်။
+  room.colliders.push(new THREE.Box3(
+    new THREE.Vector3(x - 4.0, 0.8, z - 4.0), new THREE.Vector3(x + 4.0, h * 0.62, z + 4.0)));
   return g;
 }
 

@@ -29,6 +29,14 @@ export class YangonRoom extends Room {
     frame.position.copy(position); frame.position.z -= 0.2;
     frame.rotation.y = Math.PI / 6;
     this.group.add(frame, wall);
+    // ★ ဒီ ၁၆.၆ × ၈.၆ နံရံကြီးက collider လုံးဝ မရှိခဲ့ဘူး — အလယ်မှာ
+    //   ရပ်ကြည့်တော့ တွန်းအား ၀.၀၀ m。 ဖြတ်လျှောက်လို့ ရနေတယ်။
+    //   (မျဉ်းဖြောင့် ပြေးစမ်းသပ်မှုကမှ တွေ့တာ — အနီးက ခုံတစ်ခုရဲ့ collider
+    //    က AABB နဲ့ ထပ်နေလို့ "ဖုံးထားပြီး" လို့ ထင်ခဲ့တယ်)。
+    frame.updateMatrixWorld(true);
+    const fbox = new THREE.Box3().setFromObject(frame);
+    fbox.min.y = 0;
+    this.colliders.push(fbox);
     this.setFeedWallPosts([{ who: 'GWAVE', text: 'Open Wall — feed ကို ဒီနံရံပေါ်မှာ တိုက်ရိုက်မြင်ရမည်…' }]);
   }
 
@@ -121,7 +129,8 @@ export class YangonRoom extends Room {
     });
     void addBuilding(this, {                    // ရပ်ကွက်ထဲက နောက်တစ်လုံး
       kind: 'stilt', position: new THREE.Vector3(50, 0, 18),
-      rotation: -Math.PI / 2.4,
+      rotation: -Math.PI / 2,
+      hollow: { side: '-x', width: 4, step: 2.2 },
     });
 
     // 🧍‍♀️ စေတီ ရင်ပြင်က ကြိုဆိုသူ — မြန်မာဝတ်စုံ (အင်္ကျီ + ထဘီ, သနပ်ခါး)
@@ -196,7 +205,7 @@ export class YangonRoom extends Room {
       ['colonial', -48, 12, Math.PI / 2, 'detail'],
       ['colonial', -48, 54, Math.PI / 2, 'detail'],
       ['stilt', 48, -44, -Math.PI / 2, 'detail'],
-      ['stilt', 48, 44, -Math.PI / 2.6, 'detail'],
+      ['stilt', 48, 44, -Math.PI / 2, 'detail'],
     ]) {
       void addBuilding(this, {
         kind, position: new THREE.Vector3(x, 0, z), rotation: rot, tier,
