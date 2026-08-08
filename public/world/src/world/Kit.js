@@ -1,7 +1,7 @@
 // ============================================================
-// Manor.js — 🏛️ **GreenWave Manor** — အခန်းတိုင်းမှာ ရှိတဲ့ အိမ်တော်
+// Kit.js — 🏛️ **သတ်မှတ်ချက် (convention) လိုက်နာတဲ့ မော်ဒယ်များ**
 //
-// user: "ground earth metaverse တိုင်းမှာ ထည့်ပါ"
+// user: "ground earth metaverse တိုင်းမှာ ထည့်ပါ" / generator suite ZIP
 //
 // ═══ ဒီမော်ဒယ်က တခြားဟာတွေနဲ့ မတူဘူး ═══
 //
@@ -27,6 +27,16 @@
 //   အဲဒီ စာချုပ်ကို လိုက်နာရုံပါပဲ။ (တခြား GLB တွေမှာ ဒါ မပါလို့
 //   Occupancy.js နဲ့ ခန့်မှန်းရတာ။)
 //
+// ═══ တံခါးကို **TRIGGER ကနေ** ဖတ်တယ် (root extras ကနေ မဟုတ်) ═══
+//
+// အိမ်တော်မှာ root `extras.doors` ပါပေမယ့် ကိုလိုနီအိမ်မှာ root extras က
+// **null**。 ဒါပေမယ့် နှစ်ခုစလုံးမှာ `TRIGGER_*` empties တွေက ကိုယ်တိုင်
+// အချက်အလက် သယ်လာတယ်:
+//     TRIGGER_Door_Main  { radius: 3.2, targets: ["DOOR_L","DOOR_R"], mode:"auto" }
+//     TRIGGER_Gate_Main  { radius: 6.5, targets: ["GATE_L","GATE_R"], actors:[…] }
+// ဒါကြောင့် TRIGGER ကနေ ဖတ်တာက **မော်ဒယ် ၂ ခုစလုံးမှာ အလုပ်လုပ်တယ်** —
+// နောက်ထပ် တင်လာမယ့် ဟာတွေမှာလည်း ဒီအတိုင်းပဲ。
+//
 // ═══ ဖိုင်ကို ဘာလုပ်ထားလဲ ═══
 //
 //   mesh ၃၄၂ → **၂၅**   (draw call ၃၄၂ → ၂၅)
@@ -41,9 +51,15 @@
 import * as THREE from 'three';
 import { loadGLB } from '../core/Assets.js';
 import { trackQuality } from '../core/Quality.js';
-import { occupancyGrid, boxesFromGrid } from './Occupancy.js';
+import { occupancyGrid } from './Occupancy.js';
 
-const URL = '/world/assets/greenwave_manor.glb';
+const MANOR_URL = '/world/assets/greenwave_manor.glb';
+
+/// 📐 မော်ဒယ်တစ်ခုချင်းရဲ့ အချက်အလက် — footprint မပါတဲ့ ဟာတွေအတွက်
+export const KITS = {
+  manor: { url: MANOR_URL, footprint: [24, 16], height: 21.8, floors: 3 },
+  colonial: { url: '/world/assets/colonial_house.glb', footprint: [16, 11], height: 13.9, floors: 3 },
+};
 
 /// ဝင်းရဲ့ အကျယ်အဝန်း — မော်ဒယ်ရဲ့ origin ကနေ တိုင်းထားတာ (တိုင်းပြီးသား)
 ///   x: −32 … +32   z: −51 … +23   (ဂိတ်က z −40, အိမ်က z −5)
@@ -84,15 +100,26 @@ const SPEED = 2.6;                 // rad/s — ကြီးမားတဲ့ �
  * @param o.scale
  * @returns {Promise<object|null>} — { group, doors, extras }
  */
-export async function addManor(room, {
+export async function addManor(room, opts = {}) {
+  return addKit(room, { kit: 'manor', ...opts });
+}
+
+/**
+ * သတ်မှတ်ချက် လိုက်နာတဲ့ မော်ဒယ် တစ်ခုကို အခန်းထဲ ချတယ်။
+ * @param o.kit — `KITS` ထဲက key ('manor' | 'colonial')
+ */
+export async function addKit(room, {
+  kit = 'manor',
   position = new THREE.Vector3(),
   rotation = 0,
   scale = 1,
   tier = 'detail',
 } = {}) {
+  const spec = KITS[kit];
+  if (!spec) return null;
   let gltf;
   try {
-    gltf = await loadGLB(URL);
+    gltf = await loadGLB(spec.url);
   } catch {
     return null;   // ဖိုင် မရရင် အခန်းက ဆက်အလုပ်လုပ်ရမယ်
   }
@@ -111,16 +138,40 @@ export async function addManor(room, {
   obj.updateMatrixWorld(true);
   trackQuality(obj, tier);
 
-  const extras = findExtras(obj);
+  // ★ root extras မပါတဲ့ မော်ဒယ် (ကိုလိုနီအိမ်) အတွက် KITS က ဖြည့်ပေးတယ်
+  const extras = { ...spec, ...findExtras(obj) };
   const named = new Map();
   obj.traverse((o) => { if (o.name) named.set(o.name, o); });
 
-  buildColliders(room, obj, named, extras, position, scale);
+  buildColliders(room, obj, named, extras, position, scale, rotation);
   const doors = hingeLeaves(room, named, extras, obj);
 
-  const manor = { group: obj, doors, extras, position: position.clone() };
-  (room.manors ||= []).push(manor);
-  return manor;
+  const built = { group: obj, doors, extras, position: position.clone(), kit };
+  (room.manors ||= []).push(built);
+  return built;
+}
+
+/**
+ * တံခါးအုပ်စု စာရင်း — `TRIGGER_*` empties ကနေ ဆောက်တယ်၊ မရှိမှ root
+ * `extras.doors` ကို သုံးတယ်。
+ *
+ * ★ ကိုလိုနီအိမ်မှာ root extras က null ဖြစ်လို့ extras ချည်း မှီခိုရင်
+ *   တံခါး တစ်ချပ်မှ မရဘူး — ဒါပေမယ့် TRIGGER နှစ်ခုက အချက်အလက် အပြည့်
+ *   သယ်လာတယ် (targets, radius, mode)。
+ */
+function doorSpecs(named, extras) {
+  const out = [];
+  for (const [name, node] of named) {
+    if (!name.startsWith('TRIGGER_')) continue;
+    const e = node.userData || {};
+    if (!Array.isArray(e.targets) || !e.targets.length) continue;
+    out.push({
+      node: name, leaves: e.targets, trigger: name,
+      radius: e.radius || 3.5, auto: e.mode !== 'manual',
+    });
+  }
+  if (out.length) return out;
+  return (extras.doors || []);
 }
 
 /// root ရဲ့ extras — GLTFLoader က `userData` အဖြစ် ထားပေးတယ်
@@ -200,8 +251,14 @@ function buildColliders(room, obj, named, extras, position, scale, rotation = 0)
   }
 
   // ── ③ 🪜 လှေကား — အကွက်တစ်ခုချင်း box, ထစ်လိုက် တက်သွားတယ် ─────────
-  const stairs = named.get('STAIRS');
-  if (stairs) {
+  //
+  // ★ နာမည်က မော်ဒယ်အလိုက် ကွဲတယ် — အိမ်တော်မှာ `STAIRS`, ကိုလိုနီအိမ်မှာ
+  //   `COL_Stair_1/2`。 နှစ်မျိုးလုံး ဖမ်းတယ်။
+  const stairNodes = [];
+  for (const [nm, node] of named) {
+    if (/^(STAIRS|COL_Stair)/.test(nm)) stairNodes.push(node);
+  }
+  for (const stairs of stairNodes) {
     const g = occupancyGrid(stairs, { cell: 0.4, bandFrom: -1, bandTo: 99 });
     const { cols, rows, cell, minX, minZ, occ, top } = g;
     for (let r = 0; r < rows; r++) {
@@ -223,7 +280,7 @@ function buildColliders(room, obj, named, extras, position, scale, rotation = 0)
 
 function hingeLeaves(room, named, extras, obj) {
   const out = [];
-  for (const spec of (extras.doors || [])) {
+  for (const spec of doorSpecs(named, extras)) {
     const trig = named.get(spec.trigger);
     const at = trig
       ? new THREE.Vector3().setFromMatrixPosition(trig.matrixWorld)
@@ -246,7 +303,7 @@ function hingeLeaves(room, named, extras, obj) {
       auto: spec.auto !== false,
       open: false,
       t: 0,
-      label: spec.node === 'GATE_Main' ? '🚪 ဝင်းတံခါး' : '🚪 အိမ်တော် တံခါး',
+      label: /GATE/i.test(spec.leaves[0] || '') ? '🚪 ဝင်းတံခါး' : '🚪 အိမ် တံခါး',
     });
   }
   void room; void obj;

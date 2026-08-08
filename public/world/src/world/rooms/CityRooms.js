@@ -22,7 +22,7 @@ import * as THREE from 'three';
 import { Room, addRoomLighting } from '../Room.js';
 import { addTerrain } from '../Terrain.js';
 import { addBuilding } from '../Buildings.js';
-import { addManor, manorSpot } from '../Manor.js';
+import { addManor, manorSpot } from '../Kit.js';
 import { NPC } from '../../entities/NPC.js';
 import { shophouse, tower, palm, water, road, gateArch, smallStupa, marketStall } from '../CityKit.js';
 

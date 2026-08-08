@@ -43,13 +43,17 @@ export class Vehicle {
    * @param o.box    — အဲဒီကားရဲ့ collider Box3 (မောင်းချိန် ဖြုတ်ဖို့)
    * @param o.label  — HUD မှာ ပြမယ့် နာမည်
    */
-  constructor({ mesh, box, label = '🛻 ကား', doors = [] }) {
+  constructor({ mesh, box, label = '🛻 ကား', doors = [], wheels = [], wheelR = 0.38, seat = null, camPose = null }) {
     this.mesh = mesh;
     this.box = box;
     this.label = label;
     this.speed = 0;
     this.driver = null;         // စီးနေသူ ရှိရင် avatar
     this.doors = doors;         // 🚪 ပတ္တာ တပ်ထားတဲ့ တံခါး ၂ ချပ်
+    this.wheels = wheels;       // 🛞 ဘီး ၄ လုံး (WHEEL_FL/FR/RL/RR)
+    this.wheelR = wheelR;       // ဘီး အချင်းဝက် — လည်နှုန်း တွက်ဖို့
+    this.seat = seat;           // SEAT_Driver — ဆင်းတဲ့နေရာ တွက်ဖို့
+    this.camPose = camPose;     // CAM_Third — မော်ဒယ်က ပေးထားတဲ့ ကင်မရာ
     this.doorHold = 0;          // ပွင့်ထားမယ့် ကျန်ချိန် (စက္ကန့်)
   }
 
@@ -100,7 +104,9 @@ export class VehicleSystem {
   /// 🚪 ကားတံခါး ဖွင့်/ပိတ် — ဝင်စီး/ဆင်းချိန်မှာ ဖွင့်ပြီး ပြန်ပိတ်တယ်
   swingDoors(v, seconds = 1.1) {
     if (!v?.doors?.length) return;
-    for (const d of v.doors) d.target = 0;      // ၀ = ပွင့် (မော်ဒယ်ရဲ့ မူလ)
+    // ★ မော်ဒယ် အသစ်မှာ တံခါးက **ပိတ်ပြီးသား** (angle ၀)。 အရင်ဟာက
+    //   ပွင့်ပြီးသား ဖြစ်နေလို့ ပြောင်းပြန် ရေးထားခဲ့ရတယ်။
+    for (const d of v.doors) d.target = d.open;
     v.doorHold = seconds;
     this.sfx?.ui({ up: true });
   }
@@ -132,7 +138,9 @@ export class VehicleSystem {
     this._stopEngineSound();
     this.swingDoors(v);
     // ကားရဲ့ ဘေးမှာ ချ — ကားထဲမှာ မကျန်စေရ
-    const side = new THREE.Vector3(1, 0, 0).applyAxisAngle(
+    // ★ ယာဉ်မောင်း ထိုင်ခုံ ဘယ်ဘက်လဲ ကြည့်ပြီး အဲဒီဘက်က ဆင်းတယ်
+    const sx = v.seat ? Math.sign(v.seat.position.x) || 1 : 1;
+    const side = new THREE.Vector3(sx, 0, 0).applyAxisAngle(
       new THREE.Vector3(0, 1, 0), v.mesh.rotation.y);
     const p = v.mesh.position.clone().addScaledVector(side, 3.2);
     this.avatar.group.position.set(p.x, 0, p.z);
@@ -175,8 +183,24 @@ export class VehicleSystem {
         if (Math.abs(d.angle - d.target) < 0.004) continue;
         const s = 3.4 * dt;
         d.angle += Math.max(-s, Math.min(s, d.target - d.angle));
-        d.pivot.rotation.y = d.angle;
+        d.node.rotation.y = d.angle;
       }
+    }
+  }
+
+  /// 🛞 ဘီး — အရှိန်အလိုက် လည်, ရှေ့ဘီး ၂ လုံး ကွေ့
+  ///
+  /// ★ `world-registry.json`: "WHEEL_FL/FR/RL/RR pivot at axle, axle = local X"
+  ///   ဒါကြောင့် လည်တာက local X, ကွေ့တာက Y。 မော်ဒယ်က pivot ကို
+  ///   ဝင်ရိုးမှာ ချထားပေးလို့ ကိုယ်တိုင် တွက်စရာ မလိုဘူး。
+  _updateWheels(v, dt, turn) {
+    if (!v.wheels?.length) return;
+    const roll = (v.speed * dt) / (v.wheelR || 0.38);
+    for (const w of v.wheels) {
+      w.spin += roll;
+      w.node.rotation.x = w.spin;
+      // ရှေ့ဘီးက ကွေ့တယ် — အများဆုံး ၃၀°
+      if (w.front) w.node.rotation.y = -turn * 0.52;
     }
   }
 
@@ -201,6 +225,8 @@ export class VehicleSystem {
     // ဆွဲငင် — လက်လွှတ်ရင် ဖြည်းဖြည်း ရပ်
     v.speed -= v.speed * DRAG * dt;
     v.speed = Math.max(-MAX_SPEED * 0.4, Math.min(MAX_SPEED, v.speed));
+
+    this._updateWheels(v, dt, turn);
 
     // ရပ်နေရင် ကွေ့လို့ မရဘူး (တကယ့်ကားလိုပဲ)
     const grip = Math.min(1, Math.abs(v.speed) / 4);
@@ -249,9 +275,14 @@ export class VehicleSystem {
 
     // ── ကင်မရာ — ကားနောက်က လိုက် ──────────────────────────────────
     const cam = this.engine.camera;
-    const back = dir.clone().multiplyScalar(-9);
+    // ★ မော်ဒယ်က `CAM_Third` နဲ့ ကိုယ်ပိုင် ကင်မရာ အနေအထား ပေးထားတယ်
+    //   (ပစ်ကပ်မှာ (0, 3.4, 9) — ကားနောက် ၉ m, အမြင့် ၃.၄)。 မရှိရင်
+    //   အရင် တန်ဖိုးတွေ သုံးတယ်။
+    const cd = v.camPose ? Math.abs(v.camPose.position.z) : 9;
+    const ch = v.camPose ? v.camPose.position.y : 4.6;
+    const back = dir.clone().multiplyScalar(-cd);
     this._camTarget.set(
-      v.mesh.position.x + back.x, v.mesh.position.y + 4.6, v.mesh.position.z + back.z);
+      v.mesh.position.x + back.x, v.mesh.position.y + ch, v.mesh.position.z + back.z);
     cam.position.lerp(this._camTarget, Math.min(1, dt * 4));
     cam.lookAt(v.mesh.position.x, v.mesh.position.y + 1.2, v.mesh.position.z);
 
