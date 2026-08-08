@@ -190,6 +190,29 @@
 
 ## Changelog
 
+- 2026-08-08 (web, PR pending): **Cyber-Yangon expanded ~20× in area, with a
+  road network, traffic signals, Inya Lake and YBS bus lines.** Ground
+  140 → 620 m, terrain `extent` 760 → 1200 so the mountains stay outside the
+  city (camera far 600 → 1250 to match; at 600 the hills were clipped).
+  New `world/Traffic.js`: road grid, lane markings, kerbs, signalled
+  junctions, street lamps, grass, trees, lake with embankment, instanced
+  filler blocks, and bus lines that drive their route and halt at stops.
+  ★ **Everything repeated is an `InstancedMesh`** — 1,000+ lane dashes and
+  ~500 lamps cost 1–2 draw calls each. Measured against the old room:
+  triangles 328k → 545k and draw calls 142 → 379 at *high*, for ~20× the
+  area; at *low* the expanded city is **cheaper than the old one was**
+  (214k tris / 205 calls vs 328k / 142). ★ Absolute FPS from the headless
+  probe is meaningless — SwiftShader gave the *old* room 2.3 FPS. Judge by
+  draw calls and triangles.
+  ★ The lake had to sit **above** the roads (y 0.2), not below: two grid
+  roads run under it and their 0.16 m kerbs showed through the water as
+  white lines. Street lamps inside the lake ellipse are skipped — 20 poles
+  were standing in the water. ★ Landmark roads only work inside the flat
+  zone (r ≤ 361); drawn on a slope they sink into the terrain.
+  The radial menu button moved from bottom-centre to the left edge (it was
+  covering the view straight ahead), and the dock now opens 76 px right of
+  it so the two never overlap.
+
 - 2026-08-08 (web, PR pending): **The Taxi District's gates work both ways.**
   Three of its four gates were one-way — you could walk out to Mae Sot,
   Myawaddy or the Hydro-Lab, but none of those rooms had a gate back, so

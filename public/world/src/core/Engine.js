@@ -14,7 +14,11 @@ export class Engine {
 
     // Camera = ကစားသမား၏ မျက်လုံး
     this.camera = new THREE.PerspectiveCamera(
-      70, window.innerWidth / window.innerHeight, 0.1, 600
+      // ★ far ၆၀၀ → ၁၂၅၀ — ရန်ကုန်ကို ၅ဆ ချဲ့တဲ့အခါ တောင်တန်းက ၆၀၀ ကို
+      //   ကျော်သွားလို့ မြို့စွန်းကနေ ကြည့်ရင် တောင်တွေ **ဖြတ်တောက်ခံပြီး**
+      //   ကောင်းကင်နဲ့ မြေ ကြားမှာ ဟာနေတယ်။ မြူက ၈၀၀+ မှာ ဖုံးထားလို့
+      //   ဒီအကွာအဝေးမှာ ဘာမှ ထပ်ရေးစရာ မရှိသလောက်ပဲ။
+      70, window.innerWidth / window.innerHeight, 0.1, 1250
     );
 
     // Renderer = Scene ကို မျက်နှာပြင်ပေါ် ပုံဖော်ပေးသည့် စက်

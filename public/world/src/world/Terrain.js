@@ -151,13 +151,18 @@ export function addTerrain(room, {
   peak = 95,
   hill = 14,
   wall = true,
+  /// 🗺️ terrain mesh ရဲ့ အနံ — မြို့ ကြီးလာရင် တောင်တန်းကို ပြင်ပ ဆီ
+  /// တွန်းထုတ်ရမယ်၊ မဟုတ်ရင် မြို့က တောင်ကို ကျော်ထွက်သွားမယ်။
+  /// ★ camera far နဲ့ တွဲတယ် — Engine က ၁၂၅၀ ထားတယ်၊ ဒါထက် ကြီးရင်
+  ///   ဖြတ်တောက်ခံရမယ်။
+  extent = 760,
   /// 🛕 ပြားနေရမယ့် နေရာ ထပ်ဆောင်း — [{x, z, r}]。 တောင်တန်း အလယ်မှာ
   /// အဆောက်အအုံကြီး ချထားရင် တောင်က အထဲကနေ ထိုးထွက်လာမယ်၊ ဒါကို
   /// ဖြေရှင်းဖို့ အဲဒီနေရာကို ပြားအောင် လုပ်ပေးတယ်။
   flatSpots = [],
 } = {}) {
   const mobile = matchMedia('(hover: none), (max-width: 820px)').matches;
-  const SIZE = 760;                 // camera far ၆၀၀ အတွင်း ဝင်အောင်
+  const SIZE = extent;              // camera far အတွင်း ဝင်ရမယ် (Engine: ၁၂၅၀)
   const SEG = mobile ? 64 : 112;
   const P = PALETTES[palette] || PALETTES.green;
 
