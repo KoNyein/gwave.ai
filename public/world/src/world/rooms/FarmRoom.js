@@ -32,6 +32,18 @@ export class FarmRoom extends Room {
       kind: 'stilt', position: new THREE.Vector3(-30, 0, -26), rotation: Math.PI / 3,
     });
 
+    // 🧍‍♀️ စိုက်ခင်း တာဝန်ခံ — အိမ်ရှေ့မှာ ရပ်နေတယ်
+    this.addNPC(new NPC({
+      name: 'မခင်လှ',
+      staticBody: '/world/assets/myanmar_woman.glb',
+      home: new THREE.Vector3(-22, 0, -20),
+      faceYaw: -Math.PI / 3,
+      dialogue: [
+        'ဒီက ရေမြေဆီ စိုက်ခင်း lab ပါ — မြေမလိုဘဲ စိုက်လို့ရတယ်။',
+        'အပင်တွေက ရေထဲကနေ အာဟာရ တိုက်ရိုက် ယူတယ် ရှင့်။',
+      ],
+    }));
+
     // Hydroponic စင်တန်းများ — စင် + အပင်စိမ်းလေးများ
     const plantMat = new THREE.MeshStandardMaterial({
       color: 0x3ddc97, emissive: 0x0a3d26, emissiveIntensity: 0.4

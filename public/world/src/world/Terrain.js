@@ -151,6 +151,10 @@ export function addTerrain(room, {
   peak = 95,
   hill = 14,
   wall = true,
+  /// 🛕 ပြားနေရမယ့် နေရာ ထပ်ဆောင်း — [{x, z, r}]。 တောင်တန်း အလယ်မှာ
+  /// အဆောက်အအုံကြီး ချထားရင် တောင်က အထဲကနေ ထိုးထွက်လာမယ်၊ ဒါကို
+  /// ဖြေရှင်းဖို့ အဲဒီနေရာကို ပြားအောင် လုပ်ပေးတယ်။
+  flatSpots = [],
 } = {}) {
   const mobile = matchMedia('(hover: none), (max-width: 820px)').matches;
   const SIZE = 760;                 // camera far ၆၀၀ အတွင်း ဝင်အောင်
@@ -183,7 +187,11 @@ export function addTerrain(room, {
 
     const hills = fbm(x * 0.0065, z * 0.0065, seed, 4);
     const crest = ridged(x * 0.0026, z * 0.0026, seed + 61, 3);
-    const h = mask * (hills * hill + Math.pow(far, 1.25) * Math.pow(crest, 1.5) * peak);
+    let h = mask * (hills * hill + Math.pow(far, 1.25) * Math.pow(crest, 1.5) * peak);
+    // 🛕 ပြားနေရမယ့် နေရာများ — အလယ်မှာ ၀, အနားမှာ ဖြည်းဖြည်း ပြန်တက်
+    for (const sp of flatSpots) {
+      h *= step01(sp.r, sp.r + (sp.blend ?? 60), Math.hypot(x - sp.x, z - sp.z));
+    }
 
     pos.setZ(i, h);   // rotateX မလုပ်ခင် — Z က အမြင့်
 

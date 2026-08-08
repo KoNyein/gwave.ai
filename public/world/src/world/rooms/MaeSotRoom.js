@@ -40,6 +40,18 @@ export class MaeSotRoom extends Room {
       void addBuilding(this, { kind: 'stilt', position: new THREE.Vector3(x, 0, z), rotation: rot });
     }
 
+    // 🧍‍♀️ ရွာသူ — ထင်းအိမ် ရှေ့မှာ ရပ်နေတယ် (အရိုးမပါတဲ့ ရုပ်မို့ မလျှောက်ဘူး)
+    this.addNPC(new NPC({
+      name: 'ဒေါ်မြင့်',
+      staticBody: '/world/assets/myanmar_woman.glb',
+      home: new THREE.Vector3(-26, 0, -20),
+      faceYaw: Math.PI / 2,
+      dialogue: [
+        'မင်္ဂလာပါ — မဲဆောက် နယ်စပ်လမ်းကို ရောက်လာတာ ဝမ်းသာပါတယ်။',
+        'ဒီအိမ်တွေက ခြေတံရှည် — မိုးရာသီ ရေကြီးရင် အောက်ကနေ စီးသွားတယ်။',
+      ],
+    }));
+
     // ★ GLB မြို့ကွက် Load — collision များ အလိုအလျောက်ရ ★
     loadCityMap(this, './assets/maesot_block.glb', {
       position: new THREE.Vector3(0, 0, -18),
