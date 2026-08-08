@@ -11,6 +11,7 @@ import { YangonRoom } from './world/rooms/YangonRoom.js';
 import { FarmRoom } from './world/rooms/FarmRoom.js';
 import { MaeSotRoom } from './world/rooms/MaeSotRoom.js';
 import { StrikeRoom } from './world/rooms/StrikeRoom.js';
+import { createCityRooms } from './world/rooms/CityRooms.js';
 import { UserWorldRoom } from './world/rooms/UserWorldRoom.js';
 import { Wallet } from './web3/Wallet.js';
 import { HUD } from './ui/HUD.js';
@@ -70,6 +71,8 @@ world.register(new YangonRoom());
 world.register(new FarmRoom());
 world.register(new MaeSotRoom());   // GLB city map pipeline နမူနာ
 world.register(new StrikeRoom(ctx)); // GWAVE STRIKE FPS arena
+// 🏙️ မြန်မာ/ထိုင်း မြို့များ — မြဝတီ, ဘုရားသုံးဆူ, ချင်းမိုင်, ဘန်ကောက်, ဖူးခက်
+for (const city of createCityRooms()) world.register(city);
 
 // 🚪 ပထမဆုံး ဝင်မယ့် အခန်း — **တစ်ခါပဲ ဆောက်တယ်**。
 //
