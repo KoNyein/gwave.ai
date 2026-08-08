@@ -4,6 +4,7 @@
 // rooms/_TemplateRoom.js ကို ကူးယူ၍ စတင်ပါ
 // ============================================================
 import * as THREE from 'three';
+import { updateDoors } from './Door.js';
 
 export class Room {
   constructor(id, title) {
@@ -30,6 +31,8 @@ export class Room {
     this.fogFar = null;
     /// 🎧 ပတ်ဝန်းကျင် အသံ — 'city' | 'sea' | 'wind' | 'none'
     this.ambient = 'none';
+    /// 🚪 လှပ်ဖွင့်လို့ရတဲ့ တံခါးများ (Door.js က ထည့်တယ်)
+    this.doors = [];
     this.built = false;
   }
 
@@ -95,6 +98,7 @@ export class Room {
 
   // frame တိုင်း — NPC + portal effect update
   update(dt, time) {
+    updateDoors(this, dt);          // 🚪 ဖွင့်/ပိတ် လှုပ်ရှားမှု
     for (const npc of this.npcs) npc.update(dt);
     for (const p of this.portals) p.mesh.rotation.y = time * 0.8;
     for (const st of this.stations) {

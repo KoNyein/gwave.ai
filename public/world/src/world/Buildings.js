@@ -31,6 +31,7 @@
 import * as THREE from 'three';
 import { loadGLB } from '../core/Assets.js';
 import { trackQuality } from '../core/Quality.js';
+import { addDoor } from './Door.js';
 
 export const BUILDINGS = {
   /// 🛕 ရွှေတိဂုံပုံစံ စေတီတော် အစုအဝေး — ၂၆၄ × ၁၂၆ × ၂၆၄ m
@@ -177,6 +178,22 @@ export function hollowShell(room, box, { side = '+z', width = 3, step = 0, wall 
       if (!isDoor) { push(x0, min.z, x1, max.z, wallBase); continue; }
       push(x0, min.z, x1, cz - width / 2, wallBase);
       push(x0, cz + width / 2, x1, max.z, wallBase);
+    }
+  }
+
+  // 🚪 တံခါး — တံခါးဝ အလယ်မှာ။ ခြေတံရှည်အိမ်ဆိုရင် ကြမ်းပြင် အမြင့်မှာ
+  {
+    const dx = side === '+x' ? max.x : side === '-x' ? min.x : cx;
+    const dz = side === '+z' ? max.z : side === '-z' ? min.z : cz;
+    const dr = addDoor(room, {
+      x: dx, z: dz, facing: side, width: width - 0.2, height: 2.3,
+      label: '🚪 အိမ် တံခါး',
+    });
+    // ခြေတံရှည် — တံခါးက ကြမ်းပြင် အထက်မှာ ရှိရမယ်
+    if (step > 0.05) {
+      dr.pivot.position.y = step;
+      dr.box.min.y = step; dr.box.max.y = step + 2.3;
+      dr.position.y = step;
     }
   }
 

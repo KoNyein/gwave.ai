@@ -23,6 +23,7 @@ import { VoiceChat } from './net/VoiceChat.js';
 import { MeetingRoom } from './world/rooms/MeetingRoom.js';
 import { TouchControls } from './ui/TouchControls.js';
 import { ROOM_GROUPS, classicHref } from './world/RoomCatalog.js';
+import { nearestDoor, toggleDoor } from './world/Door.js';
 import { sfx } from './core/Sfx.js';
 import { VehicleSystem } from './entities/Vehicle.js';
 import * as Quality from './core/Quality.js';
@@ -186,9 +187,12 @@ engine.register({
 
     // 🛻 ကား — အနီးမှာ ရှိရင် အရင်ဆုံး ပြတယ် (စီးဖို့က အထင်ရှားဆုံး လုပ်ရပ်)
     const car = vehicles.active ? null : vehicles.nearest();
+    // 🚪 တံခါး — ကားပြီးရင် ဒုတိယ ဦးစားပေး
+    const door = vehicles.active ? null : nearestDoor(world.current, avatar.group.position);
 
     if (vehicles.active) hud.showHint('⏎ E — ကားပေါ်က ဆင်းရန်');
     else if (car)      hud.showHint(`⏎ E — ${car.label} စီးရန်`);
+    else if (door)     hud.showHint(`⏎ E — ${door.label} ${door.open ? 'ပိတ်' : 'ဖွင့်'}ရန်`);
     else if (portal)   hud.showHint(`⏎ E — ${portal.label}`);
     else if (station)  hud.showHint(`⏎ E — ${station.label}`);
     else if (npc)      hud.showHint(`⏎ E — ${npc.name} နှင့် စကားပြောရန်`);
@@ -197,6 +201,7 @@ engine.register({
     if (input.justPressed('KeyE')) {
       // ကား စီး/ဆင်း က ဦးစားပေး — လုပ်ခဲ့ရင် တခြားဟာ မလုပ်တော့ဘူး
       if (vehicles.toggle()) { /* စီး/ဆင်း ပြီးပြီ */ }
+      else if (door) { toggleDoor(world.current, door, sfx); }
       else if (portal) {
         if (portal.targetRoomId === 'myworld') {
           if (net.connected) net.requestWorld(); // server ကနေ ကိုယ့်ကမ္ဘာ load

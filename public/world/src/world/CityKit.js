@@ -22,6 +22,7 @@
 // ============================================================
 
 import * as THREE from 'three';
+import { addDoor } from './Door.js';
 
 /// material တွေကို **မျှသုံး**တယ် — အဆောက်အအုံ ၅၀ လုံးဆိုရင် material
 /// ၅၀ ခု ဆောက်စရာ မလိုဘူး (shader ပြန်တည်ဆောက်ရတာ ကုန်ကျတယ်)。
@@ -119,7 +120,20 @@ export function shophouse(room, {
   eave.rotation.x = -0.28;
   g.add(eave);
 
-  return place(room, g, { x, z, rot, bag });
+  place(room, g, { x, z, rot, bag });
+  // 🚪 တံခါး — တံခါးဝ ရဲ့ world တည်နေရာကို rot နဲ့ တွက်
+  addDoorAtFront(room, { x, z, rot, offset: d / 2, width: door, label: '🚪 ဆိုင်ခန်း တံခါး' });
+  return g;
+}
+
+/// ရှေ့မျက်နှာ (local +Z) ရဲ့ world တည်နေရာ/ဘက် တွက်ပြီး တံခါး ထည့်
+/// ★ rot က ၀ / ±၉၀° / ၁၈၀° သာ သုံးတယ် — မြို့တွေမှာ အဲဒါပဲ လိုတယ်၊
+///   ကြားထဲက ထောင့်ဆိုရင် AABB collider က မှန်မှန်ကန်ကန် မဖော်ပြနိုင်ဘူး။
+function addDoorAtFront(room, { x, z, rot, offset, width, label }) {
+  const s = Math.round(Math.sin(rot)), c = Math.round(Math.cos(rot));
+  const dx = s * offset, dz = c * offset;
+  const facing = Math.abs(s) > Math.abs(c) ? (s > 0 ? '+x' : '-x') : (c > 0 ? '+z' : '-z');
+  addDoor(room, { x: x + dx, z: z + dz, facing, width: width - 0.15, height: 2.4, label });
 }
 
 /**
@@ -157,6 +171,7 @@ export function tower(room, {
     g.add(band);
   }
   place(room, g, { x, z, rot, bag });
+  addDoorAtFront(room, { x, z, rot, offset: d / 2, width: door, label: '🚪 တိုက် တံခါး' });
   // အပေါ်ထပ် — lobby အမိုးအထက်ကို တစ်ခုတည်းနဲ့ (ဝင်စရာ မရှိလို့)
   room.colliders.push(new THREE.Box3(
     new THREE.Vector3(x - w / 2, lobby, z - d / 2),
