@@ -38,7 +38,9 @@ export class FarmRoom extends Room {
     void addBuilding(this, {
       // ★ အိမ်ရဲ့ AABB က x -၄၃.၇…-၁၆.၃ ဖြစ်လို့ x -၁၆ မှာ ထားရင်
       //   အိမ်ထဲ ဝင်နေတယ် (တိုင်းတာပြီး တွေ့ခဲ့)。 အိမ်ဘေး ထွက်ထားတယ်။
-      kind: 'pickup', position: new THREE.Vector3(-9, 0, -30), rotation: Math.PI / 5,
+      // ★ အိမ်ရဲ့ လှေကားထစ်တွေက +x ဘက် ထွက်နေလို့ ကားကို ပိုခွာထားရတယ်
+      //   (တိုင်းတာပြီး တွေ့ခဲ့ — ၁.၂×၁.၄ ထပ်နေတယ်)。
+      kind: 'pickup', position: new THREE.Vector3(2, 0, -34), rotation: Math.PI / 5,
       paint: { name: 'MAT_Body_Paint', color: 0x4a7c3a },
     });
 

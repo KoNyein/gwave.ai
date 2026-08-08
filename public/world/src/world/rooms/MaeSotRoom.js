@@ -36,8 +36,10 @@ export class MaeSotRoom extends Room {
     // 🛖 နယ်စပ် ရွာ — ခြေတံရှည် ထင်းအိမ်များ (မဲဆောက်ရဲ့ အမှန်တကယ် ပုံစံ)
     //    GLB မြေပုံ (maesot_block.glb) က အလယ်မှာ ရှိလို့ အိမ်တွေကို
     //    ဘေးနှစ်ဖက် လမ်းတစ်လျှောက် ချထားတယ်။
-    for (const [x, z, rot] of [[-34, -22, Math.PI / 2], [-34, 8, Math.PI / 2],
-                               [34, -10, -Math.PI / 2], [34, 20, -Math.PI / 2]]) {
+    // ★ x ±၄၀ — လှေကားထစ်တွေက အိမ်ကနေ ၄ m ထွက်နေလို့ ±၃၄ မှာဆို GLB
+    //   မြေပုံရဲ့ အဆောက်အအုံနဲ့ ထပ်တယ် (တိုင်းတာပြီး တွေ့ခဲ့)。
+    for (const [x, z, rot] of [[-40, -22, Math.PI / 2], [-40, 8, Math.PI / 2],
+                               [40, -10, -Math.PI / 2], [40, 20, -Math.PI / 2]]) {
       void addBuilding(this, { kind: 'stilt', position: new THREE.Vector3(x, 0, z), rotation: rot,
         hollow: { side: x < 0 ? '+x' : '-x', width: 4, step: 2.2 } });
     }
