@@ -57,6 +57,30 @@ export class CityRoom extends Room {
 
     s.build(this);
 
+    // ══ 🚦 **အလုပ်လုပ်တဲ့ object များ** ══════════════════════════════
+    //
+    // user: "မြဝတီ နယ်စပ်မြို့တွေကို object များကို system function design
+    //        မှန်အောင် လုပ်ပေးပါ"
+    //
+    // ★ အရင်က မြို့ ၅ ခုလုံးမှာ **portal ၀, station ၀** — ဂိတ်ကြီးက
+    //   ကြည့်ရုံ အလှဆင်, ဈေးတန်းက ဝင်လို့ရပေမယ့် ဘာမှ မလုပ်ရ, မြို့ချင်း
+    //   သွားလို့ မရ (menu ကနေပဲ ခုန်ရတယ်)。 နယ်စပ်မြို့မှာ **ဂိတ်ဆိုတာ
+    //   ဖြတ်ကူးဖို့** — အဲဒါ မလုပ်ရင် object က အလုပ် မလုပ်တာပဲ。
+    // ★ အခု ဂိတ်တိုင်းက တကယ့် နယ်စပ် ဖြတ်ကူးရာ ဖြစ်ပြီး ဈေးက shop,
+    //   ကုန်သွယ်ရေး ရုံးက job board ကို ဖွင့်တယ်။
+    for (const g of (s.gates || [])) {
+      this.addPortal({
+        position: new THREE.Vector3(g[1], 0, g[2]),
+        targetRoomId: g[0], label: g[3], color: g[4] ?? 0xffb020,
+      });
+    }
+    for (const st of (s.stations || [])) {
+      this.addStation({
+        position: new THREE.Vector3(st[1], 0, st[2]),
+        action: st[0], label: st[3], color: st[4] ?? 0x2de1ff,
+      });
+    }
+
     // 🧍 NPC များ — မြို့တစ်ခုချင်း ကိုယ်ပိုင် စကားပြောနဲ့
     for (const n of s.npcs) {
       this.addNPC(new NPC({
@@ -103,6 +127,13 @@ const CITY_SPECS = [
                             hollow: { side: '+x', width: 4, step: 2.2 } });
       smallStupa(r, { x: 42, z: -40, h: 17 });
     },
+    // 🌉 ဂိတ်က တကယ် ဖြတ်ကူးလို့ရတယ် — မြဝတီ ↔ မဲဆောက် (တံတား ၂)
+    gates: [['maesot', 0, -44, 'မဲဆောက် (ထိုင်း) သို့ — နယ်စပ် ဂိတ်', 0xffb020],
+            ['three-pagodas', 0, 62, 'ဘုရားသုံးဆူ သို့ — တောင်ကြားလမ်း', 0x9ad3ff]],
+    // 🏪 ဈေးတန်း = ဈေးဆိုင်, ကုန်သွယ်ရေး ရုံး = အလုပ်/ကုန်ပစ္စည်း ဘုတ်
+    stations: [['shop', -8, 24, '🏪 နယ်စပ်ဈေး — ဝယ်/ရောင်း', 0x3ddc97],
+               ['board', 8, 24, '📋 ကုန်သွယ်ရေး ဘုတ် — အလုပ်/ကုန်စည်', 0xd8324a],
+               ['pos', 8, -8, '💳 ငွေလဲ ကောင်တာ (POS)', 0xf5c542]],
     npcs: [
       ['ကိုအောင်', -10, 6, 6, ['မြဝတီကို ကြိုဆိုပါတယ်။ တံတားက မောင်းသွားရင် မဲဆောက် ရောက်တယ်။',
                                'ဒီဈေးမှာ ထိုင်းပစ္စည်း အကုန် ရတယ်ဗျ။']],
@@ -136,6 +167,9 @@ const CITY_SPECS = [
                               hollow: { side: x < 0 ? '+x' : '-x', width: 4, step: 2.2 } });
       }
     },
+    gates: [['myawaddy', 0, -42, 'မြဝတီ သို့ — နယ်စပ်လမ်း', 0xffb020],
+            ['chiangmai', 0, 54, 'ချင်းမိုင် (ထိုင်း) သို့', 0x9ad3ff]],
+    stations: [['quests', -8, 14, '🎯 နယ်စပ် စေတီ ဖူးမြော် — quest', 0xf5c542]],
     npcs: [
       ['ဦးဇော်', 0, 4, 5, ['စေတီ သုံးဆူက မြန်မာ–ထိုင်း နယ်နိမိတ် အမှတ်အသားပါ။',
                             'သုံးဆူလုံး လက်ယာရစ် ပတ်ကြပါ။']],
@@ -175,6 +209,10 @@ const CITY_SPECS = [
       }
       for (let i = 0; i < 7; i++) marketStall(r, { x: -6 + (i % 2) * 12, z: 8 + i * 4, colour: 0xd2762e });
     },
+    gates: [['three-pagodas', 0, 44, 'ဘုရားသုံးဆူ (မြန်မာနယ်စပ်) သို့', 0x9ad3ff],
+            ['bangkok', 0, -46, 'ဘန်ကောက် သို့ — အမြန်လမ်း', 0xffb020]],
+    stations: [['shop', -6, 30, '🏮 ညဈေးတန်း — ဝယ်/ရောင်း', 0x3ddc97],
+               ['quests', 8, -12, '🛕 ဝပ် စေတီ — quest', 0xf5c542]],
     npcs: [
       ['Somchai', -8, 16, 7, ['ยินดีต้อนรับ — ချင်းမိုင်ကို ကြိုဆိုပါတယ်။',
                               'ညဈေးတန်းက ည ၆ နာရီ စတယ်။']],
@@ -218,6 +256,11 @@ const CITY_SPECS = [
       deck.position.set(46, 9.4, 0); r.group.add(deck);
       smallStupa(r, { x: -44, z: -30, h: 22 });   // ဝပ်
     },
+    gates: [['chiangmai', 0, -78, 'ချင်းမိုင် သို့ — မြောက်ပိုင်း အမြန်လမ်း', 0x9ad3ff],
+            ['phuket', 0, 78, 'ဖူးခက် သို့ — တောင်ပိုင်း လမ်း', 0x3ddc97]],
+    stations: [['shop', -8, 22, '🏬 ဈေးဝယ်စင်တာ', 0x3ddc97],
+               ['projects', 8, 22, '🏢 ရုံးခန်း — project များ', 0x7f5cff],
+               ['pos', -8, -22, '💳 POS ကောင်တာ', 0xf5c542]],
     npcs: [
       ['Anan', -6, 12, 7, ['สวัสดีครับ — ဘန်ကောက်ကို ကြိုဆိုပါတယ်။',
                            'BTS နဲ့ သွားရင် မြန်တယ်၊ ကားက ပိတ်တယ်။']],
@@ -242,7 +285,9 @@ const CITY_SPECS = [
       sand.rotation.x = -Math.PI / 2; sand.position.set(0, 0.02, 24);
       r.group.add(sand);
       road(r.group, { x: 0, z: -10, w: 150, d: 11 });
-      for (let i = 0; i < 14; i++) palm(r.group, -66 + i * 10, 12 + (i % 2) * 3, 0.9 + (i % 3) * 0.15);
+      for (let i = 0; i < 14; i++) {
+        palm(r.group, -66 + i * 10, 12 + (i % 2) * 3, 0.9 + (i % 3) * 0.15, r);
+      }
       for (let i = 0; i < 5; i++) {
         shophouse(r, { x: -46 + i * 23, z: -26, rot: 0, w: 10, d: 9, h: 6.5,
                        wall: 0xf0e6d2, roof: 0xc86a3a, storeys: 2 });
@@ -261,7 +306,17 @@ const CITY_SPECS = [
       }
       for (let i = 0; i < 5; i++) marketStall(r, { x: -20 + i * 10, z: -2, colour: 0x2ea3c9 });
       smallStupa(r, { x: 56, z: -34, h: 15 });
+      // 🛶 လှေတွေ ဖြတ်လျှောက်လို့ မရအောင် — ကမ်းစပ်မှာ ချထားတဲ့ ပစ္စည်း
+      for (const b2 of r.group.children) {
+        if (b2.isMesh && b2.geometry?.type === 'BoxGeometry' && b2.position.z === 40) {
+          b2.updateMatrixWorld(true);
+          r.colliders.push(new THREE.Box3().setFromObject(b2));
+        }
+      }
     },
+    gates: [['bangkok', 0, -60, 'ဘန်ကောက် သို့ — မြောက်ဘက် လမ်း', 0xffb020]],
+    stations: [['shop', -16, -14, '🏖️ ကမ်းခြေ ဆိုင်တန်း', 0x3ddc97],
+               ['quests', 16, -14, '🏝️ ခရီးသွား လမ်းညွှန် — quest', 0xf5c542]],
     npcs: [
       ['Malee', -6, 4, 7, ['สวัสดีค่ะ — ဖူးခက် ကမ်းခြေကို ကြိုဆိုပါတယ်။',
                            'ရေက ကြည်တယ်၊ ရေကူးလို့ ရတယ်။']],

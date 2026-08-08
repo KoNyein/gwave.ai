@@ -43,7 +43,12 @@ export class Room {
   onEnter(ctx) {}
   onExit(ctx) {}
 
-  addNPC(npc) { this.npcs.push(npc); this.group.add(npc.group); }
+  /// 🧍 NPC — ခန္ဓာကိုယ် collider ပါ ထည့်တယ် (ဖြတ်လျှောက်လို့ မရ)
+  addNPC(npc) {
+    this.npcs.push(npc);
+    this.group.add(npc.group);
+    npc.attachCollider?.(this);
+  }
 
   // Mesh တစ်ခုကို collision box အဖြစ် မှတ်ပုံတင်ရန် အတိုကောက်
   addCollider(objOrBox) {

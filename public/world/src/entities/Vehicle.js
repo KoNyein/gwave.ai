@@ -37,12 +37,14 @@ export class Vehicle {
    * @param o.box    — အဲဒီကားရဲ့ collider Box3 (မောင်းချိန် ဖြုတ်ဖို့)
    * @param o.label  — HUD မှာ ပြမယ့် နာမည်
    */
-  constructor({ mesh, box, label = '🛻 ကား' }) {
+  constructor({ mesh, box, label = '🛻 ကား', doors = [] }) {
     this.mesh = mesh;
     this.box = box;
     this.label = label;
     this.speed = 0;
     this.driver = null;         // စီးနေသူ ရှိရင် avatar
+    this.doors = doors;         // 🚪 ပတ္တာ တပ်ထားတဲ့ တံခါး ၂ ချပ်
+    this.doorHold = 0;          // ပွင့်ထားမယ့် ကျန်ချိန် (စက္ကန့်)
   }
 
   /// ကားရဲ့ လက်ရှိ တည်နေရာ
@@ -89,10 +91,19 @@ export class VehicleSystem {
     return best;
   }
 
+  /// 🚪 ကားတံခါး ဖွင့်/ပိတ် — ဝင်စီး/ဆင်းချိန်မှာ ဖွင့်ပြီး ပြန်ပိတ်တယ်
+  swingDoors(v, seconds = 1.1) {
+    if (!v?.doors?.length) return;
+    for (const d of v.doors) d.target = 0;      // ၀ = ပွင့် (မော်ဒယ်ရဲ့ မူလ)
+    v.doorHold = seconds;
+    this.sfx?.ui({ up: true });
+  }
+
   enter(v) {
     if (!v || this.active) return;
     this.active = v;
     v.speed = 0;
+    this.swingDoors(v);
     // ကိုယ့်ကားနဲ့ ကိုယ် မတိုက်အောင် collider ဖြုတ်
     if (v.box) {
       const list = this.avatar.physics.colliders;
@@ -110,6 +121,7 @@ export class VehicleSystem {
     if (!v) return;
     this.active = null;
     this._stopEngineSound();
+    this.swingDoors(v);
     // ကားရဲ့ ဘေးမှာ ချ — ကားထဲမှာ မကျန်စေရ
     const side = new THREE.Vector3(1, 0, 0).applyAxisAngle(
       new THREE.Vector3(0, 1, 0), v.mesh.rotation.y);
@@ -134,7 +146,28 @@ export class VehicleSystem {
     return false;
   }
 
+  /// 🚪 တံခါး လှုပ်ရှားမှု — ကား **အားလုံး**အတွက် (ဆင်းပြီးတဲ့ ကားရဲ့
+  /// တံခါးလည်း ပြန်ပိတ်ရမယ်၊ အဲဒီအချိန်မှာ active မဟုတ်တော့ဘူး)
+  _updateDoors(dt) {
+    const cars = this.room?.cars;
+    if (!cars) return;
+    for (const v of cars) {
+      if (!v.doors?.length) continue;
+      if (v.doorHold > 0) {
+        v.doorHold -= dt;
+        if (v.doorHold <= 0) for (const d of v.doors) d.target = d.closed;
+      }
+      for (const d of v.doors) {
+        if (Math.abs(d.angle - d.target) < 0.004) continue;
+        const s = 3.4 * dt;
+        d.angle += Math.max(-s, Math.min(s, d.target - d.angle));
+        d.pivot.rotation.y = d.angle;
+      }
+    }
+  }
+
   update(dt) {
+    this._updateDoors(dt);
     const v = this.active;
     if (!v) return;
 

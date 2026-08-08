@@ -92,6 +92,15 @@ export class MaeSotRoom extends Room {
       color: 0x7f5cff,
     });
 
+    // 🌉 နယ်စပ် ဂိတ် → မြဝတီ — မဲဆောက်နဲ့ မြဝတီက ချစ်ကြည်ရေးတံတား
+    //    တစ်ဖက်စီပါ။ မြဝတီဘက်က ဂိတ်နဲ့ တွဲထားတယ် (နှစ်ဖက်စလုံး ဖြတ်လို့ရ)。
+    this.addPortal({
+      position: new THREE.Vector3(0, 0, -22),
+      targetRoomId: 'myawaddy',
+      label: 'မြဝတီ (မြန်မာ) သို့ — နယ်စပ် ဂိတ်',
+      color: 0xffb020,
+    });
+
     this.spawn.set(0, 0, 10);
   }
 }
