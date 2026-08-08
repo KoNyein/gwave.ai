@@ -57,6 +57,10 @@ const applyVariant = (v) => {
   }
 }
 
+// URL param တွေကို **အခန်း မဆောက်ခင်** ဖတ်ရမယ် — ဘယ်အခန်းကို ဆောက်မလဲ
+// ဆုံးဖြတ်ဖို့ လိုတယ် (အောက်က `?room=` ကို ကြည့်ပါ)。
+const params = new URLSearchParams(location.search);
+
 // ၂။ World + Rooms — room အသစ်တိုးလိုလျှင် import + register ၂ ကြောင်းသာ
 const ctx = { engine, input, avatar, hud };
 const world = new WorldManager(ctx);
@@ -64,12 +68,27 @@ world.register(new YangonRoom());
 world.register(new FarmRoom());
 world.register(new MaeSotRoom());   // GLB city map pipeline နမူနာ
 world.register(new StrikeRoom(ctx)); // GWAVE STRIKE FPS arena
-world.switchTo('yangon'); // ပထမဆုံး ဝင်မည့် room
+
+// 🚪 ပထမဆုံး ဝင်မယ့် အခန်း — **တစ်ခါပဲ ဆောက်တယ်**。
+//
+// user: "metaverse ထဲကို ဝင်လိုက်ရင် Metaverse Rooms နှစ်ခု တစ်ပြိုင်တည်း
+//        run တယ် — တစ်ခုပဲ run ပါ၊ အပိုတွေ CPU စားတယ်"
+//
+// အရင်က ရန်ကုန်ကို အမြဲ အရင်ဆောက် (switchTo('yangon')) ပြီးမှ `?room=` ကို
+// အောက်ဘက်မှာ ဖတ်ပြီး နောက်ထပ် အခန်းတစ်ခု ကူးတယ်။ ဒါက အခန်း **နှစ်ခု**
+// ဆောက်တာ — မြို့တစ်မြို့လုံး၊ GLB, NPC ရုပ်တွေ အားလုံး ဆွဲပြီးမှ ဖျောက်
+// ပစ်တာ။ ဖုန်းမှာ အလကား အပူ၊ အလကား data၊ အလကား memory ဖြစ်တယ်။
+// အခု ဘယ်အခန်းလဲ **အရင် ဆုံးဖြတ်ပြီးမှ** တစ်ခါတည်း ဆောက်တယ်။
+{
+  const want = (params.get('room') || '').trim();
+  // `world.rooms` ကနေ တိုက်ရိုက် စစ်တယ် — အခန်းစာရင်း သီးသန့် မထားဘူး၊
+  // ဒါမှ room အသစ် register လုပ်တိုင်း ဒီမှာပါ အလိုအလျောက် မှန်တယ်။
+  world.switchTo(world.rooms.has(want) ? want : 'yangon');
+}
 
 // ၃။ Multiplayer — ?server=wss://...&name=... ဖြင့် ချိန်ညှိနိုင်
 // gwave.cc တရားဝင် login — Cognito token ကို အလိုအလျောက် ရှာပြီး server ဆီပို့
 // Server မ run ထားလျှင်လည်း offline ဖြင့် ပုံမှန်ကစားနိုင်သည်
-const params = new URLSearchParams(location.search);
 const token = getGwaveToken();
 const playerName =
   params.get('name') ||
@@ -636,7 +655,10 @@ function leaveWorld(href) {
       setTimeout(() => openWebOverlay(classicHref(hit.id), `${hit.emoji} ${hit.name}`), 900);
     } else if (hit.kind === 'own') {
       setTimeout(() => { if (net.connected) net.requestWorld(); }, 900);
-    } else if (hit.id !== 'yangon') {
+    } else if (hit.id !== world.current?.id) {
+      // ★ world room ဆိုရင် အပေါ်မှာ ဆောက်ပြီးသား ဖြစ်တယ် — ဒီကို ရောက်တာက
+      //   register မလုပ်ရသေးတဲ့ အခန်း (ဥပမာ meeting) မျိုးမှသာ။ 'yangon' လို့
+      //   အတိအကျ ရေးထားရင် အခြား အခန်းတွေက ဒီမှာ **နှစ်ခါ** ကူးဖြစ်တယ်။
       world.switchTo(hit.id);
       net.onRoomSwitch();
     }
