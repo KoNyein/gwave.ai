@@ -190,6 +190,18 @@
 
 ## Changelog
 
+- 2026-08-08 (web, PR pending): **The Taxi District's gates work both ways.**
+  Three of its four gates were one-way — you could walk out to Mae Sot,
+  Myawaddy or the Hydro-Lab, but none of those rooms had a gate back, so
+  returning meant the room menu, which is the same "not connected" feeling
+  #580 set out to fix. Each now has a matching signposted gate with an
+  arrival point. Gate positions came from a grid scan per room: clear of
+  every collider by 2.8 m, ≥12 m from any other portal, ground within 0.8 m
+  of flat, 12–34 m from spawn. A city room's `gates` entry accepts an object
+  as well as the old `[to, x, z, label, colour]` tuple, so it can carry its
+  own `gate` axis and `arrive`. All eight legs verified: right room, right
+  hint, arrival on the mark, 0 collider overlaps, walks off immediately.
+
 - 2026-08-08 (web, PR pending): **The two Myanmar figures decimated, and now
   visible on low graphics.** meshoptimizer via gltf-transform, ~53% of the
   triangles gone with no visible change: man 41,044 → 19,440 (784 → 400 KB),
