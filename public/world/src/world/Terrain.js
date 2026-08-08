@@ -200,9 +200,19 @@ export function addTerrain(room, {
   const rgb = [0, 0, 0];
 
   for (let i = 0; i < pos.count; i++) {
-    // PlaneGeometry က XY ပေါ်မှာ — rotateX(-90°) လုပ်တော့ y → z ဖြစ်တယ်
+    // ★ **PlaneGeometry က XY ပေါ်မှာ — `rotateX(-90°)` က +Y ကို world
+    //   −Z ဆီ ပို့တယ်**。 ဒါကြောင့် vertex ရဲ့ geometry y က world z ရဲ့
+    //   **ဆန့်ကျင်ဘက်**။ အရင်က `heightAt(x, pos.getY(i))` လို့ ခေါ်ထားလို့
+    //   မြင်ရတဲ့ တောင်တန်းတစ်ခုလုံး **z ဘက် ပြောင်းပြန်** ဖြစ်နေတယ် —
+    //   `room.terrainHeight` (physics သုံးတဲ့ဟာ) နဲ့ မကိုက်ဘူး。
+    //
+    //   တိုင်းစစ်ချက် (ရန်ကုန်, ပြင်မီ): (၀, ၃၈၅) မှာ sampler က ၀ ပြောပေမယ့်
+    //   mesh က −၀.၀၂၊ (၃၀၀, ၃၈၅) မှာ sampler ၀ / mesh ၄၆.၂၂၊
+    //   (−၂၀၀, ၃၈၅) မှာ sampler ၀ / mesh ၁၈.၄၉ — ရေကန်/မြစ်လို ပြားရမယ့်
+    //   နေရာတွေကို တောင်က ဖုံးပစ်တယ်။ ဒါက အခန်းတိုင်းကို သက်ရောက်တဲ့
+    //   ရှေးဟောင်း အမှား — z ညီညာမတဲ့ မြေပုံမှသာ ပေါ်လွင်တယ်။
     const x = pos.getX(i);
-    const z = pos.getY(i);
+    const z = -pos.getY(i);
     const h = heightAt(x, z);
 
     pos.setZ(i, h);   // rotateX မလုပ်ခင် — Z က အမြင့်

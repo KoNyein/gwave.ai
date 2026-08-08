@@ -527,7 +527,7 @@ export function updateBuses(room, dt) {
  *   ရပေမယ့် ဟိုဘက် ဆင်းလို့ မရဘူး。
  */
 export function river(room, { z0 = 340, z1 = 430, x0 = -520, x1 = 520,
-                              gaps = [] } = {}) {
+                              gaps = [], y = 0.6 } = {}) {
   const g = room.group;
   const w = x1 - x0, d = z1 - z0;
   const water = new THREE.Mesh(new THREE.PlaneGeometry(w, d),
@@ -536,7 +536,10 @@ export function river(room, { z0 = 340, z1 = 430, x0 = -520, x1 = 520,
       roughness: 0.3, metalness: 0.28,
     }));
   water.rotation.x = -Math.PI / 2;
-  water.position.set((x0 + x1) / 2, 0.2, (z0 + z1) / 2);
+  // ★ ရေမျက်နှာပြင် ၀.၆ — ကန်လို ၀.၂ မှာ ထားရင် မြစ်က ကျယ်ပြီး အဝေးက
+  //   ကြည့်ရတာမို့ မြေနဲ့ depth-fight ဖြစ်ပြီး တစ်ဝက် ပျောက်နေတယ်။
+  //   ကမ်းနံရံက ၁.၆ မို့ ဒီအမြင့်မှာလည်း ရေက နံရံအောက်မှာပဲ ရှိသေးတယ်။
+  water.position.set((x0 + x1) / 2, y, (z0 + z1) / 2);
   water.receiveShadow = true;
   g.add(water);
 

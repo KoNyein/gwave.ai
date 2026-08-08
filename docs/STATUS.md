@@ -190,6 +190,21 @@
 
 ## Changelog
 
+- 2026-08-08 (web, PR #585): **The terrain mesh was mirrored in z against its
+  own height field — fixed.** `Terrain.js` sampled `heightAt(x, pos.getY(i))`
+  and then applied `rotateX(-90°)`, which maps geometry +Y to world **−Z**,
+  so every hill you could see sat on the opposite side of the map from the
+  hill you actually walked on. It affects **every room with terrain** and had
+  been there all along; it only became visible when the new river needed a
+  large flat area to the south. Measured before the fix, at points where the
+  sampler said 0: mesh 46.2 at (300, 385), 18.5 at (−200, 385), −0.02 at
+  (0, 385). After: the water surface is the top hit at all seven sample
+  points. Diagnosed by raycasting down and comparing the hit against
+  `room.terrainHeight` — the screenshot alone only showed "water is missing".
+  ★ Two probe traps found on the way: `groundHeight(pos, radius)` returns 0
+  for everything if you omit `radius` (NaN comparisons), and probing walls at
+  y 0.6 hides anything under 1.15 m because physics counts it as floor.
+
 - 2026-08-08 (web, PR pending): **Cyber-Yangon expanded ~20× in area, with a
   road network, traffic signals, Inya Lake and YBS bus lines.** Ground
   140 → 620 m, terrain `extent` 760 → 1200 so the mountains stay outside the
