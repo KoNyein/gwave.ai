@@ -66,7 +66,7 @@ class _SearchScreenState extends State<SearchScreen> {
     _FeatureHit("🎮", "Games", "ဂိမ်းများ", "game play",
         (c) => _pushScreen(c, const GamesScreen())),
     _FeatureHit("🌐", "Metaverse", "3D လောက", "metaverse world avatar",
-        (c) => _pushScreen(c, const MetaverseScreen())),
+        (c) => openMetaverse(c)),
     _FeatureHit("🎬", "GWAVE STUDIO", "ဂိမ်းတည်ဆောက်ရန်",
         "studio world maker creator engine",
         (c) => openWeb(c, "/engine/studio.html")),

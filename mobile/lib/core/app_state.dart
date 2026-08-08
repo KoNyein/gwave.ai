@@ -178,11 +178,9 @@ class AppState extends ChangeNotifier {
       //   "city" က အခု classic မြို့တော် map ကို ဆိုလိုတယ်။
       final room = uri.queryParameters["room"] ?? "yangon";
       final nav = gwNavigatorKey.currentState;
-      if (nav != null) {
-        nav.push(
-          MaterialPageRoute(builder: (_) => MetaverseScreen(room: room)),
-        );
-      }
+      // ★ openMetaverseOn() က လောကတစ်ခုတည်း ဖြစ်အောင် ကာကွယ်တယ် — link ကို
+      //   နှစ်ခါ နှိပ်လိုက်ရင် WebView နှစ်ခု ထပ်မဖွင့်တော့ဘူး။
+      if (nav != null) openMetaverseOn(nav, room: room);
       return;
     }
 

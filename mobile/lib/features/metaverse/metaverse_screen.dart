@@ -55,11 +55,35 @@ class MetaverseScreen extends StatefulWidget {
   State<MetaverseScreen> createState() => _MetaverseScreenState();
 }
 
+/// လောကတစ်ခုတည်း ဖွင့်ထားလား — WebView နှစ်ခု ထပ်မဖွင့်စေရ။
+bool _worldOpen = false;
+
 /// Open the metaverse from anywhere in the app.
-Future<void> openMetaverse(BuildContext context, {String room = "yangon"}) {
-  return Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => MetaverseScreen(room: room)),
-  );
+///
+/// ★ လောကထဲ ရောက်နေပြီးသားဆိုရင် **ဘာမှ မလုပ်ဘူး**。 ဖွင့်ရာ လမ်းကြောင်း
+///   အများကြီး ရှိတယ် — ဝင်ဝင်ချင်း ရွေးတဲ့ sheet, ဘယ်ဘက် ပွတ်ဆွဲ, Games
+///   banner, Profile, Search, deep link — အဲဒီထဲက နှစ်ခု ဆက်တိုက် ဖြစ်သွားရင်
+///   WebView နှစ်ခု ထပ်နေပြီး 3D လောက **နှစ်ခု တစ်ပြိုင်တည်း** run တယ်။
+///   ဖုန်း CPU/battery နှစ်ဆ ကုန်တယ်၊ အသံလည်း နှစ်ထပ် ကြားရတယ်။
+Future<void> openMetaverse(BuildContext context, {String room = "yangon"}) =>
+    openMetaverseOn(Navigator.of(context), room: room);
+
+/// Navigator key ကနေ ဖွင့်တဲ့ ပုံစံ — deep link (`gwave://metaverse`) က
+/// widget tree ရဲ့ အပြင်ဘက်ကနေ လာလို့ BuildContext မရှိဘူး။ ကာကွယ်မှုက
+/// တူညီရမယ်၊ ဒါမှ link နှိပ်ပြီး လောကနှစ်ခု မဖြစ်ဘူး။
+Future<void> openMetaverseOn(NavigatorState nav, {String room = "yangon"}) async {
+  if (_worldOpen) return;
+  _worldOpen = true;
+  try {
+    await nav.push(
+      MaterialPageRoute(
+        settings: const RouteSettings(name: 'metaverse'),
+        builder: (_) => MetaverseScreen(room: room),
+      ),
+    );
+  } finally {
+    _worldOpen = false;
+  }
 }
 
 /// FPV drone simulator (`/fpv`) — same shell, different world.
@@ -84,7 +108,24 @@ Future<void> openArcade(BuildContext context) {
   ));
 }
 
-const _allowedRooms = {"city", "farm", "snow", "sky", "vip"};
+/// 🚪 အခန်း id ကို URL ထဲ ထည့်ခင် သန့်စင်တာ။
+///
+/// user: "metaverse ထဲကို ဝင်လိုက်ရင် Metaverse Rooms နှစ်ခု တစ်ပြိုင်တည်း
+///        run တယ် — တစ်ခုပဲ run ပါ၊ အပိုတွေ CPU စားတယ်"
+///
+/// ★ အရင်က ဒီနေရာမှာ `{"city","farm","snow","sky","vip"}` ဆိုတဲ့ **အဟောင်း**
+///   စာရင်းနဲ့ စစ်ပြီး၊ မပါရင် `"city"` လို့ အစားထိုးတယ်။ default room က
+///   `"yangon"` ဖြစ်သွားပြီးကတည်းက အဲဒီစာရင်းထဲ မပါတော့လို့ **app ဖွင့်တိုင်း**
+///   `?room=city` ဖြစ်နေတယ် — Open World က ရန်ကုန်ကို ဆောက်၊ ပြီးမှ classic
+///   မြို့တော် map ကို overlay အဖြစ် ထပ်ဖွင့်။ လောကနှစ်ခု တစ်ပြိုင်တည်း။
+/// ★ အခု စာရင်း သီးသန့် မထားတော့ဘူး — လောကက `RoomCatalog.js` နဲ့ စစ်ပြီး
+///   မသိတဲ့ အခန်းကို toast နဲ့ ပြောပြီးသား ဖြစ်တယ်။ ဒီမှာက URL မှာ
+///   ဘေးထွက် စာလုံး မပါအောင်ပဲ ကြည့်တယ်၊ ဒါမှ စာရင်းနှစ်ခု ကွဲမသွားဘူး။
+final _roomIdRe = RegExp(r'^[a-z0-9-]{1,32}$');
+String _safeRoom(String room) {
+  final r = room.trim().toLowerCase();
+  return _roomIdRe.hasMatch(r) ? r : "yangon";
+}
 
 class _MetaverseScreenState extends State<MetaverseScreen> {
   WebViewController? _web;
@@ -112,7 +153,7 @@ class _MetaverseScreenState extends State<MetaverseScreen> {
   String get _url {
     final custom = widget.path;
     if (custom != null) return "${AppConfig.apiBase}$custom";
-    final room = _allowedRooms.contains(widget.room) ? widget.room : "city";
+    final room = _safeRoom(widget.room);
     // ★ `app=1` က web client ကို "app ထဲမှာ ဖွင့်နေတယ်" လို့ ပြောတယ် —
     // bridge မရောက်သေးခင်ကတည်းက အရည်အသွေးကို လျှော့ချလို့ရအောင်။
     return "${AppConfig.apiBase}/metaverse?room=$room&app=1";

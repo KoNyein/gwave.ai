@@ -13,7 +13,11 @@ import '../../widgets/common.dart';
 import '../audio/floating_player.dart';
 import '../feed/composer_screen.dart';
 import '../feed/feed_screen.dart';
+import '../dashboard/dashboard_screen.dart';
+import '../games/games_screen.dart';
+import '../market/market_screen.dart';
 import '../metaverse/metaverse_screen.dart';
+import '../pos/pos_sell_screen.dart';
 import '../live/live_list_screen.dart';
 import '../messenger/conversations_screen.dart';
 import '../notifications/notifications_screen.dart';
@@ -21,6 +25,7 @@ import '../profile/profile_screen.dart';
 import '../reels/reels_screen.dart';
 import '../search/search_screen.dart';
 import '../shop/shop_screen.dart';
+import 'start_screen.dart';
 
 /// The signed-in root, laid out Facebook-style: a masthead (wordmark +
 /// round action chips) on the Home tab, then a persistent row of icon tabs
@@ -104,60 +109,37 @@ class _HomeShellState extends State<HomeShell> {
       choice = await _askHomeChoice();
       if (choice == null) return; // ပိတ်လိုက်တယ် — Feed မှာ ဆက်နေမယ်
     }
+    if (!mounted) return; // ရွေးနေတုန်း ထွက်သွားရင် context သေပြီ
     _applyHomeChoice(choice);
   }
 
-  /// အခန်းကဏ္ဍ ရွေးတဲ့ sheet — web ရဲ့ /start နဲ့ တူညီတဲ့ စာရင်း
-  Future<String?> _askHomeChoice() {
-    const items = <List<String>>[
-      ['metaverse', '🌍', 'Metaverse', '3D လောကထဲ ဝင်'],
-      ['feed', '📰', 'Social', 'သတင်းစာမျက်နှာ, သူငယ်ချင်း'],
-      ['shop', '🛍️', 'Shop', 'ပစ္စည်းများ ဝယ်ယူ'],
-      ['live', '📺', 'Live', 'တိုက်ရိုက်လွှင့် / ကြည့်'],
-    ];
-    return showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 18, 20, 4),
-              child: Text('ဘယ်ကို သွားမလဲ?',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-            ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 10),
-              child: Text('Profile ထဲက "ဝင်ရာနေရာ" ကနေ အမြဲ ပြောင်းလို့ရပါတယ်',
-                  style: TextStyle(fontSize: 12.5, color: Colors.grey)),
-            ),
-            for (final it in items)
-              ListTile(
-                leading: Text(it[1], style: const TextStyle(fontSize: 28)),
-                title: Text(it[2],
-                    style: const TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: Text(it[3]),
-                onTap: () => Navigator.of(ctx).pop(it[0]),
-              ),
-            const SizedBox(height: 8),
-          ],
-        ),
+  /// အခန်းကဏ္ဍ ရွေးတဲ့ **စာမျက်နှာ** — web ရဲ့ /start နဲ့ တူညီတဲ့ စာရင်း
+  ///
+  /// အရင်က `showModalBottomSheet` (အောက်ကနေ ပွတ်တက်တဲ့ sheet) ဖြစ်ပြီး
+  /// ရွေးစရာ ၄ ခုပဲ ပါတယ်။ အခု ကိုယ်ပိုင် စာမျက်နှာ — ရွေးစရာ ၈ ခု၊
+  /// ခန့်ခန့်ငြားငြား၊ ဘာမှ ထပ်မဖုံးဘူး။
+  Future<String?> _askHomeChoice() async {
+    final me = context.read<AppState>().me;
+    final res = await Navigator.of(context).push<StartResult>(
+      MaterialPageRoute(
+        settings: const RouteSettings(name: 'start'),
+        builder: (_) => StartScreen(name: me?.displayName),
       ),
-    ).then((v) async {
-      if (v != null) {
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(_homeKey, v);
-        } catch (_) {
-          // မှတ်လို့ မရရင်လည်း ဒီတစ်ခေါက် အလုပ်လုပ်ရမယ်
-        }
+    );
+    if (res == null) return null; // ← back — Feed မှာ ဆက်နေမယ်
+    if (res.remember) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_homeKey, res.key);
+      } catch (_) {
+        // မှတ်လို့ မရရင်လည်း ဒီတစ်ခေါက် အလုပ်လုပ်ရမယ်
       }
-      return v;
-    });
+    }
+    return res.key;
   }
 
+  /// ရွေးလိုက်တဲ့ကဏ္ဍကို သွား — tab ရှိရင် tab ပြောင်း၊ မရှိရင် screen ဖွင့်။
+  /// ★ `start_screen.dart` ရဲ့ `startChoices` နဲ့ key တွေ တူညီရမယ်။
   void _applyHomeChoice(String key) {
     switch (key) {
       case 'metaverse':
@@ -169,10 +151,26 @@ class _HomeShellState extends State<HomeShell> {
       case 'live':
         _selectTab(2);
         break;
+      case 'market':
+        _push(const MarketScreen());
+        break;
+      case 'pos':
+        _push(const PosSellScreen());
+        break;
+      case 'games':
+        _push(const GamesScreen());
+        break;
+      case 'dashboard':
+        _push(DashboardScreen(onSelectTab: _selectTab));
+        break;
       case 'feed':
       default:
         _selectTab(0);
     }
+  }
+
+  void _push(Widget screen) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 
   /// 🧭 ဘေးပွတ်ဆွဲ — ဘယ်ဘက် = လောက, ညာဘက် = နောက် content tab。

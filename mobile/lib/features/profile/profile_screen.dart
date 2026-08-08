@@ -565,7 +565,9 @@ class ProfileScreen extends StatelessWidget {
         _push(context, const GamesScreen());
         return;
       case _Native.metaverse:
-        _push(context, const MetaverseScreen());
+        // ★ openMetaverse() ကနေ သွားရမယ် — သူက လောကတစ်ခုတည်း ဖြစ်အောင်
+        //   ကာကွယ်ပေးတယ် (WebView နှစ်ခု ထပ်ဖွင့်ရင် CPU နှစ်ဆ ကုန်တယ်)。
+        openMetaverse(context);
         return;
       case _Native.talk:
         _push(context, const TalkScreen());
