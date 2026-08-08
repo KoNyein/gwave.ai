@@ -190,6 +190,22 @@
 
 ## Changelog
 
+- 2026-08-08 (web, PR pending): **The two Myanmar figures decimated, and now
+  visible on low graphics.** meshoptimizer via gltf-transform, ~53% of the
+  triangles gone with no visible change: man 41,044 → 19,440 (784 → 400 KB),
+  woman 55,700 → 26,266 (1,451 → 759 KB). ★ A **single ratio breaks them** —
+  at 0.30 the gold waistband shatters into fragments and at 0.18 the longyi
+  gains a gash, because the gold bands, buttons and thanaka are thin decals
+  sitting just above the skin and silk; decimating the surface underneath
+  makes them poke through. The ratio is now per material: `skin` 0.35 (47%
+  of the man's triangles, and limbs are tubes that survive it), the
+  decal-carrying cloth 0.55–0.75, anything under 900 triangles untouched.
+  ★ `weld()` before `simplify()` is mandatory — on split vertices the
+  simplifier sees no shared edges and removes nothing.
+  Static-body NPCs are no longer quality-tracked, so they stay on at low,
+  where every tracked building is hidden and the streets were empty of
+  people. Verified visible at high/mid/low.
+
 - 2026-08-08 (web, PR pending): **Vehicles read the rest of their contract —
   lights, body lean, taxi fare.** Taken from the uploaded package's own
   `vehicle-system.js`, which we had only partly used. ★ The two models

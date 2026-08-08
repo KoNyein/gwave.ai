@@ -14,7 +14,6 @@ import * as THREE from 'three';
 import { loadGLB } from '../core/Assets.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Locomotion } from './Locomotion.js';
-import { trackQuality } from '../core/Quality.js';
 
 /// NPC တွေ ဝတ်မယ့် ရုပ်များ — အမျိုးအစား ကွဲပြားအောင်
 const NPC_BODIES = [
@@ -80,8 +79,12 @@ export class NPC {
         this.group.add(model);
         this.model = model;
         this.placeholder.visible = false;
-        // 🎚️ ဂရပ်ဖစ် အနိမ့်မှာ ဖျောက်တယ် — ရုပ်တစ်ခုက တြိဂံ ၅၆k ရှိတယ်
-        trackQuality(model, 'detail');
+        // 🎚️ ★ **ဂရပ်ဖစ် အနိမ့်မှာလည်း ပြတယ်** (အရင်က `detail` tier နဲ့
+        //    ဖျောက်ထားတယ် — ရုပ်က တြိဂံ ၅၆k ရှိလို့)。 အခု decimate လုပ်ပြီး
+        //    ယောက်ျား ၄၁k → ၁၉.၄k, မိန်းမ ၅၅.၇k → ၂၆.၃k ကျသွားပြီ。
+        //    အနိမ့်မှာ tracked အားလုံး (အိမ်တော်, စေတီ, တိုက်) ဖျောက်တာမို့
+        //    ဘာမှ မကျန်ဘဲ လူသူ ကင်းမဲ့နေတယ် — လူ ရှိမှ နေရာတစ်ခုလို
+        //    ခံစားရတယ်၊ ဒါကြောင့် ရုပ်တွေကို ချန်ထားတယ်。
       }).catch(() => { /* GLB မရရင် capsule နဲ့ ဆက် */ });
       return;
     }
