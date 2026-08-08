@@ -71,6 +71,18 @@ export class MaeSotRoom extends Room {
       ],
     }));
 
+    // 🧍 ရွာသား — ဒေါ်မြင့်နဲ့ ထင်းအိမ် ရှေ့မှာ တွဲရပ် (အရိုးမပါလို့ မလျှောက်)
+    this.addNPC(new NPC({
+      name: 'ဦးစိုးဝင်း',
+      staticBody: '/world/assets/myanmar_man.glb',
+      home: new THREE.Vector3(-22, 0, -20),
+      faceYaw: Math.PI / 2,
+      dialogue: [
+        'နယ်စပ်ကို လာလည်တာလား? ကျေးဇူးပါပဲ။',
+        'တောင်ဘက် ဂိတ်ကနေ မြဝတီဘက် ကူးလို့ရတယ်၊ မြောက်ဘက်က ရန်ကုန်။',
+      ],
+    }));
+
     // ★ GLB မြို့ကွက် Load — collision များ အလိုအလျောက်ရ ★
     loadCityMap(this, './assets/maesot_block.glb', {
       position: new THREE.Vector3(0, 0, -18),
@@ -88,12 +100,18 @@ export class MaeSotRoom extends Room {
       ],
     }));
 
-    // Portal ← Cyber-Yangon
+    // 🚧 ဂိတ် ← Cyber-Yangon — ရန်ကုန်ဘက် ဂိတ်နဲ့ တွဲထားတယ်၊
+    //    ဖြတ်ရင် ဟိုဘက် ဂိတ်ရှေ့မှာပဲ ချတယ် (မြို့လယ် spawn မဟုတ်)。
     this.addPortal({
       position: new THREE.Vector3(0, 0, 16),
       targetRoomId: 'yangon',
       label: 'Cyber-Yangon သို့ပြန်ရန်',
       color: 0x7f5cff,
+      gate: 'x',
+      // ★ ရန်ကုန် ဂိတ်ရဲ့ **မြောက်ဘက်** ၃ m — တောင်ဘက် (z −18.5…−9.9,
+      //   x −23…−8.7) မှာ အမြင့် ၈.၈ m အဆောက်အအုံ ရှိလို့ အဲဒီဘက်မှာ ချရင်
+      //   physics က ၃.၇ m ဆွဲထုတ်ပစ်တယ် (တိုင်းစစ်ပြီး)。
+      arrive: new THREE.Vector3(-12, 0, -23),
     });
 
     // 🌉 နယ်စပ် ဂိတ် → မြဝတီ — မဲဆောက်နဲ့ မြဝတီက ချစ်ကြည်ရေးတံတား

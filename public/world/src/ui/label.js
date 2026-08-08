@@ -7,7 +7,17 @@ import * as THREE from 'three';
 export function makeNameLabel(text, color = '#f5c542') {
   const c = document.createElement('canvas'); c.width = 512; c.height = 128;
   const ctx = c.getContext('2d');
-  ctx.font = '52px Padauk, "Myanmar Text", sans-serif';
+  // ★ စာလုံး အရှည်ကြီးရင် **အလိုအလျောက် ချုံ့** — အရင်က ၅၂px အသေထားလို့
+  //   နောက်ခံ ဘောက်စ်ကပဲ ၅၀၀ မှာ ရပ်ပြီး စာက အနား ကျော်ထွက်၊ ဂိတ်
+  //   ဆိုင်းဘုတ်မှာ "…yber-Yangon သို့ပြန်ရန်" လို့ ဖြတ်နေတယ်။
+  const FIT = 464;
+  let size = 52;
+  ctx.font = `${size}px Padauk, "Myanmar Text", sans-serif`;
+  const raw = ctx.measureText(text).width;
+  if (raw > FIT) {
+    size = Math.max(24, Math.floor(size * FIT / raw));
+    ctx.font = `${size}px Padauk, "Myanmar Text", sans-serif`;
+  }
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(7,11,24,.75)';
   const w = Math.min(500, ctx.measureText(text).width + 48);
