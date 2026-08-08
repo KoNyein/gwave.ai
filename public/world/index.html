@@ -492,6 +492,16 @@
   #sfxBtn:active, #sfxBtn:hover{ border-color:var(--gold); }
   #sfxBtn.off{ opacity:.45; }
 
+  /* 🎚️ ဂရပ်ဖစ် အဆင့် — 🔆/🔊 နဲ့ တစ်တန်းတည်း */
+  #gfxBtn{ flex:0 0 auto; width:42px; height:42px; border-radius:50%;
+    border:1px solid var(--line); cursor:pointer; font-size:17px;
+    background:linear-gradient(165deg,var(--panel),rgba(11,16,38,.9));
+    color:var(--ink); backdrop-filter:blur(8px); touch-action:manipulation;
+    display:flex; align-items:center; justify-content:center;
+    transition:opacity .5s, border-color .15s; }
+  #gfxBtn:active, #gfxBtn:hover{ border-color:var(--gold); }
+  #gfxBtn.low{ border-color:var(--jade); }
+
 
   /* ══════════════════════════════════════════════════════════════════
      🫥 Idle fade — ဘာမှ မထိတာ ၄ စက္ကန့် ကြာရင် HUD က ဖျော့သွားတယ်
@@ -506,6 +516,7 @@
   body.hudIdle #feedTab,
   body.hudIdle #actionBar,
   body.hudIdle #helpBtn, body.hudIdle #dimBtn,
+  body.hudIdle #gfxBtn,
   body.hudIdle #sfxBtn{ opacity:.22; }
   body.hudIdle #radialFab{ opacity:.42; }
   /* Touch ခလုတ်တွေက ကစားဖို့ လိုတယ် — အနည်းငယ်ပဲ ဖျော့တယ် */

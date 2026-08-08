@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { loadGLB } from '../core/Assets.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Locomotion } from './Locomotion.js';
+import { trackQuality } from '../core/Quality.js';
 
 /// NPC တွေ ဝတ်မယ့် ရုပ်များ — အမျိုးအစား ကွဲပြားအောင်
 const NPC_BODIES = [
@@ -30,12 +31,25 @@ function bodyFor(name) {
 }
 
 export class NPC {
-  constructor({ name, color = 0xf5c542, dialogue = [], home = new THREE.Vector3(), range = 8 }) {
+  /**
+   * @param o.staticBody — အရိုးမပါတဲ့ GLB လမ်းကြောင်း (ဥပမာ မြန်မာအမျိုးသမီး
+   *   ရုပ်)。 ပေးလိုက်ရင် ဒီ NPC က **မလျှောက်ဘူး** — နေရာတကျ ရပ်ပြီး
+   *   စကားပြောတယ်။
+   *
+   *   ★ ဘာလို့ မလျှောက်လဲ — အဲဒီ GLB မှာ bone ၀, skinned mesh ၀,
+   *     animation ၀ ပါ။ Locomotion က အရိုးကို လှည့်ပြီး ခြေလှမ်းစေတာ
+   *     ဖြစ်လို့ အရိုး မရှိရင် ဘာမှ လှုပ်စရာ မရှိဘူး — အတင်း လျှောက်ခိုင်း
+   *     ရင် ရုပ်တုတစ်ခု မြေပြင်ပေါ် **လျှောသွား**နေမယ်။ ဒါကြောင့် ရပ်နေတဲ့
+   *     ဇာတ်ကောင် အဖြစ်ပဲ ထားတယ် (ဆိုင်ရှင်၊ ကြိုဆိုသူ စသဖြင့်)。
+   */
+  constructor({ name, color = 0xf5c542, dialogue = [], home = new THREE.Vector3(),
+                range = 8, staticBody = null, faceYaw = 0 }) {
     this.name = name;
     this.dialogue = dialogue;   // စကားပြောစာကြောင်းများ (အလှည့်ကျပြသမည်)
     this.dialogueIndex = 0;
     this.home = home.clone();
-    this.range = range;
+    this.staticBody = staticBody;
+    this.range = staticBody ? 0 : range;
     this.speed = 1.4;
     this.waitTimer = 0;
 
@@ -55,6 +69,22 @@ export class NPC {
     this.group.add(this.placeholder, this.makeLabel(name));
     this.group.position.copy(this.home);
     this.pickTarget();
+
+    if (staticBody) {
+      // 🧍‍♀️ ရပ်နေတဲ့ ဇာတ်ကောင် — အရိုးမပါလို့ SkeletonUtils မလို၊
+      //    Locomotion လည်း မလို။ ရိုးရိုး clone နဲ့ လုံလောက်တယ်။
+      this.group.rotation.y = faceYaw;
+      void loadGLB(staticBody).then((gltf) => {
+        const model = gltf.scene.clone(true);
+        model.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
+        this.group.add(model);
+        this.model = model;
+        this.placeholder.visible = false;
+        // 🎚️ ဂရပ်ဖစ် အနိမ့်မှာ ဖျောက်တယ် — ရုပ်တစ်ခုက တြိဂံ ၅၆k ရှိတယ်
+        trackQuality(model, 'detail');
+      }).catch(() => { /* GLB မရရင် capsule နဲ့ ဆက် */ });
+      return;
+    }
 
     // 🧍 တကယ့် ခန္ဓာကိုယ် — မရောက်မချင်း capsule နဲ့ ရပ်နေတယ်
     void loadGLB(`/metaverse/realistic/${bodyFor(name)}.glb`).then((gltf) => {
@@ -102,6 +132,8 @@ export class NPC {
   }
 
   update(dt) {
+    // 🧍‍♀️ ရပ်နေတဲ့ ဇာတ်ကောင် — ရွေ့စရာ မရှိ၊ frame တိုင်း တွက်စရာလည်း မရှိ
+    if (this.staticBody) return;
     const pos = this.group.position;
     const dir = new THREE.Vector3().subVectors(this.target, pos); dir.y = 0;
     const dist = dir.length();

@@ -4,6 +4,8 @@
 // ============================================================
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
+import { addTerrain } from '../Terrain.js';
+import { addBuilding } from '../Buildings.js';
 import { NPC } from '../../entities/NPC.js';
 
 export class FarmRoom extends Room {
@@ -21,6 +23,34 @@ export class FarmRoom extends Room {
     // Lab အလင်း — စိုက်ပျိုးရေးမီး ပန်းရောင်ခပ်ခပ် (grow lights)
     // 💡 အလင်း စနစ် — Room.js ရဲ့ တစ်ခုတည်းသော preset (hemisphere+key+fill)
     addRoomLighting(this, 'indoor');
+
+    // 🏔️ စိုက်ခင်းကို ဝိုင်းထားတဲ့ စိမ်းလန်းချိုင့်ဝှမ်း — တောင် နိမ့်နိမ့်
+    addTerrain(this, { ground: 90, palette: 'lush', seed: 23, peak: 62, hill: 10 });
+
+    // 🏠 စိုက်ခင်း အိမ် — ကွင်းစွန်းက ထင်းအိမ် (lab ရဲ့ တာဝန်ခံ နေတဲ့ အိမ်)
+    void addBuilding(this, {
+      kind: 'stilt', position: new THREE.Vector3(-30, 0, -26), rotation: Math.PI / 3,
+    });
+
+    // 🛻 စိုက်ခင်း ကုန်တင်ကား — အိမ်ဘေးမှာ ရပ်ထား
+    void addBuilding(this, {
+      // ★ အိမ်ရဲ့ AABB က x -၄၃.၇…-၁၆.၃ ဖြစ်လို့ x -၁၆ မှာ ထားရင်
+      //   အိမ်ထဲ ဝင်နေတယ် (တိုင်းတာပြီး တွေ့ခဲ့)。 အိမ်ဘေး ထွက်ထားတယ်။
+      kind: 'pickup', position: new THREE.Vector3(-9, 0, -30), rotation: Math.PI / 5,
+      paint: { name: 'MAT_Body_Paint', color: 0x4a7c3a },
+    });
+
+    // 🧍‍♀️ စိုက်ခင်း တာဝန်ခံ — အိမ်ရှေ့မှာ ရပ်နေတယ်
+    this.addNPC(new NPC({
+      name: 'မခင်လှ',
+      staticBody: '/world/assets/myanmar_woman.glb',
+      home: new THREE.Vector3(-22, 0, -20),
+      faceYaw: -Math.PI / 3,
+      dialogue: [
+        'ဒီက ရေမြေဆီ စိုက်ခင်း lab ပါ — မြေမလိုဘဲ စိုက်လို့ရတယ်။',
+        'အပင်တွေက ရေထဲကနေ အာဟာရ တိုက်ရိုက် ယူတယ် ရှင့်။',
+      ],
+    }));
 
     // Hydroponic စင်တန်းများ — စင် + အပင်စိမ်းလေးများ
     const plantMat = new THREE.MeshStandardMaterial({

@@ -3,6 +3,7 @@
 // Scene + Camera + Renderer + Game Loop ကို တစ်နေရာတည်းမှာ စုစည်းထားသည်
 // ============================================================
 import * as THREE from 'three';
+import { onQualityChange, sampleFrame } from './Quality.js';
 
 export class Engine {
   constructor(container = document.body) {
@@ -23,7 +24,13 @@ export class Engine {
     const mobile = matchMedia('(hover: none), (max-width: 820px)').matches;
     this.renderer = new THREE.WebGLRenderer({ antialias: !mobile, powerPreference: 'low-power' });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.5 : 2));
+    this._maxRatio = mobile ? 1.5 : 2;
+    // 🎚️ ဂရပ်ဖစ် အဆင့် — pixelRatio က အထိရောက်ဆုံး လက်နက်။ 1.5 → 1.0
+    //    ဆိုရင် shading လုပ်ရမယ့် pixel ၅၆% လျော့တယ်။
+    onQualityChange((lv) => {
+      const cap = lv === 'low' ? 1 : lv === 'mid' ? 1.25 : this._maxRatio;
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, cap));
+    });
     this.renderer.shadowMap.enabled = !mobile;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     // 🌗 Tone mapping — မထည့်ရင် linear→sRGB အတိအကျ ဖြစ်ပြီး ညအလင်း
@@ -69,6 +76,9 @@ export class Engine {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
+  /// လက်ရှိ pixelRatio — headless စမ်းသပ်မှုက ဒါကို တိုင်းတယ်
+  get pixelRatio() { return this.renderer.getPixelRatio(); }
+
   // update(dt) function ပါသော object တစ်ခုကို loop ထဲ ထည့်ရန်
   register(obj) { this.updatables.push(obj); }
   unregister(obj) {
@@ -87,6 +97,7 @@ export class Engine {
     this.renderer.setAnimationLoop(() => {
       if (this.paused) return; // ⏸ frame တစ်ခုမှ မပုံဖော်ဘူး
       const dt = Math.min(this.clock.getDelta(), 0.05); // tab ပြန်ဖွင့်ချိန် ခုန်မသွားအောင်
+      sampleFrame(dt);   // 🎚️ အလို ဂရပ်ဖစ် — FPS တိုင်းပြီး အဆင့် ချိန်တယ်
       for (const u of this.updatables) u.update?.(dt);
       this.renderer.render(this.scene, this.camera);
     });

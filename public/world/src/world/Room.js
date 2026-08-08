@@ -23,6 +23,11 @@ export class Room {
     ///   "သေနတ်ပစ်မရဘူး" ဆိုတာ ဒါ။ ခု combat မဟုတ်ရင် ခလုတ်ကို ဖျောက်တယ်။
     this.combat = false;
     this.background = null;    // ဥပမာ 0x7fb7d9 — မထည့်လျှင် မူလညရောင်
+    /// 🌫️ မြူ အကွာအဝေး — မထည့်လျှင် မူလ (၅၅ → ၁၉၀)。
+    /// အပြင်ဘက် အခန်းတွေမှာ တောင်တန်းက ၂၀၀–၃၈၀ မှာ ရှိလို့ မူလ setting နဲ့ဆို
+    /// မြူထဲ လုံးဝ ပျောက်နေတယ် — Terrain.js က ဒါကို ဆွဲထုတ်ပေးတယ်။
+    this.fogNear = null;
+    this.fogFar = null;
     this.built = false;
   }
 
