@@ -8,6 +8,7 @@ import { updateDoors } from './Door.js';
 import { updateManors } from './Kit.js';
 import { makeNameLabel } from '../ui/label.js';
 import { updateSignals, updateBuses } from './Traffic.js';
+import { addSky, updateSky } from './Sky.js';
 
 export class Room {
   constructor(id, title) {
@@ -121,6 +122,7 @@ export class Room {
     updateDoors(this, dt);          // 🚪 ဖွင့်/ပိတ် လှုပ်ရှားမှု
     updateSignals(this, time);      // 🚦 မီးပွိုင့် အလှည့်
     updateBuses(this, dt);          // 🚌 ဘတ်စ်ကား လိုင်းများ
+    updateSky(this, dt, playerPos); // ☁️ တိမ် မျော + ခုံးက ကစားသမားနဲ့ လိုက်
     updateManors(this, dt, playerPos); // 🏛️ အိမ်တော် — အနီးရောက်ရင် တံခါး ပွင့်
     for (const npc of this.npcs) npc.update(dt);
     for (const p of this.portals) p.mesh.rotation.y = time * 0.8;
@@ -194,6 +196,11 @@ export function addRoomLighting(target, preset = 'day', opts = {}) {
               key: 0xffd9f0, keyI: 1.0, fill: 0x2de1ff, fillI: 0.45, bg: 0x1a1330 },
   }[preset] || {};
   const c = { ...P, ...opts };
+
+  // 🌅 ★ **ကောင်းကင် ခုံး** — အလင်း preset နဲ့ တွဲပြီး အလိုအလျောက်。
+  //    အခန်းတိုင်းက `addRoomLighting` ကို ခေါ်ပြီးသားမို့ ဒီတစ်နေရာမှာ
+  //    ထည့်လိုက်ရုံနဲ့ အားလုံး ရတယ်။ အတွင်းခန်း ('indoor') မှာတော့ မလိုဘူး。
+  if (room && preset !== 'indoor' && opts.sky !== false) addSky(room, preset);
 
   group.add(new THREE.HemisphereLight(c.sky, c.ground, c.hemi));
   group.add(new THREE.AmbientLight(0xffffff, c.amb));
