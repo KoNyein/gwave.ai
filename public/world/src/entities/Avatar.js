@@ -101,6 +101,28 @@ export class Avatar {
     const { input, physics } = this;
     const pos = this.group.position;
 
+    // 🛻 ★ **ကား မောင်းနေချိန် avatar ကို ရပ်ထားရမယ်**
+    //
+    // user: "ကားတွေက မောင်းရတာ လုံးဝ အဆင်မပြေဘူး … တုန်နေတယ် …
+    //        ကားက အသွားမခံဘူး avatar နဲ့ ညီနေတယ်"
+    //
+    // Avatar က engine မှာ **အရင်** register လုပ်ထားတယ် (main.js:37 vs 173) —
+    // ဒါကြောင့် frame တိုင်းမှာ:
+    //   ① Avatar က W/A/S/D ကို ဖတ်ပြီး ကိုယ်တိုင် လျှောက်တယ်, နံရံနဲ့
+    //     တိုက်တယ်, **ကင်မရာကို avatar ပတ်လည် ချထားတယ်**
+    //   ② ပြီးမှ Vehicle က ကားကို ရွှေ့ပြီး ကင်မရာကို ကားနောက်ဆီ
+    //     `lerp(…, dt*4)` နဲ့ ဆွဲတယ် — ဒါပေမယ့် ① က အရင် ခုန်ချထားတာမို့
+    //     ၂၀% ပဲ ပြန်ရောက်တယ်။ frame တိုင်း ဒီလို ဖြစ်နေလို့ **ကင်မရာက
+    //     အမြဲ တုန်နေတာ**。
+    // ဒါကြောင့် မောင်းနေချိန် avatar ရဲ့ update တစ်ခုလုံး ကျော်တယ် —
+    // ကင်မရာ ရော လှုပ်ရှားမှု ရော Vehicle က တစ်ခုတည်း ပိုင်တယ်။
+    if (this.driving) {
+      this.loco?.setMotion({ speed: 0, grounded: true, sitting: true });
+      this.loco?.update(dt);
+      this.mixer?.update(dt);
+      return;
+    }
+
     // ၁။ ရွေ့လျားမှု — ကင်မရာကြည့်ရာဘက်နှင့် ကိုက်ညီအောင် forward/right တွက်
     let fw = (input.down('KeyW') ? 1 : 0) - (input.down('KeyS') ? 1 : 0);
     let side = (input.down('KeyD') ? 1 : 0) - (input.down('KeyA') ? 1 : 0);

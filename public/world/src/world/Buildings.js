@@ -446,6 +446,118 @@ export function buildPagoda({ position = new THREE.Vector3(), scale = 1 } = {}) 
 }
 
 /**
+ * 🛕🛕 **ရွှေတိဂုံ အစုအဝေး** — ရင်ပြင်ပေါ် တက်လို့ရအောင်
+ *
+ * user: "ရန်ကုန်မှာ ရအောင် ထည့်ပါ"
+ *
+ * ★ ဒါက PR #574 မှာ **ဖယ်ခဲ့ရတဲ့** မော်ဒယ်ပါ — ကစားကွင်း အပြင် ၂၅၀ m
+ *   မှာ ရှိပြီး နယ်နိမိတ်နံရံက ကာထားလို့ ဘယ်တော့မှ မရောက်နိုင်လို့။
+ *   အခု နံရံက terrain အစွန်း (၃၇၄ m) ကို ရွှေ့ပြီးပြီ (PR #576) ဆိုတော့
+ *   **သွားလို့ရပြီ** — ကျန်တာက ရင်ပြင်ပေါ် တက်လမ်း ပေးဖို့ပါပဲ။
+ *
+ * ★ မော်ဒယ်ရဲ့ ပုံသဏ္ဌာန်ကို တိုင်းကြည့်တော့ (r အလိုက် အမြင့် ပရိုဖိုင်):
+ *       r ၀–၁၃၀   → ရင်ပြင်က **y ၂၈ မှာ ပြားနေတယ်**
+ *       r ၁၃၂     → **၂၈ m ချောက်** (မြေပြင် y ၀ ဆီ တစ်ခါတည်း ကျ)
+ *   ဆိုလိုတာက မော်ဒယ်မှာ တက်စရာ လမ်း (collider လုပ်လို့ရတဲ့ ပုံစံနဲ့)
+ *   မပါဘူး။ ဒါကြောင့် **လှေကား ကိုယ်တိုင် ဆောက်ပေးရတယ်** — တစ်ထစ်
+ *   ၀.၅ m (physics က ၀.၅၅ အထိ တက်နိုင်တယ်)。
+ *
+ * @param o.deck     — ရင်ပြင် အမြင့် (တိုင်းထားတာ ၂၈)
+ * @param o.stairAt  — လှေကား ဘယ်ဘက်လဲ ('+z' = မြို့ဘက်)
+ * @param o.stairX   — လှေကားကို x ဘယ်လောက် ရွှေ့မလဲ。 ★ ရန်ကုန်မှာ x ၀ မှာ
+ *                     မြို့လယ် စေတီ (r ၁၃.၆) က လမ်းပိတ်နေတယ် — တိုင်းတာ
+ *                     ကြည့်တော့ z −၃၂ မှာ တားခံရတယ်。 x ၃၀ ဆို ကင်းတယ်။
+ */
+export function stupaColliders(room, object, {
+  position = new THREE.Vector3(), deck = 28, stairAt = '+z', stairX = 0,
+} = {}) {
+  // ① ရင်ပြင် — **ပါးလွှာတဲ့ ခုံ**。 မော်ဒယ်ရဲ့ တကယ့် ပုံစံ လိုက်တယ်
+  //    (စတုရန်း ဆိုရင် ထောင့်လေးနေရာမှာ လေထဲ ရပ်နေမယ်)。
+  const deckGrid = occupancyGrid(object, {
+    cell: 4, bandFrom: deck - 1.5, bandTo: deck + 0.5,
+  });
+  for (const b of boxesFromGrid(deckGrid, { floorY: deck - 0.2, minTop: 0 })) {
+    b.max.y = deck;
+    room.colliders.push(b);
+  }
+
+  // ② ရင်ပြင် အထက်က အရာအားလုံး — စေတီ, ထစ်ခွင်, စေတီငယ် = အခိုင်အမာ
+  // ★ ၂ m အကွက် — ၄ m နဲ့ ဆိုရင် ရင်ပြင်ပတ်လည်က တန်ဆောင်း/စေတီငယ်
+  //   အတန်းက **နံရံတစ်ခုလုံး** ဖြစ်သွားပြီး r ၈၀ မှာ ပိတ်မိတယ် (တိုင်းတာ
+  //   ပြီး တွေ့ခဲ့)。 ၂ m ဆိုရင် သူတို့ကြားက လမ်းကြားတွေ ကျန်တယ် —
+  //   တကယ့် ရွှေတိဂုံလိုပဲ စေတီတော်ကြီးအထိ ဝင်လို့ရတယ်။
+  const upGrid = occupancyGrid(object, {
+    cell: 2, bandFrom: deck + 0.8, bandTo: deck + 2.0,
+  });
+  // ★ **အလုံးကြီးတွေရဲ့ အထဲကို ဖြည့်ရမယ်**。 rasterise လုပ်တာက မျက်နှာပြင်ကို
+  //   အမှတ်အသား လုပ်တာ ဖြစ်လို့ စေတီကြီးရဲ့ **အလယ်က ဗလာ ကျန်နေတယ်** —
+  //   အလယ်မှာ ရပ်ကြည့်တော့ တွန်းအား ၀.၀၀ m (စေတီထဲ ရပ်လို့ရနေတယ်)。
+  //   အမြင့် ကြီးတဲ့ (deck+15 ကျော်) အကွက်တွေကြားကိုပဲ ဖြည့်တယ် — ရင်ပြင်
+  //   အလွတ်က မပါဘူး (အဲဒါ ဖြည့်ရင် ရင်ပြင်တစ်ခုလုံး ပိတ်သွားမယ်)。
+  {
+    const { cols, rows, occ, top } = upGrid;
+    const TALL = deck + 15;
+    for (let r = 0; r < rows; r++) {
+      let lo = -1, hi = -1;
+      for (let c = 0; c < cols; c++) {
+        if (occ[r * cols + c] && top[r * cols + c] > TALL) { if (lo < 0) lo = c; hi = c; }
+      }
+      for (let c = lo; c >= 0 && c <= hi; c++) {
+        if (!occ[r * cols + c]) { occ[r * cols + c] = 1; top[r * cols + c] = TALL; }
+      }
+    }
+  }
+  for (const b of boxesFromGrid(upGrid, { floorY: deck, minTop: 0.8 })) {
+    room.colliders.push(b);
+  }
+
+  // ③ ကုန်း အနား — **၂၈ m ချောက်**။ collider မထားရင် ကုန်းထဲ လျှောက်ဝင်
+  //    သွားလို့ရတယ် (တိုင်းတာချက်: z −၂၂၉ အထိ y ၀ နဲ့ ဖြတ်သွားခဲ့တယ်)。
+  //    အနားက မျက်နှာပြင်ကိုပဲ rasterise တယ် — အလယ်က ဗလာ ကျန်လည်း
+  //    ဝင်လို့ မရတော့ဘူး။ လှေကား လမ်းကြောင်းကိုတော့ ချန်ထားရမယ်။
+  const sign = stairAt === '+z' ? 1 : -1;
+  const rimGrid = occupancyGrid(object, { cell: 4, bandFrom: 1.5, bandTo: 3.5 });
+  for (const b of boxesFromGrid(rimGrid, { floorY: 0, minTop: 0 })) {
+    const inStairX = b.max.x > position.x + stairX - 9 && b.min.x < position.x + stairX + 9;
+    const onStairSide = sign > 0 ? b.max.z > position.z + 110 : b.min.z < position.z - 110;
+    if (inStairX && onStairSide) continue;      // လှေကား ဝင်ပေါက် ချန်
+    b.max.y = deck;
+    room.colliders.push(b);
+  }
+
+  // ④ 🪜 လှေကား — မြေပြင်ကနေ ရင်ပြင်အထိ (တကယ့် ရွှေတိဂုံလို ရှည်တယ်)
+  // ★ လှေကား တစ်ခုလုံး **ရင်ပြင် အပြင်ဘက်မှာ** ရှိရမယ် (ရင်ပြင်က r ၁၃၀
+  //   အထိ)。 အထဲ ဝင်နေရင် ခြေထောက် ၂၇.၀ မှာ ရှိချိန် ရင်ပြင် (၂၈) က
+  //   `max.y <= pos.y + 0.55` မဖြစ်လို့ **နံရံ** အဖြစ် တားပြီး ထစ် ဆက်တက်
+  //   လို့ မရဘူး (တိုင်းတာချက်: z −၁၂၂, y ၂၇ မှာ ရပ်တန့်)。
+  const R = 130;
+  const RISE = 0.5, TREAD = 1.2, W = 7;
+  const n = Math.ceil(deck / RISE);
+  for (let i = 1; i <= n; i++) {
+    const y = (deck * i) / n;
+    const z0 = position.z + sign * (R + (n - i + 1) * TREAD);
+    const z1 = z0 + sign * TREAD;
+    room.colliders.push(new THREE.Box3(
+      new THREE.Vector3(position.x + stairX - W, 0, Math.min(z0, z1)),
+      new THREE.Vector3(position.x + stairX + W, y, Math.max(z0, z1)),
+    ));
+  }
+  // ★ ထိပ်ပြင် — လှေကားထိပ် (r ၁၃၁) နဲ့ ရင်ပြင် (r ≤ ၁၃၀) ကြား မဟာနေစေရ။
+  //   ၁၃၂ ကနေ စခဲ့တုန်းက ၃ m ဟာပြီး အပေါ်ရောက်တာနဲ့ ၂၈ → ၀ ပြန်ကျခဲ့တယ်။
+  //   ★ ထိပ်ထစ်ရဲ့ အတွင်းအနားနဲ့ **အတိအကျ ဆက်ရမယ်** — ကျော်ထားရင်
+  //     အောက်ထစ်တွေကို ဖုံးပြီး နံရံ ဖြစ်သွားတယ် (၂၈ က ၂၇.၀ ကနေ ၀.၅၅
+  //     ကျော်နေလို့)。 အဲဒီအမှားနဲ့ z −၁၁၆, y ၂၇ မှာ ရပ်သွားခဲ့တယ်။
+  {
+    const outer = position.z + sign * (R + TREAD);   // ထိပ်ထစ် အတွင်းအနား
+    const inner = position.z + sign * (R - 14);      // ရင်ပြင်ထဲ ၁၄ m
+    room.colliders.push(new THREE.Box3(
+      new THREE.Vector3(position.x + stairX - W, 0, Math.min(inner, outer)),
+      new THREE.Vector3(position.x + stairX + W, deck, Math.max(inner, outer)),
+    ));
+  }
+}
+
+/**
  * 🛕 စေတီ ရင်ပြင် — **ပေါ်တက်လို့ရအောင်** collider
  *
  * user: "စေတီပေါ် တက်မရဘူး"

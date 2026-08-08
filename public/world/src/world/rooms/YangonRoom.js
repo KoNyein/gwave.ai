@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
 import { addTerrain } from '../Terrain.js';
-import { addBuilding, buildPagoda, pagodaColliders } from '../Buildings.js';
+import { addManor, manorSpot } from '../Manor.js';
+import { addBuilding, buildPagoda, pagodaColliders, stupaColliders } from '../Buildings.js';
 import { NPC } from '../../entities/NPC.js';
 
 export class YangonRoom extends Room {
@@ -84,11 +85,14 @@ export class YangonRoom extends Room {
 
     // 🏔️ ပတ်ဝန်းကျင် — ညမြို့တော်ကို ဝိုင်းထားတဲ့ တောင်တန်း
     //    (user: "environment ကို ပြေပြင်အစစ် တောင်ကုန်း တောင်တန်း ထည့်ပါ")
+    // 🏛️ အိမ်တော် ခြံဝန်း — မြို့ အပြင်ဘက်၊ မြေပြားပေါ်
+    const manor = manorSpot(140);
     addTerrain(this, {
       ground: 140, palette: 'night', seed: 11, peak: 100, hill: 12,
       // 🛕 စေတီတော် တည်ရာ — တောင်တန်းက အထဲကနေ ထိုးမထွက်အောင် ပြားထားတယ်
-      flatSpots: [{ x: 0, z: -250, r: 140, blend: 70 }],
+      flatSpots: [{ x: 0, z: -250, r: 140, blend: 70 }, manor.flatSpot],
     });
+    void addManor(this, { position: manor.position, rotation: manor.rotation });
     // ★ လမ်းမီး — ကစားသမား လမ်းလျှောက်ရာ လမ်းကြောင်းကို ချထားတယ်၊
     //   ဒါမှ ခြေထောက်နဲ့ မြေပြင် တကယ် မြင်ရတယ်။
     for (let i = -1; i <= 3; i++) {
@@ -105,14 +109,24 @@ export class YangonRoom extends Room {
     // 🛕 စေတီ ရင်ပြင် — **ပေါ်တက်လို့ရတယ်** (လှေကား ၃ ထစ် + ကြမ်းပြင်)
     pagodaColliders(this, new THREE.Vector3(0, 0, -45));
 
-    // 🗑️ ရွှေတိဂုံ စေတီတော် အစုအဝေး (၂၆၄m) ကို **ဖယ်လိုက်ပြီ**
+    // 🛕 ရွှေတိဂုံ စေတီတော် အစုအဝေး — **ပြန်ရောက်လာပြီ, ခုတော့ သွားလို့ရတယ်**
     //
-    // user: "သုံးမရတဲ့ Standard မရှိတဲ့ ဆောက်ဦး အကုန် ဖယ်ပါ"
+    // user: "ရန်ကုန်မှာ ရအောင် ထည့်ပါ"
     //
-    // အဲဒါက ကွင်းပြင် အပြင် ၂၅၀m မှာ ရှိပြီး နယ်နိမိတ်နံရံက ကာထားလို့
-    // **ဘယ်တော့မှ မရောက်နိုင်ဘူး** — ကြည့်ရုံသက်သက် ၁၅၅,၈၄၄ တြိဂံ။
-    // ဝင်လို့ရတဲ့ အဆောက်အအုံ မဟုတ်လို့ ဖယ်လိုက်တယ်။ မြို့လယ်က
-    // ထစ်ခွင်စေတီ (ပေါ်တက်လို့ရတယ်) က ဆက်ရှိတယ်။
+    // PR #574 မှာ ဒါကို ဖယ်ခဲ့တယ် — ကွင်းပြင် အပြင် ၂၅၀ m မှာ ရှိပြီး
+    // နယ်နိမိတ်နံရံက မြို့အနားမှာ ကာထားလို့ **ဘယ်တော့မှ မရောက်နိုင်**
+    // ခဲ့လို့။ PR #576 မှာ terrain ကို လျှောက်လို့ရအောင် လုပ်ပြီး နံရံကို
+    // terrain အစွန်း (၃၇၄ m) ဆီ ရွှေ့လိုက်တော့ အဲဒီ အကြောင်းပြချက်
+    // မရှိတော့ဘူး — အခု မြို့ကနေ လျှောက်/မောင်း သွားလို့ ရပြီ။
+    //
+    // ★ `heavy` tier — ၁၅၅,၈၄၄ တြိဂံ ဆိုတာ ကြီးတယ်။ ဂရပ်ဖစ် အလယ်/အနိမ့်
+    //   မှာ ဖျောက်တယ် (အဝေးက landmark ဖြစ်လို့ အဲဒါ မှန်တယ်)。
+    void addBuilding(this, {
+      kind: 'stupa', position: new THREE.Vector3(0, 0, -250), tier: 'heavy',
+      collide: false,          // collider ကို stupaColliders က သီးသန့် ဆောက်
+    }).then((obj) => {
+      if (obj) stupaColliders(this, obj, { position: new THREE.Vector3(0, 0, -250), stairX: 30 });
+    });
 
     // 🏛️🛖 အဆောက်အအုံ အစစ် — မြို့လယ်ရဲ့ နှစ်ဖက်စွန်း
     //
