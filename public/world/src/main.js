@@ -24,6 +24,7 @@ import { MeetingRoom } from './world/rooms/MeetingRoom.js';
 import { TouchControls } from './ui/TouchControls.js';
 import { ROOM_GROUPS, classicHref } from './world/RoomCatalog.js';
 import { sfx } from './core/Sfx.js';
+import { VehicleSystem } from './entities/Vehicle.js';
 import * as Quality from './core/Quality.js';
 const { cycleMode, getMode, getQuality, onAutoChange, LABELS: QLABEL, ICONS: QICON } = Quality;
 
@@ -166,6 +167,16 @@ hud.walletBtn.addEventListener('click', async () => {
 wallet.onChange = () => hud.setWallet(wallet.address, wallet.short());
 net.web3Address = () => wallet.address; // NFT mint အတွက် MetaMask address
 
+// 🛻 ကား စီး/မောင်း စနစ် — E နဲ့ ဝင်စီး/ဆင်း
+const vehicles = new VehicleSystem({ engine, input, avatar, hud, sfx });
+engine.register(vehicles);
+ctx.vehicles = vehicles;   // အခန်းများက ကား စာရင်းသွင်းဖို့
+// ★ ပထမ အခန်းက **အပေါ်မှာ** ကူးပြီးသား (ကား စနစ် မဆောက်ရသေးခင်) —
+//   ဒါကြောင့် လက်ရှိ အခန်းကို ဒီမှာ ကိုယ်တိုင် ပြောပြရမယ်။ မပြောရင်
+//   `room` က null ဖြစ်နေပြီး ကား **တစ်စီးမှ မတွေ့ဘူး** (တိုင်းတာပြီး
+//   တွေ့ခဲ့တာ — ကား ၆ စီး ရှိပေမယ့် E နှိပ်လို့ မရဘူး)。
+vehicles.setRoom(world.current);
+
 // ၅။ Interaction Loop — portal hint + NPC စကားပြော (E key)
 engine.register({
   update() {
@@ -173,13 +184,20 @@ engine.register({
     const station = world.nearestStation();
     const npc = world.nearestNPC();
 
-    if (portal)        hud.showHint(`⏎ E — ${portal.label}`);
+    // 🛻 ကား — အနီးမှာ ရှိရင် အရင်ဆုံး ပြတယ် (စီးဖို့က အထင်ရှားဆုံး လုပ်ရပ်)
+    const car = vehicles.active ? null : vehicles.nearest();
+
+    if (vehicles.active) hud.showHint('⏎ E — ကားပေါ်က ဆင်းရန်');
+    else if (car)      hud.showHint(`⏎ E — ${car.label} စီးရန်`);
+    else if (portal)   hud.showHint(`⏎ E — ${portal.label}`);
     else if (station)  hud.showHint(`⏎ E — ${station.label}`);
     else if (npc)      hud.showHint(`⏎ E — ${npc.name} နှင့် စကားပြောရန်`);
     else               hud.hideHint();
 
     if (input.justPressed('KeyE')) {
-      if (portal) {
+      // ကား စီး/ဆင်း က ဦးစားပေး — လုပ်ခဲ့ရင် တခြားဟာ မလုပ်တော့ဘူး
+      if (vehicles.toggle()) { /* စီး/ဆင်း ပြီးပြီ */ }
+      else if (portal) {
         if (portal.targetRoomId === 'myworld') {
           if (net.connected) net.requestWorld(); // server ကနေ ကိုယ့်ကမ္ဘာ load
           else hud.addToast('🌍 ကိုယ်ပိုင်ကမ္ဘာအတွက် server လိုအပ်သည် (offline)');
@@ -748,7 +766,7 @@ function leaveWorld(href) {
 // 🔧 Debug handle — console ကနေ လောကရဲ့ အစိတ်အပိုင်းတွေ စစ်လို့ရအောင်
 //    (headless test တွေကလည်း ဒီကနေ avatar/loco ကို စစ်တယ်)。
 //    ဖတ်ဖို့သာ ရည်ရွယ်တယ် — behaviour ဘာမှ မပြောင်းဘူး။
-window.__gwave = { engine, world, avatar, net, hud, radial, quality: Quality };
+window.__gwave = { engine, world, avatar, net, hud, radial, quality: Quality, vehicles };
 
 // ၉။ စတင်!
 hud.hideLoading();

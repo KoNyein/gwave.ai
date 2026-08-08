@@ -28,6 +28,8 @@ export class Room {
     /// မြူထဲ လုံးဝ ပျောက်နေတယ် — Terrain.js က ဒါကို ဆွဲထုတ်ပေးတယ်။
     this.fogNear = null;
     this.fogFar = null;
+    /// 🎧 ပတ်ဝန်းကျင် အသံ — 'city' | 'sea' | 'wind' | 'none'
+    this.ambient = 'none';
     this.built = false;
   }
 

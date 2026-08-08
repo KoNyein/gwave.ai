@@ -58,7 +58,14 @@ export class Sfx {
   }
 
   setEnabled(on) {
+    const was = this.enabled;
     this.enabled = !!on;
+    // ပိတ်ရင် ambient ရပ်, ပြန်ဖွင့်ရင် ပြန်စ
+    if (was && !this.enabled) { const k = this._ambKind; this._stopAmbient(); this._ambKind = null; this._pendingAmb = k; }
+    else if (!was && this.enabled && this._pendingAmb) {
+      const k = this._pendingAmb; this._pendingAmb = null; this._ambKind = null;
+      setTimeout(() => this.ambient(k), 0);
+    }
     try { localStorage.setItem(KEY, this.enabled ? '1' : '0'); } catch { /* private */ }
     if (this.master) this.master.gain.value = this.enabled ? 0.85 : 0;
     if (this.enabled) this._ensure();
@@ -214,6 +221,68 @@ export class Sfx {
     e.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
     osc.connect(e).connect(out);
     osc.start(t); osc.stop(t + 0.16);
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // 🎧 **ပတ်ဝန်းကျင် အသံ** (ambient) — အခန်းအလိုက် အဆက်မပြတ်
+  //
+  // user: "အသံ မကြားရဘူး"
+  //
+  // အရင်က ပစ်သံ/ခြေသံ လို **တစ်ချက်တည်း** အသံတွေပဲ ရှိတယ် — လမ်းလျှောက်
+  // ရုံနဲ့ ဘာမှ မကြားရဘူး၊ လောကက တိတ်ဆိတ်နေတယ်။ ဒါက အသံ "ပျက်နေတာ"
+  // မဟုတ်ဘဲ **မရှိတာ** ဖြစ်တယ်။
+  //
+  // ★ ဖိုင် မသုံးဘူး — ဆူညံသံကို filter နဲ့ ပုံဖော်တယ်:
+  //     city — နိမ့်တဲ့ ဟိန်းသံ (ကားလမ်း, လူစည်ကား)
+  //     sea  — ဒီလှိုင်း (bandpass ကို ဖြည်းဖြည်း လှိမ့်)
+  //     wind — တောင်ပေါ်လေ (မြင့်တဲ့ ဆူညံသံ ဖျော့ဖျော့)
+  //     none — တိတ်
+  // ★ Loop က `loop = true` ဖြစ်တဲ့ buffer တစ်ခုတည်း — CPU အလွန်နည်း။
+  // ══════════════════════════════════════════════════════════════════
+
+  /// အခန်းကူးတိုင်း ခေါ်တယ်။ တူညီတဲ့ အမျိုးအစားဆို ဘာမှ မလုပ်ဘူး။
+  ambient(kind = 'none') {
+    if (this._ambKind === kind) return;
+    this._ambKind = kind;
+    this._stopAmbient();
+    if (kind === 'none') return;
+    const ctx = this._ensure();
+    if (!ctx || !this.enabled) return;
+
+    const src = ctx.createBufferSource();
+    src.buffer = this._noise(4);          // ၄ စက္ကန့် — loop လုပ်လို့ လုံလောက်
+    src.loop = true;
+    const f = ctx.createBiquadFilter();
+    const g = ctx.createGain();
+
+    if (kind === 'city') {
+      f.type = 'lowpass'; f.frequency.value = 300; f.Q.value = 0.6;
+      g.gain.value = 0.045;
+    } else if (kind === 'sea') {
+      f.type = 'bandpass'; f.frequency.value = 480; f.Q.value = 0.7;
+      g.gain.value = 0.075;
+      // 🌊 လှိုင်း — ၇ စက္ကန့် တစ်ခေါက် တက်/ကျ
+      const lfo = ctx.createOscillator();
+      const lfoGain = ctx.createGain();
+      lfo.frequency.value = 0.14;
+      lfoGain.gain.value = 0.05;
+      lfo.connect(lfoGain).connect(g.gain);
+      lfo.start();
+      this._ambLfo = lfo;
+    } else {   // wind
+      f.type = 'highpass'; f.frequency.value = 620; f.Q.value = 0.4;
+      g.gain.value = 0.035;
+    }
+    src.connect(f).connect(g).connect(this.master);
+    src.start();
+    this._amb = { src, g, ctx };
+  }
+
+  _stopAmbient() {
+    if (this._ambLfo) { try { this._ambLfo.stop(); } catch { /* stopped */ } this._ambLfo = null; }
+    if (!this._amb) return;
+    try { this._amb.src.stop(); } catch { /* already stopped */ }
+    this._amb = null;
   }
 
   /// 🌀 အခန်းကူးသံ — filtered noise sweep

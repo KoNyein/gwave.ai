@@ -47,6 +47,7 @@ export class CityRoom extends Room {
 
     addRoomLighting(this, s.light);
     if (s.background != null) this.background = s.background;
+    this.ambient = s.ambient || 'city';   // 🎧 ပတ်ဝန်းကျင် အသံ
 
     // 🏔️ ပတ်ဝန်းကျင် — မြို့တိုင်းက ပြေပြင်အစစ်ထဲမှာ ရှိရမယ်
     addTerrain(this, {
@@ -76,7 +77,7 @@ export class CityRoom extends Room {
 const CITY_SPECS = [
   // ── 🇲🇲 မြဝတီ — ထိုင်းနယ်စပ် ကုန်သွယ်ရေး မြို့ ─────────────────────
   {
-    id: 'myawaddy', title: 'မြဝတီ (နယ်စပ် ကုန်သွယ်ရေးမြို့)',
+    id: 'myawaddy', ambient: 'city', title: 'မြဝတီ (နယ်စပ် ကုန်သွယ်ရေးမြို့)',
     emoji: '🌉', ground: 150, groundColour: 0x8a8570, light: 'day',
     background: 0x9fc4e0, terrain: 'green', seed: 71, peak: 96, hill: 14,
     blurb: 'ထိုင်း–မြန်မာ ချစ်ကြည်ရေးတံတား, နယ်စပ်ဈေး, ကုန်ကားတန်း',
@@ -98,7 +99,8 @@ const CITY_SPECS = [
                               rotation: rot, paint: { name: 'MAT_Body_Paint', color: col } });
       }
       void addBuilding(r, { kind: 'stilt', position: new THREE.Vector3(-40, 0, -34),
-                            rotation: Math.PI / 2 });
+                            rotation: Math.PI / 2,
+                            hollow: { side: '+x', width: 4, step: 2.2 } });
       smallStupa(r, { x: 42, z: -40, h: 17 });
     },
     npcs: [
@@ -112,7 +114,7 @@ const CITY_SPECS = [
 
   // ── 🛕 ဘုရားသုံးဆူ — နယ်စပ် တောင်ကြား ─────────────────────────────
   {
-    id: 'three-pagodas', title: 'ဘုရားသုံးဆူ (နယ်စပ် တောင်ကြား)',
+    id: 'three-pagodas', ambient: 'wind', title: 'ဘုရားသုံးဆူ (နယ်စပ် တောင်ကြား)',
     emoji: '🛕', ground: 130, groundColour: 0x6f7a52, light: 'day',
     background: 0xa8c8dc, terrain: 'green', seed: 89, peak: 118, hill: 20,
     blurb: 'စေတီ သုံးဆူ ယှဉ်တွဲ, နယ်စပ် မှတ်တိုင်, တောင်ကြားလမ်း',
@@ -130,7 +132,8 @@ const CITY_SPECS = [
       }
       for (const [x, z] of [[-34, -6], [34, -10], [-36, 30]]) {
         void addBuilding(r, { kind: 'stilt', position: new THREE.Vector3(x, 0, z),
-                              rotation: x < 0 ? Math.PI / 2 : -Math.PI / 2 });
+                              rotation: x < 0 ? Math.PI / 2 : -Math.PI / 2,
+                              hollow: { side: x < 0 ? '+x' : '-x', width: 4, step: 2.2 } });
       }
     },
     npcs: [
@@ -142,7 +145,7 @@ const CITY_SPECS = [
 
   // ── 🇹🇭 ချင်းမိုင် — လန်နာ ရှေးဟောင်း မြို့ ──────────────────────
   {
-    id: 'chiangmai', title: 'ချင်းမိုင် (Chiang Mai)',
+    id: 'chiangmai', ambient: 'city', title: 'ချင်းမိုင် (Chiang Mai)',
     emoji: '🏯', ground: 150, groundColour: 0x7d8a5c, light: 'day',
     background: 0x9dc8dd, terrain: 'green', seed: 103, peak: 104, hill: 15,
     blurb: 'မြို့ရိုးဟောင်း, ကျုံး, လန်နာ ဘုန်းကြီးကျောင်း, ညဈေးတန်း',
@@ -182,7 +185,7 @@ const CITY_SPECS = [
 
   // ── 🇹🇭 ဘန်ကောက် — မြို့တော် ─────────────────────────────────────
   {
-    id: 'bangkok', title: 'ဘန်ကောက် (Bangkok)',
+    id: 'bangkok', ambient: 'city', title: 'ဘန်ကောက် (Bangkok)',
     emoji: '🌆', ground: 170, groundColour: 0x5b5f66, light: 'day',
     background: 0x9ec2d8, terrain: 'green', seed: 131, peak: 70, hill: 8,
     blurb: 'အထပ်မြင့်တိုက်များ, ချောပရာယာ မြစ်, BTS လမ်း, ဝပ် ဘုရားကျောင်း',
@@ -225,7 +228,7 @@ const CITY_SPECS = [
 
   // ── 🇹🇭 ဖူးခက် — ကမ်းခြေမြို့ ────────────────────────────────────
   {
-    id: 'phuket', title: 'ဖူးခက် (Phuket)',
+    id: 'phuket', ambient: 'sea', title: 'ဖူးခက် (Phuket)',
     emoji: '🏝️', ground: 150, groundColour: 0xd9cba0, light: 'day',
     background: 0x8fd0e8, terrain: 'green', seed: 149, peak: 78, hill: 12,
     blurb: 'ကမ်းခြေ, ပင်လယ်ပြာ, ထန်းပင်, resort, longtail လှေများ',

@@ -77,6 +77,9 @@ export async function addBuilding(room, {
   /// 🎨 material တစ်ခုကို အရောင် ပြောင်း — { name, color }。
   ///    ကားတွေကို အရောင်စုံ ထားဖို့ (တစ်လုံးတည်း ဖိုင်ကနေ)。
   paint = null,
+  /// 🚪 အထဲ ဝင်လို့ရအောင် — { side, width, step }。 မပေးရင် အခိုင်အမာ
+  ///    ဘောက်စ် တစ်ခုတည်း (ကား, အလှဆင် ပစ္စည်း အတွက် အဲဒါ မှန်တယ်)。
+  hollow = null,
 } = {}) {
   const url = BUILDINGS[kind];
   if (!url) return null;
@@ -114,15 +117,95 @@ export async function addBuilding(room, {
   trackQuality(obj, tier);
 
   if (collide) {
-    // ★ Collider က **အပြင်ခွံ တစ်ခုတည်း** — အထဲက mesh ၉ ခုစီ box
-    //   လုပ်ရင် ကစားသမား ဝရံတာပေါ် တက်လို့ ရသွားပြီး ထူးဆန်းမယ်၊
-    //   physics loop ကလည်း box ပိုစစ်ရမယ်။
     const box = new THREE.Box3().setFromObject(obj);
-    // မြေခုံ အောက် အနည်းငယ် ချ — ခြေထောက် ငုတ်မသွားအောင်
     box.min.y = 0;
-    room.colliders.push(box);
+    if (hollow) hollowShell(room, box, hollow);
+    else room.colliders.push(box);
+    // 🛻 ကားဆိုရင် **စီးလို့ရတဲ့ ယာဉ်** အဖြစ် စာရင်းသွင်း — VehicleSystem က
+    //    အခန်းကူးတိုင်း `room.cars` ကို ဖတ်တယ် (async ရောက်လာလည်း မှီတယ်)。
+    if (kind === 'pickup') {
+      (room.cars ||= []).push({ mesh: obj, box, label: '🛻 ပစ်ကပ်ကား' });
+    }
   }
   return obj;
+}
+
+/**
+ * 🚪 **အထဲ ဟာပြီး တံခါးပါတဲ့** collider အခွံ
+ *
+ * user: "တိုက်တွေ အိမ်တွေ ဝင်မရဘူး" / "အိမ်တံခါးတွေ လှပ်မရဘူး"
+ *
+ * ★ ဒါက ကျွန်တော့် အမှားကို ပြင်တာ။ အရင်က အိမ်တစ်လုံးလုံးကို AABB
+ *   **တစ်ခုတည်း**နဲ့ ဖုံးထားတယ် — အဲဒါက "အထဲ ဟာတယ်၊ တံခါး ရှိတယ်"
+ *   ဆိုတာကို ဖော်ပြလို့ မရဘူး၊ ဘောက်စ်ကြီး တစ်ခုပဲ ဖြစ်နေတယ်။
+ *   တိုင်းတာချက်: အိမ်အလယ်မှာ ထားရင် **၉.၅–၁၁.၉ m တွန်းထုတ်**ခဲ့တယ်။
+ *
+ * ★ အခု နံရံ ၄ ချပ်ကို သီးသန့် box လုပ်ပြီး ရှေ့နံရံကို တံခါးဝနဲ့
+ *   နှစ်ပိုင်း ခွဲတယ် — CityKit ရဲ့ shophouse နဲ့ တူညီတဲ့ နည်း
+ *   (အဲဒီမှာ ဇယားကွက် တိုင်းပြီး သက်သေပြထားပြီး)。
+ *
+ * @param o.side  — တံခါး ဘယ်ဘက်မှာလဲ: '+x' | '-x' | '+z' | '-z'
+ * @param o.width — တံခါးဝ အကျယ် (m)
+ * @param o.step  — အထဲက ကြမ်းပြင် အမြင့် (ခြေတံရှည်အိမ်အတွက်)。 ၀ ဆိုရင်
+ *                  လှေကား မလို။ ၀ ထက် ကြီးရင် တံခါးရှေ့မှာ လှေကားထစ်
+ *                  ထုတ်ပေးတယ် — physics က ၀.၅၅ m အထိ တက်နိုင်လို့
+ *                  အဲဒီအောက် ထစ်တွေ ခွဲထားတယ်။
+ */
+export function hollowShell(room, box, { side = '+z', width = 3, step = 0, wall = 0.5 } = {}) {
+  const { min, max } = box;
+  const top = max.y;
+  const push = (x0, z0, x1, z1, y0 = 0, y1 = top) => room.colliders.push(
+    new THREE.Box3(new THREE.Vector3(x0, y0, z0), new THREE.Vector3(x1, y1, z1)));
+
+  const axisZ = side === '+z' || side === '-z';
+  const cx = (min.x + max.x) / 2, cz = (min.z + max.z) / 2;
+
+  // ခြေတံရှည်အိမ် — နံရံတွေက **ကြမ်းပြင် အထက်မှာမှ** စတယ်၊ အောက်က
+  // အခန်းလွတ်က ဖြတ်လျှောက်လို့ ရရမယ် (တိုင်တွေပဲ ရှိတာ)。
+  const wallBase = step > 0.05 ? step : 0;
+  for (const face of ['+x', '-x', '+z', '-z']) {
+    const isDoor = face === side;
+    if (face === '+z' || face === '-z') {
+      const z0 = face === '+z' ? max.z - wall : min.z;
+      const z1 = face === '+z' ? max.z : min.z + wall;
+      if (!isDoor) { push(min.x, z0, max.x, z1, wallBase); continue; }
+      push(min.x, z0, cx - width / 2, z1, wallBase);
+      push(cx + width / 2, z0, max.x, z1, wallBase);
+    } else {
+      const x0 = face === '+x' ? max.x - wall : min.x;
+      const x1 = face === '+x' ? max.x : min.x + wall;
+      if (!isDoor) { push(x0, min.z, x1, max.z, wallBase); continue; }
+      push(x0, min.z, x1, cz - width / 2, wallBase);
+      push(x0, cz + width / 2, x1, max.z, wallBase);
+    }
+  }
+
+  // 🪜 ခြေတံရှည်အိမ် — အထဲက ကြမ်းပြင်က မြင့်နေလို့ လှေကား လိုတယ်
+  if (step > 0.05) {
+    // အထဲ ကြမ်းပြင် — **ပါးလွှာတဲ့ ခုံ** (၀ ကနေ မဟုတ်)。
+    //
+    // ★ ၀ → step အထိ တစ်တုံးလုံး ထားရင် physics က အဲဒါကို **နံရံ** လို့
+    //   မှတ်တယ် (`b.max.y <= pos.y + 0.55` မဟုတ်လို့)。 ဒါဆို ခြေတံရှည်
+    //   အိမ်ရဲ့ **အောက်က လျှောက်လို့ မရတော့ဘူး** — အဲဒါ ခြေတံရှည်အိမ်ရဲ့
+    //   အဓိက သဘောကို ဖျက်တာ။ တိုင်းတာချက်: အလယ်မှာ ၉.၈၅ m တွန်းထုတ်။
+    // ★ ပါးလွှာတဲ့ ခုံ ဆိုရင် အောက်မှာ ရပ်ချိန် `b.min.y >= pos.y + height`
+    //   ဖြစ်လို့ **ခေါင်းပေါ်** အဖြစ် ကျော်သွားတယ် — အောက် လျှောက်လို့ရ၊
+    //   လှေကားတက်ရင် အပေါ် ရပ်လို့ရ။
+    push(min.x + wall, min.z + wall, max.x - wall, max.z - wall, step - 0.2, step);
+    // လှေကားထစ် — တစ်ထစ် ၀.၄ m (physics က ၀.၅၅ အထိ တက်နိုင်တယ်)
+    const n = Math.ceil(step / 0.4);
+    for (let i = 1; i <= n; i++) {
+      const y = (step * i) / n;
+      const off = (n - i + 1) * 1.1;      // အောက်ထစ်လေ ရှေ့ထွက်လေ
+      if (axisZ) {
+        const z = side === '+z' ? max.z + off : min.z - off;
+        push(cx - width / 2, z - 0.6, cx + width / 2, z + 0.6, 0, y);
+      } else {
+        const x = side === '+x' ? max.x + off : min.x - off;
+        push(x - 0.6, cz - width / 2, x + 0.6, cz + width / 2, 0, y);
+      }
+    }
+  }
 }
 
 /**
@@ -197,4 +280,44 @@ export function buildPagoda({ position = new THREE.Vector3(), scale = 1 } = {}) 
   g.scale.setScalar(scale);
   g.updateMatrixWorld(true);
   return g;
+}
+
+/**
+ * 🛕 စေတီ ရင်ပြင် — **ပေါ်တက်လို့ရအောင်** collider
+ *
+ * user: "စေတီပေါ် တက်မရဘူး"
+ *
+ * အရင်က စေတီတစ်ခုလုံးကို ၂၃×၂၃×၂၆ ဘောက်စ် တစ်ခုနဲ့ ဖုံးထားတယ် —
+ * တိုင်းတာချက်: အလယ်မှာ ထားရင် **၁၁.၈၅ m တွန်းထုတ်**။ ပေါ်တက်လို့
+ * မရတာ ထားဦး၊ အနားတောင် မကပ်နိုင်ဘူး။
+ *
+ * အခု:
+ *   · ရင်ပြင် (၁.၂ m မြင့်) = **နင်းလို့ရတဲ့ ကြမ်းပြင်**
+ *   · ရင်ပြင် ပေါ်တက်ဖို့ လှေကားထစ် ၃ ထစ် (physics က ၀.၅၅ m အထိ တက်နိုင်)
+ *   · ထစ်ခွင်နဲ့ ခေါင်းလောင်း = အခိုင်အမာ (တကယ့် စေတီမှာလည်း မတက်ရဘူး)
+ */
+export function pagodaColliders(room, position = new THREE.Vector3(), scale = 1) {
+  const { x, z } = position;
+  const S = scale;
+  const push = (r, y0, y1) => room.colliders.push(new THREE.Box3(
+    new THREE.Vector3(x - r * S, y0 * S, z - r * S),
+    new THREE.Vector3(x + r * S, y1 * S, z + r * S)));
+
+  // ရင်ပြင် — **ပါးလွှာတဲ့ ခုံ**。 ၀ ကနေ ထားရင် နံရံဖြစ်ပြီး ခြေလှမ်း
+  // မတက်နိုင်တော့ဘူး (ခြေတံရှည်အိမ် ကြမ်းပြင်နဲ့ တူညီတဲ့ အကြောင်းရင်း)。
+  push(13.6, 1.0, 1.2);
+  // 🪜 လှေကား ၃ ထစ် — တောင်ဘက်က တက်တယ် (spawn ဘက်)
+  for (let i = 1; i <= 3; i++) {
+    const y = (1.2 * i) / 3;
+    const off = 13.6 + (4 - i) * 1.2;
+    room.colliders.push(new THREE.Box3(
+      new THREE.Vector3(x - 3 * S, 0, z + (off - 1.2) * S),
+      new THREE.Vector3(x + 3 * S, y * S, z + off * S)));
+  }
+  // ထစ်ခွင် ၄ ဆင့် + ခေါင်းလောင်း — အခိုင်အမာ
+  let y = 1.2;
+  for (const [r, h] of [[11.0, 1.9], [9.4, 1.7], [7.8, 1.5], [6.2, 1.3]]) {
+    push(r, y, y + h); y += h;
+  }
+  push(5.0, y, y + 7.0);   // ခေါင်းလောင်း
 }

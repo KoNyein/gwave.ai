@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
 import { addTerrain } from '../Terrain.js';
-import { addBuilding, buildPagoda } from '../Buildings.js';
+import { addBuilding, buildPagoda, pagodaColliders } from '../Buildings.js';
 import { NPC } from '../../entities/NPC.js';
 
 export class YangonRoom extends Room {
@@ -72,6 +72,7 @@ export class YangonRoom extends Room {
     //   ကောင်းကင်/မြေ နှစ်ဘက်ကနေ အလင်းပြန်ပေးလို့ ညအလင်းကို မဖျက်ဘဲ
     //   ပုံသဏ္ဌာန်တွေ မြင်ရစေတယ် — flat ambient ကို တင်လိုက်တာထက် ပိုကောင်း။
     addRoomLighting(this, 'night');
+    this.ambient = 'city';   // 🎧 မြို့ ဟိန်းသံ
 
     // 🏔️ ပတ်ဝန်းကျင် — ညမြို့တော်ကို ဝိုင်းထားတဲ့ တောင်တန်း
     //    (user: "environment ကို ပြေပြင်အစစ် တောင်ကုန်း တောင်တန်း ထည့်ပါ")
@@ -93,10 +94,8 @@ export class YangonRoom extends Room {
     //     ငှက်မြတ်နာ, ထီးတော်, ထိပ်ဖျား စိန်။ ဖိုင် တစ်ခုမှ မဆွဲဘူး။)
     const pagoda = buildPagoda({ position: new THREE.Vector3(0, 0, -45) });
     this.group.add(pagoda);
-    // စေတီ ရင်ပြင် — ဖြတ်မထွက်နိုင် (အောက်ခြေ အကျယ် ၁၄m)
-    this.colliders.push(new THREE.Box3(
-      new THREE.Vector3(-11.5, 0, -56.5), new THREE.Vector3(11.5, 26, -33.5),
-    ));
+    // 🛕 စေတီ ရင်ပြင် — **ပေါ်တက်လို့ရတယ်** (လှေကား ၃ ထစ် + ကြမ်းပြင်)
+    pagodaColliders(this, new THREE.Vector3(0, 0, -45));
 
     // 🛕 ရွှေတိဂုံ စေတီတော် — မြို့ရဲ့ မြောက်ဘက် တောင်ကုန်းပေါ်
     //
@@ -117,6 +116,7 @@ export class YangonRoom extends Room {
     void addBuilding(this, {                    // ကိုလိုနီ သုံးထပ်တိုက်
       kind: 'colonial', position: new THREE.Vector3(-42, 0, -18),
       rotation: Math.PI / 2, tier: 'heavy',
+      hollow: { side: '+x', width: 4 },   // ရှေ့မျက်နှာက အရှေ့ဘက် လှည့်နေတယ်
     });
     // ★ x ≥ ၄၈ — neon တိုက်တွေက |x| ၃၄ အထိ ရောက်တယ် (ဗဟို ၃၁ + အကျယ်
     //   တစ်ဝက်)。 ၄၂ မှာ ထားတော့ တိုက်တစ်လုံးနဲ့ ၂.၃×၁.၄ ထပ်နေတယ်
@@ -124,6 +124,7 @@ export class YangonRoom extends Room {
     void addBuilding(this, {                    // 🏠 ကိုယ့်အိမ် — ထင်းအိမ်
       kind: 'stilt', position: new THREE.Vector3(48, 0, -16),
       rotation: -Math.PI / 2,
+      hollow: { side: '-x', width: 4, step: 2.2 },   // ခြေတံရှည် — လှေကား ပါ
     });
     void addBuilding(this, {                    // ရပ်ကွက်ထဲက နောက်တစ်လုံး
       kind: 'stilt', position: new THREE.Vector3(50, 0, 18),
@@ -203,6 +204,8 @@ export class YangonRoom extends Room {
     ]) {
       void addBuilding(this, {
         kind, position: new THREE.Vector3(x, 0, z), rotation: rot, tier,
+        // 🚪 အားလုံး ဝင်လို့ရရမယ် — ရှေ့မျက်နှာက ဘယ်ဘက်လှည့်နေလဲ အလိုက်
+        hollow: { side: x < 0 ? '+x' : '-x', width: 4, step: kind === 'stilt' ? 2.2 : 0 },
       });
     }
 

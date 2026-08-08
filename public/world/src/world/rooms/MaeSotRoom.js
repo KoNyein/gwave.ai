@@ -28,6 +28,7 @@ export class MaeSotRoom extends Room {
 
     // နေ့ခင်း အလင်း
     addRoomLighting(this, 'day');
+    this.ambient = 'city';
 
     // 🏔️ နယ်စပ် တောင်တန်း — မဲဆောက်က တောင်ကြားထဲက မြို့
     addTerrain(this, { ground: 120, palette: 'green', seed: 37, peak: 110, hill: 16 });
@@ -37,7 +38,8 @@ export class MaeSotRoom extends Room {
     //    ဘေးနှစ်ဖက် လမ်းတစ်လျှောက် ချထားတယ်။
     for (const [x, z, rot] of [[-34, -22, Math.PI / 2], [-34, 8, Math.PI / 2],
                                [34, -10, -Math.PI / 2], [34, 20, -Math.PI / 2]]) {
-      void addBuilding(this, { kind: 'stilt', position: new THREE.Vector3(x, 0, z), rotation: rot });
+      void addBuilding(this, { kind: 'stilt', position: new THREE.Vector3(x, 0, z), rotation: rot,
+        hollow: { side: x < 0 ? '+x' : '-x', width: 4, step: 2.2 } });
     }
 
     // 🛻 နယ်စပ် ကုန်တင် ပစ်ကပ်များ — လမ်းဘေးမှာ
