@@ -340,6 +340,16 @@ export class YangonRoom extends Room {
       arrive: new THREE.Vector3(0, 0, 68),
     });
 
+    // 🏯 ဂိတ် → မန္တလေး — အထက်မြန်မာဆီ
+    this.addPortal({
+      position: new THREE.Vector3(20, 0, -6),
+      targetRoomId: 'mandalay',
+      label: '🏯 မန္တလေး သို့ — အထက်မြန်မာ လမ်း',
+      color: 0xffd479,
+      gate: 'z',
+      arrive: new THREE.Vector3(524, 0, -540),
+    });
+
     // ============ 🏙️ City Districts — Function Stations ============
     // Creator District (အနောက်ဘက်) — 🧬 Avatar Studio (3D scanner + presets)
     this.addStation({

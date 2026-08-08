@@ -208,6 +208,26 @@
 
 ## Changelog
 
+- 2026-08-08 (web, PR pending): **Mandalay — a 2.4 km city, connected to
+  everything.** The upload was 21 MB / 6,817 meshes / 274,862 tris. Through
+  gltf-transform: `join` (material merge) 6,817 → **104 meshes**,
+  `simplify` 0.55 → **183,572 tris**, `quantize` → **5.94 MB**.
+  ★ **Merging by material destroys collision** — one mesh becomes the whole
+  city and its AABB is a 2.4 km box that seals the map. The per-building
+  AABBs (347 of them) are therefore computed **before** the merge and stored
+  in extras for the room to read.
+  ★ They must be written **after** the transforms, on the **scene**:
+  `flatten()` deletes the model's root node, taking node extras with it —
+  the first run silently produced 0 colliders and 0 portals.
+  ★ `import { loadGLB } from '../core/Assets.js'` inside `world/rooms/` is
+  one `../` short and takes down all of main.js — `window.__gwave`
+  undefined, no world at all.
+  Six gates: Yangon, Naypyidaw, Taunggyi, Mae Sot, Myawaddy, Taxi District,
+  each with a return gate on the other side. Verified: 352 colliders,
+  6 portals, 128 draw calls, 187k rendered triangles, no page errors.
+  ⚠️ Mandalay Hill and the Pyin Oo Lwin hill are **scenery** — their AABBs
+  are too large to use as colliders, so the floor stays flat at y 0.
+
 - 2026-08-08 (web, PR pending): **A sky in every room, plus Naypyidaw and
   Taunggyi.** `world/Sky.js` adds a gradient dome, sun or moon with a soft
   halo, a starfield and drifting clouds, hooked into `addRoomLighting` so
