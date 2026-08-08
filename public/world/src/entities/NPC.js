@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { loadGLB } from '../core/Assets.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Locomotion } from './Locomotion.js';
+import { trackQuality } from '../core/Quality.js';
 
 /// NPC တွေ ဝတ်မယ့် ရုပ်များ — အမျိုးအစား ကွဲပြားအောင်
 const NPC_BODIES = [
@@ -79,6 +80,8 @@ export class NPC {
         this.group.add(model);
         this.model = model;
         this.placeholder.visible = false;
+        // 🎚️ ဂရပ်ဖစ် အနိမ့်မှာ ဖျောက်တယ် — ရုပ်တစ်ခုက တြိဂံ ၅၆k ရှိတယ်
+        trackQuality(model, 'detail');
       }).catch(() => { /* GLB မရရင် capsule နဲ့ ဆက် */ });
       return;
     }

@@ -106,7 +106,7 @@ export class YangonRoom extends Room {
     //   ဖြစ်လို့ ဘယ်တော့မှ မရောက်နိုင်ဘူး၊ box ပိုစစ်စရာ မလိုဘူး။
     void addBuilding(this, {
       kind: 'stupa', position: new THREE.Vector3(0, 0, -250),
-      rotation: Math.PI * 0.12, collide: false,
+      rotation: Math.PI * 0.12, collide: false, tier: 'heavy',
     });
 
     // 🏛️🛖 အဆောက်အအုံ အစစ် — မြို့လယ်ရဲ့ နှစ်ဖက်စွန်း
@@ -116,7 +116,7 @@ export class YangonRoom extends Room {
     //   မဟုတ်ဘဲ လမ်းအစွန်းမှာ — ဝင်ဝင်ချင်း တိုးမိမှာ မဟုတ်ဘူး။
     void addBuilding(this, {                    // ကိုလိုနီ သုံးထပ်တိုက်
       kind: 'colonial', position: new THREE.Vector3(-42, 0, -18),
-      rotation: Math.PI / 2,
+      rotation: Math.PI / 2, tier: 'heavy',
     });
     void addBuilding(this, {                    // 🏠 ကိုယ့်အိမ် — ထင်းအိမ်
       kind: 'stilt', position: new THREE.Vector3(42, 0, -16),

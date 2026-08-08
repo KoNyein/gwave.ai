@@ -30,6 +30,7 @@
 
 import * as THREE from 'three';
 import { loadGLB } from '../core/Assets.js';
+import { trackQuality } from '../core/Quality.js';
 
 export const BUILDINGS = {
   /// 🛕 ရွှေတိဂုံပုံစံ စေတီတော် အစုအဝေး — ၂၆၄ × ၁၂၆ × ၂၆၄ m
@@ -68,6 +69,9 @@ export async function addBuilding(room, {
   rotation = 0,
   scale = 1,
   collide = true,
+  /// 🎚️ ဂရပ်ဖစ် အဆင့် — 'heavy' က အလယ်ကတည်းက ဖျောက်တယ်၊
+  ///    'detail' က အနိမ့်မှ ဖျောက်တယ်။
+  tier = 'detail',
 } = {}) {
   const url = BUILDINGS[kind];
   if (!url) return null;
@@ -95,6 +99,7 @@ export async function addBuilding(room, {
   });
   room.group.add(obj);
   obj.updateMatrixWorld(true);
+  trackQuality(obj, tier);
 
   if (collide) {
     // ★ Collider က **အပြင်ခွံ တစ်ခုတည်း** — အထဲက mesh ၉ ခုစီ box
