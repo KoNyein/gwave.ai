@@ -61,7 +61,7 @@
   pointer lock. The left HUD is a flow-layout accordion — one panel open at a
   time — so nothing overlaps on short landscape viewports.
 - **Open World rooms (`public/world/`)**: Cyber-Yangon, the farm, Mae Sot,
-  the Strike arena and five new city rooms — Myawaddy, Three Pagodas Pass,
+  the Taxi District, the Strike arena and five new city rooms — Myawaddy, Three Pagodas Pass,
   Chiang Mai, Bangkok, Phuket (`world/rooms/CityRooms.js`, driven by a
   `CITY_SPECS` table). Every building is **hollow with a real doorway** and
   every gate is a working border crossing (Myawaddy ↔ Mae Sot, chaining on
@@ -189,6 +189,37 @@
   account owner can remove the old one.
 
 ## Changelog
+
+- 2026-08-08 (web, PR #581): **Taxi District — a ring-road city with three
+  taxis you can drive.** The uploaded `npc-taxi.glb` packed the city block,
+  three taxis and four portal pads into one ~400-mesh scene. A car buried
+  inside a map never reaches `room.cars`, so `E` does nothing on it — the
+  file is split into `taxi.glb` (60 → 21 meshes, 64 KB; `WHEEL_*`/`DOOR_*`
+  keep their pivots) and `taxi_district.glb` (177 → 31 meshes, 137 KB; each
+  `BLD_n` stays its own group so MapLoader derives one collider per
+  building, roads/kerbs/markings carry `NOCOL_`). `addBuilding({ kind:
+  'taxi' })` now drops a drivable taxi in any room — `Buildings.js` keys the
+  vehicle path off a `VEHICLE_LABELS` table instead of a literal `'pickup'`
+  check. Measured: 33 colliders, 3 rigged cars, drove 45.3 m with the wheels
+  turning, all five gate crossings land with 0 collider overlaps.
+  The Myanmar man figure (127 → 14 meshes, 0.78 MB) stands in Cyber-Yangon,
+  Mae Sot and the Taxi District. ★ The registry claims `"rigged": true` with
+  seven motions, but **both** figure exports contain 0 skins and 0
+  animations — they can only be `staticBody` NPCs, never walking avatars.
+
+- 2026-08-08 (web, PR #580): **Yangon ↔ Mae Sot joined by a real border
+  gate.** The portal pair already worked (headless run: `E` on the Mae Sot
+  pad lands you in Yangon) — what was missing was everything that makes two
+  places feel joined. Portals now carry an `arrive` point threaded through
+  `WorldManager.switchTo(roomId, arriveAt)`, so crossing puts you in front
+  of the matching gate instead of at the room spawn, and `gate: 'x' | 'z'`
+  draws posts, a lintel and a name board. ★ The arch has **no collider** on
+  purpose — posts sit 2.4 m either side of the pad and colliding them would
+  narrow the crossing back into the "can't get in" bug class. ★ The first
+  Yangon arrival tried (`z −15`) sat inside the block spanning
+  `x −23.3…−8.7, z −18.5…−9.9` and physics shoved the avatar 3.7 m on
+  landing; it moved to `z −23`. Name labels now shrink to fit their canvas —
+  at a fixed 52 px the gate board read `…yber-Yangon`.
 
 - 2026-08-08 (web, PR #576): **Solid buildings, climbable hills, a car that
   drives the right way.** Five reported problems; three turned out to be

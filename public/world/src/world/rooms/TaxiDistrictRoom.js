@@ -92,8 +92,11 @@ export class TaxiDistrictRoom extends Room {
 
     // 🧍 NPC — တက္ကစီ ဂိတ်မှူး နဲ့ ခရီးသည်
     this.addNPC(new NPC({
-      name: 'ဦးအောင်ကြီး', color: 0xf5c542,
-      home: new THREE.Vector3(28, 0, 22), range: 5,
+      name: 'ဦးအောင်ကြီး',
+      // ★ အရိုး မပါတဲ့ ရုပ် — `staticBody` မို့ ရပ်နေတယ် (လျှောက်ခိုင်းရင်
+      //   မြေပြင်ပေါ် လျှောသွားမယ်)。
+      staticBody: '/world/assets/myanmar_man.glb',
+      home: new THREE.Vector3(28, 0, 22), faceYaw: Math.PI,
       dialogue: [
         'တက္ကစီမြို့ကို ကြိုဆိုပါတယ်!',
         'ကွင်းပတ်လမ်းပေါ်မှာ ကား ၃ စီး ရပ်ထားတယ် — E နှိပ်ပြီး ကိုယ်တိုင် မောင်းလို့ရတယ်။',
