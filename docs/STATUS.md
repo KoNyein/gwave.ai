@@ -60,13 +60,31 @@
   V (or the 👁 button) toggles first-person, and clicking in first person takes
   pointer lock. The left HUD is a flow-layout accordion — one panel open at a
   time — so nothing overlaps on short landscape viewports.
-- **Open World rooms (`public/world/`)**: Cyber-Yangon, the farm, Mae Sot,
+- **Open World rooms (`public/world/`)**: Cyber-Yangon — now a 620 m city
+  with an 8×8 road grid, 16 signalled junctions, Inya Lake, the river with
+  Strand Road and a walkable cable bridge, Dala and Thanlyin across the
+  water, Sule / Botataung / Shwedagon linked by road, three YBS bus lines
+  and three boat routes (`world/Traffic.js`) — plus the farm, Mae Sot,
   the Taxi District, the Strike arena and five new city rooms — Myawaddy, Three Pagodas Pass,
   Chiang Mai, Bangkok, Phuket (`world/rooms/CityRooms.js`, driven by a
   `CITY_SPECS` table). Every building is **hollow with a real doorway** and
   every gate is a working border crossing (Myawaddy ↔ Mae Sot, chaining on
   through Three Pagodas, Chiang Mai, Bangkok, Phuket); markets, trade boards,
   POS counters and temples are stations.
+
+  **★ Terrain orientation.** `Terrain.js` builds the mesh from a
+  `PlaneGeometry` in XY and then `rotateX(-90°)`, which maps geometry **+Y
+  to world −Z**. Sample the height field at `-pos.getY(i)`, never
+  `+pos.getY(i)` — getting this wrong mirrors every hill onto the opposite
+  side of the map from the one physics uses, and nothing complains. It sat
+  unnoticed in every terrain room until a river needed a large flat area
+  off-centre. Diagnose it by raycasting down and comparing the hit with
+  `room.terrainHeight`; screenshots only tell you something is missing.
+
+  **★ Repeated scenery must be instanced.** A 620 m city needs ~500 lamp
+  posts and 1,000+ lane markings. As separate meshes that is 1,500 draw
+  calls; as `InstancedMesh` it is two. `world/Traffic.js` does this for
+  markings, kerbs, lamps, trees, filler blocks and bridge cables.
 
   **Collider rules — the expensive lessons, in order:**
   1. One AABB per wall, never one box around a model. A single AABB cannot
@@ -189,6 +207,14 @@
   account owner can remove the old one.
 
 ## Changelog
+
+- 2026-08-08 (web, PR pending): **Regression sweep after the engine and
+  terrain changes.** Camera near/far went 0.1/600 → 0.25/1250 and the
+  terrain height field stopped being mirrored, both of which touch every
+  room, so all ten were rebuilt and measured: **no page errors**, every
+  spawn at y 0, and the terrain mesh now agrees with `room.terrainHeight`
+  to within 0.02–0.5 m (that residual is the 10.7 m mesh quantisation —
+  before the fix the same points were out by 18–46 m).
 
 - 2026-08-08 (web, PR #585): **The terrain mesh was mirrored in z against its
   own height field — fixed.** `Terrain.js` sampled `heightAt(x, pos.getY(i))`
