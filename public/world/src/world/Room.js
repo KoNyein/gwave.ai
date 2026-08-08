@@ -5,7 +5,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { updateDoors } from './Door.js';
-import { updateManors } from './Manor.js';
+import { updateManors } from './Kit.js';
 
 export class Room {
   constructor(id, title) {

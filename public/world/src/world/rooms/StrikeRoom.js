@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import {Room, addRoomLighting } from '../Room.js';
 import { addTerrain } from '../Terrain.js';
-import { addManor, manorSpot } from '../Manor.js';
+import { addManor, manorSpot } from '../Kit.js';
 import { Weapon } from '../../game/Weapon.js';
 import { EnemyBot } from '../../game/EnemyBot.js';
 import { sfx } from '../../core/Sfx.js';
