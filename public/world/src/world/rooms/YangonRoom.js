@@ -278,6 +278,19 @@ export class YangonRoom extends Room {
       arrive: new THREE.Vector3(0, 0, 12),   // မဲဆောက် ဂိတ်ရှေ့
     });
 
+    // 🚕 ဂိတ် → တက္ကစီမြို့ — မြို့အသစ်က menu ကနေပဲ ရောက်လို့ရရင်
+    //    လောကထဲမှာ **တံခါး မရှိသလိုပဲ**။ (၂၂, ၀) က ဘယ် collider နဲ့မှ
+    //    မထိဘူး၊ တခြား portal နဲ့လည်း ၁၀ m ကျော် ဝေးတယ် (grid scan နဲ့
+    //    ရွေးထားတယ်)。
+    this.addPortal({
+      position: new THREE.Vector3(22, 0, 0),
+      targetRoomId: 'taxi-district',
+      label: '🚕 တက္ကစီမြို့သို့',
+      color: 0xffd479,
+      gate: 'z',
+      arrive: new THREE.Vector3(-40, 0, -21),  // ရန်ကုန် ဂိတ်ရှေ့
+    });
+
     // ============ 🏙️ City Districts — Function Stations ============
     // Creator District (အနောက်ဘက်) — 🧬 Avatar Studio (3D scanner + presets)
     this.addStation({

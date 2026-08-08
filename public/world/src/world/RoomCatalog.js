@@ -34,6 +34,8 @@ export const ROOM_GROUPS = [
         blurb: 'ရေမြေဆီ စိုက်ခင်း lab — စိမ်းလန်းပြီး ငြိမ်သက်တဲ့ အခန်း' },
       { kind: 'world', id: 'maesot', emoji: '🏘️', name: 'မဲဆောက် နယ်စပ်လမ်း',
         blurb: 'GLB မြို့ပြ မြေပုံ — အဆောက်အဦ အစစ်အမှန် အချိုးအစားနဲ့' },
+      { kind: 'world', id: 'taxi-district', emoji: '🚕', name: 'တက္ကစီမြို့ (Taxi District)',
+        blurb: 'ကွင်းပတ်လမ်း, ၉ ထပ်တိုက် ၁၂ လုံး — ကား ၃ စီး ကိုယ်တိုင် မောင်းလို့ရ' },
       { kind: 'world', id: 'strike', emoji: '⚔️', name: 'GWAVE STRIKE Arena',
         blurb: 'PvP ပစ်ခတ် ပွဲကွင်း — kill/XP က leaderboard ကို တက်တယ်' },
       { kind: 'own', id: 'me', emoji: '🏠', name: 'ကိုယ်ပိုင် Virtual Room',
