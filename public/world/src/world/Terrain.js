@@ -151,13 +151,18 @@ export function addTerrain(room, {
   peak = 95,
   hill = 14,
   wall = true,
+  /// 🗺️ terrain mesh ရဲ့ အနံ — မြို့ ကြီးလာရင် တောင်တန်းကို ပြင်ပ ဆီ
+  /// တွန်းထုတ်ရမယ်၊ မဟုတ်ရင် မြို့က တောင်ကို ကျော်ထွက်သွားမယ်။
+  /// ★ camera far နဲ့ တွဲတယ် — Engine က ၁၂၅၀ ထားတယ်၊ ဒါထက် ကြီးရင်
+  ///   ဖြတ်တောက်ခံရမယ်။
+  extent = 760,
   /// 🛕 ပြားနေရမယ့် နေရာ ထပ်ဆောင်း — [{x, z, r}]。 တောင်တန်း အလယ်မှာ
   /// အဆောက်အအုံကြီး ချထားရင် တောင်က အထဲကနေ ထိုးထွက်လာမယ်၊ ဒါကို
   /// ဖြေရှင်းဖို့ အဲဒီနေရာကို ပြားအောင် လုပ်ပေးတယ်။
   flatSpots = [],
 } = {}) {
   const mobile = matchMedia('(hover: none), (max-width: 820px)').matches;
-  const SIZE = 760;                 // camera far ၆၀၀ အတွင်း ဝင်အောင်
+  const SIZE = extent;              // camera far အတွင်း ဝင်ရမယ် (Engine: ၁၂၅၀)
   const SEG = mobile ? 64 : 112;
   const P = PALETTES[palette] || PALETTES.green;
 
@@ -195,9 +200,19 @@ export function addTerrain(room, {
   const rgb = [0, 0, 0];
 
   for (let i = 0; i < pos.count; i++) {
-    // PlaneGeometry က XY ပေါ်မှာ — rotateX(-90°) လုပ်တော့ y → z ဖြစ်တယ်
+    // ★ **PlaneGeometry က XY ပေါ်မှာ — `rotateX(-90°)` က +Y ကို world
+    //   −Z ဆီ ပို့တယ်**。 ဒါကြောင့် vertex ရဲ့ geometry y က world z ရဲ့
+    //   **ဆန့်ကျင်ဘက်**။ အရင်က `heightAt(x, pos.getY(i))` လို့ ခေါ်ထားလို့
+    //   မြင်ရတဲ့ တောင်တန်းတစ်ခုလုံး **z ဘက် ပြောင်းပြန်** ဖြစ်နေတယ် —
+    //   `room.terrainHeight` (physics သုံးတဲ့ဟာ) နဲ့ မကိုက်ဘူး。
+    //
+    //   တိုင်းစစ်ချက် (ရန်ကုန်, ပြင်မီ): (၀, ၃၈၅) မှာ sampler က ၀ ပြောပေမယ့်
+    //   mesh က −၀.၀၂၊ (၃၀၀, ၃၈၅) မှာ sampler ၀ / mesh ၄၆.၂၂၊
+    //   (−၂၀၀, ၃၈၅) မှာ sampler ၀ / mesh ၁၈.၄၉ — ရေကန်/မြစ်လို ပြားရမယ့်
+    //   နေရာတွေကို တောင်က ဖုံးပစ်တယ်။ ဒါက အခန်းတိုင်းကို သက်ရောက်တဲ့
+    //   ရှေးဟောင်း အမှား — z ညီညာမတဲ့ မြေပုံမှသာ ပေါ်လွင်တယ်။
     const x = pos.getX(i);
-    const z = pos.getY(i);
+    const z = -pos.getY(i);
     const h = heightAt(x, z);
 
     pos.setZ(i, h);   // rotateX မလုပ်ခင် — Z က အမြင့်

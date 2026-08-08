@@ -242,14 +242,19 @@
        · grid sheet — အောက်ပိုင်း တစ်ဝက် ပိတ်ပြီး scrim နဲ့ မှောင်သွားတယ်
      အခု **ဘယ်ဘက် အနားကပ် dock** — ခလုတ်တွေချည်းပဲ မြင်ရတယ်၊ ကြားထဲက
      နောက်ခံက ဖောက်ထွင်း မြင်ရတယ်၊ scrim မရှိဘူး၊ အလယ်က လုံးဝ ရှင်းတယ်။ */
-  #radialFab{ position:fixed; left:50%; bottom:calc(var(--safeB) + 16px);
-    transform:translateX(-50%);
+  /* ★ **အလယ်ကနေ ဘယ်ဘက် အနားကို ရွှေ့ထားတယ်**
+       user: "အဝါရောင် menu ကို အလယ်မှ ဘေးသို့ လွတ်တဲ့နေရာ ရွှေ့ပါ —
+              display view ကို မကွယ်ပါစေနဲ့"
+     အောက်အလယ်မှာ ဆိုရင် ကစားသမား ရှေ့တည့်တည့်က မြင်ကွင်းကို ဖုံးတယ်
+     (ဖုန်း အလျားလိုက်မှာ အထူးသဖြင့်)。 ဘယ်ဘက် အနား အလယ်က **လွတ်တယ်** —
+     joystick က အောက်ဘက်၊ mic/emote/E က ညာဘက်၊ အပေါ်မှာ room name ပဲ။ */
+  #radialFab{ position:fixed; left:calc(var(--safeL) + 12px); top:50%; bottom:auto;
+    transform:translateY(-50%);
     width:54px; height:54px; border-radius:50%; z-index:10; cursor:pointer;
     background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#1a1200;
     border:0; font-size:23px; font-weight:700; box-shadow:0 0 20px rgba(245,197,66,.35);
     touch-action:manipulation; transition:transform .2s, opacity .5s; }
-  #radialFab.open{ transform:translateX(-50%) rotate(90deg); }
-  body:not(.touch) #radialFab{ bottom:20px; }
+  #radialFab.open{ transform:translateY(-50%) rotate(90deg); }
 
   /* ★ Scrim မထားဘူး — မှောင်သွားရင် လောကကို ဖုံးတာနဲ့ အတူတူ။ ဖောက်ထွင်း
      မြင်ရတဲ့ click-catcher ပဲ (dock ပြင်ပ နှိပ်ရင် ပိတ်ဖို့)。 */
@@ -263,7 +268,9 @@
      ရှည်ရင် dock ကိုယ်တိုင် scroll လုပ်တယ် (မျက်နှာပြင် မတိုးဘူး)。 */
   #radialWrap{
     position:fixed; z-index:9;
-    left:calc(var(--safeL) + 10px); right:auto;
+    /* ★ FAB က ဘယ်ဘက် အနား အလယ်မှာ ရှိလို့ dock ကို အဲဒီ ညာဘက်
+       ၇၆px ကနေ စတယ် — မဟုတ်ရင် ဖွင့်တိုင်း FAB ပေါ် တက်ဖုံးမယ်။ */
+    left:calc(var(--safeL) + 76px); right:auto;
     top:calc(var(--safeT) + 62px);
     bottom:calc(var(--safeB) + var(--ctrl) + 12px);
     transform:translateX(-14px);
@@ -440,7 +447,7 @@
     #tcJump{ width:54px; height:54px; bottom:calc(var(--safeB) + 128px); }
     #tcE{ width:54px; height:54px; bottom:calc(var(--safeB) + 66px);
           right:calc(var(--safeR) + 96px); }
-    #radialFab{ bottom:calc(var(--safeB) + 10px); width:52px; height:52px; font-size:22px; }
+    #radialFab{ width:52px; height:52px; font-size:22px; }
     body.touch #radialWrap{ max-height:calc(100dvh - var(--safeT) - 60px);
       grid-template-columns:repeat(6, minmax(0,1fr)); padding-bottom:calc(70px + var(--safeB)); }
   }

@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { updateDoors } from './Door.js';
 import { updateManors } from './Kit.js';
 import { makeNameLabel } from '../ui/label.js';
+import { updateSignals, updateBuses } from './Traffic.js';
 
 export class Room {
   constructor(id, title) {
@@ -118,6 +119,8 @@ export class Room {
   // frame တိုင်း — NPC + portal effect update
   update(dt, time, playerPos) {
     updateDoors(this, dt);          // 🚪 ဖွင့်/ပိတ် လှုပ်ရှားမှု
+    updateSignals(this, time);      // 🚦 မီးပွိုင့် အလှည့်
+    updateBuses(this, dt);          // 🚌 ဘတ်စ်ကား လိုင်းများ
     updateManors(this, dt, playerPos); // 🏛️ အိမ်တော် — အနီးရောက်ရင် တံခါး ပွင့်
     for (const npc of this.npcs) npc.update(dt);
     for (const p of this.portals) p.mesh.rotation.y = time * 0.8;
