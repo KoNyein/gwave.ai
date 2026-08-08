@@ -60,6 +60,24 @@
   V (or the 👁 button) toggles first-person, and clicking in first person takes
   pointer lock. The left HUD is a flow-layout accordion — one panel open at a
   time — so nothing overlaps on short landscape viewports.
+- **Open World rooms (`public/world/`)**: Cyber-Yangon, the farm, Mae Sot,
+  the Strike arena and five new city rooms — Myawaddy, Three Pagodas Pass,
+  Chiang Mai, Bangkok, Phuket (`world/rooms/CityRooms.js`, driven by a
+  `CITY_SPECS` table). Every building is **hollow with a real doorway**:
+  colliders are one AABB per wall, never one box around the model, because a
+  single AABB cannot express "hollow with a door" — this is the rule to keep.
+  `world/CityKit.js` builds them procedurally; `world/Buildings.js`
+  `hollowShell()` does the same for the GLB houses. Doors swing (`world/
+  Door.js`, pivot-hinged, collider spliced out of `room.colliders` while
+  open); cars are drivable (`entities/Vehicle.js`, E to enter/exit); terrain
+  is noise-generated with a flat play area (`world/Terrain.js`); ambient
+  sound is synthesised per room (`core/Sfx.js` `ambient()`), no audio files
+  anywhere. Quality is auto/high/mid/low (`core/Quality.js`) — pixelRatio is
+  the strongest lever, `heavy` meshes hide at mid, `detail` at low.
+  Colliders must be built **after** the parent group has a transform, or
+  `setFromObject` returns boxes at the world origin and nothing blocks.
+  The app reaches all of this through the same `/metaverse?room=<id>`
+  WebView, so world work needs no APK rebuild.
 - **Metaverse/FPV/Assassin server**: the `metaverse` container on the app EC2
   box (127.0.0.1:8090, behind Caddy at `/mv/*`), not ECS. It **deploys
   automatically** now — `.github/workflows/metaverse-server.yml` builds to ECR
@@ -135,12 +153,66 @@
 
 - FCM push notifications (calls/messages don't ring when the app is closed;
   web-push covers open-browser cases only). Needs a Firebase project.
-- LiveKit egress recording envs + IAM access key (see above) so browser
-  Go Live sessions get replays like app broadcasts do.
 - Native iOS app (Apple Developer Program, $99/yr, user-side).
 - Old Vercel project deletion (user-side).
+- **Old AWS IAM access key `AKIASGIRQUTJXBPGOZ6U` is still active** and must
+  be deleted (user-side). The replacement key is live and in use; only the
+  account owner can remove the old one.
 
 ## Changelog
+
+- 2026-08-08 (web, PR #574): **Five cities, buildings you can enter, cars you
+  can drive, doors that swing.** Myawaddy, Three Pagodas Pass, Chiang Mai,
+  Bangkok and Phuket join the room list, each with a landmark, layout and
+  NPCs, built from the new `CityKit.js`. Its central rule — **no solid
+  blocks** — also fixed the existing world, and every claim below was
+  measured before and after rather than assumed:
+  · buildings could not be entered (9.85 m push-out at the centre of a stilt
+    house, 9.47 m in the colonial house) because one AABB wrapped the whole
+    model. `hollowShell()` now emits four wall boxes with the front split
+    around a door gap → **0.00 m**.
+  · stilt houses keep the space *underneath* walkable — a solid 0→2.2 m slab
+    reads as a wall to the physics (`b.max.y <= pos.y + 0.55` fails), so the
+    deck is a thin platform at 2.0–2.2 m with stairs up.
+  · the pagoda could not be climbed (11.85 m push from one 23×23×26 box) →
+    terrace ring, thin plinth, three approach steps inside the 0.55 m limit.
+  · cars were scenery. `entities/Vehicle.js`: E to enter, drive, E to exit;
+    engine pitch tracks speed through one oscillator. Two bugs found only by
+    measuring: the vehicle system was handed its room *after* the first room
+    was entered so it saw zero cars, and the obstacle probe compared a point
+    at y=0.6 against a car at y=0.03, so every frame looked like a collision.
+  · the world was silent — `Sfx.ambient()` adds city hum, sea swell and wind,
+    still synthesised.
+  · doors now swing (`Door.js`). Closed → in `room.colliders`; open → spliced
+    out. Measured: 0.47 m push closed, 82.8° and 0.00 m open. `nearestDoor()`
+    measures **horizontal** distance because stilt-house doors sit on the
+    deck at y=2.2 while the player walks up at y=0 — the same shape of bug as
+    the car probe.
+  Also: the re-uploaded colonial house replaces the old one at a quarter of
+  the triangle cost, and the 264 m Shwedagon complex 250 m outside the play
+  area (unreachable behind the boundary wall) is gone — Cyber-Yangon drops
+  487k → 244k triangles with *more* usable buildings than before.
+  Collider sweep across every room reports only boundary-wall and Chiang Mai
+  city-wall corners, which overlap by design.
+
+- 2026-08-08 (web, PR #573): **Real terrain.** `world/Terrain.js` generates
+  hills and ridges from value + ridged noise with a per-palette shade ramp,
+  fog at 220/800 and boundary walls. A radial mask keeps the play area
+  exactly flat, and `flatSpots` levels the ground under placed landmarks so
+  buildings never float or sink.
+
+- 2026-08-08 (web+mobile, PR #572): **One world at a time, and a real menu.**
+  Entering the metaverse from the app ran **two** room instances at once,
+  burning CPU for nothing: the Dart side carried a stale `_allowedRooms`
+  whitelist that silently rewrote the requested room, so the shell opened one
+  room while the web client switched to another. `_safeRoom()` is now a regex
+  and `_worldOpen` guards against a second WebView. The floating/slide menu
+  on the start page is replaced by a dedicated page — `welcome-hub.tsx` on
+  web (used by both `/` and `/start`), `start_screen.dart` in the app —
+  eight destinations plus the full directory. Graphics quality gained a
+  low/mid/high button **and** an auto mode (`core/Quality.js`) that samples
+  frame time in 2 s windows, drops immediately below 26 FPS and needs three
+  good windows plus 30 s of calm before it climbs back.
 
 - 2026-08-07 (web): **Hash deep links into the Open World.**
   `/metaverse#shop`, `#rooms`, `#feed`, `#quests`, `#board`, `#arena`, `#live`
